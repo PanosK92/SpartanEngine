@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
-// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_DEFORMABLE_VOLUME_H
 #define PX_DEFORMABLE_VOLUME_H
@@ -55,6 +32,13 @@ class PxParticleBuffer;
 The current limit is 1'048'575.
 */
 #define PX_MAX_NB_DEFORMABLE_VOLUME_TET 0x000fffff
+
+/**
+\brief The maximum number of vertices supported in a deformable volume tetrahedron mesh
+
+The current limit is 1'048'575.
+*/
+#define PX_MAX_NB_DEFORMABLE_VOLUME_VTX 0x000fffff
 
 /**
 \brief The maximum number of deformable volumes supported in a scene
@@ -308,6 +292,11 @@ public:
 	Attaches the simulation mesh (geometry) and a state containing inverse mass, rest pose
 	etc. required to compute the deformation.
 
+	Both are read for as long as they stay attached, so this takes a reference on each. Their
+	PxDeformableVolumeMesh may therefore be released before or after this deformable volume.
+
+	\note Only allowed while the deformable volume is not part of a scene.
+
 	\param[in] simulationMesh The tetrahedral mesh used to compute the deformable's deformation
 	\param[in] deformableVolumeAuxData A state that contain a mapping from simulation to collision mesh, volume information etc.
 
@@ -319,7 +308,10 @@ public:
 	/**
 	\brief Detaches the simulation mesh
 
-	Detaches the simulation mesh and simulation state used to compute the deformation.
+	Detaches the simulation mesh and simulation state used to compute the deformation, giving up
+	the reference taken on each.
+
+	\note Only allowed while the deformable volume is not part of a scene.
 
 	\see attachSimulationMesh, PxDeformableBody.detachShape
 	*/

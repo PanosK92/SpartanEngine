@@ -57,7 +57,7 @@ local lzma_sdk = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "lzma_sdk.lua
 local LIBS_COMMON = { "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
 local LIBS_PHYSX  = {
     "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
-    "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
+    "PhysXPvdSDK_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
 }
 local LIBS_SPIRV  = { "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl" }
 -- nri.lib refs CreateDeviceVK, on d3d12 that is satisfied by a stub, not nri_vk (needs vma)

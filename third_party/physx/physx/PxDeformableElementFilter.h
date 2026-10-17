@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
-// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
+// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_DEFORMABLE_ELEMENT_FILTER_H
 #define PX_DEFORMABLE_ELEMENT_FILTER_H
@@ -86,7 +63,12 @@ There are two special cases that are supported by the element filter.
 - groupElemCounts[A] entries that are 0, indicate that elements of the corresponding group of actor B are filtered against all elements of actor A.
 - empty groupElemCounts[A], indicates that all groups of actor B are filtered against all elements of actor A. This is always the case if actor A is a rigid.
 
-\see PxDeformableElementFilter, PxPhysics::createDeformableElementFilter()
+A filter has to reference at least one specific element on at least one of the two actors. Likewise, every
+group pair has to reference at least one specific element on at least one of the two actors. To suppress all
+collisions between two actors, use PxShape- or PxActor-level collision filtering with a
+PxSimulationFilterShader instead.
+
+\see PxDeformableElementFilter, PxPhysics::createDeformableElementFilter(), PxSimulationFilterShader
 */
 struct PxDeformableElementFilterData
 {
@@ -100,6 +82,9 @@ struct PxDeformableElementFilterData
 
 	/**
 	\brief Actor 0 and Actor 1. NULL actors are not allowed.
+
+	\note One of the two actors has to be a PxDeformableSurface or a PxDeformableVolume. The other can be a
+	PxDeformableSurface, a PxDeformableVolume or any PxRigidActor.
 	*/
 	PxActor* actor[2];
 
@@ -110,6 +95,10 @@ struct PxDeformableElementFilterData
 
 	/**
 	\brief Element indices for all filter groups, per actor.
+
+	\note An index must be smaller than the number of elements of the mesh it addresses. If an element
+	filter references an element outside that range, in checked builds it is left inactive and an error is
+	issued.
 	*/
 	PxTypedBoundedData<const PxU32> groupElementIndices[2];
 };

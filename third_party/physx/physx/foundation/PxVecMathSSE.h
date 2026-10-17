@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
-// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
+// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_VEC_MATH_SSE_H
 #define PX_VEC_MATH_SSE_H
@@ -138,23 +115,6 @@ PX_FORCE_INLINE PxU32 BAnyTrue3_R(const BoolV a)
 {
 	const PxI32 moveMask = _mm_movemask_ps(a);
 	return PxU32((moveMask & 0x7) != 0x0);
-}
-
-PX_FORCE_INLINE PxU32 FiniteTestEq(const Vec4V a, const Vec4V b)
-{
-	// This is a bit of a bodge.
-	//_mm_comieq_ss returns 1 if either value is nan so we need to re-cast a and b with true encoded as a non-nan
-	// number.
-	// There must be a better way of doing this in sse.
-	const BoolV one = FOne();
-	const BoolV zero = FZero();
-	const BoolV a1 = V4Sel(a, one, zero);
-	const BoolV b1 = V4Sel(b, one, zero);
-	return (PxU32(
-	    _mm_comieq_ss(a1, b1) &&
-	    _mm_comieq_ss(_mm_shuffle_ps(a1, a1, _MM_SHUFFLE(1, 1, 1, 1)), _mm_shuffle_ps(b1, b1, _MM_SHUFFLE(1, 1, 1, 1))) &&
-	    _mm_comieq_ss(_mm_shuffle_ps(a1, a1, _MM_SHUFFLE(2, 2, 2, 2)), _mm_shuffle_ps(b1, b1, _MM_SHUFFLE(2, 2, 2, 2))) &&
-	    _mm_comieq_ss(_mm_shuffle_ps(a1, a1, _MM_SHUFFLE(3, 3, 3, 3)), _mm_shuffle_ps(b1, b1, _MM_SHUFFLE(3, 3, 3, 3)))));
 }
 
 PX_FORCE_INLINE bool hasZeroElementInFloatV(const FloatV a)

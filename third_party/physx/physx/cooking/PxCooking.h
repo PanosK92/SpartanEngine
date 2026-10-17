@@ -1,36 +1,13 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
-// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
+// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_COOKING_H
 #define PX_COOKING_H
+
 #include "common/PxPhysXCommonConfig.h"
 #include "common/PxTolerancesScale.h"
-#include "cooking/Pxc.h"
 
 #include "cooking/PxConvexMeshDesc.h"
 #include "cooking/PxTriangleMeshDesc.h"
@@ -388,7 +365,7 @@ This interface allows the creation of standalone objects that can exist without 
 
 \see PxCreateTriangleMesh PxCreateHeightfield PxCreateTetrahedronMesh PxCreateBVH
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxInsertionCallback* PxGetStandaloneInsertionCallback();
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxInsertionCallback* PxGetStandaloneInsertionCallback();
 
 // ==== BVH ====
 
@@ -404,7 +381,7 @@ suitable for loading and performing BVH detection at runtime.
 
 \see PxBVH PxRigidActorExt::getRigidActorShapeLocalBoundsList
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookBVH(const physx::PxBVHDesc& desc, physx::PxOutputStream& stream);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxCookBVH(const physx::PxBVHDesc& desc, physx::PxOutputStream& stream);
 
 /**
 \brief Cooks and creates a bounding volume hierarchy without going through a stream.
@@ -422,7 +399,7 @@ or PxGetStandaloneInsertionCallback().
 
 \see PxCookBVH() PxInsertionCallback
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxBVH* PxCreateBVH(const physx::PxBVHDesc& desc, physx::PxInsertionCallback& insertionCallback);
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxBVH* PxCreateBVH(const physx::PxBVHDesc& desc, physx::PxInsertionCallback& insertionCallback);
 
 /**
 \brief Cooks and creates a bounding volume hierarchy without going through a stream. Convenience function for standalone objects.
@@ -457,7 +434,7 @@ suitable for loading and performing collision detection at runtime.
 
 \see PxPhysics.createHeightField()
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookHeightField(const physx::PxHeightFieldDesc& desc, physx::PxOutputStream& stream);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxCookHeightField(const physx::PxHeightFieldDesc& desc, physx::PxOutputStream& stream);
 
 /**
 \brief Cooks and creates a heightfield mesh and inserts it into PxPhysics.
@@ -468,7 +445,7 @@ PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookHeightField(const physx::PxHeightFie
 
 \see PxCookHeightField() PxPhysics.createHeightField() PxInsertionCallback
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxHeightField* PxCreateHeightField(const physx::PxHeightFieldDesc& desc, physx::PxInsertionCallback& insertionCallback);
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxHeightField* PxCreateHeightField(const physx::PxHeightFieldDesc& desc, physx::PxInsertionCallback& insertionCallback);
 
 /**
 \brief Cooks and creates a heightfield mesh and inserts it into PxPhysics. Convenience function for standalone objects.
@@ -505,7 +482,7 @@ suitable for loading and performing collision detection at runtime.
 
 \see PxCookTriangleMesh() PxConvexMeshCookingResult::Enum
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookConvexMesh(const physx::PxCookingParams& params, const physx::PxConvexMeshDesc& desc, physx::PxOutputStream& stream, physx::PxConvexMeshCookingResult::Enum* condition=NULL);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxCookConvexMesh(const physx::PxCookingParams& params, const physx::PxConvexMeshDesc& desc, physx::PxOutputStream& stream, physx::PxConvexMeshCookingResult::Enum* condition=NULL);
 
 /**
 \brief Cooks and creates a convex mesh without going through a stream.
@@ -525,7 +502,7 @@ or PxGetStandaloneInsertionCallback().
 
 \see PxCookConvexMesh() PxInsertionCallback
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxConvexMesh* PxCreateConvexMesh(const physx::PxCookingParams& params, const physx::PxConvexMeshDesc& desc, physx::PxInsertionCallback& insertionCallback, physx::PxConvexMeshCookingResult::Enum* condition=NULL);
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxConvexMesh* PxCreateConvexMesh(const physx::PxCookingParams& params, const physx::PxConvexMeshDesc& desc, physx::PxInsertionCallback& insertionCallback, physx::PxConvexMeshCookingResult::Enum* condition=NULL);
 
 /**
 \brief Cooks and creates a convex mesh without going through a stream. Convenience function for standalone objects.
@@ -559,7 +536,7 @@ The convex mesh descriptor must contain an already created convex mesh - the ver
 
 \see PxCookConvexMesh()
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxValidateConvexMesh(const physx::PxCookingParams& params, const physx::PxConvexMeshDesc& desc);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxValidateConvexMesh(const physx::PxCookingParams& params, const physx::PxConvexMeshDesc& desc);
 
 /**
 \brief Compute hull polygons from given vertices and triangles. Polygons are needed for PxConvexMeshDesc rather than triangles.
@@ -582,7 +559,7 @@ The provided PxAllocatorCallback does allocate the out arrays. It is the user re
 
 \see PxCookConvexMesh() PxConvexFlags PxConvexMeshDesc PxSimpleTriangleMesh
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxComputeHullPolygons(const physx::PxCookingParams& params, const physx::PxSimpleTriangleMesh& mesh, physx::PxAllocatorCallback& inCallback, physx::PxU32& nbVerts, physx::PxVec3*& vertices,
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxComputeHullPolygons(const physx::PxCookingParams& params, const physx::PxSimpleTriangleMesh& mesh, physx::PxAllocatorCallback& inCallback, physx::PxU32& nbVerts, physx::PxVec3*& vertices,
 														physx::PxU32& nbIndices, physx::PxU32*& indices, physx::PxU32& nbPolygons, physx::PxHullPolygon*& hullPolygons);
 
 // ==== Triangle meshes ====
@@ -601,7 +578,7 @@ The following conditions are true for a valid triangle mesh:
 
 \see PxCookTriangleMesh()
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxValidateTriangleMesh(const physx::PxCookingParams& params, const physx::PxTriangleMeshDesc& desc);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxValidateTriangleMesh(const physx::PxCookingParams& params, const physx::PxTriangleMeshDesc& desc);
 
 /**
 \brief Cooks a triangle mesh. The results are written to the stream.
@@ -620,7 +597,7 @@ suitable for loading and performing collision detection at runtime.
 
 \see PxCookConvexMesh() PxPhysics.createTriangleMesh() PxTriangleMeshCookingResult::Enum
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookTriangleMesh(const physx::PxCookingParams& params, const physx::PxTriangleMeshDesc& desc, physx::PxOutputStream& stream, physx::PxTriangleMeshCookingResult::Enum* condition=NULL);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxCookTriangleMesh(const physx::PxCookingParams& params, const physx::PxTriangleMeshDesc& desc, physx::PxOutputStream& stream, physx::PxTriangleMeshCookingResult::Enum* condition=NULL);
 
 /**
 \brief Cooks and creates a triangle mesh without going through a stream.
@@ -640,7 +617,7 @@ or PxGetStandaloneInsertionCallback().
 
 \see PxCookTriangleMesh() PxPhysics.createTriangleMesh() PxInsertionCallback
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxTriangleMesh* PxCreateTriangleMesh(const physx::PxCookingParams& params, const physx::PxTriangleMeshDesc& desc, physx::PxInsertionCallback& insertionCallback, physx::PxTriangleMeshCookingResult::Enum* condition=NULL);
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxTriangleMesh* PxCreateTriangleMesh(const physx::PxCookingParams& params, const physx::PxTriangleMeshDesc& desc, physx::PxInsertionCallback& insertionCallback, physx::PxTriangleMeshCookingResult::Enum* condition=NULL);
 
 /**
 \brief Cooks and creates a triangle mesh without going through a stream. Convenience function for standalone objects.
@@ -678,7 +655,7 @@ suitable for loading and performing collision detection at runtime.
 
 \see PxCookConvexMesh() PxPhysics.createTetrahedronMesh() 
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookTetrahedronMesh(const physx::PxCookingParams& params, const physx::PxTetrahedronMeshDesc& meshDesc, physx::PxOutputStream& stream);
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxCookTetrahedronMesh(const physx::PxCookingParams& params, const physx::PxTetrahedronMeshDesc& meshDesc, physx::PxOutputStream& stream);
 
 /**
 \brief Cooks and creates a tetrahedron mesh without going through a stream.
@@ -697,7 +674,7 @@ or PxGetStandaloneInsertionCallback().
 
 \see PxCookTetrahedronMesh() PxInsertionCallback
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxTetrahedronMesh* PxCreateTetrahedronMesh(const physx::PxCookingParams& params, const physx::PxTetrahedronMeshDesc& meshDesc, physx::PxInsertionCallback& insertionCallback);
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxTetrahedronMesh* PxCreateTetrahedronMesh(const physx::PxCookingParams& params, const physx::PxTetrahedronMeshDesc& meshDesc, physx::PxInsertionCallback& insertionCallback);
 
 /**
 \brief Cooks and creates a tetrahedron mesh without going through a stream. Convenience function for standalone objects.
@@ -736,7 +713,7 @@ suitable for loading and performing collision detection at runtime.
 
 \see PxCookConvexMesh() PxPhysics.createTriangleMesh() PxTriangleMeshCookingResult::Enum
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	bool PxCookDeformableVolumeMesh(const physx::PxCookingParams& params,
+PX_C_EXPORT PX_PHYSX_COMMON_API	bool PxCookDeformableVolumeMesh(const physx::PxCookingParams& params,
 	const physx::PxTetrahedronMeshDesc& simulationMeshDesc, const physx::PxTetrahedronMeshDesc& collisionMeshDesc,
 	const physx::PxDeformableVolumeSimulationDataDesc& simulationDataDesc, physx::PxOutputStream& stream);
 
@@ -759,7 +736,7 @@ or PxGetStandaloneInsertionCallback().
 
 \see PxCookTriangleMesh() PxPhysics.createTriangleMesh() PxInsertionCallback
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxDeformableVolumeMesh* PxCreateDeformableVolumeMesh(const physx::PxCookingParams& params, 
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxDeformableVolumeMesh* PxCreateDeformableVolumeMesh(const physx::PxCookingParams& params, 
 	const physx::PxTetrahedronMeshDesc& simulationMeshDesc, const physx::PxTetrahedronMeshDesc& collisionMeshDesc,
 	const physx::PxDeformableVolumeSimulationDataDesc& simulationDataDesc, physx::PxInsertionCallback& insertionCallback);
 
@@ -803,7 +780,7 @@ This method computes that embedding information.
 
 \see PxTetMaker::createVoxelTetrahedronMesh
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxCollisionMeshMappingData* PxComputeModelsMapping(const physx::PxCookingParams& params,
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxCollisionMeshMappingData* PxComputeModelsMapping(const physx::PxCookingParams& params,
 	physx::PxTetrahedronMeshData& simulationMesh, const physx::PxTetrahedronMeshData& collisionMesh, 
 	const physx::PxDeformableVolumeCollisionData& collisionData, const physx::PxBoundedData* vertexToTet = NULL);
 	
@@ -816,7 +793,7 @@ Computes data structures to speed up collision detection with tetrahedral meshes
 \param[in] collisionMeshDesc	Raw tetrahedral mesh descriptor which will be used for collision detection 
 \return PxCollisionTetrahedronMeshData pointer that describes the collision mesh
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxCollisionTetrahedronMeshData* PxComputeCollisionData(const physx::PxCookingParams& params,
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxCollisionTetrahedronMeshData* PxComputeCollisionData(const physx::PxCookingParams& params,
 	const physx::PxTetrahedronMeshDesc& collisionMeshDesc);
 
 /**
@@ -828,7 +805,7 @@ Computes data to compute and store a deformable volume's deformation using FEM.
 \param[in] simulationMeshDesc	Raw tetrahedral mesh descriptor which will be used for FEM simulation
 \return PxSimulationTetrahedronMeshData pointer that describes the simulation mesh
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxSimulationTetrahedronMeshData* PxComputeSimulationData(const physx::PxCookingParams& params,
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxSimulationTetrahedronMeshData* PxComputeSimulationData(const physx::PxCookingParams& params,
 	const physx::PxTetrahedronMeshDesc& simulationMeshDesc);
 
 /**
@@ -846,7 +823,7 @@ Creates a container that provides everything to create a PxDeformableVolume
 
 \see PxDeformableVolume createDeformableVolume()
 */
-PX_C_EXPORT PX_PHYSX_COOKING_API	physx::PxDeformableVolumeMesh*	PxAssembleDeformableVolumeMesh(physx::PxTetrahedronMeshData& simulationMesh,
+PX_C_EXPORT PX_PHYSX_COMMON_API	physx::PxDeformableVolumeMesh*	PxAssembleDeformableVolumeMesh(physx::PxTetrahedronMeshData& simulationMesh,
 	physx::PxDeformableVolumeSimulationData& simulationData, physx::PxTetrahedronMeshData& collisionMesh, physx::PxDeformableVolumeCollisionData& collisionData,
 	physx::PxCollisionMeshMappingData& mappingData, physx::PxInsertionCallback& insertionCallback);
 

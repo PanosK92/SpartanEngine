@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
-// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_OMNI_PVD_H
 #define PX_OMNI_PVD_H
@@ -32,7 +9,6 @@
 #include "PxPhysXConfig.h"
 
 class OmniPvdWriter;
-class OmniPvdFileWriteStream;
 
 // The OVD integration version:
 // 
@@ -52,6 +28,29 @@ namespace physx
 #endif
 
 class PxFoundation;
+class PxOmniPvd;
+
+/**
+\brief Callback that lets a module add its own objects to the recording started by startSampling().
+
+A module (such as PhysXExtensions) implements this callback and registers it with
+PxOmniPvd::addEventCallback(). startSampling() calls onStartSampling() after it has recorded
+the core PhysX objects, so the module can record its own objects onto the bound write stream.
+*/
+class PxOmniPvdEventCallback
+{
+public:
+	/**
+	\brief Called by startSampling() after the core PhysX objects have been recorded.
+
+	The module records its own objects onto the bound write stream here, so they can refer to
+	the core objects already recorded.
+
+	\param omniPvd The PxOmniPvd taking the snapshot (the same instance the callback was registered with).
+	*/
+	virtual void onStartSampling(PxOmniPvd& omniPvd) = 0;
+	virtual ~PxOmniPvdEventCallback() {}
+};
 
 class PxOmniPvd
 {
@@ -96,6 +95,7 @@ public:
 	\brief Get the OmniPvd writer.
 	
 	Gets an instance of the OmniPvd writer. The writer access will not be thread safe since the OmniPVD API is not thread safe itself. Writing concurrently and simultaneously using the OmniPVD API is undefined.
+	The returned writer is owned by this PxOmniPvd instance. Do not pass it to destroyOmniPvdWriter().
 	
 	For thread safe exlcusive access use the mechanism acquireExclusiveWriterAccess/releaseExclusiveWriterAccess.
 
@@ -123,18 +123,101 @@ public:
 	virtual void releaseExclusiveWriterAccess() = 0;
 
 	/**
-	\brief Gets an instance to the OmniPvd file write stream
-	
-	\return OmniPvdFileWriteStream instance on succes, NULL otherwise.
-	*/
-	virtual OmniPvdFileWriteStream* getFileWriteStream() = 0;
-	
-	/**
-	\brief Starts the OmniPvd sampling
+	\brief Starts recording to the bound write stream.
 
-	\return True if sampling started correctly, false if not.
+	First records the current state of the whole scene, then records every change from this
+	point on. Because the current state is recorded first, the newly written versioned segment
+	contains the state needed to decode it from its starting boundary whether the scene is empty
+	or has been running for a while. This is what makes a late attach work: you can bind a stream
+	after the simulation has been running and the new segment still contains the full scene.
+
+	Bind the write stream first with OmniPvdWriter::setWriteStream(), then call startSampling().
+	To take a fresh recording later, call stopSampling(), bind a stream with setWriteStream(), then
+	call startSampling() again. Rebinding resets the writer session but does not itself reset the
+	transport: an already-open stream appends a versioned segment at its current position, so retain
+	that boundary and position a fresh reader there. For one standalone recording decodable from
+	byte zero, use a new or explicitly reset transport, or close and reopen a file writer so its
+	truncating reopen policy applies. Calling startSampling() while already sampling is not allowed:
+	it does not start a new recording and returns false with an error message. Call stopSampling()
+	before starting another recording. For final teardown, sampling may remain active through
+	PxPhysics::release() so object-removal notifications are recorded; releasing the associated
+	PxPhysics implicitly ends sampling.
+
+	\note Recording the current state reads the whole scene, so do not call this while the scene
+	is stepping. Call it before PxScene::simulate()/collide() or after fetchResults()/fetchCollision(),
+	or while holding the scene write lock.
+
+	\return True if recording started. False if recording was already on, if no writer is
+	available, or if a write failed while recording the current state.
+
+	\see OmniPvdWriter::setWriteStream()
+	\see PxOmniPvd::addEventCallback()
+	\see PxOmniPvd::stopSampling()
+	\see PxOmniPvd::isSampling()
 	*/
 	virtual bool startSampling() = 0;
+
+	/**
+	\brief Stops recording.
+
+	After this call, no further object or per-frame data is written. The write stream is not
+	flushed or closed; you own the stream and decide when to flush or close it. Call stopSampling()
+	before starting another recording: a later startSampling() then records the current state again
+	onto the (re-)bound stream. It is not a resume. Calling stopSampling() is optional during final
+	teardown: leaving sampling active through PxPhysics::release() records object-removal
+	notifications, and releasing the associated PxPhysics implicitly ends sampling. It is safe to
+	call stopSampling() after that PxPhysics has been released; the call returns false because its
+	associated sampler state is no longer available.
+
+	\return True if the sampling state was set to false, false if no associated sampler state was
+	available.
+
+	\see PxOmniPvd::startSampling()
+	*/
+	virtual bool stopSampling() = 0;
+
+	/**
+	\brief Whether recording is currently on.
+
+	True after a successful startSampling() until stopSampling() is called or the associated
+	PxPhysics is released.
+
+	\return True if sampling, false otherwise.
+
+	\see PxOmniPvd::startSampling()
+	\see PxOmniPvd::stopSampling()
+	*/
+	virtual bool isSampling() const = 0;
+
+	/**
+	\brief Registers a callback that contributes its objects to the recording.
+
+	A module (such as PhysXExtensions) implements PxOmniPvdEventCallback to record its own
+	objects when startSampling() records the current state. startSampling() calls each
+	registered callback's onStartSampling() after it has recorded the core PhysX objects.
+	Registering the same callback twice has no effect.
+
+	\note addEventCallback() and removeEventCallback() are not thread-safe; call them from a
+	single thread (for example at setup), not concurrently with each other or with sampling.
+
+	\param callback The callback to register.
+
+	\see PxOmniPvd::removeEventCallback()
+	*/
+	virtual void addEventCallback(PxOmniPvdEventCallback& callback) = 0;
+
+	/**
+	\brief Unregisters a previously registered callback.
+
+	Has no effect if the callback was not registered.
+
+	\note Not thread-safe; see addEventCallback().
+
+	\param callback The callback to unregister.
+
+	\see PxOmniPvd::addEventCallback()
+	*/
+	virtual void removeEventCallback(PxOmniPvdEventCallback& callback) = 0;
 
 	/**
 	\brief Releases the PxOmniPvd object

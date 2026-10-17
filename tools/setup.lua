@@ -15,7 +15,7 @@ local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/byrj4cytjj9krvm49pto6/libraries.7z?rlkey=w7axjqiqdooded5tpovg80nn2&dl=1"
-local LIBRARY_HASH     = "e98c666559e207bda91c351b7dbd325385092634d09a2a328cef77c5779cae9f"
+local LIBRARY_HASH     = "c9344221cde19efd97416c37a8d3517a84fd296a4f25aa25ed54bafd2fb2c229"
 
 local LINUX_LIBRARIES_DIR     = path.join(LIBRARIES_DIR, "linux")
 local LINUX_RUNTIME_LIBRARIES = { "libdxcompiler.so", "libdxil.so" }

@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
-// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_TETRAHEDRON_MESH_H
 #define PX_TETRAHEDRON_MESH_H
@@ -68,9 +45,9 @@ namespace physx
 	{
 	public:
 		/**
-		\brief Decrements the reference count of a tetrahedron mesh and releases it if the new reference count is zero.
+		\brief Decrements the reference count of the auxiliary data and releases it if the new reference count is zero.
 
-		\see PxPhysics.createTetrahedronMesh()
+		\see PxDeformableVolumeMesh.getDeformableVolumeAuxData()
 		*/
 		virtual void					release() = 0;
 
@@ -211,8 +188,10 @@ namespace physx
 	<h3>Creation</h3>
 
 	To create an instance of this class call PxPhysics::createDeformableVolumeMesh(),
-	and release() to delete it. This is only possible
-	once you have released all of its PxShape instances.
+	and release() to delete it. The collision mesh, the simulation mesh and the auxiliary data are
+	reference counted in their own right, so release() only gives up this object's reference to each:
+	a collision mesh still referenced by a PxShape, or a simulation mesh and auxiliary data still
+	referenced by a PxDeformableVolume, outlive this object.
 
 	*/
 	class PxDeformableVolumeMesh : public PxRefCounted
@@ -262,9 +241,9 @@ namespace physx
 		virtual PxDeformableVolumeAuxData* getDeformableVolumeAuxData() = 0;
 
 		/**
-		\brief Decrements the reference count of a tetrahedron mesh and releases it if the new reference count is zero.
+		\brief Decrements the reference count of a deformable volume mesh and releases it if the new reference count is zero.
 
-		\see PxPhysics.createTetrahedronMesh()
+		\see PxPhysics.createDeformableVolumeMesh()
 		*/
 		virtual void					release() = 0;
 

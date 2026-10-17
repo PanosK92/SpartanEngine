@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
-// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_ARTICULATION_JOINT_RC_H
 #define PX_ARTICULATION_JOINT_RC_H
@@ -198,7 +175,7 @@ namespace physx
 		
 		\see getDriveParams, PxArticulationAxis, PxArticulationDrive
 
-		<b>Default:</b> PxArticulationDrive(0.0f, 0.0f, 0.0f, PxArticulationDriveType::eNONE)
+		<b>Default:</b> PxArticulationDrive(0.0f, 0.0f, PxPerformanceEnvelope(), PxArticulationDriveType::eNONE)
 		*/
 		virtual		void				setDriveParams(PxArticulationAxis::Enum axis, const PxArticulationDrive& drive) = 0;
 
@@ -311,38 +288,9 @@ namespace physx
 		virtual		PxReal				getArmature(PxArticulationAxis::Enum axis) const = 0;
 
 		/**
-		\brief Sets the joint friction coefficient, which applies to all joint axes.
-
-		- The joint friction is unitless and relates the magnitude of the spatial force [F_trans, T_trans] transmitted from parent to child link to
-		the maximal friction force F_resist that may be applied by the solver to resist joint motion, per axis; i.e. |F_resist| <= coefficient * (|F_trans| + |T_trans|),
-		where F_resist may refer to a linear force or torque depending on the joint axis.
-		- The simulated friction effect is therefore similar to static and Coulomb friction. In order to simulate dynamic joint friction, use a joint drive with
-		zero stiffness and zero velocity target, and an appropriately dimensioned damping parameter.
-
-		\param[in] coefficient The joint friction coefficient.
-
-		\note This call is not allowed while the simulation is running.
-
-		\see getFrictionCoefficient
-
-		<b>Default:</b> 0.05
-		*/
-		virtual	PX_DEPRECATED	void	setFrictionCoefficient(const PxReal coefficient) = 0;
-
-		/**
-		\brief Gets the joint friction coefficient.
-
-		\return The joint friction coefficient.
-
-		\see setFrictionCoefficient
-		*/
-		virtual	PX_DEPRECATED	PxReal	getFrictionCoefficient() const = 0;
-
-		/**
 		\brief Configures joint friction.
 
-		See PxJointFrictionParams for parameter details; and the manual for further information. The new friction model is applied to all axes where setFrictionParams() has been called. 
-		For axes where setFrictionParams() hasn't been used, the deprecated friction model remains in effect. See setFrictionCoefficient().
+		See PxJointFrictionParams for parameter details and the manual for further information.
 
 		\param[in] axis The target axis.
 		\param[in] jointFrictionParams The joint friction parameters.
@@ -365,31 +313,6 @@ namespace physx
 		virtual PxJointFrictionParams getFrictionParams(PxArticulationAxis::Enum axis) const = 0;
 
 		/**
-		\brief Sets the maximal joint velocity enforced for all axes.
-
-		- The solver will apply appropriate joint-space impulses in order to enforce the per-axis joint-velocity limit.
-		- The velocity units are linear units (equivalent to scene units) per second for a translational axis, or radians per second for a rotational axis.
-
-		\param[in] maxJointV The maximal per-axis joint velocity.
-
-		\note This call is not allowed while the simulation is running.
-
-		\see getMaxJointVelocity
-
-		<b>Default:</b> 100.0
-		*/
-		virtual	 PX_DEPRECATED	void				setMaxJointVelocity(const PxReal maxJointV) = 0;
-
-		/**
-		\brief Gets the maximal joint velocity enforced for all axes.
-
-		\return The maximal per-axis joint velocity.
-
-		\see setMaxJointVelocity
-		*/
-		virtual	 PX_DEPRECATED	PxReal				getMaxJointVelocity() const = 0;
-
-		/**
 		\brief Sets the maximal joint velocity enforced for the given axis.
 
 		- The solver will apply appropriate joint-space impulses in order to enforce the per-axis joint-velocity limit.
@@ -400,7 +323,7 @@ namespace physx
 
 		\note This call is not allowed while the simulation is running.
 
-		\see getMaxJointVelocity()
+		\see getMaxJointVelocity(PxArticulationAxis::Enum)
 
 		<b>Default:</b> 100.0
 		*/
@@ -413,7 +336,7 @@ namespace physx
 		
 		\return The maximal joint velocity for the given axis.
 
-		\see setMaxJointVelocity()
+		\see setMaxJointVelocity(PxArticulationAxis::Enum, PxReal)
 		*/
 		virtual		PxReal				getMaxJointVelocity(PxArticulationAxis::Enum axis) const = 0;
 

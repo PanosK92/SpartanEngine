@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
-// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
+// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PX_SOLVER_DEFS_H
 #define PX_SOLVER_DEFS_H
@@ -312,8 +289,7 @@ struct PxArticulationFlag
 	enum Enum
 	{
 		eFIX_BASE = (1 << 0),				//!< Set articulation base to be fixed.
-		eDRIVE_LIMITS_ARE_FORCES = (1<<1),	//!< Limits for drive effort are forces and torques rather than impulses, see PxArticulationDrive::maxForce.
-		eDISABLE_SELF_COLLISION = (1<<2)	//!< Disable collisions between the articulation's links (note that parent/child collisions are disabled internally in either case).
+		eDISABLE_SELF_COLLISION = (1<<1)	//!< Disable collisions between the articulation's links (note that parent/child collisions are disabled internally in either case).
 	};
 };
 
@@ -376,14 +352,13 @@ where Effort refers to the sum of the articulation cache effort to the joint and
 */
 struct PxPerformanceEnvelope
 {
-	
 	// PX_SERIALIZATION
 	PxPerformanceEnvelope(const PxEMPTY&){}
 	// ~PX_SERIALIZATION
 
-	PxPerformanceEnvelope(
+	explicit PxPerformanceEnvelope(
         PxReal maxEffort_ = 0.0f,
-        PxReal maxActuatorVelocity_ = 0.0f,
+        PxReal maxActuatorVelocity_ = PX_MAX_F32,
         PxReal velocityDependentResistance_ = 0.0f,
         PxReal speedEffortGradient_ = 0.0f
     ) : maxEffort(maxEffort_),
@@ -395,6 +370,8 @@ struct PxPerformanceEnvelope
     /**
      \brief Max effort the actuator can produce at zero velocity. For linear actuators, effort refers to force; for rotational actuators, effort refers to torque.
      
+    \note A value of zero disables the drive.
+    
     <b>Range:</b> [0, PX_MAX_F32]
     <b>Default:</b> 0.0f
     */
@@ -402,9 +379,11 @@ struct PxPerformanceEnvelope
 
     /**
     \brief The maximum velocity of the actuator at zero effort.
+
+    \note A value of zero prevents the actuator from moving the joint. PX_MAX_F32 disables the velocity limit.
     
     <b>Range:</b> [0, PX_MAX_F32]
-    <b>Default:</b> 0.0f
+    <b>Default:</b> PX_MAX_F32
     */
     PxReal maxActuatorVelocity;
 
@@ -476,20 +455,10 @@ struct PxJointFrictionParams
 struct PxArticulationDrive
 {
 	// PX_SERIALIZATION
-	PxArticulationDrive(const PxEMPTY&): envelope(PxEmpty) {}
+	PxArticulationDrive(const PxEMPTY&) : envelope(PxEmpty) {}
 	//~PX_SERIALIZATION
 
 	PxArticulationDrive() {}
-
-	PxArticulationDrive(const PxReal stiffness_, const PxReal damping_, const PxReal maxForce_,
-						PxArticulationDriveType::Enum driveType_ = PxArticulationDriveType::eFORCE)
-	{
-		stiffness = stiffness_;
-		damping = damping_;
-		maxForce = maxForce_;
-		driveType = driveType_;
-		envelope = PxPerformanceEnvelope(0.0f, 0.0f, 0.0f, 0.0f);
-	}
 
 	PxArticulationDrive(const PxReal stiffness_, const PxReal damping_,
 						const PxPerformanceEnvelope envelope_,
@@ -499,7 +468,6 @@ struct PxArticulationDrive
 		damping = damping_;
 		driveType = driveType_;
 		envelope = envelope_;
-		maxForce = 0.0f;
 	}
 	
 	/**
@@ -529,26 +497,10 @@ struct PxArticulationDrive
 	PxReal damping;
 	
 	/**
-	\deprecated Will be removed in a future version
-	\brief The drive force limit.
-
-	- The limit is enforced regardless of the drive type #PxArticulationDriveType.
-	- The limit corresponds to a force (linear axis) or torque (rotational axis) if PxArticulationFlag::eDRIVE_LIMITS_ARE_FORCES is set, and to an impulse (force|torque * dt) otherwise.
-
-	<b>Range:</b> [0, PX_MAX_F32]<br>
-	<b>Default:</b> 0.0f<br>
-
-	\see PxArticulationFlag::eDRIVE_LIMITS_ARE_FORCES
-	*/
-	PxReal maxForce;
-
-	/**
 	\brief The performance envelope of a motor.
 	
-	When an envelope with a non-zero maxEffort is explicitly set (via constructor or otherwise), the envelope takes precedence over maxForce.
- 	In such cases, the joint force is clamped according to the performance envelope. If the default envelope (with zero maxEffort) is used,
-	clamping is instead based on the maxForce parameter and the PxArticulationFlag::eDRIVE_LIMITS_ARE_FORCES flag.
-
+	The drive effort is clamped to the envelope. With maxEffort at zero the drive applies no effort.
+	
 	\see PxPerformanceEnvelope
 	*/
 	PxPerformanceEnvelope envelope;

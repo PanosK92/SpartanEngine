@@ -7354,7 +7354,10 @@ namespace spartan
                         + ",\"active_bodies\":" + std::to_string(stats.active_bodies)
                         + ",\"active_constraints\":" + std::to_string(stats.active_constraints)
                         + ",\"solver_rows\":" + std::to_string(stats.solver_rows)
-                        + ",\"contact_pairs\":" + std::to_string(stats.contact_pairs) + "}";
+                        + ",\"contact_pairs\":" + std::to_string(stats.contact_pairs)
+                        + ",\"simulation_ms\":" + std::to_string(stats.simulation_ms)
+                        + ",\"callbacks_ms\":" + std::to_string(stats.callbacks_ms)
+                        + ",\"wait_ms\":" + std::to_string(stats.wait_ms) + "}";
                 }
             },
             { "engine_set_mode",               command_engine_set_mode },

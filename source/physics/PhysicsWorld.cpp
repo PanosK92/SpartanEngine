@@ -19,6 +19,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/World.h"
 #include "../commands/console/ConsoleCommands.h"
 #include <thread>
+#include <chrono>
+#include <condition_variable>
 SP_WARNINGS_OFF
 #ifdef DEBUG
     #define _DEBUG 1
@@ -48,6 +50,7 @@ namespace spartan
         recursive_mutex physx_mutex;
         PhysicsWorld::StepStatistics step_statistics;
         TConsoleVar<bool> cvar_physics_assist("physics.assist", true, "Execute ready PhysX jobs on the calling thread while waiting for simulation results");
+        TConsoleVar<bool> cvar_physics_threaded("physics.threaded", true, "Run the fixed simulation steps on a dedicated thread, overlapped with rendering");
         PhysicsSceneOrigin scene_origin;
         struct CollisionInterest { const void* owner; Vector3 position; float radius; };
         vector<CollisionInterest> collision_interests;
@@ -496,9 +499,133 @@ namespace spartan
             scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT, value);
             scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL, value);
             scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR, value);
-            scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_IMPULSE, value);
             scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, value);
             scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, value);
+        }
+    }
+
+    namespace simulation_thread
+    {
+        // the main thread prepares a batch after World::Tick and joins it before Engine::Tick returns,
+        // so the editor, mcp and world loading never touch physx while a batch is in flight
+        thread worker;
+        mutex batch_mutex;
+        condition_variable batch_ready;
+        condition_variable batch_done;
+        bool in_flight       = false;
+        bool exit_requested  = false;
+        uint32_t step_count  = 0;
+        float step_size      = 0.0f;
+        uint32_t queued_steps = 0;
+        float queued_step_size = 0.0f;
+
+        double elapsed_ms(chrono::steady_clock::time_point start)
+        {
+            return chrono::duration<double, milli>(chrono::steady_clock::now() - start).count();
+        }
+
+        void run_steps(uint32_t count, float step)
+        {
+            const auto batch_start = chrono::steady_clock::now();
+            double callbacks_ms    = 0.0;
+            for (uint32_t step_index = 0; step_index < count; ++step_index)
+            {
+                lock_guard<recursive_mutex> lock(physx_mutex);
+
+                // snapshot entries so callback registration can change during an update
+                static vector<pair<StepCallback, uint64_t>> callbacks;
+                static uint64_t snapshot_revision = numeric_limits<uint64_t>::max();
+                if (snapshot_revision != callback_revision)
+                {
+                    callbacks.clear();
+                    callbacks.reserve(step_callbacks.size());
+                    for (const StepCallback& entry : step_callbacks)
+                        callbacks.emplace_back(entry, callback_generations.at(entry.owner));
+                    snapshot_revision = callback_revision;
+                }
+                const auto callbacks_start = chrono::steady_clock::now();
+                SP_PROFILE_CPU_START("physics_step_callbacks");
+                for (const auto& [entry, generation] : callbacks)
+                {
+                    // A callback may remove or replace another callback. Only invoke
+                    // the registration captured by this step's immutable snapshot.
+                    const auto current = callback_generations.find(entry.owner);
+                    if (current != callback_generations.end() && current->second == generation)
+                        entry.callback(step);
+                }
+                SP_PROFILE_CPU_END();
+                callbacks_ms += elapsed_ms(callbacks_start);
+
+                SP_PROFILE_CPU_START("physics_buoyancy");
+                // buoyancy from the fft water, applied per step so the force integrates consistently
+                Physics::TickBuoyancy();
+                SP_PROFILE_CPU_END();
+                SP_PROFILE_CPU_START("physics_simulate");
+                SP_PROFILE_CPU_START("physics_dispatch");
+                scene->simulate(step);
+                SP_PROFILE_CPU_END();
+                // The next substep's forces/queries read these results, so steps stay serial
+                SP_PROFILE_CPU_START("physics_fetch_results");
+                while (cvar_physics_assist.GetValue() && !scene->checkResults(false))
+                {
+                    if (dispatcher->Assist()) ++step_statistics.assisted_tasks;
+                    else std::this_thread::yield();
+                }
+                scene->fetchResults(true);
+                SP_PROFILE_CPU_END();
+                SP_PROFILE_CPU_END();
+                PxSimulationStatistics stats;
+                scene->getSimulationStatistics(stats);
+                ++step_statistics.steps;
+                step_statistics.active_bodies = max(step_statistics.active_bodies, stats.nbActiveDynamicBodies);
+                step_statistics.active_constraints = max(step_statistics.active_constraints, stats.nbActiveConstraints);
+                step_statistics.solver_rows = max(step_statistics.solver_rows, stats.nbAxisSolverConstraints);
+                step_statistics.contact_pairs = max(step_statistics.contact_pairs, stats.nbDiscreteContactPairsWithContacts);
+            }
+            step_statistics.callbacks_ms  = static_cast<float>(callbacks_ms);
+            step_statistics.simulation_ms = static_cast<float>(elapsed_ms(batch_start));
+        }
+
+        void worker_main()
+        {
+            unique_lock<mutex> lock(batch_mutex);
+            while (true)
+            {
+                batch_ready.wait(lock, [] { return exit_requested || (in_flight && step_count > 0); });
+                if (exit_requested)
+                {
+                    return;
+                }
+
+                const uint32_t count = step_count;
+                const float step     = step_size;
+                lock.unlock();
+                run_steps(count, step);
+                lock.lock();
+                step_count = 0;
+                in_flight  = false;
+                batch_done.notify_all();
+            }
+        }
+
+        void start()
+        {
+            exit_requested = false;
+            worker = thread(worker_main);
+        }
+
+        void stop()
+        {
+            {
+                lock_guard<mutex> lock(batch_mutex);
+                exit_requested = true;
+            }
+            batch_ready.notify_all();
+            if (worker.joinable())
+            {
+                worker.join();
+            }
         }
     }
 
@@ -531,10 +658,15 @@ namespace spartan
 
         // debug visualization parameters are enabled on demand, see DrawDebugVisualization
         set_visualization_enabled(false);
+
+        simulation_thread::start();
     }
 
     void PhysicsWorld::Shutdown()
     {
+        WaitForSimulation();
+        simulation_thread::stop();
+
         // cleanup picking
         picking::UnpickBody();
 
@@ -567,7 +699,8 @@ namespace spartan
     void PhysicsWorld::Tick()
     {
         SP_PROFILE_CPU();
-        step_statistics = {};
+        WaitForSimulation();
+        simulation_thread::queued_steps = 0;
         static float accumulated_time = 0.0f;
 
         // Loading, play boot and paused/editor time are not simulation debt.
@@ -602,72 +735,13 @@ namespace spartan
                 const float elapsed    = max(static_cast<float>(Timer::GetDeltaTimeRealSec()), 0.0f) * max(time_scale, 1.0f);
                 accumulated_time += min(elapsed, fixed_time_step * max_steps_per_frame);
 
-                // fresh contact list for this frame's simulation steps
-                {
-                    lock_guard<mutex> lock(contact_mutex);
-                    pending_contacts.clear();
-                }
-
-                // perform simulation steps
+                // the steps run in Simulate, after World::Tick has applied this frame's inputs
                 while (accumulated_time >= fixed_time_step)
                 {
-                    // simulate one fixed time step
-                    lock_guard<recursive_mutex> lock(physx_mutex);
-
-                    // snapshot entries so callback registration can change during an update
-                    if (Camera* camera = World::GetCamera()) RebaseOrigin(camera->GetEntity()->GetPosition());
-                    static vector<pair<StepCallback, uint64_t>> callbacks;
-                    static uint64_t snapshot_revision = numeric_limits<uint64_t>::max();
-                    if (snapshot_revision != callback_revision)
-                    {
-                        callbacks.clear();
-                        callbacks.reserve(step_callbacks.size());
-                        for (const StepCallback& entry : step_callbacks)
-                            callbacks.emplace_back(entry, callback_generations.at(entry.owner));
-                        snapshot_revision = callback_revision;
-                    }
-                    SP_PROFILE_CPU_START("physics_step_callbacks");
-                    for (const auto& [entry, generation] : callbacks)
-                    {
-                        // A callback may remove or replace another callback. Only invoke
-                        // the registration captured by this step's immutable snapshot.
-                        const auto current = callback_generations.find(entry.owner);
-                        if (current != callback_generations.end() && current->second == generation)
-                            entry.callback(fixed_time_step * step_scale);
-                    }
-
-                    SP_PROFILE_CPU_END();
-                    SP_PROFILE_CPU_START("physics_buoyancy");
-                    // buoyancy from the fft water, applied per step so the force integrates consistently
-                    Physics::TickBuoyancy();
-                    SP_PROFILE_CPU_END();
-                    SP_PROFILE_CPU_START("physics_simulate");
-                    SP_PROFILE_CPU_START("physics_dispatch");
-                    scene->simulate(fixed_time_step * step_scale);
-                    SP_PROFILE_CPU_END();
-                    // The next substep's forces/queries and World::PreTick read
-                    // these results. Do not overlap arbitrary world work here:
-                    // it also creates/removes actors and changes their poses.
-                    SP_PROFILE_CPU_START("physics_fetch_results");
-                    while (cvar_physics_assist.GetValue() && !scene->checkResults(false))
-                    {
-                        if (dispatcher->Assist()) ++step_statistics.assisted_tasks;
-                        else std::this_thread::yield();
-                    }
-                    scene->fetchResults(true);
-                    SP_PROFILE_CPU_END();
-                    SP_PROFILE_CPU_END();
-                    PxSimulationStatistics stats;
-                    scene->getSimulationStatistics(stats);
-                    ++step_statistics.steps;
-                    step_statistics.active_bodies = max(step_statistics.active_bodies, stats.nbActiveDynamicBodies);
-                    step_statistics.active_constraints = max(step_statistics.active_constraints, stats.nbActiveConstraints);
-                    step_statistics.solver_rows = max(step_statistics.solver_rows, stats.nbAxisSolverConstraints);
-                    step_statistics.contact_pairs = max(step_statistics.contact_pairs, stats.nbDiscreteContactPairsWithContacts);
+                    ++simulation_thread::queued_steps;
                     accumulated_time -= fixed_time_step;
                 }
-                
-
+                simulation_thread::queued_step_size = fixed_time_step * step_scale;
             }
             // object picking, skip when right is held so cube shoot does not also grab
             {
@@ -685,6 +759,62 @@ namespace spartan
             }
         }
 
+    }
+
+    void PhysicsWorld::Simulate()
+    {
+        SP_PROFILE_CPU();
+        WaitForSimulation();
+        step_statistics = {};
+
+        // fresh contact list for this frame's simulation steps
+        {
+            lock_guard<mutex> lock(contact_mutex);
+            pending_contacts.clear();
+        }
+
+        // World::Tick can leave play or pause, the steps were owed to the state Tick saw
+        const uint32_t count = simulation_thread::queued_steps;
+        simulation_thread::queued_steps = 0;
+        const bool can_step = Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused) && !ProgressTracker::IsLoading();
+        if (count == 0 || !scene || !can_step)
+        {
+            return;
+        }
+
+        // the origin stays fixed for the whole batch, contact callbacks read it from physx workers
+        if (Camera* camera = World::GetCamera())
+        {
+            RebaseOrigin(camera->GetEntity()->GetPosition());
+        }
+
+        if (!cvar_physics_threaded.GetValue())
+        {
+            simulation_thread::run_steps(count, simulation_thread::queued_step_size);
+            return;
+        }
+
+        {
+            lock_guard<mutex> lock(simulation_thread::batch_mutex);
+            simulation_thread::step_count = count;
+            simulation_thread::step_size  = simulation_thread::queued_step_size;
+            simulation_thread::in_flight  = true;
+        }
+        simulation_thread::batch_ready.notify_one();
+    }
+
+    void PhysicsWorld::WaitForSimulation()
+    {
+        unique_lock<mutex> lock(simulation_thread::batch_mutex);
+        if (!simulation_thread::in_flight)
+        {
+            return;
+        }
+
+        SP_PROFILE_CPU();
+        const auto wait_start = chrono::steady_clock::now();
+        simulation_thread::batch_done.wait(lock, [] { return !simulation_thread::in_flight; });
+        step_statistics.wait_ms = static_cast<float>(simulation_thread::elapsed_ms(wait_start));
     }
 
     PhysicsWorld::StepStatistics PhysicsWorld::GetStepStatistics()

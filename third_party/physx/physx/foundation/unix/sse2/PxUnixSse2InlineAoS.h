@@ -1,30 +1,7 @@
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
-// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
+// Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2008-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef PXFOUNDATION_PXUNIXSSE2INLINEAOS_H
 #define PXFOUNDATION_PXUNIXSSE2INLINEAOS_H
@@ -76,11 +53,6 @@ namespace physx
 {
 namespace aos
 {
-
-#define PX_FPCLASS_SNAN 0x0001 /* signaling NaN */
-#define PX_FPCLASS_QNAN 0x0002 /* quiet NaN */
-#define PX_FPCLASS_NINF 0x0004 /* negative infinity */
-#define PX_FPCLASS_PINF 0x0200 /* positive infinity */
 
 namespace internalSimd
 {
@@ -165,38 +137,24 @@ PX_FORCE_INLINE bool allElementsNearEqualVec4V(const Vec4V a, const Vec4V b)
 
 PX_FORCE_INLINE bool isFiniteFloatV(const FloatV a)
 {
-	PxF32 badNumber =
-	    physx::PxUnionCast<PxF32, PxU32>(PX_FPCLASS_SNAN | PX_FPCLASS_QNAN | PX_FPCLASS_NINF | PX_FPCLASS_PINF);
-	const FloatV vBadNum = FLoad(badNumber);
-	const BoolV vMask = BAnd(vBadNum, a);
-	return internalSimd::FiniteTestEq(vMask, BFFFF()) == 1;
+	// FStore would assert in debug builds, because a NaN FloatV fails its lane equality check
+	PxF32 f;
+	_mm_store_ss(&f, a);
+	return PxIsFinite(f);
 }
 
 PX_FORCE_INLINE bool isFiniteVec3V(const Vec3V a)
 {
-	PxF32 badNumber =
-	    physx::PxUnionCast<PxF32, PxU32>(PX_FPCLASS_SNAN | PX_FPCLASS_QNAN | PX_FPCLASS_NINF | PX_FPCLASS_PINF);
-	const Vec3V vBadNum = V3Load(badNumber);
-	const BoolV vMask = BAnd(BAnd(vBadNum, a), BTTTF());
-	return internalSimd::FiniteTestEq(vMask, BFFFF()) == 1;
+	PX_ALIGN(16, PxF32 f[4]);
+	V4StoreA(a, f);
+	return PxIsFinite(f[0]) && PxIsFinite(f[1]) && PxIsFinite(f[2]);
 }
 
 PX_FORCE_INLINE bool isFiniteVec4V(const Vec4V a)
 {
-	/*Vec4V a;
 	PX_ALIGN(16, PxF32 f[4]);
-	F32Array_Aligned_From_Vec4V(a, f);
-	return PxIsFinite(f[0])
-	        && PxIsFinite(f[1])
-	        && PxIsFinite(f[2])
-	        && PxIsFinite(f[3]);*/
-
-	PxF32 badNumber =
-	    physx::PxUnionCast<PxF32, PxU32>(PX_FPCLASS_SNAN | PX_FPCLASS_QNAN | PX_FPCLASS_NINF | PX_FPCLASS_PINF);
-	const Vec4V vBadNum = V4Load(badNumber);
-	const BoolV vMask = BAnd(vBadNum, a);
-
-	return internalSimd::FiniteTestEq(vMask, BFFFF()) == 1;
+	V4StoreA(a, f);
+	return PxIsFinite(f[0]) && PxIsFinite(f[1]) && PxIsFinite(f[2]) && PxIsFinite(f[3]);
 }
 
 /////////////////////////////////////////////////////////////////////

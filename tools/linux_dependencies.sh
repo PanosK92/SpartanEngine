@@ -22,7 +22,7 @@ freetype_tag="VER-2-14-3"
 meshoptimizer_tag="v1.3"
 openxr_tag="release-1.1.62"
 spirv_cross_tag="vulkan-sdk-1.4.357.0"
-physx_tag="110.1-omni-and-physx-5.9.0"
+physx_commit="b97365c6ddb32fda8469bc788ec18024862b0368" # 5.12.0, untagged on main
 lua_version="5.4.8"
 dxc_url="https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2607/linux_dxc_2026_07_29.x86_x64.tar.gz"
 
@@ -33,6 +33,16 @@ clone()
     local url="$1" tag="$2" dir="$3"
     if [ ! -d "$dir" ]; then
         git clone --quiet --depth 1 --branch "$tag" "$url" "$dir"
+    fi
+}
+
+clone_commit()
+{
+    local url="$1" commit="$2" dir="$3"
+    if [ ! -d "$dir" ]; then
+        git init --quiet "$dir"
+        git -C "$dir" fetch --quiet --depth 1 "$url" "$commit"
+        git -C "$dir" checkout --quiet FETCH_HEAD
     fi
 }
 
@@ -120,7 +130,7 @@ build_lua()
 
 build_physx()
 {
-    clone https://github.com/NVIDIA-Omniverse/PhysX.git "$physx_tag" "$work/physx"
+    clone_commit https://github.com/NVIDIA-Omniverse/PhysX.git "$physx_commit" "$work/physx"
     local sdk="$work/physx/physx"
     local preset="$sdk/buildtools/presets/public/linux-gcc-cpu-only.xml"
     sed -i -e 's/"PX_BUILDSNIPPETS" value="True"/"PX_BUILDSNIPPETS" value="False"/' -e 's/"PX_BUILDPVDRUNTIME" value="True"/"PX_BUILDPVDRUNTIME" value="False"/' "$preset"
@@ -146,7 +156,7 @@ step meshoptimizer build_meshoptimizer
 step openxr        build_openxr
 step spirv_cross   build_spirv_cross
 step lua           build_lua
-step physx         build_physx
+step physx_5_12    build_physx
 step dxc           build_dxc
 
 echo "linux libraries ready in $out"

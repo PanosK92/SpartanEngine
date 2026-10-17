@@ -1696,14 +1696,18 @@ float3 evaluate_particle_lighting(uint2 pixel, Surface surface, float translucen
     // skylight, the flat eight percent term had no illuminant at all so the warm sun was the only
     // thing with a hue and smoke read brown, the divide by pi keeps it in the same units as the
     // diffuse lobe below
+    // the floor is the night sky the clouds and skysphere use, a fixed one outshines a moonlit scene
+    // by two orders of magnitude and auto exposure then shows every particle at full daylight
     float3 sky     = get_sky_fill_radiance() * particle_sky_fill / 3.14159265;
-    float3 ambient = surface.albedo * (0.02 + sky);
+    float3 night   = night_sky_radiance(0.35) + night_airglow_rad * 0.8;
+    float3 ambient = surface.albedo * (night + sky);
 
     // a leaf is an opaque surface, not a puff of scattering medium, so it takes the skylight the
     // ground around it takes, more from above than from the ground bounce below
     if (translucency > 0.0)
     {
-        ambient = surface.albedo * (0.02 + get_sky_fill_radiance() * leaf_sky_fill * surface.occlusion * (0.55 + 0.45 * surface.normal.y) / 3.14159265);
+        float hemisphere = surface.occlusion * (0.55 + 0.45 * surface.normal.y);
+        ambient = surface.albedo * (night_sky_radiance(surface.normal.y) + night_airglow_rad + get_sky_fill_radiance() * leaf_sky_fill / 3.14159265) * hemisphere;
     }
 
     float3 result  = ambient;

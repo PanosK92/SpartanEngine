@@ -65,7 +65,11 @@ namespace spartan
     public:
         static void Initialize();
         static void Shutdown();
+        // Tick decides how many fixed steps this frame owes, Simulate hands them to the physics thread
+        // after World::Tick, WaitForSimulation joins them, physx must not be touched unlocked in between
         static void Tick();
+        static void Simulate();
+        static void WaitForSimulation();
         static void DrawDebugVisualization();
 
         struct StepStatistics
@@ -76,6 +80,9 @@ namespace spartan
             uint32_t active_constraints = 0;
             uint32_t solver_rows = 0;
             uint32_t contact_pairs = 0;
+            float simulation_ms = 0.0f; // whole batch on the physics thread
+            float callbacks_ms = 0.0f;  // step callbacks (vehicle force models) inside the batch
+            float wait_ms = 0.0f;       // main thread blocked on the batch
         };
         // Counts from the last completed frame; scene counts are per-step peaks.
         static StepStatistics GetStepStatistics();

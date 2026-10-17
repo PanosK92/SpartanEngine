@@ -192,6 +192,8 @@ namespace spartan
             PhysicsWorld::Tick();
             World::Tick();
             SP_FIRE_EVENT(EventType::WorldTicked);
+            PhysicsWorld::Simulate();
+            PhysicsWorld::WaitForSimulation();
             Allocator::Tick();
             return;
         }
@@ -231,8 +233,11 @@ namespace spartan
         World::Tick();
         SP_FIRE_EVENT(EventType::WorldTicked);
         PhysicsWorld::DrawDebugVisualization();
+        // the physics thread steps while the frame renders, nothing after the join may see a batch in flight
+        PhysicsWorld::Simulate();
         Xr::Tick();
         Renderer::Tick();
+        PhysicsWorld::WaitForSimulation();
         Allocator::Tick();
         SmokeTest::Tick();
 
