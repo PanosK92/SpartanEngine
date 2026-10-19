@@ -30,7 +30,8 @@ namespace spartan
         TerrainLayerFlags_HasMaps   = 1u << 4, // set on the surface material once the analysis maps are baked
         TerrainLayerFlags_Cover     = 1u << 5, // may accumulate on upward-facing prop ledges
         TerrainLayerFlags_Woodland  = 1u << 6, // shared terrain-derived woodland footprint
-        TerrainLayerFlags_Open      = 1u << 7  // meadow cover recedes inside woodland
+        TerrainLayerFlags_Open      = 1u << 7, // meadow cover recedes inside woodland
+        TerrainLayerFlags_Sand      = 1u << 16 // loose grains, set from TerrainLayerRule::sand, bits 8 to 15 belong to the surface material
     };
 
     // viewport debug views, packed into bits 12 to 15 of the surface material's terrain_flags
@@ -82,6 +83,7 @@ namespace spartan
         float macro_strength = 1.0f; // large scale colour breakup amount
         float weight_bias    = 1.0f; // overall priority against the other layers
         bool surface_cover   = false;
+        bool sand            = false; // loose grains: glints, swash wetness, soft ground that takes deep ruts and footprints
 
         uint32_t flags = TerrainLayerFlags_None;
     };

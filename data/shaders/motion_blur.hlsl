@@ -25,7 +25,19 @@ static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 
 // radial motion blur, adaptive sampling bounds
 static const int MAX_RADIAL_SAMPLES = 128;
-static const float MAX_RADIAL_ANGLE = 3.14159265f; // a full revolution over the centered exposure
+// Half of the swept arc. A 90 degree sweep keeps spokes readable as streaks at any spin;
+// a full turn averages the rim into a featureless disc.
+static const float MAX_RADIAL_ANGLE = 0.785398f;
+
+// gaps between spokes only exist inside the rim, the tire itself is solid
+static const float RADIAL_FILL_RIM_FRACTION = 0.8f;
+
+// The tread and sidewall smear far less than the rim so the tire keeps its shape and lettering:
+// their swept speed is capped, and the streak tails taper instead of ending as a hard box.
+static const float RADIAL_TIRE_SPEED_CAP = 9.5f; // m/s at the swept point
+static const float RADIAL_TIRE_BLEND = 0.12f;    // rim to tire transition, fraction of the rim radius
+static const float RADIAL_TIRE_TAIL_FLOOR = 0.12f;
+static const float RADIAL_TIRE_TAIL_FALLOFF = 0.85f;
 
 // soft depth comparison, linear depth larger is farther, returns 1 when depth_a is closer or equal
 float soft_depth_compare(float depth_a, float depth_b)
@@ -401,16 +413,119 @@ float radial_visibility(float2 sample_uv, float3 sample_position, float orbit_ra
     return saturate((visible - expected + 2.0f * tolerance) / tolerance);
 }
 
+// 1 when the scene at sample_uv lies behind the swept spoke point, i.e. the spokes left a gap
+// there. Anything in front of that point (fender, body) hides whether a gap exists, so it is 0.
+float radial_gap_visibility(float2 sample_uv, float3 sample_position)
+{
+    float3 camera = get_camera_position();
+    float expected = length(sample_position - camera);
+    float visible = length(radial_scene_position(sample_uv) - camera);
+    return saturate((visible - expected + 0.04f) / 0.02f);
+}
+
+bool radial_has_extents(uint index)
+{
+    return buffer_frame.radial_blur_extents[index].w > 0.5f && buffer_frame.radial_blur_extents[index].x > 0.0f;
+}
+
+float radial_fill_radius(uint index)
+{
+    return radial_has_extents(index) ? buffer_frame.radial_blur_extents[index].x * RADIAL_FILL_RIM_FRACTION : 0.0f;
+}
+
+// A pixel between the spokes shows the caliper or whatever lies behind the wheel, so its own depth
+// says nothing about where the spokes sweep. The spokes sweep the wheel's camera-facing face, so
+// the view ray is intersected with that face, and the pixel counts only if nothing is in front of it.
+bool radial_face_position(float3 surface, uint index, out float3 position, out float ray_t)
+{
+    position = 0.0f;
+    ray_t = 0.0f;
+    if (!radial_has_extents(index))
+        return false;
+
+    float3 camera = get_camera_position();
+    float3 pivot = buffer_frame.radial_blur_hubs[index].xyz;
+    float3 axis = buffer_frame.radial_blur_axes[index].xyz;
+    float radius = buffer_frame.radial_blur_extents[index].x;
+    float half_width = buffer_frame.radial_blur_extents[index].y;
+
+    float3 ray = surface - camera;
+    float ray_length = length(ray);
+    float3 direction = ray / max(ray_length, FLT_MIN);
+
+    // cheap reject, the ray passes outside the wheel's bounding sphere
+    float3 to_pivot = pivot - camera;
+    float bound = radius + half_width;
+    if (dot(cross(direction, to_pivot), cross(direction, to_pivot)) > bound * bound)
+        return false;
+
+    // a face seen edge on has no gaps to look through
+    float facing = dot(direction, axis);
+    if (abs(facing) < 0.05f)
+        return false;
+
+    float side = dot(camera - pivot, axis) >= 0.0f ? 1.0f : -1.0f;
+    float3 face_center = pivot + axis * (half_width * side);
+    ray_t = dot(face_center - camera, axis) / facing;
+    if (ray_t <= 0.0f || ray_length < ray_t - 0.02f)
+        return false;
+
+    position = camera + direction * ray_t;
+    float3 offset = position - pivot;
+    float orbit_radius = length(offset - axis * dot(axis, offset));
+    return orbit_radius < radial_fill_radius(index);
+}
+
+// Non-wheel pixels have no rotation record of their own, so test them against every wheel face.
+bool find_radial_fill_hub(float2 uv, out uint index, out float3 position)
+{
+    index = 0;
+    position = 0.0f;
+    float3 surface;
+    if (!radial_surface_position(uv, surface))
+        return false;
+
+    float nearest = 1e30f;
+    bool found = false;
+    for (uint i = 0; i < (uint)buffer_frame.radial_blur_hub_count; ++i)
+    {
+        float3 face_position;
+        float ray_t;
+        if (radial_face_position(surface, i, face_position, ray_t) && ray_t < nearest)
+        {
+            nearest = ray_t;
+            index = i;
+            position = face_position;
+            found = true;
+        }
+    }
+    return found;
+}
+
+// is_gap: the destination pixel is not wheel geometry but lies inside the rim, behind the spokes.
 float4 motion_blur_radial_reconstruction(
     float2 uv, float2 resolution, float shutter_ratio, float noise,
-    float4 center_color, float3 position, uint index)
+    float4 center_color, float3 position, uint index, bool is_gap)
 {
     float exposure = shutter_ratio * SHUTTER_CENTER_SCALE;
     if (exposure <= 0.0f)
         return center_color;
     float frame_angle = buffer_frame.radial_blur_hubs[index].w;
-    // Spins exceeding one turn expose the whole circumference; avoid repeated undersampled turns.
     float angle = min(frame_angle * exposure, MAX_RADIAL_ANGLE);
+
+    float3 axis = buffer_frame.radial_blur_axes[index].xyz;
+    float3 offset = position - buffer_frame.radial_blur_hubs[index].xyz;
+    float orbit_radius = length(offset - axis * dot(axis, offset));
+    float fill_radius = radial_fill_radius(index);
+    bool inside_rim = orbit_radius < fill_radius;
+    float tire = 0.0f;
+    if (radial_has_extents(index))
+    {
+        tire = smoothstep(fill_radius, fill_radius * (1.0f + RADIAL_TIRE_BLEND), orbit_radius);
+        float surface_speed = frame_angle / max(buffer_frame.delta_time, MIN_FRAME_TIME) * orbit_radius;
+        angle *= lerp(1.0f, min(1.0f, RADIAL_TIRE_SPEED_CAP / max(surface_speed, FLT_MIN)), tire);
+    }
+
     float2 end_uv;
     float path_pixels = 0.0f;
     // Arc-length estimate at quarter intervals also catches rotations with coincident endpoints.
@@ -428,9 +543,6 @@ float4 motion_blur_radial_reconstruction(
     // Box-filtered shutter integral along the arc actually swept, centered on the current pose.
     // One sample per arc pixel keeps the rings continuous; the full turn is reached only at high spin.
     int count = clamp((int)ceil(2.0f * path_pixels), 8, MAX_RADIAL_SAMPLES);
-    float3 axis = buffer_frame.radial_blur_axes[index].xyz;
-    float3 offset = position - buffer_frame.radial_blur_hubs[index].xyz;
-    float orbit_radius = length(offset - axis * dot(axis, offset));
     float4 sum = 0.0f;
     float weights = 0.0f;
     for (int i = 0; i < count; ++i)
@@ -441,10 +553,27 @@ float4 motion_blur_radial_reconstruction(
         if (!radial_sample_uv(position, index, t * angle, sample_uv, sample_position))
             continue;
         float sample_mask = tex_velocity.SampleLevel(samplers[sampler_point_clamp], sample_uv * get_render_uv_scale(), 0).z;
-        if (!radial_mask_matches(sample_mask, index))
-            continue;
         float4 color;
-        float coverage = radial_masked_color(sample_uv, resolution, index, color) * radial_visibility(sample_uv, sample_position, orbit_radius);
+        float coverage;
+        if (radial_mask_matches(sample_mask, index))
+        {
+            // a spoke covers this pixel at that moment of the exposure
+            coverage = radial_masked_color(sample_uv, resolution, index, color) * radial_visibility(sample_uv, sample_position, orbit_radius);
+        }
+        else if (inside_rim)
+        {
+            // a gap covers this pixel at that moment, so whatever lies behind the spokes shows.
+            // A gap pixel knows exactly what that is (itself, the caliper does not spin); a spoke
+            // pixel hides it, so the content seen through the gap at the swept point stands in.
+            coverage = radial_gap_visibility(sample_uv, sample_position);
+            color = is_gap ? center_color : tex.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0);
+        }
+        else
+        {
+            continue;
+        }
+        float tail = lerp(RADIAL_TIRE_TAIL_FLOOR, 1.0f, pow(saturate(1.0f - abs(t)), RADIAL_TIRE_TAIL_FALLOFF));
+        coverage *= lerp(1.0f, tail, tire);
         sum += color * coverage;
         weights += coverage;
     }
@@ -473,13 +602,19 @@ float4 motion_blur_reconstruction(
     uint radial_index;
     float3 radial_position;
     bool radial_domain = false;
+    bool radial_gap = false;
     if (is_radial && find_radial_hub(velocity_sample.z, radial_index))
     {
         radial_domain = radial_surface_position(uv, radial_position);
     }
-    // A non-radial destination never enters the radial pass, regardless of hub proximity.
+    else
+    {
+        // Caliper or background seen between the spokes: the spokes sweep over it during the exposure.
+        // Every object carries a motion ID, so only a missing rotation record marks a non-spinning pixel.
+        radial_gap = find_radial_fill_hub(uv, radial_index, radial_position);
+    }
 
-    // Mode 2: red = radial geometry, green = geometry with a matching rotation record.
+    // Mode 2: red = radial geometry, green = geometry with a matching rotation record, blue = gap between spokes.
     if (pass_float(pass_motion_blur::mode) > 1.5f)
     {
         float4 debug_color = center_color;
@@ -487,11 +622,13 @@ float4 motion_blur_reconstruction(
             debug_color.rgb = lerp(debug_color.rgb, float3(1.0f, 0.0f, 0.0f), 0.5f);
         if (radial_domain)
             debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 1.0f, 0.0f), 0.5f);
+        if (radial_gap)
+            debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 0.3f, 1.0f), 0.6f);
         return debug_color;
     }
 
-    if (radial_domain)
-        return motion_blur_radial_reconstruction(uv, resolution, shutter_ratio, noise, center_color, radial_position, radial_index);
+    if (radial_domain || radial_gap)
+        return motion_blur_radial_reconstruction(uv, resolution, shutter_ratio, noise, center_color, radial_position, radial_index, radial_gap);
 
     float center_depth = get_linear_depth_point(render_uv);
     float raw_depth = get_depth(render_uv);

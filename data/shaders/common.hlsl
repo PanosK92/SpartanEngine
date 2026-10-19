@@ -399,6 +399,16 @@ float ocean_foam_footprint(float view_distance)
     return 2.0f * view_distance / max(abs(buffer_frame.projection[1][1]) * floor(buffer_frame.resolution_render.y * buffer_frame.resolution_scale), 1.0f);
 }
 
+// a pixel seen across the water covers its footprint over the cosine of the view in depth, foam detail
+// sized for the short axis alone aliases into streaks that point at the camera, the geometric mean of
+// the two axes keeps the streaks away without blurring the foam close to the camera
+float ocean_foam_footprint(float view_distance, float3 water_position)
+{
+    float3 to_water = water_position - buffer_frame.camera_position;
+    float cosine    = abs(to_water.y) / max(length(to_water), 1e-3f);
+    return ocean_foam_footprint(view_distance) * rsqrt(max(cosine, 0.03f));
+}
+
 // Residual whitewater survives in troughs; only production depends on compression.
 // The beach whitewater comes from the breaking surf and its swash, not from a band around the waterline.
 float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity, out OceanShore shore)
@@ -416,7 +426,7 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
         wave_activity += max(sample_ocean.w, 0.0f) * scale * scale;
     }
     wave_activity = sqrt(wave_activity);
-    float footprint = ocean_foam_footprint(view_distance);
+    float footprint = ocean_foam_footprint(view_distance, water_position);
     // Offshore crest foam hands over to the wash as waves run onto the beach.
     // Keeping both masks here produces a second white band behind the lip.
     float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
@@ -463,7 +473,7 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
 
     float str       = buffer_frame.ocean_normal_strength;
     slope          *= str;
-    float footprint = ocean_foam_footprint(view_distance);
+    float footprint = ocean_foam_footprint(view_distance, water_position);
 
     // the surf is analytic, differentiate its displaced surface in the fft grid like the vertices do
     float time       = ocean_shore_time(0.0f);

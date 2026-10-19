@@ -28,6 +28,27 @@ namespace spartan
         float dt       = 0.0f;
     };
 
+    // one footfall, world space
+    struct TerrainDeformationFoot
+    {
+        math::Vector3 position;         // under the sole
+        math::Vector3 forward;          // walking direction
+        float load = 0.0f;              // N, the peak the sole carries
+        float side = 1.0f;              // 1 right foot, -1 left
+        float push = 0.0f;              // 0 a heel strike walking, 1 a forefoot push off running
+    };
+
+    // where the ground is loose sand, the height and slope band of the sand terrain layer, world space
+    struct TerrainDeformationSand
+    {
+        float sea_level  = 0.0f;
+        float height_min = 0.0f;        // m above sea level
+        float height_max = 0.0f;
+        float slope_min  = 0.0f;        // degrees
+        float slope_max  = 0.0f;
+        bool valid       = false;
+    };
+
     // a mip 0 sub rectangle of the gpu field, r16 float texels
     struct TerrainDeformationUpload
     {
@@ -62,6 +83,18 @@ namespace spartan
         // presses a tire into the ground, returns the compaction resistance in newtons, the
         // force it takes to push a fresh rut, rolling in an existing one costs almost nothing
         static float Stamp(const TerrainDeformationStamp& stamp);
+
+        // the sand band the soil model reads, dry sand gives deep and slumping ruts, the swash packs it firm
+        static void SetSand(const TerrainDeformationSand& sand);
+
+        // strides a walker along and presses a footprint into sand at every step, feet is the ground point
+        // under the body, call once per frame
+        static void Walk(uint64_t id, const math::Vector3& feet, const math::Vector3& velocity, bool grounded, float mass);
+        static float StampFoot(const TerrainDeformationFoot& foot);
+
+        // relaxes ruts and prints back to flat where the swash runs over them, depth returns the water sheet
+        // thickness at a world xz, call once per frame
+        static void Wash(float dt, float (*swash_depth)(float world_x, float world_z));
 
         // signed ground offset at a world xz, bilinear like the gpu reads it
         static float SampleOffset(float world_x, float world_z);

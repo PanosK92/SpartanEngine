@@ -1972,8 +1972,12 @@ namespace spartan
             spinning_parts.clear();
             spinning_parts.push_back(wheel_entity);
             wheel_entity->GetDescendants(&spinning_parts);
+            Entity* caliper = VehicleState().wheel_calipers[i];
             for (Entity* part : spinning_parts)
             {
+                // the caliper is parented to the wheel but follows the upright, it must not be blurred as spinning
+                if (caliper && (part == caliper || part->IsDescendantOf(caliper)))
+                    continue;
                 if (Render* render = part->GetComponent<Render>())
                     render->SetMotionBlurAngularVelocity(angular_render, pivot_local, wheel_entity->GetObjectId());
             }
@@ -1982,7 +1986,7 @@ namespace spartan
 
             // The caliper shares the axle origin and scale, but follows the upright,
             // not the spinning wheel body. This also retains steering and camber.
-            if (Entity* caliper = VehicleState().wheel_calipers[i])
+            if (caliper)
             {
                 if (PxRigidDynamic* upright = VehicleState().vehicle_simulation->get_multibody_state().corners[i].upright)
                 {
@@ -2445,12 +2449,15 @@ namespace spartan
             spinning_parts.clear();
             spinning_parts.push_back(wheel_entity);
             wheel_entity->GetDescendants(&spinning_parts);
+            Entity* caliper = VehicleState().wheel_calipers[i];
             for (Entity* part : spinning_parts)
             {
+                if (caliper && (part == caliper || part->IsDescendantOf(caliper)))
+                    continue;
                 if (Render* render = part->GetComponent<Render>())
                     render->SetMotionBlurAngularVelocity(axis * VehicleState().cheap_wheel_angular_speed, pivot_local, wheel_entity->GetObjectId());
             }
-            if (Entity* caliper = VehicleState().wheel_calipers[i])
+            if (caliper)
                 caliper->SetRotation((is_front ? steer_q : Quaternion::Identity) * base);
             UpdateTireDeformation(i, false);
         }

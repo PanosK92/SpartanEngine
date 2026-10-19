@@ -253,9 +253,9 @@ namespace spartan
             patch_velocity -= normal_px * patch_velocity.dot(normal_px);
             const float sliding_speed = patch_velocity.magnitude();
             float target = skid::demand(wheel.slip_ratio, wheel.slip_angle, sliding_speed, wheel.tire_load, m_slip_threshold, trail.active);
-            // Loose/wet surfaces retain less visible rubber than dry pavement.
-            const float surface_strength[] = { 1.0f, 0.95f, 0.50f, 0.45f, 0.30f, 0.04f };
-            target *= surface_strength[std::clamp(static_cast<int>(wheel.contact_surface), 0, 5)];
+            // Loose/wet surfaces retain less visible rubber than dry pavement, gravel and sand take none, the ruts show there.
+            const float surface_strength[car::surface_count] = { 1.0f, 0.95f, 0.50f, 0.04f, 0.30f, 0.04f, 0.04f };
+            target *= surface_strength[std::clamp(static_cast<int>(wheel.contact_surface), 0, car::surface_count - 1)];
             trail.intensity = skid::follow(trail.intensity, target, dt);
             if (trail.intensity < 0.006f && target < 0.006f)
             {

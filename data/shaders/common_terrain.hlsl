@@ -333,6 +333,102 @@ float terrain_coastal_wetness(float3 position_world, float3 normal_world)
     return (1.0f - smoothstep(0.15f, 1.25f, altitude)) * flat;
 }
 
+// the same with the standing film, a mirror of water the swash leaves for the first seconds after it drains
+float terrain_coastal_wetness(float3 position_world, float3 normal_world, out float film)
+{
+    film = 0.0f;
+    if (buffer_frame.ocean_enabled < 0.5f) return 0.0f;
+    float altitude = position_world.y - buffer_frame.ocean_sea_level;
+    float flat     = smoothstep(0.75f, 0.95f, normal_world.y);
+    if (buffer_frame.ocean_shore_wave.w > 0.5f && altitude < 3.0f)
+    {
+        OceanShore o = ocean_shore_evaluate(position_world.xz, ocean_shore_time(0.0f));
+        film = o.film * flat;
+        return o.wet * flat;
+    }
+    return (1.0f - smoothstep(0.15f, 1.25f, altitude)) * flat;
+}
+
+uint terrain_sand_hash(int2 cell)
+{
+    uint h = (asuint(cell.x) * 0x8da6b343u) ^ (asuint(cell.y) * 0xd8163841u);
+    h ^= h >> 13;
+    h *= 0x5bd1e995u;
+    h ^= h >> 15;
+    return h;
+}
+
+float terrain_sand_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = p - i;
+    float2 u = f * f * (3.0f - 2.0f * f);
+    int2 c   = int2(i);
+    float a  = (terrain_sand_hash(c)              & 0xffffu) / 65535.0f;
+    float b  = (terrain_sand_hash(c + int2(1, 0)) & 0xffffu) / 65535.0f;
+    float d  = (terrain_sand_hash(c + int2(0, 1)) & 0xffffu) / 65535.0f;
+    float e  = (terrain_sand_hash(c + int2(1, 1)) & 0xffffu) / 65535.0f;
+    return lerp(lerp(a, b, u.x), lerp(d, e, u.x), u.y);
+}
+
+// loose quartz with dark lithic and white shell grains, the ripples the wind combs into the dry beach and the
+// glints of grain facets, every scale fades out once a pixel covers several of it so nothing shimmers
+// dry is 0 where the swash keeps the sand saturated, ripples and glints only live on the dry beach
+void terrain_sand_detail(float3 position_world, float3 dpdx, float3 dpdy, float sand, float dry, inout float3 albedo, inout float roughness, inout float3 gradient)
+{
+    float footprint = max(max(length(dpdx), length(dpdy)), 1e-5f);
+
+    // the layer texture is an orange ochre, the ionian beaches are pale golden quartz and shell
+    float3 tint   = float3(1.0f, 0.8f, 0.56f);
+    float  lum    = max(luminance(albedo), 0.2f);
+    albedo        = lerp(albedo, tint * (lum / luminance(tint)), sand * 0.7f);
+
+    // grains are sorted by the swash into patches of finer and coarser, darker sand
+    float2 p       = position_world.xz;
+    float sorting  = terrain_sand_noise(p / 0.35f) * 0.6f + terrain_sand_noise(p / 1.7f) * 0.4f;
+    albedo        *= lerp(1.0f, lerp(0.86f, 1.08f, sorting), sand);
+
+    // wind ripples, a gentle windward back and a steep lee face, crests across the wind, sinuous and broken
+    float2 wind     = buffer_frame.wind.xz;
+    float  wind_len = length(wind);
+    float2 along    = wind_len > 0.01f ? wind / wind_len : float2(0.89f, 0.45f);
+    float  ripple_fade = (1.0f - smoothstep(0.012f, 0.03f, footprint)) * dry * sand;
+    if (ripple_fade > 0.0f)
+    {
+        static const float wavelength = 0.085f;
+        float  phase   = dot(p, along) / wavelength + (terrain_sand_noise(p / 0.5f) - 0.5f) * 2.2f + terrain_sand_noise(p / 2.3f) * 3.0f;
+        float  t       = frac(phase);
+        float  slope   = t < 0.72f ? 1.0f / 0.72f : -1.0f / 0.28f;
+        float  rounded = t < 0.72f ? smoothstep(0.0f, 0.12f, t) * (1.0f - smoothstep(0.6f, 0.72f, t)) : smoothstep(0.72f, 0.78f, t) * (1.0f - smoothstep(0.94f, 1.0f, t));
+        // the crests fade in and out along their length, the ripple field is never a perfect grid
+        float  amplitude = 0.004f * smoothstep(0.25f, 0.6f, terrain_sand_noise(p / 0.9f + 3.1f));
+        float  dh        = slope * rounded * amplitude / wavelength;
+        gradient        += float3(along.x, 0.0f, along.y) * dh * ripple_fade;
+        // finer sand settles in the troughs, the coarse grains ride the crests
+        albedo          *= lerp(1.0f, lerp(0.94f, 1.04f, t), ripple_fade);
+    }
+
+    // single grains, about 3 mm, resolved only up close
+    float grain_fade = (1.0f - smoothstep(0.0025f, 0.009f, footprint)) * sand;
+    if (grain_fade > 0.0f)
+    {
+        float2 q = p - floor(p / 32.0f) * 32.0f;
+        uint  h  = terrain_sand_hash(int2(floor(q / 0.003f)));
+        float r0 = (h & 0xffffu) / 65535.0f;
+        float r1 = (h >> 16) / 65535.0f;
+        float3 grain = lerp(0.84f, 1.14f, r1).xxx * lerp(float3(1.04f, 0.98f, 0.92f), float3(0.96f, 1.0f, 1.04f), r1);
+        grain        = r0 < 0.05f ? float3(0.3f, 0.27f, 0.25f) : grain;
+        grain        = r0 > 0.94f ? float3(1.3f, 1.27f, 1.2f) : grain;
+        albedo      *= lerp(1.0f, grain, grain_fade);
+
+        // a few percent of the grains are quartz faces turned toward the sun
+        float glint  = r0 > 0.5f && r0 < 0.53f ? 1.0f : 0.0f;
+        float2 tilt  = float2(r1, frac(r1 * 37.1f)) * 2.0f - 1.0f;
+        gradient    += float3(tilt.x, 0.0f, tilt.y) * 0.6f * glint * grain_fade * dry;
+        roughness    = lerp(roughness, 0.12f, glint * grain_fade * dry);
+    }
+}
+
 struct TerrainLayerPick
 {
     uint  index[terrain_layer_pick_max];  // bindless material index of the layer
@@ -731,6 +827,7 @@ struct TerrainSurface
     float  occlusion;
     float  height;    // resolved blend height, drives tessellation displacement
     float  wetness;
+    float  sand;      // weight of layers flagged as sand
 };
 
 // parallax amplitude of the dominant pick, zero when that layer does not ask for it or has no height map
@@ -999,6 +1096,7 @@ TerrainSurface terrain_evaluate(
     output.occlusion        = 1.0f;
     output.height           = 0.5f;
     output.wetness          = 0.0f;
+    output.sand             = 0.0f;
 
     if (pick.count == 0)
     {
@@ -1043,6 +1141,7 @@ TerrainSurface terrain_evaluate(
     float  height   = 0.0f;
     float  porosity = 0.0f;
     float  macro    = 0.0f;
+    float  sand     = 0.0f;
 
     [loop]
     for (uint r = 0; r < count; r++)
@@ -1064,6 +1163,7 @@ TerrainSurface terrain_evaluate(
         height   += sample.height * w;
         porosity += layer.terrain_porosity * w;
         macro    += layer.terrain_macro_strength * w;
+        sand     += layer.terrain_layer_sand() ? w : 0.0f;
     }
 
     // Normalize the accumulated numerators once. Only one layer sample stays
@@ -1075,6 +1175,7 @@ TerrainSurface terrain_evaluate(
     height *= inverse_sum;
     porosity *= inverse_sum;
     macro *= inverse_sum;
+    sand *= inverse_sum;
 
     // dual scale tiling on the dominant layer's albedo, a second copy at a non integer scale
     // ratio breaks the mid distance repeat that no amount of per tile randomization can hide
@@ -1110,6 +1211,13 @@ TerrainSurface terrain_evaluate(
     albedo.rgb     *= lerp(1.0f, variation, 0.45f);
     orm.g          *= lerp(1.0f, 2.0f - variation, 0.25f);
 
+    float film    = 0.0f;
+    float coastal = terrain_coastal_wetness(position_world, geometric_normal, film);
+    if (sand > 0.0f)
+    {
+        terrain_sand_detail(position_world, dpdx, dpdy, sand, 1.0f - saturate(coastal * 1.5f), albedo.rgb, orm.g, gradient);
+    }
+
     // wetness, lagarde 2013, water fills the pores which darkens the diffuse and smooths the
     // specular, puddles want concave, high flow and flat all at once
     // flow is the channel most prone to plateauing, and at one it darkens albedo to a fifth and
@@ -1119,15 +1227,25 @@ TerrainSurface terrain_evaluate(
     wet        = max(wet, surface.terrain_wetness);
     float pool = saturate(analysis.curvature) * saturate(analysis.flow * 1.6f - 0.4f) * pow(saturate(geometric_normal.y), 8.0f);
     wet        = saturate(max(wet, pool));
+    float damp = saturate(max(coastal, wet * 0.5f));
 
-    float coastal = terrain_coastal_wetness(position_world, geometric_normal);
     wet = max(wet, coastal * 0.8f);
     pool *= 1.0f - coastal;
-    albedo.rgb *= lerp(1.0f, lerp(1.0f, lerp(0.2f, 0.55f, coastal), saturate(porosity)), wet);
-    orm.g       = lerp(orm.g, lerp(0.06f, 0.32f, coastal), wet * 0.9f);
+    float3 albedo_soil = albedo.rgb * lerp(1.0f, lerp(1.0f, lerp(0.2f, 0.55f, coastal), saturate(porosity)), wet);
+    float  rough_soil  = lerp(orm.g, lerp(0.06f, 0.32f, coastal), wet * 0.9f);
+
+    // sand drinks the water into its pores, it darkens and saturates but stays a matte granular surface, it
+    // only turns to a mirror while a film still stands on it, the seconds after the backwash drains
+    float  lum         = luminance(albedo.rgb);
+    float3 soaked      = max(lerp(lum.xxx, albedo.rgb, 1.3f), 0.0f) * 0.56f;
+    float3 albedo_sand = lerp(albedo.rgb, soaked, damp) * lerp(1.0f, 0.85f, film);
+    float  rough_sand  = lerp(lerp(orm.g, 0.45f, damp), 0.035f, film);
+    albedo.rgb = lerp(albedo_soil, albedo_sand, sand);
+    orm.g      = lerp(rough_soil, rough_sand, sand);
 
     // wet ground is a plane, flatten the detail gradient in proportion
     gradient *= lerp(1.0f, 0.25f, pool);
+    gradient *= lerp(1.0f, 0.08f, film * sand);
 
     output.albedo           = albedo.rgb;
     output.normal           = terrain_resolve_normal(geometric_normal, gradient, 1.0f);
@@ -1136,6 +1254,7 @@ TerrainSurface terrain_evaluate(
     output.metalness        = saturate(orm.b);
     output.height           = height;
     output.wetness          = wet;
+    output.sand             = sand;
 
     // debug views, without these the rule set is untunable, you cannot see why a layer won
     uint debug = surface.terrain_debug_view();
@@ -1216,6 +1335,7 @@ TerrainSurface terrain_shade_lod(
     output.occlusion        = 1.0f;
     output.height           = 0.5f;
     output.wetness          = 0.0f;
+    output.sand             = 0.0f;
 
     if (surface.terrain_layer_count == 0)
     {
@@ -1241,16 +1361,34 @@ TerrainSurface terrain_shade_lod(
     float variation = lerp(1.0f, terrain_macro_variation(position_world), saturate(layer.terrain_macro_strength));
     albedo.rgb     *= lerp(1.0f, variation, 0.45f);
 
-    float coastal = terrain_coastal_wetness(position_world, geometric_normal);
-    float wet   = saturate(max(max(saturate(analysis.flow * 1.4f - 0.35f) * 0.7f, surface.terrain_wetness), coastal * 0.8f));
-    albedo.rgb *= lerp(1.0f, lerp(1.0f, lerp(0.2f, 0.55f, coastal), saturate(layer.terrain_porosity)), wet);
+    float film    = 0.0f;
+    float coastal = terrain_coastal_wetness(position_world, geometric_normal, film);
+    float flow_wet = max(saturate(analysis.flow * 1.4f - 0.35f) * 0.7f, surface.terrain_wetness);
+    float wet   = saturate(max(flow_wet, coastal * 0.8f));
+    float rough = layer.roughness * (layer.has_texture_roughness() ? packed.g : 1.0f);
+
+    if (layer.terrain_layer_sand())
+    {
+        float3 tint = float3(1.0f, 0.8f, 0.56f);
+        albedo.rgb  = lerp(albedo.rgb, tint * (max(luminance(albedo.rgb), 0.2f) / luminance(tint)), 0.7f);
+        float damp  = saturate(max(coastal, flow_wet * 0.5f));
+        float lum   = luminance(albedo.rgb);
+        albedo.rgb  = lerp(albedo.rgb, max(lerp(lum.xxx, albedo.rgb, 1.3f), 0.0f) * 0.56f, damp) * lerp(1.0f, 0.85f, film);
+        rough       = lerp(lerp(rough, 0.45f, damp), 0.035f, film);
+    }
+    else
+    {
+        albedo.rgb *= lerp(1.0f, lerp(1.0f, lerp(0.2f, 0.55f, coastal), saturate(layer.terrain_porosity)), wet);
+        rough       = lerp(rough, lerp(0.06f, 0.32f, coastal), wet * 0.9f);
+    }
 
     output.albedo    = albedo.rgb;
     output.occlusion = layer.has_texture_occlusion() ? packed.r : 1.0f;
-    output.roughness = saturate(lerp(layer.roughness * (layer.has_texture_roughness() ? packed.g : 1.0f), lerp(0.06f, 0.32f, coastal), wet * 0.9f));
+    output.roughness = saturate(rough);
     output.metalness = saturate(layer.metalness * (layer.has_texture_metalness() ? packed.b : 1.0f));
     output.height    = packed.a;
     output.wetness   = wet;
+    output.sand      = layer.terrain_layer_sand() ? 1.0f : 0.0f;
 
     return output;
 }
@@ -1708,6 +1846,11 @@ float terrain_displacement(MaterialParameters surface, float3 position_world, fl
 // tire ruts, see TerrainDeformation.h, the field holds the signed ground offset in metres, negative in a
 // rut and positive on the soil pushed up beside it, physics reads the same numbers on the cpu
 static const float terrain_deformation_cell = 0.0625f;
+// the ruts are drawn deeper than the physics pressed them, a few centimetres of real sinkage barely reads on screen
+static const float terrain_deformation_visual_scale = 3.5f;
+// deepest rut and highest berm the field can hold, see depth_max and berm_high in TerrainDeformation.cpp
+static const float terrain_deformation_depth_max = 0.25f;
+static const float terrain_deformation_berm_max  = 0.12f;
 
 bool terrain_deformation_overlaps(float2 xz_min, float2 xz_max)
 {
@@ -1739,4 +1882,78 @@ float2 terrain_deformation_gradient(float2 world_xz)
     float dx = terrain_deformation_offset(world_xz + float2(e, 0.0f)) - terrain_deformation_offset(world_xz - float2(e, 0.0f));
     float dz = terrain_deformation_offset(world_xz + float2(0.0f, e)) - terrain_deformation_offset(world_xz - float2(0.0f, e));
     return float2(dx, dz) / (2.0f * e);
+}
+
+// the direction across the track, the field bends hardest across a rut and not at all along it, so it is the
+// axis of the largest curvature, sampled about half a tire wide so the flat floor still sees the walls
+float2 terrain_deformation_across(float2 world_xz)
+{
+    float r   = 0.12f;
+    float c   = terrain_deformation_offset(world_xz) * 2.0f;
+    float fxx = terrain_deformation_offset(world_xz + float2(r, 0.0f)) + terrain_deformation_offset(world_xz - float2(r, 0.0f)) - c;
+    float fzz = terrain_deformation_offset(world_xz + float2(0.0f, r)) + terrain_deformation_offset(world_xz - float2(0.0f, r)) - c;
+    float fxz = (terrain_deformation_offset(world_xz + float2(r, r)) - terrain_deformation_offset(world_xz + float2(r, -r))
+               - terrain_deformation_offset(world_xz + float2(-r, r)) + terrain_deformation_offset(world_xz - float2(r, r))) * 0.25f;
+    float angle = 0.5f * atan2(2.0f * fxz, fxx - fzz);
+    return float2(cos(angle), sin(angle));
+}
+
+// tread lugs pressed into a rut floor, 1 where a lug pushed the soil down, rows across the tire are staggered
+float terrain_deformation_tread(float2 world_xz, float2 along, float2 across)
+{
+    float u   = dot(world_xz, along) / 0.07f;
+    float v   = dot(world_xz, across) / 0.055f;
+    float lug = frac(u + floor(v) * 0.5f);
+    float row = frac(v);
+    return smoothstep(0.0f, 0.12f, lug) * (1.0f - smoothstep(0.45f, 0.57f, lug)) * smoothstep(0.08f, 0.2f, row) * (1.0f - smoothstep(0.8f, 0.92f, row));
+}
+
+// the terrain under the ruts stays flat, so the view ray is marched through the exaggerated rut surface to find
+// the point it really shows, the near wall hides the floor behind it and a berm hides the ground past it
+// view_dir points from the camera to the pixel, returns the xz that is seen and the field offset there
+float2 terrain_deformation_parallax(float3 position, float3 view_dir, out float offset)
+{
+    offset = 0.0f;
+    float scale  = terrain_deformation_visual_scale;
+    float top    = terrain_deformation_berm_max * scale;
+    float bottom = terrain_deformation_depth_max * scale;
+
+    // a grazing ray would cross metres of field, the march is capped to the reach of a steep one
+    float dy     = min(view_dir.y, -0.2f);
+    float2 slope = view_dir.xz / -dy;
+    float2 start = position.xz - slope * top;
+    float2 end   = position.xz + slope * bottom;
+    if (!terrain_deformation_overlaps(min(start, end), max(start, end)))
+    {
+        return position.xz;
+    }
+
+    // the ray height relative to the flat ground falls from the berm top to the deepest floor
+    static const int steps = 24;
+    float height_previous  = top;
+    float field_previous   = terrain_deformation_offset(start) * scale;
+    float2 xz_previous     = start;
+    for (int i = 1; i <= steps; i++)
+    {
+        float t      = (float)i / (float)steps;
+        float height = lerp(top, -bottom, t);
+        float2 xz    = position.xz + slope * (-height);
+        float field  = terrain_deformation_offset(xz) * scale;
+        if (height <= field)
+        {
+            // the crossing between the last two samples
+            float above = height_previous - field_previous;
+            float below = field - height;
+            float w     = above / max(above + below, 1e-5f);
+            float2 hit  = lerp(xz_previous, xz, w);
+            offset      = terrain_deformation_offset(hit);
+            return hit;
+        }
+        height_previous = height;
+        field_previous  = field;
+        xz_previous     = xz;
+    }
+
+    offset = terrain_deformation_offset(position.xz);
+    return position.xz;
 }

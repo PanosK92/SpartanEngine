@@ -1223,6 +1223,7 @@ namespace spartan
             rule_node.append_attribute("weight_bias")    = rule.weight_bias;
             rule_node.append_attribute("flags")          = rule.flags;
             rule_node.append_attribute("surface_cover")  = rule.surface_cover;
+            rule_node.append_attribute("sand")           = rule.sand;
         }
 
         // scatter layers, the whole prop rule set travels with the world
@@ -1349,10 +1350,17 @@ namespace spartan
                 rule.weight_bias          = rule_node.attribute("weight_bias").as_float(rule.weight_bias);
                 rule.flags                = rule_node.attribute("flags").as_uint(rule.flags);
                 bool cover_default = false;
+                bool sand_default  = false;
                 for (const TerrainLayerRule& defaults : TerrainLayerDefaults::Get())
+                {
                     if (defaults.name == rule.name)
+                    {
                         cover_default = defaults.surface_cover;
+                        sand_default  = defaults.sand;
+                    }
+                }
                 rule.surface_cover = rule_node.attribute("surface_cover").as_bool(cover_default);
+                rule.sand          = rule_node.attribute("sand").as_bool(sand_default);
             }
         }
 

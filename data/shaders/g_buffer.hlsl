@@ -527,6 +527,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // one evaluator produces albedo, normal and orm from the same layer weights, the old path
     // blended three maps three separate times with the weights recomputed for each
     bool terrain_shaded = false;
+    float terrain_sand  = 0.0f;
     float puddle_relief = 0.0f;
     if (surface.is_terrain() && material.terrain_layer_count > 0)
     {
@@ -588,6 +589,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         roughness       = terrain.roughness;
         metalness       = terrain.metalness;
         occlusion       = terrain.occlusion;
+        terrain_sand    = terrain.sand;
         terrain_shaded  = true;
 
         // tire ruts strip the far grass carpet, the soil itself is drawn after the terrain blend
@@ -932,18 +934,43 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // after the blend because a terrain without layers is coloured there, the ruts go on top of either path
     if (surface.is_terrain())
     {
-        float rut_offset = terrain_deformation_offset(position_world.xz);
+        float rut_offset = 0.0f;
+        float2 rut_xz    = terrain_deformation_parallax(position_world, camera_to_pixel / max(distance, 1e-4f), rut_offset);
         if (rut_offset != 0.0f)
         {
-            float2 gradient = terrain_deformation_gradient(position_world.xz);
-            normal          = normalize(normal + float3(-gradient.x, 0.0f, -gradient.y));
-            float pressed   = saturate(-rut_offset / 0.03f);
-            float churned   = saturate(rut_offset / 0.01f);
-            float3 soil     = lerp(float3(0.075f, 0.058f, 0.042f), albedo.rgb, 0.35f);
-            albedo.rgb      = lerp(albedo.rgb, soil, pressed * 0.85f);
-            albedo.rgb      = lerp(albedo.rgb, soil * 1.15f, churned * 0.6f);
-            roughness       = lerp(roughness, roughness * 0.8f, pressed);
-            occlusion      *= lerp(1.0f, 0.85f, pressed);
+            float scale     = terrain_deformation_visual_scale;
+            float2 gradient = terrain_deformation_gradient(rut_xz) * scale;
+            float wall      = saturate(length(gradient) * 0.7f);
+            float depth     = -rut_offset * scale;
+            float pressed   = saturate(depth / 0.02f);
+            float churned   = saturate(rut_offset * scale / 0.015f);
+            float floor_    = pressed * (1.0f - wall);
+
+            // the tread is printed into the floor, staggered lugs that run along the track
+            float2 across = terrain_deformation_across(rut_xz);
+            float2 along  = float2(-across.y, across.x);
+            float e       = 0.006f;
+            float tread   = terrain_deformation_tread(rut_xz, along, across) * floor_;
+            float tread_u = terrain_deformation_tread(rut_xz + along * e, along, across) - terrain_deformation_tread(rut_xz - along * e, along, across);
+            float tread_v = terrain_deformation_tread(rut_xz + across * e, along, across) - terrain_deformation_tread(rut_xz - across * e, along, across);
+            gradient     -= (along * tread_u + across * tread_v) / (2.0f * e) * 0.012f * floor_;
+            normal        = normalize(normal + float3(-gradient.x, 0.0f, -gradient.y) * 1.5f);
+
+            // the floor is packed and moist, the walls are cut soil, the berm is loose crumbs that dried out
+            float clods   = hash(floor(rut_xz * 22.0f)) * 0.6f + hash(floor(rut_xz * 57.0f)) * 0.4f;
+            float3 soil   = float3(0.115f, 0.085f, 0.058f) * lerp(0.85f, 1.15f, clods);
+            float3 cut    = float3(0.085f, 0.062f, 0.043f) * lerp(0.8f, 1.2f, clods);
+            float3 crumbs = lerp(float3(0.170f, 0.135f, 0.098f), albedo.rgb, 0.25f) * lerp(0.75f, 1.25f, clods);
+
+            // sand is the same grains turned over, the floor is compacted and holds the damp from below, the spoil dries pale
+            soil   = lerp(soil, albedo.rgb * lerp(0.68f, 0.8f, clods), terrain_sand);
+            cut    = lerp(cut, albedo.rgb * lerp(0.6f, 0.72f, clods), terrain_sand);
+            crumbs = lerp(crumbs, albedo.rgb * lerp(0.95f, 1.08f, clods), terrain_sand);
+            albedo.rgb    = lerp(albedo.rgb, lerp(soil * (1.0f - tread * 0.25f), cut, wall), saturate(pressed + wall));
+            albedo.rgb    = lerp(albedo.rgb, crumbs, churned * 0.85f);
+            roughness     = lerp(roughness, lerp(0.55f, 0.85f, tread), floor_ * 0.8f);
+            roughness     = lerp(roughness, 1.0f, churned);
+            occlusion    *= lerp(1.0f, 0.7f, saturate(depth / 0.2f)) * lerp(1.0f, 0.85f, wall) * (1.0f - tread * 0.15f);
         }
     }
 

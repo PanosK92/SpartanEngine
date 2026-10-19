@@ -2406,7 +2406,39 @@ namespace spartan
     void Renderer::UpdateFrameCb_RadialBlurHubs()
     {
         uint32_t count = 0;
-        unordered_set<uint32_t> written_masks;
+        unordered_map<uint32_t, uint32_t> written_masks;
+
+        // Grows the analytic wheel cylinder (radius, half width) that the shader uses to blur
+        // the gaps between spokes. Face centres of a disc's mesh box lie on its rim and its axis,
+        // so they measure the disc under any spin, unlike the corners or a world-space box.
+        auto expand_extents = [](Render* render, uint32_t index)
+        {
+            const BoundingBox& box = render->GetBoundingBoxMesh();
+            if (box.IsInfinite())
+                return;
+            const Matrix& transform = render->GetEntity()->GetMatrix();
+            const Vector3 box_center = box.GetCenter();
+            const Vector3 box_extents = box.GetExtents();
+            const Vector3 pivot = Vector3(Renderer::view().frame.radial_blur_hubs[index].x, Renderer::view().frame.radial_blur_hubs[index].y, Renderer::view().frame.radial_blur_hubs[index].z);
+            const Vector3 axis = Vector3(Renderer::view().frame.radial_blur_axes[index].x, Renderer::view().frame.radial_blur_axes[index].y, Renderer::view().frame.radial_blur_axes[index].z);
+            Vector4& extents = Renderer::view().frame.radial_blur_extents[index];
+            for (uint32_t face = 0; face < 6; face++)
+            {
+                Vector3 offset = Vector3::Zero;
+                const float sign = (face & 1) ? -1.0f : 1.0f;
+                if (face < 2)
+                    offset.x = box_extents.x * sign;
+                else if (face < 4)
+                    offset.y = box_extents.y * sign;
+                else
+                    offset.z = box_extents.z * sign;
+                const Vector3 d = transform * (box_center + offset) - pivot;
+                const float axial = d.Dot(axis);
+                extents.x = max(extents.x, (d - axis * axial).Length());
+                extents.y = max(extents.y, fabsf(axial));
+            }
+        };
+
         for (Entity* entity : render_entities())
         {
             Render* render = entity->GetComponent<Render>();
@@ -2414,9 +2446,16 @@ namespace spartan
                 continue;
 
             Material* material = render->GetMaterial();
-            if (!render->GetMotionBlurId() || count >= 64 || !material ||
-                (!render->GetMotionBlurGroup() && material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f) ||
-                written_masks.contains(render->GetMotionBlurId()))
+            if (!render->GetMotionBlurId() || !material ||
+                (!render->GetMotionBlurGroup() && material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f))
+                continue;
+
+            if (auto written = written_masks.find(render->GetMotionBlurId()); written != written_masks.end())
+            {
+                expand_extents(render, written->second);
+                continue;
+            }
+            if (count >= 64)
                 continue;
 
             Entity* motion_entity = render->GetMotionBlurGroup() ? World::GetEntityById(render->GetMotionBlurGroup()) : entity;
@@ -2450,11 +2489,11 @@ namespace spartan
             // Transform the same local pivot in both frames; world AABB centers drift during rotation.
             const Vector3 local_center = render->HasMotionBlurAngularVelocity() ? render->GetMotionBlurPivotLocal() : render->GetBoundingBoxMesh().GetCenter();
             const Vector3 center = current * local_center;
-            const Vector3 previous_center = camera_cut_pending || secondary_render_root_active ? center : previous * local_center;
             Renderer::view().frame.radial_blur_hubs[count] = Vector4(center.x, center.y, center.z, angle);
             Renderer::view().frame.radial_blur_axes[count] = Vector4(axis.x, axis.y, axis.z, static_cast<float>(render->GetMotionBlurId()));
-            Renderer::view().frame.radial_blur_previous_hubs[count] = Vector4(previous_center.x, previous_center.y, previous_center.z, 0.0f);
-            written_masks.insert(render->GetMotionBlurId());
+            Renderer::view().frame.radial_blur_extents[count] = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+            expand_extents(render, count);
+            written_masks[render->GetMotionBlurId()] = count;
             count++;
         }
         Renderer::view().frame.radial_blur_hub_count = static_cast<float>(count);
@@ -3705,6 +3744,8 @@ namespace spartan
                 entry.terrain_flags               = rule.flags;
                 if (rule.surface_cover)
                     entry.terrain_flags |= TerrainLayerFlags_Cover;
+                if (rule.sand)
+                    entry.terrain_flags |= TerrainLayerFlags_Sand;
 
                 layer_count++;
             }

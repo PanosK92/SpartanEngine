@@ -1062,6 +1062,7 @@ void TerrainEditor::DrawGroundLayer(Terrain* terrain, const uint32_t index)
         changed |= property_float("Porosity", &rule.porosity,       0.01f, 0.0f,  1.0f, "how much the material darkens when wet, sand is high and rock is low", "%.2f");
         changed |= property_float("Macro",    &rule.macro_strength, 0.01f, 0.0f,  1.0f, "large scale colour breakup amount", "%.2f");
         changed |= property_toggle("Rock Cover", &rule.surface_cover, "allow this terrain material to accumulate on nearby rock ledges");
+        changed |= property_toggle("Sand", &rule.sand, "loose grains, glints in the sun, darkens and turns glossy where the swash runs and gives under tires and feet");
 
         auto flag_toggle = [&rule, &changed](const char* label, const uint32_t bit, const char* tooltip)
         {

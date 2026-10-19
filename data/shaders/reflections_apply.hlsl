@@ -547,7 +547,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             surface_color   += scatter * kT;
         }
 
-        tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
+        // the swash sheet thins to nothing at its front, cut by the terrain facets it would end in straight
+        // edges, so its last centimetres fade into the wet sand behind a lobed outline
+        float2 edge_uv  = render_uv_to_screen_uv((thread_id.xy + 0.5f) / resolution_out);
+        float  bed_raw  = tex4.SampleLevel(samplers[sampler_point_clamp], edge_uv, 0.0f).r;
+        float  column   = bed_raw > 0.0f ? surface.position.y - get_position(bed_raw, edge_uv).y : 10.0f;
+        float  lobes    = ocean_foam_noise(surface.position.xz * 0.45f) * 0.65f + ocean_foam_noise(surface.position.xz * 1.7f) * 0.35f;
+        float  coverage = smoothstep(0.0f, 0.006f + 0.04f * lobes, column);
+        foam           *= saturate(coverage * 2.5f);
+
+        float3 water = tex_uav[thread_id.xy].rgb + surface_color;
+        tex_uav[thread_id.xy] = float4(lerp(background, water, coverage), tex_uav[thread_id.xy].a);
     }
     else
     {
@@ -571,12 +581,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 sky       = get_sky_fill_radiance() * (0.35f / PI);
         float3 incoming  = sun_diff + sky;
 
-        // keep some of the water colour so foam is a veil, not a coat of paint
+        // a deep pile of bubbles scatters light many times and goes near white, a thin raft is a few bubble
+        // walls over the water, darker and tinted by the sea it lets through, so foam is a veil, not paint
         float  luma       = luminance(incoming);
-        float3 foam_color = lerp(incoming, luma.xxx, 0.35f) * float3(0.96f, 0.97f, 1.0f) * 1.15f;
+        float  thickness  = smoothstep(0.15f, 0.9f, foam);
+        float  albedo     = lerp(0.5f, 0.88f, thickness);
+        float3 tint       = lerp(float3(0.8f, 0.92f, 0.94f), float3(0.97f, 0.98f, 1.0f), thickness);
+        float3 foam_color = lerp(incoming, luma.xxx, 0.35f) * tint * albedo;
 
         float3 base  = tex_uav[thread_id.xy].rgb;
-        float  cover = saturate(foam * 0.9f);
+        float  cover = saturate(foam * 0.95f);
         tex_uav[thread_id.xy].rgb = lerp(base, foam_color, cover);
     }
 }

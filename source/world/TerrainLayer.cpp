@@ -76,6 +76,7 @@ namespace spartan
             r.porosity             = 0.9f;
             r.macro_strength       = 0.5f;
             r.weight_bias          = 1.1f;
+            r.sand                 = true;
         }
 
         // layer 3, dirt, exposed soil where grass cannot hold, mid slopes and eroded shoulders

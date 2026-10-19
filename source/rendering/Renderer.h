@@ -315,6 +315,8 @@ namespace spartan
         bool IsOceanEnabled();
         // world space wave height at (x, z) from the readback of the gpu displacement, false when no ocean is active
         bool GetOceanHeight(const float x, const float z, float& height);
+        // thickness of the shore swash sheet over the sand at (x, z), zero where it is not running
+        float GetOceanSwashDepth(const float x, const float z);
 
         // viewport
         const RHI_Viewport& GetViewport();

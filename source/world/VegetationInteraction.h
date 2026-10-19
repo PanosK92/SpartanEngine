@@ -13,6 +13,7 @@
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Physics.h"
+#include "../world/TerrainDeformation.h"
 #include "../rendering/SurfaceInteraction.h"
 #include <algorithm>
 #include <unordered_map>
@@ -188,6 +189,10 @@ namespace spartan::vegetation_interaction
             // footsteps tread the grass down where the character walks
             Vector3 horizontal(body.shape.velocity.x, 0.0f, body.shape.velocity.z);
             Physics* physics = player->GetComponent<Physics>();
+            if (!paused)
+            {
+                TerrainDeformation::Walk(body.shape.id, body.shape.center - Vector3(0.0f, player_half_height, 0.0f), horizontal, physics && physics->IsGrounded(), player_mass);
+            }
             if (!paused && physics && physics->IsGrounded() && horizontal.LengthSquared() > 0.09f)
             {
                 SurfaceContact& foot = result.contacts[4];

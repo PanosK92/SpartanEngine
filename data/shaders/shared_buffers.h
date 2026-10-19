@@ -174,7 +174,7 @@ struct FrameBufferData
     // World-space rigid rotation records, shared by both eyes. IDs match velocity.z.
     SHARED_FLOAT4 radial_blur_hubs[64];          // xyz = current pivot, w = unwrapped radians/frame
     SHARED_FLOAT4 radial_blur_axes[64];          // xyz = world rotation axis, w = object mask ID
-    SHARED_FLOAT4 radial_blur_previous_hubs[64]; // xyz = previous pivot
+    SHARED_FLOAT4 radial_blur_extents[64];       // x = outer radius, y = half width (world units), w = 1 when measured
     SHARED_FLOAT  radial_blur_hub_count;
     // UTC fraction of the calendar day; the star catalogue uses the ephemeris transform below.
     SHARED_FLOAT  time_of_day;
@@ -782,6 +782,7 @@ struct MaterialParameters
     bool terrain_layer_cover()    { return (terrain_flags & (1 << 5)) != 0; }
     bool terrain_layer_below_sea(){ return (terrain_flags & (1 << 3)) != 0; }
     bool terrain_has_maps()       { return (terrain_flags & (1 << 4)) != 0; }
+    bool terrain_layer_sand()     { return (terrain_flags & (1 << 16)) != 0; }
     // on the surface material bits 8 to 11 hold how many layers to sample and 12 to 15 the debug view
     uint terrain_layer_quality()  { return (terrain_flags >> 8)  & 0xFu; }
     uint terrain_debug_view()     { return (terrain_flags >> 12) & 0xFu; }

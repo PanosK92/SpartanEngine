@@ -14,7 +14,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
+#include "../world/components/Terrain.h"
+#include "../world/components/Water.h"
 #include "../world/TerrainDeformation.h"
+#include "../core/Timer.h"
 //============================================
 
 //= NAMESPACES ===============
@@ -49,6 +52,31 @@ namespace spartan
             if (Camera* camera = World::GetCamera())
             {
                 TerrainDeformation::SetFocus(camera->GetEntity()->GetPosition());
+            }
+
+            TerrainDeformationSand sand;
+            if (Terrain* terrain = Terrain::FindActive())
+            {
+                for (const TerrainLayerRule& rule : terrain->GetLayerRules())
+                {
+                    if (rule.sand)
+                    {
+                        const bool shore = (rule.flags & TerrainLayerFlags_BelowSea) != 0;
+                        sand.sea_level   = shore ? (m_pass_state.ocean ? m_pass_state.ocean->GetSeaLevel() : terrain->GetSeaLevel()) : 0.0f;
+                        sand.height_min  = rule.height_min;
+                        sand.height_max  = rule.height_max;
+                        sand.slope_min   = rule.slope_min;
+                        sand.slope_max   = rule.slope_max;
+                        sand.valid       = true;
+                        break;
+                    }
+                }
+            }
+            TerrainDeformation::SetSand(sand);
+
+            if (simulating && !Engine::IsFlagSet(EngineMode::Paused))
+            {
+                TerrainDeformation::Wash(static_cast<float>(Timer::GetDeltaTimeSec()), &Renderer::GetOceanSwashDepth);
             }
 
             state.mapping = TerrainDeformation::GetMapping();

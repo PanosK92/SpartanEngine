@@ -650,7 +650,8 @@ namespace spartan
             const float ns           = floorf(shore_cycles);
             const float x            = shore_cycles - ns;
             const float swell_shore  = swell_height * exposure * lerp(0.6f, 1.4f, noise(grid_x / 60.0f, grid_z / 60.0f, static_cast<int>(ns))) * group(ns);
-            const float run          = runup * swell_shore;
+            const float lobes        = 1.0f + (noise(grid_x / 4.0f, grid_z / 4.0f, static_cast<int>(ns) * 3 + 11) - 0.5f) * 0.35f + (noise(grid_x / 1.6f, grid_z / 1.6f, static_cast<int>(ns) * 3 + 12) - 0.5f) * 0.2f;
+            const float run          = runup * swell_shore * lobes;
             const float y            = clamp(x / swash_span, 0.0f, 1.0f);
             const float front        = x < swash_span ? run * sinf(pi * powf(y, 0.75f)) : -1.0f;
             const float excess       = front + depth;
@@ -965,6 +966,25 @@ namespace spartan
         ocean_readback_copy_index =
             numeric_limits<uint32_t>::max();
         ocean_readback_written_mask = 0;
+    }
+
+    float Renderer::GetOceanSwashDepth(const float x, const float z)
+    {
+        const Water* water = m_pass_state.ocean;
+        Terrain* terrain   = Terrain::FindActive();
+        float bed          = 0.0f;
+        if (!water || !terrain || !terrain->SampleHeight(x, z, bed))
+        {
+            return 0.0f;
+        }
+
+        Vector3 displacement;
+        float floor_y = 0.0f;
+        if (!ocean_shore::evaluate(x, z, water->GetSeaLevel(), displacement, floor_y))
+        {
+            return 0.0f;
+        }
+        return max(floor_y - bed, 0.0f);
     }
 
     bool Renderer::GetOceanHeight(const float x, const float z, float& height)

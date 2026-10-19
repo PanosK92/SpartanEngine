@@ -662,6 +662,25 @@ struct vertex_processing
         }
 #endif
 
+        // a blade in a tire rut stays whole and lies over, the tire pressed it into the floor of the rut
+        if (surface.is_grass_blade() || surface.is_flower())
+        {
+            float rut_press = saturate(-terrain_deformation_offset(instance_pos.xz) / 0.01f);
+            if (rut_press > grass_press.z)
+            {
+                // along the track when no tire direction was recorded, which is across the slope of the rut wall,
+                // on the flat floor each blade falls its own way
+                float2 direction = grass_press.xy;
+                if (dot(direction, direction) < 1e-6f)
+                {
+                    float2 gradient = terrain_deformation_gradient(instance_pos.xz);
+                    float heading   = hash(instance_pos.xz + float2(41.7f, 13.3f)) * PI2;
+                    direction       = dot(gradient, gradient) > 0.01f ? float2(-gradient.y, gradient.x) : float2(cos(heading), sin(heading));
+                }
+                grass_press = float3(direction, rut_press);
+            }
+        }
+
         // fft ocean, displace the camera-centered clipmap by the summed cascade displacement
         if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
         {
@@ -877,16 +896,6 @@ struct vertex_processing
 #endif
             // a blade is one point of the field, the whole blade leans from its root
             apply_vegetation_interaction(instance_pos.xz, instance_pos, instance_up, h_cantilever, time_offset, position_world);
-
-            // the blade grows from the ground, inside a rut that is below the surface it was scattered on,
-            // a tire that sinks in crushes the blades into the soil instead of laying them over it
-            float rut = terrain_deformation_offset(instance_pos.xz);
-            if (rut < 0.0f)
-            {
-                float crush    = saturate(-rut / 0.025f) * 0.92f;
-                position_world = instance_pos + (position_world - instance_pos) * (1.0f - crush);
-            }
-            position_world.y += rut;
         }
         else if (surface.has_wind_animation())
         {
@@ -1224,13 +1233,12 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         }
         float  height   = material.local_height * length(transform[1].xyz);
 
-        // a tuft in a tire rut is pressed into the soil like the blades it stands for
+        // a tuft in a tire rut lies over like the blades it stands for, low but still there
         float rut = terrain_deformation_offset(root.xz);
         if (rut < 0.0f)
         {
-            height *= 1.0f - saturate(-rut / 0.025f) * 0.92f;
+            height *= 1.0f - saturate(-rut / 0.01f) * 0.8f;
         }
-        root.y += rut;
         float3 right    = cross(card_up, buffer_frame.camera_position - root);
         right          *= rsqrt(max(dot(right, right), 1e-8f));
         float3 right_previous = cross(card_up, buffer_frame.camera_position_previous - root);
@@ -1245,6 +1253,13 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         vertex.uv_misc.xy    = input_uv;
         vertex.uv_misc.z     = input_uv.y;
         vertex.width_percent = 0.5f;
+    }
+    else if (!surface.is_grass_blade() && !surface.is_flower())
+    {
+        // pebbles and chips go down with the soil a tire presses, and the soil it pushes out buries them
+        float rut = -abs(terrain_deformation_offset(transform[3].xz)) * terrain_deformation_visual_scale;
+        position.y          += rut;
+        position_previous.y += rut;
     }
 #endif
 

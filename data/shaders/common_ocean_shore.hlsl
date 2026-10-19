@@ -32,6 +32,7 @@ struct OceanShore
     float  foam;         // whitewater coverage before the lace shaping
     float  sheet;        // 1 inside the swash sheet
     float  wet;          // sand still wet from the last run-up
+    float  film;         // a mirror of water still standing on the sand, the first seconds after the sheet drains
     float  height;       // local wave height, crest to trough
     float  steepness;    // 1 as the wave nears its breaking height, thin enough for light to cross the lip
     float2 direction;    // shoreward
@@ -195,7 +196,10 @@ OceanShore ocean_shore_evaluate(float2 grid_xz, float time, float spacing = 0.0f
     float ns           = floor(shore_cycles);
     float x            = shore_cycles - ns;
     float swell_shore  = wave.x * exposure * lerp(0.6f, 1.4f, ocean_shore_noise(grid_xz / 60.0f, int(ns))) * ocean_shore_group(ns);
-    float runup        = ocean_shore_runup * swell_shore;
+    // every swash runs up in lobes and tongues a few metres wide, a front that only traced the height of the
+    // sand would cut straight lines along the terrain triangles
+    float lobes        = 1.0f + (ocean_shore_noise(grid_xz / 4.0f, int(ns) * 3 + 11) - 0.5f) * 0.35f + (ocean_shore_noise(grid_xz / 1.6f, int(ns) * 3 + 12) - 0.5f) * 0.2f;
+    float runup        = ocean_shore_runup * swell_shore * lobes;
     float y            = saturate(x / ocean_shore_swash_span);
     float front        = x < ocean_shore_swash_span ? runup * sin(3.14159265f * pow(y, 0.75f)) : -1.0f;
     float above        = -depth;
@@ -203,30 +207,46 @@ OceanShore ocean_shore_evaluate(float2 grid_xz, float time, float spacing = 0.0f
     o.floor_y          = excess > -2.0f ? bed + clamp(excess * 0.2f, -0.4f, lerp(0.05f, 0.015f, y)) : -100000.0f;
     o.sheet            = saturate(excess / 0.02f) * saturate((above + 0.3f) / 0.3f);
 
-    // sand stays dark for a few seconds after the sheet drains off it
+    // seconds since the sheet drained off this sand
     float since = 0.0f;
     if (excess <= 0.0f && above > 0.0f)
     {
         float leave = runup > above ? pow(1.0f - asin(saturate(above / runup)) / 3.14159265f, 4.0f / 3.0f) * ocean_shore_swash_span : 0.0f;
         since       = runup > above ? (x > leave ? x - leave : x + 1.0f - leave) * period : 1000.0f;
     }
-    float damp = 1.0f - smoothstep(0.0f, wave.x * exposure * ocean_shore_runup * 1.6f, above);
-    o.wet      = max(exp(-since / 5.0f), damp * 0.6f);
+
+    // the sheet leaves a mirror of water that soaks into the sand within a couple of seconds, the pores
+    // below stay saturated far longer, so the sand darkens at once and pales over tens of seconds
+    // the bigger waves of a set reach higher than the rest, which keeps a band below their reach damp all
+    // the time, its upper edge wanders with the swash instead of tracing the terrain triangles
+    float runup_max = wave.x * exposure * ocean_shore_runup * 1.6f;
+    float wander    = (ocean_shore_noise(grid_xz / 7.0f, 5) - 0.5f) * 0.45f + (ocean_shore_noise(grid_xz / 1.7f, 9) - 0.5f) * 0.15f;
+    float damp      = 1.0f - smoothstep(0.1f, 1.0f, (above + wander * runup_max) / max(runup_max, 1e-3f));
+    o.wet           = max(exp(-since / 20.0f), damp * 0.7f);
+    o.film          = exp(-since / 1.6f);
 
     // whitewater, the roller rides the face, a trail decays behind the crest, the surf zone keeps a residue
-    float water  = saturate(wet_d / 0.1f);
-    float spill  = ocean_shore_noise(grid_xz / 9.0f, int(n) + 17);
-    float roller = water * breaking * lerp(0.45f, 1.0f, spill) * (u < 0.0f ? smoothstep(-half_front * lerp(0.15f, 0.8f, spill), 0.0f, u) : 1.0f - smoothstep(0.0f, 0.05f, u));
-    float trail  = water * breaking * (u >= 0.0f ? exp(-u * 4.0f) : 0.0f) * 0.75f;
-    float surf   = water * smoothstep(0.8f, 1.6f, ratio_loc) * 0.4f;
-    float lip    = o.sheet * (1.0f - smoothstep(0.0f, 0.05f, excess)) * lerp(0.4f, 1.0f, ocean_shore_noise(grid_xz / 2.5f, int(ns) + 23));
-    float swash  = o.sheet * lerp(0.65f, 0.2f, y);
-    o.foam       = saturate(max(max(roller, trail), max(surf, max(lip, swash))));
-    o.foam      *= saturate(offshore * 4.0f + o.sheet);
+    // a coast does not break all at once, sections trip early or late with the alongshore swell, so the
+    // white water peels along the beach while the sections between stay glassy and green
+    float water   = saturate(wet_d / 0.1f);
+    float spill   = ocean_shore_noise(grid_xz / 9.0f, int(n) + 17);
+    float section = ocean_shore_noise(grid_xz / 38.0f, int(n) + 41) * 0.7f + ocean_shore_noise(grid_xz / 13.0f, int(n) + 43) * 0.3f;
+    float tripped = smoothstep(0.75f, 1.25f, ratio * lerp(0.7f, 1.3f, section));
+    float roller  = water * tripped * lerp(0.45f, 1.0f, spill) * (u < 0.0f ? smoothstep(-half_front * lerp(0.15f, 0.8f, spill), 0.0f, u) : 1.0f - smoothstep(0.0f, 0.05f, u));
+    float trail   = water * tripped * (u >= 0.0f ? exp(-u * 4.0f) : 0.0f) * 0.75f;
+    float surf    = water * smoothstep(0.8f, 1.6f, ratio_loc) * 0.4f;
+    // the bore front is a ragged rim of foam, thick where it carries a broken roller and thin between
+    float rim     = lerp(0.25f, 1.0f, smoothstep(0.2f, 0.8f, ocean_shore_noise(grid_xz / 6.0f, int(ns) + 29)));
+    float lip     = o.sheet * (1.0f - smoothstep(0.0f, 0.04f + 0.04f * rim, excess)) * rim * lerp(0.5f, 1.0f, ocean_shore_noise(grid_xz / 2.5f, int(ns) + 23));
+    float swash   = o.sheet * lerp(0.6f, 0.15f, y);
+    o.foam        = saturate(max(max(roller, trail), max(surf, max(lip, swash))));
+    o.foam       *= saturate(offshore * 4.0f + o.sheet);
 
-    // the lace travels with the water, up and down the slope with the sheet, shoreward with the bore
+    // the lace travels with the water, up and down the slope with the sheet, shoreward through the surf zone
+    // the surf drift runs along the uniform swell, an offset built from the wave count times sampled field values
+    // grows to kilometres and turns the field's filtering steps into blocks of torn foam
     float sheet_travel = max(front, 0.0f) / slope;
-    o.lace_offset      = -dir * (o.sheet > 0.0f ? sheet_travel * 0.5f : (u + n) * face_span * 0.3f);
+    o.lace_offset      = o.sheet > 0.0f ? -dir * sheet_travel * 0.5f : -swell * time * 0.6f;
 
     return o;
 }
@@ -239,45 +259,99 @@ float3 ocean_shore_surface(float2 grid_xz, float time, float spacing = 0.0f)
     return float3(grid_xz.x + o.displacement.x, y, grid_xz.y + o.displacement.z);
 }
 
-// foam sheet punctured by bubble holes of random size, 1 on foam, 0 in the holes
-// holes grow as density drops so dense foam is nearly solid and thin foam tears into irregular strands
-float ocean_shore_lace(float2 p, float density)
+// nearest and second nearest feature distance of a jittered grid, and a random value for the nearest cell
+float3 ocean_shore_cells(float2 p, int salt)
 {
-    p         += (float2(ocean_shore_noise(p * 0.45f, 71), ocean_shore_noise(p * 0.45f + 5.3f, 73)) - 0.5f) * 1.1f;
-    float2 i   = floor(p);
-    float2 f   = p - i;
-    float hole = 0.0f;
+    float2 i  = floor(p);
+    float2 f  = p - i;
+    float d1  = 8.0f;
+    float d2  = 8.0f;
+    float id  = 0.0f;
     [unroll] for (int y = -1; y <= 1; y++)
     {
         [unroll] for (int x = -1; x <= 1; x++)
         {
-            int2 cell    = int2(i) + int2(x, y);
-            float2 jit   = float2(ocean_shore_hash(cell, 11), ocean_shore_hash(cell, 29));
-            float radius = lerp(0.6f, 1.0f, ocean_shore_hash(cell, 37)) * lerp(1.1f, 0.45f, density);
-            float d      = length(float2(x, y) + jit - f);
-            hole         = max(hole, 1.0f - smoothstep(radius - 0.08f, radius + 0.04f, d));
+            int2 cell  = int2(i) + int2(x, y);
+            float2 jit = 0.1f + 0.8f * float2(ocean_shore_hash(cell, salt), ocean_shore_hash(cell, salt + 1));
+            float2 d   = float2(x, y) + jit - f;
+            float dd   = dot(d, d);
+            if (dd < d1)
+            {
+                d2 = d1;
+                d1 = dd;
+                id = ocean_shore_hash(cell, salt + 2);
+            }
+            else if (dd < d2)
+            {
+                d2 = dd;
+            }
         }
     }
-    return 1.0f - hole;
+    return float3(sqrt(d1), sqrt(d2), id);
 }
 
-// dense whitewater is solid, thinning foam erodes into strands and then into broken patches of net
+// surf foam is a raft of bubbles, what reads as white are the walls where bubbles touch, what reads as holes
+// are the big bubbles that burst, so the foam is a network of cell walls whose width follows the density
+// dense foam thickens the walls until the cells close, thin foam keeps only threads that snap apart
+// 1 on a wall, 0 in a hole, the rim is soft because the walls thin out towards the open water
+float ocean_shore_lace(float2 p, float density, int salt)
+{
+    // a bubble raft is never a regular grid, two octaves of warp give cells of every shape and size
+    p           += (float2(ocean_shore_noise(p * 0.31f, salt + 71), ocean_shore_noise(p * 0.31f + 5.3f, salt + 73)) - 0.5f) * 2.2f;
+    p           += (float2(ocean_shore_noise(p * 1.3f, salt + 75), ocean_shore_noise(p * 1.3f + 2.9f, salt + 77)) - 0.5f) * 0.45f;
+    float3 c     = ocean_shore_cells(p, salt + 11);
+    float edge   = c.y - c.x;
+    // some bubbles hold and stay closed, some burst into wide holes, a per cell value would jump right on the
+    // walls it is meant to widen, so the hole size is a smooth field over the raft
+    float burst  = lerp(0.4f, 1.6f, ocean_shore_noise(p * 0.55f, salt + 37));
+    float wall   = lerp(0.03f, 0.8f, density * density) / burst;
+    // a thin wall is a few bubbles across, its rim is diffuse and the water shows through it
+    float soft   = 0.08f + 0.3f * wall;
+    float net    = (1.0f - smoothstep(wall * 0.5f, wall + soft, edge)) * lerp(0.5f, 1.0f, saturate(wall * 4.0f));
+    // thin threads break, a strand survives only where the foam around it is still dense enough
+    float strand = ocean_shore_noise(p * 0.9f, salt + 79);
+    return net * smoothstep(0.15f, 0.55f, strand + density * 0.8f);
+}
+
+// dense whitewater is a solid mass, thinning foam erodes into a net and then into scattered strands
 // unresolved detail fades to its mean so the beach does not shimmer from a distance
+// the result is coverage and opacity in one, the thin walls of a draining net let the water through
 float ocean_shore_foam_shape(OceanShore o, float2 world_xz, float footprint)
 {
     if (o.foam <= 0.0f)
         return 0.0f;
-
+    // the foam is carried by the water and drawn out along the way the swell runs
+    // the stretch axis must be the same everywhere, rotating world coordinates kilometres from the origin by the
+    // sampled shore direction turns its filtering steps into jumps of the whole pattern
     float2 p       = world_xz + o.lace_offset;
-    float detail_a = 1.0f - smoothstep(0.15f, 0.45f, footprint / 1.1f);
-    float detail_b = 1.0f - smoothstep(0.15f, 0.45f, footprint / 0.35f);
+    float2 along   = buffer_frame.ocean_shore_swell.xy;
+    float2 q       = float2(dot(p, float2(-along.y, along.x)), dot(p, along) * 0.65f);
+    float detail_a = 1.0f - smoothstep(0.15f, 0.45f, footprint / 1.2f);
+    float detail_b = 1.0f - smoothstep(0.15f, 0.45f, footprint / 0.3f);
     float patches  = ocean_shore_noise(p / 4.0f, 61) * 0.6f + ocean_shore_noise(p / 1.3f, 53) * 0.4f;
-    float density  = saturate(o.foam * 0.9f + (patches - 0.5f) * 0.8f);
-    float net_a    = lerp(density * 0.75f, ocean_shore_lace(p / 1.1f, density), detail_a);
-    float net_b    = lerp(0.5f + 0.5f * density, ocean_shore_lace(p / 0.35f + 17.3f, saturate(density + 0.3f)), detail_b);
-    float keep     = smoothstep(0.05f, 0.25f, density);
-    float solid    = smoothstep(0.5f, 0.9f, o.foam) * smoothstep(0.35f, 0.65f, patches + (o.foam - 0.5f) * 1.5f);
-    return saturate(max(net_a * net_b * keep, solid));
+    float density  = saturate(o.foam * 0.95f + (patches - 0.5f) * 0.8f);
+    float net_a    = lerp(saturate(density * 1.1f), ocean_shore_lace(q / 1.2f, density, 0), detail_a);
+    float net_b    = lerp(0.55f + 0.45f * density, ocean_shore_lace(q / 0.3f + 17.3f, saturate(density + 0.25f), 100), detail_b);
+    // the small bubbles fill the gaps between the big ones, only a draining raft opens the fine holes all the way
+    net_b          = lerp(1.0f, net_b, lerp(0.9f, 0.4f, smoothstep(0.3f, 0.9f, density)));
+    float keep     = smoothstep(0.04f, 0.22f, density);
+    // a solid mass of whitewater still clumps, it is never one flat sheet of white
+    float clumps   = lerp(0.82f, 1.0f, ocean_shore_noise(q / 0.45f, 83));
+    float solid    = smoothstep(0.5f, 0.9f, o.foam) * smoothstep(0.35f, 0.65f, patches + (o.foam - 0.5f) * 1.5f) * clumps;
+    float opacity  = lerp(0.5f, 1.0f, smoothstep(0.1f, 0.7f, density));
+    // up close the foam is grains of bubbles, each one a bright cap ringed by a darker meniscus
+    float detail_c = 1.0f - smoothstep(0.15f, 0.45f, footprint / 0.035f);
+    // kilometres from the origin a centimetre lattice runs out of float precision, wrap it on a whole number of cells
+    float2 q_grain = q - floor(q / 35.0f) * 35.0f;
+    float bubbles  = 0.5f;
+    if (detail_c > 0.0f)
+    {
+        float3 coarse = ocean_shore_cells(q_grain / 0.05f, 91);
+        float3 fine   = ocean_shore_cells(q_grain / 0.018f + 3.7f, 93);
+        bubbles       = lerp(smoothstep(0.1f, 0.5f, coarse.x), smoothstep(0.1f, 0.5f, fine.x), step(0.45f, coarse.z));
+    }
+    float grain    = lerp(1.0f, lerp(1.0f, 0.86f, bubbles), detail_c);
+    return saturate(max(net_a * net_b * keep * opacity, solid) * grain);
 }
 
 #endif
