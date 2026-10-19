@@ -716,7 +716,7 @@ namespace spartan
             // previous frame normals for the same gate
             if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
             {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, normal_prev);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, normal_prev);
             }
 
             // previous frame velocity, occluder motion for the dual motion vector on disocclusion, lin 2026 6.4
@@ -1130,7 +1130,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_out);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_gi_previous);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous));
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous));
                 bool camera_still = Renderer::view().frame.view_projection_unjittered == Renderer::view().frame.view_projection_previous_unjittered;
 
                 // the play camera breathes by a few millimeters while idle, so no two frames are ever

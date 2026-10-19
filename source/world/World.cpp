@@ -2316,6 +2316,11 @@ namespace spartan
 
                 // read metadata
                 world_description = world_node.attribute("description").as_string();
+                // drop inits a previous load left behind, the load callback may queue this world's own
+                {
+                    lock_guard lock(io.script_mutex);
+                    io.scripts.clear();
+                }
                 if (callbacks.load) callbacks.load(world_node);
                 Environment::Load(world_node);
 
@@ -2405,10 +2410,6 @@ namespace spartan
                     world_progress.SetStep("Loading entities");
 
                     // defer script lua execution, lua is single threaded and cannot run across the worker threads below
-                    {
-                        lock_guard lock(io.script_mutex);
-                        io.scripts.clear();
-                    }
                     io.defer_scripts.store(true, memory_order_release);
 
                     // create and load every entity without hierarchy, children are wired after

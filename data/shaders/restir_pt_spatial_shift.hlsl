@@ -62,7 +62,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             float2 partner_uv        = (partner + 0.5f) / resolution;
             float3 partner_pos_ws    = restir_primary_position(partner_uv);
-            float4 partner_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), partner_uv, 0);
+            float4 partner_material  = get_material(partner_uv);
             float3 partner_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), partner_uv, 0).rgb);
             float  partner_roughness = max(partner_material.r, 0.04f);
             float  partner_metallic  = partner_material.g;

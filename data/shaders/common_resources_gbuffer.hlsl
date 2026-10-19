@@ -8,10 +8,10 @@ Commercial use requires written permission and negotiated payment terms.
 #ifndef SPARTAN_COMMON_RESOURCES_GBUFFER
 #define SPARTAN_COMMON_RESOURCES_GBUFFER
 
-// g-buffer
-Texture2D tex_albedo   : register(t0);
-Texture2D tex_normal   : register(t1);
-Texture2D tex_material : register(t2);
+// g-buffer, normal and material are bit packed r32_uint, read them through the get_normal / get_material helpers
+Texture2D       tex_albedo   : register(t0);
+Texture2D<uint> tex_normal   : register(t1);
+Texture2D<uint> tex_material : register(t2);
 Texture2D tex_velocity : register(t3);
 Texture2D tex_depth    : register(t4);
 Texture2D tex_emissive : register(t33);

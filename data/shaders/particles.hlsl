@@ -596,19 +596,21 @@ uint leaf_depth_probe(float3 position, float reach, bool skip_foliage, out float
         return leaf_probe_free;
     }
 
-    float4 normal_sample = tex_normal.Load(int3(pixel, 0));
-    float normal_length  = length(normal_sample.xyz);
+    uint2 texel         = gbuffer_texel(uint2(max(pixel, 0)));
+    uint normal_packed  = tex_normal[texel];
+    float3 normal       = gbuffer_unpack_normal(normal_packed);
+    float normal_length = length(normal);
     if (normal_length <= 0.1)
     {
         return leaf_probe_unknown;
     }
 
-    if (skip_foliage && (material_parameters[unpack_material_index(normal_sample.a)].flags & foliage_material_bits) != 0u)
+    if (skip_foliage && (material_parameters[gbuffer_unpack_material_index(normal_packed, tex_material[texel])].flags & foliage_material_bits) != 0u)
     {
         return leaf_probe_unknown;
     }
 
-    surface_normal = normal_sample.xyz / normal_length;
+    surface_normal = normal / normal_length;
     float3 visible = get_position(depth, uv);
     height         = dot(position - visible, surface_normal);
     float gap      = linearize_depth(ndc.z) - linearize_depth(depth);

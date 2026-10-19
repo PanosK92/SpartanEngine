@@ -731,6 +731,13 @@ void cloud_march_cumulus(
     float2 weather   = float2(0.0, 0.0);
     int weather_age  = cumulus_weather_interval;
     
+    float sun_elev    = dot(sun_dir, float3(0.0, 1.0, 0.0));
+    float day_w       = smoothstep(-0.05, 0.18, sun_elev);
+    float3 moon_dir   = buffer_frame.celestial_moon.xyz;
+    float cos_th_moon = dot(view_dir, moon_dir);
+    // moonlight is ~1e-6 of sunlight, its light march is invisible once the sky is fully day
+    bool march_moon   = day_w < 1.0 && buffer_frame.celestial_moon.w > 0.0;
+    
     [loop]
     for (int march_i = 0; march_i < cumulus_march_steps; march_i++)
     {
@@ -792,16 +799,15 @@ void cloud_march_cumulus(
                 sun_scat = cloud_multiscatter_attenuation(sun_light, sun_od, cos_th);
             }
             
-            float sun_elev = dot(sun_dir, float3(0.0, 1.0, 0.0));
-            float day_w    = smoothstep(-0.05, 0.18, sun_elev);
-            
-            float3 moon_dir   = buffer_frame.celestial_moon.xyz;
-            float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint * buffer_frame.celestial_moon.w;
             float3 moon_scat = 0.0;
-            if (any(moon_light > 1e-7))
+            if (march_moon)
             {
-                float moon_od = cloud_sun_optical_depth_cumulus(pos, moon_dir, noise_tex, samp_noise, light_jitter);
-                moon_scat = cloud_multiscatter_attenuation(moon_light, moon_od, dot(view_dir, moon_dir));
+                float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint * buffer_frame.celestial_moon.w;
+                if (any(moon_light > 1e-7))
+                {
+                    float moon_od = cloud_sun_optical_depth_cumulus(pos, moon_dir, noise_tex, samp_noise, light_jitter);
+                    moon_scat = cloud_multiscatter_attenuation(moon_light, moon_od, cos_th_moon);
+                }
             }
             
             // daytime ambient, sun driven
@@ -817,7 +823,7 @@ void cloud_march_cumulus(
             
             // Atmospheric transmittance already handles the local planetary horizon.
             float3 direct = sun_scat * cloud_powder(density, cos_th)
-                + moon_scat * cloud_powder(density, dot(view_dir, moon_dir));
+                + moon_scat * cloud_powder(density, cos_th_moon);
             float3 luminance_in = direct + ambient;
             float3 s_int        = cloud_albedo * luminance_in * (1.0 - step_trans);
             

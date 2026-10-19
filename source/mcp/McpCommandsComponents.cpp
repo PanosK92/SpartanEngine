@@ -7,11 +7,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===================================
 #include "pch.h"
-#ifdef SP_GAME
 #include "../car/CarPhysics.h"
-#endif
 #include "editor/Selection.h"
-#include "game/CameraController.h"
+#include "world/CameraController.h"
 #include "McpCommands.h"
 #include "McpCommandsCommon.h"
 #include "../core/ProgressTracker.h"

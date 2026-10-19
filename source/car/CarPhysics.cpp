@@ -26,6 +26,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarCalibration.h"
 #include "CarChassisCollision.h"
 #include "../world/Weather.h"
+#include "../world/TerrainDeformation.h"
 #include "../geometry/Mesh.h"
 #include "../geometry/GeneratedCache.h"
 #include "../geometry/GeometryProcessing.h"
@@ -262,6 +263,27 @@ namespace spartan
             return Weather::GetWaterDepth(Vector3(point.x, point.y, point.z), porous);
         }
 
+        // only the terrain gives, roads, shoulders and props keep their surface
+        bool is_deformable_ground(const PxRigidActor* actor)
+        {
+            if (!actor || !actor->userData)
+            {
+                return false;
+            }
+            Entity* entity = static_cast<Entity*>(actor->userData);
+            const Physics* physics = entity->GetComponent<Physics>();
+            return entity->GetComponent<Terrain>() || (physics && physics->GetBodyType() == BodyType::Heightfield);
+        }
+
+        float resolve_ground_offset(const PxRigidActor* actor, const PxVec3& point)
+        {
+            if (!TerrainDeformation::HasContent() || !is_deformable_ground(actor))
+            {
+                return 0.0f;
+            }
+            return TerrainDeformation::SampleOffset(point.x, point.z);
+        }
+
     }
     car::Simulation* CarPhysics::EnsureVehicleSimulation()
     {
@@ -384,8 +406,9 @@ namespace spartan
         }
 
         // Classify each contact before its force is evaluated in this substep.
-        VehicleState().vehicle_simulation->surface_resolver = classify_ground_actor;
-        VehicleState().vehicle_simulation->water_resolver   = resolve_water_depth;
+        VehicleState().vehicle_simulation->surface_resolver       = classify_ground_actor;
+        VehicleState().vehicle_simulation->water_resolver         = resolve_water_depth;
+        VehicleState().vehicle_simulation->ground_offset_resolver = resolve_ground_offset;
         const auto& environment = World::GetEnvironment();
         if (!VehicleState().vehicle_simulation->environment_enabled)
         {
@@ -405,6 +428,61 @@ namespace spartan
         const auto wind = World::SampleWind(GetEntity()->GetPosition(), static_cast<float>(Timer::GetSimTimeSec()));
         VehicleState().vehicle_simulation->wind_velocity = PxVec3(wind.x, wind.y, wind.z);
         VehicleState().vehicle_simulation->tick(dt);
+        StampTerrainDeformation(dt);
+    }
+
+    void CarPhysics::StampTerrainDeformation(float dt)
+    {
+        car::Simulation* simulation = VehicleState().vehicle_simulation.get();
+        const bool enabled          = TerrainDeformation::IsEnabled();
+        const PxVec3 origin         = simulation->get_scene_origin();
+        const car::car_preset& spec = simulation->get_spec();
+        const car::config& cfg      = simulation->get_config();
+        const auto& multibody       = simulation->get_multibody_state();
+        for (int i = 0; i < 4; ++i)
+        {
+            car::wheel& w = simulation->get_wheel_state(i);
+            w.soil_resistance = 0.0f;
+            if (!enabled || !w.grounded || !is_deformable_ground(w.contact_actor))
+            {
+                VehicleState().rut_previous_valid[i] = false;
+                continue;
+            }
+
+            const PxVec3 contact = w.contact_point + origin;
+            const Vector3 position(contact.x, contact.y, contact.z);
+            if (!VehicleState().rut_previous_valid[i])
+            {
+                VehicleState().rut_previous[i]       = position;
+                VehicleState().rut_previous_valid[i] = true;
+            }
+
+            PxVec3 axis = PxVec3(1.0f, 0.0f, 0.0f);
+            if (const PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body)
+            {
+                axis = wheel_actor->getGlobalPose().q.rotate(axis);
+            }
+            else if (const PxRigidDynamic* body = simulation->get_body())
+            {
+                axis = body->getGlobalPose().q.rotate(axis);
+            }
+            const PxVec3 forward = axis.cross(w.contact_normal);
+
+            TerrainDeformationStamp stamp;
+            stamp.position_previous = VehicleState().rut_previous[i];
+            stamp.position          = position;
+            stamp.forward           = Vector3(forward.x, forward.y, forward.z);
+            stamp.normal            = Vector3(w.contact_normal.x, w.contact_normal.y, w.contact_normal.z);
+            stamp.width             = cfg.wheel_width_for(i);
+            stamp.radius            = w.effective_radius > 0.05f ? w.effective_radius : cfg.wheel_radius_for(i);
+            stamp.load              = w.tire_load;
+            stamp.pressure          = w.pressure_bar > 0.0f ? w.pressure_bar : spec.tire_pressure;
+            stamp.tread_speed       = w.angular_velocity * stamp.radius;
+            stamp.dt                = dt;
+            w.soil_resistance       = TerrainDeformation::Stamp(stamp);
+
+            VehicleState().rut_previous[i] = position;
+        }
     }
 
     void CarPhysics::TickVehicleCheapSubstep(float dt)

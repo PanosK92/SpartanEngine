@@ -276,6 +276,11 @@ namespace spartan
         void SetInstances(const std::vector<math::Matrix>& transforms);
         // the global geometry buffer was emptied, the owned slot is gone, append the instances again
         void ReuploadInstances();
+        // moves one instance in place, for props that animate one at a time (a tree falling over)
+        // bounds only grow, physics actors are left alone, the caller owns collision for it
+        void SetInstance(uint32_t index, const Instance& instance);
+        const Instance& GetInstanceData(uint32_t index) const { return m_scene->instances[index]; }
+        uint64_t GetInstanceRevision() const { return m_instance_revision; }
 
         // render distance
         float GetMaxRenderDistance() const                         { return m_scene->max_distance_render; }
@@ -324,7 +329,7 @@ namespace spartan
         std::vector<Decal> m_decals;
 
         // geometry/mesh
-        std::shared_ptr<Mesh> m_owned_mesh; // lifetime of transient procedural geometry
+        std::shared_ptr<Mesh> m_owned_mesh; // keeps the drawn mesh alive when it is shared owned, null for meshes nobody shares
         bool m_bounding_box_dirty             = true;
         bool m_bounding_box_override          = false;
         math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Unit;
@@ -345,6 +350,10 @@ namespace spartan
         // pool range this renderer appended once, later SetInstances calls that fit rewrite it instead of appending again
         uint32_t m_global_instance_slot          = 0;
         uint32_t m_global_instance_slot_capacity = 0;
+        // bumped by every instance edit, caches built from the instance list compare it
+        uint64_t m_instance_revision = 0;
+        // inverse of m_instance_bounds_order, built on the first single instance edit
+        std::vector<uint32_t> m_instance_bounds_group_of;
 
         // blas refit
         bool m_needs_blas_refit  = false;

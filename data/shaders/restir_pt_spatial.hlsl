@@ -61,7 +61,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 pos_ws      = restir_primary_position(uv);
     float3 normal_ws   = get_normal(uv);
     float3 view_dir    = normalize(get_camera_position() - pos_ws);
-    float4 material    = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float4 material    = get_material(uv);
     float3 albedo      = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float  roughness   = max(material.r, 0.04f);
     float  metallic    = material.g;

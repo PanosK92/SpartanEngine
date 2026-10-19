@@ -137,6 +137,8 @@ namespace car
         surface_type (*surface_resolver)(const PxRigidActor*) = nullptr;
         // metres of water standing at a contact point, when set it overrides any authored wheel water_depth
         float (*water_resolver)(const PxVec3& point, surface_type surface) = nullptr;
+        // signed offset of the real ground from the collision surface at a map space point, negative in a rut
+        float (*ground_offset_resolver)(const PxRigidActor* actor, const PxVec3& point) = nullptr;
         Simulation() = default;
         ~Simulation();
         Simulation(const Simulation&) = delete;

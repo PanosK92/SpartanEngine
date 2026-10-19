@@ -179,13 +179,12 @@ Worlds live in `worlds/` as XML; their assets live in `binaries/project/`, exclu
 
 <br/>
 
-Project generation creates three targets, all using the selected graphics backend:
+Project generation creates these targets, all using the selected graphics backend:
 
 | Target               | What it is                                                           | Executable                                   |
 | -------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
 | **`Spartan`**        | The editor                                                           | `spartan_<backend>_development.exe`          |
 | **`SpartanRuntime`** | The game and HUD, without editor widgets                             | `spartan_<backend>_runtime_development.exe`  |
-| **`SpartanEngine`**  | The runtime without car or game implementations (`SP_GAME` off)      | `spartan_<backend>_engine_development.exe`   |
 
 The runtime targets take an existing world with `--world <absolute-world-path>` and start play once it is prepared. Resource paths remain relative to the executable, as in the editor. The editor's `-game` option hides its panels.
 
@@ -195,9 +194,7 @@ With dependencies already installed, regenerate without downloading them:
 tools/premake5.exe --file=tools/premake.lua --skip-setup vs2026 vulkan
 ```
 
-**Game and engine boundary.** `source/game/GameWorld.cpp` installs application behavior into the world lifecycle. Camera controls, island rules, vehicle render submissions and vehicle commands live in that layer. Rendering accepts surface and selection data, and vehicle physics implementation and state live under `source/car`. The `Physics` component keeps its existing world and Lua interfaces. Worker model imports publish their entity hierarchy through `World::EntityBatch::Commit()` after construction succeeds.
-
-**`SpartanEngine` worlds.** Use worlds containing engine components only; vehicle prefabs, traffic, race drivers, route drivers, car resets and skid marks belong to the game targets. The solution build compiles this target too, keeping the dependency boundary checked in CI.
+**Engine and world boundary.** There is no game layer in C++. `source/world/WorldSystems.cpp` installs the world lifecycle hooks: camera controls, vehicle render submissions, breakable trees and the optional world systems (ambient wildlife, ambient atmosphere, road details, layered road surfaces). Vehicle physics and state live under `source/car`, vehicle MCP commands in `source/mcp/McpCommandsCar.cpp`, and traffic, race drivers, route drivers, car resets and skid marks are regular components in `source/world/components`. The optional world systems are off by default; a world turns them on through the `WorldSystems` Lua table from its companion script, the `.lua` with the same name next to the `.world` (`worlds/plan.lua` for `plan.world`), which runs on every load before the roads are built. Worker model imports publish their entity hierarchy through `World::EntityBatch::Commit()` after construction succeeds.
 
 **Physics.** Scene stepping and contact observation use game-independent callbacks; the game installs vehicle contact handling. Vehicle state is opaque to engine consumers, while the existing `Physics` authoring and Lua API remains compatible.
 

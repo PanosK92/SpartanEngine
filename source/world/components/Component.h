@@ -23,12 +23,6 @@ namespace pugi
     class xml_node;
 }
 
-#ifdef SP_GAME
-#include "../../game/GameComponents.h"
-#else
-#define SP_GAME_COMPONENT_LIST
-#endif
-
 namespace spartan
 {
     class Entity;
@@ -51,9 +45,15 @@ namespace spartan
     X(Text3D, text_3d) \
     X(Animator, animator) \
     X(Ragdoll, ragdoll) \
-    X(Navigation, navigation)
+    X(Navigation, navigation) \
+    X(SkidMarks, skid_marks) \
+    X(Traffic, traffic) \
+    X(Pedestrians, pedestrians) \
+    X(CarReset, car_reset) \
+    X(RaceDriver, race_driver) \
+    X(RouteDriver, route_driver)
 
-#define SP_COMPONENT_LIST SP_ENGINE_COMPONENT_LIST SP_GAME_COMPONENT_LIST
+#define SP_COMPONENT_LIST SP_ENGINE_COMPONENT_LIST
 
     enum class ComponentType : uint32_t
     {

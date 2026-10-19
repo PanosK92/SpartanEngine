@@ -31,6 +31,16 @@ void Widget::Tick()
 {
     OnTick();
 
+    // the close button flips m_visible inside Begin, so a change shows up here on the following frame
+    if (m_visible != m_visible_saved)
+    {
+        m_visible_saved = m_visible;
+        if (PersistsVisibility())
+        {
+            ImGui::MarkIniSettingsDirty();
+        }
+    }
+
     if (!m_is_window || !m_visible)
     {
         return;

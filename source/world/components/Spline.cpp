@@ -20,9 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../resource/ResourceCache.h"
 #include "../../physics/PhysicsWorld.h"
 #include "../../core/ProgressTracker.h"
-#ifdef SP_GAME
 #include "../../car/RacingLine.h"
-#endif
 SP_WARNINGS_OFF
 #include "../../io/pugixml.hpp"
 #include <sol/sol.hpp>
@@ -730,7 +728,6 @@ namespace spartan
 
     std::shared_ptr<RacingLine> Spline::GetRacingLine(float edge_margin)
     {
-#ifdef SP_GAME
         if (m_profile != SplineProfile::Road || !m_mesh_enabled || m_generated_road_frames.empty()) return nullptr;
         const uint64_t revision = m_entity_ptr->GetTransformRevision();
         if (revision != m_racing_line_transform_revision)
@@ -741,9 +738,6 @@ namespace spartan
         auto [entry, inserted] = m_racing_lines.try_emplace(edge_margin);
         if (inserted) entry->second = RacingLine::Build(m_entity_ptr, edge_margin);
         return entry->second;
-#else
-        return nullptr;
-#endif
     }
 
     void Spline::Tick()
@@ -877,7 +871,6 @@ namespace spartan
         }
 
         // The overlay uses the exact cached path handed to the drivers.
-#ifdef SP_GAME
         if (m_show_racing_line)
         {
             if (const auto line = GetRacingLine())
@@ -889,7 +882,6 @@ namespace spartan
                     Renderer::DrawLine(line->GetPoint(i).position + lift, line->GetPoint(line->Wrap(static_cast<int64_t>(i) + 1)).position + lift, color, color);
             }
         }
-#endif
 
         // debug lines are edit only, road meshes already generated above
         if (Engine::IsFlagSet(EngineMode::Playing))

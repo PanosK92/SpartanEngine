@@ -171,7 +171,6 @@ function spartan_project_configuration()
             SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
             SOURCE_DIR .. "/**.rc"
         }
-        defines { "SP_GAME" }
         removefiles { SOURCE_DIR .. "/runtime/**" }
         files(lzma_sdk.sources())
         -- Recast bakes tiles, Detour queries them, DetourCrowd handles pedestrian avoidance.

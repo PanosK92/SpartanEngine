@@ -6,4 +6,4 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #pragma once
-namespace spartan::game { void RegisterCarMcpCommands(); }
+namespace spartan { void RegisterCarMcpCommands(); }

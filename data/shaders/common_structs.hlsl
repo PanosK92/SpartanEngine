@@ -83,14 +83,16 @@ struct Surface
 
         // access resources
         float4 sample_albedo        = !use_albedo ? 0.0f : tex_albedo.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-        float4 sample_normal        = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-        float4 sample_material      = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+        uint2 texel                 = gbuffer_texel(uv);
+        uint normal_packed          = tex_normal[texel];
+        uint material_packed        = tex_material[texel];
+        float4 sample_material      = gbuffer_unpack_material(material_packed);
         float sample_depth          = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-        MaterialParameters material = material_parameters[unpack_material_index(sample_normal.a)];
+        MaterialParameters material = material_parameters[gbuffer_unpack_material_index(normal_packed, material_packed)];
 
         // initialize properties
         depth                 = sample_depth;
-        normal                = sample_normal.xyz;
+        normal                = gbuffer_unpack_normal(normal_packed);
         flags                 = material.flags;
         albedo                = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha                 = sample_albedo.a;

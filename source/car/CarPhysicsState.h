@@ -30,6 +30,9 @@ namespace spartan
         bool wheel_offsets_synced = false;  // flag to ensure wheel offsets are synced from entities once
         const void* wheel_ground_actors[static_cast<int>(WheelIndex::Count)] = {};
         uint8_t wheel_ground_surfaces[static_cast<int>(WheelIndex::Count)] = {};
+        // where each tire last pressed into soft ground, map space, a stamp spans the step between
+        math::Vector3 rut_previous[static_cast<int>(WheelIndex::Count)] = {};
+        bool rut_previous_valid[static_cast<int>(WheelIndex::Count)] = {};
         bool vehicle_simulation_active = true;
         bool vehicle_brake_reverse_enabled = true;
         bool vehicle_full_steering_lock = false;

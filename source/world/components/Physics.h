@@ -159,6 +159,9 @@ namespace spartan
 
         // the render rewrote its instance list, the per instance actors are rebuilt on the next tick
         void OnInstancesChanged();
+        // keeps one instance's actor out of the scene regardless of distance, a broken tree has no trunk to hit
+        void SetInstanceSuppressed(uint32_t index, bool suppressed);
+        bool IsInstanceSuppressed(uint32_t index) const { return index < m_instances_suppressed.size() && m_instances_suppressed[index]; }
         bool NeedsRunningPreTick() const
         {
             return !m_is_static || m_needs_creation || m_instances_dirty ||
@@ -269,6 +272,7 @@ namespace spartan
         void* m_mesh                     = nullptr;
         std::vector<void*> m_actors      = { nullptr };
         std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
+        std::vector<bool> m_instances_suppressed; // per instance, never added to the scene while set
         uint32_t m_actors_active_count = 0; // how many of the above are in the scene, lets a sleeping entity skip its per instance scan
         math::Vector3 m_activation_camera = math::Vector3::Zero;
         math::Matrix m_activation_world = math::Matrix::Identity;

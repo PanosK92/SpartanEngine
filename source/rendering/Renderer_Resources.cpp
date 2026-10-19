@@ -820,8 +820,9 @@ namespace spartan
             // gbuffer, concurrent sharing so async compute (ssao, sss) can read while graphics writes
             uint32_t flags = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
             at(view_targets(), Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_color");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_material");
+            // normal and material are bit packed, see gbuffer_pack_normal and gbuffer_pack_material in common.hlsl
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32_Uint,           flags, "gbuffer_normal");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32_Uint,           flags, "gbuffer_material");
             at(view_targets(), Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_emissive");
             // rgba: xy = ndc velocity, z = radial motion blur mask, w = signed previous surface depth
             at(view_targets(), Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
@@ -832,7 +833,7 @@ namespace spartan
             m_pass_state.depth_history_cleared = false;
             // previous frame normals for the same gate, sampling the current normal buffer at
             // prev_uv reads a different surface whenever anything moved
-            at(view_targets(), Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal_previous");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R32_Uint, flags, "gbuffer_normal_previous");
             // previous frame velocity, restir's temporal pass reads the occluder's motion at the
             // reprojected position to build a dual motion vector on disocclusion, lin 2026 6.4
             at(view_targets(), Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity_previous");
@@ -1375,6 +1376,7 @@ namespace spartan
             // gpu procedural grass
             { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },
             { Renderer_Shader::grass_interaction_c,                   RHI_Shader_Type::Compute, "grass_interaction.hlsl"                                                                           },
+            { Renderer_Shader::vegetation_interaction_c,              RHI_Shader_Type::Compute, "vegetation_interaction.hlsl"                                                                      },
             { Renderer_Shader::grass_indirect_args_c,                 RHI_Shader_Type::Compute, "grass_indirect_args.hlsl"                                                                         },
             { Renderer_Shader::grass_gbuffer_v,                       RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
             { Renderer_Shader::grass_blade_v,                         RHI_Shader_Type::Vertex, "g_buffer.hlsl", RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED", true, false, "GRASS_SPECIALIZED" },

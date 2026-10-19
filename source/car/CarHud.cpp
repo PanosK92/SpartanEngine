@@ -7,9 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===============================
 #include "pch.h"
-#ifdef SP_GAME
 #include "CarPhysics.h"
-#endif
 #include "CarHud.h"
 #include "../core/Engine.h"
 #include "CarTelemetry.h"

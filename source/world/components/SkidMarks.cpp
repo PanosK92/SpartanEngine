@@ -7,9 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ==============================
 #include "pch.h"
-#ifdef SP_GAME
 #include "../../car/CarPhysics.h"
-#endif
 #include "SkidMarks.h"
 #include "../../world/components/SkidMarkDynamics.h"
 #include "../../core/Timer.h"

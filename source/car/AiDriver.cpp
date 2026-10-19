@@ -6,9 +6,7 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#ifdef SP_GAME
 #include "CarPhysics.h"
-#endif
 #include "AiDriver.h"
 #include "Car.h"
 #include "CarPresets.h"

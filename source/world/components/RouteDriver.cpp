@@ -6,9 +6,7 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#ifdef SP_GAME
 #include "../../car/CarPhysics.h"
-#endif
 #include "RouteDriver.h"
 #include "../../world/components/Physics.h"
 #include "../../world/Entity.h"

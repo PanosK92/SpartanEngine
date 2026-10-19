@@ -6,12 +6,10 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#ifdef SP_GAME
-#include "../car/CarPhysics.h"
-#endif
+#include "CarPhysics.h"
 #include "CarRender.h"
 #include "CarWeather.h"
-#include "../car/CarRain.h"
+#include "CarRain.h"
 #include "../world/Weather.h"
 #include "../car/Car.h"
 #include "../car/CarSimulation.h"
@@ -22,9 +20,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Camera.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/SurfaceInteraction.h"
+#include "../world/VegetationInteraction.h"
 using namespace std;
 using namespace spartan::math;
-namespace spartan::game
+namespace spartan
 {
     void SubmitCarRendering()
     {
@@ -74,13 +73,13 @@ namespace spartan::game
                     break;
             }
         }
+        // cars, the character on foot and anything else that pushes vegetation
+        vegetation_interaction::Gather(result, vehicle);
         Entity* root = vehicle ? vehicle->GetRootEntity() : nullptr;
         Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
         auto* simulation = physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
         if (!simulation) { Renderer::SetSurfaceInteraction(result); return; }
-        result.id = root->GetObjectId();
         const Vector3 center = root->GetPosition();
-        result.center = center;
             // Keep the fitted hulls separate: their combined box includes empty
             // space around bumpers, sills and mirrors and would clear a rectangle.
             lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
@@ -154,7 +153,7 @@ namespace spartan::game
                 }
             }
 
-        for (uint32_t i = 0; i < result.contacts.size(); ++i)
+        for (uint32_t i = 0; i < 4; ++i)
         {
             const auto& wheel = simulation->get_wheel_state(i);
             auto* body = simulation->get_multibody_state().corners[i].wheel_body;

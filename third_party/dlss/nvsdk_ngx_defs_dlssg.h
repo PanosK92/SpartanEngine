@@ -369,4 +369,10 @@ typedef NVSDK_NGX_Result(NVSDK_CONV* PFN_NVSDK_NGX_DLSSG_EstimateVRAMCallback)(u
 // The end user can override this with Nvidia App DLSS Override.
 #define NVSDK_NGX_DLSSG_Parameter_UserInterfaceRecompositionEnabled "DLSSG.UserInterfaceRecompositionEnabled"
 
+// Create Time Parameter: Specifies if Lite Candidate Blending is enabled.
+// When enabled, the algorithm will use a lighter blending mode for generating
+// the final output.
+// Boolean value: 0 (disabled) or 1 (enabled).
+#define NVSDK_NGX_DLSSG_Parameter_LiteCandidateBlendingEnabled "DLSSG.LiteCandidateBlendingEnabled"
+
 #endif // NVSDK_NGX_DEFS_DLSSG_H

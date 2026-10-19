@@ -1,7 +1,7 @@
 // Copyright(c) 2015-2026 Panos Karabelas
 // Licensed under the Spartan Engine License. See license.md in the repository root.
 #pragma once
-#include "GameWorld.h"
+#include "WorldSystems.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/Weather.h"
@@ -15,7 +15,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace spartan::island_atmosphere
+namespace spartan::ambient_atmosphere
 {
     using namespace math;
     // Fixed emitter order/capacity keeps GPU slices stable. Recycling moves only
@@ -181,7 +181,7 @@ namespace spartan::island_atmosphere
 
     inline void Tick(float dt)
     {
-        if (!game::GetIslandFeatures() || !World::GetCamera()) return;
+        if (!world_systems::GetConfig().ambient_atmosphere || !World::GetCamera()) return;
         Terrain* terrain = Terrain::FindActive();
         if (!terrain || !terrain->HasHeightfield()) return;
         // leaves are born and settle only under open sky, the gpu reads the same roof grid as rain,
@@ -215,7 +215,7 @@ namespace spartan::island_atmosphere
         if (!root_id)
         {
             Entity* root = World::CreateEntity();
-            root->SetObjectName("island_atmosphere");
+            root->SetObjectName("ambient_atmosphere");
             root->SetTransient(true);
             root_id = root->GetObjectId();
             const char* effects[] = {"leaves", "seeds", "fireflies", "litter"};

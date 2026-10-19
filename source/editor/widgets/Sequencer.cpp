@@ -7,9 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===========================
 #include "pch.h"
-#ifdef SP_GAME
 #include "../../car/CarPhysics.h"
-#endif
 #include "Sequencer.h"
 #include "SequencerCommon.h"
 #include <algorithm>

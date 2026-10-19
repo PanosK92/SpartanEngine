@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 #include "editor/Selection.h"
-#include "game/CameraController.h"
+#include "world/CameraController.h"
 
 //= INCLUDES ==============================
 #include "../TransformGizmo.h"

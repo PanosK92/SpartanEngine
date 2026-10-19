@@ -180,7 +180,7 @@ void ray_gen()
 
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
-    uint material_index = unpack_material_index(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    uint material_index = get_material_index(uv);
     MaterialParameters material = material_parameters[material_index];
     Surface receiver;
     receiver.flags = material.flags;

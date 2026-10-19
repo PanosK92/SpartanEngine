@@ -17,6 +17,7 @@ class WorldEnvironment : public Widget
 public:
     WorldEnvironment(Editor* editor);
 
+    void OnTick() override;
     void OnPreBegin() override;
     void OnVisible() override;
     void OnTickVisible() override;

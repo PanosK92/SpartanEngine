@@ -566,7 +566,8 @@ namespace spartan
             return;
         }
 
-        if (m_owned_mesh.get() != mesh) m_owned_mesh.reset();
+        // hold whatever is drawn, the owner of a borrowed mesh (a car's tire skinning, a removed car) can drop it while this still renders it
+        if (m_owned_mesh.get() != mesh) m_owned_mesh = static_pointer_cast<Mesh>(mesh->weak_from_this().lock());
         // set mesh
         m_scene->mesh           = mesh;
         m_scene->sub_mesh_index = sub_mesh_index;
@@ -832,6 +833,8 @@ namespace spartan
     void Render::SetInstances(const vector<Instance>& instances, bool refresh_bounds)
     {
         InvalidateSpatialBounds();
+        m_instance_revision++;
+        m_instance_bounds_group_of.clear();
         // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none
         if (Physics* physics = GetEntity()->GetComponent<Physics>())
         {
@@ -872,6 +875,48 @@ namespace spartan
         m_global_instance_offset = m_global_instance_slot;
         m_bounding_box_dirty     = true;
         if (refresh_bounds) Tick(); // update bounding boxes, frustum and distance culling
+    }
+
+    void Render::SetInstance(uint32_t index, const Instance& instance)
+    {
+        if (index >= m_scene->instances.size())
+            return;
+
+        m_scene->instances[index] = instance;
+        m_instance_revision++;
+        if (m_global_instance_slot != 0)
+        {
+            GeometryBuffer::UpdateInstances(&m_scene->instances[index], m_global_instance_slot + index, 1);
+        }
+
+        // a full rebuild walks every instance of the tile, only this one changed
+        if (index < m_instance_bounds.size() && index < m_instance_wind_padding.size())
+        {
+            const Matrix world_instance = instance.GetMatrix() * GetEntity()->GetMatrix();
+            const BoundingBox bounds    = m_bounding_box_mesh * world_instance;
+            m_instance_bounds[index]    = bounds;
+            const float padding         = m_instance_wind_padding[index];
+            const Vector3 pad(padding, padding, padding);
+            const BoundingBox padded(bounds.GetMin() - pad, bounds.GetMax() + pad);
+
+            if (m_instance_bounds_group_of.size() != m_instance_bounds_order.size())
+            {
+                m_instance_bounds_group_of.assign(m_instance_bounds_order.size(), 0);
+                for (uint32_t g = 0; g < m_instance_bounds_groups.size(); ++g)
+                {
+                    const InstanceBoundsGroup& group = m_instance_bounds_groups[g];
+                    for (uint32_t j = group.offset; j < group.offset + group.count && j < m_instance_bounds_order.size(); ++j)
+                        m_instance_bounds_group_of[m_instance_bounds_order[j]] = g;
+                }
+            }
+            if (index < m_instance_bounds_group_of.size() && m_instance_bounds_group_of[index] < m_instance_bounds_groups.size())
+            {
+                m_instance_bounds_groups[m_instance_bounds_group_of[index]].bounds.Merge(padded);
+            }
+            m_scene->bounding_box.Merge(bounds);
+            m_scene->cull_camera_position = Vector3::Infinity;
+        }
+        InvalidateSpatialBounds();
     }
 
     void Render::ReuploadInstances()

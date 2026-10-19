@@ -47,6 +47,13 @@ Texture2D<float> tex_effective_exposure : register(t28);
 // rg = flow vector (signed, [-1,1]), b = gust pressure (0..1), a = micro turbulence (0..1)
 Texture2D<float4> tex_wind_field : register(t29);
 
+// vegetation interaction field and its previous frame, rg = deflection (world xz, metres), ba = its velocity
+Texture2D<float4> tex_vegetation_interaction          : register(t79);
+Texture2D<float4> tex_vegetation_interaction_previous : register(t83);
+
+// tire ruts, signed metres of ground offset, toroidal so it is sampled with wrap, see terrain_deformation_offset
+Texture2D<float> tex_terrain_deformation : register(t84);
+
 // fft ocean cascades, one array slice per cascade
 // displacement.xyz = world-space offset, normal.xy = surface slope, normal.z = foam, normal.w = mean squared wave height
 Texture2DArray<float4> tex_ocean_displacement : register(t30);

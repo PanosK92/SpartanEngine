@@ -1705,3 +1705,38 @@ float terrain_displacement(MaterialParameters surface, float3 position_world, fl
     return displacement * terrain_displacement_scale;
 }
 
+// tire ruts, see TerrainDeformation.h, the field holds the signed ground offset in metres, negative in a
+// rut and positive on the soil pushed up beside it, physics reads the same numbers on the cpu
+static const float terrain_deformation_cell = 0.0625f;
+
+bool terrain_deformation_overlaps(float2 xz_min, float2 xz_max)
+{
+    float4 bounds = buffer_frame.terrain_deformation_bounds;
+    return buffer_frame.terrain_deformation.w > 0.5f && all(xz_max >= bounds.xy) && all(xz_min <= bounds.zw);
+}
+
+float terrain_deformation_offset(float2 world_xz)
+{
+    float4 field = buffer_frame.terrain_deformation;
+    if (!terrain_deformation_overlaps(world_xz, world_xz))
+    {
+        return 0.0f;
+    }
+    // the storage wraps, so the far edge of the window aliases the near one, the last metre fades out
+    float window  = 1.0f / field.z;
+    float2 inside = min(world_xz - field.xy, field.xy + window - world_xz);
+    float edge    = saturate(min(inside.x, inside.y) - 0.5f);
+
+    // frac keeps the coordinate small, a few km from the origin a raw uv runs out of sampler precision
+    float2 uv = frac(world_xz * field.z);
+    return tex_terrain_deformation.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv, 0.0f) * edge;
+}
+
+// d offset / d xz, central differences over one cell
+float2 terrain_deformation_gradient(float2 world_xz)
+{
+    float e  = terrain_deformation_cell;
+    float dx = terrain_deformation_offset(world_xz + float2(e, 0.0f)) - terrain_deformation_offset(world_xz - float2(e, 0.0f));
+    float dz = terrain_deformation_offset(world_xz + float2(0.0f, e)) - terrain_deformation_offset(world_xz - float2(0.0f, e));
+    return float2(dx, dz) / (2.0f * e);
+}

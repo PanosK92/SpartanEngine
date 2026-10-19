@@ -267,6 +267,35 @@ namespace spartan
         GetEntity()->RefreshPreTickGate();
     }
 
+    void Physics::SetInstanceSuppressed(uint32_t index, bool suppressed)
+    {
+        if (index >= m_instances_suppressed.size())
+        {
+            if (!suppressed)
+                return;
+            m_instances_suppressed.resize(index + 1, false);
+        }
+        if (m_instances_suppressed[index] == suppressed)
+            return;
+        m_instances_suppressed[index] = suppressed;
+
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+        if (suppressed && index < m_actors.size() && index < m_actors_active.size() && m_actors[index] && m_actors_active[index])
+        {
+            PhysicsWorld::RemoveActor(static_cast<PxRigidActor*>(m_actors[index]));
+            m_actors_active[index] = false;
+            m_actors_active_count--;
+        }
+        else if (!suppressed && !m_distance_streaming && index < m_actors.size() && index < m_actors_active.size() && m_actors[index] && !m_actors_active[index])
+        {
+            PhysicsWorld::AddActor(static_cast<PxRigidActor*>(m_actors[index]));
+            m_actors_active[index] = true;
+            m_actors_active_count++;
+        }
+        // distance activation adds a streamed actor back once it is in range
+        m_activation_valid = false;
+    }
+
     bool Physics::PrepareWorld()
     {
         // The world loader has joined its worker before calling this. Prepare only the
@@ -849,6 +878,17 @@ namespace spartan
             }
 
             CountWorldWork(WorldWork::physics_actors_tested);
+            if (IsInstanceSuppressed(i))
+            {
+                if (m_actors_active[i])
+                {
+                    PhysicsWorld::RemoveActor(actor);
+                    m_actors_active[i] = false;
+                    m_actors_active_count--;
+                }
+                continue;
+            }
+
             // compute distance to actor
             Vector3 closest_point = instanced
                 ? render->GetInstancePosition(i, world)
@@ -2617,7 +2657,8 @@ namespace spartan
                                               : render->GetBoundingBox().GetClosestPoint(camera_position))
                     : camera_position;
                 const BoundingBox interest_bounds = stream_static && !render->HasInstancing() ? render->GetBoundingBox() : BoundingBox(closest_point, closest_point);
-                if (!stream_static || Vector3::DistanceSquared(camera_position, closest_point) <= distance_deactivate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds, 40.0f))
+                const bool in_range = !stream_static || Vector3::DistanceSquared(camera_position, closest_point) <= distance_deactivate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds, 40.0f);
+                if (in_range && !IsInstanceSuppressed(i))
                 {
                     PhysicsWorld::AddActor(actor);
                     m_actors_active[i] = true;

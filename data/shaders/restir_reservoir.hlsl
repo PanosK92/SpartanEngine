@@ -649,7 +649,7 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
 // gbuffer_normal_previous, confidence returns a [0,1] reuse factor
 bool evaluate_disocclusion(
     Texture2D prev_depth_tex,
-    Texture2D prev_normal_tex,
+    Texture2D<uint> prev_normal_tex,
     float2 current_uv,
     float2 prev_uv,
     float3 current_position,
@@ -686,10 +686,9 @@ bool evaluate_disocclusion(
 
     // previous frame normal at prev_uv, the current normal buffer holds a different surface
     // there whenever anything moved, fail closed on uninitialized (cleared) history
-    float3 prev_normal = prev_normal_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).xyz;
+    float3 prev_normal = gbuffer_unpack_normal(prev_normal_tex[gbuffer_texel(prev_uv)]);
     if (dot(prev_normal, prev_normal) < 1e-4f)
         return false;
-    prev_normal = normalize(prev_normal);
     float normal_similarity = dot(current_normal, prev_normal);
     float  normal_threshold  = lerp(normal_min, normal_max, motion_factor);
     if (normal_similarity < normal_threshold)

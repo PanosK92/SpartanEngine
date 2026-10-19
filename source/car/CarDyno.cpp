@@ -5,9 +5,7 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 #include "pch.h"
-#ifdef SP_GAME
 #include "CarPhysics.h"
-#endif
 #include "CarDyno.h"
 #include "Car.h"
 #include "CarSimulation.h"

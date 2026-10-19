@@ -3062,6 +3062,15 @@ namespace car
                 {
                     continue;
                 }
+                // soft ground gives under the tire, the collision surface stays put and the rut is read below it
+                if (ground_offset_resolver)
+                {
+                    const float offset = ground_offset_resolver(probe.block.actor, probe_point + scene_origin);
+                    if (std::isfinite(offset))
+                    {
+                        probe_point.y += offset;
+                    }
+                }
                 // perpendicular distance to the surface the probe found, this is the number the tire
                 // deflects against and it stays honest on a banked road where a vertical drop does not
                 float height = (row_center - probe_point).dot(probe_normal);
@@ -4392,7 +4401,7 @@ namespace car
                 float sum_rolling = 0.0f;
                 float rolling_work = 0.0f;
                 const float rolling_moment = spec.rolling_resistance * w.tire_load * w.surface_rolling * wr_eff
-                    * PxMax(1.0f + (1.0f - pressure_ratio) * 0.3f, 0.0f);
+                    * PxMax(1.0f + (1.0f - pressure_ratio) * 0.3f, 0.0f) + PxMax(w.soil_resistance, 0.0f) * wr_eff;
                 float rolling_ground_spin = 0;
                 float rolling_load = 0;
                 for (int r = 0; r < w.row_count; ++r)

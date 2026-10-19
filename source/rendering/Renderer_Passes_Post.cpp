@@ -603,10 +603,6 @@ namespace spartan
             }
 
             SP_PROFILE_CPU_END();
-            SP_PROFILE_CPU_START("upscale_mips");
-            // generate mips for refraction roughness
-            Pass_Downscale(tex_out, Renderer_DownsampleFilter::Average);
-            SP_PROFILE_CPU_END();
         }
         RHI_CommandList::EndPass();
     }

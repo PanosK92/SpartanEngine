@@ -252,7 +252,7 @@
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-2.66246 1.83616 -160.667" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0.0682093 0.710302 -0.0694991 0.697129" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="-1.33754 1.16384 20.667" rotation="-0.00496882 -0.0498131 -0.000247823 0.998746" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
@@ -787,7 +787,7 @@
     </Entity>
    </Entity>
    <Entity name="trees" id="2571600834905875608" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-    <Entity name="pine_skidpad" id="4264713000475820985" active="true" position="-110 0 0" rotation="0 0 0 1" scale="0.7 0.7 0.7">
+    <Entity name="pine_skidpad" id="4264713000475820985" active="true" position="-110 0 0" rotation="0 0 0 1" scale="0.7 0.7 0.7" tags="breakable_tree">
      <Entity name="pine_a_1" id="4264698067842859366" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -804,7 +804,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="olive_start" id="13624277026142117001" active="true" position="-80 0 -192" rotation="0 0.34202 0 0.939693" scale="1 1 1">
+    <Entity name="olive_start" id="13624277026142117001" active="true" position="-80 0 -192" rotation="0 0.34202 0 0.939693" scale="1 1 1" tags="breakable_tree">
      <Entity name="olive_a_1" id="13624284052099824847" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -815,7 +815,7 @@
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_east" id="10903811962804908551" active="true" position="214 -0.03 18" rotation="0 0.866025 0 0.5" scale="0.75 0.75 0.75">
+    <Entity name="pine_east" id="10903811962804908551" active="true" position="214 -0.03 18" rotation="0 0.866025 0 0.5" scale="0.75 0.75 0.75" tags="breakable_tree">
      <Entity name="pine_b_1" id="10903980993358494777" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -832,7 +832,7 @@
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_east_2" id="4144529618314138313" active="true" position="207 -0.03 57" rotation="0 0.819152 -0 -0.573576" scale="0.6 0.6 0.6">
+    <Entity name="pine_east_2" id="4144529618314138313" active="true" position="207 -0.03 57" rotation="0 0.819152 -0 -0.573576" scale="0.6 0.6 0.6" tags="breakable_tree">
      <Entity name="pine_b_1" id="4144545024100533893" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -849,7 +849,7 @@
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="olive_west" id="4116295234283559642" active="true" position="-197 -0.03 -64" rotation="0 0.996195 -0 -0.0871558" scale="1.15 1.15 1.15">
+    <Entity name="olive_west" id="4116295234283559642" active="true" position="-197 -0.03 -64" rotation="0 0.996195 -0 -0.0871558" scale="1.15 1.15 1.15" tags="breakable_tree">
      <Entity name="olive_a_1" id="4116382011066345711" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -860,7 +860,7 @@
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_west" id="3569777509450290387" active="true" position="-203 -0.03 118" rotation="0 0.573576 0 0.819152" scale="0.8 0.8 0.8">
+    <Entity name="pine_west" id="3569777509450290387" active="true" position="-203 -0.03 118" rotation="0 0.573576 0 0.819152" scale="0.8 0.8 0.8" tags="breakable_tree">
      <Entity name="pine_a_1" id="3569681742147815056" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -877,7 +877,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_road_1" id="11367107172267303102" active="true" position="24 -0.03 228" rotation="0 0.0871557 0 0.996195" scale="0.75 0.75 0.75">
+    <Entity name="pine_road_1" id="11367107172267303102" active="true" position="24 -0.03 228" rotation="0 0.0871557 0 0.996195" scale="0.75 0.75 0.75" tags="breakable_tree">
      <Entity name="pine_a_1" id="11367087795270695794" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -894,7 +894,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_road_2" id="11173218829332787026" active="true" position="-38 -0.03 212" rotation="0 0.965926 0 0.258819" scale="0.7 0.7 0.7">
+    <Entity name="pine_road_2" id="11173218829332787026" active="true" position="-38 -0.03 212" rotation="0 0.965926 0 0.258819" scale="0.7 0.7 0.7" tags="breakable_tree">
      <Entity name="pine_a_1" id="11173221290754791934" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -911,7 +911,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_road_3" id="12499524513496495724" active="true" position="26 -0.03 296" rotation="0 0.984808 -0 -0.173648" scale="0.6 0.6 0.6">
+    <Entity name="pine_road_3" id="12499524513496495724" active="true" position="26 -0.03 296" rotation="0 0.984808 -0 -0.173648" scale="0.6 0.6 0.6" tags="breakable_tree">
      <Entity name="pine_b_1" id="12499688800585172361" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -928,7 +928,7 @@
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_road_4" id="12382739791069774896" active="true" position="-36 -0.03 290" rotation="0 0.34202 0 0.939693" scale="0.6 0.6 0.6">
+    <Entity name="pine_road_4" id="12382739791069774896" active="true" position="-36 -0.03 290" rotation="0 0.34202 0 0.939693" scale="0.6 0.6 0.6" tags="breakable_tree">
      <Entity name="pine_b_1" id="12382713497518619973" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -945,7 +945,7 @@
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_pits_1" id="12379848948385527427" active="true" position="-40 -0.03 -238" rotation="0 0.642788 0 0.766044" scale="0.8 0.8 0.8">
+    <Entity name="pine_pits_1" id="12379848948385527427" active="true" position="-40 -0.03 -238" rotation="0 0.642788 0 0.766044" scale="0.8 0.8 0.8" tags="breakable_tree">
      <Entity name="pine_a_1" id="12379958946097312067" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -962,7 +962,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_pits_2" id="12248821767483073802" active="true" position="35 -0.03 -242" rotation="0 0.906308 -0 -0.422618" scale="0.9 0.9 0.9">
+    <Entity name="pine_pits_2" id="12248821767483073802" active="true" position="35 -0.03 -242" rotation="0 0.906308 -0 -0.422618" scale="0.9 0.9 0.9" tags="breakable_tree">
      <Entity name="pine_a_1" id="12249744145098013334" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -979,7 +979,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="olive_pits" id="12053821572011827544" active="true" position="125 -0.03 -225" rotation="0 0.173648 0 0.984808" scale="1.15 1.15 1.15">
+    <Entity name="olive_pits" id="12053821572011827544" active="true" position="125 -0.03 -225" rotation="0 0.173648 0 0.984808" scale="1.15 1.15 1.15" tags="breakable_tree">
      <Entity name="olive_a_1" id="12054043048242521850" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -990,7 +990,7 @@
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_stand_s" id="11956535038298792649" active="true" position="212 -0.03 -70" rotation="0 0.608761 0 0.793353" scale="0.8 0.8 0.8">
+    <Entity name="pine_stand_s" id="11956535038298792649" active="true" position="212 -0.03 -70" rotation="0 0.608761 0 0.793353" scale="0.8 0.8 0.8" tags="breakable_tree">
      <Entity name="pine_b_1" id="11957056507299029513" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -1007,7 +1007,7 @@
       <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_stand_n" id="11925239885344696014" active="true" position="214 -0.03 100" rotation="0 0.5 -0 -0.866025" scale="0.8 0.8 0.8">
+    <Entity name="pine_stand_n" id="11925239885344696014" active="true" position="214 -0.03 100" rotation="0 0.5 -0 -0.866025" scale="0.8 0.8 0.8" tags="breakable_tree">
      <Entity name="pine_a_1" id="11924771143217678724" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -1024,7 +1024,7 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="olive_north_w" id="507668037844496621" active="true" position="-120 -0.03 212" rotation="0 0.707107 0 0.707107" scale="1.15 1.15 1.15">
+    <Entity name="olive_north_w" id="507668037844496621" active="true" position="-120 -0.03 212" rotation="0 0.707107 0 0.707107" scale="1.15 1.15 1.15" tags="breakable_tree">
      <Entity name="olive_a_1" id="507655768739029574" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -1035,7 +1035,7 @@
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="olive_north_e" id="401904969748963086" active="true" position="130 -0.03 214" rotation="0 0.819152 -0 -0.573576" scale="1.15 1.15 1.15">
+    <Entity name="olive_north_e" id="401904969748963086" active="true" position="130 -0.03 214" rotation="0 0.819152 -0 -0.573576" scale="1.15 1.15 1.15" tags="breakable_tree">
      <Entity name="olive_a_1" id="402117953418518520" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -1046,7 +1046,7 @@
       <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
-    <Entity name="pine_sw" id="172284529414900527" active="true" position="-210 -0.03 -130" rotation="0 0.906308 0 0.422618" scale="0.85 0.85 0.85">
+    <Entity name="pine_sw" id="172284529414900527" active="true" position="-210 -0.03 -130" rotation="0 0.906308 0 0.422618" scale="0.85 0.85 0.85" tags="breakable_tree">
      <Entity name="pine_a_1" id="172256129506749464" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
@@ -1061,6 +1061,85 @@
      </Entity>
      <Entity name="pine_a_5" id="172380026099504660" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="tree_lane_sapling" id="7480386562262426368" active="true" position="-14 -0.03 -120" rotation="0 0.34202 0 0.939693" scale="0.3 0.3 0.3" tags="breakable_tree">
+     <Entity name="pine_b_1" id="7480416082200224801" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_2" id="7480243807695374236" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_b" material_path="./project/car_playground_resources/pine_tree_01_trunk_b.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_3" id="7480333604237094096" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_4" id="7480823281731467381" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_5" id="7480819850757459231" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="tree_lane_young" id="18053156132782259833" active="true" position="-14 -0.03 -80" rotation="0 0.34202 0 0.939693" scale="0.5 0.5 0.5" tags="breakable_tree">
+     <Entity name="pine_b_1" id="18053133992665581338" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_2" id="18052291097701074246" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_b" material_path="./project/car_playground_resources/pine_tree_01_trunk_b.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_3" id="18052344516764755692" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_4" id="18052304213116084705" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_5" id="18051841518646689803" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="tree_lane_pine" id="17814834605006222783" active="true" position="-14 -0.03 -40" rotation="0 0.906308 -0 -0.422618" scale="0.8 0.8 0.8" tags="breakable_tree">
+     <Entity name="pine_a_1" id="17815381351091624405" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_2" id="17814509428486142742" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_a" material_path="./project/car_playground_resources/pine_tree_01_trunk_a.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_3" id="17814469581126677521" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_4" id="17814548495305815085" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_5" id="17814529895041683713" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="tree_lane_pine_big" id="17777480125512228287" active="true" position="-14 -0.03 0" rotation="0 0.906308 -0 -0.422618" scale="1.2 1.2 1.2" tags="breakable_tree">
+     <Entity name="pine_a_1" id="17777548493268188223" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_2" id="17777582723107410458" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_a" material_path="./project/car_playground_resources/pine_tree_01_trunk_a.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_3" id="17776624128148845773" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_4" id="17776593900718958922" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_5" id="17776657785660252175" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="tree_lane_olive" id="18370576731341789094" active="true" position="-14 -0.03 45" rotation="0 0.996195 -0 -0.0871558" scale="1.5 1.5 1.5" tags="breakable_tree">
+     <Entity name="olive_a_1" id="18370653146049555811" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="olive_a_2" id="18370669017521191797" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="1" material_name="olive_foliage" material_path="./project/car_playground_resources/olive_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="olive_a_3" id="18370656962974556331" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
    </Entity>

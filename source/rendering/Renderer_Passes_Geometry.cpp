@@ -56,6 +56,21 @@ namespace spartan
             "distance from the car in metres within which pressed grass stays down (1 to 52)");
         TConsoleVar<float> cvar_grass_track_recovery("r.grass_track_recovery", 0.05f,
             "grass recovery rate after the car leaves, in inverse seconds");
+        // 12.5 cm cells, enough for a single leaf to catch a bumper or a shin
+        constexpr uint32_t vegetation_interaction_resolution = 512;
+        constexpr float vegetation_interaction_size = 64.0f;
+        TConsoleVar<float> cvar_vegetation_frequency("r.vegetation_interaction_frequency", 1.6f,
+            "natural frequency in hz at which pushed foliage swings back");
+        TConsoleVar<float> cvar_vegetation_damping("r.vegetation_interaction_damping", 0.2f,
+            "damping ratio of pushed foliage, lower values oscillate longer before settling");
+        // Matches VegetationInteractor in vegetation_interaction.hlsl.
+        struct VegetationInteractorGpu
+        {
+            Vector4 center_radius;
+            Vector4 right;
+            Vector4 forward;
+            Vector4 velocity;
+        };
         TConsoleVar<bool> cvar_shadows_gpu_driven("r.shadows_gpu_driven", true,
             "cull shadow casters per atlas slice and instance on the gpu; disable for the cpu path");
         // upper bound of (slice, instance) survivors, 8 bytes each
@@ -2542,7 +2557,7 @@ namespace spartan
                     RHI_Format::R32G32B32A32_Float, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
                     i == 0 ? "grass_tracks_a" : "grass_tracks_b");
             history.contacts = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,
-                sizeof(GrassWheelContact), 4, nullptr, false, "grass_wheel_contacts");
+                sizeof(GrassWheelContact), surface_contact_max, nullptr, false, "grass_wheel_contacts");
         }
 
         const Vector3 center = interaction.center;
@@ -2566,9 +2581,9 @@ namespace spartan
 
         const float frame_dt = static_cast<float>(Timer::GetDeltaTimeSec());
         const float dt = paused ? 0.0f : min(frame_dt, 0.1f);
-        array<GrassWheelContact, 4> contacts{};
+        array<GrassWheelContact, surface_contact_max> contacts{};
         uint32_t count = 0;
-        for (uint32_t i = 0; i < 4; ++i)
+        for (uint32_t i = 0; i < surface_contact_max; ++i)
         {
             const auto& sample = interaction.contacts[i];
             if (paused || !sample.valid) { history.wheel_valid[i] = false; continue; }
@@ -2625,6 +2640,124 @@ namespace spartan
         RHI_CommandList::EndPass();
         history.current = current;
         history.valid = true;
+    }
+
+    void Renderer::UpdateFrameCb_VegetationInteraction()
+    {
+        // the field belongs to the primary view, a preview keeps sampling the last one
+        auto& state = m_pass_state.vegetation_interaction;
+        if (IsSecondaryViewActive())
+        {
+            Renderer::view().frame.vegetation_field          = state.mapping;
+            Renderer::view().frame.vegetation_field_previous = state.mapping_previous;
+            return;
+        }
+
+        state.dispatch = false;
+        const auto& interaction = GetSurfaceInteraction();
+        const bool simulating = Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused);
+        RHI_Shader* shader = GetShader(Renderer_Shader::vegetation_interaction_c);
+        if (!simulating || !interaction.id || !shader || !shader->IsCompiled())
+        {
+            state.valid            = false;
+            state.mapping          = Vector4::Zero;
+            state.mapping_previous = Vector4::Zero;
+            Renderer::view().frame.vegetation_field          = state.mapping;
+            Renderer::view().frame.vegetation_field_previous = state.mapping_previous;
+            return;
+        }
+
+        if (!state.fields[0])
+        {
+            for (uint32_t i = 0; i < 2; ++i)
+            {
+                state.fields[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
+                    vegetation_interaction_resolution, vegetation_interaction_resolution, 1, 1,
+                    RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
+                    i == 0 ? "vegetation_interaction_a" : "vegetation_interaction_b");
+            }
+            state.interactors = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,
+                sizeof(VegetationInteractorGpu), surface_interactor_max, nullptr, false, "vegetation_interactors");
+        }
+
+        const float cell = vegetation_interaction_size / vegetation_interaction_resolution;
+        const Vector3 center = interaction.center;
+        const Vector2 origin(floorf(center.x / cell) * cell - vegetation_interaction_size * 0.5f,
+                             floorf(center.z / cell) * cell - vegetation_interaction_size * 0.5f);
+
+        const bool history_valid = state.valid;
+        state.current            = 1 - state.current;
+        state.origins[state.current] = origin;
+        state.mapping_previous   = history_valid ? state.mapping : Vector4::Zero;
+        state.mapping            = Vector4(origin.x, origin.y, 1.0f / vegetation_interaction_size, 1.0f);
+        state.dispatch           = true;
+        state.valid              = history_valid; // becomes true once this frame's field is written
+
+        Renderer::view().frame.vegetation_field          = state.mapping;
+        Renderer::view().frame.vegetation_field_previous = state.mapping_previous;
+    }
+
+    void Renderer::Pass_Vegetation_Interaction()
+    {
+        auto& state = m_pass_state.vegetation_interaction;
+        if (!state.dispatch)
+            return;
+        state.dispatch = false;
+
+        RHI_Shader* shader = GetShader(Renderer_Shader::vegetation_interaction_c);
+        if (!shader || !shader->IsCompiled())
+            return;
+
+        const auto& interaction = GetSurfaceInteraction();
+        array<VegetationInteractorGpu, surface_interactor_max> interactors{};
+        const uint32_t count = min(interaction.interactor_count, surface_interactor_max);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const SurfaceInteractor& source = interaction.interactors[i];
+            // the field is horizontal, a body's footprint is its box seen from above
+            Vector3 right(source.right.x, 0.0f, source.right.z);
+            if (right.LengthSquared() < 0.01f)
+                right = Vector3::Right;
+            right.Normalize();
+            const Vector3 forward(-right.z, 0.0f, right.x);
+            interactors[i].center_radius = Vector4(source.center.x, source.center.y, source.center.z, source.radius);
+            interactors[i].right         = Vector4(right.x, right.y, right.z, source.extents.x);
+            interactors[i].forward       = Vector4(forward.x, forward.y, forward.z, source.extents.z);
+            interactors[i].velocity      = Vector4(source.velocity.x, source.velocity.y, source.velocity.z, 0.0f);
+        }
+
+        const bool paused   = Engine::IsFlagSet(EngineMode::Paused);
+        const float dt      = paused ? 0.0f : min(static_cast<float>(Timer::GetDeltaTimeSec()), 0.1f);
+        const uint32_t current  = state.current;
+        const uint32_t previous = 1 - current;
+        const float cell        = vegetation_interaction_size / vegetation_interaction_resolution;
+
+        state.writing = true;
+        RHI_CommandList::BeginPass("vegetation_interaction");
+        {
+            if (!state.valid)
+                RHI_CommandList::ClearTexture(state.fields[previous].get(), Color(0, 0, 0, 0));
+            if (count)
+                RHI_CommandList::UpdateBuffer(state.interactors.get(), 0, count * sizeof(VegetationInteractorGpu), interactors.data(), false);
+            RHI_CommandList::SetShader(shader);
+            RHI_CommandList::SetBuffer("vegetation_interactors", state.interactors.get());
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, state.fields[previous].get());
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, state.fields[current].get());
+            m_pcb_pass_cpu = {};
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::origin, state.origins[current]);
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::cell_size, cell);
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::history_valid, state.valid);
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::origin_previous, state.origins[previous]);
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::interactor_count, count);
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::delta_time, dt);
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::frequency, max(cvar_vegetation_frequency.GetValue(), 0.05f));
+            m_pcb_pass_cpu.set(pass_vegetation_interaction::damping, clamp(cvar_vegetation_damping.GetValue(), 0.0f, 4.0f));
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch(state.fields[current].get());
+        }
+        RHI_CommandList::EndPass();
+        state.writing = false;
+        state.valid   = true;
     }
 
     void Renderer::Pass_Grass_Draw()

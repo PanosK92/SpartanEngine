@@ -220,6 +220,16 @@ struct FrameBufferData
     SHARED_FLOAT4 grass_far_gate;  // x = biome min (negative ignores), y = max slope cos, z = ground mask bits, w = mask channel
     SHARED_FLOAT4 grass_far_patch; // x = patch coverage, y = patch edge, zw = unused
 
+    // vegetation interaction field, xy = world xz of the field origin, z = 1 / world size, w = 1 when valid
+    SHARED_FLOAT4 vegetation_field;
+    SHARED_FLOAT4 vegetation_field_previous;
+
+    // tire ruts, a toroidal field around the camera, see TerrainDeformation.h
+    // field xy = world xz of the window min, z = 1 / window size, w = 1 when anything is pressed in
+    // bounds xy = min xz, zw = max xz of the pressed cells
+    SHARED_FLOAT4 terrain_deformation;
+    SHARED_FLOAT4 terrain_deformation_bounds;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {
@@ -334,6 +344,18 @@ namespace pass_grass_interaction
     static const SHARED_UINT track_center    = 8;  // float2
     static const SHARED_UINT track_radius    = 10; // float
     static const SHARED_UINT track_recovery  = 11; // float
+}
+
+namespace pass_vegetation_interaction
+{
+    static const SHARED_UINT origin           = 0; // float2
+    static const SHARED_UINT cell_size        = 2; // float
+    static const SHARED_UINT history_valid    = 3; // bool
+    static const SHARED_UINT origin_previous  = 4; // float2
+    static const SHARED_UINT interactor_count = 6; // uint
+    static const SHARED_UINT delta_time       = 7; // float
+    static const SHARED_UINT frequency        = 8; // float, hz
+    static const SHARED_UINT damping          = 9; // float, ratio
 }
 
 // the early and late cull run the same kernels, history_hiz says whether the early cull tested against

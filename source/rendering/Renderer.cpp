@@ -2470,6 +2470,8 @@ namespace spartan
         UpdateFrameCb_FeatureBits();
         UpdateFrameCb_StereoXr();
         UpdateFrameCb_RadialBlurHubs();
+        UpdateFrameCb_VegetationInteraction();
+        UpdateFrameCb_TerrainDeformation();
 
         // a secondary view renders a different camera into the primary frame, keeping the
         // primary history here means every pixel reports a huge velocity, which reads as
@@ -4923,6 +4925,7 @@ namespace spartan
     {
         uint64_t render_id       = 0;
         uint64_t transform_revision = 0;
+        uint64_t instance_revision  = 0;
         Vector3 cull_center;
         float cull_radius       = 0.0f;
         uint64_t blas_address   = 0;
@@ -4982,6 +4985,7 @@ namespace spartan
             cache.group_count != static_cast<uint32_t>(render->GetInstanceBoundsGroups().size()) ||
             cache.cull_radius != radius ||
             cache.transform_revision != entity->GetTransformRevision() ||
+            cache.instance_revision != render->GetInstanceRevision() ||
             Vector3::DistanceSquared(cache.cull_center, camera_position) > hysteresis * hysteresis;
         if (!stale)
         {
@@ -4991,6 +4995,7 @@ namespace spartan
         cache.cull_center    = camera_position;
         cache.render_id      = render->GetObjectId();
         cache.transform_revision = entity->GetTransformRevision();
+        cache.instance_revision  = render->GetInstanceRevision();
         cache.cull_radius    = radius;
         cache.blas_address   = blas_address;
         cache.material_index = material->GetIndex();
@@ -6045,6 +6050,20 @@ namespace spartan
             RHI_CommandList::SetTexture("tex_wind_field", tex_wind);
         }
 
+        // pushed grass, shrubs and branches, sampled by every vegetation vertex path
+        if (is_graphics_queue)
+        {
+            const auto& vegetation = m_pass_state.vegetation_interaction;
+            const bool readable    = vegetation.valid && !vegetation.writing && vegetation.fields[0];
+            RHI_Texture* black     = GetStandardTexture(Renderer_StandardTexture::Black);
+            RHI_CommandList::SetTexture("tex_vegetation_interaction", readable ? vegetation.fields[vegetation.current].get() : black);
+            RHI_CommandList::SetTexture("tex_vegetation_interaction_previous", readable ? vegetation.fields[1 - vegetation.current].get() : black);
+
+            // tire ruts, read by the terrain tessellation, the g-buffer and the grass
+            RHI_Texture* deformation = m_pass_state.terrain_deformation.texture.get();
+            RHI_CommandList::SetTexture("tex_terrain_deformation", IsTerrainDeformationReady() ? deformation : black);
+        }
+
         // the occupied car's water, read by the g-buffer
         if (is_graphics_queue)
         {
@@ -6391,6 +6410,8 @@ namespace spartan
         if (!secondary_render_root_active)
         {
             Pass_WindField();
+            Pass_Vegetation_Interaction();
+            Pass_TerrainDeformation();
             Pass_CarRain();
             Pass_Ocean();
         }

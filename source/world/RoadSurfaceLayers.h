@@ -3,28 +3,32 @@
 // https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 // Commercial use requires written permission and negotiated payment terms.
 #pragma once
-#include "GameWorld.h"
+#include "WorldSystems.h"
 #include "resource/ResourceCache.h"
 #include "rendering/Material.h"
 #include "rhi/RHI_Texture.h"
-namespace spartan::island_road_surface
+namespace spartan::layered_road_surface
 {
-    // The island opts into a layered road finish; generic spline materials keep
-    // their existing UV/profile contract, including editor test fixtures.
+    // A world opts into a layered road finish for the splines under one parent; generic
+    // spline materials keep their existing UV/profile contract, including editor test fixtures.
     inline bool Enabled(Entity* entity)
     {
-        return game::GetIslandFeatures() && entity && entity->GetParent()
-            && entity->GetParent()->GetObjectName()=="roads";
+        const world_systems::Config& config=world_systems::GetConfig();
+        return !config.layered_roads_parent.empty() && entity && entity->GetParent()
+            && entity->GetParent()->GetObjectName()==config.layered_roads_parent;
     }
 
     inline std::shared_ptr<Material> BaseMaterial(int layer)
     {
-        const char* names[]={"island_asphalt","island_road_paint","island_road_shoulder"};
-        auto material=ResourceCache::GetByName<Material>(names[layer]);
+        const world_systems::Config& config=world_systems::GetConfig();
+        const char* suffixes[]={"_asphalt","_road_paint","_road_shoulder"};
+        const std::string name=config.layered_roads_material_prefix+suffixes[layer];
+        auto material=ResourceCache::GetByName<Material>(name);
         if (material) return material;
         material=std::make_shared<Material>();
-        material->SetObjectName(names[layer]);
-        const std::string base="project/materials/island_roads/";
+        material->SetObjectName(name);
+        std::string base=config.layered_roads_material_dir;
+        if (!base.empty() && base.back()!='/') base+='/';
         const std::string asset=layer==2 ? "gravel_road" : "asphalt_track";
         const std::string size=layer==2 ? "2k" : "4k";
         auto texture=[&](MaterialTextureType type,const char* channel,const char* extension=".jpg")

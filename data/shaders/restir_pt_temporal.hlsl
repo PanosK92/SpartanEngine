@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_reservoir.hlsl"
 //==============================
 
+Texture2D<uint> tex_normal_previous : register(t87);
+
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
 float2 reproject_to_previous_frame(float2 current_uv)
@@ -34,7 +36,7 @@ bool is_temporal_sample_valid(
 {
     bool ok = evaluate_disocclusion(
         tex,
-        tex5,
+        tex_normal_previous,
         current_uv,
         prev_uv,
         current_pos,
@@ -69,7 +71,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 pos_ws    = restir_primary_position(uv);
     float3 normal_ws = get_normal(uv);
     float3 view_dir  = normalize(get_camera_position() - pos_ws);
-    float4 material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float4 material  = get_material(uv);
     float3 albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float  roughness = max(material.r, 0.04f);
     float  metallic  = material.g;

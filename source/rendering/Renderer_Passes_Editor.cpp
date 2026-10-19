@@ -75,21 +75,13 @@ namespace spartan
                 { ComponentType::Physics,        Renderer_StandardTexture::Gizmo_physics         },
                 { ComponentType::Spline,         Renderer_StandardTexture::Gizmo_spline          },
                 { ComponentType::SplineFollower, Renderer_StandardTexture::Gizmo_spline_follower },
-#ifdef SP_GAME
                 { ComponentType::Traffic,        Renderer_StandardTexture::Gizmo_traffic         },
-#endif
-#ifdef SP_GAME
                 { ComponentType::Pedestrians,    Renderer_StandardTexture::Gizmo_pedestrians     },
-#endif
                 { ComponentType::Navigation,     Renderer_StandardTexture::Gizmo_spline          },
                 { ComponentType::Animator,       Renderer_StandardTexture::Gizmo_animator        },
                 { ComponentType::Ragdoll,        Renderer_StandardTexture::Gizmo_ragdoll         },
-#ifdef SP_GAME
                 { ComponentType::SkidMarks,      Renderer_StandardTexture::Gizmo_skid_marks      },
-#endif
-#ifdef SP_GAME
                 { ComponentType::CarReset,       Renderer_StandardTexture::Gizmo_car_reset       },
-#endif
                 { ComponentType::Text3D,         Renderer_StandardTexture::Gizmo_text_3d         },
                 { ComponentType::Script,         Renderer_StandardTexture::Gizmo_script          },
             };

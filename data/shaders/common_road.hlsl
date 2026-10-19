@@ -38,7 +38,7 @@ float road_noise_soft(float2 p)
     return road_noise(p)*.5+road_noise(r*1.7+float2(31,7))*.5;
 }
 
-// Metres per asphalt texture repeat, must match island_road_surface::asphalt_repeat.
+// Metres per asphalt texture repeat, must match layered_road_surface::asphalt_repeat.
 static const float road_asphalt_repeat=1.5;
 
 // Island asphalt u is lateral metres / repeat from the road centre (Spline.cpp finish_uv) and

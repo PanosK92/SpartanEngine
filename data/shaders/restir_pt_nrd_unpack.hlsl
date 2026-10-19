@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "nrd/NRD.hlsli"
 //===============================
 
+Texture2D<uint> tex_normal_previous : register(t87);
+
 // unpacks nrd reblur diffuse output into restir_denoised (demodulated gi)
 // tex     = out_diff_radiance_hitdist
 // tex_uav = restir_denoised
@@ -33,7 +35,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
         float depth_prev = tex3.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
         float3 normal = get_normal(uv);
-        float3 normal_prev = tex5.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xyz;
+        float3 normal_prev = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(uv)]);
         float2 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy * buffer_frame.resolution_render * 0.5f;
         float z = linearize_depth(depth);
         bool valid = history.a >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&

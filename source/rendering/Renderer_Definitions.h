@@ -270,6 +270,9 @@ namespace spartan
 
         // nrd sigma local light shadows, texture2d array
         rt_shadows_local = 32,
+
+        // previous frame packed g-buffer normals, read by the restir disocclusion gates
+        gbuffer_normal_previous = 87,
     };
 
     enum class Renderer_BindingsUav : uint32_t
@@ -502,6 +505,7 @@ namespace spartan
         grass_blade_v,
         grass_gbuffer_p,
         grass_interaction_c,
+        vegetation_interaction_c,
         // gpu texture compression
         texture_compress_bc1_c,
         texture_compress_bc3_c,

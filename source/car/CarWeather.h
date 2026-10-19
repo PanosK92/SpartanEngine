@@ -7,7 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 #include "../rendering/SurfaceWater.h"
-namespace spartan::game
+namespace spartan
 {
     void TickCarWeather(float delta_time);
     void ClearCarWeather();

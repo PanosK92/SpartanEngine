@@ -8,7 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =============================
 #include "pch.h"
 #include "editor/Selection.h"
-#include "game/CameraController.h"
+#include "world/CameraController.h"
 #include "../EditorHistory.h"
 #include "Viewport.h"
 #include "AssetBrowser.h"

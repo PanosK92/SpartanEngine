@@ -19,6 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../font/Font.h"
 #include "../math/Quaternion.h"
 #include "../math/Rectangle.h"
+#include "../world/TerrainDeformation.h"
 #include <initializer_list>
 #include <type_traits>
 #include <tuple>
@@ -218,9 +219,33 @@ namespace spartan
                 bool valid = false;
                 bool previous_valid = false;
                 uint64_t vehicle_id = 0;
-                std::array<math::Vector3, 4> wheel_positions{};
-                std::array<bool, 4> wheel_valid{};
+                std::array<math::Vector3, surface_contact_max> wheel_positions{};
+                std::array<bool, surface_contact_max> wheel_valid{};
             } grass_interaction;
+
+            // transient deflection of grass, shrubs and low branches by any interactor, a spring per cell
+            struct VegetationInteraction
+            {
+                std::shared_ptr<RHI_Texture> fields[2];
+                std::shared_ptr<RHI_Buffer> interactors;
+                math::Vector2 origins[2] = {};
+                math::Vector4 mapping          = math::Vector4::Zero;
+                math::Vector4 mapping_previous = math::Vector4::Zero;
+                uint32_t current = 0;
+                bool valid = false;
+                bool dispatch = false;
+                bool writing = false; // the field is a uav, the global srv slots must not see it
+            } vegetation_interaction;
+
+            // tire ruts, the cpu field in TerrainDeformation is the source, this is its gpu mirror
+            struct TerrainDeformationState
+            {
+                std::shared_ptr<RHI_Texture> texture;
+                std::vector<TerrainDeformationUpload> uploads;
+                math::Vector4 mapping = math::Vector4::Zero;
+                math::Vector4 bounds  = math::Vector4::Zero;
+                bool was_simulating   = false;
+            } terrain_deformation;
 
             bool          terrain_enabled = false;
             TerrainParams terrain;

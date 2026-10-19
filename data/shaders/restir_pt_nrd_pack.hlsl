@@ -48,7 +48,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     float3 normal_ws = get_normal(uv);
-    float roughness  = max(tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r, 0.04f);
+    float roughness  = max(get_material(uv).r, 0.04f);
 
     // engine velocity is unjittered ndc delta (curr - prev), nrd wants uv motion as prev = curr + mv
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;

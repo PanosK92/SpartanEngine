@@ -7,9 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===============================
 #include "pch.h"
-#ifdef SP_GAME
 #include "CarPhysics.h"
-#endif
 #include "Car.h"
 #include "../profiling/Profiler.h"
 #include "../physics/PhysicsWorld.h"
@@ -32,7 +30,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Light.h"
 #include "../world/components/Physics.h"
 #include "../world/components/Render.h"
-#include "../game/components/CarReset.h"
+#include "../world/components/CarReset.h"
 #include "../world/components/SpawnPoint.h"
 #include "../world/Prefab.h"
 #include "../io/pugixml.hpp"

@@ -6,19 +6,17 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#ifdef SP_GAME
-#include "../car/CarPhysics.h"
-#endif
+#include "CarPhysics.h"
 #include "CarWeather.h"
-#include "../car/CarRain.h"
-#include "../car/Car.h"
+#include "CarRain.h"
+#include "Car.h"
 #include "../world/Weather.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Physics.h"
 using namespace std;
 using namespace spartan::math;
-namespace spartan::game
+namespace spartan
 {
     namespace
     {

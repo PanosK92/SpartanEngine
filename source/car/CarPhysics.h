@@ -163,6 +163,7 @@ namespace spartan
 
         void TickVehicleSubstep(float dt);
         void TickVehicleCheapSubstep(float dt);
+        void StampTerrainDeformation(float dt);
         car::Simulation* EnsureVehicleSimulation();
         void UpdateWheelTransforms();
         void UpdateTireDeformation(int wheel_index, bool grounded, TireDeformationBatch* batch = nullptr);

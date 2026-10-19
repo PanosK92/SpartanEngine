@@ -28,9 +28,7 @@ void ray_gen()
 #if DEBUG_RAY_TRACING == 1
         tex_uav[launch_id] = float4(0, 0, 1, 1);
 #else
-        tex_uav[launch_id]  = float4(0, 0, 0, 0);
-        tex_uav2[launch_id] = float4(0, 0, 0, 0);
-        tex_uav3[launch_id] = float4(0, 0, 0, 0);
+        tex_uav[launch_id] = float4(0, 0, 0, 0);
 #endif
         return;
     }
@@ -41,8 +39,7 @@ void ray_gen()
     float3 V         = normalize(get_camera_position() - pos_ws);
 
     // the lobe the tracer carries, its roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
-    float4 normal_sample   = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    MaterialParameters mat = material_parameters[unpack_material_index(normal_sample.a)];
+    MaterialParameters mat = material_parameters[get_material_index(uv)];
     float coat;
     float roughness = get_rt_reflection_roughness(uv, coat);
 
@@ -116,11 +113,8 @@ void ray_gen()
     uint barycentrics  = hit_record.barycentrics_packed;
     if (hit_distance < 0.0f)
     {
-        // zero distance marks a miss, the direction goes in position for sky sampling
-        tex_uav[launch_id]  = float4(ray.Direction, 0.0f);
-        tex_uav2[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        tex_uav3[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        tex_uav4[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        // zero distance marks a miss, the direction goes in position for sky sampling, shade reads nothing else
+        tex_uav[launch_id] = float4(ray.Direction, 0.0f);
         return;
     }
 

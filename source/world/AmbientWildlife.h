@@ -3,7 +3,7 @@
 // https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 // Commercial use requires written permission and negotiated payment terms.
 #pragma once
-#include "game/GameWorld.h"
+#include "WorldSystems.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/WildlifeMotion.h"
@@ -17,7 +17,7 @@
 #include <random>
 #include <unordered_map>
 
-namespace spartan::island_wildlife
+namespace spartan::ambient_wildlife
 {
     using namespace math;
 
@@ -516,7 +516,7 @@ namespace spartan::island_wildlife
 
     inline void Tick(float dt)
     {
-        if (!game::GetIslandFeatures() || !World::GetCamera()) return;
+        if (!world_systems::GetConfig().ambient_wildlife || !World::GetCamera()) return;
         Terrain* terrain = Terrain::FindActive();
         if (!terrain || !terrain->HasHeightfield()) return;
         const Vector3 viewer = World::GetCamera()->GetEntity()->GetPosition();
@@ -544,7 +544,7 @@ namespace spartan::island_wildlife
         {
             Clear(false);
             root = World::CreateEntity();
-            root->SetObjectName("island_wildlife");
+            root->SetObjectName("ambient_wildlife");
             root->SetTransient(true);
             root_id = root->GetObjectId();
         }

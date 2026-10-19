@@ -392,6 +392,9 @@ namespace spartan
         void UpdateFrameCb_FeatureBits();
         void UpdateFrameCb_StereoXr();
         void UpdateFrameCb_RadialBlurHubs();
+        void UpdateFrameCb_VegetationInteraction();
+        void UpdateFrameCb_TerrainDeformation();
+        bool IsTerrainDeformationReady();
         bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources, bool create_render, bool create_output, const char* label);
 
         // resources
@@ -479,6 +482,10 @@ namespace spartan
         void Pass_Grass_Populate();
         void Pass_Grass_Interaction();
         void Pass_Grass_Draw();
+        // passes - transient deflection of grass, shrubs and low branches by cars, people and any other interactor
+        void Pass_Vegetation_Interaction();
+        // passes - tire ruts, uploads the cpu field the terrain tessellation and the g-buffer read
+        void Pass_TerrainDeformation();
         // passes - wind field
         void Pass_WindField();
         // passes - water on the occupied car

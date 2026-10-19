@@ -582,6 +582,56 @@ void cache_mesh_tree_wind(DrawData draw, uint instance_index, uint cache_slot_pl
 #endif
 
 
+// deflection the interaction field holds at a world xz, cars, people and anything else push it
+float2 sample_vegetation_interaction(float2 world_xz, float time_offset)
+{
+    float4 mapping = time_offset < 0.0f ? buffer_frame.vegetation_field_previous : buffer_frame.vegetation_field;
+    if (mapping.w < 0.5f)
+        return 0.0f;
+
+    float2 uv = (world_xz - mapping.xy) * mapping.z;
+    if (any(uv <= 0.0f) || any(uv >= 1.0f))
+        return 0.0f;
+
+    if (time_offset < 0.0f)
+        return tex_vegetation_interaction_previous.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).xy;
+    return tex_vegetation_interaction.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).xy;
+}
+
+// moves a vertex by the field sampled at its rest position, flex is 0 where the plant is rigid
+// the stem keeps its length, so a pushed tip also drops, like a pendulum about the root
+void apply_vegetation_interaction(float2 rest_xz, float3 root, float3 up, float flex, float time_offset, inout float3 position_world)
+{
+    if (flex <= 0.0f)
+        return;
+
+    float2 push   = sample_vegetation_interaction(rest_xz, time_offset) * flex;
+    float push_sq = dot(push, push);
+    if (push_sq < 1e-8f)
+        return;
+
+    float3 offset = position_world - root;
+    float len     = length(offset);
+    float limit   = 0.85f * len;
+    if (push_sq > limit * limit)
+    {
+        push    *= limit * rsqrt(push_sq);
+        push_sq  = limit * limit;
+    }
+    float vertical  = saturate(dot(offset, up) / max(len, 1e-4f));
+    float drop      = (len - sqrt(max(len * len - push_sq, 0.0f))) * vertical;
+    position_world += float3(push.x, 0.0f, push.y) - up * drop;
+}
+
+// branches and leaves that stick out flex, the core and trunk stay rigid, and only the part of
+// the plant within reach of a body on the ground is touched
+float vegetation_flex(float3 rest_offset, float3 up)
+{
+    float height = dot(rest_offset, up);
+    float radius = length(rest_offset - up * height);
+    return smoothstep(0.08f, 0.7f, radius) * smoothstep(0.0f, 0.3f, height) * (1.0f - smoothstep(2.4f, 3.6f, height));
+}
+
 struct vertex_processing
 {
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
@@ -589,6 +639,7 @@ struct vertex_processing
         float  time          = (float)buffer_frame.time + time_offset;
         float3 instance_up   = normalize(transform[1].xyz);
         float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
+        float3 position_rest = position_world;
 
         float3 grass_press = 0.0f;
 #ifdef GRASS_INSTANCED
@@ -824,12 +875,27 @@ struct vertex_processing
                 }
             }
 #endif
+            // a blade is one point of the field, the whole blade leans from its root
+            apply_vegetation_interaction(instance_pos.xz, instance_pos, instance_up, h_cantilever, time_offset, position_world);
+
+            // the blade grows from the ground, inside a rut that is below the surface it was scattered on,
+            // a tire that sinks in crushes the blades into the soil instead of laying them over it
+            float rut = terrain_deformation_offset(instance_pos.xz);
+            if (rut < 0.0f)
+            {
+                float crush    = saturate(-rut / 0.025f) * 0.92f;
+                position_world = instance_pos + (position_world - instance_pos) * (1.0f - crush);
+            }
+            position_world.y += rut;
         }
         else if (surface.has_wind_animation())
         {
             float response = tree_wind_response();
             if (response <= 0.0f)
+            {
+                apply_vegetation_interaction(position_rest.xz, instance_pos, instance_up, vegetation_flex(position_rest - instance_pos, instance_up), time_offset, position_world);
                 return;
+            }
 
             // All submeshes share the root sample and physical height: bark and foliage
             // must agree even when their material bounds differ. No per-vertex gusts.
@@ -896,6 +962,8 @@ struct vertex_processing
             position_world = instance_pos + mul(trunk_rotation, offset);
             vertex.normal = normalize(mul(trunk_rotation, vertex.normal));
             vertex.tangent = normalize(mul(trunk_rotation, vertex.tangent));
+
+            apply_vegetation_interaction(position_rest.xz, instance_pos, instance_up, vegetation_flex(position_rest - instance_pos, instance_up), time_offset, position_world);
         }
     }
 };
@@ -1155,6 +1223,14 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
             card_width *= max(1.0f, length(root.xz - buffer_frame.camera_position.xz) / card_thin);
         }
         float  height   = material.local_height * length(transform[1].xyz);
+
+        // a tuft in a tire rut is pressed into the soil like the blades it stands for
+        float rut = terrain_deformation_offset(root.xz);
+        if (rut < 0.0f)
+        {
+            height *= 1.0f - saturate(-rut / 0.025f) * 0.92f;
+        }
+        root.y += rut;
         float3 right    = cross(card_up, buffer_frame.camera_position - root);
         right          *= rsqrt(max(dot(right, right), 1e-8f));
         float3 right_previous = cross(card_up, buffer_frame.camera_position_previous - root);

@@ -48,6 +48,8 @@ namespace spartan
 
         // spawned props carry this, the mesh prototypes they are cloned from never do
         const char* terrain_prop_tag = "terrain_prop";
+        // the variant root of every tree layer, each instance under it is one tree that can be knocked over
+        const char* terrain_tree_tag = "terrain_tree";
 
         bool is_terrain_prop_name(const string& name)
         {
@@ -736,6 +738,8 @@ namespace spartan
                     entity->SetObjectName(layer.name);
                     entity->SetTransient(true);
                     entity->AddTag(terrain_prop_tag);
+                    if (layer.flags & TerrainScatterFlags_Canopy)
+                        entity->AddTag(terrain_tree_tag);
                     entity->SetParent(tile);
                     entity->SetActive(true);
 
@@ -758,6 +762,8 @@ namespace spartan
                     entity->SetObjectName(layer.name);
                     entity->SetTransient(true);
                     entity->AddTag(terrain_prop_tag);
+                    if (layer.flags & TerrainScatterFlags_Canopy)
+                        entity->AddTag(terrain_tree_tag);
                     entity->SetParent(tile);
                     entity->AddComponent<Render>()->SetMesh(mesh);
                     parts.push_back(entity);

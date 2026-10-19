@@ -708,18 +708,113 @@ float3 reconstruct_normal_z(float2 normal)
     return float3(normal, z);
 }
 
+/*------------------------------------------------------------------------------
+    G-BUFFER NORMAL AND MATERIAL
+------------------------------------------------------------------------------*/
+// both targets are r32_uint, half the bandwidth of the rgba16f normal they replace
+// normal:   octahedral x 12 | octahedral y 12 | material index bits 0-7
+// material: roughness 8 | decal coverage or flake code 8 | occlusion 6 | metalness 4 | material index bits 8-13
+// a zero normal word is a cleared texel, the encoder never produces one
+float2 gbuffer_octahedral_encode(float3 n)
+{
+    n /= abs(n.x) + abs(n.y) + abs(n.z);
+    float2 e = n.xy;
+    if (n.z < 0.0f)
+    {
+        float2 sign_not_zero = float2(e.x >= 0.0f ? 1.0f : -1.0f, e.y >= 0.0f ? 1.0f : -1.0f);
+        e = (1.0f - abs(n.yx)) * sign_not_zero;
+    }
+    return e;
+}
+
+float3 gbuffer_octahedral_decode(float2 e)
+{
+    float3 n = float3(e, 1.0f - abs(e.x) - abs(e.y));
+    float  t = saturate(-n.z);
+    n.xy    += float2(n.x >= 0.0f ? -t : t, n.y >= 0.0f ? -t : t);
+    return normalize(n);
+}
+
+uint gbuffer_pack_normal(float3 normal, uint material_index)
+{
+    uint2 q    = (uint2)round(saturate(gbuffer_octahedral_encode(normal) * 0.5f + 0.5f) * 4095.0f);
+    uint  word = q.x | (q.y << 12u);
+    // every corner of the folded square is -z, so the corner at zero moves to the opposite one
+    word = word == 0u ? 0xFFFFFFu : word;
+    return word | ((material_index & 0xFFu) << 24u);
+}
+
+float3 gbuffer_unpack_normal(uint packed)
+{
+    if ((packed & 0xFFFFFFu) == 0u)
+    {
+        return 0.0f;
+    }
+
+    float2 q = float2(packed & 0xFFFu, (packed >> 12u) & 0xFFFu);
+    return gbuffer_octahedral_decode(q * (2.0f / 4095.0f) - 1.0f);
+}
+
+// occlusion and metalness are dithered into their narrow fields, the temporal resolve averages the steps away
+uint gbuffer_pack_material(float roughness, float metalness, float paint, float occlusion, uint material_index, float dither)
+{
+    uint r = (uint)round(saturate(roughness) * 255.0f);
+    uint p = (uint)round(saturate(paint) * 255.0f);
+    uint o = min((uint)(saturate(occlusion) * 63.0f + dither), 63u);
+    uint m = min((uint)(saturate(metalness) * 15.0f + dither), 15u);
+    return r | (p << 8u) | (o << 16u) | (m << 22u) | (((material_index >> 8u) & 0x3Fu) << 26u);
+}
+
+// same channel order as the former rgba8 target, r roughness, g metalness, b decal or flake code, a occlusion
+float4 gbuffer_unpack_material(uint packed)
+{
+    return float4(
+        float(packed & 0xFFu) / 255.0f,
+        float((packed >> 22u) & 0xFu) / 15.0f,
+        float((packed >> 8u) & 0xFFu) / 255.0f,
+        float((packed >> 16u) & 0x3Fu) / 63.0f
+    );
+}
+
+uint gbuffer_unpack_material_index(uint normal_packed, uint material_packed)
+{
+    return (normal_packed >> 24u) | ((material_packed >> 26u) << 8u);
+}
+
+// integer targets cannot be sampled, this is the texel a point clamp sampler would pick
+uint2 gbuffer_texel(float2 uv)
+{
+    uint2 size;
+    tex_normal.GetDimensions(size.x, size.y);
+    return (uint2)clamp(uv * float2(size), 0.0f, float2(size) - 1.0f);
+}
+
+uint2 gbuffer_texel(uint2 pos)
+{
+    uint2 size;
+    tex_normal.GetDimensions(size.x, size.y);
+    return min(pos, size - 1u);
+}
+
 float3 get_normal(uint2 pos)
 {
-    // load returns 0 for any value accessed out of bounds, so clamp.
-    pos.x = clamp(pos.x, 0, buffer_frame.resolution_render.x);
-    pos.y = clamp(pos.y, 0, buffer_frame.resolution_render.y);
-    
-    return tex_normal[pos].xyz;
+    return gbuffer_unpack_normal(tex_normal[gbuffer_texel(pos)]);
 }
 
 float3 get_normal(float2 uv)
 {
-    return tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0).xyz;
+    return gbuffer_unpack_normal(tex_normal[gbuffer_texel(uv)]);
+}
+
+float4 get_material(float2 uv)
+{
+    return gbuffer_unpack_material(tex_material[gbuffer_texel(uv)]);
+}
+
+uint get_material_index(float2 uv)
+{
+    uint2 texel = gbuffer_texel(uv);
+    return gbuffer_unpack_material_index(tex_normal[texel], tex_material[texel]);
 }
 
 float3 get_normal_view_space(uint2 pos)
@@ -1072,8 +1167,10 @@ float3 paint_flake_color(float3 pigment)
 // roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
 float get_rt_reflection_roughness(float2 uv, out float coat)
 {
-    float4 sample_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    uint   material_index   = unpack_material_index(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    uint2  texel            = gbuffer_texel(uv);
+    uint   material_packed  = tex_material[texel];
+    float4 sample_material  = gbuffer_unpack_material(material_packed);
+    uint   material_index   = gbuffer_unpack_material_index(tex_normal[texel], material_packed);
     MaterialParameters mat  = material_parameters[material_index];
     coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - gbuffer_decal_coverage(sample_material.b, mat)), sample_material.g);
     return lerp(sample_material.r, mat.clearcoat_roughness, coat);

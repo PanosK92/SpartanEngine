@@ -272,6 +272,15 @@ WorldEnvironment::WorldEnvironment(Editor* editor) : Widget(editor)
     m_flags         |= ImGuiWindowFlags_NoFocusOnAppearing;
 }
 
+void WorldEnvironment::OnTick()
+{
+    // closed at startup, restored from editor.ini, so its first appearance is a reopen and should come to the front
+    if (!m_visible)
+    {
+        m_appeared_once = true;
+    }
+}
+
 void WorldEnvironment::OnPreBegin()
 {
     // a layout saved before this panel existed has no place for it, so it joins the world panel instead of floating,

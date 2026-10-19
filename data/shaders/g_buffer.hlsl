@@ -18,8 +18,8 @@ Commercial use requires written permission and negotiated payment terms.
 struct gbuffer
 {
     float4 albedo   : SV_Target0;
-    float4 normal   : SV_Target1;
-    float4 material : SV_Target2;
+    uint   normal   : SV_Target1; // see gbuffer_pack_normal
+    uint   material : SV_Target2; // see gbuffer_pack_material
     float4 velocity : SV_Target3; // xy = ndc velocity, z = signed object mask (positive radial), w = previous linear depth
     float3 emissive : SV_Target4; // scene-linear emitted radiance, independent of reflectance
 };
@@ -590,8 +590,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         occlusion       = terrain.occlusion;
         terrain_shaded  = true;
 
+        // tire ruts strip the far grass carpet, the soil itself is drawn after the terrain blend
+        float rut_offset = terrain_deformation_offset(position_world.xz);
+        float rut_bare   = saturate(abs(rut_offset) / 0.01f);
+
         // past the blades the meadow is still there, it just has to be drawn as the carpet colour
         float grass_cover = grass_far_cover(position_world, vertex.normal, -camera_to_pixel / max(distance, 1e-4f), distance, max(length(dpdx), length(dpdy)));
+        grass_cover      *= 1.0f - rut_bare;
         if (grass_cover > 0.0f)
         {
             albedo.rgb = lerp(albedo.rgb, grass_far_color(position_world), grass_cover);
@@ -923,6 +928,25 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         }
     }
 
+    // tires peel the cover off and leave compacted, moister soil, the heaped edge is loose and fresh
+    // after the blend because a terrain without layers is coloured there, the ruts go on top of either path
+    if (surface.is_terrain())
+    {
+        float rut_offset = terrain_deformation_offset(position_world.xz);
+        if (rut_offset != 0.0f)
+        {
+            float2 gradient = terrain_deformation_gradient(position_world.xz);
+            normal          = normalize(normal + float3(-gradient.x, 0.0f, -gradient.y));
+            float pressed   = saturate(-rut_offset / 0.03f);
+            float churned   = saturate(rut_offset / 0.01f);
+            float3 soil     = lerp(float3(0.075f, 0.058f, 0.042f), albedo.rgb, 0.35f);
+            albedo.rgb      = lerp(albedo.rgb, soil, pressed * 0.85f);
+            albedo.rgb      = lerp(albedo.rgb, soil * 1.15f, churned * 0.6f);
+            roughness       = lerp(roughness, roughness * 0.8f, pressed);
+            occlusion      *= lerp(1.0f, 0.85f, pressed);
+        }
+    }
+
     float decal_coverage = apply_decals(vertex.decal_range, position_world, normalize(vertex.normal), dpdx_world, dpdy_world,
         albedo.rgb, normal, roughness, metalness, occlusion, emission);
 
@@ -1006,8 +1030,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // output
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, pack_material_index(pass_get_material_index()));
-    g_buffer.material = float4(roughness, metalness, material_has_flakes(material) ? gbuffer_pack_paint(flake_code, decal_coverage) : decal_coverage, occlusion);
+    uint  material_index = pass_get_material_index();
+    float paint          = material_has_flakes(material) ? gbuffer_pack_paint(flake_code, decal_coverage) : decal_coverage;
+    g_buffer.normal      = gbuffer_pack_normal(normal, material_index);
+    g_buffer.material    = gbuffer_pack_material(roughness, metalness, paint, occlusion, material_index, noise_interleaved_gradient(vertex.position.xy));
     // previous surface depth lets temporal reconstruction validate object motion along the view axis.
     float previous_depth = vertex.position_previous.w > 0.0f ?
         min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;

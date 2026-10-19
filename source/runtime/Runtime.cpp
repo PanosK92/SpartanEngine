@@ -10,9 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "core/Engine.h"
 #include "core/Window.h"
 #include "core/Timer.h"
-#ifdef SP_GAME
-#include "game/GameWorld.h"
-#endif
+#include "world/WorldSystems.h"
 #include "world/World.h"
 #include "rendering/Renderer.h"
 #include "profiling/Profiler.h"
@@ -31,9 +29,7 @@ namespace spartan
         }
         if (world.empty() || !FileSystem::Exists(world)) return 1;
         Engine::Initialize(args);
-#ifdef SP_GAME
-        game::Initialize();
-#endif
+        world_systems::Initialize();
         gui::initialize(false);
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoaded, [](sp_variant) { Engine::SetFlag(EngineMode::Playing, true); });
         World::LoadFromFile(world);

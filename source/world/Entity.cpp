@@ -29,14 +29,12 @@ Commercial use requires written permission and negotiated payment terms.
 #include "components/Text3D.h"
 #include "components/Animator.h"
 #include "components/Ragdoll.h"
-#ifdef SP_GAME
-#include "../game/components/Pedestrians.h"
-#include "../game/components/SkidMarks.h"
-#include "../game/components/Traffic.h"
-#include "../game/components/RaceDriver.h"
-#include "../game/components/RouteDriver.h"
-#include "../game/components/CarReset.h"
-#endif
+#include "components/Pedestrians.h"
+#include "components/SkidMarks.h"
+#include "components/Traffic.h"
+#include "components/RaceDriver.h"
+#include "components/RouteDriver.h"
+#include "components/CarReset.h"
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON

@@ -3,7 +3,7 @@
 // https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 // Commercial use requires written permission and negotiated payment terms.
 #pragma once
-#include "game/GameWorld.h"
+#include "WorldSystems.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Spline.h"
@@ -23,7 +23,7 @@
 #include <cstring>
 #include "../world/RoadGuardrail.h"
 
-namespace spartan::island_road_details
+namespace spartan::road_details
 {
     using namespace math;
     enum Finish { White, Red, Metal, Dark, Yellow, Galvanized, ReflectiveAmber, FinishCount };
@@ -715,7 +715,7 @@ namespace spartan::island_road_details
         // follows those roads; rediscovery and terrain cache-key sampling belong
         // to authoring, and resume when returning to the editor.
         if (Engine::IsFlagSet(EngineMode::Playing) && !World::IsPreparing()) return;
-        if (!game::GetIslandFeatures() || !Terrain::FindActive()) return;
+        if (!world_systems::GetConfig().road_details || !Terrain::FindActive()) return;
         // Junction solving can replace every road frame. Wait for its final meshes
         // before building furniture, otherwise startup repeatedly discards these batches.
         if (Spline::HasPendingRoadWork()) return;
@@ -723,7 +723,7 @@ namespace spartan::island_road_details
         if (!root)
         {
             Clear();
-            root=World::CreateEntity(); root->SetObjectName("island_road_details"); root->SetTransient(true);
+            root=World::CreateEntity(); root->SetObjectName("road_details"); root->SetTransient(true);
             root_id=root->GetObjectId(); MakeTriangle();
         }
         discover_time-=dt;
@@ -807,7 +807,7 @@ namespace spartan::island_road_details
     }
     inline bool PrepareWorld()
     {
-        if (!game::GetIslandFeatures() || !Terrain::FindActive()) return true;
+        if (!world_systems::GetConfig().road_details || !Terrain::FindActive()) return true;
         const Stopwatch slice;
         do
         {

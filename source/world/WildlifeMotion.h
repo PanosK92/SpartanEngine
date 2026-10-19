@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace spartan::island_wildlife
+namespace spartan::ambient_wildlife
 {
     struct Steering
     {

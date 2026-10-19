@@ -53,6 +53,9 @@ public:
     const char* GetTitle()             const { return m_title; }
     bool& GetVisible()                       { return m_visible; }
     void SetVisible(const bool is_visible)   { m_visible = is_visible; }
+    // panels that belong to the docked layout remember being open or closed across runs, like the layout itself
+    bool PersistsVisibility()          const { return m_is_window && m_dock != WidgetDock::None; }
+    void RestoreVisibility(const bool is_visible) { m_visible = is_visible; m_visible_saved = is_visible; }
     // applied on the next tick, docked windows ignore them
     void RequestSize(const spartan::math::Vector2& size)         { m_size_requested = size; }
     void RequestPosition(const spartan::math::Vector2& position) { m_position_requested = position; m_position_request_pending = true; }
@@ -87,4 +90,5 @@ protected:
 
 private:
     uint8_t m_var_push_count = 0;
+    bool m_visible_saved     = true;
 };

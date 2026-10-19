@@ -7,11 +7,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===================================
 #include "pch.h"
-#ifdef SP_GAME
 #include "../car/CarPhysics.h"
-#endif
 #include "editor/Selection.h"
-#include "game/CameraController.h"
+#include "world/CameraController.h"
 #include "../profiling/WorldWork.h"
 #include "../core/ThreadPool.h"
 #include "McpCommands.h"
@@ -48,7 +46,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/GameReady.h"
 #include "../world/WorldHelpers.h"
 #include "../io/pugixml.hpp"
-#include "../game/components/RaceDriver.h"
+#include "../world/components/RaceDriver.h"
 #include "../resource/ResourceCache.h"
 #include "../resource/import/ImageImporter.h"
 #include "../animation/Animation.h"

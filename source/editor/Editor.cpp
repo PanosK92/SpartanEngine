@@ -8,9 +8,9 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ====================
 #include "pch.h"
 #include "Selection.h"
-#include "game/GameWorld.h"
-#include "game/CarMcp.h"
-#include "game/CameraController.h"
+#include "world/WorldSystems.h"
+#include "mcp/McpCommandsCar.h"
+#include "world/CameraController.h"
 #include "Editor.h"
 #include "EditorImGui.h"
 #include "EditorLayout.h"
@@ -29,17 +29,68 @@ Commercial use requires written permission and negotiated payment terms.
 #include "mcp/McpCommandsComponents.h"
 #include "world/World.h"
 #include "rendering/Renderer.h"
+#include "imgui/source/imgui_internal.h"
 //===============================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
+namespace
+{
+    // a [Panel][Title] section in editor.ini per docked panel, imgui keeps the dock placement but not whether it was open
+    void* panel_settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, const char* name)
+    {
+        Widget* match = nullptr;
+        static_cast<Editor*>(handler->UserData)->ForEachWidget([&](Widget* widget)
+        {
+            if (!match && widget->PersistsVisibility() && strcmp(widget->GetTitle(), name) == 0)
+            {
+                match = widget;
+            }
+        });
+        return match;
+    }
+
+    void panel_settings_read_line(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line)
+    {
+        constexpr const char* key = "Visible=";
+        if (strncmp(line, key, strlen(key)) == 0)
+        {
+            static_cast<Widget*>(entry)->RestoreVisibility(atoi(line + strlen(key)) != 0);
+        }
+    }
+
+    void panel_settings_write_all(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buffer)
+    {
+        static_cast<Editor*>(handler->UserData)->ForEachWidget([&](Widget* widget)
+        {
+            if (widget->PersistsVisibility())
+            {
+                buffer->appendf("[%s][%s]\nVisible=%d\n\n", handler->TypeName, widget->GetTitle(), widget->GetVisible() ? 1 : 0);
+            }
+        });
+    }
+
+    // must run before the first frame, that is when imgui reads editor.ini
+    void register_panel_settings(Editor* editor)
+    {
+        ImGuiSettingsHandler handler;
+        handler.TypeName   = "Panel";
+        handler.TypeHash   = ImHashStr("Panel");
+        handler.ReadOpenFn = panel_settings_read_open;
+        handler.ReadLineFn = panel_settings_read_line;
+        handler.WriteAllFn = panel_settings_write_all;
+        handler.UserData   = editor;
+        ImGui::AddSettingsHandler(&handler);
+    }
+}
+
 Editor::Editor(const vector<string>& args)
 {
     spartan::Engine::Initialize(args);
-    spartan::game::Initialize();
-    spartan::game::RegisterCarMcpCommands();
+    spartan::world_systems::Initialize();
+    spartan::RegisterCarMcpCommands();
     spartan::mcp_diagnostics::Register();
     spartan::mcp_components::Register();
     editor_imgui::initialize();
@@ -54,6 +105,7 @@ Editor::Editor(const vector<string>& args)
         TextureViewer::GetVisualisedTextureId(), TextureViewer::GetVisualisationFlags(),
         TextureViewer::GetMipLevel(), TextureViewer::GetArrayLevel()}; };
     RegisterWidgets();
+    register_panel_settings(this);
     MenuBar::Initialize(this);
     editor_mcp::Register(this);
     if (!spartan::Engine::IsStartupSmokeTest())

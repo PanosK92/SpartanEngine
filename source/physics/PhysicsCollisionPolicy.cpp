@@ -6,12 +6,12 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#include "GameWorld.h"
-#include "../physics/PhysicsWorld.h"
+#include "PhysicsCollisionPolicy.h"
+#include "PhysicsWorld.h"
 
-namespace spartan::game
+namespace spartan
 {
-    void InitializeCollisionPolicy()
+    void InitializePhysicsCollisionPolicy()
     {
         PhysicsWorld::SetCollisionFilter([](uint32_t a, uint32_t group_a, uint32_t b, uint32_t group_b)
         {

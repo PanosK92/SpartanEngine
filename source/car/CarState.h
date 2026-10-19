@@ -193,6 +193,7 @@ namespace car
         float        pressure_bar         = 2.2f;
         float        damage               = 0.0f;
         float        water_depth          = 0.0f; // metres; environment/bench can author standing water
+        float        soil_resistance      = 0.0f; // N, compacting a fresh rut in soft ground
         float        dissipated_energy_j  = 0.0f;
     };
 

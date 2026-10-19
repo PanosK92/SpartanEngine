@@ -6,10 +6,8 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
-#ifdef SP_GAME
 #include "../car/CarPhysics.h"
-#endif
-#include "CarMcp.h"
+#include "McpCommandsCar.h"
 #include "mcp/McpCommands.h"
 #include "mcp/McpCommandsCommon.h"
 #include "car/AiDriver.h"
@@ -22,7 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/Entity.h"
 #include "world/components/Physics.h"
 #include "world/components/Spline.h"
-#include "components/RaceDriver.h"
+#include "world/components/RaceDriver.h"
 #include "world/components/Camera.h"
 #include "rendering/Renderer.h"
 #include "physics/PhysicsWorld.h"
@@ -1008,7 +1006,7 @@ namespace spartan
         }
 
     }
-    void game::RegisterCarMcpCommands()
+    void RegisterCarMcpCommands()
     {
         RegisterMcpCommand("vehicle_list", [](const McpRequest&) { return command_vehicle_list(); });
         RegisterMcpCommand("vehicle_get", command_vehicle_get);

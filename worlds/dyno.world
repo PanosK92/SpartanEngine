@@ -48,6 +48,7 @@
   <Resource file="dynocell_acoustic_panel_v2_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_acoustic_panel_v2_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_banner_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_banner_v2_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_block_wall_v2_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_block_wall_v2_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_blue_powdercoat_v2_packed_slot0.tex_packed.texture" />
@@ -57,6 +58,7 @@
   <Resource file="dynocell_ceiling_deck_v2_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_ceiling_deck_v2_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_checklist_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_checklist_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_diamond_plate_v2_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_diamond_plate_v2_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_epoxy_floor_v2_packed_slot0.tex_packed.texture" />
@@ -70,6 +72,7 @@
   <Resource file="dynocell_led_panel_v2_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_led_panel_v2_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_power_panel_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_power_panel_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_red_gloss_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_red_gloss_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_roller_door_v2_packed_slot0.tex_packed.texture" />
@@ -77,10 +80,15 @@
   <Resource file="dynocell_safety_yellow_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_safety_yellow_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_screen_data_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_screen_data_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_screen_graph_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_screen_graph_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_sign_danger_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_sign_danger_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_sign_fire_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_sign_fire_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_sign_hearing_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_sign_hearing_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_strap_webbing_packed_slot0.tex_packed.texture" />
   <Resource file="dynocell_strap_webbing_packed_slot0.tex_packed_2.texture" />
   <Resource file="dynocell_white_plastic_packed_slot0.tex_packed.texture" />
@@ -192,8 +200,8 @@
   <Entity name="dyno_car" id="9106000000000000054" active="true" position="0 1.05 0" rotation="0 0 0 1" scale="1 1 1" tags="player_car,current_car,focal_point">
    <prefab type="car" file="project/cars/ferrari_laferrari.car" drivable="true" telemetry="false" paint_color_r="0.39" paint_color_b="0.01" paint_preset="metallic" paint_color_g="0.02" camera_follows="false" dyno="true" />
   </Entity>
-  <Entity name="inspection_camera" id="9106000000000000055" active="true" position="-2.72044 2.93499 1.18346" rotation="-0.0394705 0.213651 0.00863978 0.976074" scale="1 1 1">
-   <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="800" fov_horizontal="1.21999979" aspect_ratio_override="0" near_plane="0.100000001" far_plane="200" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+  <Entity name="inspection_camera" id="9106000000000000055" active="true" position="12.6492 1.87101 -1.09308" rotation="-0.0305533 0.542131 -0.019731 -0.839506" scale="1 1 1">
+   <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="800" fov_horizontal="1.21999967" aspect_ratio_override="0" near_plane="0.100000001" far_plane="200" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
   </Entity>
   <Entity name="dyno_cell_shell" id="17829438480094925706" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="floor" id="17497741837774535008" active="true" position="0 -0.2 0" rotation="0 0 0 1" scale="1 1 1">
@@ -665,10 +673,10 @@
    <Entity name="window_head" id="10244213398374266592" active="true" position="9.15 2.52 0" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="control_room_2_window_head_095dbead" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_2_window_head_095dbead.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="window_jamb_a" id="8585040471522270229" active="true" position="9.15 1.8 -2.53" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="window_jamb_a" id="8585040471522270229" active="true" position="9.15 1.8 -2.52111" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="control_room_3_window_jamb_a_6e3c9885" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_3_window_jamb_a_6e3c9885.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="window_jamb_b" id="2635066725998923914" active="true" position="9.15 1.8 2.53" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="window_jamb_b" id="2635066725998923914" active="true" position="9.18 1.8055 2.49553" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="control_room_4_window_jamb_b_6e3c9885" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_4_window_jamb_b_6e3c9885.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="window_mullion_a" id="2725423172385039569" active="true" position="9.15 1.8 -0.83" rotation="0 0 0 1" scale="1 1 1">
@@ -1005,7 +1013,7 @@
    <Entity name="louvre_l_side_b" id="10117091659913928080" active="true" position="-4.83 3.9 7.94" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="dyno_cell_dressing_7_louvre_l_side_b_affc1262" mesh_path="project/mcp/blockout/meshes/dyno_dressing/dyno_cell_dressing_7_louvre_l_side_b_affc1262.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="louvre_l_slats" id="9056606686386299812" active="true" position="-5.6 3.42 7.94" rotation="-0.300706 0 0 0.953717" scale="1 1 1">
+   <Entity name="louvre_l_slats" id="9056606686386299812" active="true" position="-5.6 3.41001 7.9284" rotation="0.00714731 0 0 0.999974" scale="1 1 1">
     <render mesh_name="dyno_cell_dressing_8_louvre_l_slats_dbbddd37" mesh_path="project/mcp/blockout/meshes/dyno_dressing/dyno_cell_dressing_8_louvre_l_slats_dbbddd37.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="louvre_r_back" id="9386148170824671425" active="true" position="5.6 3.9 7.99" rotation="0 0 0 1" scale="1 1 1">
@@ -1023,7 +1031,7 @@
    <Entity name="louvre_r_side_b" id="7385283435418785816" active="true" position="6.37 3.9 7.94" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="dyno_cell_dressing_13_louvre_r_side_b_affc1262" mesh_path="project/mcp/blockout/meshes/dyno_dressing/dyno_cell_dressing_13_louvre_r_side_b_affc1262.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="louvre_r_slats" id="7877126187787903671" active="true" position="5.6 3.42 7.94" rotation="-0.300706 0 0 0.953717" scale="1 1 1">
+   <Entity name="louvre_r_slats" id="7877126187787903671" active="true" position="5.61 3.4079 7.94405" rotation="-0.00829373 0 0 0.999966" scale="1 1 1">
     <render mesh_name="dyno_cell_dressing_14_louvre_r_slats_dbbddd37" mesh_path="project/mcp/blockout/meshes/dyno_dressing/dyno_cell_dressing_14_louvre_r_slats_dbbddd37.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sign_danger_front" id="6836339755876156231" active="true" position="3.6 2.1 -7.99" rotation="0 0 0 1" scale="1 1 1">

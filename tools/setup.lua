@@ -37,12 +37,12 @@ local FIDELITYFX_FILES = {
 }
 
 -- DLSS 4.5 Super Resolution; headers are vendored in third_party/dlss.
-local DLSS_VERSION = "310.9.1"
+local DLSS_VERSION = "310.9.16"
 local DLSS_URL = "https://raw.githubusercontent.com/NVIDIA/DLSS/v" .. DLSS_VERSION .. "/lib/Windows_x86_64/"
 -- Keep the KHR static MT/MTd libraries used by both graphics backends.
 local DLSS_FILES = {
     { source = "rel/nvngx_dlss.dll", destination = "nvngx_dlss.dll",
-      sha256 = "3975567b8943c53acce397f2b72380092f84f162d00b0d2c7d08a1025c563983" },
+      sha256 = "d00b5b0ab29c3ca101b70c3a5ecb3a01b7ef33766a3383a28a18623083e6123e" },
     { source = "khr/x64/nvsdk_ngx_khr_s.lib", destination = "nvsdk_ngx_s.lib",
       sha256 = "2534d5fb31a38a7b37b11869272915d1f18c4b484ffd61a0b36956bab9ab739e" },
     { source = "khr/x64/nvsdk_ngx_khr_s_dbg.lib", destination = "nvsdk_ngx_s_dbg.lib",

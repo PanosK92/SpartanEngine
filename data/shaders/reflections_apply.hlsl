@@ -251,9 +251,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return; // sky
     }
 
-    float4 sample_normal   = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-    float4 sample_material = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-    MaterialParameters mat = material_parameters[unpack_material_index(sample_normal.a)];
+    uint2  texel           = gbuffer_texel(uv);
+    uint   normal_packed   = tex_normal[texel];
+    uint   material_packed = tex_material[texel];
+    float4 sample_material = gbuffer_unpack_material(material_packed);
+    MaterialParameters mat = material_parameters[gbuffer_unpack_material_index(normal_packed, material_packed)];
     bool is_water_pixel    = (mat.flags & uint(1U << 13)) != 0;
     bool is_glass_pixel    = alpha > 0.0f && alpha < 1.0f;
 
@@ -269,7 +271,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float  depth               = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
         float3 position            = get_position(depth, render_uv_to_screen_uv(uv));
         float3 camera_to_pixel     = normalize(position - get_camera_position());
-        float3 normal              = sample_normal.xyz;
+        float3 normal              = gbuffer_unpack_normal(normal_packed);
         float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
         float3 albedo              = sample_albedo.rgb;
         float  metallic            = sample_material.g;
