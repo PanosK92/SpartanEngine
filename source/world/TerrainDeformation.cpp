@@ -200,6 +200,7 @@ namespace spartan
         constexpr float repose_dry    = 0.675f; // tan 34 degrees
         constexpr float repose_wet    = 1.6f;   // tan 58 degrees
         constexpr float wash_rate     = 0.7f;   // 1/s under a running swash sheet, a print lasts two or three waves
+        constexpr float firm_give     = 0.5f;   // loam and meadow keep half the rut sand takes
 
         TerrainDeformationSand sand_band;
         mutex sand_lock;
@@ -418,6 +419,7 @@ namespace spartan
         const float radius   = clamp(stamp.radius, 0.15f, 1.0f);
         const float diameter = radius * 2.0f;
         const Soil soil      = soil_at(get_sand_band(), stamp.position, stamp.normal.y);
+        const float give     = lerp_f(firm_give, 1.0f, soil.sand);
 
         // rigid wheel sinkage, z = (3 W / ((3 - n) (kc + b kphi) sqrt(D)))^(2 / (2n + 1)), heavier, narrower
         // and smaller wheels all sink further
@@ -428,7 +430,7 @@ namespace spartan
         const float k_plate = soil.kc / width + soil.kphi;
         const float p_tire  = max(stamp.pressure, 0.3f) * 100000.0f + carcass_pressure;
         const float z_plate = powf(p_tire / k_plate, 1.0f / soil.n);
-        float depth         = min(z_rigid, z_plate) * softness;
+        float depth         = min(z_rigid, z_plate) * softness * give;
         depth               = min(depth, min(depth_max, radius * 0.5f));
         if (!isfinite(depth) || depth < 0.002f)
         {
@@ -468,7 +470,7 @@ namespace spartan
         const float slip_speed   = fabsf(stamp.tread_speed) - ground_speed;
         // dry sand has no cohesion to resist the tread, a spinning tire buries itself in it
         const float loose        = lerp_f(1.0f, 2.5f, soil.sand * (1.0f - soil.wet));
-        const float dig          = slip_speed > 1.0f ? min(slip_speed - 1.0f, 10.0f) * 0.004f * loose * stamp.dt : 0.0f;
+        const float dig          = slip_speed > 1.0f ? min(slip_speed - 1.0f, 10.0f) * 0.004f * loose * give * stamp.dt : 0.0f;
 
         State& s = state();
         lock_guard<mutex> guard(s.lock);

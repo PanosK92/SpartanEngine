@@ -64,5 +64,16 @@ namespace spartan
         static float GetResidueMass(); // milligrams
         static const std::vector<CarRainDropGpu>& GetDrops();
         static const std::vector<CarRainTexelGpu>& GetTexels();
+
+        // the baked atlas, the dirt on the car (CarDirt.h) lives in the same texels, positions and normals are car local
+        static Entity* GetBakedRoot();
+        static uint32_t GetTexelCount();
+        static const std::vector<uint32_t>& GetPaintTexels(); // every texel of paint that belongs to its own map
+        static math::Vector3 GetBoxMax();
+        static math::Vector3 GetTexelNormal(uint32_t texel);
+        static math::Vector3 GetTexelPoint(uint32_t texel);
+        // the texel of paint under a point, found through the map the normal looks along, false when the paint there is
+        // further than tolerance from the point or belongs to nothing the maps see
+        static bool FindTexel(const math::Vector3& point, const math::Vector3& normal, float tolerance, uint32_t& texel);
     };
 }

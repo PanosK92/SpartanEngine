@@ -953,6 +953,7 @@ namespace spartan
             if (Camera* component = camera->GetComponent<Camera>())
             {
                 CameraController::Get(*component).ResetFpsMotion();
+                component->SetFovHorizontalDeg(car_camera::base_fov_deg);
             }
             camera->SetParent(default_camera);
             camera->SetRotationLocal(math::Quaternion::Identity);
@@ -1371,6 +1372,7 @@ namespace spartan
             if (Camera* component = camera->GetComponent<Camera>())
             {
                 CameraController::Get(*component).ResetFpsMotion();
+                component->SetFovHorizontalDeg(car_camera::base_fov_deg);
             }
             camera->SetParent(default_camera);
             camera->SetRotationLocal(math::Quaternion::Identity);
@@ -1456,6 +1458,7 @@ namespace spartan
         if (Camera* component = camera->GetComponent<Camera>())
         {
             CameraController::Get(*component).ResetFpsMotion();
+            component->SetFovHorizontalDeg(car_camera::base_fov_deg);
         }
 
         if (m_current_view == CarView::Chase)
@@ -2940,13 +2943,13 @@ namespace spartan
         }
 
         Physics* car_physics = m_vehicle_entity->GetComponent<Physics>();
-        const float speed = car_physics ? car_physics->GetLinearVelocity().Length() : 0.0f;
-        m_chase_camera.Update(m_vehicle_entity->GetPosition(), m_vehicle_entity->GetForward(),
-            speed, static_cast<float>(Timer::GetDeltaTimeRealSec()), m_camera_wind_shake);
+        const math::Vector3 velocity = car_physics ? car_physics->GetLinearVelocity() : math::Vector3(0.0f);
+        m_chase_camera.Update(m_vehicle_entity->GetPosition(), m_vehicle_entity->GetForward(), velocity,
+            static_cast<float>(Timer::GetDeltaTimeRealSec()), m_camera_wind_shake, m_camera_speed_effects);
 
         camera->SetPosition(m_chase_camera.position);
         if (Camera* camera_component = camera->GetComponent<Camera>())
-            camera_component->SetFovHorizontalDeg(90.0f);
+            camera_component->SetFovHorizontalDeg(m_chase_camera.fov_deg);
         const math::Vector3 look_direction = (m_chase_camera.look_at - m_chase_camera.position).Normalized();
         camera->SetRotation(math::Quaternion::FromLookRotation(look_direction, math::Vector3::Up));
     }

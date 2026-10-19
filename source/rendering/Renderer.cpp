@@ -1546,6 +1546,10 @@ namespace spartan
             const auto& texels = Renderer::GetSurfaceWater().texels;
             const uint32_t texel_count            = min(static_cast<uint32_t>(texels.size()), SurfaceWater::texels_max);
             upload(GetBuffer(Renderer_Buffer::CarRainTexels), m_frame_resource_index * SurfaceWater::texels_max * sizeof(SurfaceWaterTexel), texel_count * sizeof(SurfaceWaterTexel), texels.data());
+
+            const auto& dirt_texels      = Renderer::GetSurfaceWater().dirt_texels;
+            const uint32_t dirt_count    = min(static_cast<uint32_t>(dirt_texels.size()), SurfaceWater::dirt_texels_max);
+            upload(GetBuffer(Renderer_Buffer::CarDirtTexels), m_frame_resource_index * SurfaceWater::dirt_texels_max * sizeof(SurfaceDirtTexel), dirt_count * sizeof(SurfaceDirtTexel), dirt_texels.data());
         }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;
@@ -2182,6 +2186,8 @@ namespace spartan
             {
                 Renderer::view().frame.rain_car_faces[face] = Renderer::GetSurfaceWater().faces[face];
             }
+            const bool car_dirt = car_water && Renderer::GetSurfaceWater().dirt_active;
+            Renderer::view().frame.car_dirt = Vector4(Renderer::GetSurfaceWater().dirt_clock, car_dirt ? 1.0f : 0.0f, 0.0f, 0.0f);
         }
         Renderer::view().frame.cloud_coverage        = Environment::GetCloudCoverageEffective();
         Renderer::view().frame.cloud_seed_offset     = World::GetCloudSeedOffset();
@@ -6112,6 +6118,8 @@ namespace spartan
             RHI_CommandList::SetTexture("tex_car_rain_micro", GetRenderTarget(Renderer_RenderTarget::car_rain_micro));
             RHI_CommandList::SetTexture("tex_car_rain_ids", GetRenderTarget(Renderer_RenderTarget::car_rain_ids));
             RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
+            RHI_CommandList::SetTexture("tex_car_dirt_color", GetRenderTarget(Renderer_RenderTarget::car_dirt_color));
+            RHI_CommandList::SetTexture("tex_car_dirt_state", GetRenderTarget(Renderer_RenderTarget::car_dirt_state));
         }
 
         // terrain analysis maps, bound globally because the raster, reflection and gi paths all

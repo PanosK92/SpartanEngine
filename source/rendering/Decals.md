@@ -39,6 +39,18 @@ plane. Those tracers and GPU particles share launch conditions, but are not a
 one-to-one GPU collision readback. Motion-relative
 segments account for the body moving or rotating into airborne spray.
 
+Dirt is not a decal. It accumulates in the occupied car's rain atlas (CarDirt,
+six orthographic maps of the body and glass at about 4 mm per texel): every
+texel holds a sqrt-encoded albedo plus coverage and a wet-until time plus
+coarseness. A tracer impact stamps a core blot, satellite specks thrown along
+the slide and, for dry clumps, a powder halo. The dust the tires raise settles
+grain by grain on random paint texels, weighted toward low panels, the area
+behind each wheel and faces in the wake. The g-buffer resolves each texel into
+sub-texel grains (common_car_dirt.hlsl): wet slurry is dark and glossy, dry
+crust pale and matte, glass turns opaque under it, and coverage strips the
+clearcoat. Only the occupied (or last-driven) car collects dirt; vehicle_get
+reports dirt_atlas and dirt_coverage.
+
 ## Vehicle paint scratches
 
 Chassis contacts use PhysX pre-solver relative point velocity (including angular
@@ -82,9 +94,9 @@ spread; debris lives for 0.55 seconds. Emission and deposit tracing run within
 ## Budgets and lifecycle
 
 - 48 decals per Render, including up to 16 scratches; 8,192 GPU decals per view.
-  New dirt replaces the oldest dirt, never a scratch. Scratches replace the oldest
-  scratch at their limit, or the oldest dirt when the shared capacity is full.
-- At most 96 ballistic tracers and eight small particle emitters per car.
+  Scratches replace the oldest scratch at their limit.
+- At most 320 ballistic tracers and eight small particle emitters per car; up to
+  20,000 dust grains and 65,536 changed dirt texels uploaded per frame.
 - Body collision trees are built on a worker, shared by mesh/submesh, and retained
   across physics sleep/wake and teleports. Deposits wait for a ready tree; rendering
   never waits for its construction. Worker jobs retain assets, not scene entities.

@@ -12,6 +12,22 @@ Commercial use requires written permission and negotiated payment terms.
 
 namespace spartan::car_camera
 {
+    constexpr float base_fov_deg = 90.0f;
+
+    // damped spring integrated in fixed substeps, so low frame rates cannot make it explode
+    inline void spring_step(float& value, float& velocity, float target, float omega, float zeta, float dt)
+    {
+        constexpr float max_step = 1.0f / 240.0f;
+        const int steps = std::clamp(static_cast<int>(ceilf(dt / max_step)), 1, 64);
+        const float h = dt / static_cast<float>(steps);
+        for (int i = 0; i < steps; ++i)
+        {
+            const float acceleration = omega * omega * (target - value) - 2.0f * zeta * omega * velocity;
+            velocity += acceleration * h;
+            value += velocity * h;
+        }
+    }
+
     // Follow the rendered car in translation and smooth only the heading.
     // A world-space position spring trails a moving target by a speed-dependent
     // distance and cuts chords through the car when the player orbits it.
@@ -26,14 +42,25 @@ namespace spartan::car_camera
         float orbit_yaw = 0;
         float orbit_pitch = 0;
         float speed_factor = 0;
+        float fov_deg = base_fov_deg;
+        float previous_forward_speed = 0;
+        float previous_vertical_speed = 0;
+        float forward_acceleration = 0;
+        float surge = 0;
+        float surge_velocity = 0;
+        float heave = 0;
+        float heave_velocity = 0;
         double wind_time = 0;
         bool initialized = false;
 
-        void Update(const math::Vector3& car_position, const math::Vector3& car_forward,
-                    float speed, float dt, bool wind_enabled)
+        void Update(const math::Vector3& car_position, const math::Vector3& car_forward, const math::Vector3& car_velocity,
+                    float dt, bool wind_enabled, bool speed_effects_enabled)
         {
             dt = std::isfinite(dt) ? std::max(dt, 0.0f) : 0.0f;
-            speed = std::isfinite(speed) ? std::max(speed, 0.0f) : 0.0f;
+            const bool velocity_valid = std::isfinite(car_velocity.x) && std::isfinite(car_velocity.y) && std::isfinite(car_velocity.z);
+            const math::Vector3 velocity = velocity_valid ? car_velocity : math::Vector3(0.0f);
+            const float speed = velocity.Length();
+            const float forward_speed = velocity.Dot(car_forward);
             const float target_yaw = atan2f(car_forward.x, car_forward.z);
             const float target_speed = std::clamp((speed - 15.0f) / 50.0f, 0.0f, 1.0f);
             // Respawns/teleports must not carry the old heading into the new shot.
@@ -44,6 +71,11 @@ namespace spartan::car_camera
                 speed_factor = target_speed;
                 orbit_yaw = yaw_bias;
                 orbit_pitch = pitch_bias;
+                previous_forward_speed = forward_speed;
+                previous_vertical_speed = velocity.y;
+                forward_acceleration = 0;
+                surge = surge_velocity = 0;
+                heave = heave_velocity = 0;
                 wind_time = 0;
                 initialized = true;
             }
@@ -55,19 +87,47 @@ namespace spartan::car_camera
             orbit_yaw = std::remainder(orbit_yaw + std::remainder(yaw_bias - orbit_yaw, 2.0f * math::pi) * orbit_blend, 2.0f * math::pi);
             orbit_pitch += (pitch_bias - orbit_pitch) * orbit_blend;
 
+            // Speed cues are driven by acceleration, never by speed itself, so a car
+            // cruising at any speed sits at the same distance and the orbit stays a sphere.
+            // Physics runs at its own rate, render frames see velocity in steps, so the
+            // derivative is low passed and clamped against contact spikes.
+            if (dt > 1e-5f)
+            {
+                const float raw_forward = std::clamp((forward_speed - previous_forward_speed) / dt, -40.0f, 40.0f);
+                const float raw_vertical = std::clamp((velocity.y - previous_vertical_speed) / dt, -80.0f, 80.0f);
+                forward_acceleration += (raw_forward - forward_acceleration) * (1.0f - expf(-dt / 0.12f));
+                previous_forward_speed = forward_speed;
+                previous_vertical_speed = velocity.y;
+
+                // throttle pulls the camera back, braking lets the car come toward it
+                const float surge_target = speed_effects_enabled ? std::clamp(forward_acceleration * 0.07f, -0.45f, 0.6f) : 0.0f;
+                spring_step(surge, surge_velocity, surge_target, 5.0f, 0.55f, dt);
+
+                // the camera has inertia the body does not: bumps and landings move the car in frame
+                if (speed_effects_enabled)
+                {
+                    heave_velocity -= raw_vertical * dt * 0.25f;
+                }
+                spring_step(heave, heave_velocity, 0.0f, 9.0f, 0.6f, dt);
+                heave = std::clamp(heave, -0.35f, 0.35f);
+            }
+
+            const float speed_ease = speed_factor * speed_factor * (3.0f - 2.0f * speed_factor);
+            fov_deg = base_fov_deg + (speed_effects_enabled ? 10.0f * speed_ease : 0.0f);
+
             // Orbit about the same focal point at every azimuth and elevation.
-            // Neither speed nor tire slip changes the radius or lens.
             constexpr float distance = 5.0f;
             constexpr float height = 1.5f;
             constexpr float focus_height = 0.6f;
-            const float radius = sqrtf(distance * distance + (height - focus_height) * (height - focus_height));
-            const float pitch = std::clamp(atan2f(height - focus_height, distance) + orbit_pitch, 0.04f, 1.35f);
+            const float radius = sqrtf(distance * distance + (height - focus_height) * (height - focus_height)) + surge;
+            const float speed_drop = speed_effects_enabled ? 0.02f * speed_ease : 0.0f;
+            const float pitch = std::clamp(atan2f(height - focus_height, distance) + orbit_pitch - speed_drop, 0.04f, 1.35f);
             const float heading = yaw + orbit_yaw;
             const math::Vector3 backward(-sinf(heading), 0, -cosf(heading));
             const math::Vector3 right(cosf(heading), 0, -sinf(heading));
             const math::Vector3 up(0, 1, 0);
             look_at = car_position + up * focus_height;
-            position = look_at + backward * (radius * cosf(pitch)) + up * (radius * sinf(pitch));
+            position = look_at + backward * (radius * cosf(pitch)) + up * (radius * sinf(pitch) + heave);
 
             // Independent, continuous angular buffeting. Integrating time avoids
             // phase jumps from multiplying absolute engine time by changing speed.

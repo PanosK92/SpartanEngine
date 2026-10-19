@@ -116,6 +116,7 @@ namespace spartan
         uint32_t atlas_h           = 0;
         float texel_size           = texel_size_min;
         Vector3 box_min            = Vector3::Zero;
+        Vector3 box_max            = Vector3::Zero;
         array<face_rect, 6> faces  = {};
         vector<float> surface;        // the gpu copy, axis coordinate where the texel belongs to its own map
         vector<float> height;         // axis coordinate of the outermost paint, whichever map it belongs to
@@ -762,8 +763,8 @@ namespace spartan
             if (indices.size() < 3)
                 return false;
 
-            Vector3 box_max = Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-            box_min         = Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
+            box_max = Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+            box_min = Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
             for (const Vector3& p : positions)
             {
                 box_min = Vector3(min(box_min.x, p.x), min(box_min.y, p.y), min(box_min.z, p.z));
@@ -1125,5 +1126,48 @@ namespace spartan
     const vector<CarRainTexelGpu>& CarRain::GetTexels()
     {
         return texels_frame;
+    }
+
+    Entity* CarRain::GetBakedRoot()
+    {
+        return atlas_w > 0 ? baked_root : nullptr;
+    }
+
+    uint32_t CarRain::GetTexelCount()
+    {
+        return atlas_w * atlas_h;
+    }
+
+    const vector<uint32_t>& CarRain::GetPaintTexels()
+    {
+        return face_texels;
+    }
+
+    Vector3 CarRain::GetBoxMax()
+    {
+        return box_max;
+    }
+
+    Vector3 CarRain::GetTexelNormal(uint32_t texel)
+    {
+        return texel < texel_info.size() ? info_normal(texel_info[texel]) : Vector3::Up;
+    }
+
+    Vector3 CarRain::GetTexelPoint(uint32_t texel)
+    {
+        return texel < height.size() ? texel_position(texel, face_at(texel), 0.5f, 0.5f) : Vector3::Zero;
+    }
+
+    bool CarRain::FindTexel(const Vector3& point, const Vector3& normal, float tolerance, uint32_t& texel)
+    {
+        if (atlas_w == 0)
+            return false;
+
+        uint8_t face = face_of(normal);
+        Vector3 p    = point;
+        if (!project(face, p, texel) || info_kind(texel_info[texel]) != kind_face)
+            return false;
+
+        return (p - point).LengthSquared() <= tolerance * tolerance;
     }
 }

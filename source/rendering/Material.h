@@ -199,6 +199,8 @@ namespace spartan
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
+        // for values derived at runtime on every load, the asset on disk is left as authored
+        void SetPropertyRuntime(const MaterialProperty property_type, const float value) { SetPropertyInternal(property_type, value, false); }
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();

@@ -201,10 +201,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // leaves come down from the open sky, a birth under a roof is a leaf falling out of the ceiling
     if (is_leaf_mode(emitter.render_mode))
     {
-        if (under_cover(p.position))
+        // the shelter grid takes tree colliders for roofs, it only decides when the canopy cannot be looked through
+        bool traced = false;
+    #ifdef RAY_TRACING_ENABLED
+        traced = emitter.collision_traced != 0u;
+    #endif
+        if (!traced && under_cover(p.position))
             return;
     #ifdef RAY_TRACING_ENABLED
-        if (emitter.collision_traced != 0u)
+        if (traced)
         {
             // a canopy is where leaves come from, so swaying vegetation is looked through and only a roof blocks the birth
             RayDesc ray;
@@ -212,7 +217,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             ray.Direction = float3(0, 1, 0);
             ray.TMin      = 0.001;
             ray.TMax      = 60.0;
-            for (uint hop = 0u; hop < 4u; hop++)
+            // a crown stacks many leaf cards, too few hops reads a dense canopy as a roof
+            for (uint hop = 0u; hop < 16u; hop++)
             {
                 RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
                 query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -221,7 +227,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                     break;
 
                 uint flags = material_parameters[geometry_infos[query.CommittedInstanceIndex()].material_index].flags;
-                if ((flags & vegetation_material_bits) == 0u || hop == 3u)
+                if ((flags & vegetation_material_bits) == 0u || hop == 15u)
                     return;
 
                 ray.TMin = query.CommittedRayT() + 0.05;

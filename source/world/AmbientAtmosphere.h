@@ -91,13 +91,14 @@ namespace spartan::ambient_atmosphere
             for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
             {
                 if ((viewer - group.bounds.GetClosestPoint(viewer)).LengthSquared() > 140 * 140) continue;
-                const uint32_t stride = std::max(1u, group.count / 32u);
+                // dense enough that a forest edge reads within a few metres, leaves and litter are gated on it
+                const uint32_t stride = std::max(1u, group.count / 128u);
                 for (uint32_t j = 0; j < group.count; j += stride)
                 {
                     const BoundingBox& bounds = render->GetInstanceBounds(render->GetGroupedInstanceIndex(group.offset + j));
                     if ((viewer - bounds.GetCenter()).LengthSquared() > 140 * 140) continue;
                     ++seen;
-                    if (canopies.size() < 128) canopies.push_back(bounds);
+                    if (canopies.size() < 1024) canopies.push_back(bounds);
                     else
                     {
                         uint32_t index = static_cast<uint32_t>(Random() * seen);
@@ -108,20 +109,38 @@ namespace spartan::ambient_atmosphere
         }
     }
 
+    // 1 under a crown, fading to 0 a few metres past its edge, leaves only fall and lie where trees shed them
+    inline float CanopyCover(const Vector3& position, float reach)
+    {
+        float nearest = reach * reach;
+        for (const BoundingBox& canopy : canopies)
+        {
+            const Vector3 probe(position.x, canopy.GetCenter().y, position.z);
+            nearest = std::min(nearest, (canopy.GetClosestPoint(probe) - probe).LengthSquared());
+        }
+        return 1 - Smooth(reach * 0.3f, reach, sqrtf(nearest));
+    }
+
     inline bool Place(Patch& patch, Kind kind, Terrain* terrain, const Vector3& viewer, const Vector3& ahead)
     {
+        if ((kind == Leaves || kind == Litter) && canopies.empty())
+        {
+            return false;
+        }
         const size_t cluster = (&patch - patches.data()) / KindCount;
         const bool nearby = cluster < 4;
         for (int attempt = 0; attempt < 12; ++attempt)
         {
             Vector3 position;
             float radius = kind == Litter ? (nearby ? 12.0f : 18.0f) : (nearby ? 10.0f : 16.0f);
-            // Broad overlapping fields keep the road and open landscape alive.
-            // Canopies enrich the outer leaf fields without gating all foliage.
-            if (kind == Leaves && !nearby && !canopies.empty() && attempt < 4)
+            // falling leaves are shed from a crown, the emitter covers that crown and a little drift past it
+            if (kind == Leaves)
             {
                 const BoundingBox& canopy = canopies[std::min(static_cast<size_t>(Random() * canopies.size()), canopies.size() - 1)];
+                const Vector3 extent = canopy.GetExtents();
                 position = canopy.GetCenter();
+                radius   = std::clamp(std::max(extent.x, extent.z) + 2.0f, 4.0f, radius);
+                if (nearby && (position - viewer).LengthSquared() > 30 * 30) continue;
             }
             else if (kind == Litter && ahead.LengthSquared() > 6 * 6)
             {
@@ -155,7 +174,12 @@ namespace spartan::ambient_atmosphere
                 if (PhysicsWorld::RaycastStatic(Vector3(position.x, height + 25, position.z), Vector3::Down, 26, hit) &&
                     hit.y > height + 0.5f) continue;
             }
-            else position.y = height + (kind == Litter ? 18.0f : radius * 0.45f + 4.0f);
+            else
+            {
+                weight = CanopyCover(position, 12.0f);
+                if (weight < 0.1f) continue;
+                position.y = height + (kind == Litter ? 18.0f : radius * 0.45f + 4.0f);
+            }
             bool rejected = false;
             const Vector3 occupied_probe = kind == Litter ? Vector3(position.x, height + 1.0f, position.z) : position;
             for (const BoundingBox& room : interiors)

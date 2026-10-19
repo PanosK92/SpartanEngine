@@ -205,6 +205,8 @@ struct FrameBufferData
     SHARED_FLOAT4 rain_car_atlas;
     SHARED_FLOAT4 rain_car_micro;
     SHARED_FLOAT4 rain_car_faces[6];
+    // the dirt on the same car, in the same atlas (CarDirt.h), x = the dirt clock in seconds, y = 1 while it is shown
+    SHARED_FLOAT4 car_dirt;
 
     // clip transforms for positions relative to camera_position (current) and camera_position_previous (previous)
     // world space float math loses ~0.5 mm a few km from the origin and the jitter reshuffles that rounding every frame

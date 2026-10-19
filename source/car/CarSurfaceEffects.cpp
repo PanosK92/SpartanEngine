@@ -9,6 +9,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarPhysics.h"
 #include "CarSurfaceEffects.h"
 #include "CarSimulation.h"
+#include "CarDirt.h"
+#include "CarRain.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Physics.h"
@@ -41,6 +43,10 @@ namespace spartan
             float wet = 0.0f;
             float loose = 1.0f;
             float size = 0.025f;
+            // what sticks to the car once dry: the spray's material, the powder the tires raise and how coarse the spray is
+            Vector3 dirt = Vector3(0.19f, 0.13f, 0.08f);
+            Vector3 dust = Vector3(0.38f, 0.31f, 0.22f);
+            float coarse = 0.6f;
         };
 
         Surface sample_surface(const car::wheel& wheel, const Vector3& point)
@@ -79,15 +85,30 @@ namespace spartan
             else if (wheel.contact_surface == car::surface_gravel) { layer = "gravel"; s.loose = 0.5f; }
             std::transform(layer.begin(), layer.end(), layer.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
             if (layer.find("grass") != std::string::npos || layer.find("moss") != std::string::npos)
-            { s.color = Color(0.042f, 0.075f, 0.016f, 0.8f); s.grass = 1.0f; s.size = 0.035f; }
+            {
+                s.color = Color(0.042f, 0.075f, 0.016f, 0.8f); s.grass = 1.0f; s.size = 0.035f;
+                s.dirt = Vector3(0.07f, 0.095f, 0.03f); s.dust = Vector3(0.30f, 0.27f, 0.20f); s.coarse = 0.8f;
+            }
             else if (layer.find("sand") != std::string::npos)
-            { s.color = Color(0.42f, 0.30f, 0.15f, 0.55f); s.size = 0.012f; }
+            {
+                s.color = Color(0.42f, 0.30f, 0.15f, 0.55f); s.size = 0.012f;
+                s.dirt = Vector3(0.46f, 0.37f, 0.25f); s.dust = Vector3(0.55f, 0.47f, 0.35f); s.coarse = 0.25f;
+            }
             else if (layer.find("snow") != std::string::npos || layer.find("ice") != std::string::npos)
-            { s.color = Color(0.72f, 0.79f, 0.85f, 0.7f); s.size = 0.035f; }
+            {
+                s.color = Color(0.72f, 0.79f, 0.85f, 0.7f); s.size = 0.035f;
+                s.dirt = Vector3(0.70f, 0.75f, 0.80f); s.dust = s.dirt; s.coarse = 0.5f;
+            }
             else if (layer.find("rock") != std::string::npos || layer.find("gravel") != std::string::npos)
-            { s.color = Color(0.19f, 0.17f, 0.14f, 0.45f); s.loose = 0.2f; s.size = 0.014f; }
+            {
+                s.color = Color(0.19f, 0.17f, 0.14f, 0.45f); s.loose = 0.2f; s.size = 0.014f;
+                s.dirt = Vector3(0.25f, 0.23f, 0.20f); s.dust = Vector3(0.42f, 0.40f, 0.36f); s.coarse = 0.4f;
+            }
             else if (layer.find("forest") != std::string::npos)
-            { s.color = Color(0.08f, 0.05f, 0.018f, 0.8f); s.grass = 0.25f; }
+            {
+                s.color = Color(0.08f, 0.05f, 0.018f, 0.8f); s.grass = 0.25f;
+                s.dirt = Vector3(0.11f, 0.075f, 0.042f); s.dust = Vector3(0.30f, 0.25f, 0.19f); s.coarse = 0.7f;
+            }
             s.color.r *= 1.0f - s.wet * 0.55f;
             s.color.g *= 1.0f - s.wet * 0.55f;
             s.color.b *= 1.0f - s.wet * 0.55f;
@@ -360,7 +381,7 @@ namespace spartan
             }
         }
 
-        bool Deposit(const Drop& drop, const Vector3& next, float fraction_start, float fraction_end, float step)
+        bool Deposit(Entity* vehicle, const Drop& drop, const Vector3& next, float fraction_start, float fraction_end, float step)
         {
             float closest = 1.0f;
             Render* target = nullptr;
@@ -393,20 +414,12 @@ namespace spartan
 
             }
             if (!target) return false;
-            Vector3 tangent = impact_velocity - normal * impact_velocity.Dot(normal);
-            if (tangent.LengthSquared() < 0.0001f) tangent = normal.Cross(fabsf(normal.y) < 0.9f ? Vector3::Up : Vector3::Right);
-            tangent.Normalize();
-            const Vector3 across = normal.Cross(tangent).Normalized();
-            const float radius = 0.045f + 0.085f * (drop.seed / 100.0f) + drop.surface.wet * 0.035f;
-            const float elongation = 1.0f + std::min(2.0f, impact_velocity.Length() * 0.055f) + drop.surface.grass;
-            const Vector3 u = across * radius, v = tangent * (radius * elongation), w = normal * 0.055f;
-            Matrix projector(u.x,u.y,u.z,0, v.x,v.y,v.z,0, w.x,w.y,w.z,0, point.x,point.y,point.z,1);
-            DecalParameters decal;
-            decal.world_to_decal = projector.Inverted();
-            const Color c = drop.surface.color;
-            decal.color = Vector4(c.r,c.g,c.b,c.a);
-            decal.surface = Vector4(drop.surface.roughness, 0.0018f + drop.surface.wet * 0.002f, drop.seed, drop.surface.grass);
-            target->AddDecal(decal, drop.surface.material);
+            // the clump bursts into specks on the paint; thrown soil is damp even off a dry track
+            CarDirt::Deposit deposit;
+            deposit.color      = drop.surface.dirt;
+            deposit.moisture   = std::clamp(0.3f + 0.7f * drop.surface.wet, 0.0f, 1.0f);
+            deposit.coarseness = drop.surface.coarse;
+            CarDirt::Splat(vehicle, point, normal, impact_velocity, deposit, 0.5f + drop.seed / 100.0f);
             return true;
         }
     };
@@ -427,9 +440,12 @@ namespace spartan
         if (!playing || !CarPhysics::Get(*physics).IsVehicleSimulationActive())
         {
             if (!playing)
+            {
                 for (const auto& receiver : s.receivers)
                     if (Entity* e = World::GetEntityById(receiver.entity_id))
                         if (auto* r = e->GetComponent<Render>()) r->ClearDecals();
+                if (vehicle == CarRain::GetBakedRoot()) CarDirt::Clear();
+            }
             s.active = false; s.scratch_cooldown = 0.0f; s.drops.clear(); s.remainder.fill(0.0f); return;
         }
         // Traffic vehicles can be simulated across the island. Build mesh BVHs and
@@ -493,7 +509,7 @@ namespace spartan
                     const float previous_distance = std::max(0.0f, (drop.position - drop.ground_point).Dot(drop.ground_normal));
                     next = drop.position + (next - drop.position) * (previous_distance / std::max(previous_distance - ground_distance, 0.00001f));
                 }
-                const bool hit = s.Deposit(drop, next, static_cast<float>(k) / steps, static_cast<float>(k+1) / steps, step);
+                const bool hit = s.Deposit(vehicle, drop, next, static_cast<float>(k) / steps, static_cast<float>(k+1) / steps, step);
                 drop.position = next; drop.age += step;
                 if (hit || landed || drop.age > 0.55f) { s.drops[j] = s.drops.back(); s.drops.pop_back(); }
                 else ++j;
@@ -501,6 +517,8 @@ namespace spartan
         }
         for (auto& receiver : s.receivers)
             if (Entity* e = World::GetEntityById(receiver.entity_id)) receiver.previous = e->GetMatrix();
+        // only the car that carries a dirt atlas needs tracers, the rest keep the gpu plume
+        const bool collects_dirt = vehicle == CarRain::GetBakedRoot();
         for (int i = 0; i < 4; ++i)
         {
             const auto& wheel = sim->get_wheel_state(i);
@@ -554,10 +572,21 @@ namespace spartan
             dust->SetStartSize(0.06f); dust->SetEndSize(0.35f);
             dust->SetStartColor(Color(surface.color.r,surface.color.g,surface.color.b,0.08f));
             dust->SetEndColor(Color(surface.color.r,surface.color.g,surface.color.b,0.0f));
+            if (!collects_dirt) { s.remainder[i] = 0; continue; }
+            // The dust the tire raises settles on the body grain by grain, the drier and the less grassy the more of it.
+            const float dust_rate = rate * (1.0f - surface.wet) * (1.0f - surface.grass * 0.8f) * 0.6f;
+            if (dust_rate > 0.0f)
+            {
+                CarDirt::Deposit powder;
+                powder.color      = surface.dust;
+                powder.moisture   = 0.0f;
+                powder.coarseness = 0.0f;
+                CarDirt::Dust(vehicle, &point, 1, hub_velocity, powder, dust_rate * 60000.0f * dt);
+            }
             // A representative subset of the spray is traced against a cached triangle BVH.
             // The GPU keeps the full plume; deposition cost stays bounded even in a four-wheel burnout.
-            s.remainder[i] += std::min(rate * 0.25f, 12.0f) * dt;
-            while (s.remainder[i] >= 1.0f && s.drops.size() < 96)
+            s.remainder[i] += std::min(rate * 0.6f, 40.0f) * dt;
+            while (s.remainder[i] >= 1.0f && s.drops.size() < 320)
             {
                 s.remainder[i] -= 1.0f;
                 const Vector3 jitter = axle * ((s.Random()-0.5f) * 0.36f) + normal * ((s.Random()-0.5f) * 0.16f);

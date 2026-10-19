@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarRender.h"
 #include "CarWeather.h"
 #include "CarRain.h"
+#include "CarDirt.h"
 #include "../world/Weather.h"
 #include "../car/Car.h"
 #include "../car/CarSimulation.h"
@@ -50,6 +51,12 @@ namespace spartan
         water.drops = CarRain::GetDrops();
         water.texels = CarRain::GetTexels();
         for (uint32_t face = 0; face < 6; ++face) water.faces[face] = CarRain::GetFaceRect(face);
+        water.dirt_active = CarDirt::IsActive();
+        water.dirt_version = CarDirt::GetVersion();
+        water.dirt_clock = CarDirt::GetClock();
+        water.dirt_color = CarDirt::GetColor();
+        water.dirt_state = CarDirt::GetState();
+        water.dirt_texels = CarDirt::GetTexels();
         Renderer::SetSurfaceWater(water);
         SurfaceInteraction result;
         Camera* camera = World::GetCamera();

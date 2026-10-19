@@ -171,6 +171,8 @@ namespace spartan
 
         void SetCameraWindShake(bool enabled) { m_camera_wind_shake = enabled; }
         bool GetCameraWindShake() const { return m_camera_wind_shake; }
+        void SetCameraSpeedEffects(bool enabled) { m_camera_speed_effects = enabled; }
+        bool GetCameraSpeedEffects() const { return m_camera_speed_effects; }
 
         // exterior lamps, applied to the headlight and brake light children by the car's light script
         // switching the headlights on or off takes the rear position lamps with them, the rear lamps can then be set on their own
@@ -251,6 +253,7 @@ namespace spartan
         bool              m_spawn_error_logged = false;
         car_camera::ChaseState m_chase_camera;
         bool m_camera_wind_shake = true;
+        bool m_camera_speed_effects = true;
         CarHeadlights m_headlights = CarHeadlights::Off;
         bool m_rear_lamps          = false;
 

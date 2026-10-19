@@ -143,6 +143,10 @@ namespace spartan
             uint64_t entity_id = 0;
             uint32_t version = 0;
             bool uploaded = false;
+            uint32_t dirt_version = 0;
+            uint32_t dirt_width = 0;
+            uint32_t dirt_height = 0;
+            bool dirt_uploaded = false;
         };
 
         struct PassState

@@ -467,6 +467,7 @@ namespace spartan
         car_rain_clear_c,
         car_rain_splat_c,
         car_rain_texels_c,
+        car_dirt_texels_c,
         // fft ocean
         ocean_spectrum_init_c,
         ocean_spectrum_update_c,
@@ -638,6 +639,9 @@ namespace spartan
         car_rain_surface, // axis coordinate of the paint per atlas texel, uploaded once per bake
         car_rain_micro,   // micro water mass and clock stamp per texel, patched every frame from the cpu's changes
         car_rain_ids,     // the drop covering each texel, splatted every frame
+        // dirt on the occupied car in the same atlas, see CarDirt.h, patched every frame from the cpu's changes
+        car_dirt_color,   // rgb sqrt encoded albedo and coverage, 8 bits each
+        car_dirt_state,   // wet until in 1/16 s of the dirt clock << 8 | coarseness
         // fft ocean, texture2d arrays with one slice per cascade
         ocean_spectrum,              // persistent h0 spectrum
         ocean_fft_a,                 // working: height + x displacement
@@ -690,6 +694,7 @@ namespace spartan
         RainOcclusion,             // topmost static surface height per cell around the camera, ring-buffered per frame
         CarRainDrops,              // the occupied car's drops, ring-buffered per frame
         CarRainTexels,             // the car's micro water changes this frame, ring-buffered per frame
+        CarDirtTexels,             // the car's dirt changes this frame, ring-buffered per frame
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices

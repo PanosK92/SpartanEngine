@@ -16,6 +16,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "car/CarEngineSoundSynthesis.h"
 #include "car/RacingLine.h"
 #include "car/CarState.h"
+#include "car/CarDirt.h"
+#include "car/CarRain.h"
 #include "world/World.h"
 #include "world/Entity.h"
 #include "world/components/Physics.h"
@@ -187,6 +189,9 @@ namespace spartan
             json += ",\"decal_count\":" + std::to_string(decal_count);
             json += ",\"scratch_count\":" + std::to_string(scratch_count);
             json += ",\"scratches\":" + scratches + "]";
+            const bool carries_dirt = root && root == CarRain::GetBakedRoot();
+            json += ",\"dirt_atlas\":" + json_bool(carries_dirt);
+            json += ",\"dirt_coverage\":" + std::to_string(carries_dirt ? CarDirt::GetCoverage() : 0.0f);
             json += ",\"mcp_controlled\":" + json_bool(car->IsExternallyControlled());
             json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
             json += ",\"show_telemetry\":" + json_bool(car->GetShowTelemetry());

@@ -545,5 +545,42 @@ namespace spartan
             }
         }
         RHI_CommandList::EndPass();
+
+        // the dirt in the same atlas, rebuilt from the cpu copy after a wash or a new bake, patched with this frame's changes otherwise
+        const SurfaceWater& water = Renderer::GetSurfaceWater();
+        if (!water.dirt_active || water.dirt_color.size() != static_cast<size_t>(width) * height || water.dirt_state.size() != water.dirt_color.size())
+            return;
+
+        if (!state.dirt_uploaded || water.dirt_version != state.dirt_version || state.dirt_width != width || state.dirt_height != height)
+        {
+            state.dirt_version  = water.dirt_version;
+            state.dirt_width    = width;
+            state.dirt_height   = height;
+            state.dirt_uploaded = true;
+            CreateCarDirtTargets(width, height, water.dirt_color.data(), water.dirt_state.data());
+            return;
+        }
+
+        RHI_Texture* tex_dirt_color = GetRenderTarget(Renderer_RenderTarget::car_dirt_color);
+        RHI_Texture* tex_dirt_state = GetRenderTarget(Renderer_RenderTarget::car_dirt_state);
+        RHI_Shader* shader_dirt     = GetShader(Renderer_Shader::car_dirt_texels_c);
+        const uint32_t dirt_count   = min(static_cast<uint32_t>(water.dirt_texels.size()), SurfaceWater::dirt_texels_max);
+        if (dirt_count == 0 || !tex_dirt_color || !tex_dirt_state || !shader_dirt || !shader_dirt->IsCompiled())
+            return;
+
+        RHI_CommandList::BeginPass("car_dirt");
+        {
+            RHI_CommandList::SetShader(shader_dirt);
+            RHI_CommandList::SetTexture("tex_car_dirt_color_uav", tex_dirt_color);
+            RHI_CommandList::SetTexture("tex_car_dirt_state_uav", tex_dirt_state);
+            RHI_CommandList::SetBuffer("car_dirt_texels", GetBuffer(Renderer_Buffer::CarDirtTexels));
+            m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * SurfaceWater::dirt_texels_max);
+            m_pcb_pass_cpu.set(pass_car_rain::count, dirt_count);
+            m_pcb_pass_cpu.set(pass_car_rain::atlas_width, width);
+            m_pcb_pass_cpu.set(pass_car_rain::atlas_height, height);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch((dirt_count + 63) / 64, 1);
+        }
+        RHI_CommandList::EndPass();
     }
 }

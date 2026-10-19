@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarPhysics.h"
 #include "CarWeather.h"
 #include "CarRain.h"
+#include "CarDirt.h"
 #include "Car.h"
 #include "../world/Weather.h"
 #include "../world/World.h"
@@ -40,13 +41,9 @@ namespace spartan
         }
 
         drop_vehicle = nullptr;
-        if (wetness <= 0.0f && drop_wetness <= 0.0f)
-        {
-            CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
-            return;
-        }
 
-        // the water stays on the car the player last drove, stepping out does not dry it
+        // the water and the dirt stay on the car the player last drove, stepping out does not dry or wash it
+        // the atlas is kept baked in dry weather too, the dirt lives in its texels
         Car* occupied = nullptr;
         Car* previous = nullptr;
         for (Car* car : Car::GetAll())
@@ -75,6 +72,7 @@ namespace spartan
         if (!simulation)
         {
             CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
+            CarDirt::Tick(delta_time);
             return;
         }
 
@@ -121,6 +119,7 @@ namespace spartan
         conditions.rain         = rain;
         conditions.exposure     = exposure;
         CarRain::Tick(root, conditions, delta_time);
+        CarDirt::Tick(delta_time);
     }
 
     void ClearCarWeather()
@@ -131,6 +130,7 @@ namespace spartan
         drop_rotation = Quaternion::Identity;
         drop_velocity_last = drop_acceleration = Vector3::Zero;
         CarRain::Clear();
+        CarDirt::Release();
     }
 
     void FillCarWeather(SurfaceWater& water)

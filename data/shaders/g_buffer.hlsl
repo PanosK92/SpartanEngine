@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_decals.hlsl"
 #include "common_puddles.hlsl"
 #include "common_rain.hlsl"
+#include "common_car_dirt.hlsl"
 #include "grass_patch.hlsl"
 //=================================
 
@@ -977,6 +978,25 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float decal_coverage = apply_decals(vertex.decal_range, position_world, normalize(vertex.normal), dpdx_world, dpdy_world,
         albedo.rgb, normal, roughness, metalness, occlusion, emission);
 
+    // the occupied car (draws flagged with bit 7) carries its own water and dirt
+#if defined(INDIRECT_DRAW)
+    bool rain_vehicle = (_draw.flags & (1u << 7)) != 0;
+#elif !defined(GRASS_INSTANCED) && !defined(GRASS_SPECIALIZED)
+    bool rain_vehicle = (draw_data[buffer_pass.draw_index].flags & (1u << 7)) != 0;
+#else
+    bool rain_vehicle = false;
+#endif
+
+    // dirt, under the water, it strips the coat and on glass it is grit the light cannot pass
+    bool dirt_detail = false;
+    if (rain_vehicle && car_dirt_active())
+    {
+        float dirt = car_dirt_apply(position_world, normalize(vertex.normal), max(length(dpdx_world), length(dpdy_world)),
+            albedo.rgb, normal, roughness, metalness, occlusion, emission);
+        decal_coverage = 1.0f - (1.0f - decal_coverage) * (1.0f - dirt);
+        dirt_detail    = dirt > 0.0f;
+    }
+
     albedo.a = lerp(albedo.a, 1.0f, decal_coverage);
 
     // standing water, ground surfaces only so interiors and props stay dry
@@ -1003,13 +1023,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     // rain, the soak, beads and rivulets on everything the sky reaches
     bool rain_detail = false;
-#if defined(INDIRECT_DRAW)
-    bool rain_vehicle = (_draw.flags & (1u << 7)) != 0;
-#elif !defined(GRASS_INSTANCED) && !defined(GRASS_SPECIALIZED)
-    bool rain_vehicle = (draw_data[buffer_pass.draw_index].flags & (1u << 7)) != 0;
-#else
-    bool rain_vehicle = false;
-#endif
     if ((rain_exposed > 0.0f || puddle_water > 0.0f || (rain_vehicle && (buffer_frame.rain_vehicle.x > 0.0f || rain_car_active()))) && !surface.is_water())
     {
 #if defined(INDIRECT_DRAW)
@@ -1041,7 +1054,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // geometric specular antialiasing, yamada 2018, the screen space normal variance is folded
     // into the ggx width so sub pixel detail rolls off into roughness instead of shimmering
     // water has analytic normals rather than a normal texture so it is admitted explicitly
-    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded || vertex.decal_range.y > 0 || rain_detail)
+    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded || vertex.decal_range.y > 0 || rain_detail || dirt_detail)
     {
         const float SPECULAR_AA_SIGMA2 = 0.25f;
         const float SPECULAR_AA_KAPPA  = 0.18f;

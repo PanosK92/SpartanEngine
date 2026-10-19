@@ -798,20 +798,22 @@ namespace spartan
                         render->SetMaterial(owned);
                     }
 
+                    // the calibration below is rederived on every build and differs per part and tile, saving it
+                    // would rewrite the shared asset once per tile, and race any other engine process on the file
                     bool foliage = false;
                     if (Material* material = render->GetMaterial())
                     {
                         foliage = is_foliage_material(material);
                         if (foliage)
                         {
-                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                            material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, layer.foliage_scattering);
+                            material->SetPropertyRuntime(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                            material->SetPropertyRuntime(MaterialProperty::IsFoliage, 1.0f);
+                            material->SetPropertyRuntime(MaterialProperty::SubsurfaceScattering, layer.foliage_scattering);
                             if (layer.foliage_tint[0] >= 0.0f && layer.foliage_tint[1] >= 0.0f && layer.foliage_tint[2] >= 0.0f)
                             {
-                                material->SetProperty(MaterialProperty::ColorR, layer.foliage_tint[0]);
-                                material->SetProperty(MaterialProperty::ColorG, layer.foliage_tint[1]);
-                                material->SetProperty(MaterialProperty::ColorB, layer.foliage_tint[2]);
+                                material->SetPropertyRuntime(MaterialProperty::ColorR, layer.foliage_tint[0]);
+                                material->SetPropertyRuntime(MaterialProperty::ColorG, layer.foliage_tint[1]);
+                                material->SetPropertyRuntime(MaterialProperty::ColorB, layer.foliage_tint[2]);
                             }
                         }
 
@@ -819,22 +821,22 @@ namespace spartan
                         // fine flutter only to cutouts, so the canopy stays attached.
                         if (layer.flags & TerrainScatterFlags_Wind)
                         {
-                            material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                            material->SetPropertyRuntime(MaterialProperty::WindAnimation, 1.0f);
                         }
 
-                        material->SetProperty(MaterialProperty::ColorVariationFromInstance,
+                        material->SetPropertyRuntime(MaterialProperty::ColorVariationFromInstance,
                             (layer.flags & TerrainScatterFlags_ColorVariation) ? 1.0f : 0.0f);
 
                         // how far the ground creeps over this prop, sized off this part's own mesh so a
                         // trunk gets the trunk's band and not the canopy's, the layer value trims it
                         const float extent = mesh_extent_min(render->GetLodAabb(0), scale_typical);
-                        material->SetProperty(
+                        material->SetPropertyRuntime(
                             MaterialProperty::TerrainBlend,
                             layer.blend_height * derive_terrain_blend(extent, terrain_band)
                         );
-                        material->SetProperty(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
-                        material->SetProperty(MaterialProperty::TerrainCoating, foliage ? 0.0f : layer.coating);
-                        material->SetProperty(MaterialProperty::TerrainCoatingScale, layer.coating_scale);
+                        material->SetPropertyRuntime(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
+                        material->SetPropertyRuntime(MaterialProperty::TerrainCoating, foliage ? 0.0f : layer.coating);
+                        material->SetPropertyRuntime(MaterialProperty::TerrainCoatingScale, layer.coating_scale);
                     }
 
                     render->SetInstances(packed_instances, !defer_bounds);
@@ -1037,11 +1039,11 @@ namespace spartan
             {
                 extent = mesh_extent_min(mesh->GetSubMesh(0).lods[0].aabb, (params.size_min + params.size_max) * 0.5f);
             }
-            material->SetProperty(
+            material->SetPropertyRuntime(
                 MaterialProperty::TerrainBlend,
                 layer.blend_height * derive_terrain_blend(extent, terrain->GetBlendHeight())
             );
-            material->SetProperty(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
+            material->SetPropertyRuntime(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
 
             const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
             const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());

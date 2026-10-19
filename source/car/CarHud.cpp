@@ -842,6 +842,11 @@ namespace spartan::car_hud
                 if (ImGui::Checkbox("Experimental wind shake", &wind_shake))
                     car_instance->SetCameraWindShake(wind_shake);
                 hud_tooltip("Subtle chase-camera wind buffeting above 54 km/h, increasing with speed. Disable for a steady view.");
+                ImGui::SetCursorScreenPos(row.point(680, 6));
+                bool speed_effects = car_instance->GetCameraSpeedEffects();
+                if (ImGui::Checkbox("Camera speed effects", &speed_effects))
+                    car_instance->SetCameraSpeedEffects(speed_effects);
+                hud_tooltip("Chase camera widens its lens with speed, pulls back under throttle, comes in under braking and lags over bumps and landings.");
                 ImGui::PopStyleVar();
                 ImGui::PopFont();
             }
