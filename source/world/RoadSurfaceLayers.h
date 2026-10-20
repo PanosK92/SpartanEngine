@@ -50,7 +50,7 @@ namespace spartan::layered_road_surface
         // POM depth is height * 0.04 uv, 1.5 m per uv, so ~7 mm of aggregate relief.
         if (layer!=2) material->SetProperty(MaterialProperty::Height,.12f);
         material->SetProperty(MaterialProperty::TerrainBlend,layer==2 ? .8f : 0);
-        material->SetProperty(MaterialProperty::TerrainCoating,0);
+        material->SetProperty(MaterialProperty::TerrainCoating,layer==2 ? 1.0f : 0);
         material->SetProperty(MaterialProperty::IsRoadSurface,layer==0 ? 1.0f : 0.0f);
         material->SetProperty(MaterialProperty::IsRoadPaint,layer==1 ? 1.0f : 0.0f);
         material->SetProperty(MaterialProperty::CullMode,static_cast<float>(RHI_CullMode::None));

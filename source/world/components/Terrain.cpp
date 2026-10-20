@@ -848,6 +848,10 @@ namespace spartan
         m_height_map_final.reset();
         m_height_map_gpu_retired.reset();
         m_height_map_gpu.reset();
+        m_detail_table_gpu_retired.reset();
+        m_detail_atlas_gpu_retired.reset();
+        m_detail_table_gpu.reset();
+        m_detail_atlas_gpu.reset();
         m_map_a_retired.reset();
         m_map_b_retired.reset();
         m_prop_mask_retired.reset();
@@ -995,6 +999,9 @@ namespace spartan
         params.map_a         = m_map_a.get();
         params.map_b         = m_map_b.get();
         params.height_map    = m_height_map_gpu.get();
+        params.detail_table  = m_detail_table_gpu.get();
+        params.detail_atlas  = m_detail_atlas_gpu.get();
+        params.detail_subdivisions = m_detail_table_gpu ? m_detail_gpu_subdivisions : 0;
         params.world_mapping = m_world_mapping;
         // the shader compares world y, so this is the world sea, the same one the cpu bakes with
         params.sea_level     = ResolveSeaLevelWorld();
@@ -2362,6 +2369,10 @@ namespace spartan
             m_live_pad_active   = false;
             m_live_track_entity = 0;
         }
+
+        // the pads painted above queue their cells, the pages follow in the same frame
+        UpdateDetailWindow();
+        FlushDetail();
     }
 
     void Terrain::CommitGpu()
@@ -2529,6 +2540,64 @@ namespace spartan
             return false;
         }
 
+        // near detail pages the coarse hit is only a guess, march the real surface around it
+        bool has_pages = false;
+        {
+            shared_lock lock(m_detail_mutex);
+            has_pages = !m_detail_pages.empty();
+        }
+        if (has_pages)
+        {
+            const float search = 64.0f;
+            const float step   = 0.25f;
+            const Vector3 origin    = local_ray.m_origin;
+            const Vector3 direction = local_ray.m_direction;
+            const float t_coarse    = (local_hit - origin).Length();
+            const float t_begin     = max(t_coarse - search, 0.0f);
+            const float t_end       = t_coarse + search;
+
+            bool near_pages = false;
+            for (float t = t_begin; t <= t_end && !near_pages; t += 4.0f)
+            {
+                const Vector3 p = origin + direction * t;
+                float h = 0.0f;
+                near_pages = SampleDetailLocal(p.x, p.z, h);
+            }
+
+            if (near_pages)
+            {
+                auto above = [&](float t)
+                {
+                    const Vector3 p = origin + direction * t;
+                    return p.y >= SampleSurfaceLocal(p.x, p.z);
+                };
+
+                float previous = t_begin;
+                bool was_above = above(previous);
+                for (float t = t_begin + step; t <= t_end; t += step)
+                {
+                    const bool is_above = above(t);
+                    if (was_above && !is_above)
+                    {
+                        float lo = previous;
+                        float hi = t;
+                        for (uint32_t i = 0; i < 16; i++)
+                        {
+                            const float mid = (lo + hi) * 0.5f;
+                            (above(mid) ? lo : hi) = mid;
+                        }
+
+                        local_hit = origin + direction * hi;
+                        local_hit.y = SampleSurfaceLocal(local_hit.x, local_hit.z);
+                        break;
+                    }
+
+                    was_above = is_above;
+                    previous  = t;
+                }
+            }
+        }
+
         if (Entity* entity = GetEntity())
         {
             hit_out = entity->GetMatrix() * local_hit;
@@ -2604,14 +2673,18 @@ namespace spartan
             local_z = local.z;
         }
 
-        const float local_height = TerrainSystem::SampleHeight(
-            m_positions,
-            m_dense_width,
-            m_dense_height,
-            local_x,
-            local_z,
-            GetGridMapping()
-        );
+        float local_height = 0.0f;
+        if (!SampleDetailLocal(local_x, local_z, local_height))
+        {
+            local_height = TerrainSystem::SampleHeight(
+                m_positions,
+                m_dense_width,
+                m_dense_height,
+                local_x,
+                local_z,
+                GetGridMapping()
+            );
+        }
 
         if (Entity* entity = GetEntity())
         {
@@ -2643,14 +2716,29 @@ namespace spartan
             terrain_rotation = entity->GetRotation();
         }
 
-        Vector3 local_normal = TerrainSystem::SampleNormal(
-            m_positions,
-            m_dense_width,
-            m_dense_height,
-            local_x,
-            local_z,
-            GetGridMapping()
-        );
+        Vector3 local_normal = Vector3::Up;
+        float detail_height  = 0.0f;
+        if (SampleDetailLocal(local_x, local_z, detail_height))
+        {
+            // the pages are about a metre apart, a coarse cell wide gradient would smear a pad edge away
+            const TerrainGridMapping mapping = GetGridMapping();
+            const float step_x = mapping.scale_x / static_cast<float>(GetDetailSubdivisions());
+            const float step_z = mapping.scale_z / static_cast<float>(GetDetailSubdivisions());
+            const float dh_dx  = (SampleSurfaceLocal(local_x + step_x, local_z) - SampleSurfaceLocal(local_x - step_x, local_z)) / (2.0f * step_x);
+            const float dh_dz  = (SampleSurfaceLocal(local_x, local_z + step_z) - SampleSurfaceLocal(local_x, local_z - step_z)) / (2.0f * step_z);
+            local_normal = Vector3(-dh_dx, 1.0f, -dh_dz).Normalized();
+        }
+        else
+        {
+            local_normal = TerrainSystem::SampleNormal(
+                m_positions,
+                m_dense_width,
+                m_dense_height,
+                local_x,
+                local_z,
+                GetGridMapping()
+            );
+        }
 
         normal_out = (terrain_rotation * local_normal).Normalized();
         if (normal_out.LengthSquared() < math::epsilon)
@@ -3197,6 +3285,9 @@ namespace spartan
             // repair only what moved, the flush adds the seam ring and patches the height texture in place
             MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
             FlushHeightEdits(true);
+
+            // the road edges and their cut and fill slopes are graded again on the pages, a metre apart
+            MarkRoadDetailDirty(rect_x0 - 1, rect_z0 - 1, rect_x1, rect_z1);
         }
         // Existing fine patches must follow road edits and the first road bake too.
         // Otherwise their pre-carve triangles can cover an otherwise protected deck.
@@ -3415,6 +3506,33 @@ namespace spartan
         vector<RHI_Vertex_PosTexNorTan>& verts = m_mesh->GetVertices();
         unordered_set<uint32_t> touched;
 
+        bool has_drops = false;
+        {
+            shared_lock lock(m_detail_mutex);
+            has_drops = !m_detail_drop.empty();
+        }
+
+        // a vertex under the detail pages renders sunk below them, everything else reads it unchanged
+        auto detail_drop = [&](float lx, float lz) -> float
+        {
+            if (!has_drops)
+            {
+                return 0.0f;
+            }
+
+            const float gx = (lx + mapping.offset_x) / max(mapping.scale_x, 1e-4f);
+            const float gz = (lz + mapping.offset_z) / max(mapping.scale_z, 1e-4f);
+            const float rx = roundf(gx);
+            const float rz = roundf(gz);
+            if (fabsf(gx - rx) > 1e-2f || fabsf(gz - rz) > 1e-2f || rx < 0.0f || rz < 0.0f ||
+                rx >= static_cast<float>(m_dense_width) || rz >= static_cast<float>(m_dense_height))
+            {
+                return 0.0f;
+            }
+
+            return GetDetailDrop(static_cast<uint32_t>(rz) * m_dense_width + static_cast<uint32_t>(rx));
+        };
+
         for (uint32_t tile_index : tiles)
         {
             if (tile_index >= m_mesh->GetSubMeshCount() || tile_index >= m_tile_offsets.size())
@@ -3445,7 +3563,7 @@ namespace spartan
                         continue;
                     }
 
-                    vertex.pos[1] = TerrainSystem::SampleHeight(m_positions, m_dense_width, m_dense_height, lx, lz, mapping);
+                    vertex.pos[1] = TerrainSystem::SampleHeight(m_positions, m_dense_width, m_dense_height, lx, lz, mapping) - detail_drop(lx, lz);
                     vertex.set_normal(TerrainSystem::SampleNormal(m_positions, m_dense_width, m_dense_height, lx, lz, mapping));
                     first = min(first, i);
                     last  = max(last, i + 1);
@@ -3481,6 +3599,17 @@ namespace spartan
             if (Render* render = child->GetComponent<Render>())
             {
                 render->SetMesh(m_mesh.get(), static_cast<uint32_t>(index));
+
+                // ray traced shadows trace the blas, not the vertex buffer, a stale one shades the old ground
+                if (render->GetAllowBlasUpdate())
+                {
+                    render->SetNeedsBlasRefit(true);
+                }
+                else
+                {
+                    render->SetAllowBlasUpdate(true);
+                    render->InvalidateAccelerationStructure();
+                }
             }
         }
     }

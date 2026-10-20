@@ -863,10 +863,12 @@ namespace spartan
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
         }
         RHI_Device::Tick(m_frame_num);
+        SP_PROFILE_CPU_START("texture_streaming");
         if (RHI_TextureStreaming::Tick(m_frame_num))
         {
             bindless_textures_dirty = true;
         }
+        SP_PROFILE_CPU_END();
         RHI_Device::BeginFrame(can_render);
         RHI_Device::Bind(RHI_Frame_List::Graphics);
 
@@ -1419,7 +1421,16 @@ namespace spartan
         }
         bindless_textures_dirty = false;
         SP_PROFILE_CPU_START("material_bindless");
-        RHI_CommandList::PrepareTexturesForSampling(&m_bindless_textures);
+        // a residency swap only touches the swapped textures, the full table is prepared with the materials
+        const vector<shared_ptr<RHI_Texture>> streamed = RHI_TextureStreaming::TakePublished();
+        if (update_materials)
+        {
+            RHI_CommandList::PrepareTexturesForSampling(&m_bindless_textures);
+        }
+        else
+        {
+            RHI_CommandList::PrepareTexturesForSampling(streamed);
+        }
         RHI_Device::UpdateBindlessMaterials(
             &m_bindless_textures,
             update_materials ? GetBuffer(Renderer_Buffer::MaterialParameters) : nullptr
@@ -2257,6 +2268,8 @@ namespace spartan
             }
         }
 
+        Renderer::view().frame.terrain_detail_subdivisions = IsTerrainDetailReady() ? static_cast<float>(m_pass_state.terrain.detail_subdivisions) : 0.0f;
+
         // ground blending, the bindless slot is handed out by TickUploadMaterials which runs before
         // this, so the index is the one this frame's draws will sample
         Renderer::view().frame.terrain_blend_height   = 0.0f;
@@ -2972,6 +2985,20 @@ namespace spartan
         m_pass_state.terrain                  = params;
         m_pass_state.terrain_enabled          = true;
         m_pass_state.bindless_materials_dirty = true;
+    }
+
+    bool Renderer::IsTerrainDetailReady()
+    {
+        if (!m_pass_state.terrain_enabled || m_pass_state.terrain.detail_subdivisions == 0)
+        {
+            return false;
+        }
+
+        const RHI_Texture* table = m_pass_state.terrain.detail_table;
+        const RHI_Texture* atlas = m_pass_state.terrain.detail_atlas;
+        return table && atlas &&
+            table->GetResourceState() == ResourceState::PreparedForGpu && table->GetRhiSrv() &&
+            atlas->GetResourceState() == ResourceState::PreparedForGpu && atlas->GetRhiSrv();
     }
 
     void Renderer::ClearTerrain(Material* surface)
@@ -6146,6 +6173,10 @@ namespace spartan
                 "tex_terrain_height",
                 height_ready ? height : fallback
             );
+
+            const bool detail_ready = IsTerrainDetailReady();
+            RHI_CommandList::SetTexture("tex_terrain_detail_table", detail_ready ? m_pass_state.terrain.detail_table : fallback);
+            RHI_CommandList::SetTexture("tex_terrain_detail_atlas", detail_ready ? m_pass_state.terrain.detail_atlas : fallback);
 
             RHI_Texture* shore = ocean_shore::get_texture();
             RHI_CommandList::SetTexture("tex_ocean_shore", shore ? shore : fallback);

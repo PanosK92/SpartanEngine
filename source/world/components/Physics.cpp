@@ -2423,11 +2423,25 @@ namespace spartan
             return;
         }
 
+        // cells under terrain detail pages are holes, the page meshes carry their own collision
+        vector<uint32_t> holes;
+        for (uint32_t z = 0; z + 1 < z_count; z++)
+        {
+            for (uint32_t x = 0; x + 1 < x_count; x++)
+            {
+                if (terrain->IsDetailCell(x_start + x, z_start + z))
+                {
+                    holes.push_back(x * z_count + z);
+                }
+            }
+        }
+
         generated_cache::Hash cache_key;
-        cache_key.Add(uint32_t(1)); cache_key.Add(uint32_t(PX_PHYSICS_VERSION));
+        cache_key.Add(uint32_t(2)); cache_key.Add(uint32_t(PX_PHYSICS_VERSION));
         cache_key.Add(x_count); cache_key.Add(z_count);
         for (uint32_t z = 0; z < z_count; ++z)
             cache_key.Bytes(positions.data() + size_t(z_start + z) * grid_width + x_start, size_t(x_count) * sizeof(Vector3));
+        cache_key.Add(holes);
         const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "heightfields", cache_key.value);
         vector<uint8_t> cooked;
         vector<float> metadata;
@@ -2471,6 +2485,12 @@ namespace spartan
                     const float quantised = (positions[source_row + x].y - height_centre) / height_scale;
                     samples[x * z_count + z].height = static_cast<PxI16>(clamp(quantised, -32767.0f, 32767.0f));
                 }
+            }
+
+            for (uint32_t index : holes)
+            {
+                samples[index].materialIndex0 = PxHeightFieldMaterial::eHOLE;
+                samples[index].materialIndex1 = PxHeightFieldMaterial::eHOLE;
             }
 
             PxHeightFieldDesc desc;

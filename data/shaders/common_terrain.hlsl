@@ -1496,6 +1496,13 @@ float terrain_blend_ground_height(float2 world_xz, out float valid)
         return 0.0f;
     }
 
+    float detail = 0.0f;
+    if (sample_terrain_detail(world_xz, detail))
+    {
+        valid = 1.0f;
+        return detail;
+    }
+
     float2 size;
     tex_terrain_height.GetDimensions(size.x, size.y);
     float2 texels = max(size - 1.0f, 1.0f);
@@ -1530,6 +1537,15 @@ float terrain_blend_ground(float2 world_xz, out float3 normal_out, out float val
     if (valid < 0.5f)
     {
         return 0.0f;
+    }
+
+    // on a page the slope comes from the page, the coarse field under it is sunk and knows nothing of the pad
+    float detail_r = 0.0f;
+    float detail_f = 0.0f;
+    if (sample_terrain_detail(world_xz + float2(1.0f, 0.0f), detail_r) && sample_terrain_detail(world_xz + float2(0.0f, 1.0f), detail_f))
+    {
+        normal_out = normalize(float3(height - detail_r, 1.0f, height - detail_f));
+        return height;
     }
 
     float2 origin     = buffer_frame.terrain_height_mapping.xy;

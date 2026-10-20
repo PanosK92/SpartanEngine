@@ -217,6 +217,9 @@ namespace spartan
             RHI_Texture* map_a      = nullptr;
             RHI_Texture* map_b      = nullptr;
             RHI_Texture* height_map = nullptr;
+            RHI_Texture* detail_table = nullptr; // see tex_terrain_detail_table
+            RHI_Texture* detail_atlas = nullptr;
+            uint32_t detail_subdivisions = 0;
 
             std::array<Material*, terrain_layer_max>        layer_materials{};
             std::array<TerrainLayerRule, terrain_layer_max> layer_rules{};
@@ -397,6 +400,7 @@ namespace spartan
         void UpdateFrameCb_VegetationInteraction();
         void UpdateFrameCb_TerrainDeformation();
         bool IsTerrainDeformationReady();
+        bool IsTerrainDetailReady();
         bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources, bool create_render, bool create_output, const char* label);
 
         // resources

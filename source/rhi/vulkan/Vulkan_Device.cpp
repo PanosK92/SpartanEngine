@@ -1539,7 +1539,10 @@ namespace spartan
                 }
             }
 
-            void update_textures(const array<RHI_Texture*, rhi_max_array_size>* textures)
+            // views last written per slot, guarded by descriptor_pipeline_mutex
+            vector<VkImageView> written_texture_views;
+
+            void update_textures(const array<RHI_Texture*, rhi_max_array_size>* textures, const bool full)
             {
                 const uint32_t index      = static_cast<uint32_t>(RHI_Device_Bindless_Resource::MaterialTextures);
                 const ResourceConfig& cfg = configs[index];
@@ -1561,12 +1564,53 @@ namespace spartan
                 write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 write.dstSet          = sets[index];
                 write.dstBinding      = get_binding(RHI_Device_Bindless_Resource::MaterialTextures);
-                write.dstArrayElement = 0;
                 write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                write.descriptorCount = cfg.count;
-                write.pImageInfo      = image_infos.data();
 
-                vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
+                // a destroyed view's handle can be reused by a new view in the same slot, which a
+                // per-slot comparison cannot see, so anything but a residency swap rewrites everything
+                if (full || written_texture_views.size() != cfg.count)
+                {
+                    written_texture_views.resize(cfg.count);
+                    for (uint32_t i = 0; i < cfg.count; ++i)
+                    {
+                        written_texture_views[i] = image_infos[i].imageView;
+                    }
+
+                    write.dstArrayElement = 0;
+                    write.descriptorCount = cfg.count;
+                    write.pImageInfo      = image_infos.data();
+                    vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
+                    return;
+                }
+
+                // a residency swap changes a handful of views, write only the runs that differ
+                static thread_local vector<VkWriteDescriptorSet> writes;
+                writes.clear();
+                for (uint32_t i = 0; i < cfg.count;)
+                {
+                    if (written_texture_views[i] == image_infos[i].imageView)
+                    {
+                        ++i;
+                        continue;
+                    }
+
+                    const uint32_t first = i;
+                    while (i < cfg.count && written_texture_views[i] != image_infos[i].imageView)
+                    {
+                        written_texture_views[i] = image_infos[i].imageView;
+                        ++i;
+                    }
+
+                    write.dstArrayElement = first;
+                    write.descriptorCount = i - first;
+                    write.pImageInfo      = image_infos.data() + first;
+                    writes.push_back(write);
+                }
+
+                if (!writes.empty())
+                {
+                    vkUpdateDescriptorSets(RHI_Context::device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+                }
             }
 
             void update_samplers(RHI_Device_Bindless_Resource type, const shared_ptr<RHI_Sampler>* samplers, uint32_t count)
@@ -2737,7 +2781,8 @@ namespace spartan
         lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
         if (textures)
         {
-            descriptors::bindless::update_textures(textures);
+            // material parameters only come with a material upload, texture streaming swaps arrive alone
+            descriptors::bindless::update_textures(textures, parameters != nullptr);
         }
 
         if (parameters)

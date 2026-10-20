@@ -165,6 +165,12 @@ float sample_terrain_height(float2 world_xz, float2 height_size, out float valid
 
     valid = 1.0f;
 
+    float detail = 0.0f;
+    if (sample_terrain_detail(world_xz, detail))
+    {
+        return detail - buffer_frame.terrain_height_y;
+    }
+
     float2 texels = max(height_size - 1.0f, 1.0f);
     float2 grid   = normalized * texels;
     float2 base   = min(floor(grid), texels - 1.0f);
@@ -191,6 +197,14 @@ float3 sample_terrain_normal(
     float y_c
 )
 {
+    float detail_c = 0.0f;
+    float detail_r = 0.0f;
+    float detail_f = 0.0f;
+    if (sample_terrain_detail(world_xz, detail_c) && sample_terrain_detail(world_xz + float2(1.0f, 0.0f), detail_r) && sample_terrain_detail(world_xz + float2(0.0f, 1.0f), detail_f))
+    {
+        return normalize(float3(detail_c - detail_r, 1.0f, detail_c - detail_f));
+    }
+
     float2 uv = terrain_normalized_to_uv(terrain_world_to_normalized(world_xz), height_size);
 
     float2 texel_uv = 1.0f / max(height_size, 1.0f);

@@ -75,6 +75,38 @@ namespace spartan::terrain_common
         }
     }
 
+    // how far the ground may be raised to meet an object above it, a prop reaches about a metre, a
+    // building up to five, anything further up is floating and leaves the ground alone
+    inline float pad_vertical_reach(float half_x, float half_z)
+    {
+        return std::clamp(0.5f * std::min(half_x, half_z), 1.0f, 5.0f);
+    }
+
+    // buildings are dug into slopes and crests, so the ground may be cut deeper than it is raised
+    inline float pad_cut_reach(float half_x, float half_z)
+    {
+        return std::clamp(1.5f * std::min(half_x, half_z), 1.0f, 12.0f);
+    }
+
+    // saved pads were accepted when placed and can grade whole terraces, only gross outliers are dropped on load
+    constexpr float pad_saved_slack = 25.0f;
+
+    inline bool pad_within_reach(float height, float ground_min, float ground_max, float half_x, float half_z, float slack = 0.0f)
+    {
+        return height <= ground_max + pad_vertical_reach(half_x, half_z) + slack && height >= ground_min - pad_cut_reach(half_x, half_z) - slack;
+    }
+
+    // a cut or fill bank runs this many metres per metre of height, about 22 degrees on average and
+    // 31 at its steepest, capped so a deep cut on a cliff does not grade the whole hillside
+    constexpr float pad_bank_run = 2.5f;
+    constexpr float pad_bank_max = 30.0f;
+
+    inline float pad_bank_margin(float margin, float height, float ground_min, float ground_max)
+    {
+        const float depth = std::max({ height - ground_min, ground_max - height, 0.0f });
+        return std::max(margin, std::min(depth * pad_bank_run, pad_bank_max));
+    }
+
     inline float pad_deform_margin(const TerrainPlatform& pad, float cell)
     {
         return std::max(std::max(pad.margin, 0.0f), std::max(cell, 1.0f));

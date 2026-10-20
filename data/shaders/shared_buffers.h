@@ -164,7 +164,7 @@ struct FrameBufferData
     SHARED_UINT   terrain_blend_material;  // bindless index of the terrain surface material
     SHARED_FLOAT  terrain_blend_tiling;    // terrain uv repeats per metre, matches the surface material
     SHARED_FLOAT  puddliness;              // 0 dry, 1 standing water in every low spot of terrain and roads
-    SHARED_FLOAT  padding_terrain_blend_1;
+    SHARED_FLOAT  terrain_detail_subdivisions; // samples per coarse cell side of a detail page, 0 when no page is uploaded
 
     // breaking surf on the terrain shoreline, see common_ocean_shore.hlsl
     SHARED_FLOAT4 ocean_shore_mapping; // xy = world xz of the field origin, zw = 1 / world size

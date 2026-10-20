@@ -20,6 +20,11 @@ Texture2D tex_perlin : register(t14);
 Texture2D<float4> tex_terrain_map_a : register(t15);
 Texture2D<float4> tex_terrain_map_b : register(t16);
 Texture2D<float>  tex_terrain_height : register(t17);
+// detail pages, the coarse cells a pad or road reshapes, see sample_terrain_detail
+// table: one texel per chunk of 8x8 coarse cells, 0 = no pages, otherwise the atlas block index + 1
+// atlas: one block of (8 * (n + 1))^2 terrain space heights per chunk, a cell without a page holds -FLT_MAX
+Texture2D<float>  tex_terrain_detail_table : register(t41);
+Texture2D<float>  tex_terrain_detail_atlas : register(t42);
 // biome prop mask, rgb = grass, tree and rock suitability, a = dominant surface layer index
 // the terrain reads it to carry the grass carpet past the last blade ring
 Texture2D<float4> tex_terrain_prop_mask : register(t21);

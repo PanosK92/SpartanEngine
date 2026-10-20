@@ -1836,6 +1836,15 @@ namespace spartan
         RHI_Device::Cmd()->prepare_textures_for_sampling(textures);
     }
 
+    void RHI_CommandList::PrepareTexturesForSampling(const std::vector<std::shared_ptr<RHI_Texture>>& textures)
+    {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        for (const auto& texture : textures)
+        {
+            cmd_list->PrepareTextureForSampling(texture.get());
+        }
+    }
+
     void RHI_CommandList::PrepareTextureForCompute(RHI_Texture* texture)
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();

@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <shared_mutex>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -138,6 +139,8 @@ namespace spartan
     {
     public:
         static void SetEditTargets(const std::vector<uint64_t>& entities);
+        // entities placed outside the editor (mcp, scripts) that should cut a pad if they rest on the ground
+        static void RequestConform(const std::vector<uint64_t>& entities);
         Terrain(Entity* entity);
         ~Terrain();
 
@@ -308,6 +311,14 @@ namespace spartan
         uint32_t GetDenseHeight() const { return m_dense_height; }
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
         bool SampleHeight(float world_x, float world_z, float& height_out) const;
+        // fine height pages over the coarse cells a pad reshapes, the terrain surface itself, not an
+        // overlay, the coarse mesh sinks just under them and its collision gets a hole per page cell
+        bool IsDetailCell(uint32_t cell_x, uint32_t cell_z) const;
+        uint32_t GetDetailSubdivisions() const;
+        // entity local height of the pages at a local xz, false where the coarse grid is the surface
+        bool SampleDetailLocal(float local_x, float local_z, float& height_out) const;
+        // the rendered surface at a local xz, the pages where there are any, the coarse grid elsewhere
+        float SampleSurfaceLocal(float local_x, float local_z) const;
         // Sculpted ground before building pads and road carves; roads must not
         // chase their own fill or a neighbouring building on regeneration.
         bool SampleHeightBase(float world_x, float world_z, float& height_out) const;
@@ -501,19 +512,23 @@ namespace spartan
             float blend_margin,
             bool restore_only
         );
-        bool SampleSeedMax(
+        bool SampleSeedRange(
             float center_x,
             float center_z,
             float half_x,
             float half_z,
             float yaw,
+            float& out_min,
             float& out_max
         );
+        // false when the pad sits further above or below the untouched ground than it may reach
+        bool PadWithinReach(const TerrainPlatform& pad, float slack = 0.0f);
         void CommitLivePad(bool punch);
         void RestoreLivePad();
         void RestorePlatform(const TerrainPlatform& pad);
         void PruneVanishedPlatforms();
         void FollowPlatformOwners();
+        void ConformRequestedEntities();
         // restore the retired pads to the seed, stamp the new ones and rebuild their refines
         void ReplacePlatforms(const std::vector<TerrainPlatform>& retired, const std::vector<TerrainPlatform>& stamped, const char* reason);
         struct MeasuredPad
@@ -537,6 +552,23 @@ namespace spartan
         void DestroyAllPadRefines();
         void SyncPadRefine(const TerrainPlatform& pad, bool cook_physics);
         void CookPadRefine(uint64_t entity_id);
+
+        // detail pages, see TerrainDetail.cpp
+        void MarkDetailDirtyForPad(const TerrainPlatform& pad, bool cook_physics);
+        void MarkDetailDirtyCells(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics);
+        void FlushDetail();
+        void RebuildDetailRegion(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics);
+        void RebuildDetailChunk(uint32_t chunk_x, uint32_t chunk_z, bool cook_physics);
+        void DestroyDetail();
+        // pack every page into the chunk table and atlas the shaders read, grass and blending follow the pads
+        void UploadDetailTextures();
+        // road cells only carry pages in a window of chunks around the camera, a page for every road on the
+        // island would be tens of millions of vertices, pads keep theirs everywhere
+        void UpdateDetailWindow();
+        void MarkRoadDetailDirty(int32_t x0, int32_t z0, int32_t x1, int32_t z1);
+        void PadCellRect(const TerrainPlatform& pad, int32_t& x0, int32_t& z0, int32_t& x1, int32_t& z1) const;
+        // metres the coarse render mesh sinks at a grid vertex so it stays under the pages
+        float GetDetailDrop(uint32_t vertex_index) const;
         void ApplyRoadHeightConstraints(
             std::vector<math::Vector3>& positions, uint32_t stride, const TerrainGridMapping& mapping,
             int32_t x0, int32_t z0, int32_t x1, int32_t z1, float plateau, std::vector<float>* deltas) const;
@@ -688,9 +720,22 @@ namespace spartan
         math::Vector3 m_live_track_position = math::Vector3::Zero;
         math::Quaternion m_live_track_rotation;
         math::Vector3 m_live_track_scale = math::Vector3::One;
-        // dense pad meshes, one per occupied floor, collision included
-        std::unordered_map<uint64_t, std::shared_ptr<Mesh>> m_pad_refine_meshes;
-        std::unordered_map<uint64_t, std::array<uint32_t, 2>> m_pad_refine_grids;
+        // detail pages, keyed by coarse cell index (z * (dense_width - 1) + x), each holds
+        // (subdivisions + 1)^2 entity local heights, written on the main thread, read from any
+        mutable std::shared_mutex m_detail_mutex;
+        std::unordered_map<uint32_t, std::vector<float>> m_detail_pages;
+        std::unordered_map<uint32_t, float> m_detail_drop;
+        std::unordered_map<uint64_t, std::shared_ptr<Mesh>> m_detail_meshes;
+        std::vector<std::array<int32_t, 4>> m_detail_dirty;
+        bool m_detail_dirty_cook = false;
+        std::shared_ptr<RHI_Texture> m_detail_table_gpu;
+        std::shared_ptr<RHI_Texture> m_detail_atlas_gpu;
+        std::shared_ptr<RHI_Texture> m_detail_table_gpu_retired;
+        std::shared_ptr<RHI_Texture> m_detail_atlas_gpu_retired;
+        uint32_t m_detail_gpu_subdivisions = 0;
+        std::unordered_set<uint64_t> m_detail_road_chunks;
+        int32_t m_detail_window_x = INT32_MIN;
+        int32_t m_detail_window_z = INT32_MIN;
         // dense cells edited since the last flush, and cells whose collision still needs a rebuild
         TerrainDirtyRect m_height_dirty;
         TerrainDirtyRect m_physics_dirty;

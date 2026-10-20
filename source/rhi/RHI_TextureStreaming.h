@@ -8,6 +8,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
+#include <vector>
 
 namespace spartan
 {
@@ -16,6 +18,11 @@ namespace spartan
     // Render-thread API. Only immutable, sampled 2D BC textures with a complete CPU
     // mip chain participate. Render targets, UAVs, arrays and CPU-only packing inputs
     // never enter the streamer. Backends only create/upload ordinary textures.
+    //
+    // The render thread only schedules and publishes. Snapshotting the source mips,
+    // creating the replacement image and recording its upload all happen on a worker,
+    // a batch at a time, and uploads never block on a fence: the graphics queue orders
+    // them before every frame that samples the published image.
     class RHI_TextureStreaming
     {
     public:
@@ -26,14 +33,19 @@ namespace spartan
             uint64_t budget_bytes = 0;
             uint64_t pending_bytes = 0;
             uint32_t texture_count = 0;
+            uint32_t pending_count = 0;
+            uint64_t published_count = 0;
+            float tick_ms = 0.0f;
         };
 
         // Pixels covered by one UV repeat. Multiple users/views merge by maximum demand.
         // Zero requests the always-resident small mip tail; infinity requests full detail.
         static void Request(RHI_Texture* texture, float pixels, uint64_t frame);
         // Before BeginFrame: publishes completed uploads, then schedules at most one
-        // replacement. Returns true when bindless descriptors need refreshing.
+        // batch. Returns true when bindless descriptors need refreshing.
         static bool Tick(uint64_t frame);
+        // Textures whose GPU image was swapped since the last call, kept alive until taken.
+        static std::vector<std::shared_ptr<RHI_Texture>> TakePublished();
         static void Shutdown();
         static Statistics GetStatistics();
 
@@ -44,5 +56,7 @@ namespace spartan
         static bool CanStream(const RHI_Texture& texture);
         static std::shared_ptr<RHI_Texture> CreateReplacement(const RHI_Texture& texture, uint32_t mip);
         static void Publish(RHI_Texture& texture, RHI_Texture& replacement, uint32_t mip);
+        // held while a worker reads source mips and while the texture replaces them
+        static std::mutex& SourceMutex();
     };
 }

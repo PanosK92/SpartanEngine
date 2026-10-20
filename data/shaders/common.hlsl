@@ -204,12 +204,76 @@ float2 ocean_terrain_uv(float2 world_xz, out float valid)
     return normalized;
 }
 
+static const uint terrain_detail_chunk_cells     = 8;  // TerrainDetail.cpp detail_chunk_cells
+static const uint terrain_detail_blocks_per_row = 16; // Terrain::UploadDetailTextures
+
+// world y of the detail page under this xz, the surface a pad or road graded into the coarse cell,
+// false where the cell has no page and the coarse triangles are the surface
+bool sample_terrain_detail(float2 world_xz, out float height_out)
+{
+    height_out = 0.0f;
+
+    uint n = (uint)buffer_frame.terrain_detail_subdivisions;
+    if (n == 0u || buffer_frame.terrain_height_enabled < 0.5f)
+    {
+        return false;
+    }
+
+    float2 normalized = (world_xz - buffer_frame.terrain_height_mapping.xy) * buffer_frame.terrain_height_mapping.zw;
+    if (any(normalized < 0.0f) || any(normalized > 1.0f))
+    {
+        return false;
+    }
+
+    uint width, height;
+    tex_terrain_height.GetDimensions(width, height);
+    float2 grid = normalized * float2(width - 1u, height - 1u);
+    uint2 cell  = min(uint2(grid), uint2(width, height) - 2u);
+    uint2 chunk = cell / terrain_detail_chunk_cells;
+    uint slot   = (uint)tex_terrain_detail_table.Load(int3(chunk, 0));
+    if (slot == 0u)
+    {
+        return false;
+    }
+    slot -= 1u;
+
+    uint stride = n + 1u;
+    uint2 base  = uint2(slot % terrain_detail_blocks_per_row, slot / terrain_detail_blocks_per_row) * (terrain_detail_chunk_cells * stride);
+    base       += (cell - chunk * terrain_detail_chunk_cells) * stride;
+
+    float2 f = clamp((grid - float2(cell)) * n, 0.0f, (float)n);
+    uint2 i  = min(uint2(f), uint2(n - 1u, n - 1u));
+    f       -= float2(i);
+    base    += i;
+
+    float h00 = tex_terrain_detail_atlas.Load(int3(base, 0));
+    if (h00 < -1e30f)
+    {
+        return false;
+    }
+    float h10 = tex_terrain_detail_atlas.Load(int3(base + uint2(1, 0), 0));
+    float h01 = tex_terrain_detail_atlas.Load(int3(base + uint2(0, 1), 0));
+    float h11 = tex_terrain_detail_atlas.Load(int3(base + uint2(1, 1), 0));
+    float local = f.x + f.y <= 1.0f
+        ? h00 + f.x * (h10 - h00) + f.y * (h01 - h00)
+        : h11 + (1.0f - f.x) * (h01 - h11) + (1.0f - f.y) * (h10 - h11);
+
+    height_out = local + buffer_frame.terrain_height_y;
+    return true;
+}
+
 float sample_ocean_terrain_height(float2 world_xz, out float valid)
 {
     float2 normalized = ocean_terrain_uv(world_xz, valid);
     if (valid < 0.5f)
     {
         return 0.0f;
+    }
+
+    float detail = 0.0f;
+    if (sample_terrain_detail(world_xz, detail))
+    {
+        return detail;
     }
 
     // Match TerrainPlacement::triangle_height and the rendered cell diagonal.

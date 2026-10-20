@@ -774,20 +774,24 @@ namespace spartan
         if (!loaded.ReadFromFile(file_path)) return false;
 
         // Replace only after the entire CPU payload has been decoded successfully.
-        RHI_DestroyResource();
-        m_width = std::move(loaded.m_width);
-        m_height = std::move(loaded.m_height);
-        m_depth = std::move(loaded.m_depth);
-        m_mip_count = std::move(loaded.m_mip_count);
-        m_bits_per_channel = std::move(loaded.m_bits_per_channel);
-        m_channel_count = std::move(loaded.m_channel_count);
-        m_format = std::move(loaded.m_format);
-        m_type = std::move(loaded.m_type);
-        m_viewport = std::move(loaded.m_viewport);
-        m_flags = std::move(loaded.m_flags);
-        m_object_name = std::move(loaded.m_object_name);
-        m_slices = std::move(loaded.m_slices);
-        m_resident_mip = 0;
+        {
+            // a streaming worker may be copying the old mips
+            lock_guard<mutex> lock(RHI_TextureStreaming::SourceMutex());
+            RHI_DestroyResource();
+            m_width = std::move(loaded.m_width);
+            m_height = std::move(loaded.m_height);
+            m_depth = std::move(loaded.m_depth);
+            m_mip_count = std::move(loaded.m_mip_count);
+            m_bits_per_channel = std::move(loaded.m_bits_per_channel);
+            m_channel_count = std::move(loaded.m_channel_count);
+            m_format = std::move(loaded.m_format);
+            m_type = std::move(loaded.m_type);
+            m_viewport = std::move(loaded.m_viewport);
+            m_flags = std::move(loaded.m_flags);
+            m_object_name = std::move(loaded.m_object_name);
+            m_slices = std::move(loaded.m_slices);
+            m_resident_mip = 0;
+        }
         ClearLayouts();
         SetResourceFilePath(file_path);
         ComputeMemoryUsage();
@@ -848,7 +852,7 @@ namespace spartan
             m_depth           = hdr.depth;
             m_mip_count       = hdr.mip_count;
             // Upload policy belongs to the caller, not to the saved native texture.
-            const uint32_t upload_flags = RHI_Texture_DeferUpload | RHI_Texture_Stream;
+            const uint32_t upload_flags = RHI_Texture_DeferUpload | RHI_Texture_Stream | RHI_Texture_AsyncUpload;
             m_flags           = (hdr.flags & ~upload_flags) | (m_flags & upload_flags) | RHI_Texture_Srv;
             m_object_name     = hdr.name[0] ? string(hdr.name) : FileSystem::GetFileNameFromFilePath(file_path);
             m_viewport        = RHI_Viewport(0, 0, static_cast<float>(m_width), static_cast<float>(m_height));

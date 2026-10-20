@@ -63,6 +63,38 @@ namespace spartan
     namespace { vector<uint64_t> edit_targets; }
     void Terrain::SetEditTargets(const vector<uint64_t>& entities) { edit_targets = entities; }
 
+    namespace
+    {
+        struct ConformRequest
+        {
+            uint64_t entity_id = 0;
+            double deadline_ms = 0.0;
+        };
+        mutex conform_requests_mutex;
+        vector<ConformRequest> conform_requests;
+
+        // a freshly created mesh can take a few frames to report bounds, so a request is retried this long
+        constexpr double conform_retry_ms = 2000.0;
+    }
+
+    void Terrain::RequestConform(const vector<uint64_t>& entities)
+    {
+        lock_guard<mutex> lock(conform_requests_mutex);
+        const double deadline = Timer::GetTimeMs() + conform_retry_ms;
+        for (uint64_t id : entities)
+        {
+            auto existing = find_if(conform_requests.begin(), conform_requests.end(), [id](const ConformRequest& request) { return request.entity_id == id; });
+            if (existing != conform_requests.end())
+            {
+                existing->deadline_ms = deadline;
+            }
+            else
+            {
+                conform_requests.push_back({ id, deadline });
+            }
+        }
+    }
+
     using namespace terrain_common;
 
     namespace
@@ -412,7 +444,7 @@ namespace spartan
 
         bool is_pad_refine_name(const string& name)
         {
-            return name.rfind("terrain_refine", 0) == 0;
+            return name.rfind("terrain_refine", 0) == 0 || name.rfind("terrain_detail", 0) == 0;
         }
 
         // entity delete is deferred, drop the raw mesh pointer before the shared mesh is freed
@@ -2416,6 +2448,9 @@ namespace spartan
 
         // the flush repairs mesh, height texture and the flat height mirror for this rect only
         MarkHeightsDirty(x0, z0, x1, z1);
+
+        // whatever painted or restored here, the pages over it are re-derived from the pads that remain
+        MarkDetailDirtyCells(x0 - 1, z0 - 1, x1, z1, false);
     }
 
     void Terrain::MarkRoadCarvesDirtyInGridRect(int32_t x0, int32_t z0, int32_t x1, int32_t z1)
@@ -2434,15 +2469,34 @@ namespace spartan
         }
     }
 
-    bool Terrain::SampleSeedMax(
+    bool Terrain::PadWithinReach(const TerrainPlatform& pad, float slack)
+    {
+        if (pad.half_x <= 0.05f || pad.half_z <= 0.05f)
+        {
+            return true;
+        }
+
+        float ground_min = 0.0f;
+        float ground_max = 0.0f;
+        if (!SampleSeedRange(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, ground_min, ground_max))
+        {
+            return true;
+        }
+
+        return pad_within_reach(pad.height, ground_min, ground_max, pad.half_x, pad.half_z, slack);
+    }
+
+    bool Terrain::SampleSeedRange(
         float center_x,
         float center_z,
         float half_x,
         float half_z,
         float yaw,
+        float& out_min,
         float& out_max
     )
     {
+        out_min = 0.0f;
         out_max = 0.0f;
         if (m_positions_seed.size() != m_positions.size() || !HasHeightfield())
         {
@@ -2467,6 +2521,7 @@ namespace spartan
         }
 
         float highest = -numeric_limits<float>::max();
+        float lowest  = numeric_limits<float>::max();
         uint32_t count = 0;
         float min_x = 0.0f;
         float min_z = 0.0f;
@@ -2500,8 +2555,29 @@ namespace spartan
                 }
 
                 highest = max(highest, world_y);
+                lowest  = min(lowest, world_y);
                 count++;
             }
+        }
+
+        // a footprint smaller than a grid cell holds no vertex, the centre and corners still read the ground
+        const float c = cosf(local_yaw);
+        const float s = sinf(local_yaw);
+        const float probes[5][2] = { { 0.0f, 0.0f }, { -1.0f, -1.0f }, { 1.0f, -1.0f }, { -1.0f, 1.0f }, { 1.0f, 1.0f } };
+        for (const auto& probe : probes)
+        {
+            const float lx = local_cx + c * probe[0] * local_hx - s * probe[1] * local_hz;
+            const float lz = local_cz + s * probe[0] * local_hx + c * probe[1] * local_hz;
+            const float local_y = TerrainSystem::SampleHeight(m_positions_seed, m_dense_width, m_dense_height, lx, lz, mapping);
+            float world_y = local_y;
+            if (Entity* entity = GetEntity())
+            {
+                world_y = (entity->GetMatrix() * Vector3(lx, local_y, lz)).y;
+            }
+
+            highest = max(highest, world_y);
+            lowest  = min(lowest, world_y);
+            count++;
         }
 
         if (count == 0)
@@ -2509,6 +2585,7 @@ namespace spartan
             return false;
         }
 
+        out_min = lowest;
         out_max = highest;
         return true;
     }
@@ -2533,23 +2610,32 @@ namespace spartan
         }
     }
 
+    // the pad surfaces live in the terrain detail pages now, these keep the pad bookkeeping's
+    // vocabulary and queue the affected cells for a rebuild, see TerrainDetail.cpp
     void Terrain::DestroyPadRefine(uint64_t entity_id)
     {
-        if (!m_entity_ptr || entity_id == 0)
+        if (entity_id == 0)
         {
-            m_pad_refine_meshes.erase(entity_id);
-            m_pad_refine_grids.erase(entity_id);
             return;
         }
 
-        if (Entity* child = m_entity_ptr->GetChildByName(pad_refine_name(entity_id)))
+        // a world saved before the pages existed can still carry an overlay child
+        if (m_entity_ptr)
         {
-            detach_render_mesh(child);
-            World::RemoveEntity(child);
+            if (Entity* child = m_entity_ptr->GetChildByName(pad_refine_name(entity_id)))
+            {
+                detach_render_mesh(child);
+                World::RemoveEntity(child);
+            }
         }
 
-        m_pad_refine_meshes.erase(entity_id);
-        m_pad_refine_grids.erase(entity_id);
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            if (pad.entity_id == entity_id)
+            {
+                MarkDetailDirtyForPad(pad, true);
+            }
+        }
     }
 
     void Terrain::DestroyAllPadRefines()
@@ -2567,208 +2653,22 @@ namespace spartan
             }
         }
 
-        m_pad_refine_meshes.clear();
-        m_pad_refine_grids.clear();
+        DestroyDetail();
     }
 
     void Terrain::SyncPadRefine(const TerrainPlatform& pad, bool cook_physics)
     {
-        SP_PROFILE_CPU();
-        if (!m_entity_ptr || pad.entity_id == 0 || !HasHeightfield())
-        {
-            return;
-        }
-
-        if (m_positions_seed.size() != m_positions.size())
-        {
-            return;
-        }
-
-        float local_cx     = 0.0f;
-        float local_cz     = 0.0f;
-        float local_hx     = 0.0f;
-        float local_hz     = 0.0f;
-        float local_yaw    = 0.0f;
-        float local_height = 0.0f;
-        platform_to_local(
-            GetEntity(),
-            pad,
-            local_cx,
-            local_cz,
-            local_hx,
-            local_hz,
-            local_yaw,
-            local_height
-        );
-
-        const TerrainGridMapping mapping = GetGridMapping();
-        const float cell   = max(max(mapping.scale_x, mapping.scale_z), 1.0f);
-        const float margin = pad_deform_margin(pad, cell);
-        float min_x = 0.0f;
-        float min_z = 0.0f;
-        float max_x = 0.0f;
-        float max_z = 0.0f;
-        obb_write_aabb(local_cx, local_cz, local_hx, local_hz, local_yaw, min_x, min_z, max_x, max_z);
-        min_x -= margin;
-        max_x += margin;
-        min_z -= margin;
-        max_z += margin;
-
-        const float width  = max(max_x - min_x, 0.5f);
-        const float depth  = max(max_z - min_z, 0.5f);
-        const float target = 0.75f;
-        const uint32_t segs_x = clamp(static_cast<uint32_t>(ceilf(width / target)), 16u, 96u);
-        const uint32_t segs_z = clamp(static_cast<uint32_t>(ceilf(depth / target)), 16u, 96u);
-        const uint32_t verts_x = segs_x + 1;
-        const uint32_t verts_z = segs_z + 1;
-
-        vector<Vector3> positions(static_cast<size_t>(verts_x) * verts_z);
-        for (uint32_t z = 0; z < verts_z; z++)
-        {
-            const float tz = static_cast<float>(z) / static_cast<float>(segs_z);
-            const float lz = min_z + (max_z - min_z) * tz;
-            for (uint32_t x = 0; x < verts_x; x++)
-            {
-                const float tx = static_cast<float>(x) / static_cast<float>(segs_x);
-                const float lx = min_x + (max_x - min_x) * tx;
-                const float distance = obb_outside_distance(
-                    lx,
-                    lz,
-                    local_cx,
-                    local_cz,
-                    local_hx,
-                    local_hz,
-                    local_yaw
-                );
-
-                const float seed_y = TerrainSystem::SampleHeight(
-                    m_positions_seed,
-                    m_dense_width,
-                    m_dense_height,
-                    lx,
-                    lz,
-                    mapping
-                );
-
-                float y = seed_y;
-                if (distance <= 0.0f)
-                {
-                    y = local_height;
-                }
-                else if (margin > 0.0f && distance < margin)
-                {
-                    const float t = distance / margin;
-                    const float w = 1.0f - (t * t * (3.0f - 2.0f * t));
-                    y = seed_y + (local_height - seed_y) * w;
-                }
-
-                positions[static_cast<size_t>(z) * verts_x + x] = Vector3(lx, y + 0.02f, lz);
-            }
-        }
-
-        TerrainGridMapping refine_mapping;
-        refine_mapping.scale_x = width / segs_x;
-        refine_mapping.scale_z = depth / segs_z;
-        refine_mapping.offset_x = -min_x;
-        refine_mapping.offset_z = -min_z;
-        // Apply the road ceiling AFTER the overlay offset too. A triangle touching
-        // the deck must have its neighbouring vertices constrained beneath it.
-        const float refine_plateau = sqrtf(refine_mapping.scale_x * refine_mapping.scale_x +
-                                           refine_mapping.scale_z * refine_mapping.scale_z);
-        ApplyRoadHeightConstraints(positions, verts_x, refine_mapping,
-            0, 0, segs_x, segs_z, refine_plateau, nullptr);
-
-        vector<RHI_Vertex_PosTexNorTan> vertices(positions.size());
-        vector<uint32_t> indices((verts_x - 1) * (verts_z - 1) * 6);
-        TerrainSystem::GenerateVerticesAndIndices(vertices, indices, positions, verts_x, verts_z);
-        TerrainSystem::GenerateNormals(vertices, verts_x, verts_z);
-
-        const float extent_x = max(mapping.extent_x, 0.001f);
-        const float extent_z = max(mapping.extent_z, 0.001f);
-        for (RHI_Vertex_PosTexNorTan& vertex : vertices)
-        {
-            const float u = (vertex.pos[0] + mapping.offset_x) / extent_x;
-            const float v = (vertex.pos[2] + mapping.offset_z) / extent_z;
-            vertex.set_uv(u, v);
-        }
-
-        const string name = pad_refine_name(pad.entity_id);
-        Entity* child = m_entity_ptr->GetChildByName(name);
-        if (!child)
-        {
-            child = World::CreateEntity();
-            child->SetObjectName(name);
-            child->SetTransient(true);
-            child->SetParent(m_entity_ptr);
-            child->SetPositionLocal(Vector3::Zero);
-            World::ProcessPendingAdditions();
-        }
-
-        shared_ptr<Mesh>& mesh = m_pad_refine_meshes[pad.entity_id];
-        Render* render = child->GetComponent<Render>();
-        if (!render)
-        {
-            render = child->AddComponent<Render>();
-        }
-
-        bool updated = false;
-        if (mesh && render->GetMesh() == mesh.get())
-        {
-            const auto grid = m_pad_refine_grids.find(pad.entity_id);
-            if (grid != m_pad_refine_grids.end() && grid->second == array<uint32_t, 2>{verts_x, verts_z})
-            {
-                updated = mesh->UpdateVertices(vertices);
-            }
-            if (!updated) updated = mesh->UpdateGeometry(vertices, indices);
-            if (updated) render->SetMesh(mesh.get());
-        }
-
-        if (!updated)
-        {
-            if (render->GetMesh() == mesh.get())
-            {
-                render->ClearMesh();
-            }
-
-            mesh = make_shared<Mesh>();
-            mesh->SetObjectName(name);
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
-            mesh->SetDynamic(true);
-            mesh->SetPersistent(false);
-            mesh->AddGeometry(vertices, indices, false);
-            mesh->CreateGpuBuffers();
-            render->SetMesh(mesh.get());
-        }
-
-        if (m_material && render->GetMaterial() != m_material.get())
-        {
-            render->SetMaterial(m_material);
-        }
-
-        m_pad_refine_grids[pad.entity_id] = {verts_x, verts_z};
-        if (cook_physics)
-        {
-            CookPadRefine(pad.entity_id);
-        }
+        MarkDetailDirtyForPad(pad, cook_physics);
     }
 
     void Terrain::CookPadRefine(uint64_t entity_id)
     {
-        SP_PROFILE_CPU();
-        Entity* child = m_entity_ptr ? m_entity_ptr->GetChildByName(pad_refine_name(entity_id)) : nullptr;
-        if (!child) return;
-        Physics* physics = child->GetComponent<Physics>();
-        if (!physics)
+        for (const TerrainPlatform& pad : m_platforms)
         {
-            physics = child->AddComponent<Physics>();
-            physics->SetUseConvexHull(false);
-            physics->SetBodyType(BodyType::Mesh);
-        }
-        else
-        {
-            physics->Rebuild();
+            if (pad.entity_id == entity_id)
+            {
+                MarkDetailDirtyForPad(pad, true);
+            }
         }
     }
 
@@ -3102,7 +3002,14 @@ namespace spartan
         for (const auto& [previous, moved] : moves)
         {
             retired.push_back(previous);
-            stamped.push_back(moved);
+            if (PadWithinReach(moved))
+            {
+                stamped.push_back(moved);
+            }
+            else
+            {
+                SP_LOG_INFO("terrain pad of entity %llu released, its owner left the ground", static_cast<unsigned long long>(moved.entity_id));
+            }
         }
         ReplacePlatforms(retired, stamped, "followed its owner");
     }
@@ -3211,15 +3118,15 @@ namespace spartan
             return false;
         }
 
+        float seed_min = 0.0f;
         float seed_max = 0.0f;
-        if (!SampleSeedMax(desc.center_x, desc.center_z, desc.half_x, desc.half_z, desc.yaw, seed_max))
+        if (!SampleSeedRange(desc.center_x, desc.center_z, desc.half_x, desc.half_z, desc.yaw, seed_min, seed_max))
         {
             return false;
         }
 
-        // a building held high above the ground is being carried, not placed
-        const float engage = max(6.0f, min(span * 0.04f, 48.0f));
-        if ((desc.height - seed_max) >= engage)
+        // a building held above the ground is being carried, one sunk below it is buried on purpose
+        if (!pad_within_reach(desc.height, seed_min, seed_max, desc.half_x, desc.half_z))
         {
             return false;
         }
@@ -3236,7 +3143,7 @@ namespace spartan
         wanted.half_z    = desc.half_z;
         wanted.yaw       = desc.yaw;
         wanted.height    = desc.height + sink;
-        wanted.margin    = desc.margin;
+        wanted.margin    = pad_bank_margin(desc.margin, wanted.height, seed_min, seed_max);
         wanted.min_x     = desc.min_x;
         wanted.min_z     = desc.min_z;
         wanted.max_x     = desc.max_x;
@@ -3284,6 +3191,83 @@ namespace spartan
         }
 
         return !stale.empty();
+    }
+
+    void Terrain::ConformRequestedEntities()
+    {
+        vector<ConformRequest> requests;
+        {
+            lock_guard<mutex> lock(conform_requests_mutex);
+            requests.swap(conform_requests);
+        }
+        if (requests.empty())
+        {
+            return;
+        }
+
+        unordered_map<uint64_t, uint32_t> pads_per_owner;
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            pads_per_owner[pad.entity_id]++;
+        }
+
+        const double now = Timer::GetTimeMs();
+        vector<ConformRequest> retry;
+        vector<TerrainPlatform> stamped;
+        vector<TerrainPlatform> retired;
+        unordered_set<uint64_t> owners;
+        for (const ConformRequest& request : requests)
+        {
+            Entity* entity = World::GetEntityById(request.entity_id);
+            if (!entity || is_terrain_tile_or_water(entity) || entity->GetComponent<Terrain>())
+            {
+                continue;
+            }
+
+            // the selection is the live pad's, and an owner that has a pad already is followed by it
+            if (find(edit_targets.begin(), edit_targets.end(), request.entity_id) != edit_targets.end() || pads_per_owner.count(request.entity_id))
+            {
+                continue;
+            }
+
+            MeasuredPad measured;
+            if (!MeasurePad({ entity }, measured))
+            {
+                if (now < request.deadline_ms)
+                {
+                    retry.push_back(request);
+                }
+                continue;
+            }
+
+            const uint64_t owner = measured.pad.entity_id;
+            if (pads_per_owner.count(owner) || !owners.insert(owner).second)
+            {
+                continue;
+            }
+
+            for (const TerrainPlatform& pad : m_platforms)
+            {
+                const bool queued = any_of(retired.begin(), retired.end(), [&pad](const TerrainPlatform& other) { return other.entity_id == pad.entity_id; });
+                if (!queued && pad.entity_id != owner && pads_per_owner[pad.entity_id] == 1 &&
+                    find(measured.members.begin(), measured.members.end(), pad.entity_id) != measured.members.end())
+                {
+                    retired.push_back(pad);
+                }
+            }
+            stamped.push_back(measured.pad);
+        }
+
+        if (!retry.empty())
+        {
+            lock_guard<mutex> lock(conform_requests_mutex);
+            conform_requests.insert(conform_requests.end(), retry.begin(), retry.end());
+        }
+
+        if (!stamped.empty())
+        {
+            ReplacePlatforms(retired, stamped, "conformed to the ground");
+        }
     }
 
     void Terrain::CommitLivePad(bool punch)
@@ -3338,6 +3322,7 @@ namespace spartan
         }
 
         FollowPlatformOwners();
+        ConformRequestedEntities();
 
         vector<Entity*> selected;
         for (uint64_t id : edit_targets)
@@ -3507,7 +3492,7 @@ namespace spartan
             m_live_pad_active     = true;
             m_live_pad_changed_ms = Timer::GetTimeMs();
             m_live_pad_dirty      = !already_there;
-            if (already_there && m_pad_refine_meshes.find(wanted.entity_id) != m_pad_refine_meshes.end())
+            if (already_there)
             {
                 remember_track();
                 return;
@@ -3536,6 +3521,44 @@ namespace spartan
         if (m_platforms.empty() || !HasHeightfield())
         {
             return false;
+        }
+
+        // pads saved before the reach rule can hold the ground up to an object floating far above it
+        const size_t count_before = m_platforms.size();
+        m_platforms.erase(
+            remove_if(
+                m_platforms.begin(),
+                m_platforms.end(),
+                [this](const TerrainPlatform& pad)
+                {
+                    if (PadWithinReach(pad, pad_saved_slack))
+                    {
+                        return false;
+                    }
+
+                    float ground_min = 0.0f;
+                    float ground_max = 0.0f;
+                    SampleSeedRange(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, ground_min, ground_max);
+                    SP_LOG_WARNING("dropped the terrain pad of entity %llu at %.1f, %.1f, height %.1f is out of reach of the ground %.1f to %.1f",
+                        static_cast<unsigned long long>(pad.entity_id), pad.center_x, pad.center_z, pad.height, ground_min, ground_max);
+                    return true;
+                }
+            ),
+            m_platforms.end()
+        );
+        if (m_platforms.size() != count_before)
+        {
+            SP_LOG_INFO("dropped %zu out of reach terrain pads", count_before - m_platforms.size());
+        }
+
+        for (TerrainPlatform& pad : m_platforms)
+        {
+            float ground_min = 0.0f;
+            float ground_max = 0.0f;
+            if (pad.half_x > 0.05f && pad.half_z > 0.05f && SampleSeedRange(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, ground_min, ground_max))
+            {
+                pad.margin = pad_bank_margin(pad.margin, pad.height, ground_min, ground_max);
+            }
         }
 
         for (const TerrainPlatform& platform : m_platforms)
@@ -3571,6 +3594,39 @@ namespace spartan
                 platform.height,
                 max(platform.margin, 0.0f)
             );
+        }
+
+        // a wide bank reaches over its neighbours, every footprint is pinned back to its own height
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float step_x = max(mapping.scale_x, 0.001f);
+        const float step_z = max(mapping.scale_z, 0.001f);
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            if (pad.half_x <= 0.05f || pad.half_z <= 0.05f)
+            {
+                continue;
+            }
+
+            float cx = 0.0f, cz = 0.0f, hx = 0.0f, hz = 0.0f, yaw = 0.0f, height = 0.0f;
+            platform_to_local(GetEntity(), pad, cx, cz, hx, hz, yaw, height);
+            float min_x = 0.0f, min_z = 0.0f, max_x = 0.0f, max_z = 0.0f;
+            obb_write_aabb(cx, cz, hx, hz, yaw, min_x, min_z, max_x, max_z);
+            const int32_t x0 = max(static_cast<int32_t>(floorf((min_x + mapping.offset_x) / step_x)), 0);
+            const int32_t z0 = max(static_cast<int32_t>(floorf((min_z + mapping.offset_z) / step_z)), 0);
+            const int32_t x1 = min(static_cast<int32_t>(ceilf((max_x + mapping.offset_x) / step_x)), static_cast<int32_t>(m_dense_width) - 1);
+            const int32_t z1 = min(static_cast<int32_t>(ceilf((max_z + mapping.offset_z) / step_z)), static_cast<int32_t>(m_dense_height) - 1);
+            for (int32_t z = z0; z <= z1; z++)
+            {
+                for (int32_t x = x0; x <= x1; x++)
+                {
+                    Vector3& position = m_positions[static_cast<size_t>(z) * m_dense_width + x];
+                    if (obb_outside_distance(position.x, position.z, cx, cz, hx, hz, yaw) <= 0.0f)
+                    {
+                        position.y = height;
+                    }
+                }
+            }
+            MarkHeightsDirty(x0, z0, x1, z1);
         }
 
         SP_LOG_INFO("applied %zu terrain platforms", m_platforms.size());

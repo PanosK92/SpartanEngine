@@ -3697,6 +3697,79 @@ register_tool(
   { annotations: read_only, outputSchema: output_schemas.world_raycast },
 );
 
+register_local_tool(
+  "world_raycast_grid",
+  {
+    description: "Cast a grid of downward rays over a rectangle in a frame rotated by yaw_degrees around center (local u along the rotated x axis, v along the rotated z axis) and report what each ray hit. Use it to audit ground coverage, e.g. find spots where terrain tiles poke through an authored surface. Returns per-entity hit counts, the hits whose entity name matches flag_pattern (default terrain tiles) and the misses.",
+    inputSchema: {
+      center: vector3,
+      yaw_degrees: z.number().optional(),
+      u_range: z.tuple([z.number(), z.number()]),
+      v_range: z.tuple([z.number(), z.number()]),
+      step: z.number().positive(),
+      origin_y: z.number().optional(),
+      max_distance: z.number().positive().optional(),
+      flag_pattern: z.string().optional(),
+      include_all: z.boolean().optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ center, yaw_degrees = 0, u_range, v_range, step, origin_y, max_distance, flag_pattern = "^(tile_|terrain_detail_|terrain)", include_all = false }) =>
+  {
+    const count_u = Math.floor((u_range[1] - u_range[0]) / step) + 1;
+    const count_v = Math.floor((v_range[1] - v_range[0]) / step) + 1;
+    if (count_u * count_v > 4096)
+    {
+      return tool_result(structured_error(`grid has ${count_u * count_v} rays, the limit is 4096, raise step`, { code: "invalid_arguments" }));
+    }
+
+    const yaw = (yaw_degrees * Math.PI) / 180;
+    const cos_yaw = Math.cos(yaw);
+    const sin_yaw = Math.sin(yaw);
+    const start_y = origin_y ?? center[1] + 100;
+    const distance = max_distance ?? start_y - center[1] + 200;
+    const flag = new RegExp(flag_pattern);
+    const counts = {};
+    const flagged = [];
+    const misses = [];
+    const samples = [];
+    for (let i = 0; i < count_u; i++)
+    {
+      for (let j = 0; j < count_v; j++)
+      {
+        const u = u_range[0] + i * step;
+        const v = v_range[0] + j * step;
+        const x = center[0] + cos_yaw * u + sin_yaw * v;
+        const z = center[2] - sin_yaw * u + cos_yaw * v;
+        const hit = await send_engine_command("world_raycast", { origin: [x, start_y, z], direction: [0, -1, 0], max_distance: distance });
+        const sample = { u, v, x: +x.toFixed(2), z: +z.toFixed(2) };
+        if (!hit?.ok || !hit.hit)
+        {
+          misses.push(sample);
+          continue;
+        }
+
+        const name = hit.entity_name ?? "";
+        sample.y = +hit.position[1].toFixed(3);
+        sample.entity = name;
+        sample.entity_id = hit.entity_id;
+        counts[name] = (counts[name] ?? 0) + 1;
+        if (flag.test(name))
+        {
+          flagged.push(sample);
+        }
+        if (include_all)
+        {
+          samples.push(sample);
+        }
+      }
+    }
+
+    return tool_result({ ok: true, rays: count_u * count_v, hit_counts: counts, flagged_count: flagged.length, flagged, misses, ...(include_all ? { samples } : {}) });
+  },
+);
+
 register_tool(
   server,
   "entity_snap",

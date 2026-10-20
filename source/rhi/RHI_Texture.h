@@ -43,7 +43,9 @@ namespace spartan
         // used by Material::SetTexture for source textures that go through pack_textures (alpha mask merge etc.)
         RHI_Texture_DeferUpload       = 1U << 12,
         // immutable material textures start with a small resident tail
-        RHI_Texture_Stream            = 1U << 13
+        RHI_Texture_Stream            = 1U << 13,
+        // submit the initial upload without a cpu wait, the graphics queue orders it before later frames
+        RHI_Texture_AsyncUpload       = 1U << 14
     };
 
     struct RHI_Texture_Mip

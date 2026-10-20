@@ -950,8 +950,8 @@ void MemoryViewer::OnTickVisible()
         if (streaming.budget_bytes > 0)
         {
             char streaming_text[96];
-            snprintf(streaming_text, sizeof(streaming_text), "%s of %s, %u textures", format::bytes(static_cast<double>(streaming.resident_bytes)).c_str(), format::bytes(static_cast<double>(streaming.budget_bytes)).c_str(), streaming.texture_count);
-            const string streaming_tooltip = "Texture payload that is resident against the streaming budget, allocation overhead and staging excluded. At full resolution these textures would need " + format::bytes(static_cast<double>(streaming.full_bytes)) + ", " + format::bytes(static_cast<double>(streaming.pending_bytes)) + " is waiting to be swapped in.";
+            snprintf(streaming_text, sizeof(streaming_text), "%s of %s, %u textures, %.3f ms", format::bytes(static_cast<double>(streaming.resident_bytes)).c_str(), format::bytes(static_cast<double>(streaming.budget_bytes)).c_str(), streaming.texture_count, streaming.tick_ms);
+            const string streaming_tooltip = "Texture payload that is resident against the streaming budget, allocation overhead and staging excluded. At full resolution these textures would need " + format::bytes(static_cast<double>(streaming.full_bytes)) + ", " + format::bytes(static_cast<double>(streaming.pending_bytes)) + " in " + to_string(streaming.pending_count) + " textures is being uploaded. " + to_string(streaming.published_count) + " swaps so far.";
             property_meter("Texture streaming", static_cast<float>(static_cast<double>(streaming.resident_bytes) / static_cast<double>(streaming.budget_bytes)), streaming_text, streaming_tooltip.c_str());
         }
 

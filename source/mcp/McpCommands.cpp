@@ -7325,6 +7325,51 @@ namespace spartan
         return json + "]}";
     }
 
+    namespace
+    {
+        // placing or moving through the mcp is a drop, buildings that land near the ground cut a pad like an editor drag
+        void conform_placed_entities(const std::string& command, const std::string& result)
+        {
+            static const std::unordered_set<std::string> placing =
+            {
+                "entity_set_transform",
+                "entity_set_transform_batch",
+                "entity_snap",
+                "entity_clone",
+                "entity_update",
+                "prefab_load",
+                "mesh_generate",
+                "mesh_generate_batch",
+                "mesh_raw_create",
+                "render_set_mesh",
+                "entity_create_primitive",
+                "entity_create_primitive_batch"
+            };
+            if (!placing.count(command) || result.rfind("{\"ok\":true", 0) != 0)
+            {
+                return;
+            }
+
+            std::vector<uint64_t> ids;
+            const std::string key = "\"id\":\"";
+            for (size_t at = result.find(key); at != std::string::npos; at = result.find(key, at + key.size()))
+            {
+                const size_t start = at + key.size();
+                const size_t end   = result.find('"', start);
+                uint64_t id        = 0;
+                if (end != std::string::npos && mcp_common::parse_uint64(result.substr(start, end - start), id) && id != 0)
+                {
+                    ids.push_back(id);
+                }
+            }
+
+            if (!ids.empty())
+            {
+                Terrain::RequestConform(ids);
+            }
+        }
+    }
+
     std::string ExecuteMcpCommand(const McpRequest& request)
     {
         // a table rather than a chain of comparisons, so a command is one line to add and the cost of
@@ -7439,7 +7484,9 @@ namespace spartan
         const auto command = commands.find(request.command);
         if (command != commands.end())
         {
-            return command->second(request);
+            std::string result = command->second(request);
+            conform_placed_entities(request.command, result);
+            return result;
         }
 
         const auto& external_commands = get_external_commands();

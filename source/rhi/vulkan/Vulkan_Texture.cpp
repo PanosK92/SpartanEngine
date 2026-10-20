@@ -284,6 +284,7 @@ namespace spartan
 
             vector<VkBufferImageCopy> regions;
             const VkDeviceSize staging_size = build_copy_regions(texture, regions);
+            const bool async = texture->GetFlags() & RHI_Texture_AsyncUpload;
 
             staging_budget::acquire(staging_size);
             void* staging_buffer = RHI_Device::StagingBufferAcquire(staging_size);
@@ -297,25 +298,63 @@ namespace spartan
             if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::General;
+                VkCommandBuffer vk_cmd  = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
         
                 RHI_CommandList::PrepareTextureForUpload(texture);
         
                 vkCmdCopyBufferToImage(
-                    static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
+                    vk_cmd,
                     static_cast<VkBuffer>(staging_buffer),
                     static_cast<VkImage>(texture->GetRhiResource()),
                     vulkan_image_layout[static_cast<uint8_t>(layout)],
                     static_cast<uint32_t>(regions.size()),
                     regions.data()
                 );
-        
-                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+
+                if (async)
+                {
+                    // no fence wait, so the copy has to be made visible to every later submission on this queue
+                    VkImageMemoryBarrier2 barrier{};
+                    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                    barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_COPY_BIT;
+                    barrier.srcAccessMask                   = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                    barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                    barrier.dstAccessMask                   = VK_ACCESS_2_MEMORY_READ_BIT;
+                    barrier.oldLayout                       = vulkan_image_layout[static_cast<uint8_t>(layout)];
+                    barrier.newLayout                       = barrier.oldLayout;
+                    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
+                    barrier.subresourceRange.aspectMask     = get_aspect_mask(texture);
+                    barrier.subresourceRange.baseMipLevel   = 0;
+                    barrier.subresourceRange.levelCount     = texture->GetMipCount();
+                    barrier.subresourceRange.baseArrayLayer = 0;
+                    barrier.subresourceRange.layerCount     = texture->GetArrayLength();
+
+                    VkDependencyInfo dependency{};
+                    dependency.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                    dependency.imageMemoryBarrierCount = 1;
+                    dependency.pImageMemoryBarriers    = &barrier;
+                    vkCmdPipelineBarrier2(vk_cmd, &dependency);
+
+                    // the command list releases the staging buffer once the gpu is done with it
+                    cmd_list->RetainStagingBuffer(staging_buffer);
+                    staging_buffer = nullptr;
+                    RHI_CommandList::ImmediateExecutionEnd(cmd_list, false);
+                }
+                else
+                {
+                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+                }
 
                 SP_ASSERT_MSG(texture->GetLayout(0) != RHI_Image_Layout::Max, "Layout not set after staging barrier");
             }
             Breadcrumbs::EndMarker(); // buffer_to_image
         
-            RHI_Device::StagingBufferRelease(staging_buffer);
+            if (staging_buffer)
+            {
+                RHI_Device::StagingBufferRelease(staging_buffer);
+            }
             staging_budget::release(staging_size);
 
             Breadcrumbs::EndMarker(); // texture_stage

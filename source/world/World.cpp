@@ -1738,7 +1738,12 @@ namespace spartan
                 const bool path_changed  = resource->GetResourceFilePath() != FileSystem::GetRelativePath(target_path);
                 resource->SetResourceFilePath(target_path);
                 pending_saves.push_back({ resource.get(), target_path, path_changed });
-                owned_files.insert(FileSystem::GetFileNameFromFilePath(target_path));
+                // source files (png, glb) already inside the directory are referenced in place, not owned
+                const string target_name = FileSystem::GetFileNameFromFilePath(target_path);
+                if (world_resources::IsOwnedFileName(target_name))
+                {
+                    owned_files.insert(target_name);
+                }
             }
 
 

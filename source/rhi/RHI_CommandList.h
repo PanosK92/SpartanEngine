@@ -313,6 +313,7 @@ namespace spartan
         static void PrepareForPresent(RHI_SwapChain* swapchain);
         static void PrepareTextureForUpload(RHI_Texture* texture);
         static void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
+        static void PrepareTexturesForSampling(const std::vector<std::shared_ptr<RHI_Texture>>& textures);
         static void PrepareTextureForCompute(RHI_Texture* texture);
         static void PrepareBufferForCompute(RHI_Buffer* buffer);
         static void PrepareBufferForReadback(RHI_Buffer* buffer);
