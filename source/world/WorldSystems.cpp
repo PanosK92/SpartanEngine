@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "AmbientAtmosphere.h"
 #include "RoadDetails.h"
 #include "../core/ProgressTracker.h"
+#include "../profiling/Profiler.h"
 #include "../car/Car.h"
 #include "../car/CarPhysics.h"
 #include "../car/CarRender.h"
@@ -142,12 +143,18 @@ namespace spartan::world_systems
         // leaves and the car wake run in the editor too, so shots can be framed and tuned without entering play
         callbacks.after_tick = [](float dt)
         {
+            SP_PROFILE_CPU_START("road_details_tick");
             road_details::Tick(dt);
+            SP_PROFILE_CPU_END();
             if (!Engine::IsFlagSet(EngineMode::Paused))
             {
+                SP_PROFILE_CPU_START("ambient_atmosphere_tick");
                 ambient_atmosphere::Tick(dt);
+                SP_PROFILE_CPU_END();
             }
+            SP_PROFILE_CPU_START("vehicle_particle_wake_tick");
             vehicle_particle_wake::Tick(dt);
+            SP_PROFILE_CPU_END();
         };
         callbacks.controls = [] { CameraController::Tick(); };
         callbacks.load = [](pugi::xml_node& node) { queue_companion_script(node); };

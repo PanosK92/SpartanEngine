@@ -472,13 +472,18 @@ namespace spartan
 
         if (s_compaction_pending.empty() && (compaction::compacted > 0 || compaction::not_ready > 0 || compaction::not_smaller > 0))
         {
-            SP_LOG_INFO("Ray tracing: compacted %u BLAS from %.1f MB to %.1f MB (%u unreadable, %u not worth it), resident BLAS %.1f MB",
-                compaction::compacted,
-                static_cast<double>(compaction::bytes_before) / (1024.0 * 1024.0),
-                static_cast<double>(compaction::bytes_after) / (1024.0 * 1024.0),
-                compaction::not_ready,
-                compaction::not_smaller,
-                static_cast<double>(s_blas_bytes) / (1024.0 * 1024.0));
+            // the small batches that trail runtime additions are routine, a load sized one is worth a line
+            constexpr uint64_t log_threshold = 16ull * 1024 * 1024;
+            if (compaction::bytes_before - compaction::bytes_after >= log_threshold || compaction::not_ready > 0)
+            {
+                SP_LOG_INFO("Ray tracing: compacted %u BLAS from %.1f MB to %.1f MB (%u unreadable, %u not worth it), resident BLAS %.1f MB",
+                    compaction::compacted,
+                    static_cast<double>(compaction::bytes_before) / (1024.0 * 1024.0),
+                    static_cast<double>(compaction::bytes_after) / (1024.0 * 1024.0),
+                    compaction::not_ready,
+                    compaction::not_smaller,
+                    static_cast<double>(s_blas_bytes) / (1024.0 * 1024.0));
+            }
             compaction::bytes_before = 0;
             compaction::bytes_after  = 0;
             compaction::compacted    = 0;

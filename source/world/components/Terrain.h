@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <atomic>
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <functional>
 #include <shared_mutex>
 #include <thread>
@@ -310,7 +311,8 @@ namespace spartan
         uint32_t GetDenseWidth() const  { return m_dense_width; }
         uint32_t GetDenseHeight() const { return m_dense_height; }
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
-        bool SampleHeight(float world_x, float world_z, float& height_out) const;
+        // without detail the coarse grid answers, road pages come and go with the camera
+        bool SampleHeight(float world_x, float world_z, float& height_out, bool include_detail = true) const;
         // fine height pages over the coarse cells a pad reshapes, the terrain surface itself, not an
         // overlay, the coarse mesh sinks just under them and its collision gets a hole per page cell
         bool IsDetailCell(uint32_t cell_x, uint32_t cell_z) const;
@@ -557,11 +559,18 @@ namespace spartan
         void MarkDetailDirtyForPad(const TerrainPlatform& pad, bool cook_physics);
         void MarkDetailDirtyCells(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics);
         void FlushDetail();
-        void RebuildDetailRegion(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics);
+        // true when a page or a coarse drop changed
+        bool RebuildDetailRegion(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics);
         void RebuildDetailChunk(uint32_t chunk_x, uint32_t chunk_z, bool cook_physics);
+        // chunk collision is only cooked once the camera comes close enough to touch it
+        void CookDetailChunk(uint64_t key);
+        // one pending chunk per call, only the given one when a key is passed
+        void CookNearbyDetailChunks(uint64_t only = UINT64_MAX);
         void DestroyDetail();
         // pack every page into the chunk table and atlas the shaders read, grass and blending follow the pads
         void UploadDetailTextures();
+        // rewrites only the atlas blocks and table entries of chunks whose pages changed, falls back to the full upload
+        void UpdateDetailTextures();
         // road cells only carry pages in a window of chunks around the camera, a page for every road on the
         // island would be tens of millions of vertices, pads keep theirs everywhere
         void UpdateDetailWindow();
@@ -569,9 +578,12 @@ namespace spartan
         void PadCellRect(const TerrainPlatform& pad, int32_t& x0, int32_t& z0, int32_t& x1, int32_t& z1) const;
         // metres the coarse render mesh sinks at a grid vertex so it stays under the pages
         float GetDetailDrop(uint32_t vertex_index) const;
+        struct RoadCarveJob;
+        // segments, when given, are the only (job, segment index) pairs considered, otherwise every job is scanned
         void ApplyRoadHeightConstraints(
             std::vector<math::Vector3>& positions, uint32_t stride, const TerrainGridMapping& mapping,
-            int32_t x0, int32_t z0, int32_t x1, int32_t z1, float plateau, std::vector<float>* deltas) const;
+            int32_t x0, int32_t z0, int32_t x1, int32_t z1, float plateau, std::vector<float>* deltas,
+            const std::vector<std::pair<const RoadCarveJob*, uint32_t>>* segments = nullptr) const;
         void RebuildCommittedRefines();
         void RestampPropsForPad(const TerrainPlatform& pad, bool restore, bool update_instances = true);
         void SnapPropsToSurface(
@@ -736,6 +748,17 @@ namespace spartan
         std::unordered_set<uint64_t> m_detail_road_chunks;
         int32_t m_detail_window_x = INT32_MIN;
         int32_t m_detail_window_z = INT32_MIN;
+        // chunks the window entered or left, rebuilt a few per frame so a shift never lands in one frame
+        std::deque<uint64_t> m_detail_window_queue;
+        std::unordered_set<uint64_t> m_detail_window_queued;
+        // chunks whose collision waits for the camera to come near
+        std::unordered_set<uint64_t> m_detail_cook_pending;
+        bool m_detail_textures_stale = false;
+        // atlas slots stay put between uploads, chunk index (chunk_z * chunks_x + chunk_x) to slot
+        std::vector<float> m_detail_table_cpu;
+        std::unordered_map<uint32_t, uint32_t> m_detail_atlas_slots;
+        std::vector<uint32_t> m_detail_atlas_free;
+        std::unordered_set<uint32_t> m_detail_atlas_dirty;
         // dense cells edited since the last flush, and cells whose collision still needs a rebuild
         TerrainDirtyRect m_height_dirty;
         TerrainDirtyRect m_physics_dirty;

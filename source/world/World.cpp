@@ -1031,13 +1031,16 @@ namespace spartan
                 changed.clear();
                 changed.swap(render_bounds_pending);
             }
-            // Spawning or despawning moving renders (cars, characters) leaves every
-            // static leaf intact. Keep the tree and drop only borrowed pointers that
-            // no longer belong to the index, without reading them.
-            if (render_spatial_rebuild && cvar_spatial_render.GetValue() != 0 && render_spatial_index.RetainStatic(all_render_entries))
+            // Spawning or despawning renders (cars, terrain detail chunks, props) keeps
+            // the tree, removed leaves become holes and new ones are culled loose. Drop
+            // only borrowed pointers that no longer belong to the index, without reading them.
+            static vector<Render*> spatial_added;
+            if (render_spatial_rebuild && cvar_spatial_render.GetValue() != 0 && render_spatial_index.Update(all_render_entries, spatial_added))
             {
                 erase_if(changed, [](Render* render) { return !render_spatial_index.IsStatic(render); });
                 erase_if(render_previous_candidates, [](const RenderSceneData* data) { return !render_spatial_index.Contains(data); });
+                // culling reads the bounds before the render ever ticks
+                for (Render* render : spatial_added) render->UpdateAabb();
                 render_spatial_rebuild = false;
                 CountWorldWork(WorldWork::spatial_retains);
             }

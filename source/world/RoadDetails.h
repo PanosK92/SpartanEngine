@@ -17,6 +17,7 @@
 #include "../core/ProgressTracker.h"
 #include "../core/ThreadPool.h"
 #include "../core/Engine.h"
+#include "../profiling/Profiler.h"
 #include "../rhi/RHI_Vertex.h"
 #include <unordered_map>
 #include <array>
@@ -677,7 +678,8 @@ namespace spartan::road_details
                     const Vector3 probe=center+right*half+right.Normalized()*(.8f+offset);
                     const Vector3 sided=center+(probe-center)*side;
                     float height=0;
-                    const bool valid=terrain->SampleHeight(sided.x,sided.z,height);
+                    // the coarse ground, the road pages around the camera would make the key follow it
+                    const bool valid=terrain->SampleHeight(sided.x,sided.z,height,false);
                     if (hazard_signature)
                     {
                         // Furniture depends on whether protection is needed, not every
@@ -729,6 +731,7 @@ namespace spartan::road_details
         discover_time-=dt;
         if (discover_time<=0)
         {
+            spartan::ScopedTimeBlock discover_block("road_details_discover");
             discover_time=3;
             std::unordered_map<uint64_t,Road> previous;
             for (const Road& r:roads) previous.emplace(r.id,r);
@@ -763,8 +766,11 @@ namespace spartan::road_details
         Entity* entity=World::GetEntityById(record.id);
         Spline* spline=entity ? entity->GetComponent<Spline>() : nullptr;
         if (!spline || spline->GetRoadFrames().empty()) return;
+        SP_PROFILE_CPU_START("road_details_signature");
         const uint64_t signature = CacheKey(entity, spline, true);
+        SP_PROFILE_CPU_END();
         if (record.signature == signature) return;
+        spartan::ScopedTimeBlock rebuild_block("road_details_rebuild");
         const uint64_t hash = CacheKey(entity, spline);
         // Keep a bounded pipeline: read/decode the next five roads while the
         // owning thread publishes this one. No scene access occurs in workers.

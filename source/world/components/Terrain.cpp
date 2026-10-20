@@ -2610,7 +2610,7 @@ namespace spartan
         return true;
     }
 
-    bool Terrain::SampleHeight(float world_x, float world_z, float& height_out) const
+    bool Terrain::SampleHeight(float world_x, float world_z, float& height_out, bool include_detail) const
     {
         if (!HasHeightfield())
         {
@@ -2674,7 +2674,7 @@ namespace spartan
         }
 
         float local_height = 0.0f;
-        if (!SampleDetailLocal(local_x, local_z, local_height))
+        if (!include_detail || !SampleDetailLocal(local_x, local_z, local_height))
         {
             local_height = TerrainSystem::SampleHeight(
                 m_positions,
@@ -3314,9 +3314,10 @@ namespace spartan
     void Terrain::ApplyRoadHeightConstraints(
         vector<Vector3>& positions, uint32_t stride, const TerrainGridMapping& mapping,
         int32_t rect_x0, int32_t rect_z0, int32_t rect_x1, int32_t rect_z1,
-        float plateau, vector<float>* deltas) const
+        float plateau, vector<float>* deltas, const vector<pair<const RoadCarveJob*, uint32_t>>* segments) const
     {
         if (rect_x1 < rect_x0 || rect_z1 < rect_z0 || m_road_carve_jobs.empty()) return;
+        if (segments && segments->empty()) return;
         const uint32_t rect_width = static_cast<uint32_t>(rect_x1 - rect_x0 + 1);
         const uint32_t rect_height = static_cast<uint32_t>(rect_z1 - rect_z0 + 1);
         // Cached job bounds use the dense grid, including when constraining a finer patch.
@@ -3332,15 +3333,8 @@ namespace spartan
         std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
         std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
 
-        for (const auto& [id, job] : m_road_carve_jobs)
+        auto apply_segment = [&](const RoadCarveJob& job, size_t s)
         {
-            if (job.bounds[1] < dense_x0 || job.bounds[0] > dense_x1 ||
-                job.bounds[3] < dense_z0 || job.bounds[2] > dense_z1)
-            {
-                continue;
-            }
-
-            for (size_t s = 0; s + 1 < job.points.size(); s++)
             {
                 const Vector3& a = job.points[s];
                 const Vector3& b = job.points[s + 1];
@@ -3355,7 +3349,7 @@ namespace spartan
 
                 if (sx1 < sx0 || sz1 < sz0)
                 {
-                    continue;
+                    return;
                 }
 
                 const float dx = b.x - a.x;
@@ -3403,6 +3397,30 @@ namespace spartan
                         const float cut_over = max(0.0f, distance - half - plateau);
                         lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
                     }
+                }
+            }
+        };
+
+        if (segments)
+        {
+            for (const auto& [job, s] : *segments)
+            {
+                apply_segment(*job, s);
+            }
+        }
+        else
+        {
+            for (const auto& [id, job] : m_road_carve_jobs)
+            {
+                if (job.bounds[1] < dense_x0 || job.bounds[0] > dense_x1 ||
+                    job.bounds[3] < dense_z0 || job.bounds[2] > dense_z1)
+                {
+                    continue;
+                }
+
+                for (size_t s = 0; s + 1 < job.points.size(); s++)
+                {
+                    apply_segment(job, s);
                 }
             }
         }
@@ -3710,8 +3728,12 @@ namespace spartan
             const float min_z = static_cast<float>(rect.z0) * mapping.scale_z - mapping.offset_z;
             const float max_z = static_cast<float>(rect.z1) * mapping.scale_z - mapping.offset_z;
 
+            SP_PROFILE_CPU_START("terrain_patch_tiles");
             PatchTilesInRegion(min_x, min_z, max_x, max_z);
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("terrain_upload_heights");
             texture_recreated = UploadHeightRegion(rect);
+            SP_PROFILE_CPU_END();
 
             // collision and the biome mask wait for the commit flush
             m_physics_dirty.Merge(rect.x0, rect.z0, rect.x1, rect.z1);
@@ -3720,17 +3742,23 @@ namespace spartan
 
         if (commit)
         {
+            SP_PROFILE_CPU_START("terrain_flush_physics");
             FlushPendingPhysics();
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("terrain_flush_prop_mask");
             if (FlushPendingPropMask())
             {
                 texture_recreated = true;
             }
+            SP_PROFILE_CPU_END();
         }
 
         if (texture_recreated)
         {
+            SP_PROFILE_CPU_START("terrain_refresh_scatter");
             PushToRenderer();
             WorldHelpers::RefreshTerrainGpuScatter(this);
+            SP_PROFILE_CPU_END();
         }
 
         return texture_recreated;
@@ -4884,11 +4912,7 @@ namespace spartan
             }
         }
 
-        if (!m_height_map_gpu->UpdateRegion(static_cast<uint32_t>(x0), static_cast<uint32_t>(z0), width, height, heights.data()))
-        {
-            BakeHeightMapTexture();
-            return true;
-        }
+        Renderer::QueueTextureRegionUpload(m_height_map_gpu, static_cast<uint32_t>(x0), static_cast<uint32_t>(z0), width, height, heights.data());
 
         // the imgui preview follows with the range of the last full bake, anything outside it saturates
         const bool preview_fits =
@@ -4909,7 +4933,7 @@ namespace spartan
                 pixels[i * 4 + 2]   = value;
                 pixels[i * 4 + 3]   = 255;
             }
-            m_height_map_final->UpdateRegion(static_cast<uint32_t>(x0), static_cast<uint32_t>(z0), width, height, pixels.data());
+            Renderer::QueueTextureRegionUpload(m_height_map_final, static_cast<uint32_t>(x0), static_cast<uint32_t>(z0), width, height, pixels.data());
         }
 
         return false;

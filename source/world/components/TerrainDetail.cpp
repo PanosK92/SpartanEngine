@@ -19,6 +19,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../geometry/Mesh.h"
 #include "../../rendering/Material.h"
 #include "../../profiling/Profiler.h"
+#include "../../physics/PhysicsWorld.h"
+#include "../../core/ThreadPool.h"
+#include "../../rendering/Renderer.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -65,6 +68,8 @@ namespace spartan
         const float detail_road_band      = 2.0f;
         // chunks either side of the camera's chunk whose road cells may carry pages
         const int32_t detail_road_window = 3;
+        // metres from the camera within which a chunk's collision is cooked, static collision only wakes at 40 m
+        const float detail_cook_distance = 150.0f;
         // chunk blocks per atlas row, common.hlsl terrain_detail_blocks_per_row reads the same layout
         const uint32_t detail_atlas_blocks_per_row = 16;
         // the vulkan minimum for maxImageDimension2D on desktop hardware
@@ -96,6 +101,10 @@ namespace spartan
             float height    = 0.0f;
             float ramp      = 1.0f; // metres the ground takes to meet the pad
             float influence = 1.0f; // reach of the coarse paint, every cell within it carries a page
+            float min_x     = 0.0f; // footprint bounds, a page only samples the pads whose ramp reaches it
+            float min_z     = 0.0f;
+            float max_x     = 0.0f;
+            float max_z     = 0.0f;
         };
 
         void write_tangent(RHI_Vertex_PosTexNorTan& vertex, const Vector3& n)
@@ -262,8 +271,9 @@ namespace spartan
 
     void Terrain::FlushDetail()
     {
-        if (m_detail_dirty.empty())
+        if (m_detail_dirty.empty() && m_detail_window_queue.empty() && !m_detail_textures_stale)
         {
+            CookNearbyDetailChunks();
             return;
         }
 
@@ -274,44 +284,159 @@ namespace spartan
 
         SP_PROFILE_CPU();
 
-        // overlapping or touching rects merge, each pad changed this frame is otherwise its own region
-        vector<array<int32_t, 4>> rects = move(m_detail_dirty);
-        m_detail_dirty.clear();
-        const bool cook = m_detail_dirty_cook;
-        m_detail_dirty_cook = false;
-
-        bool merged = true;
-        while (merged)
+        if (!m_detail_dirty.empty())
         {
-            merged = false;
-            for (size_t i = 0; i < rects.size() && !merged; i++)
-            {
-                for (size_t j = i + 1; j < rects.size(); j++)
-                {
-                    array<int32_t, 4>& a = rects[i];
-                    const array<int32_t, 4>& b = rects[j];
-                    if (a[2] + 2 < b[0] || b[2] + 2 < a[0] || a[3] + 2 < b[1] || b[3] + 2 < a[1])
-                    {
-                        continue;
-                    }
+            // overlapping or touching rects merge, each pad changed this frame is otherwise its own region,
+            // but only when the union is not much bigger than the two, an l of strips would become a square
+            vector<array<int32_t, 4>> rects = move(m_detail_dirty);
+            m_detail_dirty.clear();
+            const bool cook = m_detail_dirty_cook;
+            m_detail_dirty_cook = false;
 
-                    a = { min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]) };
-                    rects.erase(rects.begin() + j);
-                    merged = true;
-                    break;
+            auto area = [](const array<int32_t, 4>& r) -> int64_t
+            {
+                return static_cast<int64_t>(r[2] - r[0] + 3) * (r[3] - r[1] + 3);
+            };
+
+            bool merged = true;
+            while (merged)
+            {
+                merged = false;
+                for (size_t i = 0; i < rects.size() && !merged; i++)
+                {
+                    for (size_t j = i + 1; j < rects.size(); j++)
+                    {
+                        array<int32_t, 4>& a = rects[i];
+                        const array<int32_t, 4>& b = rects[j];
+                        if (a[2] + 2 < b[0] || b[2] + 2 < a[0] || a[3] + 2 < b[1] || b[3] + 2 < a[1])
+                        {
+                            continue;
+                        }
+
+                        const array<int32_t, 4> joined = { min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]) };
+                        if (area(joined) * 4 > (area(a) + area(b)) * 5)
+                        {
+                            continue;
+                        }
+
+                        a = joined;
+                        rects.erase(rects.begin() + j);
+                        merged = true;
+                        break;
+                    }
                 }
+            }
+
+            for (const array<int32_t, 4>& rect : rects)
+            {
+                m_detail_textures_stale = RebuildDetailRegion(rect[0], rect[1], rect[2], rect[3], cook) || m_detail_textures_stale;
             }
         }
 
-        for (const array<int32_t, 4>& rect : rects)
+        // the window streams a chunk at a time within a small budget, nearest first, at least one per frame
+        if (!m_detail_window_queue.empty())
         {
-            RebuildDetailRegion(rect[0], rect[1], rect[2], rect[3], cook);
+            SP_PROFILE_CPU_START("detail_window_stream");
+            const auto start = chrono::steady_clock::now();
+            do
+            {
+                const uint64_t key = m_detail_window_queue.front();
+                m_detail_window_queue.pop_front();
+                m_detail_window_queued.erase(key);
+                const int32_t x = static_cast<int32_t>(key & 0xffffffffu) * static_cast<int32_t>(detail_chunk_cells);
+                const int32_t z = static_cast<int32_t>(key >> 32) * static_cast<int32_t>(detail_chunk_cells);
+                const int32_t max_x = static_cast<int32_t>(m_dense_width) - 2;
+                const int32_t max_z = static_cast<int32_t>(m_dense_height) - 2;
+                const int32_t x1 = min(x + static_cast<int32_t>(detail_chunk_cells) - 1, max_x);
+                const int32_t z1 = min(z + static_cast<int32_t>(detail_chunk_cells) - 1, max_z);
+                if (x <= x1 && z <= z1)
+                {
+                    m_detail_textures_stale = RebuildDetailRegion(x, z, x1, z1, true) || m_detail_textures_stale;
+                }
+            } while (!m_detail_window_queue.empty() && chrono::duration<double, milli>(chrono::steady_clock::now() - start).count() < 2.0);
+            SP_PROFILE_CPU_END();
+        }
+        else
+        {
+            CookNearbyDetailChunks();
         }
 
-        UploadDetailTextures();
+        if (m_detail_textures_stale)
+        {
+            UpdateDetailTextures();
+            m_detail_textures_stale = false;
+        }
     }
 
-    void Terrain::RebuildDetailRegion(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics)
+    void Terrain::CookDetailChunk(uint64_t key)
+    {
+        m_detail_cook_pending.erase(key);
+        if (!m_entity_ptr || m_detail_meshes.find(key) == m_detail_meshes.end())
+        {
+            return;
+        }
+
+        Entity* child = m_entity_ptr->GetChildByName(detail_chunk_name(static_cast<uint32_t>(key & 0xffffffffu), static_cast<uint32_t>(key >> 32)));
+        if (!child)
+        {
+            return;
+        }
+
+        SP_PROFILE_CPU_START("detail_chunk_physics");
+        Physics* physics = child->GetComponent<Physics>();
+        if (!physics)
+        {
+            physics = child->AddComponent<Physics>();
+            physics->SetUseConvexHull(false);
+            physics->SetBodyType(BodyType::Mesh);
+        }
+        else
+        {
+            physics->Rebuild();
+        }
+        SP_PROFILE_CPU_END();
+    }
+
+    void Terrain::CookNearbyDetailChunks(uint64_t only)
+    {
+        if (m_detail_cook_pending.empty() || !m_entity_ptr)
+        {
+            return;
+        }
+
+        Camera* camera = World::GetCamera();
+        if (!camera || !camera->GetEntity())
+        {
+            CookDetailChunk(only != UINT64_MAX ? only : *m_detail_cook_pending.begin());
+            return;
+        }
+
+        const TerrainGridMapping mapping = GetGridMapping();
+        const Matrix& transform = m_entity_ptr->GetMatrix();
+        const Vector3 camera_local = transform.Inverted() * camera->GetEntity()->GetPosition();
+        const float span_x = static_cast<float>(detail_chunk_cells) * mapping.scale_x;
+        const float span_z = static_cast<float>(detail_chunk_cells) * mapping.scale_z;
+        for (const uint64_t key : m_detail_cook_pending)
+        {
+            if (only != UINT64_MAX && key != only)
+            {
+                continue;
+            }
+
+            const float x0 = static_cast<float>(key & 0xffffffffu) * span_x - mapping.offset_x;
+            const float z0 = static_cast<float>(key >> 32) * span_z - mapping.offset_z;
+            const float dx = max({ x0 - camera_local.x, camera_local.x - (x0 + span_x), 0.0f });
+            const float dz = max({ z0 - camera_local.z, camera_local.z - (z0 + span_z), 0.0f });
+            const BoundingBox bounds = BoundingBox(Vector3(x0, -10000.0f, z0), Vector3(x0 + span_x, 10000.0f, z0 + span_z)) * transform;
+            if (dx * dx + dz * dz <= detail_cook_distance * detail_cook_distance || PhysicsWorld::IsCollisionRelevant(bounds))
+            {
+                CookDetailChunk(key);
+                return;
+            }
+        }
+    }
+
+    bool Terrain::RebuildDetailRegion(int32_t x0, int32_t z0, int32_t x1, int32_t z1, bool cook_physics)
     {
         SP_PROFILE_CPU();
 
@@ -328,7 +453,7 @@ namespace spartan
         const int32_t region_h = rz1 - rz0 + 1;
         if (region_w <= 0 || region_h <= 0)
         {
-            return;
+            return false;
         }
 
         const TerrainGridMapping mapping = GetGridMapping();
@@ -369,6 +494,7 @@ namespace spartan
                 rise = max(fabsf(pad.height - ground_min), fabsf(pad.height - ground_max));
             }
             local.ramp = clamp(max(pad.margin, rise * detail_ramp_run), 1.0f, local.influence);
+            obb_write_aabb(local.cx, local.cz, local.hx, local.hz, local.yaw, local.min_x, local.min_z, local.max_x, local.max_z);
             pads.push_back(local);
         }
 
@@ -398,6 +524,7 @@ namespace spartan
         }
 
         // the road segments that reach each candidate cell, for the edge test below
+        SP_PROFILE_CPU_START("detail_road_segments");
         unordered_map<uint32_t, vector<pair<const RoadCarveJob*, uint32_t>>> cell_segments;
         for (const auto& [id, job] : m_road_carve_jobs)
         {
@@ -423,7 +550,7 @@ namespace spartan
                     for (int32_t x = sx0; x <= sx1; x++)
                     {
                         uint8_t& slot = want[static_cast<size_t>(z - rz0) * region_w + (x - rx0)];
-                        if (slot == 1 || m_detail_road_chunks.find(detail_chunk_key(static_cast<uint32_t>(x) / detail_chunk_cells, static_cast<uint32_t>(z) / detail_chunk_cells)) == m_detail_road_chunks.end())
+                        if (slot != 1 && m_detail_road_chunks.find(detail_chunk_key(static_cast<uint32_t>(x) / detail_chunk_cells, static_cast<uint32_t>(z) / detail_chunk_cells)) == m_detail_road_chunks.end())
                         {
                             continue;
                         }
@@ -435,7 +562,10 @@ namespace spartan
                         const float oz = center_z - (a.z + dz * t);
                         if (ox * ox + oz * oz <= reach * reach)
                         {
-                            slot = 2;
+                            if (slot != 1)
+                            {
+                                slot = 2;
+                            }
                             cell_segments[static_cast<uint32_t>(z) * cells_x + x].emplace_back(&job, static_cast<uint32_t>(s));
                         }
                     }
@@ -448,20 +578,35 @@ namespace spartan
             return m_positions[static_cast<size_t>(vz) * width + vx].y;
         };
 
+        SP_PROFILE_CPU_END();
+
         // page heights before any edge is pinned, the road candidates decide here whether they need one
+        SP_PROFILE_CPU_START("detail_pages");
         unordered_map<uint32_t, vector<float>> raw;
-        vector<Vector3> grid(static_cast<size_t>(stride) * stride);
         const float plateau = max(sub_x, sub_z);
-        uint32_t road_pages = 0;
+        vector<uint32_t> candidates;
         for (int32_t z = rz0; z <= rz1; z++)
         {
             for (int32_t x = rx0; x <= rx1; x++)
             {
-                uint8_t& slot = want[static_cast<size_t>(z - rz0) * region_w + (x - rx0)];
-                if (slot == 0)
+                if (want[static_cast<size_t>(z - rz0) * region_w + (x - rx0)] != 0)
                 {
-                    continue;
+                    candidates.push_back(static_cast<uint32_t>(z) * cells_x + x);
                 }
+            }
+        }
+
+        // pages only read the terrain, each job writes its own slot, an empty result means the road cell needs none
+        vector<vector<float>> computed(candidates.size());
+        if (!candidates.empty()) ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+        {
+            vector<Vector3> grid(static_cast<size_t>(stride) * stride);
+            vector<const PadLocal*> page_pads;
+            for (uint32_t c = begin; c < end; c++)
+            {
+                const int32_t x = static_cast<int32_t>(candidates[c] % cells_x);
+                const int32_t z = static_cast<int32_t>(candidates[c] / cells_x);
+                const uint8_t slot = want[static_cast<size_t>(z - rz0) * region_w + (x - rx0)];
 
                 // a road cell needs a page where the coarse triangles leave the envelope the road grades to,
                 // a floating deck edge or ground poking through it, near the edge where the deck shows it
@@ -518,10 +663,22 @@ namespace spartan
 
                     if (!needed)
                     {
-                        slot = 0;
                         continue;
                     }
-                    road_pages++;
+                }
+
+                // a town or an airport puts hundreds of pads in a region, a page only blends the few that reach it, in the same order
+                const float page_x0 = static_cast<float>(x) * sx - mapping.offset_x;
+                const float page_z0 = static_cast<float>(z) * sz - mapping.offset_z;
+                const float page_x1 = page_x0 + sx;
+                const float page_z1 = page_z0 + sz;
+                page_pads.clear();
+                for (const PadLocal& pad : pads)
+                {
+                    if (pad.max_x + pad.ramp >= page_x0 && pad.min_x - pad.ramp <= page_x1 && pad.max_z + pad.ramp >= page_z0 && pad.min_z - pad.ramp <= page_z1)
+                    {
+                        page_pads.push_back(&pad);
+                    }
                 }
 
                 // sample positions come from global sample indices, the edge two pages share is bit identical
@@ -532,23 +689,23 @@ namespace spartan
                     {
                         const float lx = static_cast<float>(static_cast<uint32_t>(x) * n + i) * sub_x - mapping.offset_x;
                         float y = TerrainSystem::SampleHeight(m_positions_seed, m_dense_width, m_dense_height, lx, lz, mapping);
-                        for (const PadLocal& pad : pads)
+                        for (const PadLocal* pad : page_pads)
                         {
-                            const float distance = obb_outside_distance(lx, lz, pad.cx, pad.cz, pad.hx, pad.hz, pad.yaw);
-                            if (distance >= pad.ramp)
+                            const float distance = obb_outside_distance(lx, lz, pad->cx, pad->cz, pad->hx, pad->hz, pad->yaw);
+                            if (distance >= pad->ramp)
                             {
                                 continue;
                             }
 
-                            const float weight = distance <= 0.0f ? 1.0f : 1.0f - smooth_step(distance / pad.ramp);
-                            y += (pad.height - y) * weight;
+                            const float weight = distance <= 0.0f ? 1.0f : 1.0f - smooth_step(distance / pad->ramp);
+                            y += (pad->height - y) * weight;
                         }
                         // a wide bank reaches over its neighbours, every footprint keeps its own height
-                        for (const PadLocal& pad : pads)
+                        for (const PadLocal* pad : page_pads)
                         {
-                            if (obb_outside_distance(lx, lz, pad.cx, pad.cz, pad.hx, pad.hz, pad.yaw) <= 0.0f)
+                            if (obb_outside_distance(lx, lz, pad->cx, pad->cz, pad->hx, pad->hz, pad->yaw) <= 0.0f)
                             {
-                                y = pad.height;
+                                y = pad->height;
                             }
                         }
 
@@ -563,14 +720,33 @@ namespace spartan
                 page_mapping.scale_z  = sub_z;
                 page_mapping.offset_x = mapping.offset_x - static_cast<float>(static_cast<uint32_t>(x) * n) * sub_x;
                 page_mapping.offset_z = mapping.offset_z - static_cast<float>(static_cast<uint32_t>(z) * n) * sub_z;
-                ApplyRoadHeightConstraints(grid, stride, page_mapping, 0, 0, static_cast<int32_t>(n), static_cast<int32_t>(n), plateau, nullptr);
+                // every segment that reaches a sample is within half a diagonal of the cell centre, the list above holds them all
+                const auto page_segments = cell_segments.find(static_cast<uint32_t>(z) * cells_x + x);
+                if (page_segments != cell_segments.end())
+                {
+                    ApplyRoadHeightConstraints(grid, stride, page_mapping, 0, 0, static_cast<int32_t>(n), static_cast<int32_t>(n), plateau, nullptr, &page_segments->second);
+                }
 
-                vector<float> heights(static_cast<size_t>(stride) * stride);
+                vector<float>& heights = computed[c];
+                heights.resize(static_cast<size_t>(stride) * stride);
                 for (size_t k = 0; k < heights.size(); k++)
                 {
                     heights[k] = grid[k].y;
                 }
-                raw.emplace(static_cast<uint32_t>(z) * cells_x + x, move(heights));
+            }
+        }, static_cast<uint32_t>(candidates.size()));
+
+        for (size_t c = 0; c < candidates.size(); c++)
+        {
+            const int32_t x = static_cast<int32_t>(candidates[c] % cells_x);
+            const int32_t z = static_cast<int32_t>(candidates[c] / cells_x);
+            if (computed[c].empty())
+            {
+                want[static_cast<size_t>(z - rz0) * region_w + (x - rx0)] = 0;
+            }
+            else
+            {
+                raw.emplace(candidates[c], move(computed[c]));
             }
         }
 
@@ -596,11 +772,9 @@ namespace spartan
             return is_page(vx - 1, vz - 1) && is_page(vx, vz - 1) && is_page(vx - 1, vz) && is_page(vx, vz);
         };
 
-        if (road_pages > 0)
-        {
-            SP_LOG_INFO("detail region %d, %d to %d, %d: %zu pages, %u of them for roads", rx0, rz0, rx1, rz1, raw.size(), road_pages);
-        }
+        SP_PROFILE_CPU_END();
 
+        SP_PROFILE_CPU_START("detail_pin_and_drops");
         unordered_map<uint32_t, vector<float>> fresh;
         for (const auto& [key, raw_heights] : raw)
         {
@@ -728,15 +902,47 @@ namespace spartan
                 }
             }
         }
+        SP_PROFILE_CPU_END();
+
+        // a window shift re-derives far more cells than it changes, only the cells whose page appeared,
+        // vanished or moved and the coarse vertices whose drop moved cost a mesh, a blas and a cook
+        vector<uint32_t> changed_cells;
+        int32_t drop_x0 = numeric_limits<int32_t>::max();
+        int32_t drop_z0 = numeric_limits<int32_t>::max();
+        int32_t drop_x1 = numeric_limits<int32_t>::min();
+        int32_t drop_z1 = numeric_limits<int32_t>::min();
+        auto drop_moved = [&](int32_t vx, int32_t vz)
+        {
+            drop_x0 = min(drop_x0, vx);
+            drop_z0 = min(drop_z0, vz);
+            drop_x1 = max(drop_x1, vx);
+            drop_z1 = max(drop_z1, vz);
+        };
 
         // publish, the ring's outer corners are shared with cells outside, they only ever deepen
         {
+            SP_PROFILE_CPU_START("detail_publish");
             unique_lock lock(m_detail_mutex);
             for (int32_t z = rz0; z <= rz1; z++)
             {
                 for (int32_t x = rx0; x <= rx1; x++)
                 {
-                    m_detail_pages.erase(static_cast<uint32_t>(z) * cells_x + x);
+                    const uint32_t key = static_cast<uint32_t>(z) * cells_x + x;
+                    const auto before  = m_detail_pages.find(key);
+                    const auto after   = fresh.find(key);
+                    const bool had     = before != m_detail_pages.end();
+                    const bool has     = after != fresh.end();
+                    if (had != has || (had && before->second != after->second))
+                    {
+                        changed_cells.push_back(key);
+                        const uint32_t chunks_x = (static_cast<uint32_t>(cells_x) + detail_chunk_cells - 1) / detail_chunk_cells;
+                        m_detail_atlas_dirty.insert((static_cast<uint32_t>(z) / detail_chunk_cells) * chunks_x + static_cast<uint32_t>(x) / detail_chunk_cells);
+                    }
+
+                    if (had)
+                    {
+                        m_detail_pages.erase(before);
+                    }
                 }
             }
 
@@ -752,41 +958,102 @@ namespace spartan
                     const uint32_t index  = static_cast<uint32_t>(vz) * width + vx;
                     const bool boundary   = vx == rx0 || vx == rx1 + 1 || vz == rz0 || vz == rz1 + 1;
                     const auto computed   = drops.find(index);
+                    const auto existing   = m_detail_drop.find(index);
+                    const float previous  = existing != m_detail_drop.end() ? existing->second : 0.0f;
                     if (boundary)
                     {
-                        if (computed != drops.end())
+                        if (computed != drops.end() && computed->second > previous)
                         {
-                            float& slot = m_detail_drop[index];
-                            slot = max(slot, computed->second);
+                            m_detail_drop[index] = computed->second;
+                            drop_moved(vx, vz);
                         }
                     }
                     else if (computed != drops.end())
                     {
-                        m_detail_drop[index] = computed->second;
+                        if (existing == m_detail_drop.end() || computed->second != previous)
+                        {
+                            m_detail_drop[index] = computed->second;
+                            drop_moved(vx, vz);
+                        }
                     }
-                    else
+                    else if (existing != m_detail_drop.end())
                     {
-                        m_detail_drop.erase(index);
+                        m_detail_drop.erase(existing);
+                        drop_moved(vx, vz);
+                    }
+                }
+            }
+            SP_PROFILE_CPU_END();
+        }
+
+        // the coarse mesh picks up the new drops and the collision its new holes, the flush also
+        // commits collision an earlier preview left pending
+        // drops only move the render vertices and the collision cooked from them, the heights, their
+        // texture and the prop mask baked from them stay as they are
+        if (drop_x1 >= drop_x0)
+        {
+            const int32_t px0 = max(drop_x0 - 2, 0);
+            const int32_t pz0 = max(drop_z0 - 2, 0);
+            const int32_t px1 = min(drop_x1 + 2, static_cast<int32_t>(m_dense_width) - 1);
+            const int32_t pz1 = min(drop_z1 + 2, static_cast<int32_t>(m_dense_height) - 1);
+            PatchTilesInRegion(
+                static_cast<float>(px0) * mapping.scale_x - mapping.offset_x,
+                static_cast<float>(pz0) * mapping.scale_z - mapping.offset_z,
+                static_cast<float>(px1) * mapping.scale_x - mapping.offset_x,
+                static_cast<float>(pz1) * mapping.scale_z - mapping.offset_z
+            );
+            m_physics_dirty.Merge(px0, pz0, px1, pz1);
+        }
+        FlushHeightEdits(cook_physics);
+
+        // a chunk's skirts and border normals read the cells next to it, so a change reaches one cell out
+        unordered_set<uint64_t> chunks;
+        for (const uint32_t key : changed_cells)
+        {
+            const int32_t x = static_cast<int32_t>(key % cells_x);
+            const int32_t z = static_cast<int32_t>(key / cells_x);
+            for (int32_t nz = max(z - 1, 0); nz <= min(z + 1, cells_z - 1); nz++)
+            {
+                for (int32_t nx = max(x - 1, 0); nx <= min(x + 1, cells_x - 1); nx++)
+                {
+                    chunks.insert(detail_chunk_key(static_cast<uint32_t>(nx) / detail_chunk_cells, static_cast<uint32_t>(nz) / detail_chunk_cells));
+                }
+            }
+        }
+
+        // a preview builds chunks without collision, the commit that follows has the same pages but still needs the cook
+        const uint32_t chunk_x0 = static_cast<uint32_t>(rx0) / detail_chunk_cells;
+        const uint32_t chunk_z0 = static_cast<uint32_t>(rz0) / detail_chunk_cells;
+        const uint32_t chunk_x1 = static_cast<uint32_t>(rx1) / detail_chunk_cells;
+        const uint32_t chunk_z1 = static_cast<uint32_t>(rz1) / detail_chunk_cells;
+        if (cook_physics)
+        {
+            for (uint32_t cz = chunk_z0; cz <= chunk_z1; cz++)
+            {
+                for (uint32_t cx = chunk_x0; cx <= chunk_x1; cx++)
+                {
+                    if (m_detail_meshes.find(detail_chunk_key(cx, cz)) == m_detail_meshes.end())
+                    {
+                        continue;
+                    }
+
+                    const uint64_t key = detail_chunk_key(cx, cz);
+                    Entity* child = m_entity_ptr->GetChildByName(detail_chunk_name(cx, cz));
+                    if (child && !child->GetComponent<Physics>() && chunks.find(key) == chunks.end())
+                    {
+                        m_detail_cook_pending.insert(key);
+                        CookNearbyDetailChunks(key);
                     }
                 }
             }
         }
 
-        // the coarse mesh picks up the new drops and the collision its new holes
-        MarkHeightsDirty(rx0, rz0, rx1 + 1, rz1 + 1);
-        FlushHeightEdits(cook_physics);
-
-        const uint32_t chunk_x0 = static_cast<uint32_t>(rx0) / detail_chunk_cells;
-        const uint32_t chunk_z0 = static_cast<uint32_t>(rz0) / detail_chunk_cells;
-        const uint32_t chunk_x1 = static_cast<uint32_t>(rx1) / detail_chunk_cells;
-        const uint32_t chunk_z1 = static_cast<uint32_t>(rz1) / detail_chunk_cells;
-        for (uint32_t cz = chunk_z0; cz <= chunk_z1; cz++)
+        for (const uint64_t key : chunks)
         {
-            for (uint32_t cx = chunk_x0; cx <= chunk_x1; cx++)
-            {
-                RebuildDetailChunk(cx, cz, cook_physics);
-            }
+            RebuildDetailChunk(static_cast<uint32_t>(key & 0xffffffffu), static_cast<uint32_t>(key >> 32), cook_physics);
         }
+
+        return !changed_cells.empty() || drop_x1 >= drop_x0;
     }
 
     void Terrain::RebuildDetailChunk(uint32_t chunk_x, uint32_t chunk_z, bool cook_physics)
@@ -828,6 +1095,7 @@ namespace spartan
             return m_detail_pages.find(static_cast<uint32_t>(z) * cells_x + static_cast<uint32_t>(x)) != m_detail_pages.end();
         };
 
+        SP_PROFILE_CPU_START("detail_chunk_vertices");
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
         for (uint32_t z = z_begin; z < z_end; z++)
@@ -846,18 +1114,20 @@ namespace spartan
                 const bool top    = !has_page(x, static_cast<int64_t>(z) + 1);
 
                 const uint32_t base = static_cast<uint32_t>(vertices.size());
+                const float* heights = page->second.data();
                 for (uint32_t j = 0; j < stride; j++)
                 {
                     const float lz = static_cast<float>(z * n + j) * sub_z - mapping.offset_z;
                     for (uint32_t i = 0; i < stride; i++)
                     {
                         const float lx = static_cast<float>(x * n + i) * sub_x - mapping.offset_x;
-                        const float y  = page->second[static_cast<size_t>(j) * stride + i];
+                        const float y  = heights[static_cast<size_t>(j) * stride + i];
 
-                        const float h_left   = SampleSurfaceLocal(lx - sub_x, lz);
-                        const float h_right  = SampleSurfaceLocal(lx + sub_x, lz);
-                        const float h_bottom = SampleSurfaceLocal(lx, lz - sub_z);
-                        const float h_top    = SampleSurfaceLocal(lx, lz + sub_z);
+                        // inside the page the neighbours are its own samples, only the rim reads across into the next cell
+                        const float h_left   = i > 0 ? heights[static_cast<size_t>(j) * stride + i - 1] : SampleSurfaceLocal(lx - sub_x, lz);
+                        const float h_right  = i < n ? heights[static_cast<size_t>(j) * stride + i + 1] : SampleSurfaceLocal(lx + sub_x, lz);
+                        const float h_bottom = j > 0 ? heights[static_cast<size_t>(j - 1) * stride + i] : SampleSurfaceLocal(lx, lz - sub_z);
+                        const float h_top    = j < n ? heights[static_cast<size_t>(j + 1) * stride + i] : SampleSurfaceLocal(lx, lz + sub_z);
                         Vector3 normal = Vector3(-(h_right - h_left) / (2.0f * sub_x), 1.0f, -(h_top - h_bottom) / (2.0f * sub_z)).Normalized();
 
                         float border = numeric_limits<float>::max();
@@ -914,6 +1184,7 @@ namespace spartan
                 if (right)  skirt(n, stride);
             }
         }
+        SP_PROFILE_CPU_END();
 
         const string name  = detail_chunk_name(chunk_x, chunk_z);
         const uint64_t key = detail_chunk_key(chunk_x, chunk_z);
@@ -929,9 +1200,11 @@ namespace spartan
                 World::RemoveEntity(child);
             }
             m_detail_meshes.erase(key);
+            m_detail_cook_pending.erase(key);
             return;
         }
 
+        SP_PROFILE_CPU_START("detail_chunk_mesh");
         if (!child)
         {
             child = World::CreateEntity();
@@ -947,10 +1220,16 @@ namespace spartan
         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
+        // chunks are rebuilt as the camera moves, a disk cache entry per build is a write nothing ever reads back
+        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
         mesh->SetDynamic(true);
         mesh->SetPersistent(false);
+        SP_PROFILE_CPU_START("detail_chunk_geometry");
         mesh->AddGeometry(vertices, indices, false);
+        SP_PROFILE_CPU_END();
+        SP_PROFILE_CPU_START("detail_chunk_gpu");
         mesh->CreateGpuBuffers();
+        SP_PROFILE_CPU_END();
 
         Render* render = child->GetComponent<Render>();
         if (!render)
@@ -965,20 +1244,12 @@ namespace spartan
             render->SetMaterial(m_material);
         }
         m_detail_meshes[key] = mesh;
+        SP_PROFILE_CPU_END();
 
         if (cook_physics)
         {
-            Physics* physics = child->GetComponent<Physics>();
-            if (!physics)
-            {
-                physics = child->AddComponent<Physics>();
-                physics->SetUseConvexHull(false);
-                physics->SetBodyType(BodyType::Mesh);
-            }
-            else
-            {
-                physics->Rebuild();
-            }
+            m_detail_cook_pending.insert(key);
+            CookNearbyDetailChunks(key);
         }
     }
 
@@ -1011,6 +1282,10 @@ namespace spartan
         m_detail_road_chunks.clear();
         m_detail_window_x = INT32_MIN;
         m_detail_window_z = INT32_MIN;
+        m_detail_window_queue.clear();
+        m_detail_window_queued.clear();
+        m_detail_cook_pending.clear();
+        m_detail_textures_stale = false;
 
         if (m_detail_table_gpu)
         {
@@ -1054,29 +1329,54 @@ namespace spartan
             }
         }
 
-        auto mark_chunk = [this](uint64_t key)
-        {
-            const int32_t x = static_cast<int32_t>(key & 0xffffffffu) * static_cast<int32_t>(detail_chunk_cells);
-            const int32_t z = static_cast<int32_t>(key >> 32) * static_cast<int32_t>(detail_chunk_cells);
-            MarkDetailDirtyCells(x, z, x + static_cast<int32_t>(detail_chunk_cells) - 1, z + static_cast<int32_t>(detail_chunk_cells) - 1, true);
-        };
-
+        // the first window builds in one go, a load expects its surroundings finished, later shifts stream
+        const bool first = m_detail_window_x == INT32_MIN;
+        vector<uint64_t> changed;
         if (!m_road_carve_jobs.empty())
         {
             for (uint64_t key : next)
             {
                 if (m_detail_road_chunks.find(key) == m_detail_road_chunks.end())
                 {
-                    mark_chunk(key);
+                    changed.push_back(key);
                 }
             }
             for (uint64_t key : m_detail_road_chunks)
             {
                 if (next.find(key) == next.end())
                 {
-                    mark_chunk(key);
+                    changed.push_back(key);
                 }
             }
+        }
+
+        for (const uint64_t key : changed)
+        {
+            if (first)
+            {
+                const int32_t x = static_cast<int32_t>(key & 0xffffffffu) * static_cast<int32_t>(detail_chunk_cells);
+                const int32_t z = static_cast<int32_t>(key >> 32) * static_cast<int32_t>(detail_chunk_cells);
+                MarkDetailDirtyCells(x, z, x + static_cast<int32_t>(detail_chunk_cells) - 1, z + static_cast<int32_t>(detail_chunk_cells) - 1, true);
+            }
+            else if (m_detail_window_queued.insert(key).second)
+            {
+                m_detail_window_queue.push_back(key);
+            }
+        }
+
+        // nearest first, the chunks the camera heads into are the ones that show
+        if (!m_detail_window_queue.empty())
+        {
+            auto distance = [window_x, window_z](uint64_t key) -> int32_t
+            {
+                const int32_t dx = static_cast<int32_t>(key & 0xffffffffu) - window_x;
+                const int32_t dz = static_cast<int32_t>(key >> 32) - window_z;
+                return dx * dx + dz * dz;
+            };
+            sort(m_detail_window_queue.begin(), m_detail_window_queue.end(), [&](uint64_t a, uint64_t b)
+            {
+                return distance(a) < distance(b);
+            });
         }
 
         m_detail_road_chunks = move(next);
@@ -1105,6 +1405,11 @@ namespace spartan
     void Terrain::UploadDetailTextures()
     {
         SP_PROFILE_CPU();
+
+        m_detail_atlas_dirty.clear();
+        m_detail_atlas_slots.clear();
+        m_detail_atlas_free.clear();
+        m_detail_table_cpu.clear();
 
         auto clear = [this]()
         {
@@ -1139,8 +1444,11 @@ namespace spartan
         sort(chunks.begin(), chunks.end());
         chunks.erase(unique(chunks.begin(), chunks.end()), chunks.end());
 
-        const uint32_t rows = static_cast<uint32_t>((chunks.size() + detail_atlas_blocks_per_row - 1) / detail_atlas_blocks_per_row);
-        if (chunks.empty() || rows * block > detail_atlas_max_dimension)
+        // spare rows so chunks the window streams in take a free slot instead of a new atlas
+        const uint32_t max_rows = detail_atlas_max_dimension / block;
+        const uint32_t used_rows = static_cast<uint32_t>((chunks.size() + detail_atlas_blocks_per_row - 1) / detail_atlas_blocks_per_row);
+        const uint32_t rows = min(max(used_rows + used_rows / 2 + 4, 1u), max(max_rows, used_rows));
+        if (chunks.empty() || used_rows * block > detail_atlas_max_dimension)
         {
             if (!chunks.empty())
             {
@@ -1158,8 +1466,18 @@ namespace spartan
             table[chunks[slot]] = static_cast<float>(slot + 1);
         }
 
-        const uint32_t atlas_w = min(static_cast<uint32_t>(chunks.size()), detail_atlas_blocks_per_row) * block;
+        const uint32_t atlas_w = detail_atlas_blocks_per_row * block;
         const uint32_t atlas_h = rows * block;
+        const uint32_t capacity = rows * detail_atlas_blocks_per_row;
+        for (size_t slot = 0; slot < chunks.size(); slot++)
+        {
+            m_detail_atlas_slots[chunks[slot]] = static_cast<uint32_t>(slot);
+        }
+        for (uint32_t slot = capacity; slot > static_cast<uint32_t>(chunks.size()); slot--)
+        {
+            m_detail_atlas_free.push_back(slot - 1);
+        }
+        m_detail_table_cpu.assign(table, table + static_cast<size_t>(chunks_x) * chunks_z);
         vector<uint8_t> atlas_bytes(static_cast<size_t>(atlas_w) * atlas_h * sizeof(float));
         float* atlas = reinterpret_cast<float*>(atlas_bytes.data());
         fill(atlas, atlas + static_cast<size_t>(atlas_w) * atlas_h, -numeric_limits<float>::max());
@@ -1200,5 +1518,126 @@ namespace spartan
         );
         m_detail_gpu_subdivisions = n;
         PushToRenderer();
+    }
+
+    void Terrain::UpdateDetailTextures()
+    {
+        SP_PROFILE_CPU();
+
+        const uint32_t cells_x  = m_dense_width - 1;
+        const uint32_t cells_z  = m_dense_height - 1;
+        const uint32_t chunks_x = (cells_x + detail_chunk_cells - 1) / detail_chunk_cells;
+        const uint32_t chunks_z = (cells_z + detail_chunk_cells - 1) / detail_chunk_cells;
+        const uint32_t n        = GetDetailSubdivisions();
+        const uint32_t stride   = n + 1;
+        const uint32_t block    = detail_chunk_cells * stride;
+        const bool fits =
+            m_detail_table_gpu && m_detail_atlas_gpu &&
+            m_detail_table_gpu->GetRhiResource() && m_detail_atlas_gpu->GetRhiResource() &&
+            m_detail_gpu_subdivisions == n &&
+            m_detail_table_cpu.size() == static_cast<size_t>(chunks_x) * chunks_z &&
+            m_detail_atlas_gpu->GetWidth() == detail_atlas_blocks_per_row * block;
+        if (!fits)
+        {
+            UploadDetailTextures();
+            return;
+        }
+
+        uint32_t table_x0 = chunks_x;
+        uint32_t table_z0 = chunks_z;
+        uint32_t table_x1 = 0;
+        uint32_t table_z1 = 0;
+        vector<float> block_heights(static_cast<size_t>(block) * block);
+        {
+            shared_lock lock(m_detail_mutex);
+            for (const uint32_t chunk : m_detail_atlas_dirty)
+            {
+                const uint32_t chunk_x = chunk % chunks_x;
+                const uint32_t chunk_z = chunk / chunks_x;
+                fill(block_heights.begin(), block_heights.end(), -numeric_limits<float>::max());
+                bool any = false;
+                for (uint32_t cz = chunk_z * detail_chunk_cells; cz < min((chunk_z + 1) * detail_chunk_cells, cells_z); cz++)
+                {
+                    for (uint32_t cx = chunk_x * detail_chunk_cells; cx < min((chunk_x + 1) * detail_chunk_cells, cells_x); cx++)
+                    {
+                        const auto page = m_detail_pages.find(cz * cells_x + cx);
+                        if (page == m_detail_pages.end() || page->second.size() != static_cast<size_t>(stride) * stride)
+                        {
+                            continue;
+                        }
+
+                        any = true;
+                        const uint32_t base_x = (cx % detail_chunk_cells) * stride;
+                        const uint32_t base_z = (cz % detail_chunk_cells) * stride;
+                        for (uint32_t z = 0; z < stride; z++)
+                        {
+                            memcpy(&block_heights[static_cast<size_t>(base_z + z) * block + base_x], &page->second[static_cast<size_t>(z) * stride], stride * sizeof(float));
+                        }
+                    }
+                }
+
+                float entry = 0.0f;
+                const auto slot = m_detail_atlas_slots.find(chunk);
+                if (any)
+                {
+                    uint32_t index = 0;
+                    if (slot != m_detail_atlas_slots.end())
+                    {
+                        index = slot->second;
+                    }
+                    else if (!m_detail_atlas_free.empty())
+                    {
+                        index = m_detail_atlas_free.back();
+                        m_detail_atlas_free.pop_back();
+                        m_detail_atlas_slots[chunk] = index;
+                    }
+                    else
+                    {
+                        lock.unlock();
+                        UploadDetailTextures();
+                        return;
+                    }
+
+                    const uint32_t x = (index % detail_atlas_blocks_per_row) * block;
+                    const uint32_t y = (index / detail_atlas_blocks_per_row) * block;
+                    if (y + block > m_detail_atlas_gpu->GetHeight())
+                    {
+                        lock.unlock();
+                        UploadDetailTextures();
+                        return;
+                    }
+                    Renderer::QueueTextureRegionUpload(m_detail_atlas_gpu, x, y, block, block, block_heights.data());
+                    entry = static_cast<float>(index + 1);
+                }
+                else if (slot != m_detail_atlas_slots.end())
+                {
+                    m_detail_atlas_free.push_back(slot->second);
+                    m_detail_atlas_slots.erase(slot);
+                }
+
+                if (m_detail_table_cpu[chunk] != entry)
+                {
+                    m_detail_table_cpu[chunk] = entry;
+                    table_x0 = min(table_x0, chunk_x);
+                    table_z0 = min(table_z0, chunk_z);
+                    table_x1 = max(table_x1, chunk_x);
+                    table_z1 = max(table_z1, chunk_z);
+                }
+            }
+        }
+        m_detail_atlas_dirty.clear();
+
+        if (table_x0 <= table_x1 && table_z0 <= table_z1)
+        {
+            const uint32_t width  = table_x1 - table_x0 + 1;
+            const uint32_t height = table_z1 - table_z0 + 1;
+            vector<float> entries(static_cast<size_t>(width) * height);
+            for (uint32_t z = 0; z < height; z++)
+            {
+                memcpy(&entries[static_cast<size_t>(z) * width], &m_detail_table_cpu[static_cast<size_t>(table_z0 + z) * chunks_x + table_x0], width * sizeof(float));
+            }
+
+            Renderer::QueueTextureRegionUpload(m_detail_table_gpu, table_x0, table_z0, width, height, entries.data());
+        }
     }
 }

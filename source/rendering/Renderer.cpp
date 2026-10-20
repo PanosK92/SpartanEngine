@@ -74,6 +74,15 @@ namespace spartan
 
     namespace
     {
+        struct QueuedTextureUpload
+        {
+            shared_ptr<RHI_Texture> texture;
+            uint32_t x = 0, y = 0, width = 0, height = 0;
+            vector<std::byte> data;
+        };
+        mutex queued_texture_uploads_mutex;
+        vector<QueuedTextureUpload> queued_texture_uploads;
+
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
         bool materials_uploaded_this_frame = false;
         // Residency swaps replace SRVs without changing material slots or ray tracing geometry.
@@ -2974,6 +2983,26 @@ namespace spartan
         return false;
     }
 
+    void Renderer::QueueTextureRegionUpload(const shared_ptr<RHI_Texture>& texture, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data)
+    {
+        if (!texture || !data || width == 0 || height == 0)
+        {
+            return;
+        }
+
+        QueuedTextureUpload upload;
+        upload.texture = texture;
+        upload.x       = x;
+        upload.y       = y;
+        upload.width   = width;
+        upload.height  = height;
+        const std::byte* bytes = static_cast<const std::byte*>(data);
+        upload.data.assign(bytes, bytes + static_cast<size_t>(width) * height * texture->GetBytesPerPixel());
+
+        lock_guard lock(queued_texture_uploads_mutex);
+        queued_texture_uploads.push_back(move(upload));
+    }
+
     void Renderer::SetTerrain(const TerrainParams& params)
     {
         if (!params.surface)
@@ -5213,7 +5242,8 @@ namespace spartan
             if (blas_burst_done && blas_built > 0)
             {
                 RHI_AccelerationStructure::FreeSharedBlasScratch();
-                if (blas_was_backlogged || blas_built > 1)
+                // runtime additions (streamed terrain detail, spawned props) build in a frame or two, only a backlog is news
+                if (blas_was_backlogged)
                 {
                     SP_LOG_INFO("Ray tracing: BLAS build burst complete (last frame built %u, total %u)", blas_built, blas_total);
                 }
@@ -6467,6 +6497,17 @@ namespace spartan
                 : UpdateSkysphereConvergenceState();
 
         RHI_Device::Bind(RHI_Frame_List::Graphics);
+        {
+            vector<QueuedTextureUpload> texture_uploads;
+            {
+                lock_guard lock(queued_texture_uploads_mutex);
+                texture_uploads.swap(queued_texture_uploads);
+            }
+            for (const QueuedTextureUpload& upload : texture_uploads)
+            {
+                upload.texture->UpdateRegion(upload.x, upload.y, upload.width, upload.height, upload.data.data(), true);
+            }
+        }
         RHI_Work uploads = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
 
         RHI_Device::Bind(RHI_Frame_List::ComputeA);

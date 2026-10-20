@@ -308,6 +308,8 @@ namespace spartan
         // terrain surface, the Terrain component keeps ownership of the materials and maps and must outlive their use
         void SetTerrain(const TerrainParams& params);
         void ClearTerrain(Material* surface);
+        // sub-rectangle writes recorded on the next frame's upload list, the caller never waits on the gpu
+        void QueueTextureRegionUpload(const std::shared_ptr<RHI_Texture>& texture, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data);
 
         // fft ocean, the water component stays the owner of the simulation parameters and must outlive its use
         void EnableOcean(
