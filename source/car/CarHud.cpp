@@ -73,6 +73,9 @@ namespace spartan::car_hud
             int  a      = (int)(anim.alpha * 255.0f);
             bool active = state == pill_state::active;
 
+            // dark backing at a fixed opacity so a dim tell tale stays legible over bright road markings
+            dl->AddRectFilled(tl, br, IM_COL32(10, 13, 18, 200), 4.0f);
+
             if (active)
             {
                 // pull the accent channels apart so the fill, border and glow are all tints of the same hue
@@ -104,6 +107,257 @@ namespace spartan::car_hud
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
             {
                 ImGui::SetTooltip("%s", text);
+            }
+        }
+
+        ImU32 lerp_color(ImU32 a, ImU32 b, float t)
+        {
+            t = std::clamp(t, 0.0f, 1.0f);
+            auto channel = [&](int shift)
+            {
+                const float ca = static_cast<float>((a >> shift) & 0xFF);
+                const float cb = static_cast<float>((b >> shift) & 0xFF);
+                return static_cast<ImU32>(ca + (cb - ca) * t + 0.5f) << shift;
+            };
+            return channel(IM_COL32_R_SHIFT) | channel(IM_COL32_G_SHIFT) | channel(IM_COL32_B_SHIFT) | channel(IM_COL32_A_SHIFT);
+        }
+
+        ImU32 with_alpha(ImU32 color, int alpha)
+        {
+            return (color & ~IM_COL32_A_MASK) | (static_cast<ImU32>(std::clamp(alpha, 0, 255)) << IM_COL32_A_SHIFT);
+        }
+
+        void draw_text_centered(ImDrawList* dl, ImFont* font, float size, ImVec2 center, ImU32 color, const char* text)
+        {
+            const ImVec2 text_size = font->CalcTextSizeA(size, FLT_MAX, 0.0f, text);
+            dl->AddText(font, size, ImVec2(center.x - text_size.x * 0.5f, center.y - text_size.y * 0.5f), color, text);
+        }
+
+        struct tachometer_state
+        {
+            float rpm         = 0.0f;
+            float redline_rpm = 7000.0f;
+            float max_rpm     = 7500.0f;
+            float speed_kmh   = 0.0f;
+            const char* gear  = "N";
+            bool shifting     = false;
+            bool limiter      = false;
+            bool manual       = false;
+        };
+
+        // analog tachometer: needle sweeps 270 degrees clockwise from bottom left, gear lives in the hub, speed below it
+        void draw_tachometer(ImDrawList* dl, ImFont* font, ImVec2 center, float radius, float scale, const tachometer_state& state, float dt)
+        {
+            const ImU32 cyan        = IM_COL32(104, 218, 255, 255);
+            const ImU32 amber       = IM_COL32(255, 186, 64, 255);
+            const ImU32 red         = IM_COL32(255, 64, 70, 255);
+            const ImU32 green       = IM_COL32(90, 225, 120, 255);
+            const ImU32 white       = IM_COL32(240, 245, 248, 255);
+            const ImU32 needle_col  = IM_COL32(255, 96, 44, 255);
+            const ImU32 tick_major  = IM_COL32(232, 238, 244, 255);
+            const ImU32 tick_minor  = IM_COL32(150, 162, 175, 200);
+            const float time        = static_cast<float>(ImGui::GetTime());
+
+            // dial range rounds up past the rev limiter, labels thin out for high revving electric motors
+            const float top_rpm    = std::max(state.redline_rpm + 500.0f, state.max_rpm);
+            const float label_step = top_rpm <= 12000.0f ? 1000.0f : (top_rpm <= 24000.0f ? 2000.0f : 5000.0f);
+            const float dial_max   = std::max(label_step * ceilf(top_rpm / label_step), 6000.0f);
+            const float angle_min  = pi * 0.75f;
+            const float sweep      = pi * 1.5f;
+            auto rpm_to_angle = [&](float rpm)
+            {
+                return angle_min + sweep * std::clamp(rpm / dial_max, 0.0f, 1.0f);
+            };
+            auto polar = [&](float angle, float r)
+            {
+                return ImVec2(center.x + cosf(angle) * r, center.y + sinf(angle) * r);
+            };
+
+            // a needle has mass, so it chases the engine instead of teleporting
+            static float needle_rpm = 0.0f;
+            needle_rpm += (state.rpm - needle_rpm) * std::clamp(dt * 20.0f, 0.0f, 1.0f);
+            const float needle_angle = rpm_to_angle(needle_rpm);
+            const float near_redline = std::clamp((needle_rpm - state.redline_rpm * 0.85f) / (state.redline_rpm * 0.15f), 0.0f, 1.0f);
+
+            // backplate
+            for (int i = 0; i < 6; ++i)
+            {
+                dl->AddCircleFilled(ImVec2(center.x, center.y + 4.0f * scale), radius + (6 - i) * 2.0f * scale, IM_COL32(0, 0, 0, 10 + i * 4), 96);
+            }
+            dl->AddCircleFilled(center, radius, IM_COL32(9, 12, 16, 236), 96);
+            dl->AddCircleFilled(center, radius * 0.97f, IM_COL32(16, 21, 27, 120), 96);
+            dl->AddCircle(center, radius, IM_COL32(150, 166, 182, 120), 96, 1.5f * scale);
+            dl->PathArcTo(center, radius - 2.5f * scale, pi * 1.15f, pi * 1.85f, 48);
+            dl->PathStroke(IM_COL32(255, 255, 255, 28), 1.5f * scale);
+            if (state.limiter)
+            {
+                const int alpha = static_cast<int>((0.5f + 0.5f * sinf(time * 30.0f)) * 220.0f);
+                dl->AddCircle(center, radius + 1.5f * scale, with_alpha(red, alpha), 96, 3.0f * scale);
+            }
+
+            // redline zone sits under the ticks as a soft wedge
+            const float angle_red = rpm_to_angle(state.redline_rpm);
+            const float angle_max = angle_min + sweep;
+            dl->PathArcTo(center, radius * 0.835f, angle_red, angle_max, 32);
+            dl->PathStroke(with_alpha(red, 60 + static_cast<int>(near_redline * 70.0f)), radius * 0.09f);
+
+            // live rpm arc around the rim, cyan through the band, amber approaching the redline, red past it
+            const float arc_r  = radius * 0.945f;
+            const float arc_th = 3.5f * scale;
+            dl->PathArcTo(center, arc_r, angle_min, angle_max, 96);
+            dl->PathStroke(IM_COL32(44, 52, 61, 190), arc_th);
+            auto rpm_color = [&](float rpm)
+            {
+                const float f = rpm / std::max(state.redline_rpm, 1.0f);
+                if (f < 0.72f)
+                {
+                    return cyan;
+                }
+                if (f < 0.94f)
+                {
+                    return lerp_color(cyan, amber, (f - 0.72f) / 0.22f);
+                }
+                return lerp_color(amber, red, (f - 0.94f) / 0.06f);
+            };
+            const float arc_step = pi / 90.0f;
+            for (float a = angle_min; a < needle_angle; a += arc_step)
+            {
+                const float a_end = std::min(a + arc_step + 0.002f, needle_angle);
+                const ImU32 col   = rpm_color((a - angle_min) / sweep * dial_max);
+                dl->PathArcTo(center, arc_r, a, a_end, 3);
+                dl->PathStroke(with_alpha(col, 46), arc_th * 3.2f);
+                dl->PathArcTo(center, arc_r, a, a_end, 3);
+                dl->PathStroke(col, arc_th);
+            }
+
+            // ticks and numerals
+            const float minor_step  = label_step / 4.0f;
+            const int   minor_count = static_cast<int>(dial_max / minor_step + 0.5f);
+            const float tick_outer  = radius * 0.88f;
+            const float label_size  = radius * 0.15f;
+            const float label_r     = radius * 0.655f;
+            for (int i = 0; i <= minor_count; ++i)
+            {
+                const float tick_rpm = i * minor_step;
+                const bool  major    = i % 4 == 0;
+                const bool  half     = i % 2 == 0;
+                const bool  in_red   = tick_rpm >= state.redline_rpm - 1.0f;
+                const float angle    = rpm_to_angle(tick_rpm);
+                const float length   = radius * (major ? 0.13f : (half ? 0.085f : 0.05f));
+                const ImU32 col      = in_red ? red : (major ? tick_major : tick_minor);
+                dl->AddLine(polar(angle, tick_outer - length), polar(angle, tick_outer), col, (major ? 2.6f : 1.3f) * scale);
+                if (major)
+                {
+                    char label[8];
+                    snprintf(label, sizeof(label), "%d", static_cast<int>(tick_rpm / 1000.0f + 0.5f));
+                    draw_text_centered(dl, font, label_size, polar(angle, label_r), in_red ? red : tick_major, label);
+                }
+            }
+            draw_text_centered(dl, font, radius * 0.085f, ImVec2(center.x, center.y - radius * 0.46f), text_label, "x1000 RPM");
+
+            // needle, a tapered blade that starts at the hub rim
+            {
+                const ImVec2 dir(cosf(needle_angle), sinf(needle_angle));
+                const ImVec2 perp(-dir.y, dir.x);
+                const float r_base = radius * 0.30f;
+                const float r_tip  = radius * 0.92f;
+                const float w_base = 3.8f * scale;
+                const float w_tip  = 1.0f * scale;
+                const ImVec2 base(center.x + dir.x * r_base, center.y + dir.y * r_base);
+                const ImVec2 tip(center.x + dir.x * r_tip, center.y + dir.y * r_tip);
+                dl->AddLine(base, tip, with_alpha(needle_col, 40), 10.0f * scale);
+                const ImVec2 points[4] =
+                {
+                    ImVec2(base.x + perp.x * w_base, base.y + perp.y * w_base),
+                    ImVec2(tip.x + perp.x * w_tip, tip.y + perp.y * w_tip),
+                    ImVec2(tip.x - perp.x * w_tip, tip.y - perp.y * w_tip),
+                    ImVec2(base.x - perp.x * w_base, base.y - perp.y * w_base)
+                };
+                dl->AddConvexPolyFilled(points, 4, needle_col);
+            }
+
+            // hub with the gear, its rim lights up while a shift is in progress
+            const float hub_r = radius * 0.30f;
+            dl->AddCircleFilled(center, hub_r + 3.0f * scale, IM_COL32(0, 0, 0, 120), 64);
+            dl->AddCircleFilled(center, hub_r, IM_COL32(13, 17, 22, 255), 64);
+            ImU32 hub_ring = IM_COL32(96, 112, 128, 200);
+            if (state.limiter)
+            {
+                hub_ring = red;
+            }
+            else if (state.shifting)
+            {
+                hub_ring = amber;
+            }
+            dl->AddCircle(center, hub_r, hub_ring, 64, (state.shifting || state.limiter ? 2.5f : 1.5f) * scale);
+
+            ImU32 gear_col = white;
+            if (state.shifting)
+            {
+                gear_col = amber;
+            }
+            else if (state.gear[0] == 'R')
+            {
+                gear_col = amber;
+            }
+            else if (state.gear[0] == 'N')
+            {
+                gear_col = green;
+            }
+            draw_text_centered(dl, font, radius * 0.44f, ImVec2(center.x, center.y + radius * 0.01f), gear_col, state.gear);
+
+            // digital speed under the hub
+            char speed_text[16];
+            snprintf(speed_text, sizeof(speed_text), "%.0f", state.speed_kmh);
+            draw_text_centered(dl, font, radius * 0.27f, ImVec2(center.x, center.y + radius * 0.50f), white, speed_text);
+            draw_text_centered(dl, font, radius * 0.085f, ImVec2(center.x, center.y + radius * 0.68f), text_label, "KM/H");
+
+            // transmission mode tag in the gap at the bottom of the sweep
+            {
+                const char* mode      = state.manual ? "MANUAL" : "AUTO";
+                const float mode_size = radius * 0.08f;
+                const ImVec2 mode_ts  = font->CalcTextSizeA(mode_size, FLT_MAX, 0.0f, mode);
+                const ImVec2 mode_c(center.x, center.y + radius * 0.84f);
+                const ImVec2 tl(mode_c.x - mode_ts.x * 0.5f - 6.0f * scale, mode_c.y - mode_ts.y * 0.5f - 2.0f * scale);
+                const ImVec2 br(mode_c.x + mode_ts.x * 0.5f + 6.0f * scale, mode_c.y + mode_ts.y * 0.5f + 2.0f * scale);
+                const ImU32 mode_col  = state.manual ? amber : cyan;
+                dl->AddRectFilled(tl, br, with_alpha(mode_col, 36), 3.0f * scale);
+                dl->AddRect(tl, br, with_alpha(mode_col, 150), 3.0f * scale, 1.0f * scale);
+                draw_text_centered(dl, font, mode_size, mode_c, mode_col, mode);
+            }
+
+            // shift lights above the dial: green, amber, red, then everything flashes at the shift point
+            {
+                const int   led_count = 10;
+                const float led_r     = 4.2f * scale;
+                const float row_w     = radius * 1.3f;
+                const float row_y     = center.y - radius - 14.0f * scale;
+                const float start_rpm = state.redline_rpm * 0.70f;
+                const float shift_rpm = state.redline_rpm * 0.97f;
+                const float lit       = std::clamp((state.rpm - start_rpm) / (shift_rpm - start_rpm), 0.0f, 1.0f) * led_count;
+                const bool  flash     = state.rpm >= shift_rpm || state.limiter;
+                const bool  flash_on  = fmodf(time * 12.0f, 2.0f) < 1.0f;
+                for (int i = 0; i < led_count; ++i)
+                {
+                    const ImVec2 p(center.x - row_w * 0.5f + row_w * (i / static_cast<float>(led_count - 1)), row_y);
+                    ImU32 col = i < 4 ? green : (i < 7 ? amber : red);
+                    bool on   = static_cast<float>(i) < lit;
+                    if (flash)
+                    {
+                        on  = flash_on;
+                        col = red;
+                    }
+                    dl->AddCircleFilled(p, led_r + 1.5f * scale, IM_COL32(0, 0, 0, 150), 20);
+                    if (on)
+                    {
+                        dl->AddCircleFilled(p, led_r * 2.4f, with_alpha(col, 50), 20);
+                        dl->AddCircleFilled(p, led_r, col, 20);
+                    }
+                    else
+                    {
+                        dl->AddCircleFilled(p, led_r, IM_COL32(42, 48, 56, 220), 20);
+                    }
+                }
             }
         }
 
@@ -147,11 +401,13 @@ namespace spartan::car_hud
         const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
         float region_left            = main_viewport->Pos.x;
         float region_width           = main_viewport->Size.x;
+        float region_height          = main_viewport->Size.y;
         float anchor_bottom          = main_viewport->Pos.y + main_viewport->Size.y;
         if (Engine::IsFlagSet(EngineMode::EditorVisible) && vp_size.x > 100.0f && vp_size.y > 100.0f)
         {
             region_left   = vp_pos.x;
             region_width  = vp_size.x;
+            region_height = vp_size.y;
             anchor_bottom = vp_pos.y + vp_size.y;
         }
 
@@ -209,38 +465,26 @@ namespace spartan::car_hud
                 panel_tl.y + panel_h
             );
 
-            if (show_speedometer)
-            {
-                dl->AddRectFilled(ImVec2(panel_tl.x + 2.0f * scale, panel_tl.y + 5.0f * scale), ImVec2(panel_br.x + 2.0f * scale, panel_br.y + 5.0f * scale), IM_COL32(0, 0, 0, 110), 7.0f * scale);
-                dl->AddRectFilled(panel_tl, panel_br, IM_COL32(10, 14, 19, 205), 7.0f * scale);
-                const float gradient_h = panel_h / 6.0f;
-                for (int i = 0; i < 6; ++i)
-                {
-                    const int alpha = 26 - i * 3;
-                    dl->AddRectFilled(
-                        ImVec2(panel_tl.x + 1.0f * scale, panel_tl.y + gradient_h * static_cast<float>(i)),
-                        ImVec2(panel_br.x - 1.0f * scale, panel_tl.y + gradient_h * static_cast<float>(i + 1)),
-                        IM_COL32(78, 105, 122, alpha),
-                        i == 0 ? 7.0f * scale : 0.0f
-                    );
-                }
-                dl->AddRect(panel_tl, panel_br, IM_COL32(110, 135, 150, 100), 7.0f * scale, 1.0f * scale);
-                dl->AddRect(ImVec2(panel_tl.x + 2.0f * scale, panel_tl.y + 2.0f * scale), ImVec2(panel_br.x - 2.0f * scale, panel_br.y - 2.0f * scale), IM_COL32(220, 240, 250, 24), 6.0f * scale, 1.0f);
-            }
-
             const ImU32 cyan       = IM_COL32(104, 218, 255, 255);
             const ImU32 red        = IM_COL32(255, 72, 78, 255);
-            const ImU32 white      = IM_COL32(245, 248, 250, 255);
-            const ImU32 line_color = IM_COL32(112, 126, 140, 70);
             ImFont* font           = ImGui::GetFont();
 
-            // Keep all speed/gear digits resident at fixed raster sizes. A new
-            // digit or a gear pulse must not grow/upload the atlas while driving.
-            for (const float size : {62.0f, 70.0f})
+            // bottom right cluster, sized from the viewport height so it reads the same on any aspect
+            const float dial_scale  = std::clamp(region_height / 1080.0f, 0.75f, 1.5f);
+            const float dial_radius = 128.0f * dial_scale;
+            const ImVec2 dial_center(
+                origin.x + region_width - margin - dial_radius,
+                anchor_bottom - margin - dial_radius
+            );
+
+            // keep every dial digit resident at its raster size, a new glyph mid drive must not grow and upload the atlas
+            for (const float size : {dial_radius * 0.44f, dial_radius * 0.27f, dial_radius * 0.15f})
             {
-                ImFontBaked* baked = font->GetFontBaked(size * scale);
+                ImFontBaked* baked = font->GetFontBaked(size);
                 for (const char c : std::string_view("0123456789NRP-"))
+                {
                     baked->FindGlyph(static_cast<ImWchar>(c));
+                }
             }
 
             auto draw_text = [&](
@@ -306,9 +550,11 @@ namespace spartan::car_hud
                 ? pill_state::active
                 : pill_state::idle;
 
+            // tell tales stack up beside the dial, or run along the bottom edge when the telemetry hud owns the speedometer
             const float pill_w   = 54.0f * scale;
             const float pill_gap = 6.0f * scale;
-            const float pill_y =
+            const float pill_h   = ImGui::GetTextLineHeight() + 6.0f;
+            float pill_y =
                 panel_br.y -
                 24.0f * scale;
             float pill_x =
@@ -316,6 +562,11 @@ namespace spartan::car_hud
                 region_width -
                 margin -
                 pill_w;
+            if (show_speedometer)
+            {
+                pill_x = dial_center.x - dial_radius - 18.0f * scale - pill_w;
+                pill_y = dial_center.y + dial_radius - pill_h;
+            }
 
             auto add_pill = [&](
                 const char* text,
@@ -336,7 +587,14 @@ namespace spartan::car_hud
                     pill_w,
                     instant
                 );
-                pill_x -= pill_w + pill_gap;
+                if (show_speedometer)
+                {
+                    pill_y -= pill_h + pill_gap;
+                }
+                else
+                {
+                    pill_x -= pill_w + pill_gap;
+                }
             };
 
             add_pill(
@@ -387,98 +645,26 @@ namespace spartan::car_hud
 
             if (show_speedometer)
             {
-                const float tach_x = panel_tl.x + 18.0f * scale;
-                const float tach_y = panel_tl.y + 14.0f * scale;
-                const float tach_w = panel_w - 36.0f * scale;
-                const float tach_h = 12.0f * scale;
-                const int segment_count = 32;
-                const float segment_gap = 2.0f * scale;
-                const float segment_w = (tach_w - segment_gap * (segment_count - 1)) / segment_count;
-                const float rpm_max = std::max(10000.0f, redline_rpm * 1.08f);
-                const float rpm_fraction = std::clamp(engine_rpm / rpm_max, 0.0f, 1.0f);
-                const float redline_fraction = std::clamp(redline_rpm / rpm_max, 0.0f, 1.0f);
+                car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
 
-                for (int i = 0; i < segment_count; ++i)
-                {
-                    const float fraction = static_cast<float>(i + 1) / static_cast<float>(segment_count);
-                    const float x = tach_x + i * (segment_w + segment_gap);
-                    const bool active = fraction <= rpm_fraction;
-                    const bool redline = fraction >= redline_fraction;
-                    ImU32 color = IM_COL32(58, 67, 76, 150);
+                tachometer_state tach;
+                tach.rpm         = engine_rpm;
+                tach.redline_rpm = redline_rpm;
+                tach.max_rpm     = simulation ? simulation->get_max_rpm() : redline_rpm * 1.07f;
+                tach.speed_kmh   = speed_kmh;
+                tach.gear        = gear_str ? gear_str : "N";
+                tach.shifting    = is_shifting;
+                tach.limiter     = simulation && simulation->get_rev_limiter_active();
+                tach.manual      = CarPhysics::Get(*physics).GetManualTransmission();
+                draw_tachometer(dl, font, dial_center, dial_radius, dial_scale, tach, io.DeltaTime);
 
-                    if (active)
-                    {
-                        color = redline ? red : cyan;
-                    }
-                    else if (redline)
-                    {
-                        color = IM_COL32(100, 40, 44, 170);
-                    }
-
-                    dl->AddRectFilled(ImVec2(x, tach_y), ImVec2(x + segment_w, tach_y + tach_h), color, 1.5f * scale);
-                }
-
-                if (engine_rpm >= redline_rpm || is_shifting)
-                {
-                    const float pulse = 0.55f + sinf(static_cast<float>(ImGui::GetTime()) * 18.0f) * 0.35f;
-                    dl->AddRect(ImVec2(tach_x - 2.0f, tach_y - 2.0f), ImVec2(tach_x + tach_w + 2.0f, tach_y + tach_h + 2.0f), IM_COL32(255, 72, 78, static_cast<int>(pulse * 255.0f)), 3.0f * scale, 2.0f * scale, ImDrawFlags_None);
-                }
-
-                const float content_top = panel_tl.y + 40.0f * scale;
-                const float content_bottom = panel_br.y - 12.0f * scale;
-                const float speed_w = panel_w * 0.62f;
-                const float gear_w = panel_w - speed_w;
-                const float divider_1 = panel_tl.x + speed_w;
-                const float divider_2 = divider_1 + gear_w;
-
-                dl->AddRectFilled(ImVec2(panel_tl.x + 10.0f * scale, content_top - 3.0f * scale), ImVec2(divider_2 - 10.0f * scale, content_bottom), IM_COL32(2, 5, 8, 82), 5.0f * scale);
-                dl->AddLine(ImVec2(divider_1, content_top), ImVec2(divider_1, content_bottom), line_color, 1.0f);
-
-                static float gear_pulse = 0.0f;
-                static bool was_shifting = false;
-                if (is_shifting && !was_shifting)
-                {
-                    gear_pulse = 1.0f;
-                }
-                was_shifting = is_shifting;
-                gear_pulse = std::max(0.0f, gear_pulse - io.DeltaTime * 5.0f);
-
-                if (gear_pulse > 0.0f)
-                {
-                    dl->AddRectFilled(ImVec2(divider_1 + 5.0f * scale, content_top - 3.0f * scale), ImVec2(divider_2 - 5.0f * scale, content_bottom), IM_COL32(255, 184, 70, static_cast<int>(gear_pulse * 48.0f)), 5.0f * scale);
-                }
-
-                const float gear_size = 70.0f * scale;
-                const float gear_scale = 1.0f + gear_pulse * (8.0f / 70.0f);
-                const ImVec2 gear_text_size = font->CalcTextSizeA(gear_size, FLT_MAX, 0.0f, gear_str);
-                const float gear_center_x = divider_1 + gear_w * 0.5f;
-                draw_text("GEAR", 12.0f, ImVec2(gear_center_x - 18.0f * scale, content_top + 3.0f * scale), text_label);
-                const int gear_vertex_start = dl->VtxBuffer.Size;
-                dl->AddText(font, gear_size, ImVec2(gear_center_x - gear_text_size.x * 0.5f, content_top + 18.0f * scale), is_shifting ? accent_warn : white, gear_str);
-                // Animate the quad, not the raster size: continuously changing font
-                // sizes bake new glyphs and can trigger a synchronous atlas resize.
-                for (int i = gear_vertex_start; i < dl->VtxBuffer.Size; ++i)
-                {
-                    ImVec2& pos = dl->VtxBuffer[i].pos;
-                    pos.x = gear_center_x + (pos.x - gear_center_x) * gear_scale;
-                    const float top = content_top + 18.0f * scale;
-                    pos.y = top + (pos.y - top) * gear_scale;
-                }
-
-                char speed_text[16];
-                snprintf(speed_text, sizeof(speed_text), "%.0f", speed_kmh);
-                const float speed_size = 62.0f * scale;
-                const ImVec2 speed_text_size = font->CalcTextSizeA(speed_size, FLT_MAX, 0.0f, speed_text);
-                const float speed_center_x = panel_tl.x + speed_w * 0.5f;
-                dl->AddText(font, speed_size, ImVec2(speed_center_x - speed_text_size.x * 0.5f, content_top + 10.0f * scale), white, speed_text);
-                draw_text("KM/H", 12.0f, ImVec2(speed_center_x - 18.0f * scale, content_bottom - 19.0f * scale), text_label);
-
+                // boost readout tops the tell tale column
                 if (turbo_enabled)
                 {
                     char boost_text[24];
-                    snprintf(boost_text, sizeof(boost_text), "BOOST  %.1f BAR", boost_bar);
+                    snprintf(boost_text, sizeof(boost_text), "%.1f BAR", boost_bar);
                     const ImVec2 boost_size = font->CalcTextSizeA(11.0f * scale, FLT_MAX, 0.0f, boost_text);
-                    draw_text(boost_text, 11.0f, ImVec2(gear_center_x - boost_size.x * 0.5f, panel_tl.y + 27.0f * scale), boost_bar > 2.0f ? red : cyan);
+                    draw_text(boost_text, 11.0f, ImVec2(pill_x + (pill_w - boost_size.x) * 0.5f, pill_y + pill_h - boost_size.y), boost_bar > 2.0f ? red : cyan);
                 }
             }
 

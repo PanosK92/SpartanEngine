@@ -456,17 +456,16 @@ namespace spartan
             vector<float> rounded = deck_heights;
             smooth_profile_by_length(rounded, spans, smoothing_length, closed);
             smooth_profile_by_length(rounded, spans, smoothing_length, closed);
-            float lift = 0.0f;
+
+            // Restore the cut budget only where the rounding broke it, using the slope limited fill
+            // profile so the correction ramps in and out at the grade limit. A uniform lift of the
+            // whole road would let one deep cut anywhere on a long road raise every other kilometre
+            // off the ground, and any terrain edit along it would move the deck everywhere.
             for (size_t i = 0; i < count; i++)
             {
                 deck_heights[i] += (rounded[i] - deck_heights[i]) * blend;
-                lift = max(lift, floor_heights[i] - deck_heights[i]);
+                deck_heights[i]  = max(deck_heights[i], fill_profile[i]);
             }
-
-            // Preserve the cut budget with a uniform vertical translation, rather than
-            // clamping individual samples and recreating the very bumps we just removed.
-            // Terrain cut/fill is subsequently rebuilt from this finished deck.
-            for (float& height : deck_heights) height += lift;
         }
     }
 
@@ -2359,7 +2358,7 @@ namespace spartan
         // Cache standalone terrain roads against their authored inputs and the actual terrain surface.
         // Attached paths still evaluate their source live, since their source can be edited independently.
         generated_cache::Hash frame_hash;
-        frame_hash.Add(uint32_t(3)); // sampling/grade solver version
+        frame_hash.Add(uint32_t(4)); // sampling/grade solver version
         frame_hash.Add(m_pending_surface_hash);
         frame_hash.Add(GetControlPointsLocal());
         frame_hash.Add(m_entity_ptr->GetMatrix());
