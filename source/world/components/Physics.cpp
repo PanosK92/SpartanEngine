@@ -29,6 +29,7 @@ Commercial use requires written permission and negotiated payment terms.
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
 #include "../Weather.h"
+#include "../OceanWake.h"
 #include "../../geometry/Mesh.h"
 #include "../../geometry/GeneratedCache.h"
 #include "../../geometry/GeometryProcessing.h"
@@ -486,6 +487,17 @@ namespace spartan
                 float water_height      = 0.0f;
                 if (Renderer::GetOceanHeight(world_position.x, world_position.z, water_height))
                 {
+                    // legs wading through the sea part the water like any other body, measured without the wake they make
+                    const float feet   = world_position.y - (standing_height * 0.5f + controller_radius);
+                    const float wading = min(water_height - feet, standing_height + 2.0f * controller_radius);
+                    if (wading > 0.0f)
+                    {
+                        const OceanWakeColumn column = { world_position.x, world_position.z, 3.14159265f * controller_radius * controller_radius * wading };
+                        OceanWake::Displace(GetEntity()->GetObjectId(), &column, 1);
+                    }
+
+                    water_height += OceanWake::SampleHeight(world_position.x, world_position.z);
+
                     const float waterline = 0.25f; // meters above the capsule center the water settles at
                     const float depth     = water_height - (static_cast<float>(position.y) + waterline);
                     if (depth > 0.0f)
@@ -721,17 +733,21 @@ namespace spartan
             // archimedes capped so light bodies stay stable, split across the sample points
             const float force_per_point = min(buoyancy::water_density * gravity * volume, dynamic->getMass() * buoyancy::max_accel) * 0.25f;
 
-            float heights[4] = {};
-            bool heights_valid = true;
+            // the wake source is measured against the sea without the wake, measured against the wake the water
+            // a body lifts would count as more water it holds out and the field would feed itself
+            float heights[4]      = {};
+            float heights_base[4] = {};
+            bool heights_valid    = true;
             for (uint32_t i = 0; i < 4; i++)
             {
                 const PxVec3 point = center + offsets[i];
                 const Vector3 world_point = PhysicsWorld::ToWorldPosition(from_px_vec3(point));
-                if (!Renderer::GetOceanHeight(world_point.x, world_point.z, heights[i]))
+                if (!Renderer::GetOceanHeight(world_point.x, world_point.z, heights_base[i]))
                 {
                     heights_valid = false;
                     break;
                 }
+                heights[i] = heights_base[i] + OceanWake::SampleHeight(world_point.x, world_point.z);
             }
 
             if (!heights_valid)
@@ -740,9 +756,18 @@ namespace spartan
             }
 
             float submersion = 0.0f;
+            OceanWakeColumn wake[4];
+            uint32_t wake_count = 0;
             for (uint32_t i = 0; i < 4; i++)
             {
                 const PxVec3 point = center + offsets[i];
+                const float depth_base = heights_base[i] - bounds.minimum.y;
+                if (depth_base > 0.0f)
+                {
+                    const Vector3 world_point = PhysicsWorld::ToWorldPosition(from_px_vec3(point));
+                    wake[wake_count++]        = { world_point.x, world_point.z, volume * min(depth_base / body_height, 1.0f) * 0.25f };
+                }
+
                 const float depth = heights[i] - bounds.minimum.y;
                 if (depth <= 0.0f)
                 {
@@ -752,6 +777,14 @@ namespace spartan
                 const float point_submersion = min(depth / body_height, 1.0f);
                 submersion                  += point_submersion * 0.25f;
                 PxRigidBodyExt::addForceAtPos(*dynamic, PxVec3(0.0f, force_per_point * point_submersion, 0.0f), point, PxForceMode::eFORCE);
+            }
+
+            // a crate or barrel bobbing in the sea pushes rings out, the wake hands them to the other floats,
+            // a body that stops reporting drops out of the wake on its own
+            if (wake_count > 0)
+            {
+                const uint64_t wake_id = GetEntity()->GetObjectId() ^ (reinterpret_cast<uintptr_t>(actor) * 0x9e3779b97f4a7c15ull);
+                OceanWake::Displace(wake_id, wake, wake_count);
             }
 
             if (submersion <= 0.0f)

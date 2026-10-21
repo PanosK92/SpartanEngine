@@ -67,6 +67,10 @@ Texture2DArray<float4> tex_ocean_normal       : register(t31);
 // shoreline field for the breaking surf, r = signed distance to the coast (m, positive offshore), gb = shoreward direction, a = beach slope
 Texture2D<float4> tex_ocean_shore : register(t78);
 
+// interactive ocean wake and its previous frame, r = metres above the fft surface, g = foam, toroidal so it is sampled with wrap, see sample_ocean_wake
+Texture2D<float2> tex_ocean_wake          : register(t73);
+Texture2D<float2> tex_ocean_wake_previous : register(t74);
+
 // Unified air/water transport, shared by scene composition and transparency.
 Texture3D<float4> tex_fog_extinction    : register(t35); // r = air extinction, g = water fraction of the cell
 Texture3D<float4> tex_fog_scattering    : register(t36);

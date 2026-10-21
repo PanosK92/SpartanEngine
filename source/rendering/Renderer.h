@@ -320,6 +320,8 @@ namespace spartan
         bool IsOceanEnabled();
         // world space wave height at (x, z) from the readback of the gpu displacement, false when no ocean is active
         bool GetOceanHeight(const float x, const float z, float& height);
+        // the calm sea surface, false when no ocean is active, a cheap test before the wave queries
+        bool GetOceanSeaLevel(float& sea_level);
         // thickness of the shore swash sheet over the sand at (x, z), zero where it is not running
         float GetOceanSwashDepth(const float x, const float z);
 
@@ -402,6 +404,8 @@ namespace spartan
         void UpdateFrameCb_VegetationInteraction();
         void UpdateFrameCb_TerrainDeformation();
         bool IsTerrainDeformationReady();
+        void UpdateFrameCb_OceanWake();
+        bool IsOceanWakeReady();
         bool IsTerrainDetailReady();
         bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources, bool create_render, bool create_output, const char* label);
 
@@ -495,6 +499,8 @@ namespace spartan
         void Pass_Vegetation_Interaction();
         // passes - tire ruts, uploads the cpu field the terrain tessellation and the g-buffer read
         void Pass_TerrainDeformation();
+        // passes - interactive ocean wake, uploads the cpu wave field the water surface reads
+        void Pass_OceanWake();
         // passes - wind field
         void Pass_WindField();
         // passes - water on the occupied car

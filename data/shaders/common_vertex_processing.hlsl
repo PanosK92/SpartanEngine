@@ -728,6 +728,16 @@ struct vertex_processing
                 OceanShore shore = ocean_shore_evaluate(world_xz, ocean_shore_time(time_offset < 0.0f ? -buffer_frame.delta_time : 0.0f), cell);
                 disp   += shore.displacement;
                 floor_y = shore.floor_y;
+
+                // bow waves and wakes of whatever moves through the sea, filtered over the vertex cell since the
+                // field is finer than the clipmap, the pixel normals keep the detail
+                bool previous = time_offset < 0.0f;
+                float wake    = sample_ocean_wake(world_xz, previous).x * 0.5f;
+                wake         += sample_ocean_wake(world_xz + float2(cell, 0.0f), previous).x * 0.125f;
+                wake         += sample_ocean_wake(world_xz - float2(cell, 0.0f), previous).x * 0.125f;
+                wake         += sample_ocean_wake(world_xz + float2(0.0f, cell), previous).x * 0.125f;
+                wake         += sample_ocean_wake(world_xz - float2(0.0f, cell), previous).x * 0.125f;
+                disp.y       += wake;
             }
 
             position_world   += disp;

@@ -20,6 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../math/Quaternion.h"
 #include "../math/Rectangle.h"
 #include "../world/TerrainDeformation.h"
+#include "../world/OceanWake.h"
 #include <initializer_list>
 #include <type_traits>
 #include <tuple>
@@ -251,6 +252,19 @@ namespace spartan
                 math::Vector4 bounds  = math::Vector4::Zero;
                 bool was_simulating   = false;
             } terrain_deformation;
+
+            // interactive water on the ocean, the cpu field in OceanWake is the source, two textures so the
+            // previous frame's surface stays readable for motion vectors
+            struct OceanWakeState
+            {
+                std::shared_ptr<RHI_Texture> textures[2];
+                std::vector<uint16_t> texels;
+                math::Vector4 mapping          = math::Vector4::Zero;
+                math::Vector4 mapping_previous = math::Vector4::Zero;
+                uint32_t current      = 0;
+                bool upload_pending   = false;
+                bool was_simulating   = false;
+            } ocean_wake;
 
             bool          terrain_enabled = false;
             TerrainParams terrain;

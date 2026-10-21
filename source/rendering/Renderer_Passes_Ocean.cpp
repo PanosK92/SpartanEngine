@@ -19,6 +19,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/Entity.h"
 #include "../world/components/Water.h"
 #include "../world/components/Terrain.h"
+#include "../world/components/Camera.h"
+#include "../world/OceanWake.h"
 #include "OceanShore.h"
 //===========================================
 
@@ -1103,5 +1105,100 @@ namespace spartan
         height = max(height + shore_displacement.y, shore_floor);
 
         return true;
+    }
+
+    bool Renderer::GetOceanSeaLevel(float& sea_level)
+    {
+        const Water* water = m_pass_state.ocean;
+        if (!water)
+        {
+            return false;
+        }
+        sea_level = water->GetSeaLevel();
+        return true;
+    }
+
+    bool Renderer::IsOceanWakeReady()
+    {
+        const auto& state = m_pass_state.ocean_wake;
+        for (const shared_ptr<RHI_Texture>& texture : state.textures)
+        {
+            if (!texture || texture->GetResourceState() != ResourceState::PreparedForGpu || !texture->GetRhiSrv())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void Renderer::UpdateFrameCb_OceanWake()
+    {
+        auto& state = m_pass_state.ocean_wake;
+
+        // the field belongs to the primary view, a preview keeps the last mapping
+        if (!IsSecondaryViewActive())
+        {
+            // waves only run while the game simulates, a new play session starts on a calm sea
+            const bool simulating = Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused);
+            const Water* water    = m_pass_state.ocean;
+            if ((simulating && !state.was_simulating) || !OceanWake::IsEnabled() || !water)
+            {
+                OceanWake::Clear();
+            }
+            state.was_simulating = simulating;
+
+            if (water && simulating && !Engine::IsFlagSet(EngineMode::Paused))
+            {
+                Vector3 focus = Vector3::Zero;
+                if (Camera* camera = World::GetCamera())
+                {
+                    focus = camera->GetEntity()->GetPosition();
+                }
+                OceanWake::Tick(static_cast<float>(Timer::GetDeltaTimeSec()), focus, water->GetSeaLevel());
+            }
+
+            // the textures swap on every upload, the one written last frame becomes the previous surface
+            const Vector4 mapping  = OceanWake::GetMapping();
+            state.upload_pending   = OceanWake::CollectUpload(state.texels);
+            state.mapping_previous = state.upload_pending ? state.mapping : state.mapping_previous;
+            state.mapping          = mapping;
+        }
+
+        const bool ready = IsOceanWakeReady();
+        Renderer::view().frame.ocean_wake          = ready ? state.mapping : Vector4::Zero;
+        Renderer::view().frame.ocean_wake_previous = ready ? state.mapping_previous : Vector4::Zero;
+    }
+
+    void Renderer::Pass_OceanWake()
+    {
+        auto& state = m_pass_state.ocean_wake;
+        if (!state.textures[0])
+        {
+            // a texture only gets an image once it has data, a calm sea is all zeros
+            for (uint32_t i = 0; i < 2; i++)
+            {
+                vector<RHI_Texture_Slice> slices(1);
+                slices[0].mips.resize(1);
+                slices[0].mips[0].bytes.assign(static_cast<size_t>(OceanWake::resolution) * OceanWake::resolution * 2 * sizeof(uint16_t), std::byte{ 0 });
+                state.textures[i] = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    OceanWake::resolution, OceanWake::resolution, 1, 1,
+                    RHI_Format::R16G16_Float, RHI_Texture_Srv,
+                    i == 0 ? "ocean_wake_a" : "ocean_wake_b", move(slices)
+                );
+            }
+        }
+
+        if (!state.upload_pending || !IsOceanWakeReady())
+        {
+            return;
+        }
+        state.upload_pending = false;
+
+        // frame uploads record into this command list, ahead of the passes that sample the field
+        state.current = 1 - state.current;
+        RHI_CommandList::BeginPass("ocean_wake");
+        state.textures[state.current]->UpdateRegion(0, 0, OceanWake::resolution, OceanWake::resolution, state.texels.data(), true);
+        RHI_CommandList::EndPass();
     }
 }

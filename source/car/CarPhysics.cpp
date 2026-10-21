@@ -27,6 +27,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarChassisCollision.h"
 #include "../world/Weather.h"
 #include "../world/TerrainDeformation.h"
+#include "../world/OceanWake.h"
 #include "../geometry/Mesh.h"
 #include "../geometry/GeneratedCache.h"
 #include "../geometry/GeometryProcessing.h"
@@ -260,7 +261,21 @@ namespace spartan
             }
 
             const bool porous = surface == car::surface_dirt || surface == car::surface_grass || surface == car::surface_gravel;
-            return Weather::GetWaterDepth(Vector3(point.x, point.y, point.z), porous);
+            float depth       = Weather::GetWaterDepth(Vector3(point.x, point.y, point.z), porous);
+
+            // on the sea bed the tire stands in the ocean, any depth past a flooded tread grips the same, the
+            // hull and tire drag in CarWater carry the rest of what deep water does to the car
+            float sea_level = 0.0f;
+            const Vector3 map = PhysicsWorld::ToWorldPosition(Vector3(point.x, point.y, point.z));
+            if (Renderer::GetOceanSeaLevel(sea_level) && map.y < sea_level + 6.0f)
+            {
+                float water = 0.0f;
+                if (Renderer::GetOceanHeight(map.x, map.z, water))
+                {
+                    depth = max(depth, min(water + OceanWake::SampleHeight(map.x, map.z) - map.y, 0.01f));
+                }
+            }
+            return depth;
         }
 
         // only the terrain gives, roads, shoulders and props keep their surface
@@ -428,6 +443,7 @@ namespace spartan
         const auto wind = World::SampleWind(GetEntity()->GetPosition(), static_cast<float>(Timer::GetSimTimeSec()));
         VehicleState().vehicle_simulation->wind_velocity = PxVec3(wind.x, wind.y, wind.z);
         VehicleState().vehicle_simulation->tick(dt);
+        car_water::tick(*VehicleState().vehicle_simulation, VehicleState().water, GetEntity()->GetObjectId(), dt);
         StampTerrainDeformation(dt);
     }
 

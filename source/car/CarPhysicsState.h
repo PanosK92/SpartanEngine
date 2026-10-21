@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 #include "CarPhysicsTypes.h"
+#include "CarWater.h"
 #include "../math/Vector3.h"
 #include "../math/Quaternion.h"
 #include <memory>
@@ -33,6 +34,8 @@ namespace spartan
         // where each tire last pressed into soft ground, map space, a stamp spans the step between
         math::Vector3 rut_previous[static_cast<int>(WheelIndex::Count)] = {};
         bool rut_previous_valid[static_cast<int>(WheelIndex::Count)] = {};
+        // the sea against the hull, its buoyancy, drag, flooding and wake
+        CarWaterState water;
         bool vehicle_simulation_active = true;
         bool vehicle_brake_reverse_enabled = true;
         bool vehicle_full_steering_lock = false;

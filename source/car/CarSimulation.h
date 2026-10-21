@@ -78,6 +78,7 @@ namespace car
         float           motor_torque            = 0.0f;
         hybrid_state    battery;
         bool            engine_running = true;
+        bool            intake_flooded = false; // water at the air intake, the engine drowns and will not crank
         bool            starter_requested = false;
         bool            starter_engaged = false; // cranking a stopped engine this tick
         float           regen_axle_torque = 0;
@@ -461,6 +462,8 @@ namespace car
         float get_motor_power_kw();
         const hybrid_state& get_hybrid_state() const { return battery; }
         bool get_engine_running() const { return engine_running; }
+        void set_intake_flooded(bool flooded) { intake_flooded = flooded; }
+        bool get_intake_flooded() const { return intake_flooded; }
         bool get_starter_engaged() const { return starter_engaged; }
         void set_starter(bool active) { starter_requested = active; wake_vehicle_assembly(); }
         void record_contact_impulse(const PxVec3& impulse, uint64_t other_entity = 0, unsigned point_count = 0, unsigned pair_flags = 0)

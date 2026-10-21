@@ -232,6 +232,11 @@ struct FrameBufferData
     SHARED_FLOAT4 terrain_deformation;
     SHARED_FLOAT4 terrain_deformation_bounds;
 
+    // interactive ocean wake, a toroidal field around the camera, see OceanWake.h
+    // xy = world xz of the window min, z = 1 / window size, w = 1 while waves are running
+    SHARED_FLOAT4 ocean_wake;
+    SHARED_FLOAT4 ocean_wake_previous;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {

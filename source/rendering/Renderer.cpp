@@ -2547,6 +2547,7 @@ namespace spartan
         UpdateFrameCb_RadialBlurHubs();
         UpdateFrameCb_VegetationInteraction();
         UpdateFrameCb_TerrainDeformation();
+        UpdateFrameCb_OceanWake();
 
         // a secondary view renders a different camera into the primary frame, keeping the
         // primary history here means every pixel reports a huge velocity, which reads as
@@ -3094,6 +3095,7 @@ namespace spartan
         m_pass_state.ocean_history.Reset();
         ResetOceanHeightReadback();
         ocean_shore::reset();
+        OceanWake::Clear();
     }
 
     bool Renderer::IsOceanEnabled()
@@ -6174,6 +6176,12 @@ namespace spartan
             // tire ruts, read by the terrain tessellation, the g-buffer and the grass
             RHI_Texture* deformation = m_pass_state.terrain_deformation.texture.get();
             RHI_CommandList::SetTexture("tex_terrain_deformation", IsTerrainDeformationReady() ? deformation : black);
+
+            // interactive ocean wake, read by the water vertices, the g-buffer and the foam in reflections_apply
+            const auto& wake = m_pass_state.ocean_wake;
+            const bool wake_ready = IsOceanWakeReady();
+            RHI_CommandList::SetTexture("tex_ocean_wake", wake_ready ? wake.textures[wake.current].get() : black);
+            RHI_CommandList::SetTexture("tex_ocean_wake_previous", wake_ready ? wake.textures[1 - wake.current].get() : black);
         }
 
         // the occupied car's water, read by the g-buffer
@@ -6542,6 +6550,7 @@ namespace spartan
             Pass_WindField();
             Pass_Vegetation_Interaction();
             Pass_TerrainDeformation();
+            Pass_OceanWake();
             Pass_CarRain();
             Pass_Ocean();
         }

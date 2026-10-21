@@ -318,6 +318,54 @@ float ocean_cascade_depth_scale(float depth, float wavelength)
 
 #include "common_ocean_shore.hlsl"
 
+// the water bodies push around on top of the fft ocean, see OceanWake.h, x = metres above the fft surface, y = foam
+// only the water raster and its shading read it, the fog and other compute paths keep the plain fft surface
+float2 sample_ocean_wake(float2 world_xz, bool previous = false)
+{
+    float4 mapping = previous ? buffer_frame.ocean_wake_previous : buffer_frame.ocean_wake;
+    if (mapping.w < 0.5f)
+    {
+        return 0.0f;
+    }
+
+    // the outer cells are the sponge that swallows the waves, fading over them keeps the window edge invisible
+    float2 local = (world_xz - mapping.xy) * mapping.z;
+    float2 edge  = min(local, 1.0f - local);
+    float fade   = saturate(min(edge.x, edge.y) * 16.0f);
+    if (fade <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float2 uv   = world_xz * mapping.z;
+    float2 wake = 0.0f;
+    if (previous)
+    {
+        wake = tex_ocean_wake_previous.SampleLevel(samplers[sampler_bilinear_wrap], uv, 0.0f);
+    }
+    else
+    {
+        wake = tex_ocean_wake.SampleLevel(samplers[sampler_bilinear_wrap], uv, 0.0f);
+    }
+    return wake * fade;
+}
+
+// slope of the wake surface, central differences one cell apart, the field is 256 cells across its window
+float2 sample_ocean_wake_slope(float2 world_xz)
+{
+    if (buffer_frame.ocean_wake.w < 0.5f)
+    {
+        return 0.0f;
+    }
+
+    float e   = 1.0f / (buffer_frame.ocean_wake.z * 256.0f);
+    float hx0 = sample_ocean_wake(world_xz - float2(e, 0.0f)).x;
+    float hx1 = sample_ocean_wake(world_xz + float2(e, 0.0f)).x;
+    float hz0 = sample_ocean_wake(world_xz - float2(0.0f, e)).x;
+    float hz1 = sample_ocean_wake(world_xz + float2(0.0f, e)).x;
+    return float2(hx1 - hx0, hz1 - hz0) / (2.0f * e);
+}
+
 // summed cascade displacement in the undisplaced grid the fft writes into, plus the shore surf
 float3 get_ocean_displacement(float2 grid_xz)
 {
@@ -495,8 +543,10 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
     // Keeping both masks here produces a second white band behind the lip.
     float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
     float shaped = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
+    // whitewater a hull churns up trails behind it until it fades where it was made
+    float wake   = shape_ocean_foam(sample_ocean_wake(water_position.xz).y, water_position.xz, footprint);
     shore = ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f));
-    return saturate(max(shaped, ocean_shore_foam_shape(shore, water_position.xz, footprint)));
+    return saturate(max(max(shaped, wake), ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
 
 // analytic fft slopes, each cascade fades once the pixel footprint (its long axis, which grows at grazing angles) exceeds its shortest waves
@@ -551,10 +601,14 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
         float3 n   = cross(pz - p0, px - p0);
         slope     += -n.xz / max(n.y, 1e-4f);
     }
+
+    // the wake is a quarter metre field, its slopes hold until a pixel spans several cells
+    slope += sample_ocean_wake_slope(water_position.xz) * (1.0f - smoothstep(1.0f, 4.0f, pixel_footprint));
     normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
     float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
     foam = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
+    foam = max(foam, shape_ocean_foam(sample_ocean_wake(water_position.xz).y, water_position.xz, footprint));
     foam = saturate(max(foam, ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
 

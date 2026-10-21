@@ -3844,7 +3844,7 @@ namespace car
         float demand = is_brake_reverse_throttle() ? input.brake : input.throttle;
         if (is_in_reverse()) demand *= spec.reverse_power_ratio;
         if (downshift_blip_timer > 0) demand = PxMax(demand, spec.downshift_blip_amount);
-        bool starting = starter_requested || (!engine_running && demand > spec.input_deadzone && fabsf(wheel_speed) < 2);
+        bool starting = !intake_flooded && (starter_requested || (!engine_running && demand > spec.input_deadzone && fabsf(wheel_speed) < 2));
         starter_engaged = starting && !engine_running;
         const int steps = PxMax(1, static_cast<int>(ceilf(dt / 0.0005f)));
         const float h = dt / steps;
@@ -3853,8 +3853,8 @@ namespace car
         for (int j = 0; j < steps; ++j)
         {
             float rpm = engine_speed * 60.0f / PxTwoPi;
-            if (engine_running && rpm < spec.engine_stall_rpm) engine_running = false;
-            if (!engine_running && rpm > spec.engine_idle_rpm * 0.7f) engine_running = true;
+            if (engine_running && (rpm < spec.engine_stall_rpm || intake_flooded)) engine_running = false;
+            if (!engine_running && !intake_flooded && rpm > spec.engine_idle_rpm * 0.7f) engine_running = true;
             // Published torque already includes steady boost and engine friction.
             // Recover gross torque before applying transient boost and demand;
             // never boost an already boosted net curve a second time.
