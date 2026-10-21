@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Physics.h"
+#include "../commands/console/ConsoleCommands.h"
 using namespace std;
 using namespace spartan::math;
 namespace spartan
@@ -28,6 +29,8 @@ namespace spartan
         Vector3 drop_velocity_last = Vector3::Zero; // world, m/s
         Vector3 drop_acceleration  = Vector3::Zero; // world, m/s^2
         constexpr float acceleration_smoothing = 0.03f;
+
+        TConsoleVar<float> cvar_headwind("car.dirt_airspeed", 0.0f, "m/s of headwind on the car, to watch the air scour the dirt and push the rain over the paint without driving");
     }
     void TickCarWeather(float delta_time)
     {
@@ -72,7 +75,7 @@ namespace spartan
         if (!simulation)
         {
             CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
-            CarDirt::Tick(delta_time);
+            CarDirt::Tick(delta_time, CarRain::Conditions());
             return;
         }
 
@@ -115,11 +118,11 @@ namespace spartan
         conditions.velocity     = velocity;
         conditions.acceleration = to_car * drop_acceleration;
         conditions.gravity      = to_car * Vector3(0.0f, -9.81f, 0.0f);
-        conditions.wind         = to_car * World::GetWind();
+        conditions.wind         = to_car * World::GetWind() - Vector3::Forward * cvar_headwind.GetValue();
         conditions.rain         = rain;
         conditions.exposure     = exposure;
         CarRain::Tick(root, conditions, delta_time);
-        CarDirt::Tick(delta_time);
+        CarDirt::Tick(delta_time, conditions);
     }
 
     void ClearCarWeather()

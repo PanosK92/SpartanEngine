@@ -192,6 +192,8 @@ namespace spartan
             const bool carries_dirt = root && root == CarRain::GetBakedRoot();
             json += ",\"dirt_atlas\":" + json_bool(carries_dirt);
             json += ",\"dirt_coverage\":" + std::to_string(carries_dirt ? CarDirt::GetCoverage() : 0.0f);
+            json += ",\"paint_cut\":" + std::to_string(carries_dirt ? CarDirt::GetDamage(0.0f) : 0.0f);
+            json += ",\"paint_to_steel\":" + std::to_string(carries_dirt ? CarDirt::GetDamage(0.85f) : 0.0f);
             json += ",\"mcp_controlled\":" + json_bool(car->IsExternallyControlled());
             json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
             json += ",\"show_telemetry\":" + json_bool(car->GetShowTelemetry());

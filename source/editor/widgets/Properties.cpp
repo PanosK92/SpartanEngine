@@ -44,6 +44,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/components/Water.h"
 #include "world/components/SpawnPoint.h"
 #include "../../world/components/CarReset.h"
+#include "../../world/components/CarService.h"
 #include "world/components/Text3D.h"
 #include "world/Prefab.h"
 #include "TerrainEditor.h"
@@ -5589,6 +5590,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Car Reset"))
             {
                 entity->AddComponent<CarReset>();
+            }
+
+            if (ImGui::MenuItem("Car Service"))
+            {
+                entity->AddComponent<CarService>();
             }
 
             if (ImGui::MenuItem("Navigation"))

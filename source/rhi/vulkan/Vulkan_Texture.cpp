@@ -455,7 +455,7 @@ namespace spartan
             barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COPY_BIT;
             barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
             barrier.dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-            barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
             vkCmdPipelineBarrier2(vk_cmd, &dependency);
 
             if (frame_upload)

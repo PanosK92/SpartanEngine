@@ -16,6 +16,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
+#include "../world/components/CarService.h"
 #include "../world/components/Component.h"
 #include "../world/components/AudioSource.h"
 #include "../world/components/Light.h"
@@ -1800,6 +1801,10 @@ namespace spartan::mcp_components
             {
                 return "[\"play\",\"stop\"]";
             }
+            if (type == ComponentType::CarService)
+            {
+                return "[\"wash\"]";
+            }
             if (type == ComponentType::Light)
             {
                 return "[\"fit_to_mesh\"]";
@@ -3008,7 +3013,8 @@ namespace spartan::mcp_components
             const std::string action = to_lower_copy(*action_arg);
             const bool runtime_action =
                 (*type == ComponentType::Physics && (action == "apply_force" || action == "sync_wheel_offsets" || action == "reset_tire_wear" || action == "shift_up" || action == "shift_down" || action == "shift_to_neutral" || action == "draw_debug_visualization")) ||
-                (*type == ComponentType::AudioSource && (action == "play" || action == "stop"));
+                (*type == ComponentType::AudioSource && (action == "play" || action == "stop")) ||
+                (*type == ComponentType::CarService && action == "wash");
 
             if (!runtime_action && !is_edit_mode())
             {
@@ -3016,7 +3022,14 @@ namespace spartan::mcp_components
             }
 
             std::string result_json = "{}";
-            if (*type == ComponentType::Terrain && action == "generate")
+            if (*type == ComponentType::CarService && action == "wash")
+            {
+                if (!static_cast<CarService*>(component)->Wash())
+                {
+                    return json_error("no driven car is parked in the bay");
+                }
+            }
+            else if (*type == ComponentType::Terrain && action == "generate")
             {
                 static_cast<Terrain*>(component)->Generate();
             }

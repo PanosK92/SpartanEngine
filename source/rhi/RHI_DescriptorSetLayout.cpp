@@ -99,12 +99,21 @@ namespace spartan
         if (!buffer)
             return;
 
-        uint32_t actual_slot = slot + rhi_shader_register_shift_u;
-        RHI_DescriptorBinding* binding = FindBinding(actual_slot);
+        // a buffer at t92 and a storage texture at u92 share the slot number, only a buffer descriptor may take it
+        auto find_buffer_binding = [this](uint32_t actual_slot) -> RHI_DescriptorBinding*
+        {
+            auto it = m_slot_to_index.find(actual_slot);
+            if (it == m_slot_to_index.end() || m_descriptors[it->second].type != RHI_Descriptor_Type::StructuredBuffer)
+            {
+                return nullptr;
+            }
+            return &m_bindings[it->second];
+        };
+
+        RHI_DescriptorBinding* binding = find_buffer_binding(slot + rhi_shader_register_shift_u);
         if (!binding)
         {
-            actual_slot = slot + rhi_shader_register_shift_t;
-            binding = FindBinding(actual_slot);
+            binding = find_buffer_binding(slot + rhi_shader_register_shift_t);
         }
 
         if (binding)

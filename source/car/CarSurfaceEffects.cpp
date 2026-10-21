@@ -366,6 +366,13 @@ namespace spartan
                 if (tangent.LengthSquared() < 0.0001f) tangent = normal.Cross(fabsf(normal.y) < 0.9f ? Vector3::Up : Vector3::Right);
                 tangent.Normalize();
                 const float severity = std::clamp(std::max(impact, speed * 0.35f) / 12.0f, 0.0f, 1.0f);
+                // the car that carries the surface atlas gets the scrape carved into its paint, joined up with the last one
+                if (vehicle == CarRain::GetBakedRoot() && CarDirt::IsActive())
+                {
+                    CarDirt::Scrape(vehicle, point, normal, tangent, severity, std::clamp(speed * 0.06f + impact * 0.01f, 0.02f, 0.5f));
+                    scratch_cooldown = 0.06f;
+                    break;
+                }
                 const Vector3 u = normal.Cross(tangent).Normalized() * (0.025f + severity * 0.085f);
                 const Vector3 v = tangent * std::clamp(0.06f + impact * 0.008f + speed * 0.018f, 0.06f, 0.45f);
                 const Vector3 w = normal * 0.045f;

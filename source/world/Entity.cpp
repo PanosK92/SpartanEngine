@@ -35,6 +35,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "components/RaceDriver.h"
 #include "components/RouteDriver.h"
 #include "components/CarReset.h"
+#include "components/CarService.h"
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON

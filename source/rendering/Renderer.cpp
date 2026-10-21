@@ -1547,6 +1547,7 @@ namespace spartan
             else
                 RHI_CommandList::UpdateBuffer(buffer, offset, size, Weather::GetOcclusionHeights());
         }
+        m_pass_state.surface_water.dirt_texels_staged = 0;
         if (Renderer::GetSurfaceWater().active && !secondary_render_root_active)
         {
             auto upload = [](RHI_Buffer* buffer, uint32_t offset, uint32_t size, const void* data)
@@ -1561,7 +1562,7 @@ namespace spartan
 
             const auto& drops = Renderer::GetSurfaceWater().drops;
             const uint32_t drop_count           = min(static_cast<uint32_t>(drops.size()), SurfaceWater::drops_max);
-            upload(GetBuffer(Renderer_Buffer::CarRainDrops), m_frame_resource_index * SurfaceWater::drops_max * sizeof(SurfaceWaterDrop), drop_count * sizeof(SurfaceWaterDrop), drops.data());
+            upload(GetBuffer(Renderer_Buffer::CarRainDrops), (m_frame_resource_index % renderer_draw_data_buffer_count) * SurfaceWater::drops_max * sizeof(SurfaceWaterDrop), drop_count * sizeof(SurfaceWaterDrop), drops.data());
 
             const auto& texels = Renderer::GetSurfaceWater().texels;
             const uint32_t texel_count            = min(static_cast<uint32_t>(texels.size()), SurfaceWater::texels_max);
@@ -1570,6 +1571,7 @@ namespace spartan
             const auto& dirt_texels      = Renderer::GetSurfaceWater().dirt_texels;
             const uint32_t dirt_count    = min(static_cast<uint32_t>(dirt_texels.size()), SurfaceWater::dirt_texels_max);
             upload(GetBuffer(Renderer_Buffer::CarDirtTexels), m_frame_resource_index * SurfaceWater::dirt_texels_max * sizeof(SurfaceDirtTexel), dirt_count * sizeof(SurfaceDirtTexel), dirt_texels.data());
+            m_pass_state.surface_water.dirt_texels_staged = dirt_count;
         }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;
@@ -2206,7 +2208,13 @@ namespace spartan
             {
                 Renderer::view().frame.rain_car_faces[face] = Renderer::GetSurfaceWater().faces[face];
             }
-            const bool car_dirt = car_water && Renderer::GetSurfaceWater().dirt_active;
+            // the targets are rebuilt in the car rain pass, until then they are placeholders the atlas coordinates would read far outside of
+            bool car_dirt = car_water && Renderer::GetSurfaceWater().dirt_active;
+            for (Renderer_RenderTarget target : { Renderer_RenderTarget::car_dirt_color, Renderer_RenderTarget::car_dirt_state, Renderer_RenderTarget::car_dirt_wear })
+            {
+                RHI_Texture* texture = GetRenderTarget(target);
+                car_dirt             = car_dirt && texture && texture->GetWidth() == Renderer::GetSurfaceWater().width && texture->GetHeight() == Renderer::GetSurfaceWater().height;
+            }
             Renderer::view().frame.car_dirt = Vector4(Renderer::GetSurfaceWater().dirt_clock, car_dirt ? 1.0f : 0.0f, 0.0f, 0.0f);
         }
         Renderer::view().frame.cloud_coverage        = Environment::GetCloudCoverageEffective();
@@ -6177,6 +6185,7 @@ namespace spartan
             RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
             RHI_CommandList::SetTexture("tex_car_dirt_color", GetRenderTarget(Renderer_RenderTarget::car_dirt_color));
             RHI_CommandList::SetTexture("tex_car_dirt_state", GetRenderTarget(Renderer_RenderTarget::car_dirt_state));
+            RHI_CommandList::SetTexture("tex_car_dirt_wear", GetRenderTarget(Renderer_RenderTarget::car_dirt_wear));
         }
 
         // terrain analysis maps, bound globally because the raster, reflection and gi paths all

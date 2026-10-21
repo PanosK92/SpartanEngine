@@ -415,7 +415,7 @@ namespace spartan
         void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
         // sized to the car's atlas, surface is one float per texel and micro two, null leaves them empty
         void CreateCarRainTargets(uint32_t width, uint32_t height, const float* surface, const float* micro);
-        void CreateCarDirtTargets(uint32_t width, uint32_t height, const uint32_t* color, const uint32_t* state);
+        void CreateCarDirtTargets(uint32_t width, uint32_t height, const uint32_t* color, const uint32_t* state, const uint32_t* wear);
         void EnsureScreenshotTargets();
         void UpdateOptionalRenderTargets();
         void CreateFonts();

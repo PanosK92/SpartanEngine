@@ -51,7 +51,8 @@ namespace spartan
     X(Pedestrians, pedestrians) \
     X(CarReset, car_reset) \
     X(RaceDriver, race_driver) \
-    X(RouteDriver, route_driver)
+    X(RouteDriver, route_driver) \
+    X(CarService, car_service)
 
 #define SP_COMPONENT_LIST SP_ENGINE_COMPONENT_LIST
 

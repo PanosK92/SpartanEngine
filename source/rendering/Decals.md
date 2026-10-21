@@ -53,6 +53,18 @@ reports dirt_atlas and dirt_coverage.
 
 ## Vehicle paint scratches
 
+On the car that owns the rain atlas, scratches are not decals either: CarSurfaceEffects
+routes the contact to CarDirt::Scrape, which drags the contact along the body in the
+same atlas and writes a third texel field next to the dirt, the cut depth, the groove
+direction, the share of strands and the rust. The stroke ploughs the dirt it meets into
+berms, grit under it cuts deeper, cut texels hold more dirt and catch the rain drops,
+and bare steel rusts while it stays wet. The g-buffer shades the cut as a pale hazed
+clearcoat, then basecoat, primer and steel by depth, and resolves the strands into
+grooves once they are larger than a pixel. car.scratch sideswipes the right flank in
+place (a flat wall that meets the bulges of the arches and doors), 0 repairs the paint;
+vehicle_get reports paint_cut and paint_to_steel. The decal path below remains for
+every other car.
+
 Chassis contacts use PhysX pre-solver relative point velocity (including angular
 motion and the other body's velocity). Wheel/suspension contacts are excluded.
 Contacts must exceed 1.2 m/s into the surface, or 1.5 m/s sliding with a loaded

@@ -2988,8 +2988,9 @@ namespace spartan
         // queue type so cross-queue conflicts cannot happen at the resource level
         VkBufferMemoryBarrier2 barrier = {};
         barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-        barrier.srcStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT;
-        barrier.srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        // the source scope is all prior work, otherwise a pass reads as completed while its dispatches still run
+        barrier.srcStageMask        = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        barrier.srcAccessMask       = VK_ACCESS_2_MEMORY_WRITE_BIT;
         barrier.dstStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT;
         barrier.dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;

@@ -147,6 +147,7 @@ namespace spartan
             uint32_t dirt_width = 0;
             uint32_t dirt_height = 0;
             bool dirt_uploaded = false;
+            uint32_t dirt_texels_staged = 0; // patches written to this frame's buffer slice, the dispatch must not read past them
         };
 
         struct PassState

@@ -49,6 +49,9 @@ namespace spartan
             // vertex pulling: allow vertex, instance, and index buffers to be bound as storage buffers
             flags_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
+            // the geometry buffer grows by copying its committed range out of the old buffer on the gpu
+            flags_usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
              if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index)
              {
                 if (RHI_Device::IsSupportedRayTracing())

@@ -31,6 +31,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RaceDriver.h"
 #include "RouteDriver.h"
 #include "CarReset.h"
+#include "CarService.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 SP_WARNINGS_ON

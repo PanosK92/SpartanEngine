@@ -56,6 +56,7 @@ namespace spartan
         water.dirt_clock = CarDirt::GetClock();
         water.dirt_color = CarDirt::GetColor();
         water.dirt_state = CarDirt::GetState();
+        water.dirt_wear = CarDirt::GetWear();
         water.dirt_texels = CarDirt::GetTexels();
         Renderer::SetSurfaceWater(water);
         SurfaceInteraction result;

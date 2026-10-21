@@ -82,6 +82,7 @@ namespace spartan
                 case Renderer_RenderTarget::car_rain_ids:
                 case Renderer_RenderTarget::car_dirt_color:
                 case Renderer_RenderTarget::car_dirt_state:
+                case Renderer_RenderTarget::car_dirt_wear:
                 case Renderer_RenderTarget::ocean_spectrum:
                 case Renderer_RenderTarget::ocean_fft_a:
                 case Renderer_RenderTarget::ocean_fft_b:
@@ -166,10 +167,10 @@ namespace spartan
             SurfaceWater::drops_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_drops");
         at(buffers, Renderer_Buffer::CarRainTexels) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(SurfaceWaterTexel)),
-            SurfaceWater::texels_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_texels");
+            SurfaceWater::texels_max * renderer_frame_resource_count, nullptr, true, "car_rain_texels");
         at(buffers, Renderer_Buffer::CarDirtTexels) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(SurfaceDirtTexel)),
-            SurfaceWater::dirt_texels_max * renderer_draw_data_buffer_count, nullptr, true, "car_dirt_texels");
+            SurfaceWater::dirt_texels_max * renderer_frame_resource_count, nullptr, true, "car_dirt_texels");
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_frame_resource_count, nullptr, true,
@@ -999,7 +1000,7 @@ namespace spartan
 
             // the car's water atlas, a placeholder until a car is baked, then sized to it
             CreateCarRainTargets(4, 4, nullptr, nullptr);
-            CreateCarDirtTargets(4, 4, nullptr, nullptr);
+            CreateCarDirtTargets(4, 4, nullptr, nullptr, nullptr);
         };
 
         auto create_ocean = [&]()
@@ -1746,7 +1747,7 @@ namespace spartan
         at(render_targets, Renderer_RenderTarget::car_rain_ids)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32_Uint, RHI_Texture_Uav | RHI_Texture_Srv, "car_rain_ids");
     }
 
-    void Renderer::CreateCarDirtTargets(uint32_t width, uint32_t height, const uint32_t* color, const uint32_t* state)
+    void Renderer::CreateCarDirtTargets(uint32_t width, uint32_t height, const uint32_t* color, const uint32_t* state, const uint32_t* wear)
     {
         const size_t texels = static_cast<size_t>(width) * height;
         auto slices = [texels](const uint32_t* data)
@@ -1763,6 +1764,7 @@ namespace spartan
 
         at(render_targets, Renderer_RenderTarget::car_dirt_color) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32_Uint, RHI_Texture_Uav | RHI_Texture_Srv, "car_dirt_color", slices(color));
         at(render_targets, Renderer_RenderTarget::car_dirt_state) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32_Uint, RHI_Texture_Uav | RHI_Texture_Srv, "car_dirt_state", slices(state));
+        at(render_targets, Renderer_RenderTarget::car_dirt_wear)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32_Uint, RHI_Texture_Uav | RHI_Texture_Srv, "car_dirt_wear", slices(wear));
     }
 
     array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& Renderer::GetRenderTargets()

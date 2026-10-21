@@ -34,13 +34,13 @@ namespace spartan
         float padding  = 0.0f;
     };
 
-    // a texel whose dirt changed this frame, the packed values the gpu stores (CarDirt.h)
+    // a texel whose dirt or paint changed this frame, the packed values the gpu stores (CarDirt.h)
     struct SurfaceDirtTexel
     {
-        uint32_t texel   = 0;
-        uint32_t color   = 0; // rgb sqrt encoded albedo and coverage, 8 bits each
-        uint32_t state   = 0; // wet until in 1/16 s of the dirt clock << 8 | coarseness
-        uint32_t padding = 0;
+        uint32_t texel = 0;
+        uint32_t color = 0; // rgb sqrt encoded albedo and coverage, 8 bits each
+        uint32_t state = 0; // wet until in 1/16 s of the dirt clock << 8 | coarseness
+        uint32_t wear  = 0; // cut depth | groove direction << 8 | strands << 16 | rust << 24, 8 bits each
     };
 
     // Borrowed CPU payloads remain alive and immutable until rendering finishes this frame.
@@ -61,11 +61,11 @@ namespace spartan
         std::span<const SurfaceWaterDrop> drops;
         std::span<const SurfaceWaterTexel> texels;
 
-        // the dirt on the same car, in the same atlas
+        // the dirt and the paint damage on the same car, in the same atlas
         bool dirt_active = false;
         uint32_t dirt_version = 0;
         float dirt_clock = 0;
-        std::span<const uint32_t> dirt_color, dirt_state;
+        std::span<const uint32_t> dirt_color, dirt_state, dirt_wear;
         std::span<const SurfaceDirtTexel> dirt_texels;
     };
 }

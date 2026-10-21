@@ -36,6 +36,24 @@ namespace spartan
         static constexpr uint32_t drops_max  = 131000; // the gpu id key packs the index in 17 bits
         static constexpr uint32_t texels_max = 65536;  // micro water changes sent to the gpu per frame
 
+        // what the running drops did this frame, the dirt (CarDirt.h) follows them: a drop picks up the dirt of every texel it
+        // sweeps, hands it over when it merges, leaves it where it settles and evaporates, and takes it along when it drips off
+        enum class WashKind : uint32_t
+        {
+            Sweep,  // drop ran over texel
+            Merge,  // drop absorbed other
+            Settle, // drop dried out on texel
+            Lost    // drop left the car
+        };
+
+        struct Wash
+        {
+            uint32_t texel = 0;
+            uint32_t drop  = 0;
+            uint32_t other = 0;
+            WashKind kind  = WashKind::Sweep;
+        };
+
         struct Conditions
         {
             math::Vector3 velocity;     // car local, m/s
@@ -64,6 +82,7 @@ namespace spartan
         static float GetResidueMass(); // milligrams
         static const std::vector<CarRainDropGpu>& GetDrops();
         static const std::vector<CarRainTexelGpu>& GetTexels();
+        static const std::vector<Wash>& GetWashes();
 
         // the baked atlas, the dirt on the car (CarDirt.h) lives in the same texels, positions and normals are car local
         static Entity* GetBakedRoot();
@@ -72,6 +91,10 @@ namespace spartan
         static math::Vector3 GetBoxMax();
         static math::Vector3 GetTexelNormal(uint32_t texel);
         static math::Vector3 GetTexelPoint(uint32_t texel);
+        static float GetTexelShelter(uint32_t texel);   // 0 open to 1 deep in a crevice, how much the body closes over the paint
+        static float GetTexelConvexity(uint32_t texel); // 0 flat or hollow to 1 a sharp outer edge
+        // what the dirt and the paint damage on a texel (CarDirt.h) add to the pinning, 0 clean clearcoat to 1 caked or cut
+        static void SetTexelSnag(uint32_t texel, float value);
         // the texel of paint under a point, found through the map the normal looks along, false when the paint there is
         // further than tolerance from the point or belongs to nothing the maps see
         static bool FindTexel(const math::Vector3& point, const math::Vector3& normal, float tolerance, uint32_t& texel);

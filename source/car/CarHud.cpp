@@ -127,6 +127,23 @@ namespace spartan::car_hud
             return (color & ~IM_COL32_A_MASK) | (static_cast<ImU32>(std::clamp(alpha, 0, 255)) << IM_COL32_A_SHIFT);
         }
 
+        // the viewport while the editor shows, the whole window otherwise, in a 1080p design space
+        bool hud_region(ImVec2& region_pos, ImVec2& region_size, float& scale)
+        {
+            const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+            region_pos  = main_viewport->Pos;
+            region_size = main_viewport->Size;
+            const math::Vector2& vp_pos  = Viewport::GetScreenPosition();
+            const math::Vector2& vp_size = Viewport::GetScreenSize();
+            if (Engine::IsFlagSet(EngineMode::EditorVisible) && vp_size.x > 100.0f && vp_size.y > 100.0f)
+            {
+                region_pos  = ImVec2(vp_pos.x, vp_pos.y);
+                region_size = ImVec2(vp_size.x, vp_size.y);
+            }
+            scale = std::clamp(std::min(region_size.y * 0.9f / 1080.0f, region_size.x / 2000.0f), 0.4f, 1.6f);
+            return region_size.x >= 400 && region_size.y >= 300;
+        }
+
         void draw_text_centered(ImDrawList* dl, ImFont* font, float size, ImVec2 center, ImU32 color, const char* text)
         {
             const ImVec2 text_size = font->CalcTextSizeA(size, FLT_MAX, 0.0f, text);
@@ -1075,22 +1092,14 @@ namespace spartan::car_hud
         }
 
         // same region and design space as the telemetry hud, the list sits above its right column
-        const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-        ImVec2 region_pos  = main_viewport->Pos;
-        ImVec2 region_size = main_viewport->Size;
-        const math::Vector2& vp_pos  = Viewport::GetScreenPosition();
-        const math::Vector2& vp_size = Viewport::GetScreenSize();
-        if (Engine::IsFlagSet(EngineMode::EditorVisible) && vp_size.x > 100.0f && vp_size.y > 100.0f)
-        {
-            region_pos  = ImVec2(vp_pos.x, vp_pos.y);
-            region_size = ImVec2(vp_size.x, vp_size.y);
-        }
-        if (region_size.x < 400 || region_size.y < 300)
+        ImVec2 region_pos;
+        ImVec2 region_size;
+        float scale = 1.0f;
+        if (!hud_region(region_pos, region_size, scale))
         {
             return nullptr;
         }
 
-        const float scale         = std::clamp(std::min(region_size.y * 0.9f / 1080.0f, region_size.x / 2000.0f), 0.4f, 1.6f);
         const float width         = region_size.x / scale;
         const float margin        = 24;
         const float panel_w       = telemetry::powertrain_w;
@@ -1211,6 +1220,86 @@ namespace spartan::car_hud
         }
         ImGui::End();
         ImGui::PopStyleColor(5);
+        ImGui::PopStyleVar(3);
+
+        return chosen;
+    }
+
+    int draw_service_menu(const service_menu& menu)
+    {
+        ImVec2 region_pos;
+        ImVec2 region_size;
+        float scale = 1.0f;
+        if (!hud_region(region_pos, region_size, scale) || menu.row_count == 0)
+        {
+            return -1;
+        }
+
+        // centred above the cockpit overlay so the car stays in view behind it
+        const float width    = region_size.x / scale;
+        const float height   = region_size.y / scale;
+        const float panel_w  = 440;
+        const float title_h  = 44;
+        const float row_h    = 34;
+        const float footer_h = 46;
+        const float panel_h  = title_h + row_h * menu.row_count + footer_h;
+        const float panel_x  = (width - panel_w) * 0.5f;
+        const float panel_y  = height * 0.52f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.22f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.32f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.45f));
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+
+        int chosen = -1;
+        ImGui::SetNextWindowPos(ImVec2(region_pos.x + panel_x * scale, region_pos.y + panel_y * scale), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(panel_w * scale, panel_h * scale), ImGuiCond_Always);
+        if (ImGui::Begin("##car_service_menu", nullptr, flags))
+        {
+            const telemetry::painter panel{ImGui::GetWindowDrawList(), ImGui::GetWindowPos(), scale, IM_COL32(14, 22, 31, 215)};
+            panel.card(0, 0, panel_w, panel_h, "");
+            panel.text(16, 10, 20, telemetry::ink, menu.shop);
+            panel.right(panel_w - 16, 15, 12, telemetry::cyan, "SERVICES");
+            panel.line(16, title_h - 4, panel_w - 16, title_h - 4, IM_COL32(53, 73, 90, 180));
+
+            ImGui::PushFont(nullptr, 16 * scale);
+            for (uint32_t i = 0; i < menu.row_count; ++i)
+            {
+                const service_row& row = menu.rows[i];
+                const float y          = title_h + row_h * i;
+                ImGui::PushID(static_cast<int>(i));
+                ImGui::SetCursorScreenPos(panel.point(8, y + 2));
+                ImGui::BeginDisabled(!row.enabled);
+                if (ImGui::Selectable("##service", false, ImGuiSelectableFlags_None, ImVec2((panel_w - 16) * scale, (row_h - 4) * scale)))
+                {
+                    chosen = static_cast<int>(i);
+                }
+                ImGui::EndDisabled();
+                panel.text(18, y + 8, 16, row.enabled ? telemetry::ink : telemetry::muted, row.name);
+                panel.right(panel_w - 18, y + 10, 13, telemetry::amber, row.detail);
+                ImGui::PopID();
+            }
+            ImGui::PopFont();
+
+            const float footer_y = title_h + row_h * menu.row_count + 6;
+            if (menu.progress >= 0.0f)
+            {
+                panel.bar(16, footer_y + 4, panel_w - 32, 8, menu.progress, telemetry::cyan);
+                panel.text(16, footer_y + 18, 12, telemetry::cyan, menu.status);
+            }
+            else
+            {
+                panel.text(16, footer_y + 10, 13, telemetry::green, menu.status);
+            }
+        }
+        ImGui::End();
+        ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(3);
 
         return chosen;

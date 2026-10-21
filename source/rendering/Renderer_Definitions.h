@@ -642,6 +642,7 @@ namespace spartan
         // dirt on the occupied car in the same atlas, see CarDirt.h, patched every frame from the cpu's changes
         car_dirt_color,   // rgb sqrt encoded albedo and coverage, 8 bits each
         car_dirt_state,   // wet until in 1/16 s of the dirt clock << 8 | coarseness
+        car_dirt_wear,    // paint cut depth | groove direction << 8 | strands << 16 | rust << 24
         // fft ocean, texture2d arrays with one slice per cascade
         ocean_spectrum,              // persistent h0 spectrum
         ocean_fft_a,                 // working: height + x displacement

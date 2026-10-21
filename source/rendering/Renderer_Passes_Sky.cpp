@@ -491,6 +491,10 @@ namespace spartan
             state.entity_id = Renderer::GetSurfaceWater().entity_id;
             state.uploaded = true;
             CreateCarRainTargets(Renderer::GetSurfaceWater().width, Renderer::GetSurfaceWater().height, Renderer::GetSurfaceWater().surface.data(), Renderer::GetSurfaceWater().micro.data());
+
+            // the dirt shares the atlas, its targets are sized with it so a wash or a soil only refills them
+            CreateCarDirtTargets(Renderer::GetSurfaceWater().width, Renderer::GetSurfaceWater().height, nullptr, nullptr, nullptr);
+            state.dirt_uploaded = false;
         }
 
         RHI_Texture* tex_micro     = GetRenderTarget(Renderer_RenderTarget::car_rain_micro);
@@ -521,7 +525,7 @@ namespace spartan
                 RHI_CommandList::SetShader(shader_splat);
                 RHI_CommandList::SetTexture("tex_car_rain_ids_uav", tex_ids);
                 RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
-                m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * SurfaceWater::drops_max);
+                m_pcb_pass_cpu.set(pass_car_rain::offset, (m_frame_resource_index % renderer_draw_data_buffer_count) * SurfaceWater::drops_max);
                 m_pcb_pass_cpu.set(pass_car_rain::count, drop_count);
                 m_pcb_pass_cpu.set(pass_car_rain::atlas_width, width);
                 m_pcb_pass_cpu.set(pass_car_rain::atlas_height, height);
@@ -546,9 +550,9 @@ namespace spartan
         }
         RHI_CommandList::EndPass();
 
-        // the dirt in the same atlas, rebuilt from the cpu copy after a wash or a new bake, patched with this frame's changes otherwise
+        // the dirt and the paint damage in the same atlas, rebuilt from the cpu copy after a wash or a new bake, patched with this frame's changes otherwise
         const SurfaceWater& water = Renderer::GetSurfaceWater();
-        if (!water.dirt_active || water.dirt_color.size() != static_cast<size_t>(width) * height || water.dirt_state.size() != water.dirt_color.size())
+        if (!water.dirt_active || water.dirt_color.size() != static_cast<size_t>(width) * height || water.dirt_state.size() != water.dirt_color.size() || water.dirt_wear.size() != water.dirt_color.size())
             return;
 
         if (!state.dirt_uploaded || water.dirt_version != state.dirt_version || state.dirt_width != width || state.dirt_height != height)
@@ -557,22 +561,44 @@ namespace spartan
             state.dirt_width    = width;
             state.dirt_height   = height;
             state.dirt_uploaded = true;
-            CreateCarDirtTargets(width, height, water.dirt_color.data(), water.dirt_state.data());
+
+            RHI_Texture* targets[] = { GetRenderTarget(Renderer_RenderTarget::car_dirt_color), GetRenderTarget(Renderer_RenderTarget::car_dirt_state), GetRenderTarget(Renderer_RenderTarget::car_dirt_wear) };
+            const uint32_t* sources[] = { water.dirt_color.data(), water.dirt_state.data(), water.dirt_wear.data() };
+            for (RHI_Texture* target : targets)
+            {
+                if (!target || target->GetWidth() != width || target->GetHeight() != height)
+                {
+                    state.dirt_uploaded = false;
+                    return;
+                }
+            }
+            for (uint32_t i = 0; i < 3; i++)
+            {
+                targets[i]->UpdateRegion(0, 0, width, height, sources[i], true);
+            }
             return;
         }
 
         RHI_Texture* tex_dirt_color = GetRenderTarget(Renderer_RenderTarget::car_dirt_color);
         RHI_Texture* tex_dirt_state = GetRenderTarget(Renderer_RenderTarget::car_dirt_state);
+        RHI_Texture* tex_dirt_wear  = GetRenderTarget(Renderer_RenderTarget::car_dirt_wear);
         RHI_Shader* shader_dirt     = GetShader(Renderer_Shader::car_dirt_texels_c);
-        const uint32_t dirt_count   = min(static_cast<uint32_t>(water.dirt_texels.size()), SurfaceWater::dirt_texels_max);
-        if (dirt_count == 0 || !tex_dirt_color || !tex_dirt_state || !shader_dirt || !shader_dirt->IsCompiled())
+        const uint32_t dirt_count   = min(state.dirt_texels_staged, SurfaceWater::dirt_texels_max);
+        if (dirt_count == 0 || !tex_dirt_color || !tex_dirt_state || !tex_dirt_wear || !shader_dirt || !shader_dirt->IsCompiled())
             return;
+
+        for (RHI_Texture* texture : { tex_dirt_color, tex_dirt_state, tex_dirt_wear })
+        {
+            if (texture->GetWidth() != width || texture->GetHeight() != height)
+                return;
+        }
 
         RHI_CommandList::BeginPass("car_dirt");
         {
             RHI_CommandList::SetShader(shader_dirt);
             RHI_CommandList::SetTexture("tex_car_dirt_color_uav", tex_dirt_color);
             RHI_CommandList::SetTexture("tex_car_dirt_state_uav", tex_dirt_state);
+            RHI_CommandList::SetTexture("tex_car_dirt_wear_uav", tex_dirt_wear);
             RHI_CommandList::SetBuffer("car_dirt_texels", GetBuffer(Renderer_Buffer::CarDirtTexels));
             m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * SurfaceWater::dirt_texels_max);
             m_pcb_pass_cpu.set(pass_car_rain::count, dirt_count);

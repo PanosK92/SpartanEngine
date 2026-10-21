@@ -7,6 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 
+#include <cstdint>
+
 namespace spartan
 {
     class Car;
@@ -23,5 +25,23 @@ namespace spartan
         // every car in play, top right, returns the one the player clicked: drive it if it is free, spectate it if someone else drives
         Car* draw_car_picker(Car* viewed);
 
+        struct service_row
+        {
+            const char* name   = "";
+            const char* detail = "";
+            bool enabled       = true;
+        };
+
+        struct service_menu
+        {
+            const char* shop         = "";
+            const service_row* rows  = nullptr;
+            uint32_t row_count       = 0;
+            const char* status       = "";
+            float progress           = -1.0f; // a bar under the rows while a service runs
+        };
+
+        // the shop's menu, lower centre, returns the row the player clicked or -1
+        int draw_service_menu(const service_menu& menu);
     }
 }

@@ -39,6 +39,7 @@ namespace spartan
         // waxed paint and glass
         constexpr float hysteresis_dry   = 0.25f;  // cosine of the receding minus the advancing contact angle
         constexpr float hysteresis_wet   = 0.08f;  // over paint that is already wet the contact line hardly snags
+        constexpr float snag_pinning     = 1.0f;   // dirt and cut paint wet out instead of beading, the contact line catches on them
         constexpr float contact_friction = 0.8f;   // n s/m^2 per metre of contact radius, a 2 mm drop creeps down a vertical panel at about 5 cm/s
         constexpr float drag_coefficient = 0.8f;
         constexpr float boundary_layer   = 0.6f;   // share of the free stream a millimetre tall drop feels inside the boundary layer
@@ -73,6 +74,13 @@ namespace spartan
         constexpr float texel_size_min = 0.004f;
         constexpr uint32_t texels_cap  = 4000000;
         constexpr uint32_t atlas_max   = 4096;
+
+        // shape, what the dirt reads to know where the body shelters it and where the air and rain get at it
+        constexpr float shelter_reach     = 0.3f;   // metres the horizon is searched for body that closes over a texel
+        constexpr float convexity_reach   = 0.03f;  // metres, the scale an edge or a crease and the local slope are measured at
+        constexpr float facet_bend        = 0.03f;  // bend a tessellated panel shows at its triangle edges, ignored
+        constexpr uint32_t shelter_steps  = 10;
+        constexpr uint32_t shelter_axes   = 6;      // each walked both ways
 
         enum : uint8_t
         {
@@ -122,6 +130,9 @@ namespace spartan
         vector<float> height;         // axis coordinate of the outermost paint, whichever map it belongs to
         vector<uint32_t> texel_info;  // packed normal (3 x snorm8) and kind
         vector<uint32_t> face_texels; // every texel of paint that belongs to its map, where rain can land
+        vector<uint8_t> shelter;      // how much the body closes over the texel, 0 open sky to 255 deep in a crevice
+        vector<uint8_t> convexity;    // how sharp an outer edge the texel sits on, 0 flat or hollow to 255 a knife edge
+        vector<uint8_t> snag;         // what the dirt and the paint damage add to the pinning, 0 clean clearcoat to 255 caked or cut
         vector<float> micro;          // milligrams (negative once swept) and clock stamp per texel
         vector<int32_t> occupant;     // the drop whose centre sits on the texel
         vector<int32_t> pending_slot; // where the texel's change waits in texels_pending
@@ -132,6 +143,7 @@ namespace spartan
         vector<CarRainDropGpu> drops_gpu;
         vector<CarRainTexelGpu> texels_pending;
         vector<CarRainTexelGpu> texels_frame;
+        vector<CarRain::Wash> washes;
         float clock        = 10000.0f; // a texel stamped at 0 has long dried
         float humidity     = humidity_dry;
         bool active        = false;
@@ -143,6 +155,16 @@ namespace spartan
             rng_state ^= rng_state >> 17;
             rng_state ^= rng_state << 5;
             return static_cast<float>(rng_state >> 8) / 16777216.0f;
+        }
+
+        void wash(CarRain::WashKind kind, uint32_t drop_index, uint32_t texel, uint32_t other = 0)
+        {
+            CarRain::Wash w;
+            w.kind  = kind;
+            w.drop  = drop_index;
+            w.texel = texel;
+            w.other = other;
+            washes.push_back(w);
         }
 
         uint32_t hash(uint32_t x, uint32_t y)
@@ -290,7 +312,8 @@ namespace spartan
             const float coarse = static_cast<float>(hash(x >> 2, y >> 2) & 0xffff) / 65535.0f;
             const float fine   = static_cast<float>(hash(x + 7919, y + 104729) & 0xffff) / 65535.0f;
             const float wet    = min(1.0f, micro_now(texel) / max(residue_mg(), 1e-6f));
-            return 2.0f * surface_tension * (hysteresis_dry + (hysteresis_wet - hysteresis_dry) * wet) * (0.6f + 0.4f * coarse + 0.4f * fine);
+            const float rough  = texel < snag.size() ? static_cast<float>(snag[texel]) / 255.0f : 0.0f;
+            return 2.0f * surface_tension * (hysteresis_dry + (hysteresis_wet - hysteresis_dry) * wet) * (0.6f + 0.4f * coarse + 0.4f * fine + snag_pinning * rough);
         }
 
         // walks a point onto the paint, over an edge onto the neighbouring map, false once it has left the car
@@ -378,6 +401,7 @@ namespace spartan
                 a.face = b.face;
             }
             a.mass = mass;
+            wash(CarRain::WashKind::Merge, survivor, a.texel, absorbed);
             drop_remove(absorbed);
 
             uint32_t texel;
@@ -396,8 +420,9 @@ namespace spartan
         }
 
         // a running drop gathers the micro droplets under it and wets the paint behind it with a thin residue
-        void drop_sweep(drop& d)
+        void drop_sweep(uint32_t index)
         {
+            drop& d            = drops[index];
             const float radius = radius_of(d.mass);
             const face_rect& r = faces[d.face];
             const int32_t x    = static_cast<int32_t>(d.texel % atlas_w);
@@ -423,6 +448,7 @@ namespace spartan
                     const float left     = min(residue, max(0.0f, d.mass * 1.0e6f + gathered - 0.05f));
                     d.mass              += (gathered - left) * 1.0e-6f;
                     micro_set(t, left, true);
+                    wash(CarRain::WashKind::Sweep, index, t);
                 }
             }
         }
@@ -594,12 +620,14 @@ namespace spartan
             drop& d = drops[index];
             if (d.state == state_detached)
             {
+                wash(CarRain::WashKind::Lost, index, d.texel);
                 drop_remove(index);
                 return;
             }
             if (d.state == state_evaporated)
             {
                 micro_set(d.texel, micro_now(d.texel) + max(d.mass, 0.0f) * 1.0e6f, false);
+                wash(CarRain::WashKind::Settle, index, d.texel);
                 drop_remove(index);
                 return;
             }
@@ -618,6 +646,7 @@ namespace spartan
                 // off the paint, it runs over an edge into the air and drips away
                 if (!project(face, p, texel))
                 {
+                    wash(CarRain::WashKind::Lost, index, d.texel);
                     drop_remove(index);
                     return;
                 }
@@ -639,9 +668,10 @@ namespace spartan
                     occupant[d.texel] = -1;
                 }
                 d.texel = texel;
-                drop_sweep(d);
+                drop_sweep(index);
                 if (d.mass < drop_mass_min)
                 {
+                    wash(CarRain::WashKind::Settle, index, d.texel);
                     drop_remove(index);
                     return;
                 }
@@ -723,6 +753,157 @@ namespace spartan
                     return true;
             }
             return false;
+        }
+
+        // horizon based occlusion over the map the texel belongs to, the outermost paint of every part is in it, so a fender
+        // lip closes over the arch, the shoulder over the sill and the bumper over the valance, measured above the local
+        // slope so a curved panel does not shelter itself, slope and bend come from the heights a few centimetres either
+        // side, not from the vertex normals, which disagree with the flat triangles the maps hold and would trace every
+        // triangle edge, a hollow at that scale is a crease that holds dirt, a drop off is an edge the air and every touch wipe
+        void bake_shape()
+        {
+            SP_PROFILE_CPU();
+
+            const uint32_t texel_count = atlas_w * atlas_h;
+            shelter.assign(texel_count, 0);
+            convexity.assign(texel_count, 0);
+            snag.assign(texel_count, 0);
+            if (face_texels.empty())
+                return;
+
+            const float reach      = max(2.0f, shelter_reach / texel_size);
+            const float edge_reach = max(1.5f, convexity_reach / texel_size);
+            const float edge_m     = edge_reach * texel_size;
+            vector<float> raw_shelter(texel_count, 0.0f);
+            vector<float> raw_convexity(texel_count, 0.0f);
+            auto walk = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    const uint32_t texel = face_texels[i];
+                    const uint8_t face   = face_at(texel);
+                    const uint32_t axis  = face / 2;
+                    const float sign     = (face & 1) ? -1.0f : 1.0f;
+                    const face_rect& r   = faces[face];
+                    const float x        = static_cast<float>(texel % atlas_w - r.x) + 0.5f;
+                    const float y        = static_cast<float>(texel / atlas_w - r.y) + 0.5f;
+                    const Vector3 n      = info_normal(texel_info[texel]);
+                    const float nu       = get(n, axis_u(axis));
+                    const float nv       = get(n, axis_v(axis));
+                    const float na       = max(fabsf(get(n, axis)), 0.2f);
+                    const float k0       = sign * height[texel];
+                    const float turn     = static_cast<float>(hash(texel, 0x5bd1e995u) & 0xffff) / 65535.0f;
+
+                    auto sample = [&](float sx, float sy, float& key)
+                    {
+                        if (sx < 0.0f || sy < 0.0f || sx >= static_cast<float>(r.w) || sy >= static_cast<float>(r.h))
+                            return false;
+                        const uint32_t t = (r.y + static_cast<uint32_t>(sy)) * atlas_w + r.x + static_cast<uint32_t>(sx);
+                        if (height[t] == surface_none)
+                            return false;
+                        key = sign * height[t];
+                        return true;
+                    };
+
+                    float occlusion = 0.0f;
+                    float bend      = 0.0f;
+                    for (uint32_t a = 0; a < shelter_axes; a++)
+                    {
+                        const float angle = (static_cast<float>(a) + turn) * (pi / static_cast<float>(shelter_axes));
+                        const float du    = cosf(angle);
+                        const float dv    = sinf(angle);
+
+                        // the surface either side, a missing side is the paint running off an edge
+                        float ahead, behind;
+                        const bool has_ahead  = sample(x + du * edge_reach, y + dv * edge_reach, ahead);
+                        const bool has_behind = sample(x - du * edge_reach, y - dv * edge_reach, behind);
+                        float slope;
+                        if (has_ahead && has_behind)
+                        {
+                            slope = (ahead - behind) / (2.0f * edge_m);
+                            bend += ((ahead + behind) * 0.5f - k0) / edge_m;
+                        }
+                        else
+                        {
+                            slope = -(nu * du + nv * dv) / na;
+                            bend += (has_ahead || has_behind) ? -0.5f : -1.0f;
+                        }
+
+                        for (float side = 1.0f; side >= -1.0f; side -= 2.0f)
+                        {
+                            const float slope_side = slope * side;
+                            float horizon          = slope_side / sqrtf(1.0f + slope_side * slope_side);
+                            for (uint32_t s = 0; s < shelter_steps; s++)
+                            {
+                                const float distance = powf(reach, static_cast<float>(s + 1) / static_cast<float>(shelter_steps));
+                                float key;
+                                if (!sample(x + du * distance * side, y + dv * distance * side, key))
+                                    continue;
+                                const float dm    = distance * texel_size;
+                                const float dk    = key - k0;
+                                const float sin_h = dk / sqrtf(dk * dk + dm * dm);
+                                if (sin_h > horizon)
+                                {
+                                    const float falloff = 1.0f - (distance / reach) * (distance / reach);
+                                    occlusion          += (sin_h - horizon) * falloff;
+                                    horizon             = sin_h;
+                                }
+                            }
+                        }
+                    }
+                    occlusion /= static_cast<float>(shelter_axes * 2);
+                    bend      /= static_cast<float>(shelter_axes);
+
+                    const float hollow       = clamp((bend - facet_bend) / 0.15f, 0.0f, 1.0f);
+                    raw_shelter[texel]       = clamp((occlusion - 0.02f) * 1.8f + hollow * 0.6f, 0.0f, 1.0f);
+                    raw_convexity[texel]     = clamp((-bend - facet_bend) / 0.15f, 0.0f, 1.0f);
+                }
+            };
+            ThreadPool::ParallelLoop(walk, static_cast<uint32_t>(face_texels.size()));
+
+            // the jittered directions leave a grain, an average over the paint of the same map smooths it
+            auto smooth = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    const uint32_t texel = face_texels[i];
+                    const face_rect& r   = faces[face_at(texel)];
+                    const int32_t x      = static_cast<int32_t>(texel % atlas_w);
+                    const int32_t y      = static_cast<int32_t>(texel / atlas_w);
+                    float sum_shelter    = 0.0f;
+                    float sum_convexity  = 0.0f;
+                    float weight         = 0.0f;
+                    for (int32_t dy = -2; dy <= 2; dy++)
+                    {
+                        for (int32_t dx = -2; dx <= 2; dx++)
+                        {
+                            const int32_t tx = x + dx;
+                            const int32_t ty = y + dy;
+                            if (tx < static_cast<int32_t>(r.x) || tx >= static_cast<int32_t>(r.x + r.w) || ty < static_cast<int32_t>(r.y) || ty >= static_cast<int32_t>(r.y + r.h))
+                                continue;
+                            const uint32_t t = static_cast<uint32_t>(ty) * atlas_w + static_cast<uint32_t>(tx);
+                            if (info_kind(texel_info[t]) != kind_face)
+                                continue;
+                            sum_shelter   += raw_shelter[t];
+                            sum_convexity += raw_convexity[t];
+                            weight        += 1.0f;
+                        }
+                    }
+                    weight             = max(weight, 1.0f);
+                    shelter[texel]     = static_cast<uint8_t>(clamp(sum_shelter / weight, 0.0f, 1.0f) * 255.0f + 0.5f);
+                    convexity[texel]   = static_cast<uint8_t>(clamp(sum_convexity / weight, 0.0f, 1.0f) * 255.0f + 0.5f);
+                }
+            };
+            ThreadPool::ParallelLoop(smooth, static_cast<uint32_t>(face_texels.size()));
+
+            double mean_shelter   = 0.0;
+            double mean_convexity = 0.0;
+            for (uint32_t texel : face_texels)
+            {
+                mean_shelter   += shelter[texel];
+                mean_convexity += convexity[texel];
+            }
+            SP_LOG_INFO("car rain, shape baked, mean shelter %.3f, mean convexity %.3f", mean_shelter / (255.0 * face_texels.size()), mean_convexity / (255.0 * face_texels.size()));
         }
 
         bool bake(Entity* root)
@@ -918,6 +1099,8 @@ namespace spartan
                 }
             }
 
+            bake_shape();
+
             micro.assign(static_cast<size_t>(texel_count) * 2, 0.0f);
             occupant.assign(texel_count, -1);
             pending_slot.assign(texel_count, -1);
@@ -1007,6 +1190,7 @@ namespace spartan
         SP_PROFILE_CPU();
 
         texels_frame.clear();
+        washes.clear();
         if (!root)
         {
             active = false;
@@ -1022,6 +1206,7 @@ namespace spartan
                 return;
             }
             prewarm(conditions);
+            washes.clear();
             state_version++;
         }
 
@@ -1046,10 +1231,14 @@ namespace spartan
         drops_gpu.clear();
         texels_pending.clear();
         texels_frame.clear();
+        washes.clear();
         surface.clear();
         height.clear();
         texel_info.clear();
         face_texels.clear();
+        shelter.clear();
+        convexity.clear();
+        snag.clear();
         micro.clear();
         occupant.clear();
         pending_slot.clear();
@@ -1128,6 +1317,11 @@ namespace spartan
         return texels_frame;
     }
 
+    const vector<CarRain::Wash>& CarRain::GetWashes()
+    {
+        return washes;
+    }
+
     Entity* CarRain::GetBakedRoot()
     {
         return atlas_w > 0 ? baked_root : nullptr;
@@ -1156,6 +1350,24 @@ namespace spartan
     Vector3 CarRain::GetTexelPoint(uint32_t texel)
     {
         return texel < height.size() ? texel_position(texel, face_at(texel), 0.5f, 0.5f) : Vector3::Zero;
+    }
+
+    float CarRain::GetTexelShelter(uint32_t texel)
+    {
+        return texel < shelter.size() ? static_cast<float>(shelter[texel]) / 255.0f : 0.0f;
+    }
+
+    float CarRain::GetTexelConvexity(uint32_t texel)
+    {
+        return texel < convexity.size() ? static_cast<float>(convexity[texel]) / 255.0f : 0.0f;
+    }
+
+    void CarRain::SetTexelSnag(uint32_t texel, float value)
+    {
+        if (texel < snag.size())
+        {
+            snag[texel] = static_cast<uint8_t>(clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
+        }
     }
 
     bool CarRain::FindTexel(const Vector3& point, const Vector3& normal, float tolerance, uint32_t& texel)
