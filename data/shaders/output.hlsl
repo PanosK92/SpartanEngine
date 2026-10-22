@@ -469,7 +469,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             }
         }
     }
-    else
+    else if (!pass_bool(pass_output::output_linear))
     {
         // sdr gamma correction (linear -> srgb)
         color.rgb = linear_to_srgb(color.rgb);

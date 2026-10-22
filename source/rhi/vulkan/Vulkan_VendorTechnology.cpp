@@ -642,10 +642,12 @@ namespace spartan
             uint32_t last_settings_frame = UINT32_MAX;
             uint32_t rect_width_prev     = 0;
             uint32_t rect_height_prev    = 0;
+            nrd_common::view_history view_history;
         };
 
         nrd_pool pool_gi;
         nrd_pool pool_reflections;
+        nrd_pool pool_reflections_right; // stereo, the right eye needs its own temporal history
         nrd_pool pool_shadows;
 
         nrd::Resource make_resource(RHI_Texture* texture, bool storage)
@@ -674,20 +676,23 @@ namespace spartan
             pool.last_settings_frame = UINT32_MAX;
             pool.rect_width_prev     = 0;
             pool.rect_height_prev    = 0;
+            pool.view_history        = {};
         }
 
         void context_destroy()
         {
             pool_destroy(pool_gi);
             pool_destroy(pool_reflections);
+            pool_destroy(pool_reflections_right);
             pool_destroy(pool_shadows);
         }
 
         void request_history_reset()
         {
-            pool_gi.reset_history          = true;
-            pool_reflections.reset_history = true;
-            pool_shadows.reset_history     = true;
+            pool_gi.reset_history                = true;
+            pool_reflections.reset_history       = true;
+            pool_reflections_right.reset_history = true;
+            pool_shadows.reset_history           = true;
         }
 
         bool pool_create(nrd_pool& pool, uint32_t resource_width, uint32_t resource_height, Nrd_Preset preset)
@@ -762,14 +767,19 @@ namespace spartan
             return true;
         }
 
-        nrd_pool& pool_for_preset(Nrd_Preset preset)
+        nrd_pool& pool_for_preset(Nrd_Preset preset, uint32_t eye)
         {
             if (preset == Nrd_Preset::Gi)
             {
                 return pool_gi;
             }
 
-            return preset == Nrd_Preset::Reflections ? pool_reflections : pool_shadows;
+            if (preset == Nrd_Preset::Reflections)
+            {
+                return eye == 1 ? pool_reflections_right : pool_reflections;
+            }
+
+            return pool_shadows;
         }
     }
     #endif // _WIN32
@@ -1176,7 +1186,8 @@ namespace spartan
         RHI_Texture* tex_signal_in,
         RHI_Texture* tex_signal_out,
         const math::Vector3* light_direction,
-        uint32_t shadow_denoiser_index
+        uint32_t shadow_denoiser_index,
+        uint32_t eye
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -1191,7 +1202,7 @@ namespace spartan
             return false;
         }
 
-        nvidia::nrd_pool& pool = nvidia::pool_for_preset(preset);
+        nvidia::nrd_pool& pool = nvidia::pool_for_preset(preset, eye);
         const uint32_t width  = tex_mv->GetWidth();
         const uint32_t height = tex_mv->GetHeight();
         if (!pool.initialized || pool.width != width || pool.height != height)
@@ -1241,7 +1252,9 @@ namespace spartan
                 has_prev ? pool.rect_width_prev : rect_width,
                 has_prev ? pool.rect_height_prev : rect_height,
                 reset_history,
-                preset
+                preset,
+                eye,
+                pool.view_history
             );
             if (pool.integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
             {

@@ -432,6 +432,7 @@ namespace spartan
         ffx_spd_min_one_c,
         ffx_spd_max_one_c,
         blit_c,
+        xr_mirror_c,
         icon_v,
         icon_p,
         dithering_c,

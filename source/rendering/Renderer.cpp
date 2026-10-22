@@ -603,6 +603,12 @@ namespace spartan
                 return;
             }
 
+            // stereo falls back to taau, the eye resolution is owned by Xr
+            if (Renderer::IsStereoView())
+            {
+                return;
+            }
+
             const uint32_t out_w = static_cast<uint32_t>(Renderer::GetResolutionOutput().x);
             const uint32_t out_h = static_cast<uint32_t>(Renderer::GetResolutionOutput().y);
             const uint32_t in_w  = static_cast<uint32_t>(Renderer::GetResolutionRender().x);
@@ -650,7 +656,8 @@ namespace spartan
 
         void tick_dynamic_resolution_scale()
         {
-            if (cvar_dynamic_resolution.GetValue() == 0.0f)
+            // in stereo every scale change rebuilds the eye targets
+            if (cvar_dynamic_resolution.GetValue() == 0.0f || Renderer::IsStereoView())
             {
                 return;
             }
@@ -1947,6 +1954,12 @@ namespace spartan
     {
         // the secondary targets are created at the size the preview is shown at and upscale linearly
         if (secondary_render_root_active)
+        {
+            return 1.0f;
+        }
+
+        // stereo bakes r.resolution_scale into the eye targets and always resolves with taau, so no subrect
+        if (IsStereoView())
         {
             return 1.0f;
         }
@@ -5970,12 +5983,15 @@ namespace spartan
             return;
         }
 
-        // stereo buffer is already tonemapped per eye, copy left eye for an hmd matched debug shot
+        // both eyes side by side like the desktop mirror, srgb encoded for the png
         RHI_CommandList::BeginMarker("screenshot_xr");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::blit_c), "screenshot_xr_left");
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::xr_mirror_c), "screenshot_xr");
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_sdr);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_stereo);
+            m_pcb_pass_cpu.set(pass_xr_mirror::display_size, Vector2(static_cast<float>(tex_sdr->GetWidth()), static_cast<float>(tex_sdr->GetHeight())));
+            m_pcb_pass_cpu.set(pass_xr_mirror::encode_srgb, true);
             RHI_CommandList::Dispatch(tex_sdr);
         }
         RHI_CommandList::EndMarker();
@@ -5986,6 +6002,37 @@ namespace spartan
             screenshot.pending = false;
             screenshot.ready   = true;
         }
+    }
+
+    void Renderer::Pass_XrMirror()
+    {
+        RHI_Texture* tex_stereo = GetRenderTarget(Renderer_RenderTarget::frame_output_stereo);
+        RHI_Texture* tex_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        if (!tex_stereo || !tex_output)
+        {
+            return;
+        }
+
+        // frame_output is eye sized in stereo but shown stretched over the desktop viewport
+        Vector2 display_size = Vector2(static_cast<float>(tex_output->GetWidth()), static_cast<float>(tex_output->GetHeight()));
+        uint32_t output_w = 0, output_h = 0, render_w = 0, render_h = 0;
+        float viewport_w = 0.0f, viewport_h = 0.0f;
+        if (Xr::TryGetPersistedDesktopResolution(output_w, output_h, render_w, render_h, viewport_w, viewport_h) && viewport_w > 0.0f && viewport_h > 0.0f)
+        {
+            display_size = Vector2(viewport_w, viewport_h);
+        }
+
+        RHI_CommandList::BeginPass("xr_mirror");
+        {
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::xr_mirror_c));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_output);
+            m_pcb_pass_cpu.set(pass_xr_mirror::display_size, display_size);
+            m_pcb_pass_cpu.set(pass_xr_mirror::encode_srgb, false);
+            RHI_CommandList::Dispatch(tex_output);
+        }
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::FinalizeScreenshotReadback()
@@ -6659,6 +6706,7 @@ namespace spartan
             if (xr_stereo)
             {
                 Pass_ScreenshotXr();
+                Pass_XrMirror();
             }
 
             if (auto_exposure_enabled)

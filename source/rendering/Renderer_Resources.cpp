@@ -799,10 +799,12 @@ namespace spartan
         bool xr_stereo           = Xr::IsSessionRunning() && Xr::GetStereoMode() && !is_secondary_target_set();
         if (xr_stereo && Xr::GetRecommendedWidth() > 0 && Xr::GetRecommendedHeight() > 0)
         {
-            width_output  = Xr::GetRecommendedWidth();
-            height_output = Xr::GetRecommendedHeight();
-            width_render  = GetScaledDimension(width_output);
-            height_render = GetScaledDimension(height_output);
+            // GetResolutionScale() is 1 in stereo, the cvar is applied here once
+            const float scale = cvar_resolution_scale.GetValue();
+            width_output      = Xr::GetRecommendedWidth();
+            height_output     = Xr::GetRecommendedHeight();
+            width_render      = GetScaledDimension(width_output, scale);
+            height_render     = GetScaledDimension(height_output, scale);
         }
         RHI_Texture_Type rt_type = xr_stereo ? RHI_Texture_Type::Type2DArray : RHI_Texture_Type::Type2D;
         uint32_t rt_layers       = xr_stereo ? Xr::eye_count : 1;
@@ -1121,8 +1123,9 @@ namespace spartan
 
     void Renderer::EnsureScreenshotTargets()
     {
+        // stereo captures both eyes side by side at half resolution, the output resolution is one eye there
         const uint32_t width  = static_cast<uint32_t>(GetResolutionOutput().x);
-        const uint32_t height = static_cast<uint32_t>(GetResolutionOutput().y);
+        const uint32_t height = static_cast<uint32_t>(GetResolutionOutput().y) / (IsStereoView() ? 2 : 1);
         const uint32_t flags  =
             RHI_Texture_Uav |
             RHI_Texture_Srv |
@@ -1305,7 +1308,7 @@ namespace spartan
             { Renderer_Shader::depth_of_field_c,                      RHI_Shader_Type::Compute, "depth_of_field.hlsl"                                                        },
             { Renderer_Shader::variable_rate_shading_c,               RHI_Shader_Type::Compute, "variable_rate_shading.hlsl"                                                 },
             { Renderer_Shader::blit_c,                                RHI_Shader_Type::Compute, "blit.hlsl"                                                                  },
-
+            { Renderer_Shader::xr_mirror_c,                           RHI_Shader_Type::Compute, "blit.hlsl",                                  RHI_Vertex_Type::Max, "XR_MIRROR" },
             // indirect draw
             { Renderer_Shader::instance_cull_c,                       RHI_Shader_Type::Compute, "instance_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_c,                       RHI_Shader_Type::Compute, "indirect_cull.hlsl"                                                         },

@@ -117,7 +117,8 @@ namespace spartan
 
         bool use_mesh_shaders()
         {
-            if (!cvar_mesh_shaders.GetValueAs<bool>() || !RHI_Device::IsSupportedMeshShaders())
+            // the meshlet shaders transform and cull with the left eye only, multiview would draw left eye geometry into the right eye
+            if (!cvar_mesh_shaders.GetValueAs<bool>() || !RHI_Device::IsSupportedMeshShaders() || Renderer::IsStereoView())
             {
                 return false;
             }

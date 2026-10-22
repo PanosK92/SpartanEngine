@@ -310,7 +310,8 @@ namespace spartan
 
             RHI_CommandList::BeginMarker("nrd_dispatch");
             {
-                if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Reflections, tex_mv, tex_normal, tex_view_z, tex_in, tex_out))
+                const uint32_t eye = eye_layer == rhi_all_mips ? 0 : eye_layer;
+                if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Reflections, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, nullptr, 0, eye))
                 {
                     RHI_CommandList::EndMarker();
                     RHI_CommandList::EndPass();
@@ -354,6 +355,18 @@ namespace spartan
         {
             return;
         }
+
+        // the mask is traced from the left eye only, in stereo the light pass traces each eye inline instead
+        if (IsStereoView())
+        {
+            if (tex_shadows)
+            {
+                RHI_CommandList::ClearTexture(tex_shadows, Color::standard_white);
+            }
+            m_pass_state.cleared_rt_shadows = false;
+            return;
+        }
+
         if (!cvar_ray_traced_shadows.GetValueAs<bool>())
         {
             if (!m_pass_state.cleared_rt_shadows)

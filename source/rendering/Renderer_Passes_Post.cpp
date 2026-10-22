@@ -122,8 +122,11 @@ namespace spartan
     {
         RHI_Texture* rt_frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
+        // the eyes do their own focusing and head motion would smear the whole view, so the hmd gets neither
+        const bool xr_stereo = IsStereoView();
+
         // Air/water transport and the displaced waterline are resolved before upscaling.
-        if (cvar_depth_of_field.GetValueAs<bool>())
+        if (cvar_depth_of_field.GetValueAs<bool>() && !xr_stereo)
         {
             RHI_Texture* tex_dof_focus          = GetRenderTarget(Renderer_RenderTarget::dof_focus);
             RHI_Texture* tex_dof_focus_previous = GetRenderTarget(Renderer_RenderTarget::dof_focus_previous);
@@ -165,7 +168,7 @@ namespace spartan
             }
         }
 
-        if (cvar_motion_blur.GetValueAs<bool>())
+        if (cvar_motion_blur.GetValueAs<bool>() && !xr_stereo)
         {
             RHI_CommandList::BeginPass("motion_blur");
             SetCommonTextures(eye_layer);
@@ -236,9 +239,9 @@ namespace spartan
 
         RHI_Texture* tex_pre_tonemap = tex_in;
 
-        // hmd swapchain is sdr srgb, desktop hdr encode (pq/scrgb) reads as washed out in the headset
-        const bool xr_stereo = IsStereoView();
-        Pass_Tonemap(tex_in, tex_out, xr_stereo);
+        // the hmd is sdr and its srgb swapchain encodes on write, so the eyes stay linear sdr,
+        // the desktop mirror and the vr screenshot encode for their own targets
+        Pass_Tonemap(tex_in, tex_out, xr_stereo, xr_stereo);
         swap(tex_in, tex_out);
 
         // vr captures after both eyes from the stereo buffer, mid eye would race the right eye overwrite
@@ -415,7 +418,7 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
-    void Renderer::Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr)
+    void Renderer::Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr, bool output_linear)
     {
         RHI_Shader* shader_c = GetShader(Renderer_Shader::output_c);
 
@@ -424,6 +427,7 @@ namespace spartan
             RHI_CommandList::SetShader(shader_c);
             m_pcb_pass_cpu.set(pass_output::tonemapping, cvar_tonemapping.GetValueAs<uint32_t>());
             m_pcb_pass_cpu.set(pass_output::force_sdr, force_sdr);
+            m_pcb_pass_cpu.set(pass_output::output_linear, output_linear);
             RHI_CommandList::SetTexture("tex_effective_exposure", GetRenderTarget(Renderer_RenderTarget::auto_exposure));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);

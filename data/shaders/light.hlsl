@@ -17,8 +17,15 @@ Commercial use requires written permission and negotiated payment terms.
 
 #ifdef RAY_TRACING_ENABLED
 // one alpha tested ray from the surface to the light, for local lights without a denoised slot
+// and for every light in stereo, the denoised masks only exist for the left eye
 float trace_local_light_visibility(Surface surface, Light light)
 {
+    if (light.is_directional())
+    {
+        float offset = 0.01f + surface.camera_to_pixel_length * 0.0001f;
+        return rt_trace_visibility(surface.position + surface.normal * offset, normalize(-light.forward), 1000.0f);
+    }
+
     float3 target = light.is_area()
         ? light.compute_closest_point_on_area(surface.position)
         : light.position;
@@ -181,8 +188,10 @@ void evaluate_light(
             // Do not blend a raster near/foliage cascade into the RT result.
             const bool want_shadows          = light.has_shadows();
             const bool ray_traced            = want_shadows && is_ray_traced_shadows_enabled();
-            const bool use_rt_shadow_texture = ray_traced && light.is_directional();
-            const bool use_nrd_local_shadow  = ray_traced && !light.is_directional() && light.nrd_local_shadow_slot() != 0u;
+            // the denoised masks are traced once from the left eye, the right eye would sample them misaligned
+            const bool screen_masks          = !is_multiview_active();
+            const bool use_rt_shadow_texture = ray_traced && screen_masks && light.is_directional();
+            const bool use_nrd_local_shadow  = ray_traced && screen_masks && !light.is_directional() && light.nrd_local_shadow_slot() != 0u;
             const bool use_rt_inline         = ray_traced && !use_rt_shadow_texture && !use_nrd_local_shadow;
             const bool use_shadow_maps       = want_shadows && !ray_traced;
 

@@ -2591,7 +2591,16 @@ namespace spartan
 
         const uint32_t    dst_width  = Xr::GetRecommendedWidth();
         const uint32_t    dst_height = Xr::GetRecommendedHeight();
-        const DXGI_FORMAT xr_format  = xr_image->GetDesc().Format;
+        DXGI_FORMAT xr_format        = xr_image->GetDesc().Format;
+        // runtimes may back the srgb swapchain with a typeless texture, the view has to name the srgb format
+        if (xr_format == DXGI_FORMAT_R8G8B8A8_TYPELESS)
+        {
+            xr_format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        }
+        else if (xr_format == DXGI_FORMAT_B8G8R8A8_TYPELESS)
+        {
+            xr_format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        }
 
         // openxr guarantees the d3d12 swapchain image is in the render_target state on acquire and requires it
         // returned in the same state, seed the tracker so the transitions resolve against the correct prior state

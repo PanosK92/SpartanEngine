@@ -126,10 +126,11 @@ namespace spartan
             return;
         }
 
+        const float scale = cvar_resolution_scale.GetValue();
         Renderer::SetResolutionOutput(m_recommended_width, m_recommended_height, false);
         Renderer::SetResolutionRender(
-            Renderer::GetScaledDimension(m_recommended_width),
-            Renderer::GetScaledDimension(m_recommended_height),
+            Renderer::GetScaledDimension(m_recommended_width, scale),
+            Renderer::GetScaledDimension(m_recommended_height, scale),
             false
         );
         Renderer::SetViewport(

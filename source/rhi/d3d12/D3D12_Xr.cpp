@@ -426,12 +426,13 @@ namespace spartan
         vector<int64_t> formats(format_count);
         xrEnumerateSwapchainFormats(xr_session, format_count, &format_count, formats.data());
 
-        // tonemap already writes display referred srgb, unorm avoids a second encode on blit
-        int64_t selected_format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        // the runtime reads a unorm swapchain as linear and encodes it again, so it would wash out srgb data,
+        // stereo tonemaps to linear and the blit into an srgb swapchain does the only encode (8 bit linear bands)
+        int64_t selected_format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         bool format_found = false;
         for (int64_t format : formats)
         {
-            if (format == DXGI_FORMAT_R8G8B8A8_UNORM || format == DXGI_FORMAT_B8G8R8A8_UNORM)
+            if (format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
             {
                 selected_format = format;
                 format_found = true;
@@ -442,7 +443,7 @@ namespace spartan
         {
             for (int64_t format : formats)
             {
-                if (format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+                if (format == DXGI_FORMAT_R8G8B8A8_UNORM || format == DXGI_FORMAT_B8G8R8A8_UNORM)
                 {
                     selected_format = format;
                     format_found = true;

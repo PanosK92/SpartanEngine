@@ -588,6 +588,12 @@ namespace pass_cinematic
     static const SHARED_UINT force_sdr  = 5; // bool
 }
 
+namespace pass_xr_mirror
+{
+    static const SHARED_UINT display_size = 0; // float2, pixels the mirror texture is stretched over
+    static const SHARED_UINT encode_srgb  = 2; // bool, srgb for a png instead of the desktop swapchain encoding
+}
+
 namespace pass_bloom
 {
     static const SHARED_UINT scatter   = 0; // float, upsample
@@ -596,8 +602,9 @@ namespace pass_bloom
 
 namespace pass_output
 {
-    static const SHARED_UINT tonemapping = 0; // uint
-    static const SHARED_UINT force_sdr   = 1; // bool
+    static const SHARED_UINT tonemapping   = 0; // uint
+    static const SHARED_UINT force_sdr     = 1; // bool
+    static const SHARED_UINT output_linear = 2; // bool, sdr without the srgb encode, for targets that encode on write
 }
 
 namespace pass_dlss_reactivity

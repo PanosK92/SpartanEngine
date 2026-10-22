@@ -30,6 +30,14 @@ namespace spartan
             memcpy(destination, transposed.Data(), sizeof(float) * 16);
         }
 
+        // the frame buffer has no previous view for the right eye, so a right eye instance remembers its own
+        struct view_history
+        {
+            math::Matrix world_to_view;
+            math::Matrix view_to_clip;
+            bool valid = false;
+        };
+
         inline void fill_common_settings(
             nrd::CommonSettings& settings,
             const Cb_Frame* cb_frame,
@@ -40,19 +48,34 @@ namespace spartan
             uint32_t rect_width_prev,
             uint32_t rect_height_prev,
             bool reset_history,
-            Nrd_Preset preset
+            Nrd_Preset preset,
+            uint32_t eye,
+            view_history& history
         )
         {
             settings = {};
 
             // unjittered projection only, view_projection_unjittered = view * proj
-            const math::Matrix view_to_clip      = math::Matrix::Invert(cb_frame->view) * cb_frame->view_projection_unjittered;
-            const math::Matrix view_to_clip_prev = math::Matrix::Invert(cb_frame->view_previous) * cb_frame->view_projection_previous_unjittered;
+            const bool right_eye             = eye == 1 && cb_frame->is_multiview != 0;
+            const math::Matrix world_to_view = right_eye ? cb_frame->view_right : cb_frame->view;
+            const math::Matrix view_to_clip  = math::Matrix::Invert(world_to_view) * (right_eye ? cb_frame->view_projection_unjittered_right : cb_frame->view_projection_unjittered);
+
+            math::Matrix world_to_view_prev = cb_frame->view_previous;
+            math::Matrix view_to_clip_prev  = math::Matrix::Invert(cb_frame->view_previous) * cb_frame->view_projection_previous_unjittered;
+            if (right_eye)
+            {
+                const bool has_history = history.valid && !reset_history;
+                world_to_view_prev     = has_history ? history.world_to_view : world_to_view;
+                view_to_clip_prev      = has_history ? history.view_to_clip : view_to_clip;
+            }
+            history.world_to_view = world_to_view;
+            history.view_to_clip  = view_to_clip;
+            history.valid         = true;
 
             copy_matrix_for_nrd(settings.viewToClipMatrix, view_to_clip);
             copy_matrix_for_nrd(settings.viewToClipMatrixPrev, view_to_clip_prev);
-            copy_matrix_for_nrd(settings.worldToViewMatrix, cb_frame->view);
-            copy_matrix_for_nrd(settings.worldToViewMatrixPrev, cb_frame->view_previous);
+            copy_matrix_for_nrd(settings.worldToViewMatrix, world_to_view);
+            copy_matrix_for_nrd(settings.worldToViewMatrixPrev, world_to_view_prev);
 
             settings.motionVectorScale[0] = 1.0f;
             settings.motionVectorScale[1] = 1.0f;
