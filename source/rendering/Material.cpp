@@ -915,7 +915,9 @@ namespace spartan
             }
             case MaterialSurfacePreset::CarbonFiber:
             {
-                SetColorInternal(Color(0.015f, 0.016f, 0.017f, 1.0f), false);
+                // a weave map already carries the dark fiber albedo, the flat tint only stands in for a missing one
+                const float tint = HasTextureOfType(MaterialTextureType::Color) ? 0.6f : 0.015f;
+                SetColorInternal(Color(tint, tint * 1.05f, tint * 1.1f, 1.0f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.38f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           0.65f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.18f, false);
@@ -950,9 +952,13 @@ namespace spartan
             case MaterialSurfacePreset::Leather:
             {
                 SetColorInternal(Color(0.035f, 0.03f, 0.026f, 1.0f), false);
-                SetPropertyInternal(MaterialProperty::Roughness, 0.75f, false);
-                SetPropertyInternal(MaterialProperty::Sheen,     0.25f, false);
-                SetPropertyInternal(MaterialProperty::Normal,    0.08f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,      0.75f,  false);
+                SetPropertyInternal(MaterialProperty::Sheen,          1.0f,   false);
+                SetPropertyInternal(MaterialProperty::SheenColorR,    0.05f,  false);
+                SetPropertyInternal(MaterialProperty::SheenColorG,    0.046f, false);
+                SetPropertyInternal(MaterialProperty::SheenColorB,    0.042f, false);
+                SetPropertyInternal(MaterialProperty::SheenRoughness, 0.45f,  false);
+                SetPropertyInternal(MaterialProperty::Normal,         0.08f,  false);
                 break;
             }
             case MaterialSurfacePreset::BlackPlastic:

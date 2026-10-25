@@ -223,7 +223,8 @@ namespace spartan
                 return CarMaterialSlot::BrakeDisc;
             }
 
-            if (contains(context, "object_180") || contains(context, "object_150") || contains(context, "rim"))
+            // the body has its own "rim" mesh, the piping along the seat edges, only the wheel rims are chrome
+            if (contains(context, "object_180") || contains(context, "object_150") || (contains(context, "rim") && contains(context, "tire")))
             {
                 return CarMaterialSlot::RimMetal;
             }
@@ -233,7 +234,19 @@ namespace spartan
                 return CarMaterialSlot::TireRubber;
             }
 
+            // the red mirrored cups behind the round tail lamps reflect the lamps, they do not emit
+            if (contains(context, "rear headlights") || contains(context, "rear_headlights"))
+            {
+                return CarMaterialSlot::Unknown;
+            }
+
             if (contains(context, "red_light") || contains(context, "tail_lights") || contains(context, "run_lights"))
+            {
+                return CarMaterialSlot::EmissiveRedLight;
+            }
+
+            // the high mounted stop lamp, the source authors it white
+            if ((contains(context, "break lights") || contains(context, "break_lights")) && !contains(context, "glass"))
             {
                 return CarMaterialSlot::EmissiveRedLight;
             }
@@ -283,7 +296,7 @@ namespace spartan
                 return CarMaterialSlot::InteriorLeather;
             }
 
-            if (contains(context, "black") || contains(context, "under"))
+            if (contains(context, "black") || contains(context, "under") || contains(context, "viper") || contains(context, "wiper"))
             {
                 return CarMaterialSlot::BlackTrim;
             }
