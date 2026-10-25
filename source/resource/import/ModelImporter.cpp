@@ -32,6 +32,7 @@ Commercial use requires written permission and negotiated payment terms.
 SP_WARNINGS_OFF
 #include "assimp/scene.h"
 #include "assimp/material.h"
+#include "assimp/GltfMaterial.h"
 #include "assimp/ProgressHandler.hpp"
 #include "assimp/version.h"
 #include "assimp/Importer.hpp"
@@ -667,6 +668,21 @@ namespace spartan
             for (int type = static_cast<int>(aiTextureType_NONE) + 1; type <= AI_TEXTURE_TYPE_MAX; type++)
             {
                 const aiTextureType assimp_type = static_cast<aiTextureType>(type);
+                // gltf only has these roles, assimp repeats the packed metallic roughness map and the extension
+                // maps under other types, guessing a slot from their file names binds them as color
+                const bool is_gltf_role =
+                    assimp_type == aiTextureType_BASE_COLOR        ||
+                    assimp_type == aiTextureType_DIFFUSE           ||
+                    assimp_type == aiTextureType_NORMALS           ||
+                    assimp_type == aiTextureType_METALNESS         ||
+                    assimp_type == aiTextureType_DIFFUSE_ROUGHNESS ||
+                    assimp_type == aiTextureType_AMBIENT_OCCLUSION ||
+                    assimp_type == aiTextureType_LIGHTMAP          ||
+                    assimp_type == aiTextureType_EMISSIVE;
+                if (typed_slots && !is_gltf_role)
+                {
+                    continue;
+                }
                 const uint32_t count            = material_assimp->GetTextureCount(assimp_type);
                 for (uint32_t i = 0; i < count; i++)
                 {
@@ -994,6 +1010,98 @@ namespace spartan
             return candidate;
         }
 
+        // maps alphaMode and the KHR_materials extensions onto the engine material, color and opacity are written back
+        // so the caller still applies them, the engine glass tints by pow(albedo, absorption * path * 50)
+        void load_gltf_extensions(const shared_ptr<Material>& material, const aiMaterial* material_assimp, aiColor4D& color, float& opacity)
+        {
+            constexpr float glass_absorption_scale = 50.0f;
+            constexpr float thin_shell             = 0.001f;
+
+            aiString alpha_mode("OPAQUE");
+            material_assimp->Get(AI_MATKEY_GLTF_ALPHAMODE, alpha_mode);
+            float alpha_cutoff = 0.5f;
+            material_assimp->Get(AI_MATKEY_GLTF_ALPHACUTOFF, alpha_cutoff);
+            const string mode = alpha_mode.C_Str();
+            material->SetProperty(MaterialProperty::AlphaBlend, 0.0f);
+            if (mode == "MASK")
+            {
+                opacity = 1.0f;
+                material->SetProperty(MaterialProperty::AlphaCutoff, max(alpha_cutoff, 0.001f));
+            }
+            else if (mode == "BLEND")
+            {
+                // just under one routes the material to the transparent pass, where the texture alpha multiplies in
+                opacity = min(opacity, 0.999f);
+                material->SetProperty(MaterialProperty::AlphaCutoff, 0.0f);
+                material->SetProperty(MaterialProperty::AlphaBlend, 1.0f);
+            }
+            else
+            {
+                opacity = 1.0f;
+                material->SetProperty(MaterialProperty::AlphaCutoff, 0.0f);
+            }
+
+            float transmission = 0.0f;
+            material_assimp->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission);
+            if (transmission > 0.0f)
+            {
+                material->SetProperty(MaterialProperty::AlphaBlend, 0.0f);
+                // alpha 0 reads as sky in the g-buffer, and low alpha is already full glass coverage
+                opacity = min(opacity, max(min(1.0f - transmission, 0.99f), 0.02f));
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+
+                float ior = 1.5f;
+                material_assimp->Get(AI_MATKEY_REFRACTI, ior);
+                material->SetProperty(MaterialProperty::Ior, ior);
+
+                float thickness            = 0.0f;
+                float attenuation_distance = numeric_limits<float>::infinity();
+                aiColor3D attenuation_color(1.0f, 1.0f, 1.0f);
+                material_assimp->Get(AI_MATKEY_VOLUME_THICKNESS_FACTOR, thickness);
+                material_assimp->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, attenuation_distance);
+                material_assimp->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, attenuation_color);
+
+                const bool has_volume      = thickness > 0.0f;
+                const bool has_attenuation = has_volume && isfinite(attenuation_distance) && attenuation_distance > 0.0f;
+                const float shell          = has_volume ? thickness : thin_shell;
+                material->SetProperty(MaterialProperty::Thickness, shell);
+                if (has_attenuation)
+                {
+                    color.r *= attenuation_color.r;
+                    color.g *= attenuation_color.g;
+                    color.b *= attenuation_color.b;
+                    material->SetProperty(MaterialProperty::Absorption, 1.0f / (glass_absorption_scale * attenuation_distance));
+                }
+                else
+                {
+                    // the base color tints the transmission once, at normal incidence through the shell
+                    material->SetProperty(MaterialProperty::Absorption, 1.0f / (glass_absorption_scale * shell));
+                }
+            }
+
+            aiColor3D sheen_color(0.0f, 0.0f, 0.0f);
+            if (material_assimp->Get(AI_MATKEY_SHEEN_COLOR_FACTOR, sheen_color) == AI_SUCCESS && max(max(sheen_color.r, sheen_color.g), sheen_color.b) > 0.0f)
+            {
+                float sheen_roughness = 0.0f;
+                material_assimp->Get(AI_MATKEY_SHEEN_ROUGHNESS_FACTOR, sheen_roughness);
+                material->SetProperty(MaterialProperty::Sheen, 1.0f);
+                material->SetProperty(MaterialProperty::SheenColorR, sheen_color.r);
+                material->SetProperty(MaterialProperty::SheenColorG, sheen_color.g);
+                material->SetProperty(MaterialProperty::SheenColorB, sheen_color.b);
+                material->SetProperty(MaterialProperty::SheenRoughness, sheen_roughness);
+            }
+
+            float anisotropy = 0.0f;
+            if (material_assimp->Get(AI_MATKEY_ANISOTROPY_FACTOR, anisotropy) == AI_SUCCESS && anisotropy > 0.0f)
+            {
+                float rotation = 0.0f;
+                material_assimp->Get(AI_MATKEY_ANISOTROPY_ROTATION, rotation);
+                const float turns = rotation / pi_2;
+                material->SetProperty(MaterialProperty::Anisotropic, min(anisotropy, 1.0f));
+                material->SetProperty(MaterialProperty::AnisotropicRotation, turns - floor(turns));
+            }
+        }
+
         shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp, const uint32_t material_index)
         {
             SP_ASSERT(material_assimp != nullptr);
@@ -1080,6 +1188,11 @@ namespace spartan
                 material->SetProperty(MaterialProperty::Roughness, 0.0f);
             }
 
+            if (is_gltf)
+            {
+                load_gltf_extensions(material, material_assimp, color_diffuse, opacity);
+            }
+
             // set color and opacity
             material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
             material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
@@ -1113,7 +1226,27 @@ namespace spartan
             }
 
             aiColor4D emissive(0.0f, 0.0f, 0.0f, 0.0f);
-            if (aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_EMISSIVE, &emissive) == AI_SUCCESS)
+            const bool has_emissive_factor = aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_EMISSIVE, &emissive) == AI_SUCCESS;
+            if (is_gltf)
+            {
+                // gltf emission is emissiveFactor * emissiveTexture * emissiveStrength, independent of the base color
+                const float chroma = has_emissive_factor ? max(max(emissive.r, emissive.g), emissive.b) : 0.0f;
+                float strength     = 1.0f;
+                aiGetMaterialFloat(material_assimp, AI_MATKEY_EMISSIVE_INTENSITY, &strength);
+                material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 0.0f);
+                if (chroma > 0.0f)
+                {
+                    material->SetProperty(MaterialProperty::EmissiveColorR, emissive.r);
+                    material->SetProperty(MaterialProperty::EmissiveColorG, emissive.g);
+                    material->SetProperty(MaterialProperty::EmissiveColorB, emissive.b);
+                    material->SetProperty(MaterialProperty::EmissiveIntensity, max(strength, 0.0f));
+                }
+                else if (material->HasTextureOfType(MaterialTextureType::Emission))
+                {
+                    material->SetTexture(MaterialTextureType::Emission, static_cast<RHI_Texture*>(nullptr));
+                }
+            }
+            else if (has_emissive_factor)
             {
                 const float chroma = max(max(emissive.r, emissive.g), emissive.b);
                 if (chroma > 0.01f)

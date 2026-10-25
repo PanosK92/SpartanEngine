@@ -26,6 +26,9 @@ struct Surface
     float  anisotropic;
     float  anisotropic_rotation;
     float  sheen;
+    float3 sheen_color;     // black derives the sheen from albedo * sheen
+    float  sheen_roughness;
+    float  alpha_blend;
     float  subsurface_scattering;
     float  flake_strength;
     float  flake_scale;
@@ -74,6 +77,8 @@ struct Surface
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
+    bool is_alpha_blended()              { return is_transparent() && alpha_blend > 0.0f; }
+    bool is_glass()                      { return is_transparent() && alpha_blend <= 0.0f; }
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
@@ -110,6 +115,9 @@ struct Surface
         clearcoat             = material.clearcoat * (1.0f - decal_coverage);
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
+        sheen_color           = material.sheen_color.rgb;
+        sheen_roughness       = material.sheen_color.w;
+        alpha_blend           = material.alpha_blend;
         subsurface_scattering = material.subsurface_scattering;
         flake_strength        = material.flake_strength;
         flake_scale           = material.flake_scale;

@@ -267,9 +267,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
         if (sheen > 0.0f)
         {
-            float3 sheen_color = albedo * sheen;
-            specular          += D_Charlie(max(roughness, 0.3f), n_dot_h) * V_Neubelt(n_dot_v_brdf, n_dot_l) * lerp(sheen_color * 0.2f, sheen_color, edge5);
-            diffuse           *= 1.0f - sheen * 0.5f;
+            bool   explicit_color = any(mat.sheen_color.rgb > 0.0f);
+            float3 sheen_color    = explicit_color ? mat.sheen_color.rgb : albedo * sheen;
+            float  sheen_rough    = explicit_color ? max(mat.sheen_color.w, 0.07f) : max(roughness, 0.3f);
+            float3 sheen_f        = explicit_color ? sheen_color : lerp(sheen_color * 0.2f, sheen_color, edge5);
+            float  sheen_weight   = explicit_color ? max(max(sheen_color.r, sheen_color.g), sheen_color.b) : sheen;
+            specular             += D_Charlie(sheen_rough, n_dot_h) * V_Neubelt(n_dot_v_brdf, n_dot_l) * sheen_f;
+            diffuse              *= 1.0f - sheen_weight * 0.5f;
         }
         float specular_knee = lerp(4096.0f, 32.0f, rough_reflection);
         specular            = reflections_compress_luminance(specular * radiance, specular_knee, specular_knee * 0.5f);

@@ -93,7 +93,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // water and glass are shaded from reflection and transmission inside the refraction
         // composite, a lambert albedo layer on top double counts and washes the fresnel structure
         // to a flat albedo sheet, the analytic specular in light_specular is real and stays
-        if (surface.is_water() || surface.is_transparent())
+        if (surface.is_water() || surface.is_glass())
         {
             light_diffuse = 0.0f;
         }

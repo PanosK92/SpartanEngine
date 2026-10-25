@@ -370,15 +370,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_diffuse  = 0.0f;
     float3 out_specular = 0.0f;
 
-    // transparents skip alpha on specular and zero diffuse
+    // glass skips alpha on specular and zeroes diffuse, alpha blended surfaces are premultiplied like opaque ones
     // ao is not applied to direct light, it only modulates indirect, contact comes from micro_shadow
-    bool   is_transparent       = surface.is_transparent();
+    bool   is_transparent       = surface.is_glass();
     float3 specular_precomputed = is_transparent ? float3(1.0f, 1.0f, 1.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
     float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
 
     // unified restir carries direct diffuse inside its reservoir, lin 2026 6.1, only specular and
     // subsurface transmission stay here, light_image_based composites the restir signal
-    if (is_restir_pt_direct_enabled() && !is_transparent && !surface.is_water() && !surface.is_sky())
+    if (is_restir_pt_direct_enabled() && !surface.is_transparent() && !surface.is_water() && !surface.is_sky())
     {
         diffuse_precomputed *= 1.0f - restir_coverage(surface.uv);
     }

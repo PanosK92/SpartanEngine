@@ -70,7 +70,7 @@ void main_ps(gbuffer_vertex vertex)
 
     const float2 screen_uv      = vertex.position.xy / get_render_resolution_active();
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
-    const float alpha_threshold = get_alpha_threshold(position_world);
+    const float alpha_threshold = get_alpha_threshold(position_world, material.alpha_cutoff);
 
     // impostor cards carry -(draw index + 1) in z so the texel lookup can reach their draw record,
     // opaque sub-meshes (bark) still need the cutout, their card is empty outside the baked silhouette
@@ -101,7 +101,7 @@ void main_ps(gbuffer_vertex vertex)
     const bool has_albedo       = pass_bool(pass_depth_prepass::has_albedo);
     const float2 screen_uv      = vertex.position.xy / get_render_resolution_active();
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
-    const float alpha_threshold = get_alpha_threshold(position_world);
+    const float alpha_threshold = get_alpha_threshold(position_world, GetMaterial().alpha_cutoff);
 
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
         discard;

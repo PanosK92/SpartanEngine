@@ -44,7 +44,7 @@ bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 baryc
         texcoord,
         mip
     ).a;
-    return alpha > get_alpha_threshold(hit_position);
+    return alpha > get_alpha_threshold(hit_position, mat.alpha_cutoff);
 }
 
 // distance to the first alpha tested opaque blocker, negative when the ray is clear

@@ -1471,9 +1471,8 @@ static const float3 hemisphere_samples[64] =
     float3(-0.44272, -0.67928, 0.1865)
 };
 
-float get_alpha_threshold(float3 position_world)
+float get_alpha_threshold(float3 position_world, float cutoff)
 {
-    static const float ALPHA_THRESHOLD_DEFAULT = 0.6f;
     static const float ALPHA_MAX_DISTANCE      = 700.0f;
     static const float ALPHA_MAX_DISTANCE_SQ = ALPHA_MAX_DISTANCE * ALPHA_MAX_DISTANCE;
 
@@ -1482,7 +1481,12 @@ float get_alpha_threshold(float3 position_world)
     float pixel_distance_sq = dot(offset, offset);
     float distance_factor   = step(ALPHA_MAX_DISTANCE_SQ, pixel_distance_sq);
     
-    return saturate(lerp(ALPHA_THRESHOLD_DEFAULT, 0.0f, distance_factor));
+    return saturate(lerp(cutoff, 0.0f, distance_factor));
+}
+
+float get_alpha_threshold(float3 position_world)
+{
+    return get_alpha_threshold(position_world, 0.6f);
 }
 
 //= INCLUDES ===========================

@@ -3681,10 +3681,27 @@ namespace spartan
                 properties[count].coat_tint.y           = material->GetProperty(MaterialProperty::CoatTintG);
                 properties[count].coat_tint.z           = material->GetProperty(MaterialProperty::CoatTintB);
                 properties[count].coat_tint.w           = material->GetProperty(MaterialProperty::CoatTintStrength);
+                {
+                    const float emissive_r       = material->GetProperty(MaterialProperty::EmissiveColorR);
+                    const float emissive_g       = material->GetProperty(MaterialProperty::EmissiveColorG);
+                    const float emissive_b       = material->GetProperty(MaterialProperty::EmissiveColorB);
+                    const float emissive_scale   = std::max(material->GetProperty(MaterialProperty::EmissiveIntensity), 0.0f);
+                    const bool has_emissive_tint = std::max(std::max(emissive_r, emissive_g), emissive_b) > 0.0f;
+                    properties[count].emissive_color.x = (has_emissive_tint ? emissive_r : 1.0f) * emissive_scale;
+                    properties[count].emissive_color.y = (has_emissive_tint ? emissive_g : 1.0f) * emissive_scale;
+                    properties[count].emissive_color.z = (has_emissive_tint ? emissive_b : 1.0f) * emissive_scale;
+                    properties[count].emissive_color.w = has_emissive_tint && emissive_scale > 0.0f ? 1.0f : 0.0f;
+                }
                 properties[count].ior                   = material->GetProperty(MaterialProperty::Ior);
                 properties[count].absorption            = material->GetProperty(MaterialProperty::Absorption);
                 properties[count].thickness             = material->GetProperty(MaterialProperty::Thickness);
                 properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                properties[count].sheen_color.x         = material->GetProperty(MaterialProperty::SheenColorR);
+                properties[count].sheen_color.y         = material->GetProperty(MaterialProperty::SheenColorG);
+                properties[count].sheen_color.z         = material->GetProperty(MaterialProperty::SheenColorB);
+                properties[count].sheen_color.w         = material->GetProperty(MaterialProperty::SheenRoughness);
+                properties[count].alpha_cutoff          = material->GetProperty(MaterialProperty::AlphaCutoff);
+                properties[count].alpha_blend           = material->GetProperty(MaterialProperty::AlphaBlend);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[count].terrain_blend         = material->GetProperty(MaterialProperty::TerrainBlend);
                 properties[count].terrain_blend_sharpness =

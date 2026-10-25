@@ -218,7 +218,11 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
         {
             sampled_emission = srgb_to_linear(sampled_emission);
         }
-        emission = sampled_emission * photometric_to_radiometric(lighting_emissive_nits_texture);
+        emission = sampled_emission * mat.emissive_color.rgb * photometric_to_radiometric(lighting_emissive_nits_texture);
+    }
+    else if (mat.has_emissive_color())
+    {
+        emission = mat.emissive_color.rgb * photometric_to_radiometric(lighting_emissive_nits_texture);
     }
 
     road_weathering(mat.flags, hit_pos, texcoord, geometric, normalize(mul(tangent_object, obj_to_world)), .6, albedo, roughness, exp2(albedo_mip) * road_asphalt_repeat / 4096.0);

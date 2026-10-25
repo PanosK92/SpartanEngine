@@ -57,6 +57,10 @@ namespace spartan
                 case MaterialProperty::Anisotropic:                return "anisotropic";
                 case MaterialProperty::AnisotropicRotation:        return "anisotropic_rotation";
                 case MaterialProperty::Sheen:                      return "sheen";
+                case MaterialProperty::SheenColorR:                return "sheen_color_r";
+                case MaterialProperty::SheenColorG:                return "sheen_color_g";
+                case MaterialProperty::SheenColorB:                return "sheen_color_b";
+                case MaterialProperty::SheenRoughness:             return "sheen_roughness";
                 case MaterialProperty::SubsurfaceScattering:       return "subsurface_scattering";
                 case MaterialProperty::FlakeStrength:              return "flake_strength";
                 case MaterialProperty::FlakeScale:                 return "flake_scale";
@@ -75,6 +79,12 @@ namespace spartan
                 case MaterialProperty::SurfacePreset:              return "surface_preset";
                 case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
                 case MaterialProperty::EmissiveFromAlbedo:         return "emissive_from_albedo";
+                case MaterialProperty::EmissiveColorR:             return "emissive_color_r";
+                case MaterialProperty::EmissiveColorG:             return "emissive_color_g";
+                case MaterialProperty::EmissiveColorB:             return "emissive_color_b";
+                case MaterialProperty::EmissiveIntensity:          return "emissive_intensity";
+                case MaterialProperty::AlphaCutoff:                return "alpha_cutoff";
+                case MaterialProperty::AlphaBlend:                 return "alpha_blend";
 
                 // Texture transforms
                 case MaterialProperty::TextureTilingX:             return "texture_tiling_x";
@@ -723,6 +733,9 @@ namespace spartan
         SetProperty(MaterialProperty::CoatTintG,      1.0f);
         SetProperty(MaterialProperty::CoatTintB,      1.0f);
         SetProperty(MaterialProperty::Ior,            EnumToIor(MaterialIor::Glass));
+        // a black emissive color leaves the emission map untinted, so older files keep their look
+        SetProperty(MaterialProperty::EmissiveIntensity, 1.0f);
+        SetProperty(MaterialProperty::AlphaCutoff,    0.6f);
         SetProperty(MaterialProperty::WorldHeight,    1.0f);
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
         // the ground creeping over anything that sinks into it is the default, a material file written
@@ -1632,6 +1645,10 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::Anisotropic,          0.0f, false);
         SetPropertyInternal(MaterialProperty::AnisotropicRotation,  0.0f, false);
         SetPropertyInternal(MaterialProperty::Sheen,                0.0f, false);
+        SetPropertyInternal(MaterialProperty::SheenColorR,          0.0f, false);
+        SetPropertyInternal(MaterialProperty::SheenColorG,          0.0f, false);
+        SetPropertyInternal(MaterialProperty::SheenColorB,          0.0f, false);
+        SetPropertyInternal(MaterialProperty::SheenRoughness,       0.0f, false);
         SetPropertyInternal(MaterialProperty::SubsurfaceScattering, 0.0f, false);
         SetPropertyInternal(MaterialProperty::FlakeStrength,        0.0f, false);
         SetPropertyInternal(MaterialProperty::FlakeScale,           120.0f, false);
@@ -1677,7 +1694,7 @@ namespace spartan
     {
         // hot path for draw sort and shadow passes, read slots directly
         // skids keep texture alpha for a multiply mask, clipping would punch holes in the ribbon
-        if (GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
+        if (GetProperty(MaterialProperty::IsSkidMark) != 0.0f || GetProperty(MaterialProperty::AlphaCutoff) <= 0.0f)
         {
             return false;
         }

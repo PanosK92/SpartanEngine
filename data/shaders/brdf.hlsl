@@ -276,19 +276,22 @@ float3 BRDF_Specular_Flakes(inout Surface surface, AngularInfo angular_info, Lig
 
 float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
 {
-    // roughness - sheen needs minimum roughness for cloth appearance
-    float sheen_roughness = max(surface.roughness, 0.3);
+    // an explicit sheen color is the gltf sheen layer with its own roughness and no fresnel,
+    // otherwise the sheen is derived from the base color and needs a minimum roughness to read as cloth
+    bool   explicit_color  = any(surface.sheen_color > 0.0);
+    float  sheen_roughness = explicit_color ? max(surface.sheen_roughness, 0.07) : max(surface.roughness, 0.3);
+    float3 sheen_color     = explicit_color ? surface.sheen_color : surface.albedo * surface.sheen;
     
     // specular
-    float  D           = D_Charlie(sheen_roughness, angular_info.n_dot_h);
-    float  V           = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);
-    float3 sheen_color = surface.albedo * surface.sheen;
-    float  edge        = pow5(1.0 - angular_info.n_dot_v);
-    float3 F           = lerp(sheen_color * 0.2, sheen_color, edge);
-    float3 Fr          = D * V * F;
+    float  D    = D_Charlie(sheen_roughness, angular_info.n_dot_h);
+    float  V    = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);
+    float  edge = pow5(1.0 - angular_info.n_dot_v);
+    float3 F    = explicit_color ? sheen_color : lerp(sheen_color * 0.2, sheen_color, edge);
+    float3 Fr   = D * V * F;
     
     // energy - sheen absorbs some diffuse
-    surface.diffuse_energy *= 1.0 - surface.sheen * 0.5;
+    float sheen_weight      = explicit_color ? max(max(sheen_color.r, sheen_color.g), sheen_color.b) : surface.sheen;
+    surface.diffuse_energy *= 1.0 - sheen_weight * 0.5;
     
     return Fr;
 }

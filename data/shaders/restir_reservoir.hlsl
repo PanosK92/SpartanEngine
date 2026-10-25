@@ -1427,9 +1427,12 @@ float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary
     GeometryInfo geo = geometry_infos[instance_index];
     uint material_index = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
-    if ((!mat.emissive_from_albedo() && !mat.has_texture_emissive()) ||
+    if ((!mat.emissive_from_albedo() && !mat.has_texture_emissive() && !mat.has_emissive_color()) ||
         (mat.is_pooled_emitter() && is_emtri_pool_active()))
         return 0.0f;
+
+    if (!mat.emissive_from_albedo() && !mat.has_texture_emissive())
+        return mat.emissive_color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
 
     // This is part of the radiance estimator, not just a sampling weight. Using
     // material color here invents light for black emission maps and tints GI.
@@ -1459,7 +1462,7 @@ float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary
             GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
         if (mat.is_emissive_srgb())
             emission = srgb_to_linear(emission);
-        return emission * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
+        return emission * mat.emissive_color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
     }
 
     float3 albedo = mat.color.rgb;

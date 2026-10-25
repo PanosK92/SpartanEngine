@@ -723,6 +723,15 @@ struct MaterialParameters
 
     SHARED_FLOAT4 pearl_color SHARED_DEFAULT(spartan::math::Vector4::One);
     SHARED_FLOAT4 coat_tint SHARED_DEFAULT(spartan::math::Vector4::One);
+    // rgb multiplies the emission map, w set means the color also emits on its own when there is no map
+    SHARED_FLOAT4 emissive_color SHARED_DEFAULT(spartan::math::Vector4(1.0f, 1.0f, 1.0f, 0.0f));
+    // rgb is the sheen color and w its roughness, black rgb derives the sheen from the base color and roughness
+    SHARED_FLOAT4 sheen_color SHARED_DEFAULT(spartan::math::Vector4::Zero);
+
+    SHARED_FLOAT alpha_cutoff SHARED_DEFAULT(0.6f);
+    SHARED_FLOAT alpha_blend  SHARED_DEFAULT(0.0f); // transparent pixels blend over the background by alpha instead of shading as glass
+    SHARED_FLOAT padding_material_1 SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT padding_material_2 SHARED_DEFAULT(0.0f);
 
     SHARED_FLOAT pearl_strength;
     SHARED_FLOAT ior;
@@ -781,6 +790,7 @@ struct MaterialParameters
     bool has_texture_emissive()  { return (flags & (1 << 6))  != 0; }
     bool is_terrain()            { return (flags & (1 << 8))  != 0; }
     bool emissive_from_albedo()  { return (flags & (1 << 15)) != 0; }
+    bool has_emissive_color()    { return emissive_color.w > 0.0f; }
     bool is_alpha_tested()       { return (flags & (1 << 16)) != 0; }
     bool is_albedo_srgb()        { return (flags & (1 << 17)) != 0; }
     bool is_emissive_srgb()      { return (flags & (1 << 18)) != 0; }

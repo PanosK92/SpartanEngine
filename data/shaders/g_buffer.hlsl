@@ -702,7 +702,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         {
             emissive = srgb_to_linear(emissive);
         }
-        emission = emissive;
+        emission = emissive * material.emissive_color.rgb;
+    }
+    else if (material.has_emissive_color())
+    {
+        emission = material.emissive_color.rgb;
     }
     // emissive_from_albedo strength is authored 0-1, composition maps 1.0 to the calibrated nits
     if (material.emissive_from_albedo())

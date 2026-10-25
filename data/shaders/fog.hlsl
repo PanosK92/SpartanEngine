@@ -233,6 +233,8 @@ Surface fog_build_surface(float3 position, float3 ray_direction, uint2 pixel, fl
     surface.anisotropic            = 0.0f;
     surface.anisotropic_rotation   = 0.0f;
     surface.sheen                  = 0.0f;
+    surface.sheen_color            = 0.0f;
+    surface.sheen_roughness        = 0.0f;
     surface.subsurface_scattering  = 0.0f;
     surface.flake_strength         = 0.0f;
     surface.flake_scale            = 0.0f;

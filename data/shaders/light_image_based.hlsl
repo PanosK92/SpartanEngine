@@ -240,7 +240,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky
     // lambert layer on top reads as an opaque milky sheet, the specular sky reflection stays
-    if (surface.is_water() || surface.is_transparent())
+    if (surface.is_water() || surface.is_glass())
     {
         diffuse_ibl = 0.0f;
     }
@@ -289,7 +289,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // transparents take full ibl, fresnel inside the split sum already governs the reflection split
     float3 ibl  = diffuse_ibl + specular_ibl;
-    ibl        *= surface.is_transparent() ? 1.0f : surface.alpha;
+    ibl        *= surface.is_glass() ? 1.0f : surface.alpha;
 
     // output
     tex_uav[thread_id.xy] += validate_output(float4(ibl, 0.0f));

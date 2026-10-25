@@ -60,6 +60,10 @@ namespace spartan
         Anisotropic,                // anisotropy level
         AnisotropicRotation,        // anisotropy direction
         Sheen,                      // velvet-like reflection at grazing angles
+        SheenColorR,                // sheen color red, black derives the sheen from the base color (gltf sheenColorFactor)
+        SheenColorG,                // sheen color green
+        SheenColorB,                // sheen color blue
+        SheenRoughness,             // sheen roughness, used with a sheen color (gltf sheenRoughnessFactor)
         SubsurfaceScattering,       // light scattering through surface
         FlakeStrength,              // automotive metallic flake intensity
         FlakeScale,                 // automotive metallic flake density
@@ -78,6 +82,12 @@ namespace spartan
         SurfacePreset,              // selected surface preset
         NormalFromAlbedo,           // derive normal from albedo
         EmissiveFromAlbedo,         // derive emissive from albedo, value is 0-1 intensity
+        EmissiveColorR,             // emissive color red, tints the emission map, or emits on its own without one (gltf emissiveFactor)
+        EmissiveColorG,             // emissive color green
+        EmissiveColorB,             // emissive color blue
+        EmissiveIntensity,          // emission multiplier (gltf KHR_materials_emissive_strength)
+        AlphaCutoff,                // texture alpha at or below this is cut out, 0 ignores texture alpha (gltf alphaCutoff, OPAQUE)
+        AlphaBlend,                 // below full opacity the surface blends over the background instead of acting as glass (gltf BLEND)
     
         // texture transforms
         TextureTilingX,             // tiling along x axis

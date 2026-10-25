@@ -585,6 +585,18 @@ namespace spartan
                 return "anisotropic_rotation";
             case MaterialProperty::Sheen:
                 return "sheen";
+            case MaterialProperty::AlphaCutoff:
+                return "alpha_cutoff";
+            case MaterialProperty::AlphaBlend:
+                return "alpha_blend";
+            case MaterialProperty::SheenColorR:
+                return "sheen_color_r";
+            case MaterialProperty::SheenColorG:
+                return "sheen_color_g";
+            case MaterialProperty::SheenColorB:
+                return "sheen_color_b";
+            case MaterialProperty::SheenRoughness:
+                return "sheen_roughness";
             case MaterialProperty::SubsurfaceScattering:
                 return "subsurface_scattering";
             case MaterialProperty::FlakeStrength:
@@ -621,6 +633,14 @@ namespace spartan
                 return "normal_from_albedo";
             case MaterialProperty::EmissiveFromAlbedo:
                 return "emissive_from_albedo";
+            case MaterialProperty::EmissiveColorR:
+                return "emissive_color_r";
+            case MaterialProperty::EmissiveColorG:
+                return "emissive_color_g";
+            case MaterialProperty::EmissiveColorB:
+                return "emissive_color_b";
+            case MaterialProperty::EmissiveIntensity:
+                return "emissive_intensity";
             case MaterialProperty::TextureTilingX:
                 return "texture_tiling_x";
             case MaterialProperty::TextureTilingY:

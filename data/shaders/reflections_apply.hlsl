@@ -22,6 +22,7 @@ static const float glass_dispersion           = 0.03f;  // per channel ior sprea
 static const uint  glass_frost_taps           = 8;      // frosted transmission disc taps
 static const float glass_parallax_scale       = 0.18f;  // thin-shell uv shift per meter of optical path
 static const float glass_absorption_scale     = 50.0f;  // maps authored absorption*thickness into beer lambert exponent
+static const uint  glass_max_crossings        = 6;      // a hollow thin shell (bowl, bottle) puts three more interfaces behind the first
 
 // tex4 is the opaque depth at output resolution, stretched from the scaled render subrect over the whole
 // texture, so it takes screen uvs while tex2 (the opaque frame) and the g-buffer take render uvs
@@ -145,7 +146,7 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
     float  pixel_angle     = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
     float2 cone            = float2(surface.camera_to_pixel_length * pixel_angle, pixel_angle + surface.roughness_alpha);
     [loop]
-    for (uint crossing = 0; crossing < 3; crossing++)
+    for (uint crossing = 0; crossing < glass_max_crossings; crossing++)
     {
         RayDesc ray;
         ray.Origin    = origin;
@@ -327,7 +328,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 F = compute_dielectric_fresnel(n_dot_v, ior_air, ior_material);
     
     // compute refraction for transparent surfaces
-    if (surface.is_water() || surface.is_transparent())
+    if (surface.is_water() || surface.is_glass())
     {
         float2 uv = (thread_id.xy + 0.5f) / resolution_out;
         float depth_transparent = linearize_depth(surface.depth);
@@ -507,11 +508,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  f0_dielectric = pow((ior_air - ior_material) / (ior_air + ior_material), 2.0f);
     float3 F0_dielectric = float3(f0_dielectric, f0_dielectric, f0_dielectric);
     float3 F0_opaque     = lerp(surface.F0, float3(0.04f, 0.04f, 0.04f), coat);
-    float3 F0_brdf       = (surface.is_water() || surface.is_transparent()) ? F0_dielectric : F0_opaque;
+    float3 F0_brdf       = (surface.is_water() || surface.is_glass()) ? F0_dielectric : F0_opaque;
 
     float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y) * compute_multiscatter_energy_split_sum(F0_brdf, brdf);
 
-    if (surface.is_transparent() && !surface.is_water())
+    if (surface.is_alpha_blended())
+    {
+        // the lit layer is already premultiplied by alpha, the background shows straight through the rest
+        float3 lit            = tex_uav[thread_id.xy].rgb + specular_reflection * surface.alpha;
+        tex_uav[thread_id.xy] = validate_output(float4(lit + background * (1.0f - surface.alpha), 1.0f));
+    }
+    else if (surface.is_glass() && !surface.is_water())
     {
         // pbr glass, fresnel can pick up a thin-film rainbow on clear panes, beer lambert uses absorption*thickness so alpha stays a soft coverage term
         float3 F_glass           = glass_thin_film_fresnel(F, n_dot_v, surface.absorption);

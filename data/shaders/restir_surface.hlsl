@@ -184,7 +184,11 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         {
             emissive_sample = srgb_to_linear(emissive_sample);
         }
-        emission = emissive_sample * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
+        emission = emissive_sample * mat.emissive_color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
+    }
+    else if (mat.has_emissive_color())
+    {
+        emission = mat.emissive_color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
     }
     if (mat.emissive_from_albedo())
     {

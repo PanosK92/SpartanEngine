@@ -104,7 +104,7 @@ void main_ps(gbuffer_vertex vertex)
     const bool has_albedo       = pass_bool(pass_depth_light::has_albedo);
 #endif
     const float3 position_world = vertex.position_previous.xyz;
-    float alpha_threshold       = get_alpha_threshold(position_world);
+    float alpha_threshold       = get_alpha_threshold(position_world, GetMaterial().alpha_cutoff);
     
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
         discard;
