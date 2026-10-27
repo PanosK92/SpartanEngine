@@ -107,6 +107,30 @@ namespace spartan
             vector<Physics*> floating_bodies;      // created dynamic bodies eligible for buoyancy
         }
 
+        // TickController carries a controller on whatever it stands on, the sdk riding only follows the contact point
+        // and never turns the rider, so it is switched off to not add the motion twice
+        namespace controller_ride
+        {
+            struct behavior_callback : PxControllerBehaviorCallback
+            {
+                PxControllerBehaviorFlags getBehaviorFlags(const PxShape&, const PxActor&) override
+                {
+                    return PxControllerBehaviorFlag::eCCT_USER_DEFINED_RIDE;
+                }
+
+                PxControllerBehaviorFlags getBehaviorFlags(const PxController&) override
+                {
+                    return PxControllerBehaviorFlags(0);
+                }
+
+                PxControllerBehaviorFlags getBehaviorFlags(const PxObstacle&) override
+                {
+                    return PxControllerBehaviorFlags(0);
+                }
+            };
+            behavior_callback behavior;
+        }
+
         // a kinematic body is moved once per frame but simulated in several fixed steps, so its frame motion is
         // spread over those steps, a single jump would leave it with zero velocity in the others and anything
         // that reads its velocity (tires on a turntable or a lift) would see it stand still
@@ -123,7 +147,10 @@ namespace spartan
 
             void forget(const Physics* owner)
             {
-                motions.erase(remove_if(motions.begin(), motions.end(), [owner](const motion& entry) { return entry.owner == owner; }), motions.end());
+                motions.erase(remove_if(motions.begin(), motions.end(), [owner](const motion& entry)
+                {
+                    return entry.owner == owner;
+                }), motions.end());
             }
 
             void queue(const Physics* owner, PxRigidDynamic* actor, const PxTransform& target)
@@ -544,10 +571,35 @@ namespace spartan
                 }
             }
 
+            // ride the ground, the feet stay where they were on it so a moving or turning body carries the capsule
+            // along its path and the view turns with it, the move still collides so a wall can push the rider off
+            PxVec3 ride(0.0f);
+            {
+                PxRigidActor* ground = static_cast<PxRigidActor*>(GetGroundActor());
+                if (ground && ground == m_ground_actor && ground->is<PxRigidDynamic>())
+                {
+                    const PxTransform previous = to_px_transform(m_ground_position_previous, m_ground_rotation_previous);
+                    const PxTransform current  = ground->getGlobalPose();
+                    const PxExtendedVec3 foot  = controller->getFootPosition();
+                    const PxVec3 feet(static_cast<float>(foot.x), static_cast<float>(foot.y), static_cast<float>(foot.z));
+                    ride = current.transform(previous.transformInv(feet)) - feet;
+
+                    // the twist of the turn about the up axis, tilting platforms do not roll the view
+                    const PxQuat turn = current.q * previous.q.getConjugate();
+                    m_ground_yaw     += 2.0f * atan2f(turn.y, turn.w);
+                }
+
+                m_ground_actor = ground;
+                if (ground)
+                {
+                    from_px_transform(ground->getGlobalPose(), m_ground_position_previous, m_ground_rotation_previous);
+                }
+            }
+
             // move controller
             PxControllerFilters filters;
             filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-            PxControllerCollisionFlags collision_flags = controller->move(PxVec3(0.0f, m_velocity.y * delta_time, 0.0f), 0.001f, delta_time, filters);
+            PxControllerCollisionFlags collision_flags = controller->move(ride + PxVec3(0.0f, m_velocity.y * delta_time, 0.0f), 0.001f, delta_time, filters);
 
             // reset vertical velocity on ground collision
             if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
@@ -561,10 +613,11 @@ namespace spartan
             Vector3 pos              = PhysicsWorld::ToWorldPosition(Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z)));
             GetEntity()->SetPosition(pos);
 
+            // the velocity is relative to the ground, standing still on a turntable is not walking
             if (delta_time > 0.0f)
             {
-                m_velocity.x = (pos.x - pos_previous.x) / delta_time;
-                m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+                m_velocity.x = (pos.x - pos_previous.x - ride.x) / delta_time;
+                m_velocity.z = (pos.z - pos_previous.z - ride.z) / delta_time;
             }
         }
         else
@@ -574,6 +627,8 @@ namespace spartan
             controller->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
             m_velocity               = Vector3::Zero;
             m_controller_was_playing = false;
+            m_ground_actor           = nullptr;
+            m_ground_yaw             = 0.0f;
         }
     }
 
@@ -1478,7 +1533,20 @@ namespace spartan
             return nullptr;
         }
 
-        if (!m_controller)
+        PxRigidActor* actor = static_cast<PxRigidActor*>(GetGroundActor());
+        return actor ? static_cast<Entity*>(actor->userData) : nullptr;
+    }
+
+    float Physics::ConsumeGroundYaw()
+    {
+        const float yaw = m_ground_yaw;
+        m_ground_yaw    = 0.0f;
+        return yaw;
+    }
+
+    void* Physics::GetGroundActor() const
+    {
+        if (m_body_type != BodyType::Controller || !m_controller)
         {
             return nullptr;
         }
@@ -1506,29 +1574,42 @@ namespace spartan
             return nullptr;
         }
 
-        // get the actor used by the controller to avoid returning itself
-        PxRigidActor* actor_to_ignore = controller->getActor();
+        // the ray starts inside the capsule, without a filter its own shape is the one blocking hit and hides the ground
+        struct ground_filter : PxQueryFilterCallback
+        {
+            const PxRigidActor* ignore = nullptr;
+
+            PxQueryHitType::Enum preFilter(const PxFilterData&, const PxShape*, const PxRigidActor* actor, PxHitFlags&) override
+            {
+                return (actor == ignore) ? PxQueryHitType::eNONE : PxQueryHitType::eTOUCH;
+            }
+
+            PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit&, const PxShape*, const PxRigidActor*) override
+            {
+                return PxQueryHitType::eTOUCH;
+            }
+        };
+        ground_filter filter;
+        filter.ignore      = controller->getActor();
+        filter_data.flags |= PxQueryFlag::ePREFILTER;
 
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
-        if (scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data))
+        scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data, &filter);
+
+        // touches come in no particular order, the ground is the nearest one
+        PxRigidActor* ground = nullptr;
+        float distance       = numeric_limits<float>::max();
+        for (PxU32 i = 0; i < hit.nbTouches; ++i)
         {
-            for (PxU32 i = 0; i < hit.nbTouches; ++i)
+            const PxRaycastHit& current_hit = hit.getTouch(i);
+            if (current_hit.actor && current_hit.actor->userData && current_hit.distance < distance)
             {
-                const PxRaycastHit& current_hit = hit.getTouch(i);
-
-                if (!current_hit.actor || current_hit.actor == actor_to_ignore)
-                {
-                    continue;
-                }
-
-                if (current_hit.actor->userData)
-                {
-                    return static_cast<Entity*>(current_hit.actor->userData);
-                }
+                ground   = current_hit.actor;
+                distance = current_hit.distance;
             }
         }
 
-        return nullptr;
+        return ground;
     }
 
     float Physics::ComputeVolume()
@@ -1842,9 +1923,8 @@ namespace spartan
         desc.upDirection      = PxVec3(0, 1, 0); // up is y
         desc.nonWalkableMode  = PxControllerNonWalkableMode::ePREVENT_CLIMBING_AND_FORCE_SLIDING;
 
-        // optional but recommended: disable callbacks unless needed
         desc.reportCallback   = nullptr;
-        desc.behaviorCallback = nullptr;
+        desc.behaviorCallback = &controller_ride::behavior;
 
         // apply initial position
         const Vector3 pos = PhysicsWorld::ToPhysicsPosition(GetEntity()->GetPosition());

@@ -172,6 +172,8 @@ namespace spartan
         // ground
         bool IsGrounded() const;
         Entity* GetGroundEntity() const;
+        // radians the ground under a controller turned about the up axis since the last call, the view turns with it
+        float ConsumeGroundYaw();
 
         // dimensional properties
         float GetCapsuleVolume();
@@ -227,6 +229,7 @@ namespace spartan
 
         // tick helpers (broken out for readability)
         void TickController(bool is_playing, float delta_time);
+        void* GetGroundActor() const;
         void LiftControllerAboveTerrain();
         void CreateHeightfield();
         void TickCloth(bool is_playing, float delta_time);
@@ -260,6 +263,12 @@ namespace spartan
         bool m_use_convex_hull         = false;
         bool m_controller_was_playing  = false; // tracks the edit to play transition of the character controller
         void* m_controller               = nullptr;
+
+        // the body a controller stands on and its pose last frame, a moving one carries the controller along
+        void* m_ground_actor                      = nullptr;
+        math::Vector3 m_ground_position_previous  = math::Vector3::Zero; // world space, survives origin rebasing
+        math::Quaternion m_ground_rotation_previous = math::Quaternion::Identity;
+        float m_ground_yaw                        = 0.0f;
 
         // heightfield shape placement, physx grids start at their corner and store heights as scaled integers
         bool          m_mesh_is_heightfield      = false;

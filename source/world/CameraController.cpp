@@ -286,6 +286,17 @@ namespace spartan
         }
         m_was_playing = is_playing;
 
+        // behavior: the ground turned under the controller, the view turns with it
+        if (has_physics_body && is_playing && physics_body->GetBodyType() == BodyType::Controller)
+        {
+            const float ground_yaw = physics_body->ConsumeGroundYaw();
+            if (ground_yaw != 0.0f)
+            {
+                Entity* camera_entity = m_camera.GetEntity();
+                camera_entity->SetRotationLocal((Quaternion::FromAxisAngle(Vector3::Up, ground_yaw) * camera_entity->GetRotationLocal()).Normalized());
+            }
+        }
+
         // behavior: control activation and cursor handling
         {
             bool control_initiated  = mouse_click_right_down && mouse_in_viewport;
