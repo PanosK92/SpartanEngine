@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
+#include "GameManifest.h"
 #include "../input/Input.h"
 #include "../display/Display.h"
 #include "../rhi/RHI_Implementation.h"
@@ -262,14 +263,36 @@ namespace spartan
             CreateAndShowSplashScreen();
         }
 
+        // a packaged game has no editor title bar to drag, so it gets a regular os window with its own name
+        const bool packaged          = GameManifest::IsPackaged();
+        const GameManifestData& game = GameManifest::Get();
+        m_title                      = packaged ? game.name : string(spartan::version::c_str());
+
         // set window flags - borderless for custom title bar
         // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Context, set at compile time per-api
-        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS | RHI_Context::sdl_window_flags;
-        flags |= headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_MAXIMIZED;
+        uint32_t flags = SDL_WINDOW_RESIZABLE | RHI_Context::sdl_window_flags;
+        if (!packaged)
+        {
+            flags |= SDL_WINDOW_BORDERLESS;
+        }
+        if (headless)
+        {
+            flags |= SDL_WINDOW_HIDDEN;
+        }
+        else if (!packaged || game.window_mode != GameWindowMode::Windowed)
+        {
+            flags |= SDL_WINDOW_MAXIMIZED;
+        }
+
+        if (packaged && game.window_mode == GameWindowMode::Windowed)
+        {
+            width  = max(game.window_width, 640u);
+            height = max(game.window_height, 360u);
+        }
 
         // create window
         window  = SDL_CreateWindow(
-            spartan::version::c_str(),
+            m_title.c_str(),
             width,
             height,
             flags
@@ -281,8 +304,20 @@ namespace spartan
             return;
         }
 
+        if (packaged)
+        {
+            if (game.window_mode == GameWindowMode::Windowed)
+            {
+                SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            }
+            else if (game.window_mode == GameWindowMode::FullscreenBorderless)
+            {
+                SDL_SetWindowFullscreenMode(window, nullptr);
+                SDL_SetWindowFullscreen(window, true);
+            }
+        }
         // set up hit test callback for custom title bar dragging and resizing
-        if (!SDL_SetWindowHitTest(window, hit_test_callback, nullptr))
+        else if (!SDL_SetWindowHitTest(window, hit_test_callback, nullptr))
         {
             SP_LOG_WARNING("Failed to set window hit test callback: %s", SDL_GetError());
         }
@@ -461,7 +496,7 @@ namespace spartan
         if (was_fullscreen)
         {
 #ifndef SP_RUNTIME
-            Engine::SetFlag(EngineMode::EditorVisible, true);
+            Engine::SetFlag(EngineMode::EditorVisible, !GameManifest::IsPackaged());
 #endif
             SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
         }

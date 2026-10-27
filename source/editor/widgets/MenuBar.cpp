@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <algorithm>
 #include "MenuBar.h"
 #include "FileDialog.h"
+#include "GameBuilder.h"
 #include "Style.h"
 #include "../Editor.h"
 #include "../EditorLayout.h"
@@ -124,6 +125,15 @@ namespace
                     SP_LOG_INFO("World exported to: %s", archive_path.c_str());
                 }
             });
+        }
+
+        void ShowGameBuilder()
+        {
+            if (GameBuilder* builder = editor->GetWidget<GameBuilder>())
+            {
+                builder->SetVisible(true);
+                ImGui::SetWindowFocus(builder->GetTitle());
+            }
         }
 
         void DrawFileDialog()
@@ -258,6 +268,11 @@ namespace
                 )
                 {
                     windows::ExportWorld();
+                }
+
+                if (ImGui::MenuItem("Build Game...", "Ctrl+Shift+B"))
+                {
+                    windows::ShowGameBuilder();
                 }
 
                 ImGui::EndMenu();
@@ -1193,6 +1208,11 @@ void MenuBar::Tick()
             if (ctrl && ImGui::IsKeyPressed(ImGuiKey_O, false) && !ImGuiSp::editor_shortcuts_blocked())
             {
                 windows::ShowWorldLoadDialog();
+            }
+
+            if (ctrl && shift && ImGui::IsKeyPressed(ImGuiKey_B, false) && !ImGuiSp::editor_shortcuts_blocked())
+            {
+                windows::ShowGameBuilder();
             }
 
             if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false) && !ImGuiSp::editor_shortcuts_blocked())

@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Renderer.h"
 #include "../core/Window.h"
 #include "../core/ThreadPool.h"
+#include "../core/GameManifest.h"
 #include "../file_system/FileSystem.h"
 #include <unordered_map>
 #include <algorithm>
@@ -133,6 +134,13 @@ namespace spartan
         {
             if (!use_root_shader_directory || root_shader_directory_resolved)
             {
+                return;
+            }
+
+            // a shipped game compiles the shaders it was packaged with, never a source tree it happens to sit in
+            if (GameManifest::IsPackaged())
+            {
+                root_shader_directory_resolved = true;
                 return;
             }
 

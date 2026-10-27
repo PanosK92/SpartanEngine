@@ -9,6 +9,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Steam.h"
 #include "../world/World.h"
+#include "../core/Window.h"
+#include "../core/GameManifest.h"
 // the steamworks sdk is vendored locally, compile to no-ops when it is absent
 #if __has_include("steam/steam_api.h")
     #define SP_STEAM_ENABLED 1
@@ -35,8 +37,12 @@ namespace spartan
 
 #if SP_STEAM_ENABLED
         // must match steam_appid.txt and the appid registered on the steam partner site
-        // 480 is valve's spacewar test appid, replace with the real one before shipping
-        constexpr uint32_t app_id = 480;
+        // 480 is valve's spacewar test appid, a packaged game brings its own through game.xml
+        uint32_t get_app_id()
+        {
+            const GameManifestData& game = GameManifest::Get();
+            return GameManifest::IsPackaged() && game.steam_app_id != 0 ? game.steam_app_id : 480;
+        }
 
         // requires tools/steam/rich_presence_english.vdf uploaded under steamworks localization
         void update_presence()
@@ -67,15 +73,23 @@ namespace spartan
     void Steam::Initialize()
     {
 #if SP_STEAM_ENABLED
-        if (!cvar_debug_steam.GetValue())
+        // a packaged game opted into steam when it was built, the debug cvar only gates the editor
+        const bool packaged = GameManifest::IsPackaged();
+        if (!cvar_debug_steam.GetValue() && !packaged)
         {
             SP_LOG_INFO("steam disabled via debugging.h");
             return;
         }
 
         // relaunches through steam when needed, no-op under local steam_appid.txt testing
+        const uint32_t app_id = get_app_id();
         if (SteamAPI_RestartAppIfNecessary(app_id))
         {
+            // steam starts a fresh copy of the game, this one has to get out of the way
+            if (packaged)
+            {
+                Window::Close();
+            }
             return;
         }
 

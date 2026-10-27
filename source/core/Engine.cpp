@@ -30,6 +30,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../steam/Steam.h"
 #include "../resource/IconAtlas.h"
 #include "Settings.h"
+#include "GameManifest.h"
 #include <future>
 //===========================================
 
@@ -49,11 +50,12 @@ namespace spartan
     void Engine::Initialize(const vector<string>& args)
     {
         arguments = args;
+        GameManifest::Load();
 
 #ifdef SP_RUNTIME
         SetFlag(EngineMode::EditorVisible, false);
 #else
-        SetFlag(EngineMode::EditorVisible, !HasArgument("-game"));
+        SetFlag(EngineMode::EditorVisible, !HasArgument("-game") && !GameManifest::IsPackaged());
 #endif
         SetFlag(EngineMode::Playing,       true);
 
@@ -103,9 +105,13 @@ namespace spartan
             Settings::Initialize();
             SmokeTest::Initialize();
 #ifndef SP_RUNTIME
-            McpServer::Initialize(args);
+            if (!GameManifest::IsPackaged())
+            {
+                McpServer::Initialize(args);
+            }
 #endif
-            if (!HasArgument("--no-steam") && !IsHeadless())
+            const bool steam_wanted = !GameManifest::IsPackaged() || GameManifest::Get().steam_enabled;
+            if (steam_wanted && !HasArgument("--no-steam") && !IsHeadless())
             {
                 Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
             }

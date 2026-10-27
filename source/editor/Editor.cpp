@@ -17,9 +17,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "GeneralWindows.h"
 #include "WorldPreviews.h"
 #include "AssetThumbnails.h"
+#include "GameBuild.h"
 #include "widgets/MenuBar.h"
 #include "widgets/TextureViewer.h"
 #include "core/Engine.h"
+#include "core/GameManifest.h"
 #include "core/Timer.h"
 #include "core/Window.h"
 #include "input/Input.h"
@@ -30,6 +32,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/World.h"
 #include "rendering/Renderer.h"
 #include "imgui/source/imgui_internal.h"
+SP_WARNINGS_OFF
+#include <SDL3/SDL_messagebox.h>
+SP_WARNINGS_ON
 //===============================
 
 //= NAMESPACES =====
@@ -84,6 +89,27 @@ namespace
         handler.UserData   = editor;
         ImGui::AddSettingsHandler(&handler);
     }
+
+    // a shipped game never shows the editor, it boots its start world and stays in play mode
+    void start_packaged_game()
+    {
+        ImGui::GetIO().IniFilename = nullptr;
+
+        // world loads clear play mode, every load (including ones a game script triggers) resumes it
+        SP_SUBSCRIBE_TO_EVENT(spartan::EventType::WorldLoaded, [](spartan::sp_variant)
+        {
+            spartan::Engine::SetFlag(spartan::EngineMode::Playing, true);
+        });
+
+        const spartan::GameManifestData& game = spartan::GameManifest::Get();
+        if (!spartan::FileSystem::Exists(game.start_world) || !spartan::World::LoadFromFile(game.start_world))
+        {
+            const string message = "The start world could not be loaded:\n" + game.start_world + "\n\nThe game files may be incomplete, try verifying or reinstalling the game.";
+            SP_LOG_ERROR("%s", message.c_str());
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, game.name.c_str(), message.c_str(), nullptr);
+            spartan::Window::Close();
+        }
+    }
 }
 
 Editor::Editor(const vector<string>& args)
@@ -108,7 +134,9 @@ Editor::Editor(const vector<string>& args)
     register_panel_settings(this);
     MenuBar::Initialize(this);
     editor_mcp::Register(this);
-    if (!spartan::Engine::IsStartupSmokeTest())
+    if (spartan::GameManifest::IsPackaged())
+        start_packaged_game();
+    else if (!spartan::Engine::IsStartupSmokeTest())
         GeneralWindows::Initialize(this); // welcome/update services may access the network
     else
         SP_LOG_INFO("Startup smoke test: editor initialized, entering idle loop");
@@ -116,6 +144,7 @@ Editor::Editor(const vector<string>& args)
 
 Editor::~Editor()
 {
+    game_build::shutdown();
     editor_mcp::Unregister();
     if (!spartan::Engine::IsStartupSmokeTest())
     {

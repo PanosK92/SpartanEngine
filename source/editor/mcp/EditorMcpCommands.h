@@ -49,4 +49,5 @@ namespace editor_mcp
     void register_asset_viewer(Editor* editor);
     void register_sequencer(Editor* editor);
     void register_tree_creator(Editor* editor);
+    void register_game_build(Editor* editor);
 }
