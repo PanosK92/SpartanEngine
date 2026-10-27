@@ -179,6 +179,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     albedo                 = lerp(albedo, mat.pearl_color.rgb, pearl_blend);
     albedo                *= lerp(float3(1.0f, 1.0f, 1.0f), mat.coat_tint.rgb, coat_blend);
     F0                     = lerp(F0, mat.pearl_color.rgb, pearl_blend * 0.35f);
+    float3 hit_flake_color = 0.0f;
+    paint_iridescence(saturate(mat.iridescence), mat.iridescence_thickness, mat.clearcoat, n_dot_v, F0, hit_flake_color);
     float  clearcoat       = saturate(mat.clearcoat);
     float  coat_roughness  = saturate(mat.clearcoat_roughness);
     float3 coat_tint       = lerp(float3(1.0f, 1.0f, 1.0f), mat.coat_tint.rgb, saturate(mat.coat_tint.a));

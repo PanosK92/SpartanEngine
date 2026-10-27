@@ -77,6 +77,9 @@ namespace spartan
             bool          customize_materials = true;
             MaterialPaintPreset paint_preset = MaterialPaintPreset::Metallic;
             Color               paint_color  = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
+            std::string         paint_name;              // a car_paints palette name, overrides paint_preset and paint_color
+            std::string         paint_finish;            // a car_paints finish name laid over the colour, e.g. carbon
+            bool                paint_picker = false;    // shows the showroom panel during play
             VehicleSimMode      vehicle_sim_mode = VehicleSimMode::Full;
         };
 
@@ -176,17 +179,39 @@ namespace spartan
 
         // exterior lamps, applied to the headlight and brake light children by the car's light script
         // switching the headlights on or off takes the rear position lamps with them, the rear lamps can then be set on their own
+        // the emissive lens materials follow the switches too, once something has switched them
         void SetHeadlights(CarHeadlights mode);
         CarHeadlights GetHeadlights() const { return m_headlights; }
         void CycleHeadlights();
-        void SetRearLamps(bool on) { m_rear_lamps = on; }
+        void SetRearLamps(bool on);
         bool GetRearLamps() const { return m_rear_lamps; }
         // true when the car carries headlight entities to switch
         bool HasLights() const;
+        // true when the car has lamps of any kind to switch, entities or emissive lenses
+        bool HasSwitchableLamps() const;
+
+        // steers the front wheels from outside the cockpit, a parked car holds the angle, -1 full left lock to 1 full right lock
+        void SetSteeringRequest(float value);
+        float GetSteeringRequest() const { return m_steering_request; }
 
         // camera orbit (right stick control)
         void AddCameraOrbitYaw(float delta);
         void AddCameraOrbitPitch(float delta);
+
+        // body paint, applied live to every painted panel, the index is into car_paints::palette, -1 is the world's own paint
+        void SetPaint(int palette_index);
+        int GetPaintIndex() const { return m_paint_index; }
+        // the first painted material, read it to show the current finish
+        Material* GetPaintMaterial() const;
+        // a car_paints::finish laid over whichever colour is applied, 0 keeps the colour's own finish
+        void SetPaintFinish(int finish_index);
+        int GetPaintFinish() const { return m_paint_finish; }
+        // fine tunes the finish on every painted panel until the next SetPaint
+        void SetPaintProperty(MaterialProperty property, float value);
+        bool HasPaintPicker() const { return m_paint_picker; }
+        // draws the showroom panel (paint, finish, turntable, lamps, steering) for the first showroom car during play
+        // display cars have no tick of their own
+        static void TickShowroomPanel();
 
     private:
         std::shared_ptr<CarSurfaceEffects> m_surface_effects;
@@ -220,6 +245,9 @@ namespace spartan
         void TickCarPicker();
         void StopSounds();
         void ApplySkeletonBodyVisibility();
+        void ApplyPaint(Material* material, RHI_Texture* original_color_texture) const;
+        void ApplyPaintAll();
+        void ApplyLamps();
         // restore=false when the cached entities are about to be destroyed
         void ClearBodyRenderStates(bool restore);
 
@@ -250,6 +278,23 @@ namespace spartan
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         bool              m_customize_materials = true;
+        int               m_paint_index     = -1;
+        bool              m_paint_picker    = false;
+        int               m_paint_finish    = 0;
+        std::vector<std::shared_ptr<Material>> m_paint_materials;
+        std::vector<RHI_Texture*> m_paint_color_textures; // per paint material, what the carbon finish swaps out
+        RHI_Texture*      m_carbon_weave    = nullptr;    // the car's own carbon trim weave, the carbon finish lays it on the body
+
+        // emissive lamp lenses and the glow their preset gives them when lit
+        struct LampMaterial
+        {
+            std::shared_ptr<Material> material;
+            float emission = 0.0f;
+        };
+        std::vector<LampMaterial> m_lamp_white;
+        std::vector<LampMaterial> m_lamp_red;
+        bool  m_lamps_switched    = false; // the lenses glow as authored until something switches the lamps
+        float m_steering_request  = 0.0f;
         bool              m_spawn_error_logged = false;
         car_camera::ChaseState m_chase_camera;
         bool m_camera_wind_shake = true;
@@ -289,5 +334,6 @@ namespace spartan
         static std::vector<Car*> s_cars;
         static Car* s_spectated;
         static bool s_car_picker_on_foot; // f3 on foot shows the car list alone
+        static bool s_paint_picker_hidden; // p hides the showroom panel
     };
 }

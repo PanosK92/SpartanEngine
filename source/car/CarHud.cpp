@@ -15,6 +15,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarState.h"
 #include "CarSimulation.h"
 #include "CarPresets.h"
+#include "CarPaints.h"
+#include "../commands/console/ConsoleCommands.h"
 #include "../world/components/Physics.h"
 #include "../world/Entity.h"
 #include "imgui/source/imgui.h"
@@ -1223,6 +1225,459 @@ namespace spartan::car_hud
         ImGui::PopStyleVar(3);
 
         return chosen;
+    }
+
+    namespace
+    {
+        // radians per second, project/scripts/turntable.lua reads it every frame so any turntable in a showroom follows the panel
+        TConsoleVar<float> cvar_turntable_speed("showroom.turntable_speed", 0.175f, "spin rate of showroom turntables in radians per second, negative spins the other way, 0 stops them");
+        constexpr float turntable_default_speed = 0.175f;
+        float turntable_resume_speed            = turntable_default_speed;
+
+        const ImU32 panel_rule = IM_COL32(53, 73, 90, 180);
+
+        // a flat button in the hud style, cyan outlined while it is the active choice
+        bool hud_button(const telemetry::painter& panel, const char* id, float x, float y, float w, float h, const char* label, bool selected, bool enabled = true, float text_size = 12.0f)
+        {
+            ImGui::SetCursorScreenPos(panel.point(x, y));
+            ImGui::BeginDisabled(!enabled);
+            const bool pressed = ImGui::InvisibleButton(id, ImVec2(w * panel.scale, h * panel.scale));
+            const bool hovered = ImGui::IsItemHovered();
+            ImGui::EndDisabled();
+
+            const ImU32 fill = selected ? IM_COL32(83, 216, 229, 60) : (hovered && enabled ? IM_COL32(53, 73, 90, 255) : IM_COL32(43, 58, 72, 230));
+            panel.rect(x, y, w, h, fill, 4);
+            if (selected)
+            {
+                panel.dl->AddRect(panel.point(x, y), panel.point(x + w, y + h), telemetry::cyan, 4.0f * panel.scale, 1.5f * panel.scale);
+            }
+
+            const ImVec2 size = ImGui::GetFont()->CalcTextSizeA(text_size * panel.scale, FLT_MAX, 0.0f, label);
+            const ImU32 ink   = !enabled ? IM_COL32(151, 170, 186, 90) : (selected ? telemetry::ink : IM_COL32(200, 214, 226, 255));
+            panel.text(x + (w - size.x / panel.scale) * 0.5f, y + (h - size.y / panel.scale) * 0.5f, text_size, ink, label);
+            return pressed && enabled;
+        }
+
+        void draw_showroom_controls(Car* car, float panel_x, float panel_y, float scale, const ImVec2& region_pos)
+        {
+            const float panel_w   = 300;
+            const float title_h   = 50;
+            const float section_h = 22;
+            const float row_h     = 34;
+            const float table_y   = title_h;
+            const float lamps_y   = table_y + section_h + row_h * 2 + 8;
+            const float wheels_y  = lamps_y + section_h + row_h * 2 + 8;
+            const float panel_h   = wheels_y + section_h + row_h * 2 + 10;
+            const float column_x  = 108;
+            const float column_w  = panel_w - column_x - 16;
+
+            const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+            ImGui::SetNextWindowPos(ImVec2(region_pos.x + panel_x * scale, region_pos.y + panel_y * scale), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(panel_w * scale, panel_h * scale), ImGuiCond_Always);
+            if (ImGui::Begin("##car_showroom_controls", nullptr, flags))
+            {
+                const telemetry::painter panel{ImGui::GetWindowDrawList(), ImGui::GetWindowPos(), scale, IM_COL32(14, 22, 31, 215)};
+                panel.card(0, 0, panel_w, panel_h, "");
+                panel.text(16, 10, 20, telemetry::ink, "SHOWROOM");
+                panel.right(panel_w - 16, 16, 12, telemetry::cyan, "P TO HIDE");
+                panel.line(16, title_h - 6, panel_w - 16, title_h - 6, panel_rule);
+
+                ImGui::PushFont(nullptr, 13 * scale);
+
+                // turntable
+                {
+                    panel.text(16, table_y + 4, 12, telemetry::muted, "TURNTABLE");
+                    const float y = table_y + section_h;
+                    panel.text(16, y + 7, 13, telemetry::ink, "Speed");
+                    float degrees = cvar_turntable_speed.GetValue() * (180.0f / pi);
+                    ImGui::SetCursorScreenPos(panel.point(column_x, y + 2));
+                    ImGui::SetNextItemWidth(column_w * scale);
+                    if (ImGui::SliderFloat("##turntable_speed", &degrees, -30.0f, 30.0f, "%.1f deg/s", ImGuiSliderFlags_AlwaysClamp))
+                    {
+                        cvar_turntable_speed.SetValue(degrees * (pi / 180.0f));
+                    }
+                    hud_tooltip("How fast the turntable spins, negative spins it the other way.");
+
+                    const float speed  = cvar_turntable_speed.GetValue();
+                    const bool stopped = speed == 0.0f;
+                    const float b_w    = (panel_w - 32 - 12) / 3.0f;
+                    const float b_y    = y + row_h;
+                    if (hud_button(panel, "##turntable_stop", 16, b_y, b_w, 26, stopped ? "PLAY" : "STOP", stopped))
+                    {
+                        if (stopped)
+                        {
+                            cvar_turntable_speed.SetValue(turntable_resume_speed != 0.0f ? turntable_resume_speed : turntable_default_speed);
+                        }
+                        else
+                        {
+                            turntable_resume_speed = speed;
+                            cvar_turntable_speed.SetValue(0.0f);
+                        }
+                    }
+                    if (hud_button(panel, "##turntable_reverse", 16 + (b_w + 6), b_y, b_w, 26, "REVERSE", false, !stopped))
+                    {
+                        cvar_turntable_speed.SetValue(-speed);
+                    }
+                    if (hud_button(panel, "##turntable_default", 16 + (b_w + 6) * 2, b_y, b_w, 26, "DEFAULT", speed == turntable_default_speed))
+                    {
+                        cvar_turntable_speed.SetValue(turntable_default_speed);
+                    }
+                }
+
+                // lamps
+                {
+                    panel.line(16, lamps_y - 4, panel_w - 16, lamps_y - 4, panel_rule);
+                    const bool has_lamps = car->HasSwitchableLamps();
+                    panel.text(16, lamps_y + 4, 12, telemetry::muted, "LAMPS");
+                    if (!has_lamps)
+                    {
+                        panel.right(panel_w - 16, lamps_y + 5, 11, telemetry::muted, "NO LAMPS ON THIS CAR");
+                    }
+
+                    const float y   = lamps_y + section_h;
+                    const float b_w = (column_w - 12) / 3.0f;
+                    panel.text(16, y + 7, 13, has_lamps ? telemetry::ink : telemetry::muted, "Headlights");
+                    const char* beams[] = { "OFF", "LOW", "HIGH" };
+                    for (int i = 0; i < 3; i++)
+                    {
+                        ImGui::PushID(i);
+                        if (hud_button(panel, "##beam", column_x + (b_w + 6) * i, y + 2, b_w, 26, beams[i], has_lamps && static_cast<int>(car->GetHeadlights()) == i, has_lamps))
+                        {
+                            car->SetHeadlights(static_cast<CarHeadlights>(i));
+                        }
+                        ImGui::PopID();
+                    }
+
+                    const float t_y = y + row_h;
+                    const float t_w = (column_w - 6) / 2.0f;
+                    panel.text(16, t_y + 7, 13, has_lamps ? telemetry::ink : telemetry::muted, "Tail lamps");
+                    if (hud_button(panel, "##tail_off", column_x, t_y + 2, t_w, 26, "OFF", has_lamps && !car->GetRearLamps(), has_lamps))
+                    {
+                        car->SetRearLamps(false);
+                    }
+                    if (hud_button(panel, "##tail_on", column_x + t_w + 6, t_y + 2, t_w, 26, "ON", has_lamps && car->GetRearLamps(), has_lamps))
+                    {
+                        car->SetRearLamps(true);
+                    }
+                }
+
+                // wheels
+                {
+                    panel.line(16, wheels_y - 4, panel_w - 16, wheels_y - 4, panel_rule);
+                    const bool has_wheels = car->IsDrivable();
+                    panel.text(16, wheels_y + 4, 12, telemetry::muted, "WHEELS");
+                    if (!has_wheels)
+                    {
+                        panel.right(panel_w - 16, wheels_y + 5, 11, telemetry::muted, "NO STEERING ON THIS CAR");
+                    }
+
+                    const float y = wheels_y + section_h;
+                    panel.text(16, y + 7, 13, has_wheels ? telemetry::ink : telemetry::muted, "Steering");
+                    float steering = car->GetSteeringRequest();
+                    ImGui::BeginDisabled(!has_wheels);
+                    ImGui::SetCursorScreenPos(panel.point(column_x, y + 2));
+                    ImGui::SetNextItemWidth(column_w * scale);
+                    if (ImGui::SliderFloat("##steering", &steering, -1.0f, 1.0f, steering < -0.005f ? "%.2f left" : (steering > 0.005f ? "%.2f right" : "centred"), ImGuiSliderFlags_AlwaysClamp))
+                    {
+                        car->SetSteeringRequest(steering);
+                    }
+                    hud_tooltip("Turns the front wheels, full travel is the car's steering lock.");
+                    ImGui::EndDisabled();
+
+                    const float b_y = y + row_h;
+                    const float b_w = (panel_w - 32 - 12) / 3.0f;
+                    if (hud_button(panel, "##lock_left", 16, b_y, b_w, 26, "FULL LEFT", has_wheels && steering <= -1.0f, has_wheels))
+                    {
+                        car->SetSteeringRequest(-1.0f);
+                    }
+                    if (hud_button(panel, "##lock_centre", 16 + (b_w + 6), b_y, b_w, 26, "CENTRE", has_wheels && steering == 0.0f, has_wheels))
+                    {
+                        car->SetSteeringRequest(0.0f);
+                    }
+                    if (hud_button(panel, "##lock_right", 16 + (b_w + 6) * 2, b_y, b_w, 26, "FULL RIGHT", has_wheels && steering >= 1.0f, has_wheels))
+                    {
+                        car->SetSteeringRequest(1.0f);
+                    }
+                }
+
+                ImGui::PopFont();
+            }
+            ImGui::End();
+        }
+    }
+
+    void draw_showroom_panel(Car* car, bool collapsed)
+    {
+        if (!car || !ImGui::GetCurrentContext())
+        {
+            return;
+        }
+
+        ImVec2 region_pos;
+        ImVec2 region_size;
+        float scale = 1.0f;
+        if (!hud_region(region_pos, region_size, scale))
+        {
+            return;
+        }
+
+        using namespace car_paints;
+        const int family_count = static_cast<int>(family::count);
+        const float margin     = 24;
+        const float panel_w    = 372;
+        const float title_h    = 50;
+        const float row_h      = 40;
+        const float chip_x     = 112;
+        const float chip_d     = 30;
+        const float chip_step  = 36;
+        const float info_h     = 66;
+        const int   finish_columns = 3;
+        const float finish_title   = 30;
+        const float finish_step    = 30;
+        const int   finish_rows    = (finish_count + finish_columns - 1) / finish_columns;
+        const float lab_title  = 34;
+        const float slider_h   = 30;
+        const int   lab_rows   = 5;
+        const float rows_y     = title_h;
+        const float info_y     = rows_y + row_h * family_count + 4;
+        const float finish_y   = info_y + info_h;
+        const float lab_y      = finish_y + finish_title + finish_step * finish_rows + 6;
+        const float panel_h    = collapsed ? 40 : lab_y + lab_title + slider_h * lab_rows + 14;
+        const float panel_x    = margin;
+        // the editor keeps its viewport buttons in the top left corner
+        const float panel_y    = Engine::IsFlagSet(EngineMode::EditorVisible) ? 52.0f : 8.0f;
+        const int   selected   = car->GetPaintIndex();
+        const int   selected_finish = car->GetPaintFinish();
+        Material* material     = car->GetPaintMaterial();
+
+        auto swatch = [](uint8_t r, uint8_t g, uint8_t b, int alpha = 255)
+        {
+            return IM_COL32(r, g, b, alpha);
+        };
+
+        // a chip hints at the finish: gloss gets a sharp highlight, metallic a soft sheen, matte none, iridescent a hue ring
+        auto draw_chip = [&](ImDrawList* dl, ImVec2 center, float radius, const paint& p, bool is_selected, bool hovered)
+        {
+            const ImU32 base = swatch(p.r, p.g, p.b);
+            if (is_selected || hovered)
+            {
+                dl->AddCircle(center, radius + 3.5f * scale, is_selected ? telemetry::ink : IM_COL32(151, 170, 186, 160), 32, (is_selected ? 2.0f : 1.0f) * scale);
+            }
+            dl->AddCircleFilled(center, radius, base, 32);
+
+            const bool matte = p.preset == MaterialPaintPreset::Matte || p.preset == MaterialPaintPreset::Satin;
+            if (!matte)
+            {
+                const bool metallic = p.preset == MaterialPaintPreset::Metallic || p.preset == MaterialPaintPreset::Pearl || p.preset == MaterialPaintPreset::Candy;
+                const ImU32 sheen   = lerp_color(base, IM_COL32(255, 255, 255, 255), metallic ? 0.35f : 0.15f);
+                dl->AddCircleFilled(ImVec2(center.x - radius * 0.22f, center.y - radius * 0.22f), radius * 0.62f, with_alpha(sheen, metallic ? 150 : 90), 24);
+                dl->AddCircleFilled(ImVec2(center.x - radius * 0.38f, center.y - radius * 0.4f), radius * 0.2f, IM_COL32(255, 255, 255, metallic ? 120 : 190), 16);
+            }
+
+            if (p.pr || p.pg || p.pb)
+            {
+                dl->AddCircle(center, radius - 1.5f * scale, swatch(p.pr, p.pg, p.pb, 140), 32, 1.5f * scale);
+            }
+
+            if (p.iridescence > 0.0f)
+            {
+                const int segments  = 24;
+                const float time    = static_cast<float>(ImGui::GetTime());
+                const float thick   = 2.5f * scale;
+                for (int s = 0; s < segments; s++)
+                {
+                    const float a0 = (s / static_cast<float>(segments)) * 2.0f * pi;
+                    const float a1 = ((s + 1) / static_cast<float>(segments)) * 2.0f * pi;
+                    float r, g, b;
+                    ImGui::ColorConvertHSVtoRGB(std::fmod(s / static_cast<float>(segments) + time * 0.08f, 1.0f), 0.65f, 1.0f, r, g, b);
+                    dl->PathArcTo(center, radius - thick * 0.5f, a0, a1 + 0.02f, 4);
+                    dl->PathStroke(ImGui::ColorConvertFloat4ToU32(ImVec4(r, g, b, 0.85f)), thick);
+                }
+            }
+
+            dl->AddCircle(center, radius, IM_COL32(0, 0, 0, 90), 32, 1.0f * scale);
+        };
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * scale, 4 * scale));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(43 / 255.0f, 58 / 255.0f, 72 / 255.0f, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(53 / 255.0f, 73 / 255.0f, 90 / 255.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(53 / 255.0f, 73 / 255.0f, 90 / 255.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(126 / 255.0f, 236 / 255.0f, 245 / 255.0f, 1.0f));
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+
+        ImGui::SetNextWindowPos(ImVec2(region_pos.x + panel_x * scale, region_pos.y + panel_y * scale), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(panel_w * scale, panel_h * scale), ImGuiCond_Always);
+        if (ImGui::Begin("##car_paint_picker", nullptr, flags))
+        {
+            const telemetry::painter panel{ImGui::GetWindowDrawList(), ImGui::GetWindowPos(), scale, IM_COL32(14, 22, 31, 215)};
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+
+            if (collapsed)
+            {
+                panel.card(0, 0, panel_w, panel_h, "");
+                panel.text(16, 12, 14, telemetry::ink, "SHOWROOM");
+                const char* name = selected >= 0 ? palette[selected].name : "Factory paint";
+                panel.text(112, 13, 13, telemetry::muted, name);
+                panel.right(panel_w - 16, 13, 12, telemetry::cyan, "P TO OPEN");
+            }
+            else
+            {
+                panel.card(0, 0, panel_w, panel_h, "");
+                panel.text(16, 10, 20, telemetry::ink, "PAINT");
+                panel.right(panel_w - 16, 16, 12, telemetry::cyan, "P TO HIDE");
+                panel.line(16, title_h - 6, panel_w - 16, title_h - 6, panel_rule);
+
+                // one row per colour family, chips in palette order
+                int hovered_index = -1;
+                for (int f = 0; f < family_count; f++)
+                {
+                    const float y = rows_y + row_h * f;
+                    panel.text(16, y + 13, 12, telemetry::muted, family_name(static_cast<family>(f)));
+
+                    int column = 0;
+                    for (int i = 0; i < palette_count; i++)
+                    {
+                        if (static_cast<int>(palette[i].group) != f)
+                        {
+                            continue;
+                        }
+
+                        const float x       = chip_x + chip_step * column;
+                        const ImVec2 min    = panel.point(x, y + (row_h - chip_d) * 0.5f);
+                        const ImVec2 center = ImVec2(min.x + chip_d * 0.5f * scale, min.y + chip_d * 0.5f * scale);
+                        ImGui::PushID(i);
+                        ImGui::SetCursorScreenPos(min);
+                        if (ImGui::InvisibleButton("##paint", ImVec2(chip_d * scale, chip_d * scale)))
+                        {
+                            car->SetPaint(i);
+                        }
+                        const bool hovered = ImGui::IsItemHovered();
+                        if (hovered)
+                        {
+                            hovered_index = i;
+                        }
+                        ImGui::PopID();
+
+                        draw_chip(dl, center, chip_d * 0.5f * scale, palette[i], i == selected, hovered);
+                        column++;
+                    }
+                }
+
+                // the hovered paint previews its name, otherwise the applied one, a finish other than the original names itself
+                const int shown = hovered_index >= 0 ? hovered_index : selected;
+                panel.line(16, info_y, panel_w - 16, info_y, panel_rule);
+                if (shown >= 0)
+                {
+                    const paint& p           = palette[shown];
+                    const char* finish_label = selected_finish > 0 ? finishes[selected_finish].name : p.finish;
+                    panel.rect(16, info_y + 12, 6, 42, swatch(p.r, p.g, p.b), 3);
+                    panel.text(32, info_y + 10, 20, telemetry::ink, p.name);
+                    if (p.code[0] != '\0')
+                    {
+                        panel.label(32, info_y + 36, 13, telemetry::amber, "%s  /  %s", p.code, finish_label);
+                    }
+                    else
+                    {
+                        panel.text(32, info_y + 36, 13, telemetry::amber, finish_label);
+                    }
+                    panel.right(panel_w - 16, info_y + 39, 11, telemetry::muted, hovered_index >= 0 && hovered_index != selected ? "CLICK TO APPLY" : "APPLIED");
+                }
+                else
+                {
+                    panel.text(32, info_y + 10, 20, telemetry::ink, "Factory paint");
+                    panel.text(32, info_y + 36, 13, telemetry::muted, selected_finish > 0 ? finishes[selected_finish].name : "Pick a colour to repaint the car");
+                }
+
+                // any colour takes any finish
+                panel.line(16, finish_y, panel_w - 16, finish_y, panel_rule);
+                panel.text(16, finish_y + 9, 13, telemetry::muted, "FINISH");
+                panel.right(panel_w - 16, finish_y + 10, 11, telemetry::muted, "ANY COLOUR, ANY FINISH");
+                {
+                    const float b_w = (panel_w - 32 - 6.0f * (finish_columns - 1)) / finish_columns;
+                    for (int i = 0; i < finish_count; i++)
+                    {
+                        const int column = i % finish_columns;
+                        const int row    = i / finish_columns;
+                        ImGui::PushID(i);
+                        if (hud_button(panel, "##finish", 16 + (b_w + 6) * column, finish_y + finish_title + finish_step * row, b_w, 26, finishes[i].name, i == selected_finish, true, 11.0f))
+                        {
+                            car->SetPaintFinish(i);
+                        }
+                        hud_tooltip(finishes[i].description);
+                        ImGui::PopID();
+                    }
+                }
+
+                // live finish controls on the painted panels, picking a colour or a finish resets them
+                panel.line(16, lab_y, panel_w - 16, lab_y, panel_rule);
+                panel.text(16, lab_y + 10, 13, telemetry::muted, "FINE TUNING");
+                panel.right(panel_w - 16, lab_y + 11, 11, telemetry::muted, "SWATCHES ARE APPROXIMATE");
+                if (material)
+                {
+                    struct lab_slider
+                    {
+                        const char* label;
+                        const char* tooltip;
+                        MaterialProperty property;
+                        float min;
+                        float max;
+                        const char* format;
+                    };
+                    const lab_slider sliders[lab_rows] =
+                    {
+                        { "Flakes",         "Aluminium platelets under the coat that sparkle as the view moves.",                    MaterialProperty::FlakeStrength,        0.0f,   1.0f,    "%.2f"  },
+                        { "Pearl",          "Mica pearl that shifts the colour toward the pearl tint at glancing angles.",          MaterialProperty::PearlStrength,        0.0f,   1.0f,    "%.2f"  },
+                        { "Coat roughness", "Roughness of the clear coat, low is a wet mirror, high is satin.",                     MaterialProperty::Clearcoat_Roughness,  0.0f,   0.6f,    "%.3f"  },
+                        { "Iridescence",    "Thin film interference: the colour shifts through hues with the viewing angle.",       MaterialProperty::Iridescence,          0.0f,   1.0f,    "%.2f"  },
+                        { "Film thickness", "Thickness of the interference film, it picks which hues the paint travels through.", MaterialProperty::IridescenceThickness, 100.0f, 1200.0f, "%.0f nm" },
+                    };
+
+                    ImGui::PushFont(nullptr, 13 * scale);
+                    for (int s = 0; s < lab_rows; s++)
+                    {
+                        const lab_slider& slider = sliders[s];
+                        const float y            = lab_y + lab_title + slider_h * s;
+                        const bool disabled      = slider.property == MaterialProperty::IridescenceThickness && material->GetProperty(MaterialProperty::Iridescence) <= 0.0f;
+                        panel.text(16, y + 6, 13, disabled ? IM_COL32(151, 170, 186, 110) : telemetry::ink, slider.label);
+
+                        ImGui::PushID(s);
+                        ImGui::BeginDisabled(disabled);
+                        ImGui::SetCursorScreenPos(panel.point(136, y + 1));
+                        ImGui::SetNextItemWidth((panel_w - 136 - 16) * scale);
+                        float value = material->GetProperty(slider.property);
+                        if (ImGui::SliderFloat("##lab", &value, slider.min, slider.max, slider.format, ImGuiSliderFlags_AlwaysClamp))
+                        {
+                            car->SetPaintProperty(slider.property, value);
+                        }
+                        hud_tooltip(slider.tooltip);
+                        ImGui::EndDisabled();
+                        ImGui::PopID();
+                    }
+                    ImGui::PopFont();
+                }
+            }
+        }
+        ImGui::End();
+
+        // the stage controls sit in the opposite corner so the car stays framed between the two
+        if (!collapsed)
+        {
+            draw_showroom_controls(car, region_size.x / scale - margin - 300.0f, panel_y, scale, region_pos);
+        }
+
+        ImGui::PopStyleColor(6);
+        ImGui::PopStyleVar(6);
     }
 
     int draw_service_menu(const service_menu& menu)

@@ -619,6 +619,10 @@ namespace spartan
                 return "coat_tint_b";
             case MaterialProperty::CoatTintStrength:
                 return "coat_tint_strength";
+            case MaterialProperty::Iridescence:
+                return "iridescence";
+            case MaterialProperty::IridescenceThickness:
+                return "iridescence_thickness";
             case MaterialProperty::Ior:
                 return "ior";
             case MaterialProperty::Absorption:

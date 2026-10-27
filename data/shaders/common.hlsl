@@ -1292,6 +1292,93 @@ float3 paint_flake_color(float3 pigment)
     return lerp(hue * hue, float3(1.0f, 1.0f, 1.0f), 0.05f) * 0.9f;
 }
 
+/*------------------------------------------------------------------------------
+    CAR PAINT IRIDESCENCE
+------------------------------------------------------------------------------*/
+// thin film interference, belcour and barla 2017 as in gltf KHR_materials_iridescence: the airy sum of
+// the film's internal reflections, integrated against the cie matching functions in closed form (gaussian
+// fits), the film is a titanium dioxide like layer so a dielectric base still shifts visibly
+static const float paint_film_ior = 2.0f;
+
+float3 thin_film_schlick(float3 f0, float cos_theta)
+{
+    float x  = 1.0f - saturate(cos_theta);
+    float x2 = x * x;
+    return f0 + (1.0f - f0) * (x2 * x2 * x);
+}
+
+float3 thin_film_sensitivity(float opd_nm, float3 shift)
+{
+    float  phase = PI2 * opd_nm * 1.0e-9f;
+    float3 val   = float3(5.4856e-13f, 4.4201e-13f, 5.2481e-13f);
+    float3 pos   = float3(1.6810e+06f, 1.7953e+06f, 2.2084e+06f);
+    float3 var   = float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
+    float3 xyz   = val * sqrt(PI2 * var) * cos(pos * phase + shift) * exp(-phase * phase * var);
+    xyz.x       += 9.7470e-14f * sqrt(PI2 * 4.5282e+09f) * cos(2.2399e+06f * phase + shift.x) * exp(-4.5282e+09f * phase * phase);
+    xyz         /= 1.0685e-7f;
+
+    return float3(
+        dot(float3( 3.2404542f, -1.5371385f, -0.4985314f), xyz),
+        dot(float3(-0.9692660f,  1.8760108f,  0.0415560f), xyz),
+        dot(float3( 0.0556434f, -0.2040259f,  1.0572252f), xyz)
+    );
+}
+
+// reflectance of a film of thickness_nm over a base of reflectance base_f0, seen from a medium of outside_ior
+float3 thin_film_reflectance(float outside_ior, float cos_theta1, float thickness_nm, float3 base_f0)
+{
+    // a vanishing film fades into the outside medium instead of popping
+    float film_ior = lerp(outside_ior, paint_film_ior, smoothstep(0.0f, 30.0f, thickness_nm));
+
+    float sin_theta2_sq = (outside_ior / film_ior) * (outside_ior / film_ior) * (1.0f - cos_theta1 * cos_theta1);
+    float cos_theta2_sq = 1.0f - sin_theta2_sq;
+    if (cos_theta2_sq <= 0.0f)
+        return 1.0f;
+    float cos_theta2 = sqrt(cos_theta2_sq);
+
+    // outside to film
+    float r0    = (film_ior - outside_ior) / (film_ior + outside_ior);
+    float R12   = thin_film_schlick(r0 * r0, cos_theta1).x;
+    float T121  = 1.0f - R12;
+    float phi12 = film_ior < outside_ior ? PI : 0.0f;
+    float phi21 = PI - phi12;
+
+    // film to base
+    float3 sqrt_f0  = sqrt(clamp(base_f0, 0.0f, 0.9999f));
+    float3 base_ior = (1.0f + sqrt_f0) / (1.0f - sqrt_f0);
+    float3 r1       = (base_ior - film_ior) / (base_ior + film_ior);
+    float3 R23      = thin_film_schlick(r1 * r1, cos_theta2);
+    float3 phi23    = float3(base_ior.x < film_ior ? PI : 0.0f, base_ior.y < film_ior ? PI : 0.0f, base_ior.z < film_ior ? PI : 0.0f);
+
+    float  opd  = 2.0f * film_ior * thickness_nm * cos_theta2;
+    float3 phi  = phi21 + phi23;
+    float3 R123 = clamp(R12 * R23, 1e-5f, 0.9999f);
+    float3 r123 = sqrt(R123);
+    float3 Rs   = T121 * T121 * R23 / (1.0f - R123);
+
+    float3 I  = R12 + Rs;
+    float3 Cm = Rs - T121;
+    [unroll]
+    for (int m = 1; m <= 2; m++)
+    {
+        Cm *= r123;
+        I  += Cm * 2.0f * thin_film_sensitivity((float)m * opd, (float)m * phi);
+    }
+
+    return max(I, 0.0f);
+}
+
+// the film sits under the clear coat, it shifts the base specular and the flake colour with the view
+void paint_iridescence(float weight, float thickness_nm, float clearcoat, float n_dot_v, inout float3 F0, inout float3 flake_color)
+{
+    if (weight <= 0.0f)
+        return;
+
+    float outside_ior = lerp(1.0f, paint_coat_ior, saturate(clearcoat));
+    F0                = lerp(F0, thin_film_reflectance(outside_ior, n_dot_v, thickness_nm, F0), weight);
+    flake_color       = lerp(flake_color, thin_film_reflectance(outside_ior, n_dot_v, thickness_nm, flake_color), weight);
+}
+
 // roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
 float get_rt_reflection_roughness(float2 uv, out float coat)
 {

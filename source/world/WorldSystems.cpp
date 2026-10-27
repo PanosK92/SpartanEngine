@@ -155,6 +155,7 @@ namespace spartan::world_systems
             SP_PROFILE_CPU_START("vehicle_particle_wake_tick");
             vehicle_particle_wake::Tick(dt);
             SP_PROFILE_CPU_END();
+            Car::TickShowroomPanel();
         };
         callbacks.controls = [] { CameraController::Tick(); };
         callbacks.load = [](pugi::xml_node& node) { queue_companion_script(node); };

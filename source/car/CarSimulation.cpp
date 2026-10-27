@@ -5421,8 +5421,13 @@ namespace car
     {
             if (parked)
             {
+                // a parked car keeps its pedals released and the handbrake on, the wheel can still be turned from outside
+                const float max_change = spec.steering_rate * dt;
+                const float diff       = input_target.steering - input.steering;
+                const float steering   = (fabsf(diff) <= max_change) ? input_target.steering : input.steering + ((diff > 0) ? max_change : -max_change);
                 input = {};
                 input.handbrake = 1.0f;
+                input.steering  = steering;
                 return;
             }
 

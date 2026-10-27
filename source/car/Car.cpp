@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../profiling/Profiler.h"
 #include "../physics/PhysicsWorld.h"
 #include "CarHud.h"
+#include "CarPaints.h"
 #include "CarSimulation.h"
 #include "CarDebug.h"
 #include "CarEngineSoundSynthesis.h"
@@ -44,6 +45,7 @@ namespace spartan
     std::vector<Car*> Car::s_cars;
     Car* Car::s_spectated          = nullptr;
     bool Car::s_car_picker_on_foot = false;
+    bool Car::s_paint_picker_hidden = false;
 
     // shared entities use external linkage and resolve lazily during world load
     Entity* default_camera = nullptr;
@@ -56,6 +58,8 @@ namespace spartan
         constexpr float car_spawn_margin = 1.0f;
         // how far from the car surface the player can be and still get in
         constexpr float car_enter_reach = 2.5f;
+        // weave repeats per body uv unit for the carbon finish
+        constexpr float carbon_weave_tiling = 40.0f;
 
         float get_car_lower_extent(const car::car_preset& preset)
         {
@@ -373,6 +377,37 @@ namespace spartan
         car->m_paint_preset   = config.paint_preset;
         car->m_paint_color    = config.paint_color;
         car->m_customize_materials = config.customize_materials;
+        car->m_paint_picker   = config.paint_picker;
+        if (!config.paint_name.empty())
+        {
+            const std::string wanted = to_lower_copy(config.paint_name);
+            for (int i = 0; i < car_paints::palette_count; i++)
+            {
+                if (to_lower_copy(car_paints::palette[i].name) == wanted)
+                {
+                    car->m_paint_index = i;
+                    break;
+                }
+            }
+
+            if (car->m_paint_index < 0)
+            {
+                SP_LOG_WARNING("unknown car paint '%s', keeping paint_preset and paint_color", config.paint_name.c_str());
+            }
+        }
+
+        if (!config.paint_finish.empty())
+        {
+            const std::string wanted = to_lower_copy(config.paint_finish);
+            for (int i = 0; i < car_paints::finish_count; i++)
+            {
+                if (to_lower_copy(car_paints::finishes[i].name) == wanted)
+                {
+                    car->m_paint_finish = i;
+                    break;
+                }
+            }
+        }
 
         if (config.drivable)
         {
@@ -477,6 +512,9 @@ namespace spartan
         config.paint_color.g  = node.attribute("paint_color_g").as_float(config.paint_color.g);
         config.paint_color.b  = node.attribute("paint_color_b").as_float(config.paint_color.b);
         config.paint_color.a  = node.attribute("paint_color_a").as_float(config.paint_color.a);
+        config.paint_name     = node.attribute("paint").as_string("");
+        config.paint_picker   = node.attribute("paint_picker").as_bool(false);
+        config.paint_finish   = node.attribute("paint_finish").as_string("");
 
         Car* car = Create(config);
         if (car && parent)
@@ -833,8 +871,10 @@ namespace spartan
 
     void Car::SetHeadlights(CarHeadlights mode)
     {
-        m_headlights = mode;
-        m_rear_lamps = mode != CarHeadlights::Off;
+        m_headlights     = mode;
+        m_rear_lamps     = mode != CarHeadlights::Off;
+        m_lamps_switched = true;
+        ApplyLamps();
     }
 
     void Car::CycleHeadlights()
@@ -1551,6 +1591,231 @@ namespace spartan
         m_chase_camera.pitch_bias = std::clamp(m_chase_camera.pitch_bias, -pitch_bias_max, pitch_bias_max);
     }
 
+    void Car::ApplyPaint(Material* material, RHI_Texture* original_color_texture) const
+    {
+        if (!material)
+        {
+            return;
+        }
+
+        using car_paints::finish;
+        const car_paints::paint* paint = (m_paint_index >= 0 && m_paint_index < car_paints::palette_count) ? &car_paints::palette[m_paint_index] : nullptr;
+        const MaterialPaintPreset preset = paint ? paint->preset : m_paint_preset;
+        const Color color                = m_paint_color;
+        const finish paint_finish        = static_cast<finish>(std::clamp(m_paint_finish, 0, car_paints::finish_count - 1));
+
+        // the colour at full brightness, and how far from grey it is, so chrome and carbon tint by hue but stay neutral for greys
+        const float peak       = std::max({ color.r, color.g, color.b, 1e-4f });
+        const float trough     = std::min({ color.r, color.g, color.b });
+        const Color hue        = Color(color.r / peak, color.g / peak, color.b / peak, 1.0f);
+        const float saturation = std::clamp((peak - trough) / peak, 0.0f, 1.0f);
+
+        auto set_rgb = [material](MaterialProperty r, MaterialProperty g, MaterialProperty b, const Color& value)
+        {
+            material->SetPropertyRuntime(r, value.r);
+            material->SetPropertyRuntime(g, value.g);
+            material->SetPropertyRuntime(b, value.b);
+        };
+        auto mix = [](const Color& a, const Color& b, float t)
+        {
+            return Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1.0f);
+        };
+        const Color white = Color(1.0f, 1.0f, 1.0f, 1.0f);
+
+        // only carbon swaps the colour map, every other finish gets the body's own back
+        const bool carbon = paint_finish == finish::carbon;
+        material->SetTexture(MaterialTextureType::Color, carbon && m_carbon_weave ? m_carbon_weave : original_color_texture, 0, false);
+
+        switch (paint_finish)
+        {
+            case finish::original:
+            {
+                material->ApplyPaintPreset(preset, color, false);
+                if (!paint)
+                {
+                    break;
+                }
+
+                if (paint->pr || paint->pg || paint->pb)
+                {
+                    set_rgb(MaterialProperty::PearlColorR, MaterialProperty::PearlColorG, MaterialProperty::PearlColorB,
+                        Color(car_paints::srgb_to_linear(paint->pr), car_paints::srgb_to_linear(paint->pg), car_paints::srgb_to_linear(paint->pb), 1.0f));
+                }
+
+                // a tri-coat's tinted mid coat carries the paint's own hue, the preset's tint is red
+                if (preset == MaterialPaintPreset::Candy)
+                {
+                    set_rgb(MaterialProperty::CoatTintR, MaterialProperty::CoatTintG, MaterialProperty::CoatTintB, hue);
+                }
+
+                material->SetPropertyRuntime(MaterialProperty::Iridescence,          paint->iridescence);
+                material->SetPropertyRuntime(MaterialProperty::IridescenceThickness, paint->iridescence_thickness);
+                break;
+            }
+            case finish::solid:     material->ApplyPaintPreset(MaterialPaintPreset::GlossSolid, color, false); break;
+            case finish::metallic: material->ApplyPaintPreset(MaterialPaintPreset::Metallic,   color, false); break;
+            case finish::satin:     material->ApplyPaintPreset(MaterialPaintPreset::Satin,      color, false); break;
+            case finish::matte:        material->ApplyPaintPreset(MaterialPaintPreset::Matte,      color, false); break;
+            case finish::pearl:
+            {
+                material->ApplyPaintPreset(MaterialPaintPreset::Pearl, color, false);
+                set_rgb(MaterialProperty::PearlColorR, MaterialProperty::PearlColorG, MaterialProperty::PearlColorB, mix(hue, white, 0.55f));
+                break;
+            }
+            case finish::tricoat:
+            {
+                material->ApplyPaintPreset(MaterialPaintPreset::Candy, color, false);
+                set_rgb(MaterialProperty::CoatTintR, MaterialProperty::CoatTintG, MaterialProperty::CoatTintB, hue);
+                break;
+            }
+            case finish::iridescent:
+            {
+                material->ApplyPaintPreset(MaterialPaintPreset::Pearl, color, false);
+                set_rgb(MaterialProperty::PearlColorR, MaterialProperty::PearlColorG, MaterialProperty::PearlColorB, mix(hue, white, 0.5f));
+                material->SetPropertyRuntime(MaterialProperty::Iridescence,          1.0f);
+                material->SetPropertyRuntime(MaterialProperty::IridescenceThickness, paint && paint->iridescence > 0.0f ? paint->iridescence_thickness : 420.0f);
+                break;
+            }
+            case finish::chameleon:
+            {
+                // the flip pigment's own teal and violet travel over the colour, a thick film adds the higher order hues
+                material->ApplyPaintPreset(MaterialPaintPreset::Chameleon, color, false);
+                material->SetPropertyRuntime(MaterialProperty::Iridescence,          0.65f);
+                material->SetPropertyRuntime(MaterialProperty::IridescenceThickness, 760.0f);
+                break;
+            }
+            case finish::chrome:
+            {
+                material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
+                set_rgb(MaterialProperty::ColorR, MaterialProperty::ColorG, MaterialProperty::ColorB, mix(Color(0.95f, 0.94f, 0.92f, 1.0f), mix(Color(0.0f, 0.0f, 0.0f, 1.0f), hue, 0.92f), saturation * 0.85f));
+                break;
+            }
+            case finish::carbon:
+            {
+                // the preset reads the weave map that was just bound to pick its albedo
+                material->ApplySurfacePreset(MaterialSurfacePreset::CarbonFiber, false);
+                const float tint = m_carbon_weave ? 0.6f : 0.015f;
+                set_rgb(MaterialProperty::ColorR, MaterialProperty::ColorG, MaterialProperty::ColorB, mix(Color(tint, tint * 1.05f, tint * 1.1f, 1.0f), mix(Color(0.0f, 0.0f, 0.0f, 1.0f), hue, tint * 1.4f), saturation * 0.7f));
+                material->SetPropertyRuntime(MaterialProperty::TextureTilingX, carbon_weave_tiling);
+                material->SetPropertyRuntime(MaterialProperty::TextureTilingY, carbon_weave_tiling);
+                break;
+            }
+            default:
+            {
+                material->ApplyPaintPreset(preset, color, false);
+                break;
+            }
+        }
+    }
+
+    void Car::ApplyPaintAll()
+    {
+        for (size_t i = 0; i < m_paint_materials.size(); i++)
+        {
+            ApplyPaint(m_paint_materials[i].get(), i < m_paint_color_textures.size() ? m_paint_color_textures[i] : nullptr);
+        }
+    }
+
+    void Car::SetPaint(int palette_index)
+    {
+        m_paint_index = (palette_index >= 0 && palette_index < car_paints::palette_count) ? palette_index : -1;
+        if (m_paint_index >= 0)
+        {
+            const car_paints::paint& paint = car_paints::palette[m_paint_index];
+            m_paint_preset = paint.preset;
+            m_paint_color  = Color(car_paints::srgb_to_linear(paint.r), car_paints::srgb_to_linear(paint.g), car_paints::srgb_to_linear(paint.b), 1.0f);
+        }
+
+        ApplyPaintAll();
+    }
+
+    void Car::SetPaintFinish(int finish_index)
+    {
+        m_paint_finish = std::clamp(finish_index, 0, car_paints::finish_count - 1);
+        ApplyPaintAll();
+    }
+
+    void Car::SetRearLamps(bool on)
+    {
+        m_rear_lamps     = on;
+        m_lamps_switched = true;
+        ApplyLamps();
+    }
+
+    bool Car::HasSwitchableLamps() const
+    {
+        return HasLights() || !m_lamp_white.empty() || !m_lamp_red.empty();
+    }
+
+    void Car::ApplyLamps()
+    {
+        // the lamp entities follow the switches through car_lights.lua, the lenses follow them here
+        // until something switches the lamps the lenses keep the glow they are authored with
+        if (!m_lamps_switched)
+        {
+            return;
+        }
+
+        const float front = m_headlights == CarHeadlights::Off ? 0.0f : (m_headlights == CarHeadlights::High ? 1.6f : 1.0f);
+        for (const LampMaterial& lamp : m_lamp_white)
+        {
+            lamp.material->SetPropertyRuntime(MaterialProperty::EmissiveFromAlbedo, lamp.emission * front);
+        }
+        for (const LampMaterial& lamp : m_lamp_red)
+        {
+            lamp.material->SetPropertyRuntime(MaterialProperty::EmissiveFromAlbedo, m_rear_lamps ? lamp.emission : 0.0f);
+        }
+    }
+
+    void Car::SetSteeringRequest(float value)
+    {
+        m_steering_request = std::clamp(value, -1.0f, 1.0f);
+        SetSteering(m_steering_request);
+    }
+    Material* Car::GetPaintMaterial() const
+    {
+        return m_paint_materials.empty() ? nullptr : m_paint_materials.front().get();
+    }
+
+    void Car::SetPaintProperty(MaterialProperty property, float value)
+    {
+        for (const std::shared_ptr<Material>& material : m_paint_materials)
+        {
+            material->SetPropertyRuntime(property, value);
+        }
+    }
+
+    void Car::TickShowroomPanel()
+    {
+        if (!Engine::IsFlagSet(EngineMode::Playing))
+        {
+            return;
+        }
+
+        Car* showroom_car = nullptr;
+        for (Car* car : GetAll())
+        {
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            if (car && car->m_paint_picker && !car->m_cinematic && !car->IsViewed() && !car->m_paint_materials.empty() && root && root->IsActive())
+            {
+                showroom_car = car;
+                break;
+            }
+        }
+
+        if (!showroom_car)
+        {
+            return;
+        }
+
+        if (Input::GetKeyDown(KeyCode::P) && !Input::GetKey(KeyCode::Ctrl_Left))
+        {
+            s_paint_picker_hidden = !s_paint_picker_hidden;
+        }
+
+        car_hud::draw_showroom_panel(showroom_car, s_paint_picker_hidden);
+    }
+
     math::BoundingBox Car::GetCarAABB() const
     {
         if (!m_body_entity)
@@ -1647,6 +1912,19 @@ namespace spartan
             std::vector<Entity*> descendants;
             car_entity->GetDescendants(&descendants);
             CarMaterialClones material_clones;
+            m_paint_materials.clear();
+            m_paint_color_textures.clear();
+            m_carbon_weave = nullptr;
+            m_lamp_white.clear();
+            m_lamp_red.clear();
+            auto add_lamp = [](std::vector<LampMaterial>& lamps, const std::shared_ptr<Material>& material)
+            {
+                const bool known = std::any_of(lamps.begin(), lamps.end(), [&material](const LampMaterial& lamp) { return lamp.material == material; });
+                if (!known)
+                {
+                    lamps.push_back({ material, material->GetProperty(MaterialProperty::EmissiveFromAlbedo) });
+                }
+            };
             auto clone_material =
                 [&](Render* render, const char* slot_name)
                 {
@@ -1683,7 +1961,11 @@ namespace spartan
                         if (std::shared_ptr<Material> material =
                             clone_material(render, "body_paint"))
                         {
-                            material->ApplyPaintPreset(m_paint_preset, m_paint_color, false);
+                            if (std::find(m_paint_materials.begin(), m_paint_materials.end(), material) == m_paint_materials.end())
+                            {
+                                m_paint_materials.push_back(material);
+                                m_paint_color_textures.push_back(material->GetTexture(MaterialTextureType::Color));
+                            }
                         }
                         break;
                     }
@@ -1693,6 +1975,10 @@ namespace spartan
                             clone_material(render, "carbon_trim"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::CarbonFiber, false);
+                            if (!m_carbon_weave)
+                            {
+                                m_carbon_weave = material->GetTexture(MaterialTextureType::Color);
+                            }
                         }
                         break;
                     }
@@ -1801,6 +2087,7 @@ namespace spartan
                             clone_material(render, "emissive_red_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveRedLight, false);
+                            add_lamp(m_lamp_red, material);
                         }
                         break;
                     }
@@ -1810,6 +2097,7 @@ namespace spartan
                             clone_material(render, "emissive_white_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveWhiteLight, false);
+                            add_lamp(m_lamp_white, material);
                         }
                         break;
                     }
@@ -1820,6 +2108,10 @@ namespace spartan
                     }
                 }
             }
+
+            // painted after the walk, the carbon finish needs the trim's weave which can come later in the hierarchy
+            ApplyPaintAll();
+            ApplyLamps();
         }
 
         return car_entity;

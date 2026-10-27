@@ -107,6 +107,40 @@ namespace spartan
             vector<Physics*> floating_bodies;      // created dynamic bodies eligible for buoyancy
         }
 
+        // a kinematic body is moved once per frame but simulated in several fixed steps, so its frame motion is
+        // spread over those steps, a single jump would leave it with zero velocity in the others and anything
+        // that reads its velocity (tires on a turntable or a lift) would see it stand still
+        namespace kinematic
+        {
+            struct motion
+            {
+                const Physics* owner = nullptr;
+                PxRigidDynamic* actor = nullptr;
+                PxTransform from;
+                PxTransform to;
+            };
+            vector<motion> motions; // guarded by the physx mutex
+
+            void forget(const Physics* owner)
+            {
+                motions.erase(remove_if(motions.begin(), motions.end(), [owner](const motion& entry) { return entry.owner == owner; }), motions.end());
+            }
+
+            void queue(const Physics* owner, PxRigidDynamic* actor, const PxTransform& target)
+            {
+                for (motion& entry : motions)
+                {
+                    if (entry.actor == actor)
+                    {
+                        // frames without a step keep the start of the motion and extend it
+                        entry.to = target;
+                        return;
+                    }
+                }
+                motions.push_back({ owner, actor, actor->getGlobalPose(), target });
+            }
+        }
+
     }
 
     Physics::Physics(Entity* entity) : Component(entity)
@@ -196,6 +230,7 @@ namespace spartan
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
         PhysicsWorld::UnregisterStepCallback(this);
+        kinematic::forget(this);
         buoyancy::floating_bodies.erase(remove(buoyancy::floating_bodies.begin(), buoyancy::floating_bodies.end(), this), buoyancy::floating_bodies.end());
         if (m_custom_body)
         {
@@ -611,13 +646,14 @@ namespace spartan
             {
                 if (m_is_kinematic && dynamic)
                 {
-                    // sync entity -> physx (kinematic target)
+                    // sync entity -> physx (kinematic target, reached over this frame's fixed steps)
                     math::Matrix transform = get_transform();
                     if (transform == math::Matrix())
                     {
                         continue;
                     }
-                    dynamic->setKinematicTarget(to_px_transform(transform));
+                    lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+                    kinematic::queue(this, dynamic, to_px_transform(transform));
                 }
                 else
                 {
@@ -661,6 +697,35 @@ namespace spartan
         }
     }
 
+    void Physics::TickKinematics(uint32_t step_index, uint32_t step_count)
+    {
+        // called from the fixed step loop which already holds the physx mutex
+        if (step_count == 0)
+        {
+            return;
+        }
+
+        const float t = static_cast<float>(step_index + 1) / static_cast<float>(step_count);
+        for (const kinematic::motion& entry : kinematic::motions)
+        {
+            if (!entry.actor->getScene())
+            {
+                continue;
+            }
+
+            // shortest arc, a quaternion and its negation are the same rotation
+            const PxQuat to_rotation = entry.from.q.dot(entry.to.q) < 0.0f ? -entry.to.q : entry.to.q;
+            PxQuat rotation          = entry.from.q * (1.0f - t) + to_rotation * t;
+            rotation.normalize();
+            entry.actor->setKinematicTarget(PxTransform(entry.from.p + (entry.to.p - entry.from.p) * t, rotation));
+        }
+
+        if (step_index + 1 == step_count)
+        {
+            kinematic::motions.clear();
+        }
+    }
+
     void Physics::ShiftOrigin(const Vector3& shift)
     {
         // The scene has shifted its actors and joint caches. CCT state, removed
@@ -668,6 +733,11 @@ namespace spartan
         // to the engine and must follow once, without moving any entity.
         const PxVec3 delta(shift.x, shift.y, shift.z);
         if (controller_manager) controller_manager->shiftOrigin(delta);
+        for (kinematic::motion& entry : kinematic::motions)
+        {
+            entry.from.p -= delta;
+            entry.to.p   -= delta;
+        }
         for (Physics* component : buoyancy::bodies)
         {
             for (void* entry : component->m_actors)
@@ -2758,6 +2828,7 @@ namespace spartan
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
         // release the old set, distance activation may have already pulled some out of the scene
+        kinematic::forget(this);
         for (auto* body : m_actors)
         {
             if (body)

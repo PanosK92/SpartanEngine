@@ -3681,6 +3681,8 @@ namespace spartan
                 properties[count].coat_tint.y           = material->GetProperty(MaterialProperty::CoatTintG);
                 properties[count].coat_tint.z           = material->GetProperty(MaterialProperty::CoatTintB);
                 properties[count].coat_tint.w           = material->GetProperty(MaterialProperty::CoatTintStrength);
+                properties[count].iridescence           = material->GetProperty(MaterialProperty::Iridescence);
+                properties[count].iridescence_thickness = material->GetProperty(MaterialProperty::IridescenceThickness);
                 {
                     const float emissive_r       = material->GetProperty(MaterialProperty::EmissiveColorR);
                     const float emissive_g       = material->GetProperty(MaterialProperty::EmissiveColorG);

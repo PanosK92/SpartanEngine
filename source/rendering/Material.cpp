@@ -72,6 +72,8 @@ namespace spartan
                 case MaterialProperty::CoatTintG:                  return "coat_tint_g";
                 case MaterialProperty::CoatTintB:                  return "coat_tint_b";
                 case MaterialProperty::CoatTintStrength:           return "coat_tint_strength";
+                case MaterialProperty::Iridescence:                return "iridescence";
+                case MaterialProperty::IridescenceThickness:       return "iridescence_thickness";
                 case MaterialProperty::Ior:                        return "ior";
                 case MaterialProperty::Absorption:                 return "absorption";
                 case MaterialProperty::Thickness:                  return "thickness";
@@ -732,6 +734,7 @@ namespace spartan
         SetProperty(MaterialProperty::CoatTintR,      1.0f);
         SetProperty(MaterialProperty::CoatTintG,      1.0f);
         SetProperty(MaterialProperty::CoatTintB,      1.0f);
+        SetProperty(MaterialProperty::IridescenceThickness, 400.0f);
         SetProperty(MaterialProperty::Ior,            EnumToIor(MaterialIor::Glass));
         // a black emissive color leaves the emission map untinted, so older files keep their look
         SetProperty(MaterialProperty::EmissiveIntensity, 1.0f);
@@ -1666,6 +1669,8 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::CoatTintG,            1.0f, false);
         SetPropertyInternal(MaterialProperty::CoatTintB,            1.0f, false);
         SetPropertyInternal(MaterialProperty::CoatTintStrength,     0.0f, false);
+        SetPropertyInternal(MaterialProperty::Iridescence,          0.0f, false);
+        SetPropertyInternal(MaterialProperty::IridescenceThickness, 400.0f, false);
         SetPropertyInternal(MaterialProperty::Ior,                  EnumToIor(MaterialIor::Glass), false);
         SetPropertyInternal(MaterialProperty::Absorption,           0.0f, false);
         SetPropertyInternal(MaterialProperty::Thickness,            0.0f, false);

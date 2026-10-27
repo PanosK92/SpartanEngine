@@ -2671,11 +2671,13 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             const float flake = material->GetProperty(MaterialProperty::FlakeStrength);
             const float pearl = material->GetProperty(MaterialProperty::PearlStrength);
             const float coat  = material->GetProperty(MaterialProperty::CoatTintStrength);
-            const bool in_use = flake > 0.0f || pearl > 0.0f || coat > 0.0f || material->GetProperty(MaterialProperty::PaintPreset) > 0.0f;
+            const float film  = material->GetProperty(MaterialProperty::Iridescence);
+            const bool in_use = flake > 0.0f || pearl > 0.0f || coat > 0.0f || film > 0.0f || material->GetProperty(MaterialProperty::PaintPreset) > 0.0f;
             string active;
             if (flake > 0.0f) active += "flakes";
             if (pearl > 0.0f) active += (active.empty() ? "" : " \xC2\xB7 ") + string("pearl");
             if (coat > 0.0f)  active += (active.empty() ? "" : " \xC2\xB7 ") + string("tinted coat");
+            if (film > 0.0f)  active += (active.empty() ? "" : " \xC2\xB7 ") + string("iridescence");
 
             if (layout::fold("Car paint", in_use, active.empty() ? "off" : active.c_str()))
             {
@@ -2734,6 +2736,20 @@ void Properties::ShowMaterial(Material* material, Render* render) const
                         material->SetProperty(MaterialProperty::CoatTintR, coat_tint[0]);
                         material->SetProperty(MaterialProperty::CoatTintG, coat_tint[1]);
                         material->SetProperty(MaterialProperty::CoatTintB, coat_tint[2]);
+                    }
+                }
+
+                value = film;
+                if (property_percent("Iridescence", &value, "A thin film under the coat, the color travels through hues with the viewing angle."))
+                {
+                    material->SetProperty(MaterialProperty::Iridescence, value);
+                }
+                if (film > 0.0f)
+                {
+                    value = material->GetProperty(MaterialProperty::IridescenceThickness);
+                    if (property_slider("Film thickness", &value, 100.0f, 1200.0f, "%.0f nm", "Which hues the film shifts through, thin films give gold and blue, thick ones pastel greens and pinks.", ImGuiSliderFlags_AlwaysClamp))
+                    {
+                        material->SetProperty(MaterialProperty::IridescenceThickness, value);
                     }
                 }
             }

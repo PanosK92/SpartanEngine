@@ -174,6 +174,7 @@ struct Surface
             albedo = paint_albedo;
         }
         F0                   = lerp(F0, pearl_color, pearl_blend * 0.35f);
+        paint_iridescence(saturate(material.iridescence) * (1.0f - decal_coverage), material.iridescence_thickness, clearcoat, n_dot_v, F0, flake_color);
     }
 };
 

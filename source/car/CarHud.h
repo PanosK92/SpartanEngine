@@ -25,6 +25,9 @@ namespace spartan
         // every car in play, top right, returns the one the player clicked: drive it if it is free, spectate it if someone else drives
         Car* draw_car_picker(Car* viewed);
 
+        // showroom paint panel, top left: ferrari factory colours and a finish lab, applied live to the car
+        void draw_showroom_panel(Car* car, bool collapsed);
+
         struct service_row
         {
             const char* name   = "";

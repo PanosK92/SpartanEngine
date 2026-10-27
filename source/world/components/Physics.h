@@ -106,6 +106,7 @@ namespace spartan
 
         // fft water buoyancy, runs once per fixed physics step for every dynamic body
         static void TickBuoyancy();
+        static void TickKinematics(uint32_t step_index, uint32_t step_count);
         static void ShiftOrigin(const math::Vector3& shift);
 
         // mass

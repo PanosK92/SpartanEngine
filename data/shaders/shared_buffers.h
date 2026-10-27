@@ -730,8 +730,8 @@ struct MaterialParameters
 
     SHARED_FLOAT alpha_cutoff SHARED_DEFAULT(0.6f);
     SHARED_FLOAT alpha_blend  SHARED_DEFAULT(0.0f); // transparent pixels blend over the background by alpha instead of shading as glass
-    SHARED_FLOAT padding_material_1 SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT padding_material_2 SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT iridescence           SHARED_DEFAULT(0.0f); // thin film weight over the paint
+    SHARED_FLOAT iridescence_thickness SHARED_DEFAULT(0.0f); // thin film thickness in nanometres
 
     SHARED_FLOAT pearl_strength;
     SHARED_FLOAT ior;

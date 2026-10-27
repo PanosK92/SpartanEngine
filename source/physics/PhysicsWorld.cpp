@@ -561,6 +561,7 @@ namespace spartan
                 // buoyancy from the fft water, applied per step so the force integrates consistently
                 Physics::TickBuoyancy();
                 SP_PROFILE_CPU_END();
+                Physics::TickKinematics(step_index, count);
                 SP_PROFILE_CPU_START("physics_simulate");
                 SP_PROFILE_CPU_START("physics_dispatch");
                 scene->simulate(step);

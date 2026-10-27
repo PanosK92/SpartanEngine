@@ -75,6 +75,8 @@ namespace spartan
         CoatTintG,                  // tinted clearcoat green
         CoatTintB,                  // tinted clearcoat blue
         CoatTintStrength,           // tinted clearcoat strength
+        Iridescence,                // thin film interference over the specular and the flakes (gltf KHR_materials_iridescence factor)
+        IridescenceThickness,       // thin film thickness in nanometres, sets which hues the film shifts through
         Ior,                        // index of refraction
         Absorption,                 // beer lambert dye density for glass, independent of alpha
         Thickness,                  // glass shell thickness in meters
