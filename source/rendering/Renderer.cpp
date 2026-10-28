@@ -869,10 +869,11 @@ namespace spartan
         // rebuild/draw a half-published world or compete with its bulk uploads.
         const bool render_world             = can_render && !World::IsLoadingFromFile();
 
+        // the swapchain image is acquired late, right before the back buffer blit, so the cpu doesn't
+        // block on scanout before it has even recorded the frame
         if (can_render)
         {
             RotateFrameBuffers();
-            RHI_Device::AcquireSwapChainImage();
         }
         else if (m_frame_num > 0)
         {
@@ -1013,6 +1014,21 @@ namespace spartan
         {
             UpdateFrameConstantBuffer();
             ProduceFrame();
+
+            // lighting through post is recorded, hand it to the gpu now, otherwise it waits for the
+            // editor ui and the swapchain acquire, the final list only blits, draws the ui and presents
+            if (!Xr::IsSessionRunning() && RHI_Device::IsRecording(RHI_Frame_List::Graphics))
+            {
+                RHI_Device::Submit(
+                    RHI_Frame_List::Graphics,
+                    nullptr,
+                    false,
+                    nullptr,
+                    m_cross_queue_sync.pending_compute_timeline,
+                    m_cross_queue_sync.pending_compute_timeline_value
+                );
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
+            }
         }
 
         if (xr_should_render && can_render)
@@ -1200,7 +1216,7 @@ namespace spartan
         static uint32_t options_hash  = 0;
         static float restir_scale_old = -1.0f;
 
-        const uint32_t options_hash_new = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2);
+        const uint32_t options_hash_new = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2) | (cvar_restir_pt_async.GetValueAs<bool>() << 3);
         const float    restir_scale_new = cvar_restir_pt_scale.GetValue();
 
         if (options_hash_new != options_hash || restir_scale_new != restir_scale_old)
@@ -2865,6 +2881,7 @@ namespace spartan
             if (RHI_Device::IsRecording())
             {
                 RHI_CommandList::UpdateBuffer(emissive_triangles_buffer, 0, upload_size, tris.data(), false);
+                m_cross_queue_sync.gi_upload_hazard = true;
             }
             else
             {
@@ -4332,7 +4349,6 @@ namespace spartan
                 // meshes published by a loader thread after this frame's geometry upload are drawn from the next frame
                 if (!data.mesh->IsGpuResident()) continue;
                 Render* render = data.render;
-                batch.transparent |= data.material->IsTransparent();
                 if (!data.is_visible && !needs_shadow_caster(data) &&
                     (!data.has_decals || !data.instances.empty()) && !is_gpu_culled_tessellated(data.material)) continue;
 
@@ -4350,7 +4366,8 @@ namespace spartan
                 {
                     flags |= candidate_grouped;
                 }
-                batch.transparent |= material->IsTransparent();
+                // off screen glass would push the reflection trace behind lighting for nothing
+                batch.transparent |= render->IsVisible() && material->IsTransparent();
                 batch.renders.push_back({ render, flags });
             }
         };
@@ -6409,21 +6426,104 @@ namespace spartan
                 Pass_CloudNoise();
                 m_pass_state.cloud_noise_produced = true;
             }
-            Pass_Skysphere();
         }
 
         RHI_CommandList::EndMarker();
     }
 
-    void Renderer::Pass_ComputeBatchB()
+    void Renderer::Pass_ComputeBatchB(bool include_gi)
     {
         RHI_CommandList::BeginMarker("compute_batch_b");
         Pass_ScreenSpaceAmbientOcclusion();
         Pass_ScreenSpaceShadows();
         Pass_RayTracedShadows();
+        if (include_gi)
+        {
+            Pass_ReSTIR_PathTracing();
+            Pass_ReSTIR_Denoising();
+        }
+        RHI_CommandList::EndMarker();
+    }
+
+    bool Renderer::Pass_ReSTIR_CopyGBuffer()
+    {
+        // two sets of copies are needed, so restir has to be live, ray traced and mono, and overlapping a time sliced
+        // compute queue only adds a frame of latency, so the copies are skipped there
+        const bool async_wanted = cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent();
+        if (!async_wanted || secondary_render_root_active || IsStereoView() || Window::IsMinimized() || !cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
+        {
+            m_pass_state.restir.gbuffer_copy_frames = 0;
+            return false;
+        }
+
+        const uint32_t index = m_pass_state.restir.gbuffer_copy_index ^ 1;
+        const uint32_t base  = static_cast<uint32_t>(index == 0 ? Renderer_RenderTarget::restir_gbuffer_color_0 : Renderer_RenderTarget::restir_gbuffer_color_1);
+        const Renderer_RenderTarget sources[] =
+        {
+            Renderer_RenderTarget::gbuffer_color,
+            Renderer_RenderTarget::gbuffer_normal,
+            Renderer_RenderTarget::gbuffer_material,
+            Renderer_RenderTarget::gbuffer_emissive,
+            Renderer_RenderTarget::gbuffer_velocity,
+            Renderer_RenderTarget::gbuffer_depth
+        };
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            RHI_Texture* source      = GetRenderTarget(sources[i]);
+            RHI_Texture* destination = GetRenderTarget(static_cast<Renderer_RenderTarget>(base + i));
+            if (!source || !destination || source->GetWidth() != destination->GetWidth() || source->GetHeight() != destination->GetHeight())
+            {
+                m_pass_state.restir.gbuffer_copy_frames = 0;
+                return false;
+            }
+        }
+
+        RHI_CommandList::BeginMarker("restir_gbuffer_copy");
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            RHI_CommandList::Copy(GetRenderTarget(sources[i]), GetRenderTarget(static_cast<Renderer_RenderTarget>(base + i)), false);
+        }
+        RHI_CommandList::EndMarker();
+
+        m_pass_state.restir.gbuffer_copy_index = index;
+        m_pass_state.restir.gbuffer_copy_frames++;
+        return true;
+    }
+
+    void Renderer::Pass_ReSTIR_Async()
+    {
+        // the passes resolve the gbuffer through the render target table, point it at this frame's
+        // copy and its history at last frame's copy, graphics is free to overwrite the real ones
+        const uint32_t current  = m_pass_state.restir.gbuffer_copy_index;
+        const uint32_t base     = static_cast<uint32_t>(current == 0 ? Renderer_RenderTarget::restir_gbuffer_color_0 : Renderer_RenderTarget::restir_gbuffer_color_1);
+        const uint32_t base_old = static_cast<uint32_t>(current == 0 ? Renderer_RenderTarget::restir_gbuffer_color_1 : Renderer_RenderTarget::restir_gbuffer_color_0);
+        const pair<Renderer_RenderTarget, uint32_t> redirects[] =
+        {
+            { Renderer_RenderTarget::gbuffer_color,             base + 0 },
+            { Renderer_RenderTarget::gbuffer_normal,            base + 1 },
+            { Renderer_RenderTarget::gbuffer_material,          base + 2 },
+            { Renderer_RenderTarget::gbuffer_emissive,          base + 3 },
+            { Renderer_RenderTarget::gbuffer_velocity,          base + 4 },
+            { Renderer_RenderTarget::gbuffer_depth,             base + 5 },
+            { Renderer_RenderTarget::gbuffer_normal_previous,   base_old + 1 },
+            { Renderer_RenderTarget::gbuffer_velocity_previous, base_old + 4 },
+            { Renderer_RenderTarget::gbuffer_depth_previous,    base_old + 5 }
+        };
+        auto& render_targets = GetRenderTargets();
+        auto redirect = [&]()
+        {
+            for (const auto& [target, copy] : redirects)
+            {
+                swap(render_targets[static_cast<uint32_t>(target)], render_targets[copy]);
+            }
+        };
+
+        redirect();
+        RHI_CommandList::BeginMarker("restir_async");
         Pass_ReSTIR_PathTracing();
         Pass_ReSTIR_Denoising();
         RHI_CommandList::EndMarker();
+        redirect();
     }
 
     void Renderer::Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async)
@@ -6461,7 +6561,24 @@ namespace spartan
         }
     }
 
-    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer)
+    void Renderer::WaitForAsyncFog()
+    {
+        if (!m_cross_queue_sync.fog_timeline)
+        {
+            return;
+        }
+
+        // everything recorded so far only needed compute b, the rest of the frame also reads the fog
+        RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, m_cross_queue_sync.pending_compute_timeline, m_cross_queue_sync.pending_compute_timeline_value);
+        RHI_Device::Bind(RHI_Frame_List::Graphics);
+        m_cross_queue_sync.pending_compute_timeline       = m_cross_queue_sync.fog_timeline;
+        m_cross_queue_sync.pending_compute_timeline_value = m_cross_queue_sync.fog_timeline_value;
+        RHI_Device::SetFrameWait(m_cross_queue_sync.fog_timeline, m_cross_queue_sync.fog_timeline_value);
+        m_cross_queue_sync.fog_timeline       = nullptr;
+        m_cross_queue_sync.fog_timeline_value = 0;
+    }
+
+    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early)
     {
         Pass_Light(false, eye_layer);
         Pass_Light_Composition(false, eye_layer);
@@ -6469,7 +6586,7 @@ namespace spartan
         // otherwise anything behind glass that is not in direct light reads as black
         Pass_Light_Ibl(false, eye_layer);
 
-        const bool clouds_prepared = Pass_Clouds_Prepare(eye_layer);
+        const bool clouds_prepared = early_work_recorded ? clouds_prepared_early : Pass_Clouds_Prepare(eye_layer);
         RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
         if (clouds_prepared)
         {
@@ -6489,12 +6606,16 @@ namespace spartan
         }
 
         // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
-        Pass_Reflections_Trace(eye_layer);
+        if (!early_work_recorded || m_transparents_present)
+        {
+            Pass_Reflections_Trace(eye_layer);
+        }
 
         if (m_transparents_present)
         {
             Pass_Light_Ibl(true, eye_layer);
         }
+        WaitForAsyncFog();
         Pass_Reflections_Shade(eye_layer);
         Pass_Reflections_Denoise(eye_layer);
 
@@ -6591,7 +6712,11 @@ namespace spartan
                 upload.texture->UpdateRegion(upload.x, upload.y, upload.width, upload.height, upload.data.data(), true);
             }
         }
-        RHI_Work uploads = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+        // the emissive pool is rewritten in place, last frame's async gi may still be sampling it
+        RHI_SyncPrimitive* uploads_wait_timeline = m_cross_queue_sync.gi_upload_hazard ? m_cross_queue_sync.gi_timeline : nullptr;
+        const uint64_t uploads_wait_value        = uploads_wait_timeline ? m_cross_queue_sync.gi_timeline_value : 0;
+        m_cross_queue_sync.gi_upload_hazard      = false;
+        RHI_Work uploads = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, uploads_wait_timeline, uploads_wait_value);
 
         RHI_Device::Bind(RHI_Frame_List::ComputeA);
         Pass_ComputeBatchA(update_skysphere);
@@ -6608,6 +6733,30 @@ namespace spartan
         m_cross_queue_sync.pending_compute_timeline       = batch_a_timeline;
         m_cross_queue_sync.pending_compute_timeline_value = batch_a_value;
         RHI_Device::SetFrameWait(batch_a_timeline, batch_a_value);
+
+        // the sky is first read by the reflection trace, on its own list the scatter work the gbuffer waits on queues ahead of it
+        RHI_CommandList* sky_commands = nullptr;
+        RHI_Work sky_work;
+        if (update_skysphere)
+        {
+            sky_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+            sky_commands->Begin();
+            RHI_Device::Bind(sky_commands);
+            Pass_Skysphere();
+        }
+        auto submit_sky = [&]()
+        {
+            if (!sky_commands)
+            {
+                return;
+            }
+            sky_commands->Submit(nullptr, false);
+            sky_work     = sky_commands->GetWork();
+            sky_commands = nullptr;
+            m_cross_queue_sync.pending_compute_timeline       = sky_work.timeline.get();
+            m_cross_queue_sync.pending_compute_timeline_value = sky_work.value;
+            RHI_Device::SetFrameWait(sky_work.timeline.get(), sky_work.value);
+        };
 
         // the wind, the car's rain and the sea belong to the world, they advance once per frame with the primary
         RHI_Device::Bind(RHI_Frame_List::Graphics);
@@ -6629,12 +6778,14 @@ namespace spartan
             const bool fog_prepared_async = IsRayTracedShadowsActive() &&
                 !Xr::IsSessionRunning() && !IsSecondaryViewActive();
             RHI_Work scatter_work;
+            RHI_Work surface;
+            RHI_CommandList* fog_commands = nullptr;
             // the shading rate reads last frame's output and both depth prepasses consume it
             Pass_VariableRateShading();
             if (fog_prepared_async)
             {
                 Pass_Cull_Early();
-                const RHI_Work surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+                surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
                 RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 scatter_commands->Begin();
                 RHI_Device::Bind(scatter_commands);
@@ -6642,14 +6793,27 @@ namespace spartan
                 Pass_Grass_Interaction();
                 scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
                 scatter_work = scatter_commands->GetWork();
-                RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+                submit_sky();
+                // submitted after compute b, lighting waits on b alone and fog is only needed from reflections on
+                fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 fog_commands->Begin();
                 RHI_Device::Bind(fog_commands);
                 Pass_Fog(0, rhi_all_mips);
-                fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-                // Compute B follows this submission on the same queue, so its
-                // existing completion wait also covers fog before composition.
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
+            }
+            submit_sky();
+
+            // restir's history targets are render targets only, a compute list can't clear them on d3d12
+            if (!m_pass_state.restir.reservoirs_initialized && cvar_restir_pt.GetValueAs<bool>() && !secondary_render_root_active)
+            {
+                if (RHI_Texture* normal_previous = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
+                {
+                    RHI_CommandList::ClearTexture(normal_previous, Color::standard_black);
+                }
+                if (RHI_Texture* velocity_previous = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity_previous))
+                {
+                    RHI_CommandList::ClearTexture(velocity_previous, Color::standard_black);
+                }
             }
 
             Pass_GraphicsPhase1_Geometry(fog_prepared_async);
@@ -6657,8 +6821,27 @@ namespace spartan
             RHI_Work phase1 = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false,
                 nullptr, scatter_work.timeline.get(), scatter_work.value);
 
+            // restir traces from a copy of the opaque gbuffer on its own compute list, so it keeps running through
+            // lighting, post and the start of the next frame, the copy waits for the previous gi to stop reading it
+            RHI_Work gbuffer_copy;
+            const bool gbuffer_history = m_pass_state.restir.gbuffer_copy_frames > 0;
+            RHI_Device::Bind(RHI_Frame_List::Graphics);
+            if (Pass_ReSTIR_CopyGBuffer())
+            {
+                gbuffer_copy = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false,
+                    nullptr, m_cross_queue_sync.gi_timeline, m_cross_queue_sync.gi_timeline_value);
+                m_cross_queue_sync.gi_timeline       = nullptr;
+                m_cross_queue_sync.gi_timeline_value = 0;
+            }
+            const bool restir_async =
+                gbuffer_copy.timeline &&
+                gbuffer_history &&
+                cvar_restir_pt_async.GetValueAs<bool>() &&
+                m_pass_state.restir.reservoirs_initialized;
+            m_pass_state.restir.async_this_frame = restir_async;
+
             RHI_Device::Bind(RHI_Frame_List::ComputeB);
-            Pass_ComputeBatchB();
+            Pass_ComputeBatchB(!restir_async);
             RHI_Work batch_b = RHI_Device::Submit(
                 RHI_Frame_List::ComputeB,
                 nullptr,
@@ -6670,12 +6853,47 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline.get();
             const uint64_t compute_b_value        = batch_b.value;
 
+            // queue order makes the fog signal cover compute b as well
+            if (fog_commands)
+            {
+                fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
+                const RHI_Work fog_work = fog_commands->GetWork();
+                m_cross_queue_sync.fog_timeline       = fog_work.timeline.get();
+                m_cross_queue_sync.fog_timeline_value = fog_work.value;
+            }
+
+            if (restir_async)
+            {
+                RHI_CommandList* gi_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+                gi_commands->Begin();
+                RHI_Device::Bind(gi_commands);
+                Pass_ReSTIR_Async();
+                gi_commands->Submit(nullptr, false, nullptr, gbuffer_copy.timeline.get(), gbuffer_copy.value);
+                const RHI_Work gi_work = gi_commands->GetWork();
+                m_cross_queue_sync.gi_timeline       = gi_work.timeline.get();
+                m_cross_queue_sync.gi_timeline_value = gi_work.value;
+            }
+
             // Keep the animated near sun cascade alongside ray-traced shadows.
             const bool shadow_maps_required = !light_entities().empty();
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {
                 Pass_GraphicsPhase2_ShadowsAndRT();
+            }
+
+            // clouds and the opaque reflection trace read only depth, the gbuffer, the tlas and the sky, none of
+            // which compute b writes, so they fill the graphics queue while it waits for shadows and occlusion
+            const bool early_work_recorded = !IsStereoView();
+            bool clouds_prepared_early     = false;
+            if (early_work_recorded)
+            {
+                m_pcb_pass_cpu.eye_index = 0;
+                clouds_prepared_early    = Pass_Clouds_Prepare(rhi_all_mips);
+            }
+
+            if (shadow_maps_required || early_work_recorded)
+            {
                 RHI_Device::Submit(
                     RHI_Frame_List::Graphics,
                     nullptr,
@@ -6684,6 +6902,17 @@ namespace spartan
                     batch_a_timeline,
                     batch_a_value
                 );
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
+            }
+
+            // the trace misses into the sky, so it is the first graphics work that has to wait for it
+            if (early_work_recorded && !m_transparents_present)
+            {
+                Pass_Reflections_Trace(rhi_all_mips);
+            }
+            if (sky_work.timeline)
+            {
+                RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, sky_work.timeline.get(), sky_work.value);
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
 
@@ -6719,8 +6948,9 @@ namespace spartan
                 m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
                 if (!fog_prepared_async)
                     Pass_Fog(eye, eye_layer);
-                ProduceFrame_PerEye(eye, eye_layer);
+                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early);
             }
+            WaitForAsyncFog();
 
             if (xr_stereo)
             {
@@ -6741,6 +6971,7 @@ namespace spartan
         }
         else
         {
+            submit_sky();
             if (RHI_Device::IsRecording(RHI_Frame_List::ComputeB))
             {
                 RHI_Device::Submit(RHI_Frame_List::ComputeB, nullptr, false);

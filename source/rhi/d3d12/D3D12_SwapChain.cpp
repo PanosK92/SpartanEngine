@@ -73,6 +73,62 @@ namespace spartan
         }
     }
 
+    // dxgi otherwise lets three presents queue up, waiting at acquire bounds latency like vkAcquireNextImageKHR does
+    struct FrameLatency
+    {
+        HANDLE waitable = nullptr;
+        bool waited     = false;
+    };
+    static unordered_map<IDXGISwapChain3*, FrameLatency> s_frame_latency_by_swapchain;
+    static const UINT frame_latency_max = 1;
+
+    static void frame_latency_init(IDXGISwapChain3* swapchain)
+    {
+        Microsoft::WRL::ComPtr<IDXGISwapChain2> swapchain2;
+        if (FAILED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2))) || FAILED(swapchain2->SetMaximumFrameLatency(frame_latency_max)))
+        {
+            return;
+        }
+        s_frame_latency_by_swapchain[swapchain].waitable = swapchain2->GetFrameLatencyWaitableObject();
+    }
+
+    static void frame_latency_wait(IDXGISwapChain3* swapchain)
+    {
+        const auto it = s_frame_latency_by_swapchain.find(swapchain);
+        if (it == s_frame_latency_by_swapchain.end() || !it->second.waitable || it->second.waited)
+        {
+            return;
+        }
+
+        // one wait per present, a timeout only falls back to present doing the blocking
+        ScopedTimeBlock time_block("acquire_image_wait");
+        WaitForSingleObjectEx(it->second.waitable, 100, TRUE);
+        it->second.waited = true;
+    }
+
+    static void frame_latency_presented(IDXGISwapChain3* swapchain)
+    {
+        const auto it = s_frame_latency_by_swapchain.find(swapchain);
+        if (it != s_frame_latency_by_swapchain.end())
+        {
+            it->second.waited = false;
+        }
+    }
+
+    static void frame_latency_release(IDXGISwapChain3* swapchain)
+    {
+        const auto it = s_frame_latency_by_swapchain.find(swapchain);
+        if (it == s_frame_latency_by_swapchain.end())
+        {
+            return;
+        }
+        if (it->second.waitable)
+        {
+            CloseHandle(it->second.waitable);
+        }
+        s_frame_latency_by_swapchain.erase(it);
+    }
+
     // cache last applied color space per swapchain so resize does not re-spam SetHDRMetaData
     static unordered_map<IDXGISwapChain3*, DXGI_COLOR_SPACE_TYPE> s_color_space_by_swapchain;
     static unordered_map<IDXGISwapChain3*, bool> s_hdr10_metadata_active;
@@ -316,6 +372,7 @@ namespace spartan
         // create swap chain
         if (!m_rhi_swapchain)
         {
+            swap_chain_desc.Flags |= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
             IDXGISwapChain1* swap_chain_temp = nullptr;
             if (!d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
                 command_queue,
@@ -338,6 +395,7 @@ namespace spartan
                 return;
             }
             swap_chain_temp->Release();
+            frame_latency_init(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
         }
 
         // fall back to sdr when the display rejects hdr10 color space, mirrors vulkan surface format check
@@ -429,6 +487,7 @@ namespace spartan
         if (m_rhi_swapchain)
         {
             forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+            frame_latency_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             frame_generation_d3d12::swapchain_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             m_rhi_swapchain = nullptr;
         }
@@ -529,6 +588,7 @@ namespace spartan
         }
 
         // d3d12 has no vkAcquireNextImageKHR, the current backbuffer index is owned by dxgi
+        frame_latency_wait(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
         m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
         m_image_acquired = true;
     }
@@ -557,8 +617,13 @@ namespace spartan
         const UINT sync_interval   = (m_present_mode == RHI_Present_Mode::Immediate) ? 0 : 1;
         const UINT flags           = tearing_allowed ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
-        // present
-        HRESULT result = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Present(sync_interval, flags);
+        // dxgi blocks in here while the gpu is behind, the profiler has to count that as waiting, not cpu work
+        HRESULT result = S_OK;
+        {
+            ScopedTimeBlock time_block("frame_present");
+            result = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Present(sync_interval, flags);
+        }
+        frame_latency_presented(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
         if (SUCCEEDED(result))
         {
             Profiler::MarkPresented(m_image_index, m_rhi_swapchain);
@@ -694,6 +759,7 @@ namespace spartan
             RHI_Device::QueueWaitAll();
             destroy_swapchain_resources(this);
             forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+            frame_latency_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             frame_generation_d3d12::swapchain_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             m_rhi_swapchain = nullptr;
             Create();
@@ -725,6 +791,7 @@ namespace spartan
             RHI_Device::QueueWaitAll();
             destroy_swapchain_resources(this);
             forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+            frame_latency_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             frame_generation_d3d12::swapchain_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             m_rhi_swapchain = nullptr;
             Create();

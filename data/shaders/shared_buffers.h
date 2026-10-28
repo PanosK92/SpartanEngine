@@ -503,6 +503,7 @@ namespace pass_light_image_based
     static const SHARED_UINT environment_mip_count = 0; // float
     static const SHARED_UINT restir_enabled        = 1; // bool
     static const SHARED_UINT restir_intensity      = 2; // float
+    static const SHARED_UINT restir_previous       = 3; // bool, gi is last frame's async output, reprojected against its opaque gbuffer
 }
 
 namespace pass_light_integration
@@ -1289,10 +1290,14 @@ struct EmitterParams
     SHARED_UINT   padding_seed_2 SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_low  SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_high SHARED_DEFAULT(0);
-    // World-space body wake samples (float4 arrays keep CPU/GPU strides aligned).
-    SHARED_FLOAT4 body_wake_center[64];
-    SHARED_FLOAT4 body_wake_axis[64];
-    SHARED_FLOAT4 body_wake_shape[64];
+};
+
+// world space body wake samples, shared by every emitter, kept out of EmitterParams since d3d12 caps structured buffer elements at 2048 bytes
+struct ParticleWakeSample
+{
+    SHARED_FLOAT4 center_strength;
+    SHARED_FLOAT4 axis_length;
+    SHARED_FLOAT4 shape; // half width, vortex radius, age, reserved
 };
 
 // c++ backward compatibility aliases
@@ -1324,6 +1329,7 @@ namespace spartan
     static_assert(sizeof(Sb_CachedTreeWind) == 64);
     using Sb_Particle         = Particle;
     using Sb_EmitterParams    = EmitterParams;
+    using Sb_ParticleWake     = ParticleWakeSample;
     using Sb_GrassInstance    = GrassInstance;
 
     static_assert(sizeof(Sb_IndirectDrawArgs) == sizeof(uint32_t) * 5);

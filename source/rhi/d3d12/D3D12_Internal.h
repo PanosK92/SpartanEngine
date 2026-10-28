@@ -36,6 +36,8 @@ namespace spartan::d3d12_caps
     D3D12_RESOURCE_BINDING_TIER GetResourceBindingTier();
     D3D_ROOT_SIGNATURE_VERSION GetHighestRootSignatureVersion();
     D3D_SHADER_MODEL          GetHighestShaderModel();
+    // compute when debug.d3d12_async_compute is on, direct otherwise, used for the queue, its allocators and its lists
+    D3D12_COMMAND_LIST_TYPE   GetComputeQueueListType();
 }
 
 // barrier submission, translates the legacy barrier descriptions the command list builds into
@@ -141,6 +143,15 @@ namespace spartan::d3d12_state
     bool DecaysToCommon(ID3D12Resource* resource);
     void SetIsBuffer(ID3D12Resource* resource, bool is_buffer);
     bool IsBuffer(ID3D12Resource* resource);
+    void SetIsDepth(ID3D12Resource* resource, bool is_depth);
+    // non-decaying textures that compute reads or writes, graphics submits hand them over in a compute legal state
+    void SetCrossQueue(ID3D12Resource* resource);
+    bool IsCrossQueue(ID3D12Resource* resource, bool* is_depth, bool* is_read_only = nullptr);
+    // textures without rtv/uav/dsv stay in a shader read state after upload, so both queues read them without barriers
+    void SetReadOnly(ID3D12Resource* resource, bool read_only);
+    // created without allow_unordered_access, a barrier to the uav state is illegal and gets dropped
+    void SetAllowsUav(ID3D12Resource* resource, bool allows_uav);
+    bool AllowsUav(ID3D12Resource* resource);
     void SetSubresourceCount(ID3D12Resource* resource, uint32_t count);
     uint32_t GetSubresourceCount(ID3D12Resource* resource);
     void RemoveState(ID3D12Resource* resource);

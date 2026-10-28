@@ -26,6 +26,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "D3D12_BlitGraphics.h"
 #include <wrl/client.h>
 #include <cstring>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 #include <mutex>
@@ -49,6 +50,10 @@ namespace spartan::d3d12_state
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
         bool decays_to_common       = false;
         bool is_buffer              = false;
+        bool is_depth               = false;
+        bool cross_queue            = false;
+        bool read_only              = false; // no rtv/uav/dsv, only ever written by copies
+        bool allows_uav             = true;
         uint32_t subresource_count  = 0; // 0 means unknown, never call getdesc on the barrier hot path
     };
 
@@ -123,6 +128,81 @@ namespace spartan::d3d12_state
         std::lock_guard<std::mutex> lock(resource_states_mutex);
         auto it = resource_states.find(resource);
         return it != resource_states.end() && it->second.is_buffer;
+    }
+
+    void SetIsDepth(ID3D12Resource* resource, bool is_depth)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        resource_states[resource].is_depth = is_depth;
+    }
+
+    void SetCrossQueue(ID3D12Resource* resource)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        auto it = resource_states.find(resource);
+        if (it != resource_states.end() && !it->second.is_buffer && !it->second.decays_to_common)
+        {
+            it->second.cross_queue = true;
+        }
+    }
+
+    bool IsCrossQueue(ID3D12Resource* resource, bool* is_depth, bool* is_read_only)
+    {
+        if (!resource)
+        {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        auto it = resource_states.find(resource);
+        if (it == resource_states.end() || !it->second.cross_queue)
+        {
+            return false;
+        }
+        *is_depth = it->second.is_depth;
+        if (is_read_only)
+        {
+            *is_read_only = it->second.read_only;
+        }
+        return true;
+    }
+
+    void SetReadOnly(ID3D12Resource* resource, bool read_only)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        resource_states[resource].read_only = read_only;
+    }
+
+    void SetAllowsUav(ID3D12Resource* resource, bool allows_uav)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        resource_states[resource].allows_uav = allows_uav;
+    }
+
+    bool AllowsUav(ID3D12Resource* resource)
+    {
+        if (!resource)
+        {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        auto it = resource_states.find(resource);
+        return it == resource_states.end() || it->second.allows_uav;
     }
 
     void SetSubresourceCount(ID3D12Resource* resource, uint32_t count)
@@ -218,7 +298,16 @@ namespace spartan
             D3D12_RESOURCE_STATES uniform_state = D3D12_RESOURCE_STATE_COMMON;
             std::vector<D3D12_RESOURCE_STATES> per_subresource;
             bool initialized = false;
+            // implicitly promoted from common to read states, decays back to common when the list finishes
+            bool promoted = false;
+            bool explicit_barrier = false;
         };
+
+        // read states a non-simultaneous texture can be implicitly promoted to from common
+        static constexpr D3D12_RESOURCE_STATES promotable_read_states =
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE     |
+            D3D12_RESOURCE_STATE_COPY_SOURCE;
 
         // states that aren't allowed on a compute command list barrier, transitions made on a compute queue must mask
         // these out since the runtime rejects pixel_shader_resource, render_target and depth states on the compute queue
@@ -293,6 +382,8 @@ namespace spartan
                     D3D12_RESOURCE_STATE_COMMON;
                 state.per_subresource.clear();
                 state.initialized = false;
+                state.promoted = false;
+                state.explicit_barrier = false;
             }
 
             for (ID3D12Resource* resource : b.readback_scratch)
@@ -319,6 +410,10 @@ namespace spartan
                 {
                     state_info.uniform_state = D3D12_RESOURCE_STATE_COMMON;
                 }
+                if (b.is_compute_queue)
+                {
+                    d3d12_state::SetCrossQueue(resource);
+                }
                 state_info.initialized = true;
             }
             return state_info;
@@ -333,6 +428,13 @@ namespace spartan
                 ResourceStateInfo& state_info = kv.second;
                 if (!kv.first || !state_info.initialized)
                 {
+                    continue;
+                }
+
+                // only read through implicit promotion, the gpu decays it back to common after executecommandlists
+                if (state_info.promoted && !state_info.explicit_barrier && state_info.per_subresource.empty())
+                {
+                    d3d12_state::SetState(kv.first, D3D12_RESOURCE_STATE_COMMON);
                     continue;
                 }
 
@@ -358,6 +460,35 @@ namespace spartan
                     }
                     state_info.per_subresource.clear();
                     state_info.uniform_state = target;
+                }
+
+                // the compute queue can't leave render target, depth or pixel states, so graphics leaves cross queue textures
+                // readable (depth) or common (color, which compute may also write) before the next compute list snapshots them
+                // read only textures already in a non pixel read state are left alone, a handover barrier here is a gpu write
+                // that would race with compute lists reading the same texture concurrently
+                bool is_depth     = false;
+                bool is_read_only = false;
+                if (cmd_list->GetType() == D3D12_COMMAND_LIST_TYPE_DIRECT && d3d12_state::IsCrossQueue(kv.first, &is_depth, &is_read_only))
+                {
+                    const D3D12_RESOURCE_STATES state = state_info.uniform_state;
+                    const bool readable_in_place = is_read_only && (state & D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) != 0 && (state & ~promotable_read_states) == 0;
+                    const bool handover = readable_in_place ? false : (is_depth ? (state & D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) == 0 : (state & compute_invalid_states) != 0);
+                    if (handover)
+                    {
+                        const D3D12_RESOURCE_STATES handover_state = is_depth ? d3d12_general_state(true) : D3D12_RESOURCE_STATE_COMMON;
+                        const uint32_t count = get_subresource_count(kv.first);
+                        for (uint32_t i = 0; i < count; i++)
+                        {
+                            D3D12_RESOURCE_BARRIER barrier = {};
+                            barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                            barrier.Transition.pResource   = kv.first;
+                            barrier.Transition.Subresource = i;
+                            barrier.Transition.StateBefore = state;
+                            barrier.Transition.StateAfter  = handover_state;
+                            unify.push_back(barrier);
+                        }
+                        state_info.uniform_state = handover_state;
+                    }
                 }
 
                 d3d12_state::SetState(kv.first, d3d12_state::DecaysToCommon(kv.first) ? D3D12_RESOURCE_STATE_COMMON : state_info.uniform_state);
@@ -401,7 +532,37 @@ namespace spartan
                 state_after &= ~compute_invalid_states;
             }
 
+            if ((state_after & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) && !d3d12_state::AllowsUav(resource))
+            {
+                static std::mutex logged_mutex;
+                static std::unordered_set<ID3D12Resource*> logged;
+                std::lock_guard<std::mutex> lock(logged_mutex);
+                if (logged.insert(resource).second)
+                {
+                    wchar_t name[128] = {};
+                    UINT size = sizeof(name) - sizeof(wchar_t);
+                    resource->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name);
+                    SP_LOG_WARNING("Dropped a uav barrier on '%ls', it was created without allow_unordered_access", name);
+                }
+                return false;
+            }
+
             ResourceStateInfo& state_info = get_or_init_state(b, resource);
+
+            // cross queue color textures parked in common are read through implicit promotion on either queue, an explicit
+            // barrier counts as a gpu write and races with the other queue reading the same texture concurrently
+            if (!force && subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES && state_info.per_subresource.empty() && !state_info.explicit_barrier &&
+                state_after != D3D12_RESOURCE_STATE_COMMON && (state_after & ~promotable_read_states) == 0 &&
+                (state_info.uniform_state == D3D12_RESOURCE_STATE_COMMON || state_info.promoted))
+            {
+                bool is_depth = false;
+                if (d3d12_state::IsCrossQueue(resource, &is_depth) && !is_depth)
+                {
+                    state_info.uniform_state |= state_after;
+                    state_info.promoted       = true;
+                    return false;
+                }
+            }
 
             // true when the resource is already usable for state_after, even if it also has extra graphics-only bits
             // compute cannot legally barrier away from pixel_shader_resource, so skip when the needed bits are present
@@ -456,7 +617,8 @@ namespace spartan
                         b.pending_barriers.push_back(barrier);
                     }
 
-                    state_info.uniform_state = state_after;
+                    state_info.uniform_state    = state_after;
+                    state_info.explicit_barrier = true;
                     return true;
                 }
 
@@ -481,6 +643,7 @@ namespace spartan
                     barrier.Transition.StateAfter  = state_after;
                     b.pending_barriers.push_back(barrier);
                     state_info.per_subresource[i] = state_after;
+                    state_info.explicit_barrier   = true;
                     any = true;
                 }
 
@@ -547,6 +710,7 @@ namespace spartan
             b.pending_barriers.push_back(barrier);
 
             state_info.per_subresource[subresource] = state_after;
+            state_info.explicit_barrier             = true;
             return true;
         }
 
@@ -579,7 +743,8 @@ namespace spartan
 
             ResourceStateInfo& state_info = get_or_init_state(b, resource);
             state_info.per_subresource.clear();
-            state_info.uniform_state = state;
+            state_info.uniform_state    = state;
+            state_info.explicit_barrier = true;
             d3d12_state::SetState(resource, state);
         }
 
@@ -1069,7 +1234,7 @@ namespace spartan
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue->GetType() == RHI_Queue_Type::Compute)
         {
-            cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            cmd_list_type = d3d12_caps::GetComputeQueueListType();
         }
         else if (queue->GetType() == RHI_Queue_Type::Copy)
         {
@@ -1169,8 +1334,7 @@ namespace spartan
         ReadbackTimestampsForProfiler();
         m_timestamp_sample.reset();
         ResetTrackedResources();
-        // Both rendering queues use DIRECT lists so the asynchronous phase can clear depth and blit.
-        cmd_state::get(this).is_compute_queue = false;
+        cmd_state::get(this).is_compute_queue = cmd_list->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
 
         // pull fresh query results from the previous submission before resetting the index
         // d3d12 query data lives in a readback buffer that's safe to read once the cmd list fence has signaled
@@ -1199,6 +1363,8 @@ namespace spartan
         m_scissor_valid      = false;
         m_viewport_valid     = false;
         m_vrs_valid          = false;
+
+        Profiler::SubmissionBegin(this, m_queue->GetType());
     }
 
     void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal,
@@ -1218,6 +1384,7 @@ namespace spartan
             cmd_state::flush(cmd_list, b);
             cmd_state::commit_states_to_global(cmd_list, b);
         }
+        Profiler::SubmissionEnd(this);
         // resolve any queries (timestamp, occlusion) into their readback buffers before close
         // ResolveQueryData is only valid before Close, the readback can be mapped after the fence signals
         {
@@ -1702,6 +1869,15 @@ namespace spartan
             cmd_state::push_uav_barrier(b, resource);
             SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute, RHI_Resource_Usage::Shader);
+        }
+        else if (cmd_list->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE)
+        {
+            static bool logged = false;
+            if (!logged)
+            {
+                SP_LOG_ERROR("Render target clear of '%s' recorded on the compute queue, move it to graphics or set debug.d3d12_async_compute to false", texture->GetObjectName().c_str());
+                logged = true;
+            }
         }
         else if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
         {
@@ -2254,6 +2430,16 @@ namespace spartan
         }
 
         // graphics pipeline blit for scaling or format conversion, destination must support rtv/dsv
+        if (cmd_list->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE)
+        {
+            static bool logged = false;
+            if (!logged)
+            {
+                SP_LOG_ERROR("Scaling blit '%s' -> '%s' recorded on the compute queue, move it to graphics or set debug.d3d12_async_compute to false", source->GetObjectName().c_str(), destination->GetObjectName().c_str());
+                logged = true;
+            }
+            return;
+        }
         const bool dst_is_depth = destination->IsDepthStencilFormat();
         const bool src_is_depth = source->IsDepthStencilFormat();
 
@@ -2999,6 +3185,20 @@ namespace spartan
 
         if (access == RHI_Resource_Access::None || slot >= d3d12_root_slot::uav_space0_count)
         {
+            return;
+        }
+
+        if (!d3d12_state::AllowsUav(resource))
+        {
+            static std::mutex logged_mutex;
+            static std::unordered_set<uint64_t> logged;
+            std::lock_guard<std::mutex> lock(logged_mutex);
+            if (logged.insert((static_cast<uint64_t>(slot) << 32) ^ reinterpret_cast<uintptr_t>(resource)).second)
+            {
+                const char* pass = m_active_timeblocks.empty() ? "none" : m_active_timeblocks.top();
+                const char* name = buffer->GetObjectName().c_str();
+                SP_LOG_WARNING("Buffer '%s' bound to writable slot u%u in pass '%s' was created without allow_unordered_access, skipping", name, slot, pass);
+            }
             return;
         }
 
@@ -3771,6 +3971,24 @@ namespace spartan
                     case RHI_Resource_Usage::Indirect: state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;          break;
                     case RHI_Resource_Usage::Shader:   state = barrier.access_dst == RHI_Resource_Access::Read ? d3d12_general_state(false) : D3D12_RESOURCE_STATE_UNORDERED_ACCESS; break;
                     default: break;
+                }
+
+                // a buffer without uav access is only ever written by copies, syncing it means making it readable again
+                if (state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS && !d3d12_state::AllowsUav(resource))
+                {
+                    // upload and readback heap buffers live in one fixed state for their whole lifetime
+                    if (!d3d12_state::DecaysToCommon(resource))
+                    {
+                        break;
+                    }
+                    const D3D12_RESOURCE_STATES shader_read = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                    switch (barrier.buffer->GetType())
+                    {
+                        case RHI_Buffer_Type::Vertex:   state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | shader_read; break;
+                        case RHI_Buffer_Type::Instance: state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | shader_read; break;
+                        case RHI_Buffer_Type::Index:    state = D3D12_RESOURCE_STATE_INDEX_BUFFER | shader_read;               break;
+                        default:                        state = shader_read;                                                   break;
+                    }
                 }
 
                 if (!cmd_state::push_transition(b, resource, state) && barrier.buffer->GetType() == RHI_Buffer_Type::Storage)

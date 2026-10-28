@@ -964,7 +964,8 @@ namespace spartan
             m_pass_state.restir.accumulation_valid = false;
         }
 
-        // one-shot clear after (re)allocation, new textures are not guaranteed zeroed, depth_previous is cleared by the depth prepass
+        // one-shot clear after (re)allocation, new textures are not guaranteed zeroed, depth_previous is cleared by the depth
+        // prepass, the normal and velocity history are render targets only, ProduceFrame clears them on the graphics queue
         if (!m_pass_state.restir.reservoirs_initialized)
         {
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
@@ -972,18 +973,6 @@ namespace spartan
                 RHI_CommandList::ClearTexture(reservoirs[i],         Color::standard_transparent);
                 RHI_CommandList::ClearTexture(reservoirs_prev[i],    Color::standard_transparent);
                 RHI_CommandList::ClearTexture(reservoirs_spatial[i], Color::standard_transparent);
-            }
-
-            // zero normals make the disocclusion gate fail closed until real history exists
-            if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
-            {
-                RHI_CommandList::ClearTexture(normal_prev, Color::standard_black);
-            }
-
-            // zero velocity disables the dual motion vector until real history exists
-            if (RHI_Texture* velocity_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity_previous))
-            {
-                RHI_CommandList::ClearTexture(velocity_prev, Color::standard_black);
             }
 
             // zero duplication keeps the temporal m cap at its default until real history exists
@@ -1686,8 +1675,10 @@ namespace spartan
             RHI_Texture* tex_sky_sh = GetRenderTarget(Renderer_RenderTarget::sky_sh);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_sky_sh ? tex_sky_sh : GetStandardTexture(Renderer_StandardTexture::Black));
 
+            // the async gi is still being traced, last frame's result is matched against last frame's gbuffer copy
+            const bool restir_previous = m_pass_state.restir.async_this_frame;
             RHI_Texture* tex_gi = GetRenderTarget(
-                Renderer_RenderTarget::restir_denoised
+                restir_previous ? Renderer_RenderTarget::restir_denoised_previous : Renderer_RenderTarget::restir_denoised
             );
             const bool restir_enabled =
                 cvar_restir_pt.GetValueAs<bool>() &&
@@ -1697,9 +1688,21 @@ namespace spartan
                     Renderer_StandardTexture::Black
                 ));
 
+            RHI_Texture* tex_depth_history  = nullptr;
+            RHI_Texture* tex_normal_history = nullptr;
+            if (restir_previous)
+            {
+                const bool history_is_0 = m_pass_state.restir.gbuffer_copy_index == 1;
+                tex_depth_history  = GetRenderTarget(history_is_0 ? Renderer_RenderTarget::restir_gbuffer_depth_0  : Renderer_RenderTarget::restir_gbuffer_depth_1);
+                tex_normal_history = GetRenderTarget(history_is_0 ? Renderer_RenderTarget::restir_gbuffer_normal_0 : Renderer_RenderTarget::restir_gbuffer_normal_1);
+            }
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, tex_depth_history ? tex_depth_history : GetStandardTexture(Renderer_StandardTexture::Black));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, tex_normal_history ? tex_normal_history : GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous));
+
             m_pcb_pass_cpu.set(pass_light_image_based::environment_mip_count, static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
             m_pcb_pass_cpu.set(pass_light_image_based::restir_enabled, restir_enabled);
             m_pcb_pass_cpu.set(pass_light_image_based::restir_intensity, restir_composition_intensity);
+            m_pcb_pass_cpu.set(pass_light_image_based::restir_previous, restir_previous && tex_depth_history && tex_normal_history);
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
         }
         RHI_CommandList::EndPass();

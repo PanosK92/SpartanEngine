@@ -996,15 +996,7 @@ namespace spartan
             const uint64_t owner_id     = emitter->GetEntity()->GetObjectId();
             params.owner_id_low         = static_cast<uint32_t>(owner_id);
             params.owner_id_high        = static_cast<uint32_t>(owner_id >> 32u);
-            static_assert(particle_wake::capacity == 64);
             static_assert(sizeof(Sb_EmitterParams) % 16 == 0);
-            for (uint32_t wake = 0; wake < particle_wake::capacity; ++wake)
-            {
-                const auto& source = particle_wake::sources[wake];
-                params.body_wake_center[wake] = source.center_strength;
-                params.body_wake_axis[wake] = source.axis_length;
-                params.body_wake_shape[wake] = source.shape;
-            }
         }
 
         // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray
@@ -1111,6 +1103,11 @@ namespace spartan
         buf_emitter->ResetOffset();
         buf_emitter->Update(emitter_params.data(), sizeof(Sb_EmitterParams) * emitter_count);
 
+        RHI_Buffer* buf_wake = GetBuffer(Renderer_Buffer::ParticleWake);
+        static_assert(sizeof(particle_wake::Source) == sizeof(Sb_ParticleWake));
+        buf_wake->ResetOffset();
+        buf_wake->Update(particle_wake::sources.data(), sizeof(Sb_ParticleWake) * particle_wake::capacity);
+
         uint32_t thread_group = 256;
 
         RHI_CommandList::BeginPass("particles");
@@ -1142,6 +1139,7 @@ namespace spartan
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_counter, buf_counter);
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_wake, buf_wake);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
             if (tlas_collision)

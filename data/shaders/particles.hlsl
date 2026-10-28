@@ -194,7 +194,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float r_life  = 0.7 + 0.6 * rng(seed + 33u);
     float r_speed = 0.5 + 1.0 * rng(seed + 7u);
 
-    Particle p;
+    Particle p = (Particle)0;
     // Distribute births over this frame's travelled segment instead of leaving
     // disconnected clusters at the current position of a fast-moving emitter.
     p.position     = emitter.position + offset - emitter.emitter_velocity * emitter.delta_time * rng(seed + 47u);
@@ -849,10 +849,11 @@ float3 body_wake_velocity(float3 position, EmitterParams emitter)
     float strongest = 0;
     [loop] for (uint i = 0; i < 64; ++i)
     {
-        float4 center = emitter.body_wake_center[i];
+        ParticleWakeSample wake = particle_wake[i];
+        float4 center = wake.center_strength;
         if (center.w <= 0) break; // CPU packs active samples contiguously
-        float4 axis = emitter.body_wake_axis[i];
-        float4 shape = emitter.body_wake_shape[i];
+        float4 axis = wake.axis_length;
+        float4 shape = wake.shape;
         float3 delta = position - center.xyz;
         float along = dot(delta, axis.xyz);
         float radius = shape.y + shape.z * 0.55;

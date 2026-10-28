@@ -42,6 +42,7 @@ RWStructuredBuffer<IndirectDispatchArgs> triangle_dispatch_args : register(u35);
 RWStructuredBuffer<Particle>      particle_buffer_a : register(u36);
 RWStructuredBuffer<uint>          particle_counter  : register(u38);
 RWStructuredBuffer<EmitterParams> particle_emitter  : register(u39);
+RWStructuredBuffer<ParticleWakeSample> particle_wake : register(u18);
 
 // gpu texture compression
 StructuredBuffer<uint>    tex_compress_in      : register(t40);

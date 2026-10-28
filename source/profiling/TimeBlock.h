@@ -65,6 +65,8 @@ namespace spartan
         RHI_CommandList* GetCmdList()  const { return m_cmd_list; }
         uint32_t GetTimestampIndexStart() const { return m_timestamp_index_start; }
         uint32_t GetTimestampIndexEnd()   const { return m_timestamp_index_end; }
+        bool IsSubmission()            const { return m_is_submission; }
+        void SetSubmission(bool value)       { m_is_submission = value; }
 
     private:    
         static uint32_t m_max_tree_depth;
@@ -94,5 +96,6 @@ namespace spartan
         double m_frame_start_ms = 0.0;
         RHI_TimestampCalibration m_calibration;
         bool m_gpu_timing_valid = false;
+        bool m_is_submission    = false;
     };
 }

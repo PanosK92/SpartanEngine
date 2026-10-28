@@ -81,6 +81,8 @@ namespace spartan
         // queues
         static void QueueWaitAll(const bool flush = false);
         static uint32_t GetQueueIndex(const RHI_Queue_Type type);
+        // true when compute work actually runs alongside graphics instead of being time sliced with it
+        static bool IsAsyncComputeConcurrent();
         static RHI_Queue* GetQueue(const RHI_Queue_Type type);
         static void* GetQueueRhiResource(const RHI_Queue_Type type);
 

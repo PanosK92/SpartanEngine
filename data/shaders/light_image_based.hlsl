@@ -11,10 +11,15 @@ Commercial use requires written permission and negotiated payment terms.
 #include "subsurface_scattering.hlsl"
 //====================================
 
+// last frame's opaque gbuffer normals, bound when the gi is last frame's async output
+Texture2D<uint> tex_normal_previous : register(t87);
+
+// history taps are matched against last frame's opaque surfaces, tex6 holds that depth
 float3 sample_restir_gi_bilateral(
     float2 uv,
     float depth_linear,
-    float3 normal)
+    float3 normal,
+    bool history)
 {
     uint width;
     uint height;
@@ -54,22 +59,23 @@ float3 sample_restir_gi_bilateral(
     {
         int2 pixel       = clamp(base + offsets[i], int2(0, 0), pixel_max);
         float2 sample_uv = (float2(pixel) + 0.5f) * size_inv;
-        float depth      = tex_depth.SampleLevel(
-            samplers[sampler_point_clamp],
-            sample_uv,
-            0.0f
-        ).r;
+        float depth = history ?
+            tex6.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0.0f).r :
+            tex_depth.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0.0f).r;
         if (depth <= 0.0f)
         {
             continue;
         }
 
+        float3 sample_normal = history ?
+            gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(sample_uv)]) :
+            get_normal(sample_uv);
         float depth_difference =
             abs(linearize_depth(depth) - depth_linear) /
             max(depth_linear, 1e-3f);
         float depth_weight = exp(-depth_difference * 64.0f);
         float normal_weight = pow(
-            saturate(dot(normal, get_normal(sample_uv))),
+            saturate(dot(normal, sample_normal)),
             16.0f
         );
         float similarity = depth_weight * normal_weight;
@@ -98,6 +104,29 @@ float3 sample_restir_gi_bilateral(
     // pixel's albedo, drawing a bright rim along every edge, the closest matching tap at least
     // carries irradiance from a comparable surface
     return best_value;
+}
+
+// the async gi lags one frame, so follow this surface back to where it was and match it against
+// its own previous depth, velocity.w carries it with object motion included
+float3 sample_restir_gi_history(float2 uv, float depth_linear, float3 normal)
+{
+    float4 velocity     = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f);
+    float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
+    float2 prev_uv      = uv + (jitter_delta - velocity.xy * float2(0.5f, -0.5f)) * get_render_uv_scale();
+
+    float expected_depth = abs(velocity.w);
+    if (expected_depth <= 0.0f || expected_depth >= FLT_MAX_16U || isnan(expected_depth))
+    {
+        expected_depth = depth_linear;
+    }
+
+    // off screen last frame, the closest surface match around the same pixel is the best there is
+    if (!is_valid_render_uv(prev_uv))
+    {
+        prev_uv = clamp(prev_uv, 0.0f, get_render_uv_scale());
+    }
+
+    return sample_restir_gi_bilateral(prev_uv, expected_depth, normal, true);
 }
 
 // approx of multi-bounce (inter-reflection) for ao
@@ -254,11 +283,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float coverage = restir_coverage(surface.uv);
         if (coverage > 0.0f)
         {
-            float3 restir_gi = sample_restir_gi_bilateral(
-                surface.uv,
-                linearize_depth(surface.depth),
-                surface.normal
-            );
+            float depth_linear = linearize_depth(surface.depth);
+            float3 restir_gi   = pass_bool(pass_light_image_based::restir_previous) ?
+                sample_restir_gi_history(surface.uv, depth_linear, surface.normal) :
+                sample_restir_gi_bilateral(surface.uv, depth_linear, surface.normal, false);
             float3 restir_ibl =
                 restir_gi *
                 restir_gi_demodulator(surface.albedo.rgb) *

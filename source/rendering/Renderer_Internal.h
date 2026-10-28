@@ -95,6 +95,12 @@ namespace spartan
             uint32_t history_fade_frames = 0;
             uint64_t scene_signature = 0;
             uint64_t motion_signature = 0;
+            // the gbuffer copy set written this frame, the other one holds last frame's opaque gbuffer
+            uint32_t gbuffer_copy_index = 0;
+            // consecutive frames that wrote a gbuffer copy, async needs last frame's copy as history
+            uint32_t gbuffer_copy_frames = 0;
+            // the gi ran on its own compute list this frame, image based lighting reads last frame's gi
+            bool async_this_frame = false;
 
             void Reset() { *this = RestirState(); }
         };
@@ -314,6 +320,14 @@ namespace spartan
         {
             RHI_SyncPrimitive* pending_compute_timeline       = nullptr;
             uint64_t           pending_compute_timeline_value = 0;
+            // the async gi of the previous frame, it may still run while the next frame starts on graphics
+            RHI_SyncPrimitive* gi_timeline       = nullptr;
+            uint64_t           gi_timeline_value = 0;
+            // graphics wrote a resource the in flight gi reads, the next graphics submission waits for it
+            bool               gi_upload_hazard  = false;
+            // async fog runs after compute b, graphics only waits for it right before its first reader
+            RHI_SyncPrimitive* fog_timeline       = nullptr;
+            uint64_t           fog_timeline_value = 0;
         };
 
         // pass history that follows the camera of one view, it lives in PassState while that view renders

@@ -312,6 +312,7 @@ namespace spartan
         particle_buffer_a      = 36,
         particle_counter       = 38,
         particle_emitter       = 39,
+        particle_wake          = 18,
         // gpu texture compression
         compress_input         = 40,
         compress_output        = 41,
@@ -595,6 +596,20 @@ namespace spartan
         restir_duplication,
         restir_denoised,
         restir_denoised_previous,
+        // opaque gbuffer copies the async restir list reads while graphics moves on to the next frame,
+        // two sets so last frame's copy serves as restir's history and the image based lighting reprojection target
+        restir_gbuffer_color_0,
+        restir_gbuffer_normal_0,
+        restir_gbuffer_material_0,
+        restir_gbuffer_emissive_0,
+        restir_gbuffer_velocity_0,
+        restir_gbuffer_depth_0,
+        restir_gbuffer_color_1,
+        restir_gbuffer_normal_1,
+        restir_gbuffer_material_1,
+        restir_gbuffer_emissive_1,
+        restir_gbuffer_velocity_1,
+        restir_gbuffer_depth_1,
         // nrd gi (restir sized)
         nrd_in_mv,
         nrd_in_normal_roughness,
@@ -716,6 +731,7 @@ namespace spartan
         ParticleBufferA,
         ParticleCounter,
         ParticleEmitter,
+        ParticleWake,
         ParticleVolumeDensity,
         ParticleVolumeColor,
         // gpu scatter, grass and micro detail, one range per slot per lod, fed by Renderer::EnableGpuScatter

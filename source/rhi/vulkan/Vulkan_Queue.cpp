@@ -42,14 +42,16 @@ namespace spartan
             const RHI_Queue_Type type
         )
         {
+            // a frame submits up to ~8 graphics and ~5 compute lists, the rings must cover every frame
+            // the renderer keeps in flight, or recording stalls on a list long before the frame slot wait
             if (type == RHI_Queue_Type::Graphics)
             {
-                return 16;
+                return 32;
             }
 
             if (type == RHI_Queue_Type::Compute)
             {
-                return 12;
+                return 24;
             }
 
             return 4;

@@ -2541,6 +2541,12 @@ namespace spartan
         return 0;
     }
 
+    bool RHI_Device::IsAsyncComputeConcurrent()
+    {
+        // both queues are taken at index 0 of their family, so a shared family means a shared queue
+        return queues::index_compute != queues::index_graphics;
+    }
+
     RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)

@@ -83,6 +83,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_ray_traced_shadows;
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
+    extern TConsoleVar<float> cvar_restir_pt_async;
     extern TConsoleVar<float> cvar_restir_pt_direct;
     extern TConsoleVar<float> cvar_restir_pt_emissive_pool;
     extern TConsoleVar<float> cvar_restir_pt_reference;
@@ -434,9 +435,12 @@ namespace spartan
             bool update_skysphere
         );
         void Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async);
-        void Pass_ComputeBatchB();
+        void Pass_ComputeBatchB(bool include_gi);
+        bool Pass_ReSTIR_CopyGBuffer();
+        void Pass_ReSTIR_Async();
         void Pass_GraphicsPhase2_ShadowsAndRT();
-        void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer);
+        void WaitForAsyncFog();
+        void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early);
         void Pass_VariableRateShading();
         void Pass_ShadowMaps();
         bool Pass_ShadowMaps_GpuDriven();

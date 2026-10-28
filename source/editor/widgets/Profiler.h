@@ -38,6 +38,7 @@ private:
     struct Capture
     {
         uint64_t revision = 0;
+        double frame_start = 0.0;
         float wall = 0.0f;
         float cpu = 0.0f;
         float gpu = 0.0f;
@@ -53,7 +54,35 @@ private:
         std::vector<Scope> scopes;
     };
 
+    // the selected frame plus its sampled neighbours, placed on the selected frame's clock
+    struct ViewScope
+    {
+        const Scope* scope;
+        float offset;
+        int frame_delta;
+        int capture_index;
+        int scope_index;
+    };
+
+    struct View
+    {
+        std::vector<ViewScope> scopes;
+        std::vector<std::pair<float, float>> busy_graphics;
+        std::vector<std::pair<float, float>> busy_compute;
+        std::vector<std::pair<float, float>> busy_any;
+        std::vector<std::pair<int, float>> frame_starts;
+        float gpu_first = 0.0f;
+        float gpu_last = 0.0f;
+        float queue_overlap = 0.0f;
+        float frame_overlap = 0.0f;
+        float gpu_idle = 0.0f;
+        float earliest = 0.0f;
+        bool has_neighbours = false;
+    };
+
     void CaptureLatest();
+    void BuildView(int capture_index);
+    int LiveCapture() const;
     void DrawHistory();
     void DrawTimeline(const Capture& capture, float height);
     void DrawDetails(const Capture& capture, float height);
@@ -62,6 +91,7 @@ private:
     void SelectCapture(int index);
 
     std::deque<Capture> m_history;
+    View m_view;
     uint64_t m_last_revision = 0;
     int m_selected_capture = -1;
     int m_selected_scope = -1;

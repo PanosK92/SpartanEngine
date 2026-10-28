@@ -193,6 +193,7 @@ namespace spartan
         d3d12_state::SetState(buffer, initial_state);
         d3d12_state::SetDecaysToCommon(buffer, heap_type == D3D12_HEAP_TYPE_DEFAULT);
         d3d12_state::SetIsBuffer(buffer, true);
+        d3d12_state::SetAllowsUav(buffer, (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
         d3d12_state::SetSubresourceCount(buffer, 1);
 
         if (force_default_heap_uav)

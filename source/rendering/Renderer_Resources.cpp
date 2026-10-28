@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../geometry/Mesh.h"
 #include "../geometry/GeometryGeneration.h"
 #include "../world/components/Light.h"
+#include "../world/ParticleWake.h"
 #include "SurfaceWater.h"
 #include "../resource/ResourceCache.h"
 #include "../display/Display.h"
@@ -408,6 +409,7 @@ namespace spartan
         at(buffers, Renderer_Buffer::ParticleCounter)->UploadSubRegion(particle_counter_init, 0, sizeof(particle_counter_init));
         const uint32_t particle_emitter_max = 64; // upper bound on simultaneously rendered emitters
         at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  particle_emitter_max, nullptr,           true, "particle_emitter");
+        at(buffers, Renderer_Buffer::ParticleWake)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_ParticleWake)),   particle_wake::capacity, nullptr,      true, "particle_wake");
         const uint32_t particle_volume_voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
         at(buffers, Renderer_Buffer::ParticleVolumeDensity) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count, nullptr, false, "particle_volume_density");
         // two channels, not three, the authored colour of every volumetric effect sits within a couple of
@@ -663,6 +665,41 @@ namespace spartan
             last_restir_scale = -1.0f;
             m_pass_state.restir.reservoirs_initialized = false;
         }
+
+        // copies of the opaque gbuffer for the async gi, same footprint as the gbuffer so a plain copy fills them,
+        // stereo renders into arrays and keeps restir in the frame, so it gets none, neither does a time sliced compute queue
+        {
+            RHI_Texture* gbuffer_color = at(view_targets(), Renderer_RenderTarget::gbuffer_color).get();
+            const bool need_copies     = need_restir && cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent() && gbuffer_color && gbuffer_color->GetArrayLength() == 1;
+            RHI_Texture* copy_color    = at(view_targets(), Renderer_RenderTarget::restir_gbuffer_color_0).get();
+            const bool copies_stale    = copy_color && (!need_copies || copy_color->GetWidth() != gbuffer_color->GetWidth() || copy_color->GetHeight() != gbuffer_color->GetHeight());
+            if (copies_stale)
+            {
+                for (uint32_t i = static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_color_0); i <= static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_depth_1); i++)
+                {
+                    at(view_targets(), static_cast<Renderer_RenderTarget>(i)) = nullptr;
+                }
+                m_pass_state.restir.gbuffer_copy_frames = 0;
+            }
+            if (need_copies && !at(view_targets(), Renderer_RenderTarget::restir_gbuffer_color_0))
+            {
+                const uint32_t gbuffer_width  = gbuffer_color->GetWidth();
+                const uint32_t gbuffer_height = gbuffer_color->GetHeight();
+                const uint32_t gbuffer_flags  = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
+                const RHI_Format formats[]    = { RHI_Format::R8G8B8A8_Unorm, RHI_Format::R32_Uint, RHI_Format::R32_Uint, RHI_Format::R11G11B10_Float, RHI_Format::R16G16B16A16_Float, RHI_Format::D32_Float };
+                static const char* names[]    =
+                {
+                    "restir_gbuffer_color_0", "restir_gbuffer_normal_0", "restir_gbuffer_material_0", "restir_gbuffer_emissive_0", "restir_gbuffer_velocity_0", "restir_gbuffer_depth_0",
+                    "restir_gbuffer_color_1", "restir_gbuffer_normal_1", "restir_gbuffer_material_1", "restir_gbuffer_emissive_1", "restir_gbuffer_velocity_1", "restir_gbuffer_depth_1"
+                };
+                for (uint32_t i = 0; i < 12; i++)
+                {
+                    const Renderer_RenderTarget target = static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_color_0) + i);
+                    at(view_targets(), target) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, gbuffer_width, gbuffer_height, 1, 1, formats[i % 6], gbuffer_flags, names[i]);
+                }
+                m_pass_state.restir.gbuffer_copy_frames = 0;
+            }
+        }
     }
 
     void Renderer::EnsureEmissiveTriangleCapacity(uint32_t count)
@@ -750,6 +787,11 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
             at(view_targets(), Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
             at(view_targets(), Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
+            for (uint32_t i = static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_color_0); i <= static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_depth_1); i++)
+            {
+                at(view_targets(), static_cast<Renderer_RenderTarget>(i)) = nullptr;
+            }
+            m_pass_state.restir.gbuffer_copy_frames = 0;
             at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)                = nullptr;

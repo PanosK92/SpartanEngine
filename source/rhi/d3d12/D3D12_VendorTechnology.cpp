@@ -27,6 +27,7 @@ SP_WARNINGS_ON
 #include "../RHI_Queue.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Nrd.h"
+#include "D3D12_Internal.h"
 #include "../../rendering/Renderer.h"
 #include "../../rendering/Renderer_Buffers.h"
 #include "../../world/World.h"
@@ -655,7 +656,8 @@ namespace spartan
             nri::QueueFamilyD3D12Desc queue_family = {};
             queue_family.d3d12Queues = &pool.queue;
             queue_family.queueNum    = 1;
-            queue_family.queueType   = nri::QueueType::GRAPHICS; // both rendering queues use direct command lists
+            const bool compute_list  = queue_type == RHI_Queue_Type::Compute && d3d12_caps::GetComputeQueueListType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            queue_family.queueType   = compute_list ? nri::QueueType::COMPUTE : nri::QueueType::GRAPHICS;
 
             nri::DeviceCreationD3D12Desc device_desc = {};
             device_desc.d3d12Device                  = RHI_Context::device;
@@ -1142,7 +1144,7 @@ namespace spartan
 
         // make_resource declares these to nri as AccessBits::SHADER_RESOURCE, which nri expands to non pixel plus pixel
         // on a direct list and to non pixel only on a compute one, so the inputs must carry whichever set matches
-        const bool include_pixel_stage = true; // NRI maps shader reads on direct lists to pixel | non-pixel
+        const bool include_pixel_stage = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource())->GetType() != D3D12_COMMAND_LIST_TYPE_COMPUTE;
         cmd_list->EnsureComputeShaderResource(tex_mv, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_normal_roughness, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_view_z, include_pixel_stage);

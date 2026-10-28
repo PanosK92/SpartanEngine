@@ -38,6 +38,9 @@ namespace spartan
 
         static void TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list = nullptr, RHI_Queue_Type queue_type = RHI_Queue_Type::Max);
         static void TimeBlockEnd(TimeBlockType type = TimeBlockType::Max, RHI_CommandList* cmd_list = nullptr);
+        // one gpu scope per command list submission, so untimed work and waits between submissions are visible
+        static void SubmissionBegin(RHI_CommandList* cmd_list, RHI_Queue_Type queue_type);
+        static void SubmissionEnd(RHI_CommandList* cmd_list);
         static void ClearMetrics();
         
         // properties
@@ -50,6 +53,8 @@ namespace spartan
         static float GetCapturedFrameDurationMs();
         static float GetCapturedPacingTimeMs();
         static uint64_t GetCapturedFrameNumber();
+        // absolute cpu time (ms) the captured frame started at, places consecutive captures on one timeline
+        static double GetCapturedFrameStartMs();
         static uint32_t GetCapturedIncompleteCount();
         static uint32_t GetCapturedDroppedTimestamps();
         // rendered frames per second, frame generation adds the generated ones on top of these for the display

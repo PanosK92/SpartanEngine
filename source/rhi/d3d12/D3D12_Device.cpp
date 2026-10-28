@@ -685,6 +685,12 @@ namespace spartan
         D3D12_RESOURCE_BINDING_TIER GetResourceBindingTier()           { return caps::resource_binding_tier; }
         D3D_ROOT_SIGNATURE_VERSION  GetHighestRootSignatureVersion()   { return caps::highest_root_signature; }
         D3D_SHADER_MODEL            GetHighestShaderModel()            { return caps::highest_shader_model; }
+
+        D3D12_COMMAND_LIST_TYPE GetComputeQueueListType()
+        {
+            static const D3D12_COMMAND_LIST_TYPE type = cvar_debug_d3d12_async_compute.GetValue() ? D3D12_COMMAND_LIST_TYPE_COMPUTE : D3D12_COMMAND_LIST_TYPE_DIRECT;
+            return type;
+        }
     }
 
     void RHI_Device::Initialize()
@@ -836,9 +842,10 @@ namespace spartan
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::present))),
                 "Failed to create present queue");
 
-            // The asynchronous rendering phase includes depth clears and graphics blits.
-            // Keep a separate queue for overlap, but accept the full RHI command set.
-            queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            // a real compute queue runs concurrently with graphics, a second direct queue is only time sliced with it
+            // async passes record dispatches, ray tracing, uav clears and copies only, depth is handed over by graphics
+            queue_desc.Type = d3d12_caps::GetComputeQueueListType();
+            SP_LOG_INFO("D3D12 compute queue: %s", queue_desc.Type == D3D12_COMMAND_LIST_TYPE_COMPUTE ? "compute (async)" : "direct (time sliced with graphics)");
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::compute))),
                 "Failed to create compute queue");
 
@@ -862,7 +869,7 @@ namespace spartan
                 "Failed to create graphics command allocator");
 
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandAllocator(
-                D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&queues::allocator_compute))),
+                d3d12_caps::GetComputeQueueListType(), IID_PPV_ARGS(&queues::allocator_compute))),
                 "Failed to create compute command allocator");
 
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandAllocator(
@@ -1086,6 +1093,11 @@ namespace spartan
     }
 
     uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type) { return 0; }
+
+    bool RHI_Device::IsAsyncComputeConcurrent()
+    {
+        return d3d12_caps::GetComputeQueueListType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    }
 
     RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {

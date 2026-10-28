@@ -51,6 +51,7 @@ namespace spartan
     TConsoleVar<bool> cvar_debug_shader_optimization("debug.shader_optimization", true, "shader compiler optimizations, applies to shaders compiled afterwards");
     TConsoleVar<bool> cvar_debug_steam("debug.steam", false, "initialize steamworks", startup_only);
     TConsoleVar<bool> cvar_debug_d3d12_enhanced_barriers("debug.d3d12_enhanced_barriers", false, "d3d12 only, submit barriers through ID3D12GraphicsCommandList7, see D3D12_Barriers.cpp for the interop prerequisites", startup_only);
+    TConsoleVar<bool> cvar_debug_d3d12_async_compute("debug.d3d12_async_compute", true, "d3d12 only, run the compute queue as a real compute queue so it overlaps graphics, off falls back to a second direct queue", startup_only);
 
     namespace
     {

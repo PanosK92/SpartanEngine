@@ -43,6 +43,7 @@ namespace spartan
         m_queue_type            = queue_type;
         m_duration              = 0.0f;
         m_is_complete           = false;
+        m_is_submission         = false;
         m_cmd_list              = cmd_list;
         m_timestamp_sample.reset();
         m_timestamp_index_start = 0;

@@ -1415,6 +1415,8 @@ namespace spartan
             queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
             m_occlusion_query_pool_reset = false;
         }
+
+        Profiler::SubmissionBegin(this, m_queue->GetType());
     }
 
     void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal /*= nullptr*/,
@@ -1426,6 +1428,7 @@ namespace spartan
         CommitPendingClear();
         render_pass_end();
         FlushBarriers();
+        Profiler::SubmissionEnd(this);
         SP_ASSERT_VK(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)));
 
         RHI_SyncPrimitive* semaphore_binary = semaphore_signal;
@@ -2434,13 +2437,14 @@ namespace spartan
 
         array<VkImageCopy, rhi_max_mip_count> copy_regions = {};
         uint32_t copy_region_count                         = blit_mips ? source->GetResidentMipCount() : 1;
+        const VkImageAspectFlags aspect_mask               = get_aspect_mask(source->GetFormat());
         for (uint32_t mip_index = 0; mip_index < copy_region_count; mip_index++)
         {
             VkImageCopy& copy_region              = copy_regions[mip_index];
-            copy_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            copy_region.srcSubresource.aspectMask = aspect_mask;
             copy_region.srcSubresource.mipLevel   = mip_index;
             copy_region.srcSubresource.layerCount = 1;
-            copy_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            copy_region.dstSubresource.aspectMask = aspect_mask;
             copy_region.dstSubresource.mipLevel   = mip_index;
             copy_region.dstSubresource.layerCount = 1;
             copy_region.extent.width              = source->GetResidentWidth()  >> mip_index;

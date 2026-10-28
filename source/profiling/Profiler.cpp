@@ -115,9 +115,11 @@ namespace spartan
         uint64_t metrics_revision = 0;
         vector<TimeBlock> published_time_blocks;
         uint64_t captured_engine_frame = 0;
+        double captured_frame_start_ms = 0.0;
         uint32_t captured_incomplete = 0;
         uint32_t captured_dropped = 0;
-        bool continuous = false;
+        // neighbouring frames are what show overlap between frames, so the profiler window samples every frame by default
+        bool continuous = true;
         bool timeline_needs_wall = false;
         array<RHI_TimestampCalibration, static_cast<size_t>(RHI_Queue_Type::Max)> gpu_calibrations;
         uint32_t incomplete_blocks_last = 0;
@@ -140,6 +142,7 @@ namespace spartan
             uint64_t engine_frame;
             uint32_t incomplete;
             uint32_t dropped;
+            double frame_start;
         };
         deque<PendingTimeline> pending_timelines;
 
@@ -183,6 +186,7 @@ namespace spartan
                 auto& frame = pending_timelines.front();
                 published_time_blocks = move(frame.blocks);
                 captured_engine_frame = frame.engine_frame;
+                captured_frame_start_ms = frame.frame_start;
                 captured_incomplete = frame.incomplete;
                 captured_dropped = frame.dropped;
                 ++capture_revision;
@@ -1543,6 +1547,7 @@ namespace spartan
     bool Profiler::IsContinuous() { return continuous; }
     bool Profiler::IsCpuWait(const char* name) { return is_cpu_wait(name); }
     uint64_t Profiler::GetCapturedFrameNumber() { return captured_engine_frame; }
+    double Profiler::GetCapturedFrameStartMs() { return captured_frame_start_ms; }
     uint32_t Profiler::GetCapturedIncompleteCount() { return captured_incomplete; }
     uint32_t Profiler::GetCapturedDroppedTimestamps() { return captured_dropped; }
 
@@ -1811,7 +1816,7 @@ namespace spartan
         if (pending_timelines.size() >= 120) pending_timelines.pop_front();
         timeline_needs_wall = true;
         pending_timelines.push_back({blocks, frame_duration_ms, static_cast<float>(Timer::GetPacingTimeMs()),
-            Renderer::GetFrameNumber(), incomplete_blocks_last, m_rhi_timestamps_dropped});
+            Renderer::GetFrameNumber(), incomplete_blocks_last, m_rhi_timestamps_dropped, frame_start_cpu});
         if (capture_this_frame) m_time_blocks_read = move(blocks);
     }
 
@@ -1899,6 +1904,41 @@ namespace spartan
             const int index = static_cast<int>(time_block - m_time_blocks_write.data());
             time_block->End();
             open_time_blocks.erase(find(open_time_blocks.begin(), open_time_blocks.end(), index));
+        }
+    }
+
+    void Profiler::SubmissionBegin(RHI_CommandList* cmd_list, RHI_Queue_Type queue_type)
+    {
+        if (queue_type != RHI_Queue_Type::Graphics && queue_type != RHI_Queue_Type::Compute)
+        {
+            return;
+        }
+
+        // nests under nothing, so it is the root of every pass recorded into this command list
+        const size_t count = m_time_blocks_write.size();
+        TimeBlockStart(queue_type == RHI_Queue_Type::Graphics ? "submission_graphics" : "submission_compute", TimeBlockType::Gpu, cmd_list, queue_type);
+        if (m_time_blocks_write.size() > count)
+        {
+            m_time_blocks_write.back().SetSubmission(true);
+        }
+    }
+
+    void Profiler::SubmissionEnd(RHI_CommandList* cmd_list)
+    {
+        if (this_thread::get_id() != profiling_thread_id)
+        {
+            return;
+        }
+
+        for (auto it = open_time_blocks.rbegin(); it != open_time_blocks.rend(); ++it)
+        {
+            TimeBlock& time_block = m_time_blocks_write[*it];
+            if (time_block.IsSubmission() && time_block.GetCmdList() == cmd_list && !time_block.IsComplete())
+            {
+                time_block.End();
+                open_time_blocks.erase(next(it).base());
+                return;
+            }
         }
     }
 

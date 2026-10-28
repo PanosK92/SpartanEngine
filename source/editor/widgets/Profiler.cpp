@@ -80,6 +80,54 @@ namespace
         snprintf(buffer, sizeof(buffer), "%.0f fps", ms > 0.0f ? 1000.0f / ms : 0.0f);
         return buffer;
     }
+
+    using intervals = vector<pair<float, float>>;
+
+    intervals merged(intervals list)
+    {
+        sort(list.begin(), list.end());
+        intervals result;
+        for (const auto& interval : list)
+        {
+            if (!result.empty() && interval.first <= result.back().second)
+            {
+                result.back().second = max(result.back().second, interval.second);
+            }
+            else
+            {
+                result.push_back(interval);
+            }
+        }
+        return result;
+    }
+
+    // both lists must be merged
+    intervals intersected(const intervals& a, const intervals& b)
+    {
+        intervals result;
+        size_t i = 0, j = 0;
+        while (i < a.size() && j < b.size())
+        {
+            const float start = max(a[i].first, b[j].first);
+            const float end   = min(a[i].second, b[j].second);
+            if (end > start)
+            {
+                result.emplace_back(start, end);
+            }
+            if (a[i].second < b[j].second) ++i; else ++j;
+        }
+        return result;
+    }
+
+    float measure(const intervals& list, const float from = -FLT_MAX, const float to = FLT_MAX)
+    {
+        float total = 0.0f;
+        for (const auto& interval : list)
+        {
+            total += max(0.0f, min(interval.second, to) - max(interval.first, from));
+        }
+        return total;
+    }
 }
 
 Profiler::Profiler(Editor* editor) : Widget(editor)
@@ -108,6 +156,7 @@ void Profiler::CaptureLatest()
 
     Capture capture;
     capture.revision = spartan::Profiler::GetCapturedFrameNumber();
+    capture.frame_start = spartan::Profiler::GetCapturedFrameStartMs();
     capture.wall = spartan::Profiler::GetCapturedFrameDurationMs();
     capture.incomplete = spartan::Profiler::GetCapturedIncompleteCount();
     capture.dropped = spartan::Profiler::GetCapturedDroppedTimestamps();
@@ -172,8 +221,17 @@ void Profiler::CaptureLatest()
     if (capture.scopes.empty()) return;
     m_history.push_back(move(capture));
     if (m_history.size() > history_limit) m_history.pop_front();
-    m_selected_capture = static_cast<int>(m_history.size()) - 1;
+    m_selected_capture = LiveCapture();
     m_selected_scope = -1;
+}
+
+int Profiler::LiveCapture() const
+{
+    // the newest frame has no successor yet, so its overlap with the next frame can't be measured, show the one before it
+    const int last = static_cast<int>(m_history.size()) - 1;
+    if (last >= 1 && m_history[last].revision == m_history[last - 1].revision + 1)
+        return last - 1;
+    return last;
 }
 
 void Profiler::SelectCapture(int index)
@@ -183,6 +241,73 @@ void Profiler::SelectCapture(int index)
     m_selected_scope = -1;
     m_paused = true;
     m_fit = true;
+}
+
+void Profiler::BuildView(const int capture_index)
+{
+    m_view = View();
+    if (capture_index < 0 || capture_index >= static_cast<int>(m_history.size()))
+    {
+        return;
+    }
+
+    // a queue runs one frame's work after another, so the neighbours are what fill the gaps of the selected frame
+    const int frames_around = 2;
+    const Capture& selected = m_history[capture_index];
+    intervals graphics, compute, own_gpu, other_gpu;
+    m_view.gpu_first = FLT_MAX;
+    m_view.gpu_last  = -FLT_MAX;
+    for (int index = max(0, capture_index - frames_around); index <= min(static_cast<int>(m_history.size()) - 1, capture_index + frames_around); ++index)
+    {
+        const Capture& capture = m_history[index];
+        const int delta = index - capture_index;
+        if (static_cast<int64_t>(capture.revision) - static_cast<int64_t>(selected.revision) != delta)
+        {
+            continue;
+        }
+
+        const float offset = static_cast<float>(capture.frame_start - selected.frame_start);
+        m_view.has_neighbours |= delta != 0;
+        m_view.frame_starts.emplace_back(delta, offset);
+        for (int i = 0; i < static_cast<int>(capture.scopes.size()); ++i)
+        {
+            const Scope& scope = capture.scopes[i];
+            m_view.scopes.push_back({ &scope, offset, delta, index, i });
+            m_view.earliest = min(m_view.earliest, scope.start + offset);
+            if (scope.lane == 0)
+            {
+                continue;
+            }
+
+            const pair<float, float> span(scope.start + offset, scope.end + offset);
+            if (scope.lane == 1) graphics.push_back(span);
+            if (scope.lane == 2) compute.push_back(span);
+            (delta == 0 ? own_gpu : other_gpu).push_back(span);
+            if (delta == 0)
+            {
+                m_view.gpu_first = min(m_view.gpu_first, span.first);
+                m_view.gpu_last  = max(m_view.gpu_last, span.second);
+            }
+        }
+    }
+
+    m_view.busy_graphics = merged(graphics);
+    m_view.busy_compute  = merged(compute);
+    intervals all = graphics;
+    all.insert(all.end(), compute.begin(), compute.end());
+    m_view.busy_any = merged(all);
+    if (m_view.gpu_first > m_view.gpu_last)
+    {
+        m_view.gpu_first = m_view.gpu_last = 0.0f;
+        return;
+    }
+
+    // all three are measured inside the selected frame's gpu span, neighbours included
+    const float from = m_view.gpu_first;
+    const float to   = m_view.gpu_last;
+    m_view.queue_overlap = measure(intersected(m_view.busy_graphics, m_view.busy_compute), from, to);
+    m_view.frame_overlap = measure(intersected(merged(own_gpu), merged(other_gpu)), from, to);
+    m_view.gpu_idle      = max(0.0f, (to - from) - measure(m_view.busy_any, from, to));
 }
 
 void Profiler::DrawHistory()
@@ -294,21 +419,31 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
     float first = 0.0f;
     for (const auto& scope : capture.scopes)
     {
-        depths[scope.lane] = max(depths[scope.lane], scope.depth);
-        min_depths[scope.lane] = min(min_depths[scope.lane], scope.depth);
         ++counts[scope.lane];
         extent = max(extent, scope.end);
         first = min(first, scope.start);
     }
+    for (const auto& item : m_view.scopes)
+    {
+        depths[item.scope->lane] = max(depths[item.scope->lane], item.scope->depth);
+        min_depths[item.scope->lane] = min(min_depths[item.scope->lane], item.scope->depth);
+    }
+    const float earliest = min(first, m_view.earliest);
+    const bool show_occupancy = m_show_gpu && (!m_view.busy_graphics.empty() || !m_view.busy_compute.empty());
     float total_height = header;
     for (int lane = 0; lane < 6; ++lane)
     {
         if ((lane == 0 ? !m_show_cpu : !m_show_gpu) || counts[lane] == 0) continue;
         total_height += header + (m_collapsed[lane] ? 0.0f : row * static_cast<float>(depths[lane] - min_depths[lane] + 1)) + 6.0f * dpi;
     }
+    if (show_occupancy)
+    {
+        total_height += header + row + 6.0f * dpi;
+    }
     total_height = max(total_height, ImGui::GetContentRegionAvail().y);
     if (m_fit || m_auto_fit)
     {
+        // the fit spans the selected frame from its cpu start to its last gpu pass, neighbours are reached by panning
         m_offset_ms = first;
         m_range_ms = (extent - first) * 1.04f;
         m_fit = false;
@@ -324,12 +459,12 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
         const float fraction = ImClamp((io.MousePos.x - origin.x - labels) / track_width, 0.0f, 1.0f);
         const float anchor = m_offset_ms + fraction * m_range_ms;
         m_range_ms = ImClamp(m_range_ms * powf(0.8f, io.MouseWheel), 0.01f, max(1000.0f, extent * 2.0f));
-        m_offset_ms = max(first, anchor - fraction * m_range_ms);
+        m_offset_ms = max(earliest, anchor - fraction * m_range_ms);
         m_auto_fit = false;
     }
     if (ImGui::IsItemActive() && (ImGui::IsMouseDragging(ImGuiMouseButton_Right) || ImGui::IsMouseDragging(ImGuiMouseButton_Middle)))
     {
-        m_offset_ms = max(first, m_offset_ms - io.MouseDelta.x * m_range_ms / track_width);
+        m_offset_ms = max(earliest, m_offset_ms - io.MouseDelta.x * m_range_ms / track_width);
         m_auto_fit = false;
     }
     // Wheel over the track names scrolls vertically; wheel over events zooms around the cursor.
@@ -341,9 +476,78 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
     const float x_end = origin.x + width;
     auto to_x = [&](float ms) { return x_begin + (ms - m_offset_ms) / m_range_ms * track_width; };
     float y = origin.y + header;
+
+    // which queues are busy at each instant: overlap is the async compute win, a red gap is a queue with nothing to do
+    int hovered_segment_state = -1;
+    float hovered_segment_ms = 0.0f;
+    if (show_occupancy)
+    {
+        const float lane_height = header + row;
+        draw->AddRectFilled(ImVec2(origin.x, y), ImVec2(x_end, y + header), col_panel);
+        draw->AddRectFilled(ImVec2(origin.x, y + header), ImVec2(x_begin, y + lane_height), col_panel);
+        draw->AddRectFilled(ImVec2(origin.x, y), ImVec2(origin.x + 2.0f * dpi, y + lane_height), u32(ImGui::Style::color_ok));
+        draw->AddText(ImVec2(origin.x + 16.0f * dpi, y + (header - ImGui::GetFontSize()) * 0.5f), u32(ImGui::Style::lerp(ImGui::Style::color_text_muted, ImGui::Style::color_text, 0.6f)), "GPU / Queue overlap");
+        char legend[160];
+        snprintf(legend, sizeof(legend), "green both queues, blue graphics only, amber compute only, red idle    this frame: overlap %s, idle %s",
+            editor_ui::format::milliseconds(m_view.queue_overlap).c_str(), editor_ui::format::milliseconds(m_view.gpu_idle).c_str());
+        draw->PushClipRect(ImVec2(x_begin, y), ImVec2(x_end, y + header), true);
+        draw->AddText(ImVec2(x_begin + 8.0f * dpi, y + (header - ImGui::GetFontSize()) * 0.5f), col_faint, legend);
+        draw->PopClipRect();
+        draw->AddLine(ImVec2(x_begin, y), ImVec2(x_begin, y + lane_height), col_grid);
+
+        // sweep the breakpoints of both queues, every span between two of them has one state
+        vector<float> cuts;
+        for (const auto& interval : m_view.busy_graphics)
+        {
+            cuts.push_back(interval.first);
+            cuts.push_back(interval.second);
+        }
+        for (const auto& interval : m_view.busy_compute)
+        {
+            cuts.push_back(interval.first);
+            cuts.push_back(interval.second);
+        }
+        sort(cuts.begin(), cuts.end());
+        cuts.erase(unique(cuts.begin(), cuts.end()), cuts.end());
+        auto busy_at = [](const intervals& list, const float time)
+        {
+            auto it = upper_bound(list.begin(), list.end(), make_pair(time, FLT_MAX));
+            return it != list.begin() && prev(it)->second > time;
+        };
+        const ImVec4 state_colors[4] = { ImGui::Style::color_error, lane_tint(1), lane_tint(2), ImGui::Style::color_ok };
+        const float y0 = y + header + 3.0f * dpi;
+        const float y1 = y + lane_height - 3.0f * dpi;
+        draw->PushClipRect(ImVec2(x_begin, y + header), ImVec2(x_end, y + lane_height), true);
+        for (size_t i = 0; i + 1 < cuts.size(); ++i)
+        {
+            const float start = cuts[i];
+            const float end   = cuts[i + 1];
+            if (end < m_offset_ms || start > m_offset_ms + m_range_ms) continue;
+            const float middle = (start + end) * 0.5f;
+            const int state = (busy_at(m_view.busy_graphics, middle) ? 1 : 0) | (busy_at(m_view.busy_compute, middle) ? 2 : 0);
+            const float x0 = max(x_begin, to_x(start));
+            const float x1 = min(x_end, max(x0 + 1.0f, to_x(end)));
+            draw->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), u32(ImGui::EditorUi::alpha(state_colors[state], state == 0 ? 0.55f : 0.85f)));
+            if (hovered && ImGui::IsMouseHoveringRect(ImVec2(x0, y0), ImVec2(x1, y1)))
+            {
+                hovered_segment_state = state;
+                hovered_segment_ms = end - start;
+            }
+        }
+
+        // the selected frame's gpu span, everything outside it belongs to the neighbours
+        const float span0 = to_x(m_view.gpu_first);
+        const float span1 = to_x(m_view.gpu_last);
+        draw->AddRect(ImVec2(span0, y0 - 2.0f * dpi), ImVec2(span1, y1 + 2.0f * dpi), u32(ImGui::Style::color_accent_hi), 2.0f * dpi, 1.5f * dpi);
+        draw->PopClipRect();
+        y += lane_height + 6.0f * dpi;
+    }
+
     int hovered_scope = -1;
     float hovered_width = FLT_MAX;
-    for (int lane = 0; lane < 6; ++lane)
+    // gpu queues first, the cpu lane is tall and would push them out of view
+    const int lane_order[6] = { 1, 2, 3, 4, 5, 0 };
+    for (const int lane : lane_order)
     {
         if ((lane == 0 ? !m_show_cpu : !m_show_gpu) || counts[lane] == 0) continue;
         const float lane_height = header + (m_collapsed[lane] ? 0.0f : row * static_cast<float>(depths[lane] - min_depths[lane] + 1));
@@ -369,18 +573,26 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
         if (!m_collapsed[lane])
         {
             draw->PushClipRect(ImVec2(x_begin, y + header), ImVec2(x_end, y + lane_height), true);
-            for (int i = 0; i < static_cast<int>(capture.scopes.size()); ++i)
+            for (int i = 0; i < static_cast<int>(m_view.scopes.size()); ++i)
             {
-                const auto& scope = capture.scopes[i];
-                if (scope.lane != lane || scope.end < m_offset_ms || scope.start > m_offset_ms + m_range_ms) continue;
-                const float x0 = max(x_begin, to_x(scope.start));
-                const float x1 = min(x_end, max(x0 + 1.0f, to_x(scope.end)));
+                const ViewScope& item = m_view.scopes[i];
+                const Scope& scope = *item.scope;
+                const float start = scope.start + item.offset;
+                const float end   = scope.end + item.offset;
+                if (scope.lane != lane || end < m_offset_ms || start > m_offset_ms + m_range_ms) continue;
+                const float x0 = max(x_begin, to_x(start));
+                const float x1 = min(x_end, max(x0 + 1.0f, to_x(end)));
                 const float y0 = y + header + static_cast<float>(scope.depth - min_depths[lane]) * row + 1.0f;
                 const ImVec2 p0(x0, y0), p1(x1, y0 + row - 2.0f);
+                const bool own     = item.frame_delta == 0;
                 const bool matches = m_filter.PassFilter(scope.name.c_str());
                 const bool wide    = x1 - x0 > 4.0f * dpi;
-                draw->AddRectFilled(p0, ImVec2(wide ? x1 - 1.0f : x1, p1.y), scope_color(scope.name, lane, !matches), wide ? 3.0f * dpi : 0.0f);
-                if (i == m_selected_scope)
+                draw->AddRectFilled(p0, ImVec2(wide ? x1 - 1.0f : x1, p1.y), scope_color(scope.name, lane, !matches || !own), wide ? 3.0f * dpi : 0.0f);
+                if (!own && wide)
+                {
+                    draw->AddRect(p0, ImVec2(x1 - 1.0f, p1.y), u32(ImGui::EditorUi::alpha(lane_tint(lane), 0.45f)), 3.0f * dpi);
+                }
+                if (own && item.scope_index == m_selected_scope)
                 {
                     ImGui::EditorUi::draw_glow(draw, p0, p1, ImGui::Style::color_accent_1, 3.0f * dpi, 6.0f * dpi, 0.9f);
                     draw->AddRect(p0, p1, u32(ImGui::Style::color_accent_hi), 3.0f * dpi, 2.0f * dpi);
@@ -388,7 +600,7 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
                 if (x1 - x0 > 16.0f * dpi)
                 {
                     draw->PushClipRect(ImVec2(x0 + 4.0f * dpi, p0.y), ImVec2(x1 - 3.0f * dpi, p1.y), true);
-                    draw->AddText(ImVec2(x0 + 5.0f * dpi, y0 + (row - 2.0f - ImGui::GetFontSize()) * 0.5f), matches ? IM_COL32(14, 16, 20, 235) : col_faint, scope.name.c_str());
+                    draw->AddText(ImVec2(x0 + 5.0f * dpi, y0 + (row - 2.0f - ImGui::GetFontSize()) * 0.5f), matches && own ? IM_COL32(14, 16, 20, 235) : col_muted, scope.name.c_str());
                     draw->PopClipRect();
                 }
                 if (hovered && matches && ImGui::IsMouseHoveringRect(p0, p1) && x1 - x0 < hovered_width)
@@ -401,6 +613,7 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
         }
         y += lane_height + 6.0f * dpi;
     }
+
 
     // Grid is drawn after lane backgrounds, so it remains visible between nested events.
     const float target = m_range_ms / max(1.0f, track_width / (95.0f * dpi));
@@ -419,6 +632,14 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
     if (budget_x > x_begin && budget_x < x_end)
     {
         draw->AddLine(ImVec2(budget_x, origin.y + header), ImVec2(budget_x, origin.y + total_height), u32(ImGui::EditorUi::alpha(ImGui::Style::color_warning, 0.35f)), 1.0f);
+    }
+
+    // each frame starts where its cpu work starts, the gpu work of earlier frames is still running past these lines
+    for (const auto& [delta, offset] : m_view.frame_starts)
+    {
+        const float x = to_x(offset);
+        const ImVec4 tint = delta == 0 ? ImGui::Style::color_accent_hi : ImGui::Style::color_text_muted;
+        draw->AddLine(ImVec2(x, origin.y + header), ImVec2(x, origin.y + total_height), u32(ImGui::EditorUi::alpha(tint, delta == 0 ? 0.55f : 0.30f)), 1.5f * dpi);
     }
 
     // Sticky ruler stays visible when scrolling tall CPU stacks.
@@ -446,35 +667,63 @@ void Profiler::DrawTimeline(const Capture& capture, float height)
     {
         draw->AddText(ImVec2(budget_x + 4.0f * dpi, ruler_y + (header - ImGui::GetFontSize()) * 0.5f), u32(ImGui::Style::color_warning), "60 fps");
     }
+    for (const auto& [delta, offset] : m_view.frame_starts)
+    {
+        char label[32];
+        if (delta == 0) snprintf(label, sizeof(label), "frame %llu", static_cast<unsigned long long>(capture.revision));
+        else snprintf(label, sizeof(label), "%+d", delta);
+        const float x = to_x(offset);
+        const ImVec2 size = ImGui::CalcTextSize(label);
+        const ImVec4 tint = delta == 0 ? ImGui::Style::color_accent_hi : ImGui::Style::color_text;
+        draw->AddRectFilled(ImVec2(x, ruler_y + 2.0f * dpi), ImVec2(x + size.x + 8.0f * dpi, ruler_y + header - 2.0f * dpi), u32(ImGui::EditorUi::alpha(ImGui::Style::color_canvas_deep, 0.9f)), 3.0f * dpi);
+        draw->AddText(ImVec2(x + 4.0f * dpi, ruler_y + (header - size.y) * 0.5f), u32(tint), label);
+    }
     draw->PopClipRect();
     draw->AddRectFilled(ImVec2(origin.x, ruler_y), ImVec2(x_begin, ruler_y + header), col_panel);
     ImGui::EditorUi::draw_micro_label(draw, ImVec2(origin.x + 10.0f * dpi, ruler_y), header, "Tracks", ImGui::Style::color_text_faint);
     draw->AddLine(ImVec2(origin.x, ruler_y + header), ImVec2(x_end, ruler_y + header), col_grid);
     if (hovered_scope >= 0 && io.MousePos.y >= ruler_y + header)
     {
-        const auto& scope = capture.scopes[hovered_scope];
+        const ViewScope item = m_view.scopes[hovered_scope];
+        const Scope& scope = *item.scope;
         ImGui::BeginTooltip();
         ImGui::TextUnformatted(scope.name.c_str());
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_text_muted);
-        ImGui::Text("%s", lane_names[scope.lane]);
+        if (item.frame_delta == 0) ImGui::Text("%s", lane_names[scope.lane]);
+        else ImGui::Text("%s, frame %+d", lane_names[scope.lane], item.frame_delta);
         ImGui::PopStyleColor();
         ImGui::Text("%s, self %s", editor_ui::format::milliseconds(scope.duration).c_str(), editor_ui::format::milliseconds(scope.self).c_str());
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_text_faint);
-        ImGui::TextUnformatted("Click to select, double click to zoom to it");
+        ImGui::TextUnformatted(item.frame_delta == 0 ? "Click to select, double click to zoom to it" : "Click to switch to that frame");
         ImGui::PopStyleColor();
         ImGui::EndTooltip();
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            m_selected_scope = hovered_scope;
+            // the view keeps its place on screen, only the clock it is measured against moves to the other frame
+            if (item.frame_delta != 0)
+            {
+                m_selected_capture = item.capture_index;
+                m_offset_ms -= item.offset;
+                m_auto_fit = false;
+            }
+            m_selected_scope = item.scope_index;
             m_inspect_narrow = true;
             m_paused = true;
         }
-        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        if (item.frame_delta == 0 && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
             m_range_ms = max(0.01f, (scope.end - scope.start) * 1.2f);
-            m_offset_ms = max(0.0f, scope.start - m_range_ms * 0.08f);
+            m_offset_ms = max(earliest, scope.start - m_range_ms * 0.08f);
             m_auto_fit = false;
         }
+    }
+    else if (hovered_segment_state >= 0 && io.MousePos.y >= ruler_y + header)
+    {
+        const char* states[4] = { "GPU idle, no queue has work", "Graphics only", "Compute only", "Graphics and compute overlap" };
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(states[hovered_segment_state]);
+        ImGui::TextColored(ImGui::Style::color_text_muted, "%s", editor_ui::format::milliseconds(hovered_segment_ms).c_str());
+        ImGui::EndTooltip();
     }
     if (!m_show_cpu && !m_show_gpu)
         draw->AddText(ImVec2(x_begin + 8.0f * dpi, ruler_y + header + 8.0f * dpi), col_muted, "CPU and GPU are both hidden, turn one on in the toolbar.");
@@ -645,7 +894,7 @@ void Profiler::DrawToolbar()
         m_paused = !m_paused;
         if (!m_paused)
         {
-            m_selected_capture = static_cast<int>(m_history.size()) - 1;
+            m_selected_capture = LiveCapture();
             m_selected_scope = -1;
         }
     }
@@ -754,12 +1003,16 @@ void Profiler::OnTickVisible()
     // the frame at a glance: wall time decides the fps, cpu and gpu say which side to optimize
     const auto& capture = m_history[m_selected_capture];
     const bool gpu_known = capture.has_gpu && capture.calibrated;
+    BuildView(m_selected_capture);
     char frame_label[48];
     snprintf(frame_label, sizeof(frame_label), "Frame %llu", static_cast<unsigned long long>(capture.revision));
     vector<editor_ui::Stat> frame_stats = {
         { editor_ui::format::milliseconds(capture.wall) + "  " + fps_text(capture.wall), frame_label, budget_tint(capture.wall) },
         { editor_ui::format::milliseconds(capture.cpu), "CPU elapsed", lane_tint(0) },
         { gpu_known ? editor_ui::format::milliseconds(capture.gpu) : string("n/a"), "GPU span", lane_tint(1) },
+        { gpu_known ? editor_ui::format::milliseconds(m_view.queue_overlap) : string("n/a"), "Gfx + compute", ImGui::Style::color_ok },
+        { gpu_known && m_view.has_neighbours ? editor_ui::format::milliseconds(m_view.frame_overlap) : string("n/a"), "Frame overlap", ImGui::Style::color_accent_1 },
+        { gpu_known && m_view.has_neighbours ? editor_ui::format::milliseconds(m_view.gpu_idle) : string("n/a"), "GPU idle", ImGui::Style::color_error },
         { editor_ui::format::milliseconds(capture.wait), "Waiting", ImGui::Style::color_text_muted },
         { editor_ui::format::milliseconds(capture.pacing), "Pacing", ImGui::Style::color_text_muted }
     };
@@ -771,7 +1024,9 @@ void Profiler::OnTickVisible()
         frame_stats.insert(frame_stats.begin() + 1, editor_ui::Stat{ displayed, "Displayed (frame gen)", ImGui::Style::color_text_muted });
     }
     editor_ui::stat_strip("##frame_stats", frame_stats);
-    ImGui::SetItemTooltip("%s", "CPU elapsed includes the waits shown next to it, it is not core utilization. GPU span runs from the first to the last GPU pass including gaps, it is not hardware utilization.");
+    ImGui::SetItemTooltip("%s", "CPU elapsed includes the waits shown next to it, it is not core utilization. GPU span runs from the first to the last GPU pass including gaps, it is not hardware utilization. "
+        "Gfx + compute is the time both queues ran at once, frame overlap is the time this frame's GPU work ran alongside a neighbouring frame's, GPU idle is the time inside the span no queue had work. "
+        "All three are measured inside this frame's GPU span and need consecutive samples (Every frame).");
 
     ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
     DrawHistory();

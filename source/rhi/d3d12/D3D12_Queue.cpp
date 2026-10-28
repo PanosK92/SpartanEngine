@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_SwapChain.h"
 #include "../../profiling/Profiler.h"
+#include "D3D12_Internal.h"
 //================================
 
 //= NAMESPACES =====
@@ -43,14 +44,16 @@ namespace spartan
             const RHI_Queue_Type type
         )
         {
+            // a frame submits up to ~8 graphics and ~5 compute lists, the rings must cover every frame
+            // the renderer keeps in flight, or recording stalls on a list long before the frame slot wait
             if (type == RHI_Queue_Type::Graphics)
             {
-                return 16;
+                return 32;
             }
 
             if (type == RHI_Queue_Type::Compute)
             {
-                return 12;
+                return 24;
             }
 
             return 4;
@@ -103,7 +106,7 @@ namespace spartan
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue_type == RHI_Queue_Type::Compute)
         {
-            cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            cmd_list_type = d3d12_caps::GetComputeQueueListType();
         }
         else if (queue_type == RHI_Queue_Type::Copy)
         {

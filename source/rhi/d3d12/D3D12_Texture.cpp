@@ -327,6 +327,15 @@ namespace spartan
         d3d12_state::SetState(texture, initial_state);
         // buffers and simultaneous-access textures decay to common after every executecommandlists
         d3d12_state::SetDecaysToCommon(texture, (m_flags & RHI_Texture_ConcurrentSharing) && !is_depth_format);
+        d3d12_state::SetIsDepth(texture, is_depth_format);
+        const D3D12_RESOURCE_FLAGS writable_flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        d3d12_state::SetReadOnly(texture, (resource_desc.Flags & writable_flags) == 0);
+        d3d12_state::SetAllowsUav(texture, (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
+        // depth can't use simultaneous access, so shared depth is handed over to compute explicitly from the first frame
+        if ((m_flags & RHI_Texture_ConcurrentSharing) && is_depth_format)
+        {
+            d3d12_state::SetCrossQueue(texture);
+        }
         {
             const uint32_t slices = (m_type == RHI_Texture_Type::Type3D) ? 1u : static_cast<uint32_t>(resource_desc.DepthOrArraySize);
             d3d12_state::SetSubresourceCount(texture, m_mip_count * slices);
