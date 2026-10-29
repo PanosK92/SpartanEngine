@@ -2970,6 +2970,10 @@ namespace spartan
             // allocations can stall for seconds on Windows. This is a preference,
             // so devices without cached coherent host memory retain a fallback.
             const bool bulk_upload = flags_usage == VK_BUFFER_USAGE_TRANSFER_SRC_BIT && size >= 64ull * 1024 * 1024;
+            // Transfer-only staging is consumed once, unlike persistently mapped shader data.
+            // Prefer system memory so loading does not temporarily duplicate the world in VRAM.
+            if (cpu_readback || flags_usage == VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+                allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
             allocation_create_info.flags |=
                 (cpu_readback || bulk_upload)
                     ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT

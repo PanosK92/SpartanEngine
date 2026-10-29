@@ -22,6 +22,7 @@ namespace spartan
     {
         TConsoleVar<bool> enabled("r.texture_streaming", true, "stream sampled material textures; disabling restores full mip chains");
         TConsoleVar<float> budget_mb("r.texture_streaming_budget_mb", 512.0f, "resident texture payload budget in MiB, excluding render targets and allocation overhead");
+        TConsoleVar<bool> automatic_budget("r.texture_streaming_auto_budget", true, "cap the texture budget to 1/16 of the driver GPU budget, leaving room for geometry, render targets and ray tracing");
         TConsoleVar<float> upload_mb("r.texture_streaming_upload_mb", 16.0f, "upload allowance in MiB per frame; oversized replacements are amortised over subsequent frames");
 
         // one immediate graphics command list per replacement, the immediate ring holds 16
@@ -254,6 +255,12 @@ namespace spartan
         statistics.resident_bytes = statistics.full_bytes = 0;
         statistics.texture_count = 0;
         statistics.budget_bytes = to_bytes(budget_mb.GetValue(), 512.0f);
+        // Settings travel between machines. A multi-GiB texture budget saved on a large GPU
+        // must not crowd out geometry and BLAS builds on a smaller one. The configured value
+        // remains an upper bound; disabling the automatic limit preserves explicit tuning.
+        const uint64_t gpu_budget_mb = RHI_Device::MemoryGetAvailableMb();
+        if (automatic_budget.GetValue() && gpu_budget_mb != 0)
+            statistics.budget_bytes = min(statistics.budget_bytes, max<uint64_t>(128, gpu_budget_mb / 16) * 1024ull * 1024ull);
         uint64_t desired_bytes = 0;
         const bool streaming = enabled.GetValue();
         for (auto it = entries.begin(); it != entries.end();)

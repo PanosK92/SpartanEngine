@@ -70,7 +70,7 @@ namespace spartan
         // call after a build burst completes to reclaim that memory
         static void FreeSharedBlasScratch();
 
-        // static blas are built with worst case storage, once the gpu has finished a build this copies it
+        // blas are built with worst case storage, once the gpu has finished a build this copies it
         // into storage sized to the compacted result (roughly half), returns true when any blas device address
         // changed so the tlas has to be rebuilt against the new addresses
         static bool CompactBottomLevels();

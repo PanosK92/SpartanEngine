@@ -227,14 +227,10 @@ namespace spartan
         // build info
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
         build_info.type                                        = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-        build_info.flags                                       = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+        build_info.flags                                       = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
         if (allow_update)
         {
             build_info.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
-        }
-        else
-        {
-            build_info.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
         }
         build_info.mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         build_info.geometryCount = static_cast<uint32_t>(vk_geometries.size());
@@ -348,8 +344,11 @@ namespace spartan
         {
             m_scratch_buffer      = nullptr;
             m_scratch_buffer_size = 0;
+        }
 
-            // the compacted size is only known once the gpu has run the build, CompactBottomLevels picks it up later
+        // Updateable terrain can also be compacted without losing refit support.
+        // The compacted size is only known once the GPU has run the build.
+        {
             if (as_write_properties && as_copy)
             {
                 lock_guard lock(compaction::mutex);
@@ -549,6 +548,12 @@ namespace spartan
         SP_ASSERT(geometries.size() == primitive_counts.size());
         SP_ASSERT(!geometries.empty());
 
+        // An outstanding size query describes the pre-refit structure. Do not compact from stale sizes.
+        {
+            lock_guard lock(compaction::mutex);
+            CancelCompaction();
+        }
+
         // define geometry (same topology, updated vertex positions)
         vector<VkAccelerationStructureGeometryKHR> vk_geometries;
         vk_geometries.reserve(geometries.size());
@@ -579,7 +584,7 @@ namespace spartan
         // in-place update: src and dst point to the same acceleration structure
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
         build_info.type                      = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-        build_info.flags                     = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        build_info.flags                     = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
         build_info.mode                      = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
         build_info.srcAccelerationStructure  = as_handle;
         build_info.dstAccelerationStructure  = as_handle;
