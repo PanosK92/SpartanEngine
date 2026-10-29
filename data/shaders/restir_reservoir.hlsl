@@ -1301,13 +1301,8 @@ ShiftResult try_reconnection_shift(
     float3 destination_camera = destination_previous_frame ? buffer_frame.camera_position_previous : get_camera_position();
     if (has_reconnection(src) && src.rc_length > 2u)
     {
-        if (all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir))
-        {
-            result.f_dst = src.F;
-            result.jacobian = 1.0f;
-            result.ok = all(isfinite(src.F));
-            return result;
-        }
+        // Even an unchanged primary can have moving occluders along its prefix.
+        // trace_shift_visibility relies on replay to validate these segments.
         return restir_shift_prefix(src, dst_pos, dst_normal, dst_view_dir, dst_albedo,
             dst_roughness, dst_metallic, destination_camera);
     }
@@ -1343,7 +1338,13 @@ ShiftResult try_reconnection_shift(
         return result;
     }
 
-    // Source positions are full precision; only the actual identity skips gates.
+    // Complete replay paths also own their visibility checks. Do not let an
+    // unchanged primary reuse cached lighting without tracing the current scene.
+    if (!has_reconnection(src))
+        return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
+            dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera);
+
+    // Direct reconnections still receive a separate visibility test.
     bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
     if (is_identity)
     {
@@ -1387,11 +1388,6 @@ ShiftResult try_reconnection_shift(
         result.sample.rc_normal = -dir;
         return result;
     }
-
-    // Replay fixed random dimensions only when the source has no reconnection.
-    if (!is_identity && !has_reconnection(src))
-        return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
-            dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera);
 
     float3 rc_from_dst = src.rc_pos - dst_pos;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
