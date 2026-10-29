@@ -40,7 +40,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     tex.GetDimensions(lighting_size.x, lighting_size.y);
     float2 position = uv * float2(lighting_size) - 0.5f;
     int2 base = int2(floor(position));
-    float2 fraction = frac(position);
+    // Lighting is traced at snapped full-resolution guide texel centres, not
+    // the nominal low-resolution centres. At 25% these differ by half a
+    // full-resolution pixel. Bracket the receiver using the actual centres
+    // before computing interpolation weights (also handles noninteger scales).
+    float2 guide_ratio = float2(resolution) / float2(lighting_size);
+    float2 receiver_pixel = uv * float2(resolution);
+    float2 lower_center = floor((float2(base) + 0.5f) * guide_ratio) + 0.5f;
+    base -= int2(receiver_pixel.x < lower_center.x ? 1 : 0,
+                 receiver_pixel.y < lower_center.y ? 1 : 0);
+    lower_center = floor((float2(base) + 0.5f) * guide_ratio) + 0.5f;
+    float2 upper_center = floor((float2(base) + 1.5f) * guide_ratio) + 0.5f;
+    float2 fraction = saturate((receiver_pixel - lower_center) / max(upper_center - lower_center, 1.0f));
     int2 pixel_max = max(int2(float2(lighting_size) * get_render_uv_scale()) - 1, 0);
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
