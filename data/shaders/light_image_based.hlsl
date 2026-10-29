@@ -286,7 +286,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float depth_linear = linearize_depth(surface.depth);
             float3 restir_gi   = pass_bool(pass_light_image_based::restir_previous) ?
                 sample_restir_gi_history(surface.uv, depth_linear, surface.normal) :
-                sample_restir_gi_bilateral(surface.uv, depth_linear, surface.normal, false);
+                tex4.Load(int3(thread_id.xy, 0)).rgb; // already reconstructed at render resolution
             float3 restir_ibl =
                 restir_gi *
                 restir_gi_demodulator(surface.albedo.rgb) *

@@ -645,8 +645,10 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift2");
             at(view_targets(), Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_output");
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
-            at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
-            at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised_previous");
+            // Reconstruct lighting before remodulating full-resolution material detail.
+            // Tracing, reservoirs and NRD remain at restir_scale.
+            at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
+            at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised_previous");
             m_pass_state.restir.accumulation_valid = false;
             at(view_targets(), Renderer_RenderTarget::nrd_in_mv)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_mv");
             at(view_targets(), Renderer_RenderTarget::nrd_in_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, restir_flags, "nrd_in_normal_roughness");

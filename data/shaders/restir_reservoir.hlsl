@@ -16,13 +16,18 @@ static const uint RESTIR_MAX_PATH_LENGTH = 5;
 // Reconstruct the exact G-buffer texel that supplied the normal and material.
 // A filtered depth at a quarter-resolution texel center can place the ray inside
 // a wall, causing self-intersection and repeated history rejection.
-float3 restir_primary_position(float2 uv)
+float2 restir_primary_uv(float2 uv)
 {
     uint2 size;
     tex_depth.GetDimensions(size.x, size.y);
     uint2 pixel = min(uint2(uv * float2(size)), size - 1u);
-    float2 sample_uv = (float2(pixel) + 0.5f) / float2(size);
-    return get_position(tex_depth.Load(int3(pixel, 0)).r, render_uv_to_screen_uv(sample_uv));
+    return (float2(pixel) + 0.5f) / float2(size);
+}
+
+float3 restir_primary_position(float2 uv)
+{
+    float2 sample_uv = restir_primary_uv(uv);
+    return get_position(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r, render_uv_to_screen_uv(sample_uv));
 }
 
 static const float RESTIR_C_CAP_DEFAULT      = 20.0f;
@@ -712,9 +717,11 @@ bool evaluate_disocclusion(
 
     float reproj_conf = saturate(1.0f - reproj_dist / reproj_tol);
     float normal_conf = saturate((normal_similarity - normal_threshold) / max(1.0f - normal_threshold, 1e-4f));
-    float motion_conf = saturate(1.0f - motion_len / max(motion_reference, 1.0f));
     float depth_conf  = saturate(1.0f - depth_delta / depth_limit);
-    confidence        = reproj_conf * normal_conf * motion_conf * depth_conf;
+    // Motion changes the validation tolerances, not whether valid history exists.
+    // Multiplying by 1 - motion / 32 discarded every history during faster camera
+    // movement, even on a perfectly reprojected static wall.
+    confidence        = reproj_conf * normal_conf * depth_conf;
 
     return true;
 }
@@ -810,7 +817,7 @@ bool is_neighbor_gbuffer_compatible(
     float center_linear_depth,
     float2 resolution)
 {
-    float2 resolution_active = get_render_resolution_active();
+    float2 resolution_active = floor(resolution * get_render_uv_scale());
     if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution_active.x ||
         neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution_active.y)
         return false;

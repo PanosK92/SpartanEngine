@@ -62,7 +62,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (pixel.x >= resolution_x || pixel.y >= resolution_y)
         return;
 
-    float2 uv = (pixel + 0.5f) / resolution;
+    // Use the same full-resolution texel centre as the primary position and
+    // motion vector. The low-resolution cell centre can differ by half a pixel.
+    float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
 
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
@@ -143,7 +145,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (have_history)
     {
         float2 prev_pixel_f      = history_uv * resolution;
-        float2 resolution_active = get_render_resolution_active();
+        float2 resolution_active = floor(resolution * get_render_uv_scale());
         bool in_bounds = prev_pixel_f.x >= 0.5f && prev_pixel_f.x < resolution_active.x - 0.5f &&
                          prev_pixel_f.y >= 0.5f && prev_pixel_f.y < resolution_active.y - 0.5f;
         if (in_bounds)
