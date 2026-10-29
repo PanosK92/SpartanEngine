@@ -106,12 +106,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float4 material = get_material(uv);
     float metallic = material.g;
-    // Match packing, using the original material roughness rather than NRD's
-    // filtered roughness. Restore Fresnel and roughness detail at render resolution.
+    // Match packing's GGX-to-NRD conversion using the original material guide,
+    // not NRD's filtered roughness. Restore shading detail at render resolution.
+    float roughness = sqrt(ggx_alpha_from_roughness(max(material.r, 0.04f)));
     float3 view_dir = normalize(get_camera_position() - receiver);
     float3 diffuse_factor, specular_factor;
     NRD_MaterialFactors(normal, view_dir, albedo * (1.0f - metallic),
-        lerp(0.04f, albedo, metallic), max(material.r, 0.04f), diffuse_factor, specular_factor);
+        lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
     float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
     float count = 1.0f;
     if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation))

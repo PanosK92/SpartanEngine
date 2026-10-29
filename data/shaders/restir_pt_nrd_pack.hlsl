@@ -54,7 +54,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     float3 normal_ws = get_normal(uv);
-    float roughness  = max(get_material(uv).r, 0.04f);
+    // NRD's linear roughness is sqrt(GGX alpha), not the engine's material
+    // roughness (which uses an exponential gloss-to-alpha remap).
+    float roughness = sqrt(ggx_alpha_from_roughness(max(get_material(uv).r, 0.04f)));
 
     // engine velocity is unjittered ndc delta (curr - prev), nrd wants uv motion as prev = curr + mv
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
