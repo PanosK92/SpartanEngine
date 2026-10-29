@@ -104,8 +104,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 normal_prev = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(uv)]);
         float2 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy * buffer_frame.resolution_render * 0.5f;
         float z = linearize_depth(depth);
+        // Accumulation is restricted to a stationary camera (or subpixel breathing).
+        // The same history pixel lies on a different ray after TAA jitter. Compare
+        // surface planes, not view depths: on a distant grazing floor a fraction
+        // of a pixel can change view depth by more than the old one-percent gate.
+        float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) *
+            float2(0.5f, -0.5f) * get_render_uv_scale();
+        float3 previous_receiver = get_position(depth_prev, render_uv_to_screen_uv(uv - jitter_delta));
+        float3 separation = previous_receiver - receiver;
+        float plane_distance = max(abs(dot(separation, normal)), abs(dot(separation, normal_prev)));
         bool valid = history.a >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&
-            abs(linearize_depth(depth_prev) - z) < max(z * 0.01f, 0.001f) &&
+            plane_distance < max(z * 0.001f, 0.002f) &&
             dot(normal, normal_prev) > 0.95f && dot(motion, motion) < 0.01f;
         if (valid)
         {
