@@ -229,6 +229,10 @@ PathSample trace_path_from_primary(
         // this candidate would remove every bit of sky lighting from the primary bounce
         // the sun disc is excluded inside sample_sky, the analytic directional light owns it
         s.flags      |= PATH_FLAG_SKY;
+        // The environment has infinite footprint, but still requires the
+        // single-vertex PDF safeguard (Enhanced section 4.2). Glossy paths replay.
+        if (dir_pdf * dir_pdf * RESTIR_RC_MIN_PDF_ROUGHNESS <= 1.0f)
+            s.flags |= PATH_FLAG_HAS_RC;
         s.rc_pos      = dir;
         s.rc_normal   = -dir;
         s.rc_L_nee    = sample_sky(dir);
@@ -313,7 +317,7 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
         return result;
     float3 unused_reference;
     PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, src.seed_path, seed, unused_reference, true, src);
-    if (has_reconnection(replayed) || is_sky_sample(replayed) || replayed.path_length != src.path_length || replayed.endpoint_light != src.endpoint_light)
+    if (has_reconnection(replayed) || replayed.path_length != src.path_length || replayed.endpoint_light != src.endpoint_light)
         return result;
     // Recover the density of the actual primary random draw. The hit-to-primary
     // vector includes the ray-origin offset and is NOT the sampled direction.

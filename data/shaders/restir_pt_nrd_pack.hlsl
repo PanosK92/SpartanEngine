@@ -77,6 +77,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, roughness, 0.0f);
     tex_uav3[thread_id.xy] = float4(view_z, 0.0f, 0.0f, 0.0f);
     tex_uav4[thread_id.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(diff_radiance, norm_hit_dist, true);
-    float spec_hit_dist = REBLUR_FrontEnd_GetNormHitDist(hit_dist, view_z, hit_dist_params, roughness);
+    float spec_hit_dist = REBLUR_FrontEnd_GetNormHitDist(max(tex2[thread_id.xy].a, 0.0f), view_z, hit_dist_params, roughness);
     restir_specular_input[thread_id.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(spec_radiance, spec_hit_dist, true);
 }

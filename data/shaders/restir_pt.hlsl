@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_ray_hit.hlsl"
 #include "restir_reservoir.hlsl"
 #include "restir_surface.hlsl"
+#include "nrd/NRD.hlsli"
 //==============================
 
 // upper bounds on the per pixel ris pool sizes, live counts come from the get_restir_* helpers
@@ -342,6 +343,10 @@ void ray_gen()
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);
     float3 canonical_specular = 0.0f;
+    // NRD reflection tracking needs an in-lobe first hit, independent of RIS.
+    float specular_hit_dist = NRD_FrontEnd_SpecHitDistAveraging_Begin();
+    float specular_probability = saturate(compute_spec_probability(albedo, roughness, metallic,
+        dot(normal_ws, view_dir)) * restir_primary_specular_blend(roughness));
 
     // unified direct and indirect, lin 2026 6.1, analytic lights join the same reservoir as a nee
     // path of length two, including both primary diffuse and glossy scattering
@@ -373,6 +378,13 @@ void ray_gen()
         {
             float3 reference_radiance;
             candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0);
+            // Reuse only primary rays drawn from the specular component, before
+            // light/path resampling can select an unrelated diffuse endpoint.
+            if (xi.x >= 1.0f - specular_probability)
+            {
+                float distance = is_sky_sample(candidate) ? 10000.0f : length(candidate.rc_pos - pos_ws);
+                NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist, distance);
+            }
             // Independent path-tracing estimate: sum the traced light contributions,
             // without selecting a path endpoint or doing spatiotemporal reuse.
             float3 brdf_all = eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
@@ -392,6 +404,30 @@ void ray_gen()
 
         update_reservoir(reservoir, candidate, weight, random_float(seed));
     }
+
+    // A diffuse-only draw set still needs a reflection guide. Trace one VNDF
+    // first hit only in that case; it does not contribute radiance or alter RIS.
+    if (specular_hit_dist == NRD_FrontEnd_SpecHitDistAveraging_Begin())
+    {
+        uint guide_seed = create_seed_for_pass(launch_id, buffer_frame.frame, 4);
+        float3 local_view = world_to_local(view_dir, normal_ws);
+        local_view.z = max(local_view.z, 0.0f);
+        float3 half_vector = local_to_world(sample_ggx_vndf(local_view,
+            random_float2(guide_seed), restir_d_ggx_alpha(roughness)), normal_ws);
+        float3 direction = reflect(-view_dir, half_vector);
+        if (dot(normal_ws, direction) > 0.0f)
+        {
+            RayDesc guide_ray;
+            guide_ray.Origin = pos_ws + normal_ws * compute_ray_offset(pos_ws);
+            guide_ray.Direction = direction;
+            guide_ray.TMin = RESTIR_RAY_T_MIN;
+            guide_ray.TMax = 1000.0f;
+            PathSurface guide = restir_trace_surface(guide_ray);
+            NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist,
+                guide.hit ? length(guide.hit_position - pos_ws) : 10000.0f);
+        }
+    }
+    NRD_FrontEnd_SpecHitDistAveraging_End(specular_hit_dist);
 
     // analytic light pick, lin 2026 6.1, ris over unshadowed candidates then one visibility ray
     // for the winner, the sub reservoir contribution weight stands in for 1 / source pdf so the
@@ -517,5 +553,5 @@ void ray_gen()
     }
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
-    restir_specular_output[launch_id] = float4(canonical_specular / n_brdf, hit_dist);
+    restir_specular_output[launch_id] = float4(canonical_specular / n_brdf, specular_hit_dist);
 }

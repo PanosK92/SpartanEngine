@@ -835,13 +835,6 @@ bool is_neighbor_gbuffer_compatible(
     // use a pair whose reverse pre-pass was rejected. Base every gate on the same depth.
     float pair_depth = min(center_linear_depth, neighbor_linear_depth);
 
-    float adaptive_depth_threshold = lerp(RESTIR_DEPTH_THRESHOLD, RESTIR_DEPTH_THRESHOLD * 2.0f,
-                                           saturate(pair_depth / 200.0f));
-
-    float depth_ratio = max(center_linear_depth, neighbor_linear_depth) / max(pair_depth, 1e-6f);
-    if (abs(depth_ratio - 1.0f) > adaptive_depth_threshold)
-        return false;
-
     float3 neighbor_normal = get_normal(neighbor_uv);
     float normal_similarity = dot(center_normal, neighbor_normal);
 
@@ -850,11 +843,14 @@ bool is_neighbor_gbuffer_compatible(
     if (normal_similarity < adaptive_normal_threshold)
         return false;
 
-    // world distance gate scaled with depth, a 5cm floor, rejects crevices regardless of camera distance
-    float3 neighbor_pos  = restir_primary_position(neighbor_uv);
-    float  world_dist    = length(neighbor_pos - center_pos);
-    float  max_world_dist = max(pair_depth * 0.02f, 0.05f);
-    if (world_dist > max_world_dist)
+    // Compare surface planes, not distance along the surface. A raw depth or
+    // Euclidean-distance gate collapses the Gaussian reuse radius on grazing
+    // floors, especially at reduced tracing resolution. Test both planes so
+    // the two ends of a reciprocal pair always agree on eligibility.
+    float3 neighbor_pos = restir_primary_position(neighbor_uv);
+    float3 separation = neighbor_pos - center_pos;
+    float plane_distance = max(abs(dot(separation, center_normal)), abs(dot(separation, neighbor_normal)));
+    if (plane_distance > max(pair_depth * RESTIR_DEPTH_THRESHOLD, 0.005f))
         return false;
 
     return true;
@@ -1293,7 +1289,21 @@ ShiftResult try_reconnection_shift(
 
     if (is_sky_sample(src))
     {
+        // BSDF-sampled glossy environment paths must follow the reflected
+        // direction under motion instead of reconnecting to a fixed sky texel.
+        // NEE sun samples retain their light-sampling parameterization.
+        if (!is_nee_sample(src) && !has_reconnection(src))
+            return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal,
+                dst_view_dir, dst_albedo, dst_roughness, dst_metallic, src_view_dir);
         float3 dir = src.rc_pos;
+        if (!is_nee_sample(src))
+        {
+            float pdf_dst;
+            evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal,
+                dst_view_dir, dir, pdf_dst, restir_primary_specular_blend(dst_roughness));
+            if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
+                return result;
+        }
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
