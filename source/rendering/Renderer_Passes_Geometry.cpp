@@ -1409,7 +1409,7 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_indirect_cull::max_hiz_mip, max_hiz_mip);
             m_pcb_pass_cpu.set(pass_indirect_cull::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u));
             m_pcb_pass_cpu.set(pass_indirect_cull::split_opaque_alpha, use_mesh_shaders());
-            m_pcb_pass_cpu.set(pass_indirect_cull::wind_cache_limit, static_cast<uint32_t>(clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(TREE_WIND_CACHE_CAPACITY))));
+            m_pcb_pass_cpu.set(pass_indirect_cull::wind_cache_limit, static_cast<uint32_t>(clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(GetBuffer(Renderer_Buffer::TreeWindCache)->GetElementCount()))));
             m_pcb_pass_cpu.set(pass_indirect_cull::late, late);
             m_pcb_pass_cpu.set(pass_indirect_cull::history_hiz, history_hiz);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
@@ -1428,6 +1428,16 @@ namespace spartan
         // mesh shaders replace this stage, so skip it when they are the active draw path
         if (!use_mesh_shaders())
         {
+            // The vertex-pulling fallback needs this storage; the mesh shader path never reads or writes it.
+            FrameResource& frame = m_frame_resources[m_frame_resource_index];
+            const bool reduced = cvar_debug_renderdoc.GetValue() || m_frame_resource_index >= renderer_draw_data_buffer_count;
+            const uint32_t capacity = reduced ? 8 * 1024 * 1024 : renderer_max_visible_triangles;
+            if (frame.visible_triangles->GetElementCount() < capacity)
+            {
+                frame.visible_triangles = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, sizeof(uint32_t), capacity,
+                    nullptr, false, (string("visible_triangles_") + to_string(m_frame_resource_index)).c_str());
+                BindFrameResource(m_frame_resource_index);
+            }
             RHI_CommandList::BeginPass(late ? "indirect_cull_triangle_late" : "indirect_cull_triangle");
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::indirect_cull_triangle_c));

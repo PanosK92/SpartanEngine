@@ -128,15 +128,107 @@ namespace spartan
         }
     }
 
+    void Renderer::CreateFrameResources(uint32_t i)
+    {
+        FrameResource& fr = m_frame_resources[i];
+        // Start small. Unused preview slots allocate nothing; active slots grow before their first write.
+        constexpr uint32_t indirect_draw_capacity = 1024;
+        constexpr uint32_t meshlet_instance_capacity = 1024;
+        constexpr uint32_t visible_triangle_capacity = 2;
+        constexpr uint32_t cull_task_capacity = 1024;
+        constexpr uint32_t survivor_capacity = 1024;
+        fr.indirect_draw_args = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
+            4, nullptr, true,
+            (string("indirect_draw_args_") + to_string(i)).c_str()
+        );
+
+        fr.cpu_indirect_draw_args = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
+            renderer_max_cpu_indirect_draws, nullptr, true,
+            (string("cpu_indirect_draw_args_") + to_string(i)).c_str()
+        );
+
+        fr.indirect_draw_data = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
+            indirect_draw_capacity, nullptr, true,
+            (string("indirect_draw_data_") + to_string(i)).c_str()
+        );
+
+        // Separate opaque/alpha meshlet regions retain the original capacity each.
+        // GPU-only (compute writes, geometry reads); keep this off the host-visible heap.
+        fr.meshlet_instances = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_MeshletInstance)),
+            meshlet_instance_capacity * 2u, nullptr, false,
+            (string("meshlet_instances_") + to_string(i)).c_str()
+        );
+
+        // triangle-cull survivors, gpu-only and the largest of the cull buffers, must not land in bar memory
+        fr.visible_triangles = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            visible_triangle_capacity, nullptr, false,
+            (string("visible_triangles_") + to_string(i)).c_str()
+        );
+
+        // slot 0 for vs triangle cull, slots 0 and 1 for mesh path (opaque, alpha), slots 2 and 3 their late ranges
+        fr.triangle_dispatch_args = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
+            4, nullptr, true,
+            (string("triangle_dispatch_args_") + to_string(i)).c_str()
+        );
+
+        fr.cull_tasks = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_CullTask)),
+            cull_task_capacity, nullptr, true,
+            (string("cull_tasks_") + to_string(i)).c_str()
+        );
+
+        // phase a survivors, gpu-only (compute writes, phase b reads), one entry per visible instance
+        fr.surviving_instances = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
+            survivor_capacity, nullptr, false,
+            (string("surviving_instances_") + to_string(i)).c_str()
+        );
+
+        fr.tree_wind_cache = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_CachedTreeWind)),
+            1024, nullptr, false,
+            (string("tree_wind_cache_") + to_string(i)).c_str()
+        );
+
+        // single-slot indirect dispatch args for the meshlet cull pass, group_count_x is bumped atomically by the instance cull
+        fr.instance_dispatch_args = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
+            1, nullptr, true,
+            (string("instance_dispatch_args_") + to_string(i)).c_str()
+        );
+    }
+
+    void Renderer::EnsureCullingBufferCapacity(uint32_t draws, uint64_t instances, uint64_t meshlets)
+    {
+        FrameResource& frame = m_frame_resources[m_frame_resource_index];
+        const bool reduced = cvar_debug_renderdoc.GetValue() || m_frame_resource_index >= renderer_draw_data_buffer_count;
+        const uint32_t max_instances = reduced ? 2 * 1024 * 1024 : renderer_max_instance_cull_entries;
+        const uint32_t max_meshlets = reduced ? 1024 * 1024 : renderer_max_meshlet_instances;
+        auto grow = [&](shared_ptr<RHI_Buffer>& buffer, uint32_t count, const char* name, bool mappable = false)
+        {
+            if (buffer->GetElementCount() >= count)
+                return;
+            uint32_t capacity = buffer->GetElementCount();
+            while (capacity < count) capacity *= 2;
+            buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, buffer->GetStride(), capacity, nullptr,
+                mappable, (string(name) + "_" + to_string(m_frame_resource_index)).c_str());
+        };
+        grow(frame.indirect_draw_data, draws, "indirect_draw_data", true);
+        grow(frame.surviving_instances, static_cast<uint32_t>(min<uint64_t>(instances, max_instances)), "surviving_instances");
+        // Either opaque or alpha geometry can fill its region. Preserve the original per-region ceilings.
+        grow(frame.meshlet_instances, 2u * static_cast<uint32_t>(min<uint64_t>(meshlets, max_meshlets)), "meshlet_instances");
+        grow(frame.tree_wind_cache, static_cast<uint32_t>(min<uint64_t>(instances, TREE_WIND_CACHE_CAPACITY)), "tree_wind_cache");
+        BindFrameResource(m_frame_resource_index);
+    }
+
     void Renderer::CreateBuffers()
     {
-        const bool capture_mode                  = cvar_debug_renderdoc.GetValue();
-        const uint32_t indirect_draw_capacity_primary    = capture_mode ? 32 * 1024 : renderer_max_indirect_draws;
-        const uint32_t survivor_capacity_primary         = capture_mode ? 2 * 1024 * 1024 : renderer_max_instance_cull_entries;
-        const uint32_t cull_task_capacity_primary        = capture_mode ? survivor_capacity_primary / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : renderer_max_cull_tasks;
-        const uint32_t meshlet_instance_capacity_primary = capture_mode ? 1024 * 1024 : renderer_max_meshlet_instances;
-        const uint32_t visible_triangle_capacity_primary = capture_mode ? 8 * 1024 * 1024 : renderer_max_visible_triangles;
-
         // per frame in flight, one frame constant slot per view plus the primary's restore after a secondary view
         uint32_t element_count = renderer_frame_resource_count + renderer_draw_data_buffer_count;
 
@@ -183,99 +275,7 @@ namespace spartan
             "aabbs"
         );
 
-        // per-frame rotated buffers, the slots past the primary ring belong to the secondary view, which
-        // only ever draws an isolated asset, so they get the reduced capture budgets
-        for (uint32_t i = 0; i < renderer_frame_resource_count; i++)
-        {
-            FrameResource& fr = m_frame_resources[i];
-            const bool secondary_slot = i >= renderer_draw_data_buffer_count;
-            const uint32_t indirect_draw_capacity    = secondary_slot ? 32 * 1024 : indirect_draw_capacity_primary;
-            const uint32_t survivor_capacity         = secondary_slot ? 2 * 1024 * 1024 : survivor_capacity_primary;
-            const uint32_t cull_task_capacity        = secondary_slot ? survivor_capacity / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : cull_task_capacity_primary;
-            const uint32_t meshlet_instance_capacity = secondary_slot ? 1024 * 1024 : meshlet_instance_capacity_primary;
-            const uint32_t visible_triangle_capacity = secondary_slot ? 8 * 1024 * 1024 : visible_triangle_capacity_primary;
-
-            // args for the non-indexed indirect draws, slot 0 opaque slot 1 alpha-tested, slots 2 and 3 their late ranges
-            // vertex_count of slots 0 and 1 is bumped atomically by the triangle cull pass for its half of the survivor list
-            fr.indirect_draw_args = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-                4, nullptr, true,
-                (string("indirect_draw_args_") + to_string(i)).c_str()
-            );
-
-            fr.cpu_indirect_draw_args = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-                renderer_max_cpu_indirect_draws, nullptr, true,
-                (string("cpu_indirect_draw_args_") + to_string(i)).c_str()
-            );
-
-            fr.indirect_draw_data = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
-                indirect_draw_capacity, nullptr, true,
-                (string("indirect_draw_data_") + to_string(i)).c_str()
-            );
-
-            // Separate opaque/alpha meshlet regions retain the original capacity each.
-            // GPU-only (compute writes, geometry reads); keep this off the host-visible heap.
-            fr.meshlet_instances = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_MeshletInstance)),
-                meshlet_instance_capacity * 2u, nullptr, false,
-                (string("meshlet_instances_") + to_string(i)).c_str()
-            );
-
-            // triangle-cull survivors, gpu-only and the largest of the cull buffers, must not land in bar memory
-            fr.visible_triangles = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-                visible_triangle_capacity, nullptr, false,
-                (string("visible_triangles_") + to_string(i)).c_str()
-            );
-
-            // slot 0 for vs triangle cull, slots 0 and 1 for mesh path (opaque, alpha), slots 2 and 3 their late ranges
-            fr.triangle_dispatch_args = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
-                4, nullptr, true,
-                (string("triangle_dispatch_args_") + to_string(i)).c_str()
-            );
-
-            fr.cull_tasks = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_CullTask)),
-                cull_task_capacity, nullptr, true,
-                (string("cull_tasks_") + to_string(i)).c_str()
-            );
-
-            // phase a survivors, gpu-only (compute writes, phase b reads), one entry per visible instance
-            fr.surviving_instances = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
-                survivor_capacity, nullptr, false,
-                (string("surviving_instances_") + to_string(i)).c_str()
-            );
-
-            fr.tree_wind_cache = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_CachedTreeWind)),
-                TREE_WIND_CACHE_CAPACITY, nullptr, false,
-                (string("tree_wind_cache_") + to_string(i)).c_str()
-            );
-
-            // single-slot indirect dispatch args for the meshlet cull pass, group_count_x is bumped atomically by the instance cull
-            fr.instance_dispatch_args = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
-                1, nullptr, true,
-                (string("instance_dispatch_args_") + to_string(i)).c_str()
-            );
-        }
-
-        // point the active buffer slots at frame 0
-        const FrameResource& fr = m_frame_resources[0];
-        at(buffers, Renderer_Buffer::IndirectDrawArgs)     = fr.indirect_draw_args;
-        at(buffers, Renderer_Buffer::CpuIndirectDrawArgs)  = fr.cpu_indirect_draw_args;
-        at(buffers, Renderer_Buffer::IndirectDrawData)     = fr.indirect_draw_data;
-        at(buffers, Renderer_Buffer::MeshletInstances)     = fr.meshlet_instances;
-        at(buffers, Renderer_Buffer::VisibleTriangles)     = fr.visible_triangles;
-        at(buffers, Renderer_Buffer::TriangleDispatchArgs) = fr.triangle_dispatch_args;
-        at(buffers, Renderer_Buffer::CullTasks)            = fr.cull_tasks;
-        at(buffers, Renderer_Buffer::SurvivingInstances)   = fr.surviving_instances;
-        at(buffers, Renderer_Buffer::TreeWindCache)        = fr.tree_wind_cache;
-        at(buffers, Renderer_Buffer::InstanceDispatchArgs) = fr.instance_dispatch_args;
+        BindFrameResource(0);
 
         // where the early cull survivors end, only the gpu writes and reads it, between the two cull phases
         at(buffers, Renderer_Buffer::CullPhase) = make_shared<RHI_Buffer>(
@@ -1995,6 +1995,8 @@ namespace spartan
     {
         m_frame_resource_index = index;
         FrameResource& fr = m_frame_resources[index];
+        if (!fr.indirect_draw_args)
+            CreateFrameResources(index);
 
         buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]     = fr.indirect_draw_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CpuIndirectDrawArgs)]  = fr.cpu_indirect_draw_args;

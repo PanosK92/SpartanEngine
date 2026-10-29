@@ -4574,9 +4574,9 @@ namespace spartan
         // one draw entry per render lod, instanced meshes with several lods emit every lod and the
         // instance cull keeps each instance on the lod its screen coverage wants
         // one range task per 64 instances at a draw LOD, phase b expands surviving meshlets
-        m_indirect_draw_count       = 0;
+        m_indirect_draw_count   = 0;
         m_indirect_render_count = 0;
-        m_cull_task_count           = 0;
+        m_cull_task_count       = 0;
         m_draw_lods.clear();
         m_draw_lods_uploaded = false;
         const bool use_gpu_lod = cvar_gpu_lod.GetValueAs<bool>();
@@ -4584,11 +4584,12 @@ namespace spartan
         // table per submesh/fallback LOD, rather than rebuilding it per entity.
         pmr::unordered_map<const SubMesh*, array<uint32_t, 8>> lod_tables(FrameAllocator::GetResource());
         const uint32_t aabb_frame_offset = m_frame_resource_index * renderer_max_aabbs;
-        const uint32_t indirect_draw_capacity = GetBuffer(Renderer_Buffer::IndirectDrawData)->GetElementCount();
-        const uint32_t meshlet_instance_capacity = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount();
+        const bool reduced_capacity = cvar_debug_renderdoc.GetValue() || m_frame_resource_index >= renderer_draw_data_buffer_count;
+        const uint32_t indirect_draw_capacity = reduced_capacity ? 32 * 1024 : renderer_max_indirect_draws;
 
         // the cull pipeline drops survivors silently once a budget is hit, tracked so the log below can name the culprit
         uint64_t expected_survivors_worst_case = 0;
+        uint64_t expected_instances_worst_case = 0;
 
         // Per-draw state is resolved in parallel. Slots and the shared LOD tables are then
         // assigned serially in submission order, and the records they describe filled in parallel.
@@ -4786,6 +4787,7 @@ namespace spartan
                 continue;
             }
             expected_survivors_worst_case += static_cast<uint64_t>(plan.inst_n) * static_cast<uint64_t>(plan.meshlets_worst);
+            expected_instances_worst_case += plan.inst_n;
 
             plan.render_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
             m_indirect_render_count++;
@@ -4959,6 +4961,8 @@ namespace spartan
         SP_PROFILE_CPU_END();
 
         // Report the conservative pre-cull meshlet bound once per session.
+        EnsureCullingBufferCapacity(m_indirect_draw_count, expected_instances_worst_case, expected_survivors_worst_case);
+        const uint32_t meshlet_instance_capacity = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount();
         static bool s_logged_survivor_overflow   = false;
         if (!s_logged_survivor_overflow && expected_survivors_worst_case > meshlet_instance_capacity)
         {

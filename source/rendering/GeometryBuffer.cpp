@@ -586,7 +586,7 @@ namespace spartan
         if (needs_full_rebuild)
         {
             // allocate with headroom so late-arriving meshes don't trigger another rebuild
-            // a flat 25% headroom on a multi-gb instance buffer wastes hundreds of mb, clamp to 64mb of slack
+            // Keep growth slack bounded across the six streams; 64 MiB per stream adds up on 8 GiB cards.
             auto add_headroom = [](uint64_t count, uint64_t stride, uint64_t max_slack_bytes) -> uint32_t
             {
                 uint64_t default_grown_count = static_cast<uint64_t>(static_cast<double>(count) * static_cast<double>(growth_factor));
@@ -599,7 +599,7 @@ namespace spartan
                 return static_cast<uint32_t>(default_grown_count);
             };
 
-            constexpr uint64_t max_slack_bytes = 64ull * 1024ull * 1024ull;
+            constexpr uint64_t max_slack_bytes = 16ull * 1024ull * 1024ull;
             uint32_t new_vertex_capacity         = max(add_headroom(max(vertex_count, vertex_reserve), sizeof(RHI_Vertex_PosTexNorTan), max_slack_bytes), vertex_capacity);
             uint32_t new_index_capacity          = max(add_headroom(max(index_count, index_reserve), sizeof(uint32_t), max_slack_bytes), index_capacity);
             uint32_t new_meshlet_bounds_capacity = max(add_headroom(max(meshlet_bounds_count, meshlet_bounds_reserve), sizeof(Sb_MeshletBounds), max_slack_bytes), max(meshlet_bounds_capacity, 1u));
@@ -745,7 +745,9 @@ namespace spartan
         const uint32_t impostor_texel_count = max(impostor_texels.size(), 1u);
         if (!impostor_texel_buffer || impostor_texel_count > impostor_texel_capacity)
         {
-            const uint32_t capacity = max(static_cast<uint32_t>(static_cast<double>(impostor_texel_count) * growth_factor), impostor_texel_count);
+            // Atlas texels can occupy hundreds of MiB. Reserve at most 16 MiB beyond the actual data.
+            const uint32_t slack = min<uint32_t>(static_cast<uint32_t>(impostor_texel_count * (growth_factor - 1.0f)), 16u * 1024u * 1024u / sizeof(uint32_t));
+            const uint32_t capacity = impostor_texel_count + slack;
             auto replacement = make_unique<RHI_Buffer>(
                 RHI_Buffer_Type::Storage,
                 sizeof(uint32_t),

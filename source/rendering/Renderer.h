@@ -414,6 +414,8 @@ namespace spartan
 
         // resources
         void CreateBuffers();
+        void CreateFrameResources(uint32_t index);
+        void EnsureCullingBufferCapacity(uint32_t draws, uint64_t instances, uint64_t meshlets);
         void CreateDepthStencilStates();
         void CreateRasterizerStates();
         void CreateBlendStates();
