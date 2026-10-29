@@ -188,7 +188,11 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
         result.radiance = ray_surface_shade_secondary(hit, -direction, tex5, mip_count, float2(pixel), pass_uint(pass_reflections_apply::light_count));
         return result;
     }
-    result.radiance = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(direction), 0.0f).rgb;
+    // Reaching the crossing budget does not mean the ray escaped the room.
+    // Overlapping panes/manifestation strips can exhaust it as the camera moves.
+    // Fall back to the opaque background, rather than replacing the room with sky.
+    result.uv = surface.uv;
+    result.on_screen = true;
     return result;
 }
 #endif

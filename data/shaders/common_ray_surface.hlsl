@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_puddles.hlsl"
 #include "common_ray_hit.hlsl"
 #include "common_radiance_cache.hlsl"
+#include "rt_visibility.hlsl"
 #include "sky/clouds.hlsl"
 //================================
 
@@ -391,12 +392,10 @@ float ray_trace_shadow(LightParameters light_p, float3 hit_position, float3 hit_
     ray.TMin      = 0.001f;
     ray.TMax      = max(t_max, 0.001f);
 
-    // force opaque, alpha tested foliage is non opaque in the tlas and a single proceed would stall on it
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_FORCE_OPAQUE> query;
-    // opaque and glass blockers, grass (0x04) casts only screen space shadows
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
-    query.Proceed();
-    float visibility = query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+    // Match primary lighting: thin glass transmits shadow rays and alpha-tested
+    // cutouts are resolved against their textures. Treating glass as opaque here
+    // makes refraction turn dark when it switches from screen color to hit shading.
+    float visibility = rt_trace_occluder(ray.Origin, ray.Direction, ray.TMin, ray.TMax) < 0.0f ? 1.0f : 0.0f;
 
     // the clouds are not in the tlas, under an overcast sky the sun the raster lighting dims to a
     // glow would otherwise light every reflected surface at full strength (tex6 is the cloud shadow map)
@@ -416,10 +415,7 @@ float ray_trace_sky_visibility(float3 hit_position, float3 hit_normal, float3 tr
     ray.TMin      = 0.001f;
     ray.TMax      = 100.0f;
 
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_FORCE_OPAQUE> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray); // grass does not shadow the sky either
-    query.Proceed();
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+    return rt_trace_occluder(ray.Origin, ray.Direction, ray.TMin, ray.TMax) < 0.0f ? 1.0f : 0.0f;
 }
 
 // radiance an analytic light delivers to a lambert surface at a hit, unshadowed

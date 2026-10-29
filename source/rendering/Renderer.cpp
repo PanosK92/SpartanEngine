@@ -2381,14 +2381,20 @@ namespace spartan
         // Initial preparation needs a TLAS before enabling tracing. Once one exists,
         // spawning geometry must not switch lighting modes for the entire scene.
         bool pending_blas = frame_is_loading;
-        if (ray_tracing_allowed && RHI_Device::IsSupportedRayTracing() && !frame_is_loading)
+        if (ray_tracing_allowed && RHI_Device::IsSupportedRayTracing() && (!frame_is_loading || tlas_available))
         {
             prepare_ray_tracing_renders();
             pending_blas = ray_tracing_pending_blas;
         }
 
-        const bool ray_tracing_ready = ray_tracing_allowed && !frame_is_loading &&
-            (!pending_blas || tlas_available);
+        // Background imports also set ProgressTracker::IsLoading(). Once a TLAS
+        // exists, keep lighting ownership while those jobs run: disabling ReSTIR
+        // briefly exposes raster/IBL lighting and invalidates all reservoirs on
+        // both transitions. Resident AS updates continue without changing the estimator.
+        // World teardown destroys the TLAS, so initial/replacement worlds still
+        // wait for loading and the first resident BLAS set to finish.
+        const bool ray_tracing_ready = ray_tracing_allowed &&
+            (tlas_available || (!frame_is_loading && !pending_blas));
         Renderer::view().frame.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
         Renderer::view().frame.set_bit(cvar_ssao.GetValueAs<bool>() && !IsStereoView(),                     1 << 1);
         Renderer::view().frame.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
@@ -5224,7 +5230,10 @@ namespace spartan
             return;
         }
 
-        if (frame_is_loading)
+        // Background loading must not freeze transforms/material indices in an
+        // existing TLAS. Continue the budgeted resident-scene update; only the
+        // first TLAS waits for loading to finish.
+        if (frame_is_loading && !m_tlas)
         {
             return;
         }
