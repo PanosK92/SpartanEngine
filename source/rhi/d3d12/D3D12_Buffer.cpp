@@ -161,9 +161,7 @@ namespace spartan
 
         if (FAILED(hr))
         {
-            SP_LOG_ERROR("Failed to create buffer resource '%s' (%llu bytes): %s",
-                m_object_name.c_str(), size, d3d12_utility::error::dxgi_error_to_string(hr));
-            return;
+            d3d12_utility::error::fatal(hr, "Allocate buffer (CreateCommittedResource)", m_object_name.c_str(), size);
         }
 
         m_rhi_resource   = buffer;

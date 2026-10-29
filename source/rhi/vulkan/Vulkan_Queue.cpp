@@ -12,7 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_VendorTechnology.h"
-#include "../../profiling/Breadcrumbs.h"
+#include "../../error_handling/Breadcrumbs.h"
 #include "../../profiling/Profiler.h"
 //==================================
 
@@ -345,19 +345,6 @@ namespace spartan
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
     
             VkResult result = vkQueueSubmit2(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), 1, &submit_info, nullptr);
-    
-            if (result == VK_ERROR_DEVICE_LOST)
-            {
-                if (cvar_debug_breadcrumbs.GetValue())
-                {
-                    Breadcrumbs::OnDeviceLost();
-                    SP_ERROR_WINDOW("GPU crashed. Check 'log.txt' for breadcrumbs report.");
-                }
-                else
-                {
-                    SP_ERROR_WINDOW("GPU crashed. To capture breadcrumbs, enable them in debugging.h and re-run.");
-                }
-            }
     
             SP_ASSERT_VK(result);
         }

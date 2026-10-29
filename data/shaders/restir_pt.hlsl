@@ -308,7 +308,7 @@ void ray_gen()
 {
     uint2 launch_id   = DispatchRaysIndex().xy;
     uint2 launch_size = DispatchRaysDimensions().xy;
-    float2 uv = (launch_id + 0.5f) / launch_size;
+    float2 uv = restir_primary_uv((launch_id + 0.5f) / launch_size);
 
     // early out for sky pixels (no primary surface)
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;

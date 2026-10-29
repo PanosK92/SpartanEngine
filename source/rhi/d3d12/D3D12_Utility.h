@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../../logging/Log.h"
+#include "../../error_handling/ErrorHandler.h"
 #include "../../display/Display.h"
 #include "../rendering/Renderer.h"
 //================================
@@ -51,14 +52,25 @@ namespace spartan::d3d12_utility
                 case E_FAIL:                                  return "E_FAIL";
             }
 
-            SP_ASSERT(false && "Add the error as a switch case.");
-            return nullptr;
+            return "Unknown HRESULT";
+        }
+
+        [[noreturn]] inline void fatal(const HRESULT result, const char* operation, const char* resource = nullptr, uint64_t bytes = 0)
+        {
+            char detail[128];
+            snprintf(detail, sizeof(detail), "%s (0x%08lx)", dxgi_error_to_string(result), static_cast<unsigned long>(result));
+            const ErrorCategory category = result == E_OUTOFMEMORY ? ErrorCategory::SystemMemory
+                : (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET || result == DXGI_ERROR_DEVICE_HUNG
+                    || result == DXGI_ERROR_DRIVER_INTERNAL_ERROR) ? ErrorCategory::DeviceLost : ErrorCategory::GraphicsApi;
+            ErrorHandler::Fatal(category, operation, detail, resource, bytes);
         }
 
         constexpr bool check(const HRESULT result)
         {
             if (FAILED(result))
             {
+                if (result == E_OUTOFMEMORY || result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET || result == DXGI_ERROR_DEVICE_HUNG)
+                    fatal(result, "DirectX 12 operation");
                 SP_LOG_ERROR("%s", dxgi_error_to_string(result));
                 return false;
             }

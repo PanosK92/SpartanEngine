@@ -121,7 +121,11 @@ function solution_configuration()
             runtime "Release"
             linktimeoptimization "On"
             optimize "Speed"
-            symbols "Off"
+            -- retain matching symbols for crash dumps; packaging can still exclude the PDB
+            symbols "On"
+
+        filter { "configurations:release", "system:windows" }
+            linkoptions { "/DEBUG:FULL", "/OPT:REF", "/OPT:ICF", "/IGNORE:4099" }
 
         filter { "system:windows" }
             platforms { "x64" }

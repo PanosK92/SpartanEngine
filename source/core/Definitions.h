@@ -129,6 +129,7 @@ namespace spartan::version
 //=======================================================================
 
 //= WINDOWS ===================================================================================
+#include "../error_handling/ErrorHandler.h"
 #define WIDE_STR_HELPER(x) L ## x
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
@@ -158,20 +159,8 @@ namespace spartan::version
     }
 #endif
 
-#if defined(_WIN32)
-    #define SP_ERROR_WINDOW(text_message)                                                                  \
-    {                                                                                                      \
-        MessageBeep(MB_ICONERROR);                                                                         \
-        MessageBoxW(NULL, L##text_message, L"Error", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONERROR); \
-        SP_DEBUG_BREAK();                                                                                  \
-    }
-#else
-    #define SP_ERROR_WINDOW(text_message)    \
-    {                                        \
-        printf("Error: %s\n", text_message); \
-        SP_DEBUG_BREAK();                    \
-    }
-#endif
+#define SP_ERROR_WINDOW(text_message) \
+    spartan::ErrorHandler::Fatal(spartan::ErrorCategory::Internal, __FUNCTION__, text_message)
 //=============================================================================================
 
 //= STACKTRACE========================
@@ -186,20 +175,13 @@ namespace spartan
 #define SP_ASSERT(expression)                                         \
 if (!(expression))                                                    \
 {                                                                     \
-    spartan::Log::SetLogToFile(true);                                 \
-    SP_LOG_ERROR("Assertion failed: " #expression);                   \
-    SP_LOG_ERROR("Callstack:\n%s",    spartan::get_callstack_c_str());\
-    assert(expression);                                               \
+    spartan::ErrorHandler::Fatal(spartan::ErrorCategory::Internal, __FUNCTION__, "Assertion failed: " #expression); \
 }
 
 #define SP_ASSERT_MSG(expression, text_message)                       \
 if (!(expression))                                                    \
 {                                                                     \
-    spartan::Log::SetLogToFile(true);                                 \
-    SP_LOG_ERROR("Assertion failed: " #expression);                   \
-    SP_LOG_ERROR("Message: %s",       text_message);                  \
-    SP_LOG_ERROR("Callstack:\n%s",    spartan::get_callstack_c_str());\
-    assert(expression && text_message);                               \
+    spartan::ErrorHandler::Fatal(spartan::ErrorCategory::Internal, "Assertion failed: " #expression, text_message); \
 }
 
 // a static assert

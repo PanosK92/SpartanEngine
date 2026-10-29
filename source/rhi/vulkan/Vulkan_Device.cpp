@@ -2907,7 +2907,7 @@ namespace spartan
         return nullptr;
     }
 
-    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name, const bool transient)
+    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name, const bool transient, const bool allow_failure)
     {
         // buffer info
         VkBufferCreateInfo buffer_create_info = {};
@@ -3011,9 +3011,13 @@ namespace spartan
 
         if (result != VK_SUCCESS)
         {
-            SP_LOG_WARNING("vmaCreateBuffer failed for '%s' (%llu bytes): %s", name, size, vkresult_to_string(result));
-            resource = nullptr;
-            return;
+            if (allow_failure && (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY))
+            {
+                resource = nullptr;
+                SP_LOG_WARNING("Optional buffer '%s' (%llu bytes) could not be allocated: %s", name, size, vkresult_to_string(result));
+                return;
+            }
+            check_vulkan_result(result, "Allocate buffer (vmaCreateBuffer)", name, size);
         }
 
         // if a pointer to the buffer data has been passed, map the buffer and copy over the data
@@ -3137,16 +3141,7 @@ namespace spartan
                 &allocation_info
             );
 
-            if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY)
-            {
-                SP_ERROR_WINDOW
-                (
-                    "Failed to allocate texture due to insufficient memory. "
-                    "This likely occurred while loading a large scene or too many materials/textures."
-                );
-            }
-
-            SP_ASSERT_VK(result);
+            check_vulkan_result(result, "Allocate texture (vmaCreateImage)", texture->GetObjectName().c_str());
 
             // set allocation name and data
             vmaSetAllocationName(vulkan_memory_allocator::allocator, allocation, texture->GetObjectName().c_str());

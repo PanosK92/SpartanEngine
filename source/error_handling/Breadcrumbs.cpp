@@ -179,6 +179,12 @@ namespace spartan
 
     void Breadcrumbs::WriteReport()
     {
+        auto log = [](const char* format, auto... args)
+        {
+            char line[2048];
+            snprintf(line, sizeof(line), format, args...);
+            Log::WriteFatal(line);
+        };
         std::string report;
         report.reserve(4096);
 
@@ -246,7 +252,7 @@ namespace spartan
                     continue;
                 }
 
-                report += "  [gpu crash]   [" + std::string(queue_label[qi]) + "] " + std::string(names[i]) + "\n";
+                report += "  [in progress]   [" + std::string(queue_label[qi]) + "] " + std::string(names[i]) + "\n";
                 gpu_crash_marker_name = names[i];
                 has_any_gpu_marker    = true;
 
@@ -324,7 +330,7 @@ namespace spartan
             for (uint32_t d = 0; d < marker->depth; d++)
                 report += "  ";
 
-            report += is_crash_point ? "  [crash]       " : "  [in progress] ";
+            report += is_crash_point ? "  [latest]      " : "  [in progress] ";
             report += std::string(marker->name.data());
             report += " | frame " + std::to_string(marker->frame_index);
             report += " | " + std::to_string(elapsed.count()) + "ms\n";
@@ -334,30 +340,30 @@ namespace spartan
         std::string verdict;
         if (!gpu_crash_marker_name.empty())
         {
-            verdict = "crash point: " + gpu_crash_marker_name + " (gpu stopped executing here)";
+            verdict = "last tracked activity: " + gpu_crash_marker_name + " (unfinished at the time of the snapshot)";
         }
         else if (!last_completed_name.empty() && !first_incomplete_name.empty())
         {
-            verdict = "crash point: between " + last_completed_name + " (completed) and " + first_incomplete_name + " (incomplete)";
+            verdict = "last tracked activity: between " + last_completed_name + " (completed) and " + first_incomplete_name + " (incomplete)";
         }
         else if (!incomplete_markers.empty())
         {
-            verdict = "crash point: " + std::string(incomplete_markers.back()->name.data());
+            verdict = "last tracked activity: " + std::string(incomplete_markers.back()->name.data());
         }
         else if (!has_any_gpu_marker)
         {
-            verdict = "no markers were reached, the crash occurred before any tracked operation.";
+            verdict = "no tracked markers were available at the time of the snapshot.";
         }
         else
         {
-            verdict = "all tracked passes completed, the crash occurred after the last tracked operation.";
+            verdict = "all tracked passes were complete at the time of the snapshot.";
         }
 
         // the process is usually killed while this is still being written, so the verdict goes out
         // first and every line is logged on its own, a truncated flush then only costs the tail
-        Log::SetLogToFile(true);
-        SP_LOG_ERROR("========================= GPU CRASH REPORT =========================");
-        SP_LOG_ERROR("%s", verdict.c_str());
+
+        log("========================= BREADCRUMB SNAPSHOT =========================");
+        log("%s", verdict.c_str());
 
         for (uint32_t qi = 0; qi < queue_count; qi++)
         {
@@ -367,7 +373,7 @@ namespace spartan
                 continue;
             }
 
-            SP_LOG_ERROR("  queue %s: %u completed, %u incomplete | last completed: %s | crashed in: %s | first incomplete: %s",
+            log("  queue %s: %u completed, %u incomplete | last completed: %s | in progress: %s | first incomplete: %s",
                 queue_label[qi],
                 s.completed_count,
                 s.incomplete_count,
@@ -382,10 +388,10 @@ namespace spartan
         {
             if (!line.empty())
             {
-                SP_LOG_ERROR("%s", line.c_str());
+                log("%s", line.c_str());
             }
         }
 
-        SP_LOG_ERROR("=====================================================================");
+        log("=====================================================================");
     }
 }

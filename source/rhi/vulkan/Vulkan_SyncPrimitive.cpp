@@ -10,7 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Implementation.h"
-#include "../../profiling/Breadcrumbs.h"
+#include "../../error_handling/Breadcrumbs.h"
 //================================
 
 namespace spartan
@@ -33,11 +33,7 @@ namespace spartan
         void wait(uint64_t timeout, void*& resource)
         {
             VkResult result = vkWaitForFences(RHI_Context::device, 1, reinterpret_cast<VkFence*>(&resource), true, timeout);
-            if (result == VK_ERROR_DEVICE_LOST)
-            {
-                RHI_Device::SetDeviceLost();
-            }
-            SP_ASSERT_VK(result);
+            check_vulkan_result(result, "Wait for GPU fence");
         }
 
         void reset(void*& resource)
@@ -77,17 +73,7 @@ namespace spartan
             semaphore_wait_info.pValues             = &value;
 
             VkResult result = vkWaitSemaphores(RHI_Context::device, &semaphore_wait_info, timeout);
-            if (result == VK_ERROR_DEVICE_LOST)
-            {
-                Log::SetLogToFile(true);
-                SP_LOG_ERROR("VK_ERROR_DEVICE_LOST waiting on timeline semaphore (value %llu)", static_cast<unsigned long long>(value));
-                if (cvar_debug_breadcrumbs.GetValue())
-                {
-                    Breadcrumbs::OnDeviceLost();
-                }
-                RHI_Device::SetDeviceLost();
-                return;
-            }
+            check_vulkan_result(result == VK_ERROR_DEVICE_LOST ? result : VK_SUCCESS, "Wait for GPU synchronization");
             if (result == VK_TIMEOUT)
             {
                 // full hmd frames can exceed the wait without a hard device loss, dump breadcrumbs then fail soft
@@ -95,7 +81,7 @@ namespace spartan
                 SP_LOG_ERROR("VK_TIMEOUT waiting on timeline semaphore (value %llu)", static_cast<unsigned long long>(value));
                 if (cvar_debug_breadcrumbs.GetValue())
                 {
-                    Breadcrumbs::OnDeviceLost();
+                    Breadcrumbs::Report();
                 }
                 RHI_Device::SetDeviceLost();
                 return;

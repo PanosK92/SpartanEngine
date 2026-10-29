@@ -20,7 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Renderer_Buffers.h"
 #include "../resource/import/ImageImporter.h"
 #include "../core/ProgressTracker.h"
-#include "../profiling/Breadcrumbs.h"
+#include "../error_handling/Breadcrumbs.h"
 #include "../geometry/GeneratedCache.h"
 #include "../world/World.h"
 //===========================================

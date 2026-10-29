@@ -28,7 +28,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
-    const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
+    // Use the same full-resolution surface texel as all reservoir passes.
+    uint2 guide_size;
+    tex_depth.GetDimensions(guide_size.x, guide_size.y);
+    uint2 guide_pixel = min(uint2((thread_id.xy + 0.5f) / float2(resolution) * float2(guide_size)), guide_size - 1u);
+    const float2 uv = (float2(guide_pixel) + 0.5f) / float2(guide_size);
 
     // Match the primary ray's point-sampled surface. Filtering depth blends unrelated
     // surfaces at edges; a world-space round trip also loses precision far from the origin.

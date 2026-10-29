@@ -39,7 +39,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (pixel.x >= resolution_x || pixel.y >= resolution_y)
         return;
 
-    float2 uv = (pixel + 0.5f) / resolution;
+    float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
 
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)

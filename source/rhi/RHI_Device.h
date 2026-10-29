@@ -117,7 +117,8 @@ namespace spartan
         // memory
         static void* MemoryGetMappedDataFromBuffer(void* resource);
         // transient buffers are replaced soon after creation (uncompacted blas), keeping them apart stops them from pinning long-lived memory blocks
-        static void MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data_initial, const char* name, const bool transient = false);
+        // allow_failure is for optional allocations with a safe caller-owned fallback (such as BLAS compaction).
+        static void MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data_initial, const char* name, const bool transient = false, const bool allow_failure = false);
         static void MemoryBufferDestroy(void*& resource);
         static void MemoryTextureCreate(RHI_Texture* texture);
         static void MemoryTextureDestroy(void*& resource);

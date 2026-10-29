@@ -427,7 +427,7 @@ namespace spartan
 
             void* compacted_buffer = nullptr;
             VkBufferUsageFlags usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-            RHI_Device::MemoryBufferCreate(compacted_buffer, compacted_size, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, blas->m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(compacted_buffer, compacted_size, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, blas->m_object_name.c_str(), false, true);
             if (!compacted_buffer)
             {
                 continue;

@@ -156,10 +156,11 @@ namespace spartan
         // if breadcrumbs were not initialized or the queue type is out of range
         static RHI_Buffer* GetGpuBuffer(RHI_Queue_Type queue_type);
 
-        static void OnDeviceLost()
+        static void Report()
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            WriteReport();
+            std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
+            if (lock.owns_lock() && m_initialized)
+                WriteReport();
         }
 
     private:

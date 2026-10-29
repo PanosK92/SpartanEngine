@@ -13,7 +13,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 // ReSTIR PT Enhanced (2026).
 static const uint RESTIR_MAX_PATH_LENGTH = 5;
-// Reconstruct the exact G-buffer texel that supplied the normal and material.
+// Every pass must sample all primary guides at this full-resolution texel centre.
+// Reduced-resolution centres can land on full-resolution texel boundaries, where
+// point sampling and integer G-buffer loads can select different surfaces.
 // A filtered depth at a quarter-resolution texel center can place the ray inside
 // a wall, causing self-intersection and repeated history rejection.
 float2 restir_primary_uv(float2 uv)
@@ -822,7 +824,7 @@ bool is_neighbor_gbuffer_compatible(
         neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution_active.y)
         return false;
 
-    float2 neighbor_uv   = (neighbor_pixel + 0.5f) / resolution;
+    float2 neighbor_uv   = restir_primary_uv((neighbor_pixel + 0.5f) / resolution);
     float neighbor_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).r;
 
     if (neighbor_depth <= 0.0f)

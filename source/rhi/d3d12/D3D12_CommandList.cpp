@@ -20,7 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_AccelerationStructure.h"
 #include "../../profiling/Profiler.h"
-#include "../../profiling/Breadcrumbs.h"
+#include "../../error_handling/Breadcrumbs.h"
 #include "../../xr/Xr.h"
 #include "D3D12_Internal.h"
 #include "D3D12_BlitGraphics.h"
@@ -1409,19 +1409,9 @@ namespace spartan
         }
 
         // detect a gpu crash early so the engine reports it instead of hanging on the next wait
-        if (FAILED(RHI_Context::device->GetDeviceRemovedReason()))
-        {
-            RHI_Device::SetDeviceLost();
-            if (cvar_debug_breadcrumbs.GetValue())
-            {
-                Breadcrumbs::OnDeviceLost();
-                SP_ERROR_WINDOW("GPU crashed. Check 'log.txt' for breadcrumbs report.");
-            }
-            else
-            {
-                SP_ERROR_WINDOW("GPU crashed. To capture breadcrumbs, enable them in debugging.h and re-run.");
-            }
-        }
+        const HRESULT removed_reason = RHI_Context::device->GetDeviceRemovedReason();
+        if (FAILED(removed_reason))
+            d3d12_utility::error::fatal(removed_reason, "Submit command list (GetDeviceRemovedReason)");
 
         m_state = RHI_CommandListState::Submitted;
 

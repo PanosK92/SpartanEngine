@@ -7,6 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 
+#include "../error_handling/ErrorHandler.h"
+
 // definition - DirectX 12
 #if defined(API_GRAPHICS_D3D12)
 #pragma comment(lib, "d3d12.lib")
@@ -362,14 +364,20 @@ inline const char* vkresult_to_string(const VkResult result)
     }
 }
 
-#define SP_ASSERT_VK(vk_result)                            \
-    if (vk_result != VK_SUCCESS)                           \
-    {                                                      \
-        Log::SetLogToFile(true);                           \
-        SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
-        SP_ASSERT(vk_result == VK_SUCCESS);                \
-    }                                                      \
-    
+inline void check_vulkan_result(VkResult result, const char* operation, const char* resource = nullptr, uint64_t bytes = 0)
+{
+    if (result == VK_SUCCESS)
+        return;
+    using namespace spartan;
+    const ErrorCategory category = result == VK_ERROR_OUT_OF_DEVICE_MEMORY ? ErrorCategory::GraphicsMemory
+        : result == VK_ERROR_OUT_OF_HOST_MEMORY ? ErrorCategory::SystemMemory
+        : result == VK_ERROR_DEVICE_LOST ? ErrorCategory::DeviceLost : ErrorCategory::GraphicsApi;
+    ErrorHandler::Fatal(category, operation, vkresult_to_string(result), resource, bytes);
+}
+
+// Evaluate graphics calls once, including in release builds.
+#define SP_ASSERT_VK(vk_result) check_vulkan_result((vk_result), #vk_result)
+
 #endif // API_GRAPHICS_VULKAN
 
 // RHI_Context

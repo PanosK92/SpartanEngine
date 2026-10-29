@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= includes ==========================
 #include "pch.h"
+#include "../error_handling/CrashHandler.h"
 #include "PhysicsWorld.h"
 #include "ProgressTracker.h"
 #include "../profiling/Profiler.h"
@@ -590,6 +591,7 @@ namespace spartan
 
         void worker_main()
         {
+            CrashHandler::InitializeThread();
             unique_lock<mutex> lock(batch_mutex);
             while (true)
             {

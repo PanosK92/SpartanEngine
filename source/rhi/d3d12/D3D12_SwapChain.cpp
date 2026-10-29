@@ -15,7 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_FrameGeneration.h"
 #include "../display/Display.h"
-#include "../../profiling/Breadcrumbs.h"
+#include "../../error_handling/Breadcrumbs.h"
 #include "../../profiling/Profiler.h"
 #include "../core/Event.h"
 #include "../core/Window.h"
@@ -633,16 +633,7 @@ namespace spartan
         {
             if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
             {
-                RHI_Device::SetDeviceLost();
-                if (cvar_debug_breadcrumbs.GetValue())
-                {
-                    Breadcrumbs::OnDeviceLost();
-                    SP_LOG_ERROR("GPU crashed. Check 'log.txt' for breadcrumbs report.");
-                }
-                else
-                {
-                    SP_LOG_ERROR("Device lost during present");
-                }
+                d3d12_utility::error::fatal(result, "Present swap chain");
             }
             else
             {

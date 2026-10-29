@@ -65,6 +65,9 @@ namespace spartan
         static void SetLogToFile(const bool log_to_file);
         static void Clear();
         static std::vector<LogCmd> GetRecentEntries(uint32_t count);
+        static const char* GetFileName();
+        // Bypass history and editor callbacks; never wait for a thread already logging.
+        static bool WriteFatal(const char* text);
 
         // buffer-based logging
         static void WriteBuffer(const char* text, LogType type);

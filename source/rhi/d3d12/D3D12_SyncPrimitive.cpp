@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Implementation.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Device.h"
+#include "D3D12_Utility.h"
 //===============================
 
 //= NAMESPACES =====
@@ -91,7 +92,7 @@ namespace spartan
         // a fence value of uint64 max signals the gpu was removed, report it like the vulkan device-lost path
         if (fence->GetCompletedValue() == UINT64_MAX)
         {
-            RHI_Device::SetDeviceLost();
+            d3d12_utility::error::fatal(DXGI_ERROR_DEVICE_REMOVED, "Wait for GPU fence");
         }
     }
 

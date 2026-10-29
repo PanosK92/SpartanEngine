@@ -103,6 +103,20 @@ namespace spartan
         log_to_file = log;
     }
 
+    const char* Log::GetFileName()
+    {
+        return log_file_name.c_str();
+    }
+
+    bool Log::WriteFatal(const char* text)
+    {
+        unique_lock<mutex> guard(log_output_mutex, try_to_lock);
+        if (!guard.owns_lock())
+            return false;
+        write_to_file(text, LogType::Error);
+        return log_file.good() && log_file.is_open();
+    }
+
     void Log::Clear()
     {
         lock_guard<mutex> guard(log_output_mutex);

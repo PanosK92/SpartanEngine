@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =================
 #include "pch.h"
 #include "ThreadPool.h"
+#include "../error_handling/CrashHandler.h"
 #include <thread>
 #include <condition_variable>
 #include <deque>
@@ -59,6 +60,7 @@ namespace spartan
 
     static void thread_loop()
     {
+        CrashHandler::InitializeThread();
         is_worker_thread = true;
 
         while (true)

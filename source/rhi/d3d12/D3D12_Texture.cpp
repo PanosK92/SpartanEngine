@@ -288,6 +288,8 @@ namespace spartan
 
         if (FAILED(hr))
         {
+            if (hr == E_OUTOFMEMORY || hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+                d3d12_utility::error::fatal(hr, "Allocate texture (CreateCommittedResource)", m_object_name.c_str());
             SP_LOG_ERROR("Failed to create texture resource '%s' (%dx%d, format=%d, mips=%d): %s",
                 m_object_name.c_str(), m_width, m_height, static_cast<int>(m_format), m_mip_count,
                 d3d12_utility::error::dxgi_error_to_string(hr));

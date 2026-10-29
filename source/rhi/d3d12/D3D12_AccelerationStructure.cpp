@@ -64,8 +64,7 @@ namespace spartan
 
             if (FAILED(hr))
             {
-                SP_LOG_ERROR("Failed to create raytracing buffer '%s' (%llu bytes)", name ? name : "?", size);
-                return nullptr;
+                d3d12_utility::error::fatal(hr, "Allocate ray tracing buffer (CreateCommittedResource)", name, size);
             }
 
             // track the logical initial state, buffers in COMMON auto-promote to UAV on first access
@@ -143,8 +142,7 @@ namespace spartan
 
             if (FAILED(hr))
             {
-                SP_LOG_ERROR("Failed to create raytracing upload buffer '%s' (%llu bytes)", name ? name : "?", size);
-                return nullptr;
+                d3d12_utility::error::fatal(hr, "Allocate ray tracing upload buffer (CreateCommittedResource)", name, size);
             }
 
             d3d12_state::SetState(resource, D3D12_RESOURCE_STATE_GENERIC_READ);

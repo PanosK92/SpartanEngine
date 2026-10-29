@@ -52,7 +52,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../math/Rectangle.h"
 #include "../resource/import/ImageImporter.h"
 #include "../commands/console/ConsoleCommands.h"
-#include "../profiling/Breadcrumbs.h"
+#include "../error_handling/Breadcrumbs.h"
 #include "../memory/FrameAllocator.h"
 #include "../xr/Xr.h"
 //==============================================

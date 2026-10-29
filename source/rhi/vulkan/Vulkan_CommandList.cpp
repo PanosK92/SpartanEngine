@@ -26,7 +26,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_VendorTechnology.h"
 #include "../../profiling/Profiler.h"
-#include "../../profiling/Breadcrumbs.h"
+#include "../../error_handling/Breadcrumbs.h"
 #include "../../xr/Xr.h"
 //=====================================
 
