@@ -53,11 +53,9 @@ float get_restir_m_cap_decorrelated(float duplication)
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 // unshadowed ris candidates for the primary analytic light pick, lin 2026 6.1
 uint  get_restir_light_candidates()    { return 32u; }
-// Preserve the robust candidate budget until tiled light presampling and
-// postponed reconnection support the paper's one-tree configuration. At quarter
-// resolution one tree otherwise leaves too few fresh paths after disocclusion.
-uint  get_restir_initial_candidates()  { return buffer_frame.restir_pt_emissive_tri_count > 0.5f ? 4u : 8u; }
-uint  get_restir_emtri_candidates()    { return 4u; }
+// One BSDF path tree per pixel; its light-ending leaves share the initial RIS.
+uint  get_restir_initial_candidates()  { return 1u; }
+uint  get_restir_emtri_candidates()    { return 1u; }
 // depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
 static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
@@ -350,7 +348,8 @@ static const uint RESTIR_ENDPOINT_DIRAC_TAG = 7u;
 struct PathSample
 {
     float3 F; // Exact RGB integrand at the source primary, paired with W.
-    float rc_pdf; // Zero for terminal/NEE-at-RC paths; otherwise the RC BSDF PDF.
+    float rc_pdf; // RC BSDF PDF; postponed RC paths instead cache incoming geometry density.
+    float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
     uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
     uint endpoint_emtri_draw;
@@ -409,7 +408,7 @@ float3 octahedral_decode(float2 e)
 uint pack_path_info(PathSample s)
 {
     return (s.rc_length & 7u) | ((s.flags & 15u) << 3u) | ((s.path_length & 7u) << 7u)
-        | ((s.endpoint_light & 65535u) << 10u) | ((s.endpoint_emtri_draw & 7u) << 26u);
+        | ((s.endpoint_light & 65535u) << 10u) | ((s.endpoint_emtri_draw & 31u) << 26u);
 }
 
 void unpack_path_info(uint packed, inout PathSample s)
@@ -418,7 +417,7 @@ void unpack_path_info(uint packed, inout PathSample s)
     s.flags = (packed >> 3u) & 15u;
     s.path_length = (packed >> 7u) & 7u;
     s.endpoint_light = (packed >> 10u) & 65535u;
-    s.endpoint_emtri_draw = (packed >> 26u) & 7u;
+    s.endpoint_emtri_draw = (packed >> 26u) & 31u;
 }
 
 // Six RGBA32F textures (96 bytes), including the exact cached RGB integrand. A single path has either terminal emission
@@ -497,6 +496,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.F = tex5.rgb;
     r.sample.rc_pdf = tex5.a;
     r.sample.initial_weight = 1.0f;
+    r.sample.first_hit_distance = 0.0f;
 
     float2 rc_normal_oct = unpack_float_to_f16x2(tex0.w);
     float2 rc_out_oct    = unpack_float_to_f16x2(tex1.w);
@@ -544,7 +544,7 @@ bool is_rc_emissive(PathSample s)    { return (s.flags & PATH_FLAG_RC_EMIT) != 0
 bool is_nee_sample(PathSample s)     { return (s.flags & PATH_FLAG_NEE)     != 0; }
 bool is_dirac_light_sample(PathSample s)
 {
-    return is_nee_sample(s) && !is_sky_sample(s) && s.path_length == 2u && s.endpoint_light < RESTIR_ENDPOINT_EMTRI &&
+    return is_nee_sample(s) && !is_sky_sample(s) && s.rc_length == s.path_length && s.endpoint_light < RESTIR_ENDPOINT_EMTRI &&
         s.endpoint_emtri_draw == RESTIR_ENDPOINT_DIRAC_TAG;
 }
 
@@ -614,6 +614,7 @@ Reservoir create_empty_reservoir()
     r.sample.F               = 0.0f;
     r.sample.rc_pdf          = 0.0f;
     r.sample.initial_weight  = 1.0f;
+    r.sample.first_hit_distance = 0.0f;
     r.sample.endpoint_light  = 65535u;
     r.sample.endpoint_emtri_draw = 0u;
     r.sample.path_length     = 0;
@@ -1192,9 +1193,9 @@ float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal,
     float3 view, float3 albedo, float roughness, float metallic)
 {
     float3 direction;
-    if (is_sky_sample(s))
+    if (is_sky_sample(s) && s.rc_length == 2u)
         direction = s.rc_pos;
-    else if ((has_reconnection(s) && s.rc_length == 2u) || is_nee_sample(s))
+    else if (s.rc_length == 2u && (has_reconnection(s) || is_nee_sample(s)))
         direction = normalize(s.rc_pos - pos);
     else
     {
@@ -1213,13 +1214,18 @@ float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal,
 // r_pri^2 = |x0 - x1|^2 / (cos / 4pi) following muller 2021, the paper's c = 0.02 is tuned
 // against this normalization, scaling by the pixel cone instead left the threshold four orders
 // of magnitude below any reconnection footprint and the gate never fired
-float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal)
+float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal, float3 camera_position)
 {
-    float3 to_cam  = get_camera_position() - primary_pos;
+    float3 to_cam  = camera_position - primary_pos;
     float  dist_sq = dot(to_cam, to_cam);
     float  cos_cam = max(dot(primary_normal, normalize(to_cam)), 1e-3f);
 
     return dist_sq / (cos_cam / (4.0f * PI));
+}
+
+float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal)
+{
+    return restir_primary_footprint_sq(primary_pos, primary_normal, get_camera_position());
 }
 
 struct ShiftResult
@@ -1231,7 +1237,11 @@ struct ShiftResult
 };
 
 ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
-    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view);
+    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view,
+    float3 camera_position);
+
+ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float3 view,
+    float3 albedo, float roughness, float metallic, float3 camera_position);
 
 
 // Only a light endpoint directly after RC has a view-dependent endpoint MIS
@@ -1263,7 +1273,7 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
     float pdf;
     float3 f_rc = evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic,
         src.rc_normal, view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
-    float mis = restir_rc_endpoint_mis(src.path_length, src.endpoint_light, src.rc_normal, src.rc_outgoing_dir, pdf);
+    float mis = restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.endpoint_light, src.rc_normal, src.rc_outgoing_dir, pdf);
     return src.rc_L_nee + f_rc * src.rc_L_post * mis;
 }
 
@@ -1279,13 +1289,28 @@ ShiftResult try_reconnection_shift(
     float3 dst_albedo,
     float dst_roughness,
     float dst_metallic,
-    float3 src_view_dir)
+    float3 src_view_dir,
+    bool destination_previous_frame = false)
 {
     ShiftResult result;
     result.sample = src;
     result.f_dst    = float3(0, 0, 0);
     result.jacobian = 0.0f;
     result.ok       = false;
+
+    float3 destination_camera = destination_previous_frame ? buffer_frame.camera_position_previous : get_camera_position();
+    if (has_reconnection(src) && src.rc_length > 2u)
+    {
+        if (all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir))
+        {
+            result.f_dst = src.F;
+            result.jacobian = 1.0f;
+            result.ok = all(isfinite(src.F));
+            return result;
+        }
+        return restir_shift_prefix(src, dst_pos, dst_normal, dst_view_dir, dst_albedo,
+            dst_roughness, dst_metallic, destination_camera);
+    }
 
     if (is_sky_sample(src))
     {
@@ -1294,7 +1319,7 @@ ShiftResult try_reconnection_shift(
         // NEE sun samples retain their light-sampling parameterization.
         if (!is_nee_sample(src) && !has_reconnection(src))
             return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal,
-                dst_view_dir, dst_albedo, dst_roughness, dst_metallic, src_view_dir);
+                dst_view_dir, dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera);
         float3 dir = src.rc_pos;
         if (!is_nee_sample(src))
         {
@@ -1366,7 +1391,7 @@ ShiftResult try_reconnection_shift(
     // Replay fixed random dimensions only when the source has no reconnection.
     if (!is_identity && !has_reconnection(src))
         return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
-            dst_albedo, dst_roughness, dst_metallic, src_view_dir);
+            dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera);
 
     float3 rc_from_dst = src.rc_pos - dst_pos;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
@@ -1397,7 +1422,7 @@ ShiftResult try_reconnection_shift(
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
     // Use the actual mixture PDF on both sides; the supplemental black-box
     // criterion also rejects a sharply peaked preceding scattering event.
-    if (!is_identity)
+    if (!is_identity && !is_nee_sample(src))
     {
         float pdf_dst;
         evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal,
@@ -1413,7 +1438,7 @@ ShiftResult try_reconnection_shift(
                 -dir_dst, src.rc_outgoing_dir, pdf_rc, 1.0f);
             fp_inverse = dist_dst_sq / max(pdf_rc * abs(dot(dst_normal, dir_dst)), 1e-6f);
         }
-        if (min(fp_dst, fp_inverse) < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal))
+        if (min(fp_dst, fp_inverse) < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal, destination_camera))
             return result;
     }
 
@@ -1617,11 +1642,12 @@ bool emtri_local_candidate(float3 pos, float3 dir, out EmissiveTriangle tri, out
     return tri.weight > 0.0f && dot(tri.normal, -dir) > 1e-4f;
 }
 
-// Equal numbers of global CDF and local cosine proposals, combined with balance
+// Global CDF and local cosine proposals, combined with balance
 // MIS before RIS. Visibility belongs in this inner target: a panel behind a wall
 // must not evict the local visible panel and leave the entire estimate black.
-// The draw count is fixed so initial tracing and random replay consume the same dimensions.
-static const uint RESTIR_EMTRI_RIS_CANDIDATES = 8u;
+// Section 6.1: 32 proposals at the primary, decreasing quadratically with depth.
+// Both tracing and replay derive the count from the same vertex index.
+uint restir_nee_candidate_count(uint vertex) { return max(32u / (vertex * vertex), 1u); }
 
 bool emtri_ris_pick_path(
     float3 pos,
@@ -1633,7 +1659,7 @@ bool emtri_ris_pick_path(
     out float out_W,
     out float out_pdf,
     out uint out_draw,
-    int forced_draw)
+    int forced_draw, uint candidate_count, float3 view, float3 albedo, float roughness, float metallic)
 {
     out_pdf = 0.0f;
     out_draw = 0u;
@@ -1649,7 +1675,8 @@ bool emtri_ris_pick_path(
     float weight_sum = 0.0f;
     float target_sel = 0.0f;
 
-    for (uint i = 0u; i < RESTIR_EMTRI_RIS_CANDIDATES; i++)
+    uint local_count = candidate_count / 2u;
+    for (uint i = 0u; i < candidate_count; i++)
     {
         float3 xi = random_float3(seed);
         float  u  = random_float(seed);
@@ -1661,7 +1688,7 @@ bool emtri_ris_pick_path(
         EmissiveTriangle tri;
         float3 dir, p;
         float point_pdf;
-        if (i < RESTIR_EMTRI_RIS_CANDIDATES / 2u)
+        if (i < local_count)
         {
             float cosine_pdf;
             dir = local_to_world(sample_cosine_hemisphere(xi.yz, cosine_pdf), normal);
@@ -1715,8 +1742,11 @@ bool emtri_ris_pick_path(
         }
 
         float cos_l = max(dot(normal, dir), 0.0f);
-        float target = luminance(tri.emission) * cos_l;
-        float pdf_sa = 0.5f * ((tri.weight / total_weight) * point_pdf + cos_l / PI);
+        float unused_pdf;
+        float3 f = evaluate_brdf(albedo, roughness, metallic, normal, view, dir, unused_pdf, 1.0f);
+        float target = target_scalar(tri.emission * f);
+        float local_fraction = float(local_count) / float(candidate_count);
+        float pdf_sa = lerp((tri.weight / total_weight) * point_pdf, cos_l / PI, local_fraction);
         if (!(pdf_sa > 0.0f) || !isfinite(pdf_sa))
             continue;
         float w = target / pdf_sa;
@@ -1738,16 +1768,73 @@ bool emtri_ris_pick_path(
         return false;
     }
 
-    out_W = weight_sum / (float(RESTIR_EMTRI_RIS_CANDIDATES) * target_sel);
+    out_W = weight_sum / (float(candidate_count) * target_sel);
     return true;
 }
 
 bool emtri_ris_pick(float3 pos, float3 normal, inout uint seed,
-    out float3 light_pos, out float3 light_normal, out float3 emission, out float W)
+    out float3 light_pos, out float3 light_normal, out float3 emission, out float W,
+    float3 view, float3 albedo, float roughness, float metallic)
 {
     float pdf;
     uint draw;
-    return emtri_ris_pick_path(pos, normal, seed, light_pos, light_normal, emission, W, pdf, draw, -1);
+    return emtri_ris_pick_path(pos, normal, seed, light_pos, light_normal, emission, W, pdf, draw, -1,
+        restir_nee_candidate_count(1u), view, albedo, roughness, metallic);
+}
+
+// power proportional light pick weight, lin 2022 6.1, all four light types are eligible
+float light_pick_weight(LightParameters l)
+{
+    if (l.intensity <= 0.0f)
+        return 0.0f;
+
+    bool is_directional = (l.flags & (1u << 0)) != 0;
+    bool is_point       = (l.flags & (1u << 1)) != 0;
+    bool is_spot        = (l.flags & (1u << 2)) != 0;
+    bool is_area        = (l.flags & (1u << 6)) != 0;
+
+    float lum = max(luminance(l.color.rgb), 1e-3f);
+    if (is_directional)
+    {
+        return l.intensity * lum;
+    }
+    if (is_area)
+    {
+        float emitter_area = max(l.area_width * l.area_height, 0.0001f);
+        return l.intensity * lum * emitter_area;
+    }
+    if (is_point || is_spot)
+    {
+        // dirac local light, weight by intensity, luminance and cone fraction
+        float cone_factor = 1.0f;
+        if (is_spot)
+        {
+            float cos_outer = cos(l.angle);
+            cone_factor     = max(1.0f - cos_outer, 0.05f);
+        }
+        return l.intensity * lum * cone_factor;
+    }
+    return 0.0f;
+}
+
+// total nee pick weight, the loop is o(light_count)
+float compute_total_light_weight()
+{
+    uint light_count = (uint)buffer_frame.restir_pt_light_count;
+    float total = 0.0f;
+    for (uint i = 0; i < light_count; i++)
+    {
+        total += light_pick_weight(light_parameters[i]);
+    }
+    return total;
+}
+
+// importance pick pdf for a known light index, used by the brdf strategy mis denominator
+float light_pick_pdf_for_index(uint light_idx, float total_weight)
+{
+    if (total_weight <= 0.0f)
+        return 0.0f;
+    return light_pick_weight(light_parameters[light_idx]) / total_weight;
 }
 
 // direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
@@ -1765,15 +1852,22 @@ struct RestirLightSample
     float initial_weight;
     uint light_index;
     uint emtri_draw;
+    float3 endpoint_position;
+    float3 endpoint_normal;
+    float3 endpoint_radiance;
+    float endpoint_pdf;
+    bool endpoint_valid;
+    bool endpoint_sky;
+    bool endpoint_dirac;
 };
 
-void restir_stream_light(inout RestirLightSample result, float3 direction, float3 incident,
+bool restir_stream_light(inout RestirLightSample result, float3 direction, float3 incident,
     float3 brdf_cos, inout uint selection_seed, float candidate_weight,
     uint light_index, uint emtri_draw, int forced_light)
 {
     float target = target_scalar(brdf_cos * incident);
     if (!(target > 0.0f) || isnan(target) || isinf(target))
-        return;
+        return false;
     result.radiance_sum += brdf_cos * incident * candidate_weight;
     float weight = target * candidate_weight;
     result.weight_sum += weight;
@@ -1785,8 +1879,12 @@ void restir_stream_light(inout RestirLightSample result, float3 direction, float
         result.direction = direction;
         result.incident = incident;
         result.selected_target = target;
+        return true;
     }
+    return false;
 }
+
+float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray);
 
 RestirLightSample sample_direct_lighting_at_vertex(
     float3 shading_pos,
@@ -1799,7 +1897,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
     float  specular_blend,
     inout uint seed,
     int forced_light,
-    int forced_emtri_draw)
+    int forced_emtri_draw, uint vertex)
 {
     RestirLightSample result = (RestirLightSample)0;
     uint selection_seed = seed ^ 0x9e3779b9u;
@@ -1807,12 +1905,31 @@ RestirLightSample sample_direct_lighting_at_vertex(
     float shading_offset = compute_ray_offset(shading_pos);
     float3 ray_origin_light = shading_pos + geometric_normal * shading_offset;
 
-    // analytical lights
-    for (uint light_idx = 0; light_idx < light_count; light_idx++)
+    // Importance-sampled analytic NEE, with the same depth-dependent budget as
+    // emissive NEE. Fixed random dimensions make BSDF-prefix replay cheap.
+    uint candidate_count = restir_nee_candidate_count(vertex);
+    float total_light_weight = forced_light == int(RESTIR_ENDPOINT_BSDF) ? 0.0f : compute_total_light_weight();
+    for (uint proposal = 0u; proposal < candidate_count; ++proposal)
     {
+        float3 light_xi = random_float3(seed);
+        if (total_light_weight <= 0.0f)
+            continue;
+        float cdf_sample = light_xi.x * total_light_weight;
+        float cdf = 0.0f;
+        uint light_idx = light_count - 1u;
+        for (uint index = 0u; index < light_count; ++index)
+        {
+            cdf += light_pick_weight(light_parameters[index]);
+            if (cdf_sample < cdf)
+            {
+                light_idx = index;
+                break;
+            }
+        }
         LightParameters light = light_parameters[light_idx];
+        float pick_pdf = light_pick_pdf_for_index(light_idx, total_light_weight);
 
-        if (light.intensity <= 0.0f)
+        if (light.intensity <= 0.0f || pick_pdf <= 0.0f)
             continue;
 
         uint light_flags    = light.flags;
@@ -1821,20 +1938,16 @@ RestirLightSample sample_direct_lighting_at_vertex(
         bool is_spot        = (light_flags & (1u << 2)) != 0;
         bool is_area        = (light_flags & (1u << 6)) != 0;
 
-        // Replay evaluates one fixed leaf, never the initial light reservoir.
-        // Consume the area-light dimensions to preserve subsequent BSDF draws.
         if (forced_light >= 0 && uint(forced_light) != light_idx)
-        {
-            if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-                random_float2(seed);
             continue;
-        }
 
         float3 light_color = light.color.rgb;
         float3 light_dir;
         float  light_dist;
         float  light_pdf    = 1.0f;
         float  attenuation  = 1.0f;
+        float3 endpoint_position = light.position;
+        float3 endpoint_normal = -light.direction;
 
         if (is_directional)
         {
@@ -1854,10 +1967,12 @@ RestirLightSample sample_direct_lighting_at_vertex(
             float3 ey          = light_up    * light.area_height;
             float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
 
-            float2 xi = random_float2(seed);
+            float2 xi = light_xi.yz;
             float3 light_sample_pos;
             float  solid_angle;
             sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
+            endpoint_position = light_sample_pos;
+            endpoint_normal = light_normal;
 
             if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
                 continue;
@@ -1915,7 +2030,18 @@ RestirLightSample sample_direct_lighting_at_vertex(
         float mis_weight = 1.0f;
 
         float3 Li = light_color * light.intensity * attenuation;
-        restir_stream_light(result, light_dir, Li * mis_weight / max(light_pdf, 1e-6f), brdf, selection_seed, 1.0f, light_idx, 0u, forced_light);
+        bool selected = restir_stream_light(result, light_dir, Li * mis_weight / max(light_pdf, 1e-6f), brdf,
+            selection_seed, 1.0f / (float(candidate_count) * pick_pdf), light_idx, 0u, forced_light);
+        if (selected)
+        {
+            result.endpoint_position = is_directional ? light_dir : endpoint_position;
+            result.endpoint_normal = endpoint_normal;
+            result.endpoint_radiance = Li;
+            result.endpoint_pdf = light_pdf;
+            result.endpoint_valid = true;
+            result.endpoint_sky = is_directional;
+            result.endpoint_dirac = is_point || is_spot;
+        }
     }
 
     // Emissive-triangle NEE contributes one light-ending path.
@@ -1925,7 +2051,8 @@ RestirLightSample sample_direct_lighting_at_vertex(
         float W, source_pdf;
         uint draw;
         if (emtri_ris_pick_path(shading_pos, shading_normal, seed, light_pos, light_normal, emission,
-            W, source_pdf, draw, forced_light == int(RESTIR_ENDPOINT_EMTRI) ? forced_emtri_draw : -1))
+            W, source_pdf, draw, forced_light == int(RESTIR_ENDPOINT_EMTRI) ? forced_emtri_draw : -1,
+            restir_nee_candidate_count(vertex), view_dir, albedo, roughness, metallic))
         {
             float3 to_light = light_pos - shading_pos;
             float distance = length(to_light);
@@ -1937,13 +2064,23 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     direction, pdf, specular_blend);
                 restir_stream_light(result, direction, emission / source_pdf, brdf, selection_seed,
                     W * source_pdf, RESTIR_ENDPOINT_EMTRI, draw, forced_light);
+                if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_EMTRI)
+                {
+                    result.endpoint_position = light_pos;
+                    result.endpoint_normal = light_normal;
+                    result.endpoint_radiance = emission;
+                    result.endpoint_pdf = source_pdf;
+                    result.endpoint_valid = true;
+                    result.endpoint_sky = false;
+                    result.endpoint_dirac = false;
+                }
             }
         }
     }
 
     else if (is_emtri_pool_active())
     {
-        for (uint i = 0u; i < RESTIR_EMTRI_RIS_CANDIDATES; ++i)
+        for (uint i = 0u; i < restir_nee_candidate_count(vertex); ++i)
         {
             random_float3(seed);
             random_float(seed);
@@ -1997,6 +2134,17 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
                     float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
                     restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
+                    if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
+                    {
+                        result.endpoint_position = probe_ray.Origin + probe_ray.Direction * probe_query.CommittedRayT();
+                        result.endpoint_normal = restir_endpoint_normal(probe_query.CommittedRayT(), probe_query.CommittedInstanceIndex(),
+                            probe_query.CommittedPrimitiveIndex(), probe_query.CommittedTriangleBarycentrics(), probe_ray);
+                        result.endpoint_radiance = emission;
+                        result.endpoint_pdf = env_pdf;
+                        result.endpoint_valid = true;
+                        result.endpoint_sky = false;
+                        result.endpoint_dirac = false;
+                    }
                 }
             }
             else
@@ -2008,6 +2156,16 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
                 float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
                 restir_stream_light(result, env_dir, env_radiance / env_pdf, brdf_env * mis_weight_env, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
+                if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
+                {
+                    result.endpoint_position = env_dir;
+                    result.endpoint_normal = -env_dir;
+                    result.endpoint_radiance = env_radiance;
+                    result.endpoint_pdf = env_pdf;
+                    result.endpoint_valid = true;
+                    result.endpoint_sky = true;
+                    result.endpoint_dirac = false;
+                }
             }
         }
     }
@@ -2020,6 +2178,9 @@ RestirLightSample sample_direct_lighting_at_vertex(
 // visibility ray from dst primary to rc, sky samples test reachability to the sky
 bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
 {
+    // Prefix replay already traced the actual last-prefix-to-RC segment.
+    if ((has_reconnection(src) && src.rc_length > 2u) || (src.rc_length == 0u && src.path_length > 0u))
+        return true;
     float offset = compute_ray_offset(dst_pos);
     RayDesc ray;
     ray.Origin = dst_pos + dst_normal * offset;
@@ -2077,6 +2238,13 @@ ShiftResult evaluate_path_integrand(
     result.f_dst    = float3(0, 0, 0);
     result.jacobian = 1.0f;
     result.ok       = false;
+
+    if (has_reconnection(src) && src.rc_length > 2u)
+    {
+        result.f_dst = src.F;
+        result.ok = all(isfinite(src.F)) && any(src.F > 0.0f);
+        return result;
+    }
 
     float3 dir;
     if (is_sky_sample(src))

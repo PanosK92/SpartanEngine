@@ -22,68 +22,13 @@ static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 0.0f;
 
-// power proportional light pick weight, lin 2022 6.1, all four light types are eligible
-float light_pick_weight(LightParameters l)
-{
-    if (l.intensity <= 0.0f)
-        return 0.0f;
-
-    bool is_directional = (l.flags & (1u << 0)) != 0;
-    bool is_point       = (l.flags & (1u << 1)) != 0;
-    bool is_spot        = (l.flags & (1u << 2)) != 0;
-    bool is_area        = (l.flags & (1u << 6)) != 0;
-
-    float lum = max(luminance(l.color.rgb), 1e-3f);
-    if (is_directional)
-    {
-        return l.intensity * lum;
-    }
-    if (is_area)
-    {
-        float emitter_area = max(l.area_width * l.area_height, 0.0001f);
-        return l.intensity * lum * emitter_area;
-    }
-    if (is_point || is_spot)
-    {
-        // dirac local light, weight by intensity, luminance and cone fraction
-        float cone_factor = 1.0f;
-        if (is_spot)
-        {
-            float cos_outer = cos(l.angle);
-            cone_factor     = max(1.0f - cos_outer, 0.05f);
-        }
-        return l.intensity * lum * cone_factor;
-    }
-    return 0.0f;
-}
-
-// total nee pick weight, the loop is o(light_count)
-float compute_total_light_weight()
-{
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    float total = 0.0f;
-    for (uint i = 0; i < light_count; i++)
-    {
-        total += light_pick_weight(light_parameters[i]);
-    }
-    return total;
-}
-
-// importance pick pdf for a known light index, used by the brdf strategy mis denominator
-float light_pick_pdf_for_index(uint light_idx, float total_weight)
-{
-    if (total_weight <= 0.0f)
-        return 0.0f;
-    return light_pick_weight(light_parameters[light_idx]) / total_weight;
-}
-
 // samples a candidate whose rc sits on an area sampled point of an emissive triangle
 // returns the rc position, emitted radiance and the ris weight standing in for 1 / source pdf
 PathSample sample_emissive_tri_candidate(
     float3 primary_pos,
     float3 primary_normal,
     inout uint seed,
-    out float ris_weight)
+    out float ris_weight, float3 view, float3 albedo, float roughness, float metallic)
 {
     PathSample s = (PathSample)0;
     s.rc_pos          = float3(0, 0, 0);
@@ -109,7 +54,8 @@ PathSample sample_emissive_tri_candidate(
     // ris over cdf draws, see emtri_ris_pick, the unshadowed geometry term picks the panel
     float3 light_pos, light_normal, emission;
     float  W;
-    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W))
+    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W,
+        view, albedo, roughness, metallic))
     {
         return s;
     }
@@ -377,12 +323,13 @@ void ray_gen()
         if (dir_valid)
         {
             float3 reference_radiance;
-            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0);
+            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0,
+                view_dir, albedo, roughness, metallic, get_camera_position());
             // Reuse only primary rays drawn from the specular component, before
             // light/path resampling can select an unrelated diffuse endpoint.
             if (xi.x >= 1.0f - specular_probability)
             {
-                float distance = is_sky_sample(candidate) ? 10000.0f : length(candidate.rc_pos - pos_ws);
+                float distance = candidate.first_hit_distance;
                 NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist, distance);
             }
             // Independent path-tracing estimate: sum the traced light contributions,
@@ -393,7 +340,8 @@ void ray_gen()
                 view_dir, dir, 0.0f);
             canonical_gi += brdf_all * reference_radiance / source_pdf;
             canonical_specular += max(brdf_all - brdf_diffuse, 0.0f) * reference_radiance / source_pdf;
-            candidate.F = evaluate_path_integrand(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
+            // The path walk evaluates F in its selected hybrid measure. A
+            // primary-to-RC evaluation would discard a postponed glossy prefix.
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
@@ -486,7 +434,8 @@ void ray_gen()
     for (uint ei = 0; ei < n_emtri_count; ei++)
     {
         float emtri_ris_weight;
-        PathSample emtri_candidate = sample_emissive_tri_candidate(pos_ws, normal_ws, seed, emtri_ris_weight);
+        PathSample emtri_candidate = sample_emissive_tri_candidate(pos_ws, normal_ws, seed, emtri_ris_weight,
+            view_dir, albedo, roughness, metallic);
 
         float emtri_weight = 0.0f;
         if (emtri_ris_weight > 0.0f)

@@ -28,284 +28,363 @@ PathSurface restir_trace_surface(RayDesc ray)
         query.CommittedPrimitiveIndex(), packed_bary, ray);
 }
 
-// A path tree contributes several light-ending paths. RIS keeps exactly one
-// endpoint and its length, outgoing direction and suffix. It never mixes a
-// terminal emission term with a different continuation in the same descriptor.
-struct RestirPathSelection
+float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray)
 {
-    float3 reference_radiance;
-    float3 emission;
-    float3 suffix;
-    float3 direction;
-    float outgoing_pdf;
-    uint length;
-    float weight_sum;
-    float selected_target;
-    float initial_weight;
-    uint endpoint_light;
-    uint endpoint_emtri_draw;
-};
-
-void restir_stream_path(inout RestirPathSelection result, float3 emission, float3 suffix,
-    float3 direction, float outgoing_pdf, uint path_length, PathSurface rc, float3 rc_view,
-    inout uint selection_seed, float candidate_weight, uint endpoint_light, uint endpoint_emtri_draw,
-    bool replay, PathSample requested)
-{
-    float pdf;
-    float3 f_rc = evaluate_brdf(rc.albedo, rc.roughness, rc.metallic, rc.hit_normal,
-        rc_view, direction, pdf, 1.0f);
-    float mis = restir_rc_endpoint_mis(path_length, endpoint_light, rc.hit_normal, direction, pdf);
-    float target = target_scalar(emission + f_rc * suffix * mis);
-    if (!(target > 0.0f) || isnan(target) || isinf(target))
-        return;
-    float weight = target * candidate_weight;
-    result.weight_sum += weight;
-    float u = random_float(selection_seed);
-    bool selected = replay ? (path_length == requested.path_length && endpoint_light == requested.endpoint_light)
-                           : (u * result.weight_sum < weight);
-    if (selected)
-    {
-        result.emission = emission;
-        result.suffix = suffix;
-        result.direction = direction;
-        result.outgoing_pdf = outgoing_pdf;
-        result.length = path_length;
-        result.selected_target = target;
-        result.endpoint_light = endpoint_light;
-        result.endpoint_emtri_draw = endpoint_emtri_draw;
-    }
+    uint packed = f32tof16(bary.x) | (f32tof16(bary.y) << 16u);
+    return reconstruct_path_surface(distance, instance, primitive, packed, ray).hit_normal;
 }
 
-RestirPathSelection sample_path_tree_at_rc(PathSurface rc, float3 rc_view, inout uint seed,
-    bool replay, PathSample requested)
+// A common criterion for initial selection and both directions of a hybrid shift.
+bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, float incoming_pdf,
+    float outgoing_pdf, float threshold)
 {
-    RestirPathSelection result = (RestirPathSelection)0;
-    result.initial_weight = 1.0f;
-    uint selection_seed = seed ^ 0x68bc21ebu;
-    restir_stream_path(result, rc.emission, 0.0f, rc.hit_normal, 0.0f, 2u, rc, rc_view, selection_seed, 1.0f, 65535u, 0u, replay, requested);
-    if (replay && requested.path_length == 2u)
-        return result;
-
-    RestirLightSample light = sample_direct_lighting_at_vertex(rc.hit_position, rc.hit_normal,
-        rc.geometric_normal, rc_view, rc.albedo, rc.roughness, rc.metallic, 1.0f, seed,
-        replay ? int(requested.endpoint_light) : -1, replay ? int(requested.endpoint_emtri_draw) : -1);
-    result.reference_radiance = rc.emission + light.radiance_sum;
-    float light_pdf;
-    evaluate_brdf(rc.albedo, rc.roughness, rc.metallic, rc.hit_normal, rc_view,
-        light.direction, light_pdf, 1.0f);
-    restir_stream_path(result, 0.0f, light.incident, light.direction, light_pdf,
-        3u, rc, rc_view, selection_seed, light.initial_weight, light.light_index, light.emtri_draw, replay, requested);
-    if (replay && requested.path_length == 3u && requested.endpoint_light != 65535u)
-        return result;
-
-    PathSurface cur = rc;
-    float3 view = rc_view;
-    float3 throughput = 1.0f;
-    float3 first_direction = 0.0f;
-    float first_pdf = 0.0f;
-    float rr_weight = 1.0f;
-    // Vertex count includes the primary surface and the light endpoint.
-    for (uint depth = 3u; depth <= get_restir_max_path_length(); ++depth)
-    {
-        if (depth > 3u + RESTIR_RR_START)
-        {
-            float rr = random_float(seed);
-            if (!replay && rr >= RESTIR_RR_CONTINUATION)
-                break;
-            if (!replay)
-                rr_weight /= RESTIR_RR_CONTINUATION;
-        }
-        float pdf;
-        float3 direction = sample_brdf(cur.albedo, cur.roughness, cur.metallic,
-            cur.hit_normal, view, random_float2(seed), pdf, 1.0f);
-        if (pdf < RESTIR_MIN_PDF || dot(direction, cur.hit_normal) <= 0.0f || any(isnan(direction)))
-            break;
-        if (depth == 3u)
-        {
-            first_direction = direction;
-            first_pdf = pdf;
-            // The RC outgoing edge uses solid-angle measure. Its sampling
-            // density belongs in the initial weight, not the cached integrand.
-        }
-        else
-        {
-            float unused_pdf;
-            throughput *= evaluate_brdf(cur.albedo, cur.roughness, cur.metallic,
-                cur.hit_normal, view, direction, unused_pdf, 1.0f) / pdf;
-        }
-
-        RayDesc ray;
-        ray.Origin = cur.hit_position + cur.geometric_normal * compute_ray_offset(cur.hit_position);
-        ray.Direction = direction;
-        ray.TMin = RESTIR_RAY_T_MIN;
-        ray.TMax = 1000.0f;
-        PathSurface next = restir_trace_surface(ray);
-        float mis = power_heuristic(pdf, sky_nee_pdf_at(direction, cur.hit_normal));
-        float3 emitted = next.hit ? next.emission : sample_sky(direction);
-        float unused_rc_pdf;
-        float3 f_rc = evaluate_brdf(rc.albedo, rc.roughness, rc.metallic, rc.hit_normal,
-            rc_view, first_direction, unused_rc_pdf, 1.0f);
-        result.reference_radiance += f_rc * throughput * emitted * mis * rr_weight / first_pdf;
-        restir_stream_path(result, 0.0f, throughput * emitted * (depth == 3u ? 1.0f : mis), first_direction,
-            first_pdf, depth, rc, rc_view, selection_seed, rr_weight / first_pdf, 65535u, 0u, replay, requested);
-        if (replay && depth == requested.path_length)
-            return result;
-        if (!next.hit)
-            break;
-        if (depth < get_restir_max_path_length())
-        {
-            light = sample_direct_lighting_at_vertex(next.hit_position, next.hit_normal,
-                next.geometric_normal, -direction, next.albedo, next.roughness, next.metallic, 1.0f, seed,
-                replay ? int(requested.endpoint_light) : -1, replay ? int(requested.endpoint_emtri_draw) : -1);
-            result.reference_radiance += f_rc * throughput * light.radiance_sum * rr_weight / first_pdf;
-            float unused_pdf;
-            float3 brdf = evaluate_brdf(next.albedo, next.roughness, next.metallic,
-                next.hit_normal, -direction, light.direction, unused_pdf, 1.0f);
-            if (light.light_index == RESTIR_ENDPOINT_SKY)
-                light.incident *= power_heuristic(sky_nee_pdf_at(light.direction, next.hit_normal), unused_pdf);
-            restir_stream_path(result, 0.0f, throughput * brdf * light.incident,
-                first_direction, first_pdf, depth + 1u, rc, rc_view, selection_seed,
-                rr_weight * light.initial_weight / first_pdf, light.light_index, light.emtri_draw, replay, requested);
-            if (replay && depth + 1u == requested.path_length && requested.endpoint_light != 65535u)
-                return result;
-        }
-        cur = next;
-        view = -direction;
-    }
-    if (result.selected_target > 0.0f)
-        result.initial_weight = replay ? 1.0f : result.weight_sum / result.selected_target;
-    return result;
+    if (incoming_pdf * incoming_pdf * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
+        return false;
+    if (!rc.hit)
+        return true;
+    float3 delta = rc.hit_position - previous.hit_position;
+    float d2 = dot(delta, delta);
+    if (d2 < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
+        return false;
+    float3 direction = delta * rsqrt(d2);
+    float forward = d2 / max(incoming_pdf * abs(dot(rc.hit_normal, direction)), 1e-6f);
+    float inverse = outgoing_pdf > 0.0f ? d2 / max(outgoing_pdf * abs(dot(previous.hit_normal, direction)), 1e-6f) : 1e30f;
+    return min(forward, inverse) >= threshold;
 }
 
-// traces a path from the primary, captures the reconnection vertex and the suffix radiance
-PathSample trace_path_from_primary(
-    float3 primary_pos,
-    float3 primary_normal,
-    float3 dir,
-    float dir_pdf,
-    uint replay_seed,
-    inout uint seed,
-    out float3 reference_radiance, bool replay, PathSample requested)
+// Initialize a descriptor at a surface or infinite environment endpoint.
+PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, float3 direction,
+    uint vertex, uint replay_seed)
 {
-    reference_radiance = 0.0f;
     PathSample s = (PathSample)0;
-    s.initial_weight = 1.0f;
-    s.endpoint_light = 65535u;
-    s.rc_pos          = float3(0, 0, 0);
-    s.rc_normal       = float3(0, 1, 0);
-    s.rc_outgoing_dir = float3(0, 1, 0);
-    s.rc_L_post       = float3(0, 0, 0);
-    s.rc_L_nee        = float3(0, 0, 0);
-    s.rc_albedo       = float3(0, 0, 0);
-    s.rc_roughness    = 1.0f;
-    s.rc_metallic     = 0.0f;
-    s.src_pos         = float3(0, 0, 0);
-    s.src_normal      = float3(0, 1, 0);
-    s.src_albedo      = float3(0, 0, 0);
-    s.src_roughness   = 1.0f;
-    s.src_metallic    = 0.0f;
-    // store the seed used for xi so the random replay shift can re-derive the same prefix
-    s.seed_path       = replay_seed;
-    s.path_length     = 0;
-    s.rc_length       = 0;
-    s.flags           = 0;
-
-    if (dot(dir, primary_normal) <= 0.0f)
-        return s;
-
-    float primary_offset = compute_ray_offset(primary_pos);
-    RayDesc ray;
-    ray.Origin    = primary_pos + primary_normal * primary_offset;
-    ray.Direction = dir;
-    ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = 1000.0f;
-
-    PathSurface hit = restir_trace_surface(ray);
-
-    if (!hit.hit)
-    {
-        // the ray escaped, the sky dome is the reconnection vertex and rc_pos carries the
-        // direction, restir replaces diffuse ibl wholesale in light_image_based so dropping
-        // this candidate would remove every bit of sky lighting from the primary bounce
-        // the sun disc is excluded inside sample_sky, the analytic directional light owns it
-        s.flags      |= PATH_FLAG_SKY;
-        // The environment has infinite footprint, but still requires the
-        // single-vertex PDF safeguard (Enhanced section 4.2). Glossy paths replay.
-        if (dir_pdf * dir_pdf * RESTIR_RC_MIN_PDF_ROUGHNESS <= 1.0f)
-            s.flags |= PATH_FLAG_HAS_RC;
-        s.rc_pos      = dir;
-        s.rc_normal   = -dir;
-        s.rc_L_nee    = sample_sky(dir);
-        reference_radiance = s.rc_L_nee;
-        s.rc_L_post   = float3(0, 0, 0);
-        s.path_length = 2;
-        s.rc_length   = 2;
-        return s;
-    }
-
-    s.rc_pos       = hit.hit_position;
-    // shading normal, the suffix sampled rc_outgoing_dir around it and f_rc is re-evaluated
-    // against it at shift time, the geometric normal would reject directions the path took
-    s.rc_normal    = hit.hit_normal;
-    s.rc_albedo    = hit.albedo;
-    s.rc_roughness = max(hit.roughness, 0.04f);
-    s.rc_metallic  = hit.metallic;
-    s.rc_length    = 2;
-
-    RestirPathSelection path = sample_path_tree_at_rc(hit, -normalize(hit.hit_position - primary_pos), seed, replay, requested);
-    reference_radiance = path.reference_radiance;
-    s.rc_L_nee        = path.emission;
-    s.rc_L_post       = path.suffix;
-    s.rc_outgoing_dir = path.direction;
-    s.path_length     = path.length;
-    s.initial_weight  = path.initial_weight;
-    s.endpoint_light  = path.endpoint_light;
-    s.endpoint_emtri_draw = path.endpoint_emtri_draw;
-    s.rc_pdf = (path.length > 2u && !(path.length == 3u && path.endpoint_light != 65535u)) ? path.outgoing_pdf : 0.0f;
-    float first_pdf = 0.0f;
-    float3 geometric_dir = normalize(hit.hit_position - primary_pos);
-    if (any(path.suffix > 0.0f))
-        evaluate_brdf(s.rc_albedo, s.rc_roughness, s.rc_metallic, s.rc_normal,
-            -geometric_dir, s.rc_outgoing_dir, first_pdf, 1.0f);
-    if (any(path.emission > 0.0f))
-        s.flags |= PATH_FLAG_RC_EMIT;
-
-    // scene independent reconnection criteria, lin 2026 4
-    // dual ray footprint thresholds bound the area density change at rc and the angular density
-    // change of the RC outgoing lobe; the mixture PDF also gates glossy primary events.
-    float dist_sq             = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
-    float footprint_threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal);
-
-    // forward footprint, reciprocal area density of rc when traced from the primary
-    float cos_at_rc    = abs(dot(s.rc_normal, geometric_dir));
-    float geometric_pdf = dir_pdf;
-    float fp_forward   = dist_sq / max(geometric_pdf * cos_at_rc, 1e-6f);
-
-    // inverse footprint, reciprocal area density of the primary when traced back from rc,
-    // Skip only terminal paths. A rough glossy mixture still has a view-dependent PDF.
-    float fp_inverse    = 1e30f;
-    if (first_pdf > RESTIR_MIN_PDF)
-    {
-        float cos_at_primary = abs(dot(primary_normal, geometric_dir));
-        fp_inverse           = dist_sq / max(first_pdf * cos_at_primary, 1e-6f);
-    }
-
-    bool rc_valid = (min(fp_forward, fp_inverse) >= footprint_threshold)
-                 && (dir_pdf * dir_pdf * RESTIR_RC_MIN_PDF_ROUGHNESS <= 1.0f)
-                 && (dist_sq >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
-    if (rc_valid)
-        s.flags |= PATH_FLAG_HAS_RC;
-
+    s.seed_path = replay_seed;
+    s.rc_length = vertex;
+    s.flags = PATH_FLAG_HAS_RC | (rc.hit ? 0u : PATH_FLAG_SKY);
+    s.rc_pos = rc.hit ? rc.hit_position : direction;
+    s.rc_normal = rc.hit ? rc.hit_normal : -direction;
+    s.rc_albedo = rc.albedo;
+    s.rc_roughness = max(rc.roughness, 0.04f);
+    s.rc_metallic = rc.metallic;
+    s.rc_outgoing_dir = s.rc_normal;
+    float3 delta = rc.hit_position - previous.hit_position;
+    s.rc_pdf = rc.hit ? abs(dot(rc.hit_normal, direction)) / max(dot(delta, delta), 1e-20f) : 1.0f;
     return s;
 }
 
+void restir_stream_leaf(inout PathSample selected, inout float weight_sum, PathSample leaf,
+    float inverse_density, inout uint selection_seed, bool replay, PathSample requested)
+{
+    float target = target_scalar(leaf.F);
+    float weight = target * inverse_density;
+    if (!(weight > 0.0f) || !isfinite(weight))
+        return;
+    weight_sum += weight;
+    bool choose = replay ? leaf.path_length == requested.path_length && leaf.endpoint_light == requested.endpoint_light
+                         : random_float(selection_seed) * weight_sum < weight;
+    if (choose)
+        selected = leaf;
+}
+
+// One BSDF spine with a light-ending leaf at each vertex. Reconnection is
+// selected incrementally, so the walk needs no per-vertex array or second trace.
+// The prefix uses random-number measure; only the connection and RC outgoing
+// edges use solid angle. initial_weight includes the corresponding PDF factors.
+PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, float3 dir,
+    float dir_pdf, uint replay_seed, inout uint seed, out float3 reference_radiance,
+    bool replay, PathSample requested, float3 primary_view, float3 primary_albedo,
+    float primary_roughness, float primary_metallic, float3 camera_position)
+{
+    PathSample selected = (PathSample)0;
+    PathSample connection = (PathSample)0;
+    float weight_sum = 0.0f;
+    uint selection_seed = seed ^ 0x68bc21ebu;
+    reference_radiance = 0.0f;
+    PathSurface previous = (PathSurface)0;
+    previous.hit = true;
+    previous.hit_position = primary_pos;
+    previous.hit_normal = primary_normal;
+    previous.geometric_normal = primary_normal;
+    previous.albedo = primary_albedo;
+    previous.roughness = primary_roughness;
+    previous.metallic = primary_metallic;
+    float unused_pdf;
+    float3 throughput = evaluate_brdf(primary_albedo, primary_roughness, primary_metallic,
+        primary_normal, primary_view, dir, unused_pdf, restir_primary_specular_blend(primary_roughness)) / dir_pdf;
+    float3 reference_throughput = 1.0f;
+    float3 connection_prefix = 0.0f;
+    float3 suffix = 1.0f;
+    float connection_density = 1.0f;
+    float incoming_pdf = dir_pdf;
+    float roulette_weight = 1.0f;
+    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal, camera_position);
+    float first_hit_distance = 0.0f;
+    float3 first_hit_position = 0.0f;
+    [loop] for (uint depth = 2u; depth <= RESTIR_MAX_PATH_LENGTH; ++depth)
+    {
+        RayDesc ray;
+        ray.Origin = previous.hit_position + previous.geometric_normal * compute_ray_offset(previous.hit_position);
+        ray.Direction = dir;
+        ray.TMin = RESTIR_RAY_T_MIN;
+        ray.TMax = 1000.0f;
+        PathSurface current = restir_trace_surface(ray);
+        if (depth == 2u)
+        {
+            first_hit_distance = current.hit ? length(current.hit_position - primary_pos) : 10000.0f;
+            first_hit_position = current.hit ? current.hit_position : dir;
+        }
+        float3 emitted = current.hit ? current.emission : sample_sky(dir);
+        float endpoint_mis = depth == 2u ? 1.0f : power_heuristic(incoming_pdf, sky_nee_pdf_at(dir, previous.hit_normal));
+        reference_radiance += reference_throughput * emitted * endpoint_mis * roulette_weight;
+        PathSample leaf = connection;
+        float inverse_density = connection_density;
+        if (has_reconnection(connection))
+        {
+            leaf.rc_L_post = suffix * emitted * (depth == connection.rc_length + 1u ? 1.0f : endpoint_mis);
+        }
+        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, 0.0f, threshold))
+        {
+            leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
+            leaf.flags |= PATH_FLAG_RC_EMIT;
+            leaf.rc_L_nee = emitted;
+            leaf.F = throughput * incoming_pdf * emitted * endpoint_mis;
+            inverse_density = dir_pdf / incoming_pdf;
+        }
+        else
+        {
+            // No connection: the entire leaf is parameterized by random numbers.
+            leaf = (PathSample)0;
+            leaf.seed_path = replay_seed;
+            leaf.rc_pos = first_hit_position;
+            leaf.rc_normal = primary_normal;
+            leaf.rc_outgoing_dir = primary_normal;
+            if (depth == 2u && !current.hit) leaf.flags = PATH_FLAG_SKY;
+            leaf.F = throughput * emitted * endpoint_mis;
+            inverse_density = dir_pdf;
+        }
+        leaf.path_length = depth;
+        leaf.endpoint_light = RESTIR_ENDPOINT_BSDF;
+        if (has_reconnection(connection))
+            leaf.F = connection_prefix * rc_outgoing_radiance(leaf, -connection.src_normal);
+        restir_stream_leaf(selected, weight_sum, leaf, inverse_density * roulette_weight, selection_seed, replay, requested);
+        if ((replay && requested.path_length == depth && requested.endpoint_light == RESTIR_ENDPOINT_BSDF) || !current.hit)
+            break;
+        if (depth == RESTIR_MAX_PATH_LENGTH)
+            break;
+
+        bool requested_nee = replay && requested.path_length == depth + 1u && requested.endpoint_light != RESTIR_ENDPOINT_BSDF;
+        RestirLightSample light = sample_direct_lighting_at_vertex(current.hit_position, current.hit_normal,
+            current.geometric_normal, -dir, current.albedo, current.roughness, current.metallic, 1.0f, seed,
+            replay ? int(requested_nee ? requested.endpoint_light : RESTIR_ENDPOINT_BSDF) : -1,
+            requested_nee ? int(requested.endpoint_emtri_draw) : -1, depth);
+        reference_radiance += reference_throughput * light.radiance_sum * roulette_weight;
+        float light_bsdf_pdf;
+        float3 light_f = evaluate_brdf(current.albedo, current.roughness, current.metallic,
+            current.hit_normal, -dir, light.direction, light_bsdf_pdf, 1.0f);
+        float light_mis = restir_rc_endpoint_mis(3u, light.light_index, current.hit_normal, light.direction, light_bsdf_pdf);
+        leaf = connection;
+        inverse_density = connection_density;
+        if (has_reconnection(connection))
+        {
+            leaf.rc_L_post = suffix * light_f * light.incident * light_mis;
+        }
+        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, light_bsdf_pdf, threshold))
+        {
+            leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
+            leaf.rc_outgoing_dir = light.direction;
+            leaf.rc_L_post = light.incident;
+            leaf.F = throughput * incoming_pdf * light_f * light.incident * light_mis;
+            inverse_density = dir_pdf / incoming_pdf;
+        }
+        else
+        {
+            // Section 6.2.3: force connection to the sampled NEE endpoint.
+            leaf = (PathSample)0;
+            leaf.seed_path = replay_seed;
+            leaf.rc_length = depth + 1u;
+            leaf.flags = PATH_FLAG_HAS_RC | PATH_FLAG_NEE | (light.endpoint_sky ? PATH_FLAG_SKY : 0u);
+            leaf.rc_pos = light.endpoint_position;
+            leaf.rc_normal = light.endpoint_normal;
+            leaf.rc_outgoing_dir = light.endpoint_normal;
+            leaf.rc_L_nee = light.endpoint_radiance;
+            float3 delta = light.endpoint_position - current.hit_position;
+            leaf.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
+                abs(dot(light.endpoint_normal, light.direction)) / max(dot(delta, delta), 1e-20f);
+            leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
+            inverse_density = dir_pdf / max(light.endpoint_pdf, RESTIR_MIN_PDF);
+        }
+        leaf.path_length = depth + 1u;
+        leaf.endpoint_light = light.light_index;
+        leaf.endpoint_emtri_draw = is_nee_sample(leaf) && light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG : light.emtri_draw;
+        if (has_reconnection(connection))
+            leaf.F = connection_prefix * rc_outgoing_radiance(leaf, -connection.src_normal);
+        restir_stream_leaf(selected, weight_sum, leaf, inverse_density * roulette_weight * light.initial_weight,
+            selection_seed, replay, requested);
+        if (requested_nee)
+            break;
+
+        if (depth + 1u > 3u + RESTIR_RR_START)
+        {
+            float rr = random_float(seed);
+            if (!replay && rr >= RESTIR_RR_CONTINUATION) break;
+            if (!replay) roulette_weight /= RESTIR_RR_CONTINUATION;
+        }
+        float outgoing_pdf;
+        float3 outgoing = sample_brdf(current.albedo, current.roughness, current.metallic,
+            current.hit_normal, -dir, random_float2(seed), outgoing_pdf, 1.0f);
+        if (outgoing_pdf < RESTIR_MIN_PDF || dot(outgoing, current.hit_normal) <= 0.0f || any(!isfinite(outgoing)))
+            break;
+        float3 f = evaluate_brdf(current.albedo, current.roughness, current.metallic,
+            current.hit_normal, -dir, outgoing, unused_pdf, 1.0f);
+        if (has_reconnection(connection))
+            suffix *= f / outgoing_pdf;
+        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold))
+        {
+            connection = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
+            connection.rc_outgoing_dir = outgoing;
+            connection.src_normal = -dir; // transient incoming direction, stamped with the G-buffer before storing
+            connection_prefix = throughput * incoming_pdf;
+            connection_density = dir_pdf / (incoming_pdf * outgoing_pdf);
+            suffix = 1.0f;
+        }
+        throughput *= f / outgoing_pdf;
+        reference_throughput *= f / outgoing_pdf;
+        previous = current;
+        dir = outgoing;
+        incoming_pdf = outgoing_pdf;
+    }
+    selected.first_hit_distance = first_hit_distance;
+    float target = target_scalar(selected.F);
+    selected.initial_weight = !replay && target > 0.0f ? weight_sum / target : 1.0f;
+    return selected;
+}
+
+// Replay just the prefix, reconnect the stored suffix, and require the first
+// admissible connection to remain at the same index in both domains.
+ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float3 view,
+    float3 albedo, float roughness, float metallic, float3 camera_position)
+{
+    ShiftResult result = (ShiftResult)0;
+    result.sample = src;
+    PathSurface vertices[RESTIR_MAX_PATH_LENGTH + 1u];
+    float3 directions[RESTIR_MAX_PATH_LENGTH + 1u];
+    float pdfs[RESTIR_MAX_PATH_LENGTH + 1u];
+    PathSurface primary = (PathSurface)0;
+    primary.hit = true;
+    primary.hit_position = pos;
+    primary.hit_normal = normal;
+    primary.geometric_normal = normal;
+    primary.albedo = albedo;
+    primary.roughness = roughness;
+    primary.metallic = metallic;
+    vertices[1] = primary;
+    uint seed = src.seed_path;
+    float3 prefix = 1.0f;
+    [loop] for (uint i = 1u; i + 1u < src.rc_length; ++i)
+    {
+        PathSurface v = vertices[i];
+        float3 incoming = i == 1u ? view : -directions[i - 1u];
+        if (i > 1u)
+        {
+            // Advance exactly the initial tree's NEE dimensions. A fixed BSDF
+            // leaf skips all light evaluation and visibility work.
+            sample_direct_lighting_at_vertex(v.hit_position, v.hit_normal, v.geometric_normal,
+                incoming, v.albedo, v.roughness, v.metallic, 1.0f, seed, int(RESTIR_ENDPOINT_BSDF), 0, i);
+            if (i + 1u > 3u + RESTIR_RR_START)
+                random_float(seed); // no roulette termination during replay
+        }
+        float blend = i == 1u ? restir_primary_specular_blend(roughness) : 1.0f;
+        float pdf;
+        float3 direction = sample_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
+            incoming, random_float2(seed), pdf, blend);
+        if (pdf < RESTIR_MIN_PDF || dot(v.hit_normal, direction) <= 0.0f || any(!isfinite(direction)))
+            return result;
+        directions[i] = direction;
+        pdfs[i] = pdf;
+        float unused_pdf;
+        prefix *= evaluate_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
+            incoming, direction, unused_pdf, blend) / pdf;
+        RayDesc ray;
+        ray.Origin = v.hit_position + v.geometric_normal * compute_ray_offset(v.hit_position);
+        ray.Direction = direction;
+        ray.TMin = RESTIR_RAY_T_MIN;
+        ray.TMax = 1000.0f;
+        vertices[i + 1u] = restir_trace_surface(ray);
+        if (!vertices[i + 1u].hit)
+            return result;
+    }
+    uint k = src.rc_length;
+    PathSurface previous = vertices[k - 1u];
+    if (is_dirac_light_sample(src))
+    {
+        uint light_index;
+        if (!restir_resolve_dirac_light(src, light_index))
+            return result;
+        src.endpoint_light = light_index;
+        src.rc_pos = light_parameters[light_index].position;
+        result.sample = src;
+    }
+    float3 delta = src.rc_pos - previous.hit_position;
+    if (!is_sky_sample(src) && dot(delta, delta) < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
+        return result;
+    float3 direction = is_sky_sample(src) ? src.rc_pos : normalize(delta);
+    if (dot(previous.hit_normal, direction) <= 0.0f)
+        return result;
+    directions[k - 1u] = direction;
+    float connect_pdf;
+    float3 connect_f = evaluate_brdf(previous.albedo, previous.roughness, previous.metallic,
+        previous.hit_normal, -directions[k - 2u], direction, connect_pdf, 1.0f);
+    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(pos, normal, camera_position);
+    [loop] for (uint j = 2u; j < k; ++j)
+    {
+        PathSurface v = vertices[j];
+        float pdf_out;
+        evaluate_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
+            -directions[j - 1u], directions[j], pdf_out, 1.0f);
+        if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold))
+            return result;
+    }
+    PathSurface rc = (PathSurface)0;
+    rc.hit = !is_sky_sample(src);
+    rc.hit_position = src.rc_pos;
+    rc.hit_normal = src.rc_normal;
+    float pdf_out = 0.0f;
+    if (k < src.path_length)
+        evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
+            -direction, src.rc_outgoing_dir, pdf_out, 1.0f);
+    if (!is_nee_sample(src) && !restir_prefix_connection_allowed(previous, rc, connect_pdf, pdf_out, threshold))
+        return result;
+    float geometry = is_sky_sample(src) || is_dirac_light_sample(src) ? 1.0f : dot(src.rc_normal, -direction) / dot(delta, delta);
+    if (geometry <= 0.0f || src.rc_pdf <= 0.0f)
+        return result;
+    PathSample connection = src;
+    connection.rc_length = 2u; // test the actual connecting edge, not primary-to-RC
+    if (!trace_shift_visibility(connection, previous.hit_position, previous.geometric_normal))
+        return result;
+    float mis = k == src.path_length ? restir_rc_endpoint_mis(3u, src.endpoint_light,
+        previous.hit_normal, direction, connect_pdf) : 1.0f;
+    float3 radiance = rc_outgoing_radiance(src, direction);
+    if (is_dirac_light_sample(src))
+    {
+        uint light_index;
+        if (!restir_resolve_dirac_light(src, light_index) || !restir_dirac_light_radiance(light_index, previous.hit_position, radiance))
+            return result;
+        result.sample.rc_L_nee = radiance;
+    }
+    result.f_dst = prefix * connect_f * radiance * mis;
+    result.jacobian = geometry / src.rc_pdf;
+    result.sample.rc_pdf = geometry;
+    result.sample.F = result.f_dst;
+    result.ok = all(isfinite(result.f_dst)) && isfinite(result.jacobian) && result.jacobian > 0.0f;
+    return result;
+}
 
 // Replay the complete random-number sample only in the no-reconnection domain.
 // Both sides must remain in that domain; otherwise the two mappings overlap.
 // Keep the selected leaf fixed. Initial RIS and roulette weights stay in the
 // reservoir weight; rerunning either selection would change the shift domain.
 ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
-    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view)
+    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view,
+    float3 camera_position)
 {
     ShiftResult result = (ShiftResult)0;
     result.sample = src;
@@ -316,34 +395,14 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
     if (pdf_dst < RESTIR_MIN_PDF || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
         return result;
     float3 unused_reference;
-    PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, src.seed_path, seed, unused_reference, true, src);
+    PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, src.seed_path, seed, unused_reference, true, src,
+        dst_view, dst_albedo, roughness, metallic, camera_position);
     if (has_reconnection(replayed) || replayed.path_length != src.path_length || replayed.endpoint_light != src.endpoint_light)
         return result;
-    // Recover the density of the actual primary random draw. The hit-to-primary
-    // vector includes the ray-origin offset and is NOT the sampled direction.
-    // At close hits this made J > 1 even for an identity replay, amplifying energy
-    // on every reuse. For the diffuse primary both replay densities are identical.
-    uint source_seed = src.seed_path;
-    float2 source_xi = random_float2(source_seed);
-    float pdf_src;
-    sample_brdf(src.src_albedo, src.src_roughness, src.src_metallic, src.src_normal,
-        src_view, source_xi, pdf_src,
-        restir_primary_specular_blend(src.src_roughness));
-    if (pdf_src < RESTIR_MIN_PDF)
-        return result;
-    result = evaluate_path_integrand(replayed, dst_pos, dst_normal, dst_view, dst_albedo, roughness, metallic);
-    replayed.F = result.f_dst;
     result.sample = replayed;
-    // Primary and RC outgoing edges use solid-angle measure. The remaining
-    // suffix is already expressed in random-number measure by its f/pdf terms.
-    float rc_ratio = 1.0f;
-    if (src.rc_pdf > 0.0f)
-    {
-        if (replayed.rc_pdf < RESTIR_MIN_PDF)
-            return (ShiftResult)0;
-        rc_ratio = src.rc_pdf / replayed.rc_pdf;
-    }
-    result.jacobian = (pdf_src / pdf_dst) * rc_ratio;
+    result.f_dst = replayed.F;
+    result.jacobian = 1.0f; // both complete paths use the same random-number coordinates
+    result.ok = all(isfinite(result.f_dst));
     return result;
 }
 #endif

@@ -71,7 +71,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint group_index : SV_Grou
         {
             float3 position = restir_primary_position(uv);
             float3 normal = get_normal(uv);
-            bool needs_replay = !has_reconnection(center.sample) && (!is_sky_sample(center.sample) || !is_nee_sample(center.sample));
+            bool needs_replay = center.sample.rc_length > 2u ||
+                (!has_reconnection(center.sample) && (!is_sky_sample(center.sample) || !is_nee_sample(center.sample)));
             for (uint t = 0u; t < RESTIR_PAIRING_COUNT; ++t)
             {
                 int2 partner = restir_pairing_partner(pixel, t);

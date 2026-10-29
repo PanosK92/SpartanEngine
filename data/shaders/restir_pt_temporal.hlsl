@@ -223,7 +223,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     src_albedo,
                     src_roughness,
                     src_metallic,
-                    view_dir
+                    view_dir,
+                    true
                 );
                 if (current.W > 0.0f && shift_c_to_t.ok &&
                     trace_shift_visibility(shift_c_to_t.sample, src_primary_pos, src_normal_ws))
