@@ -64,6 +64,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float view_z = linearize_depth(depth);
     float4 material = get_material(uv);
     float roughness = sqrt(ggx_alpha_from_roughness(max(material.r, 0.04f)));
+    float3 view_dir = normalize(get_camera_position() - receiver);
+    float3 reflection_dir = reflect(-view_dir, normal);
     float3 diffuse = 0.0f;
     float3 specular = 0.0f;
     float weight_sum = 0.0f;
@@ -98,8 +100,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // weights. Use NRD's roughness convention and its default 15% fraction.
         float sample_roughness = sqrt(ggx_alpha_from_roughness(max(get_material(sample_uv).r, 0.04f)));
         float roughness_weight = exp(-abs(sample_roughness - roughness) / max(0.15f * roughness, 0.01f));
-        float specular_similarity = similarity * roughness_weight;
-        float specular_weight = weight * roughness_weight;
+        // A broad diffuse normal gate cannot resolve a narrow reflection lobe.
+        // Use a GGX-shaped angular weight, normalized to one at zero separation.
+        // Reflection rotates twice as fast as its microfacet normal, hence the
+        // half-angle cosine squared. Include view changes across grazing planes.
+        float3 sample_view = normalize(get_camera_position() - sample_position);
+        float3 sample_reflection = reflect(-sample_view, sample_normal);
+        float half_cos_sq = saturate(0.5f + 0.5f * dot(reflection_dir, sample_reflection));
+        float alpha_sq = roughness * roughness * roughness * roughness;
+        float lobe_ratio = alpha_sq / max(1.0f - half_cos_sq + alpha_sq * half_cos_sq, 1e-8f);
+        float lobe_weight = lobe_ratio * lobe_ratio;
+        float specular_similarity = similarity * roughness_weight * lobe_weight;
+        float specular_weight = weight * roughness_weight * lobe_weight;
         float3 d = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex.Load(int3(pixel, 0))).xyz, 0.0f);
         float3 s = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex4.Load(int3(pixel, 0))).xyz, 0.0f);
         diffuse += d * weight;
@@ -123,7 +135,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float metallic = material.g;
     // Match packing's GGX-to-NRD conversion using the original material guide,
     // not NRD's filtered roughness. Restore shading detail at render resolution.
-    float3 view_dir = normalize(get_camera_position() - receiver);
     float3 diffuse_factor, specular_factor;
     NRD_MaterialFactors(normal, view_dir, albedo * (1.0f - metallic),
         lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
