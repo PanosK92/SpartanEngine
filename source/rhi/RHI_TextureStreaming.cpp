@@ -260,7 +260,7 @@ namespace spartan
         // remains an upper bound; disabling the automatic limit preserves explicit tuning.
         const uint64_t gpu_budget_mb = RHI_Device::MemoryGetAvailableMb();
         if (automatic_budget.GetValue() && gpu_budget_mb != 0)
-            statistics.budget_bytes = min(statistics.budget_bytes, max<uint64_t>(128, gpu_budget_mb / 16) * 1024ull * 1024ull);
+            statistics.budget_bytes = min<uint64_t>(statistics.budget_bytes, max<uint64_t>(128, gpu_budget_mb / 16) * 1024ull * 1024ull);
         uint64_t desired_bytes = 0;
         const bool streaming = enabled.GetValue();
         for (auto it = entries.begin(); it != entries.end();)
