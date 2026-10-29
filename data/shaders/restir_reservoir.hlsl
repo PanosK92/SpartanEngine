@@ -655,9 +655,8 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
         reservoir.M = max_M;
 }
 
-// unified disocclusion gate for the reservoir temporal pass and the denoiser accumulator
-// reprojects the current position through the previous view projection and compares expected
-// vs actual previous depth so a moving surface is not mistaken for a disocclusion
+// Disocclusion gate for reservoir temporal reuse. The G-buffer velocity carries
+// the surface's previous UV and depth, including object motion and deformation.
 // prev_depth_tex must be bound to gbuffer_depth_previous and prev_normal_tex to
 // gbuffer_normal_previous, confidence returns a [0,1] reuse factor
 bool evaluate_disocclusion(
@@ -665,7 +664,6 @@ bool evaluate_disocclusion(
     Texture2D<uint> prev_normal_tex,
     float2 current_uv,
     float2 prev_uv,
-    float3 current_position,
     float3 current_normal,
     float2 resolution,
     float reproj_tol_min,
@@ -683,9 +681,14 @@ bool evaluate_disocclusion(
     if (!is_valid_render_uv(prev_uv))
         return false;
 
-    float4 prev_clip        = mul(float4(current_position, 1.0f), get_view_projection_previous());
-    float3 prev_ndc         = prev_clip.xyz / max(prev_clip.w, 1e-9f);
-    float2 expected_prev_uv = screen_uv_to_render_uv(prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f);
+    float4 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0);
+    // The sign of w marks cutout coverage; magnitude is the previous linear depth.
+    float expected_prev_depth = abs(velocity.w);
+    if (!all(isfinite(velocity.xy)) || !isfinite(expected_prev_depth) ||
+        expected_prev_depth <= 0.0f || expected_prev_depth >= FLT_MAX_16U)
+        return false;
+    float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
+    float2 expected_prev_uv = current_uv + (jitter_delta - velocity.xy * float2(0.5f, -0.5f)) * get_render_uv_scale();
     float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * resolution;
     float  reproj_dist      = length(reproj_diff);
 
@@ -711,7 +714,6 @@ bool evaluate_disocclusion(
     if (prev_depth_raw <= 0.0f)
         return false;
 
-    float expected_prev_depth = linearize_depth(prev_ndc.z);
     float prev_depth_linear   = linearize_depth(prev_depth_raw);
     float depth_delta         = abs(prev_depth_linear - expected_prev_depth) / max(expected_prev_depth, 1e-3f);
     float depth_limit         = lerp(depth_min, depth_max, motion_factor);

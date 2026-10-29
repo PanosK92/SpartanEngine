@@ -29,7 +29,6 @@ float2 reproject_to_previous_frame(float2 current_uv)
 bool is_temporal_sample_valid(
     float2 current_uv,
     float2 prev_uv,
-    float3 current_pos,
     float3 current_normal,
     float2 screen_resolution,
     out float confidence)
@@ -39,7 +38,6 @@ bool is_temporal_sample_valid(
         tex_normal_previous,
         current_uv,
         prev_uv,
-        current_pos,
         current_normal,
         screen_resolution,
         1.5f, 0.75f,  // reproj tol min/max in pixels
@@ -107,7 +105,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // where the history reservoir is read from, prev_uv unless the dual motion vector takes over
     float2 history_uv   = prev_uv;
-    bool   have_history = is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, buffer_frame.resolution_render, temporal_confidence);
+    bool   have_history = is_temporal_sample_valid(uv, prev_uv, normal_ws, buffer_frame.resolution_render, temporal_confidence);
     bool   dual_history = false;
 
     // dual motion vectors on disocclusion, lin 2026 6.4 after zeng 2021, a freshly revealed
