@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
+#include "rt_visibility.hlsl"
 
 // ReSTIR PT Enhanced (2026), sections 5 and 7.
 static const uint RESTIR_MAX_PATH_LENGTH = 5;
@@ -913,9 +914,14 @@ float3 sample_ggx_vndf(float3 ve, float2 xi, float alpha)
 
 float power_heuristic(float pdf_a, float pdf_b)
 {
-    float a2 = pdf_a * pdf_a;
-    float b2 = pdf_b * pdf_b;
-    return a2 / max(a2 + b2, 1e-6f);
+    // Rescaling preserves the partition of unity even for very small PDFs,
+    // and avoids overflow when a narrow lobe has a very large density.
+    float scale = max(pdf_a, pdf_b);
+    if (scale <= 0.0f)
+        return 0.0f;
+    float a = pdf_a / scale;
+    float b = pdf_b / scale;
+    return a * a / (a * a + b * b);
 }
 
 // scalar target for ris and pairwise mis, l1/3 treats rgb equally so chromatic gi is not biased
@@ -989,8 +995,18 @@ float restir_v_smithggx(float n_dot_v, float n_dot_l, float a2)
 
 float restir_d_ggx(float n_dot_h, float a2)
 {
-    float d = n_dot_h * n_dot_h * (a2 - 1.0f) + 1.0f;
-    return a2 / (PI * d * d + 1e-6f);
+    // Preserve the normalized GGX distribution sampled by the VNDF sampler.
+    // The expanded form avoids cancellation at N.H ~= 1 for smooth surfaces.
+    float cos2 = saturate(n_dot_h * n_dot_h);
+    float d = (1.0f - cos2) + a2 * cos2;
+    return a2 / (PI * d * d);
+}
+
+// G1(V) / (4 * N.V), with N.V cancelled analytically. This remains finite
+// at grazing angles without changing the visible-normal sampling density.
+float restir_vndf_reflection_pdf(float d, float n_dot_v, float a2)
+{
+    return d / (2.0f * (n_dot_v + sqrt(a2 + (1.0f - a2) * n_dot_v * n_dot_v)));
 }
 
 float3 restir_diffuse_burley(float3 diffuse_color, float roughness, float n_dot_v, float n_dot_l, float v_dot_h)
@@ -1033,8 +1049,9 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
         return float3(0, 0, 0);
     }
 
-    // grazing view reject, below this cos the ggx pdf and smith g1 denominators inflate into fireflies
-    if (n_dot_v <= 0.05f)
+    // Reject only the back hemisphere. A grazing-angle cutoff also removes
+    // diffuse light, drawing a dark ring at about 20 times the camera height.
+    if (n_dot_v <= 0.0f)
     {
         pdf = 0.0f;
         return float3(0, 0, 0);
@@ -1065,10 +1082,8 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float3 specular_cos = fr * n_dot_l;
 
     // vndf pdf, heitz 2018 eq 17, the effective spec pick fades with specular_blend
-    float n_dot_v_abs = max(n_dot_v, 1e-3f);
-    float g1_v_pdf    = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(a2 + (1.0f - a2) * n_dot_v_abs * n_dot_v_abs));
     float diffuse_pdf = n_dot_l / PI;
-    float spec_pdf    = d_term * g1_v_pdf / (4.0f * n_dot_v_abs);
+    float spec_pdf    = restir_vndf_reflection_pdf(d_term, n_dot_v, a2);
     float spec_prob_full = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
     float spec_prob_eff  = saturate(spec_prob_full * specular_blend);
     pdf = (1.0f - spec_prob_eff) * diffuse_pdf + spec_prob_eff * spec_pdf;
@@ -1080,6 +1095,12 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
 // specular_blend matches evaluate_brdf so the two stay numerically consistent
 float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float2 xi, out float pdf, float specular_blend)
 {
+    float n_dot_v = dot(n, v);
+    if (n_dot_v <= 0.0f)
+    {
+        pdf = 0.0f;
+        return n;
+    }
     if (specular_blend <= 0.0f)
     {
         float  pdf_diffuse;
@@ -1088,14 +1109,6 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
         return local_to_world(local_dir, n);
     }
 
-    // grazing view reject at the same cos threshold as evaluate_brdf
-    float n_dot_v_raw = dot(n, v);
-    if (n_dot_v_raw <= 0.05f)
-    {
-        pdf = 0.0f;
-        return n;
-    }
-    float n_dot_v        = n_dot_v_raw;
     float spec_prob_full = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
     float spec_prob      = saturate(spec_prob_full * specular_blend);
     float prob_diffuse   = 1.0f - spec_prob;
@@ -1112,13 +1125,18 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     {
         xi.x = (xi.x - prob_diffuse) / max(1.0f - prob_diffuse, 1e-6f);
         float3 v_local = world_to_local(v, n);
-        v_local.z      = max(v_local.z, 1e-4f);
+        v_local.z      = max(v_local.z, 0.0f);
         float3 h_local = sample_ggx_vndf(v_local, xi, restir_d_ggx_alpha(roughness));
         float3 h_world = local_to_world(h_local, n);
         l = reflect(-v, h_world);
     }
 
-    float n_dot_l     = max(dot(n, l), 0.001f);
+    float n_dot_l     = max(dot(n, l), 0.0f);
+    if (n_dot_l <= 0.0f)
+    {
+        pdf = 0.0f;
+        return l;
+    }
     float diffuse_pdf = n_dot_l / PI;
 
     float3 h_unnorm = v + l;
@@ -1131,14 +1149,12 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     }
 
     float3 h       = h_unnorm * rsqrt(h_len_sq);
-    float n_dot_h  = max(dot(n, h), 0.001f);
+    float n_dot_h  = max(dot(n, h), 0.0f);
     // vndf pdf for the reflection direction, heitz 2018 eq 17
     float a           = restir_d_ggx_alpha(roughness);
     float a2          = a * a;
     float d           = restir_d_ggx(n_dot_h, a2);
-    float n_dot_v_abs = max(abs(dot(n, v)), 1e-3f);
-    float g1_v        = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(a2 + (1.0f - a2) * n_dot_v_abs * n_dot_v_abs));
-    float spec_pdf    = d * g1_v / (4.0f * n_dot_v_abs);
+    float spec_pdf    = restir_vndf_reflection_pdf(d, n_dot_v, a2);
 
     pdf = prob_diffuse * diffuse_pdf + spec_prob * spec_pdf;
     return l;
@@ -1499,12 +1515,68 @@ uint emtri_pick_index(float u, uint count)
     return min(lo, count - 1u);
 }
 
-// emissive triangle pick, ris over a handful of cdf draws, lin 2022 6.1 / bitterli 2020 initial candidates
-// the pool cdf is area times luminance over every panel in the loaded world, so a lone draw lands
-// in some other room and gets shadowed most of the time, which left the rc radiance a spike
-// distribution that no amount of reuse could settle, resampling the draws against the unshadowed
-// geometry term toward this vertex concentrates the one shadow ray the caller will trace on the
-// panels that can actually light it, out_W is the ris estimate of 1 / pdf of the pick
+// Density of the pool's point sampler at an already known point on a triangle.
+// Keep the small-solid-angle fallback identical to sample_spherical_triangle.
+float emtri_point_pdf(float3 pos, EmissiveTriangle tri, float3 dir, float distance)
+{
+    float3 a = tri.v0 - pos, b = tri.v1 - pos, c = tri.v2 - pos;
+    float la = length(a), lb = length(b), lc = length(c);
+    float3 area_normal = cross(tri.v1 - tri.v0, tri.v2 - tri.v0);
+    float omega = 2.0f * atan2(abs(dot(a, area_normal)),
+        la * lb * lc + dot(a, b) * lc + dot(b, c) * la + dot(c, a) * lb);
+    if (omega < 0.001f || omega > 6.0f)
+        return distance * distance / max(tri.area * dot(tri.normal, -dir), 1e-20f);
+    return 1.0f / omega;
+}
+
+// A local cosine proposal finds visible panels without knowing which room we are
+// in. Reconstruct the same constant emitter and triangle used by the CPU pool;
+// ordinary path hits still suppress this emission, so it is counted only here.
+bool emtri_local_candidate(float3 pos, float3 dir, out EmissiveTriangle tri, out float3 p)
+{
+    tri = (EmissiveTriangle)0;
+    p = 0.0f;
+    RayDesc ray;
+    ray.Origin = pos;
+    ray.Direction = dir;
+    ray.TMin = max(RESTIR_RAY_T_MIN, compute_ray_offset(pos));
+    ray.TMax = 1e15f;
+    RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
+    while (query.Proceed())
+    {
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
+            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
+                query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
+            query.CommitNonOpaqueTriangleHit();
+    }
+    if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
+        return false;
+    GeometryInfo geo = geometry_infos[query.CommittedInstanceIndex()];
+    MaterialParameters mat = material_parameters[geo.material_index];
+    if (!mat.is_pooled_emitter())
+        return false;
+    uint base = geo.index_offset + query.CommittedPrimitiveIndex() * 3u;
+    float3x4 transform = query.CommittedObjectToWorld3x4();
+    tri.v0 = mul(transform, float4(geometry_vertices[geo.vertex_offset + geometry_indices[base]].position, 1.0f));
+    tri.v1 = mul(transform, float4(geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position, 1.0f));
+    tri.v2 = mul(transform, float4(geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position, 1.0f));
+    float3 area_normal = cross(tri.v1 - tri.v0, tri.v2 - tri.v0);
+    float twice_area = length(area_normal);
+    if (twice_area <= 1e-12f)
+        return false;
+    tri.area = 0.5f * twice_area;
+    tri.normal = area_normal / twice_area;
+    tri.emission = saturate(mat.color.rgb) * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
+    // BuildEmissiveTriangleNeePool uses these coefficients for its CDF.
+    tri.weight = tri.area * dot(tri.emission, float3(0.299f, 0.587f, 0.114f));
+    p = pos + dir * query.CommittedRayT();
+    return tri.weight > 0.0f && dot(tri.normal, -dir) > 1e-4f;
+}
+
+// Equal numbers of global CDF and local cosine proposals, combined with balance
+// MIS before RIS. Visibility belongs in this inner target: a panel behind a wall
+// must not evict the local visible panel and leave the entire estimate black.
 // The draw count is fixed so initial tracing and random replay consume the same dimensions.
 static const uint RESTIR_EMTRI_RIS_CANDIDATES = 8u;
 
@@ -1543,51 +1615,68 @@ bool emtri_ris_pick_path(
             continue;
         }
 
-        EmissiveTriangle tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
-        if (tri.area <= 0.0f || tri.weight <= 0.0f)
+        EmissiveTriangle tri;
+        float3 dir, p;
+        float point_pdf;
+        if (i < RESTIR_EMTRI_RIS_CANDIDATES / 2u)
         {
-            continue;
+            float cosine_pdf;
+            dir = local_to_world(sample_cosine_hemisphere(xi.yz, cosine_pdf), normal);
+            if (!emtri_local_candidate(pos, dir, tri, p))
+                continue;
+            point_pdf = emtri_point_pdf(pos, tri, dir, length(p - pos));
+        }
+        else
+        {
+            tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
+            if (tri.area <= 0.0f || tri.weight <= 0.0f)
+            {
+                continue;
+            }
+
+            // Reject zero-support triangles before the spherical-triangle trigonometry.
+            // Every point is either behind the shading hemisphere or on the emitter's
+            // back face. Random draws above are still consumed to preserve replay.
+            float3 to_v0 = tri.v0 - pos;
+            float3 to_v1 = tri.v1 - pos;
+            float3 to_v2 = tri.v2 - pos;
+            if (max(dot(normal, to_v0), max(dot(normal, to_v1), dot(normal, to_v2))) <= 0.0f ||
+                dot(tri.normal, -to_v0) <= 0.0f)
+                continue;
+
+            // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
+            float  inverse_pdf;
+            sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, inverse_pdf);
+            if (inverse_pdf <= 0.0f)
+            {
+                continue;
+            }
+
+            float cos_l = dot(normal, dir);
+            float cos_e = dot(-dir, tri.normal);
+            if (cos_l <= 0.0f || cos_e <= 1e-4f)
+            {
+                continue;
+            }
+
+            // the point on the emitter, ray against the triangle plane
+            float t = dot(tri.v0 - pos, tri.normal) / dot(dir, tri.normal);
+            if (t <= 1e-4f || isnan(t) || isinf(t))
+            {
+                continue;
+            }
+            p = pos + dir * t;
+            point_pdf = 1.0f / inverse_pdf;
+            if (!trace_shadow_ray(pos, dir, t))
+                continue;
         }
 
-        // Reject zero-support triangles before the spherical-triangle trigonometry.
-        // Every point is either behind the shading hemisphere or on the emitter's
-        // back face. Random draws above are still consumed to preserve replay.
-        float3 to_v0 = tri.v0 - pos;
-        float3 to_v1 = tri.v1 - pos;
-        float3 to_v2 = tri.v2 - pos;
-        if (max(dot(normal, to_v0), max(dot(normal, to_v1), dot(normal, to_v2))) <= 0.0f ||
-            dot(tri.normal, -to_v0) <= 0.0f)
-            continue;
-
-        // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
-        float3 dir;
-        float  inverse_pdf;
-        sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, inverse_pdf);
-        if (inverse_pdf <= 0.0f)
-        {
-            continue;
-        }
-
-        float cos_l = dot(normal, dir);
-        float cos_e = dot(-dir, tri.normal);
-        if (cos_l <= 0.0f || cos_e <= 1e-4f)
-        {
-            continue;
-        }
-
-        // the point on the emitter, ray against the triangle plane
-        float t = dot(tri.v0 - pos, tri.normal) / dot(dir, tri.normal);
-        if (t <= 1e-4f || isnan(t) || isinf(t))
-        {
-            continue;
-        }
-        float3 p = pos + dir * t;
-
-        // unshadowed lambert target, the brdf albedo is a constant across candidates
+        float cos_l = max(dot(normal, dir), 0.0f);
         float target = luminance(tri.emission) * cos_l;
-        // solid angle pdf of the draw includes triangle selection and point sampling
-        float pdf_sa = (tri.weight / total_weight) / inverse_pdf;
-        float w      = target / max(pdf_sa, RESTIR_MIN_PDF);
+        float pdf_sa = 0.5f * ((tri.weight / total_weight) * point_pdf + cos_l / PI);
+        if (!(pdf_sa > 0.0f) || !isfinite(pdf_sa))
+            continue;
+        float w = target / pdf_sa;
 
         weight_sum += w;
         if (forced_draw >= 0 ? i == uint(forced_draw) : u * weight_sum < w)
@@ -1821,12 +1910,14 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
             RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
             probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
-            // Match TraceRay's surface-only transport (there is no any-hit transmission
-            // shader). A single Proceed can stop at a non-opaque candidate before a wall
-            // behind it is visited, so COMMITTED_NOTHING is not yet a sky miss.
+            // Resolve cutouts just like path continuation. A single Proceed can stop
+            // at a non-opaque candidate before a wall behind it is visited, so
+            // COMMITTED_NOTHING is not yet a sky miss.
             while (probe_query.Proceed())
             {
-                if (probe_query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+                if (probe_query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
+                    rt_candidate_opaque(probe_query.CandidateInstanceIndex(), probe_query.CandidatePrimitiveIndex(),
+                        probe_query.CandidateTriangleBarycentrics(), probe_ray.Origin + probe_ray.Direction * probe_query.CandidateTriangleRayT()))
                     probe_query.CommitNonOpaqueTriangleHit();
             }
 
@@ -1893,7 +1984,9 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
     while (query.Proceed())
     {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
+            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
+                query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
             query.CommitNonOpaqueTriangleHit();
     }
 
@@ -2018,7 +2111,9 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
     while (query.Proceed())
     {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
+            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
+                query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
             query.CommitNonOpaqueTriangleHit();
     }
 

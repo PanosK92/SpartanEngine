@@ -81,6 +81,8 @@ namespace spartan
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_ray_traced_shadows;
+    extern TConsoleVar<float> cvar_path_tracing;
+    extern TConsoleVar<float> cvar_path_tracing_bounces;
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
     extern TConsoleVar<float> cvar_restir_pt_async;
@@ -429,6 +431,10 @@ namespace spartan
         void CreateStandardMaterials();
 
         // passes - core
+        bool IsPathTracingActive();
+        uint32_t GetPathTracingSampleCount();
+        void ResetPathTracing();
+        void Pass_PathTracing(bool sky_changed);
         void ProduceFrame();
         bool UpdateSkysphereConvergenceState();
         void Pass_ComputeBatchA(

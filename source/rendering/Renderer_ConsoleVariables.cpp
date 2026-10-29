@@ -193,6 +193,8 @@ namespace spartan
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,                                                    "screen space ambient occlusion");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections",                  on_ray_traced_reflections_change);
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights",       on_ray_traced_shadows_change);
+    TConsoleVar<float> cvar_path_tracing                  ("r.path_tracing", 0.0f, "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)");
+    TConsoleVar<float> cvar_path_tracing_bounces          ("r.path_tracing_bounces", 8.0f, "maximum path scattering events (1-32)");
     TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination");
     TConsoleVar<float> cvar_restir_pt_async                ("r.restir_pt_async",                0.0f,                                                    "trace and denoise restir across the frame boundary, lighting uses the previous frame's reprojected result, only wins when ray tracing leaves the gpu partly idle");
     TConsoleVar<float> cvar_restir_pt_direct               ("r.restir_pt_direct",               1.0f,                                                    "restir owns direct diffuse from analytic lights (unified direct and indirect), raster keeps specular");

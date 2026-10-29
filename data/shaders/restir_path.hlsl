@@ -15,7 +15,9 @@ PathSurface restir_trace_surface(RayDesc ray)
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
     while (query.Proceed())
     {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
+            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
+                query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
             query.CommitNonOpaqueTriangleHit();
     }
     if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)

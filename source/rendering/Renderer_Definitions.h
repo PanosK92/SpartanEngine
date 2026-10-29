@@ -453,6 +453,9 @@ namespace spartan
         shadows_ray_hit_r,
         nrd_pack_shadows_c,
         nrd_unpack_shadows_c,
+        path_tracing_c,
+        path_tracing_sky_c,
+
         // restir path tracing gi
         restir_pt_ray_generation_r,
         restir_pt_ray_miss_r,

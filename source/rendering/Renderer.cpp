@@ -311,7 +311,7 @@ namespace spartan
                 {
                     prefetch_scene_data(entries, i + 8, end);
                     const RenderSceneData& data = *entries[i];
-                    if (!data.active.load(memory_order_relaxed) || (data.flags & RenderFlags::ExcludeFromRayTracing)) continue;
+                    if (!data.active.load(memory_order_relaxed) || (!Renderer::IsPathTracingActive() && (data.flags & RenderFlags::ExcludeFromRayTracing))) continue;
                     Render* render = data.render;
                     // Prepare resident geometry independently of TLAS visibility. Otherwise
                     // travelling across a culling boundary starts another BLAS burst and
@@ -320,7 +320,7 @@ namespace spartan
                     batch.missing |= missing;
                     if (missing) batch.builds.push_back(render);
                     // Keep the same off-screen shadow/reflection visibility budget.
-                    if (camera && data.instances.empty())
+                    if (camera && data.instances.empty() && !Renderer::IsPathTracingActive())
                     {
                         const float distance = max(data.max_distance_render, data.max_distance_shadow);
                         if (distance >= 0.0f && distance < numeric_limits<float>::max() * 0.5f)
@@ -1419,6 +1419,8 @@ namespace spartan
             return;
         }
 
+        ++m_pass_state.path_tracing.scene_revision;
+
         // a secondary view's materials are not part of the primary's scene, so they never cost it its gi history
         // a texture residency swap is the same image at another mip count and leaves gi alone, texture
         // streaming swaps every few frames while the camera moves and clearing on it kept restir at one sample
@@ -1510,6 +1512,7 @@ namespace spartan
         UpdateLights();
         if (lights_changed)
         {
+            ++m_pass_state.path_tracing.scene_revision;
             RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
         }
         SP_PROFILE_CPU_END();
@@ -2054,7 +2057,7 @@ namespace spartan
 
         // stereo overwrites the projection with unjittered per eye matrices, keep the advertised jitter at zero
         // so shaders do not unjitter velocities and uvs with an offset that was never applied
-        if (IsStereoView())
+        if (IsStereoView() || IsPathTracingActive())
         {
             Renderer::view().jitter_offset = Vector2::Zero;
             return;
@@ -4040,6 +4043,9 @@ namespace spartan
         const Vector3 camera_pos = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
         const float flare_max_distance = 2000.0f; // flare-only lights stay visible this far past the lighting draw distance
         const float flare_max_distance_sq = flare_max_distance * flare_max_distance;
+        // Indirect transport can reach lights outside the camera frustum and
+        // raster draw distance. Keep their physical range, but not camera culling.
+        const bool retain_transport_lights = cvar_restir_pt.GetValueAs<bool>() || IsPathTracingActive();
 
         for (Entity* entity : light_entities())
         {
@@ -4066,7 +4072,12 @@ namespace spartan
                     continue;
                 }
 
-                const bool within_draw_distance = light_component->IsActiveByDistance();
+                if (m_count_active_lights >= rhi_max_array_size)
+                {
+                    continue;
+                }
+
+                const bool within_draw_distance = retain_transport_lights || light_component->IsActiveByDistance();
                 if (!within_draw_distance)
                 {
                     // past lighting draw distance, keep the light only for distant coronas
@@ -4094,7 +4105,7 @@ namespace spartan
                     continue;
                 }
     
-                if (camera && !camera->IsInViewFrustum(light_component->GetBoundingBox()))
+                if (!retain_transport_lights && camera && !camera->IsInViewFrustum(light_component->GetBoundingBox()))
                 {
                     continue;
                 }
@@ -5134,7 +5145,7 @@ namespace spartan
     {
         constexpr float hysteresis = instanced_tlas_hysteresis;
         constexpr float radius_max = 500.0f;
-        const float radius = min(render->GetMaxShadowDistance(), radius_max);
+        const float radius = Renderer::IsPathTracingActive() ? 1e15f : min(render->GetMaxShadowDistance(), radius_max);
 
         Entity* entity               = render->GetEntity();
         const uint64_t blas_address  = render->GetAccelerationStructureDeviceAddress();
@@ -5201,7 +5212,7 @@ namespace spartan
     {
         SP_PROFILE_CPU();
 
-        bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
+        bool ray_tracing_enabled = IsPathTracingActive() || cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
         if (!ray_tracing_enabled)
         {
             return;
@@ -5644,6 +5655,7 @@ namespace spartan
                 SP_PROFILE_CPU_END();
                 SP_PROFILE_CPU_START("rt_tlas_build");
                 m_tlas->BuildTopLevel(instances);
+                ++m_pass_state.path_tracing.scene_revision;
 
                 // this is a full overwrite of the table, not a ring push, and the hit shaders read it at
                 // the offset it was bound with. without the rewind every rebuild walked the offset one
@@ -5657,6 +5669,7 @@ namespace spartan
             {
                 SP_LOG_INFO("Ray tracing: destroying TLAS (world changed)");
                 m_tlas = nullptr;
+                ++m_pass_state.path_tracing.scene_revision;
                 last_instance_count = 0;
                 ray_tracing_membership_dirty = false;
             }
@@ -6651,6 +6664,94 @@ namespace spartan
         }
     }
 
+    bool Renderer::IsPathTracingActive()
+    {
+        return cvar_path_tracing.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing() &&
+            !secondary_render_root_active && !IsStereoView();
+    }
+
+    uint32_t Renderer::GetPathTracingSampleCount()
+    {
+        return m_pass_state.path_tracing.samples;
+    }
+
+    void Renderer::ResetPathTracing()
+    {
+        m_pass_state.path_tracing.samples = 0;
+    }
+
+    void Renderer::Pass_PathTracing(bool sky_changed)
+    {
+        auto& history = m_pass_state.path_tracing;
+        RHI_Texture* output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        const bool has_scene = m_tlas && m_tlas->GetRhiResource();
+        RHI_Shader* shader = GetShader(has_scene ? Renderer_Shader::path_tracing_c : Renderer_Shader::path_tracing_sky_c);
+        if (!GetViewCamera() || frame_is_loading || ray_tracing_pending_blas || m_pass_state.skip_rt_trace || !shader || !shader->IsCompiled())
+        {
+            history.samples = 0;
+            RHI_CommandList::ClearTexture(output, Color::standard_black);
+            return;
+        }
+
+        // Trace at output resolution: pixel filtering is stochastic, no raster AA/upscaler is involved.
+        if (!history.accumulation[0] || history.accumulation[0]->GetWidth() != output->GetWidth() ||
+            history.accumulation[0]->GetHeight() != output->GetHeight())
+        {
+            for (uint32_t i = 0; i < 2; ++i)
+                history.accumulation[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
+                    output->GetWidth(), output->GetHeight(), 1, 1, RHI_Format::R32G32B32A32_Float,
+                    RHI_Texture_Srv | RHI_Texture_Uav, i == 0 ? "path_tracing_a" : "path_tracing_b");
+            history.samples = 0;
+        }
+        const float requested_bounces = cvar_path_tracing_bounces.GetValue();
+        const uint32_t bounces = static_cast<uint32_t>(std::isfinite(requested_bounces) ? std::clamp(requested_bounces, 1.0f, 32.0f) : 8.0f);
+        const Matrix& camera = view().frame.view_projection_unjittered;
+        if (history.camera != camera || history.accumulated_revision != history.scene_revision ||
+            history.shader_hash != shader->GetHash() || history.bounces != bounces || sky_changed)
+            history.samples = 0;
+        history.camera = camera;
+        history.accumulated_revision = history.scene_revision;
+        history.shader_hash = shader->GetHash();
+        history.bounces = bounces;
+
+        RHI_Texture* target = history.accumulation[history.current].get();
+        // Stop before the sample count loses integer precision in the FP32 running mean.
+        if (history.samples < (1u << 24))
+        {
+            target = history.accumulation[history.current ^ 1u].get();
+            RHI_CommandList::BeginPass("path_tracing");
+            SetCommonTextures();
+            RHI_CommandList::SetShader(shader);
+            if (has_scene)
+            {
+                RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, m_tlas.get());
+                GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            }
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, history.accumulation[history.current].get());
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, target);
+            m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
+            m_pcb_pass_cpu.set(pass_path_tracing::bounces, bounces);
+            m_pcb_pass_cpu.set(pass_path_tracing::has_scene, has_scene);
+            RHI_CommandList::Dispatch(target);
+            RHI_CommandList::EndPass();
+            history.current ^= 1u;
+            ++history.samples;
+        }
+
+        // Exposure and display encoding are still required to display linear radiance.
+        Pass_AutoExposure(target);
+        Pass_Tonemap(target, output);
+        RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::auto_exposure),
+            GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous), false);
+        Pass_Screenshot(target);
+        m_taau_reset_history = true;
+        m_pass_state.hiz_history_valid = false;
+        m_pass_state.restir.history_invalid = true;
+        m_pass_state.ResetCameraHistory();
+    }
+
     void Renderer::ProduceFrame()
     {
         SP_PROFILE_CPU();
@@ -6709,6 +6810,7 @@ namespace spartan
             }
             for (const QueuedTextureUpload& upload : texture_uploads)
             {
+                ++m_pass_state.path_tracing.scene_revision;
                 upload.texture->UpdateRegion(upload.x, upload.y, upload.width, upload.height, upload.data.data(), true);
             }
         }
@@ -6733,6 +6835,26 @@ namespace spartan
         m_cross_queue_sync.pending_compute_timeline       = batch_a_timeline;
         m_cross_queue_sync.pending_compute_timeline_value = batch_a_value;
         RHI_Device::SetFrameWait(batch_a_timeline, batch_a_value);
+
+        if (IsPathTracingActive())
+        {
+            // Keep the normal queue dependency on compute A (AS builds and sky LUTs).
+            // Everything after this branch is the hybrid raster pipeline.
+            if (RHI_Device::IsRecording(RHI_Frame_List::ComputeB))
+                RHI_Device::Submit(RHI_Frame_List::ComputeB, nullptr, false);
+            RHI_Device::Bind(RHI_Frame_List::Graphics);
+            if (update_skysphere)
+                Pass_Skysphere();
+            Pass_PathTracing(update_skysphere);
+            Pass_Text(rt_output, true);
+            return;
+        }
+        if (!secondary_render_root_active)
+        {
+            m_pass_state.path_tracing.accumulation[0].reset();
+            m_pass_state.path_tracing.accumulation[1].reset();
+            m_pass_state.path_tracing.samples = 0;
+        }
 
         // the sky is first read by the reflection trace, on its own list the scatter work the gbuffer waits on queues ahead of it
         RHI_CommandList* sky_commands = nullptr;

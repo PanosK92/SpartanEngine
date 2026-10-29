@@ -449,6 +449,13 @@ namespace pass_nrd_shadows
     static const SHARED_UINT is_local                 = 2; // bool
 }
 
+namespace pass_path_tracing
+{
+    static const SHARED_UINT samples = 0; // previous samples, zero discards history
+    static const SHARED_UINT bounces = 1;
+    static const SHARED_UINT has_scene = 2;
+}
+
 namespace pass_restir_nrd_unpack
 {
     static const SHARED_UINT reset_accumulation = 0; // bool
