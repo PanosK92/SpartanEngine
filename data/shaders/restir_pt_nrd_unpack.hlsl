@@ -62,10 +62,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 normal = get_normal(uv);
     float3 receiver = get_position(depth, render_uv_to_screen_uv(uv));
     float view_z = linearize_depth(depth);
+    float4 material = get_material(uv);
+    float roughness = sqrt(ggx_alpha_from_roughness(max(material.r, 0.04f)));
     float3 diffuse = 0.0f;
     float3 specular = 0.0f;
     float weight_sum = 0.0f;
+    float specular_weight_sum = 0.0f;
     float best_similarity = -1.0f;
+    float best_specular_similarity = -1.0f;
     float3 best_diffuse = 0.0f;
     float3 best_specular = 0.0f;
     [unroll]
@@ -89,26 +93,36 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             pow(saturate(dot(normal, sample_normal)), 16.0f);
         float2 axis_weight = lerp(1.0f - fraction, fraction, float2(offset));
         float weight = axis_weight.x * axis_weight.y * similarity;
+        // Demodulation removes material amplitude, not reflection lobe width.
+        // Coplanar glossy/rough surfaces must not share specular interpolation
+        // weights. Use NRD's roughness convention and its default 15% fraction.
+        float sample_roughness = sqrt(ggx_alpha_from_roughness(max(get_material(sample_uv).r, 0.04f)));
+        float roughness_weight = exp(-abs(sample_roughness - roughness) / max(0.15f * roughness, 0.01f));
+        float specular_similarity = similarity * roughness_weight;
+        float specular_weight = weight * roughness_weight;
         float3 d = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex.Load(int3(pixel, 0))).xyz, 0.0f);
         float3 s = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex4.Load(int3(pixel, 0))).xyz, 0.0f);
         diffuse += d * weight;
-        specular += s * weight;
+        specular += s * specular_weight;
         weight_sum += weight;
+        specular_weight_sum += specular_weight;
         if (similarity > best_similarity)
         {
             best_similarity = similarity;
             best_diffuse = d;
+        }
+        if (specular_similarity > best_specular_similarity)
+        {
+            best_specular_similarity = specular_similarity;
             best_specular = s;
         }
     }
     diffuse = weight_sum > 1e-5f ? diffuse / weight_sum : best_diffuse;
-    specular = weight_sum > 1e-5f ? specular / weight_sum : best_specular;
+    specular = specular_weight_sum > 1e-5f ? specular / specular_weight_sum : best_specular;
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
-    float4 material = get_material(uv);
     float metallic = material.g;
     // Match packing's GGX-to-NRD conversion using the original material guide,
     // not NRD's filtered roughness. Restore shading detail at render resolution.
-    float roughness = sqrt(ggx_alpha_from_roughness(max(material.r, 0.04f)));
     float3 view_dir = normalize(get_camera_position() - receiver);
     float3 diffuse_factor, specular_factor;
     NRD_MaterialFactors(normal, view_dir, albedo * (1.0f - metallic),
