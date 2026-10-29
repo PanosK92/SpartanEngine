@@ -104,9 +104,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     diffuse = weight_sum > 1e-5f ? diffuse / weight_sum : best_diffuse;
     specular = weight_sum > 1e-5f ? specular / weight_sum : best_specular;
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
-    float metallic = get_material(uv).g;
-    float3 radiance = diffuse * max(albedo * (1.0f - metallic), 0.02f) +
-        specular * max(lerp(0.04f, albedo, metallic), 0.02f);
+    float4 material = get_material(uv);
+    float metallic = material.g;
+    // Match packing, using the original material roughness rather than NRD's
+    // filtered roughness. Restore Fresnel and roughness detail at render resolution.
+    float3 view_dir = normalize(get_camera_position() - receiver);
+    float3 diffuse_factor, specular_factor;
+    NRD_MaterialFactors(normal, view_dir, albedo * (1.0f - metallic),
+        lerp(0.04f, albedo, metallic), max(material.r, 0.04f), diffuse_factor, specular_factor);
+    float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
     float count = 1.0f;
     if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation))
     {

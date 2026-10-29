@@ -10,6 +10,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import zlib from "node:zlib";
 import { z } from "zod";
+import { register_temporal_capture } from "./temporal_capture.mjs";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -410,6 +411,7 @@ function resolve_references(value, outputs)
 
 export function register_agent_toolkit(context)
 {
+  register_temporal_capture(context, { png_decode, png_encode_rgb, contact_sheet });
   const {
     register_local_tool,
     tool_registry,

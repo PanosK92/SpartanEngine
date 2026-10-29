@@ -17,6 +17,16 @@ For example, `mesh_generate` with `shape: "arc", radius: 3, inner_radius: 2.7, d
 
 The shape inventory and textured-material property selection are shared in `building_blocks.mjs` by the MCP server and editor assistant. Native changes require rebuilding the engine and restarting the bridge.
 
+## Temporal rendering diagnostics
+
+`screenshot_sequence` captures consecutive frames of a configured sequencer camera move using the native fixed-timestep render loop with stride 1. Configure motion with `sequencer_event_add` using `position_start/end`, `look_start/end` and `ease: "linear"`; a shot runs until the next shot or the timeline end. Pause the sequencer before capture.
+
+For example, set a two-second timeline, add a linear shot at time 0, then call `screenshot_sequence {frames: 60, fps: 60, start: 0, preroll: 1}` to capture times 0 through 59/60 seconds. For a noise baseline, keep both camera poses identical and set `max_shift: 0`. Avoid shot cuts inside a ghosting test: the sequencer resets temporal history on cuts. Prefer a private headless instance: camera and timeline time/preview are restored, but simulated world state is not rewound.
+
+Each run creates `binaries/temporal_captures/take-*` containing PNG frames, `capture.json` (world, sequence, camera and ReSTIR settings), `temporal_report.json`, a contact sheet and the worst residual heatmap. Dropped frames and timeouts are errors. Use `async_task_start` for long runs. `screenshot_sequence_analyze {directory: "..."}` reanalyses captures without an engine connection.
+
+Metrics use box-averaged images with a maximum dimension of 256 pixels: raw RGB mean absolute difference, translation-aligned difference/RMSE, changed-pixel fraction and estimated translation. The red heatmap shows aligned residuals at 4x intensity; excluded borders are black. `max_shift` is in analysis pixels and `threshold` is in 0-255 RGB units. A shift at the search boundary may need a wider search. Compare identical trajectories, resolution, exposure and settings between revisions. These differences do **not** isolate noise or ghosting: parallax, disocclusions, reflections, moving objects and exposure changes also contribute, and downsampling hides fine-grained noise.
+
 ## Architecture
 
 - `server.mjs` is the MCP server used by Cursor and other MCP clients over stdio.

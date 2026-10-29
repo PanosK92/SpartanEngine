@@ -64,8 +64,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 spec_radiance = clamp(tex2[thread_id.xy].rgb, 0.0f, total_radiance);
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float metallic = get_material(uv).g;
-    float3 diffuse_factor = max(albedo * (1.0f - metallic), 0.02f);
-    float3 specular_factor = max(lerp(0.04f, albedo, metallic), 0.02f);
+    // Remove the view/roughness-dependent environment BRDF as well as colour.
+    // The unpack pass restores it from full-resolution guides after upsampling.
+    float3 position_ws = get_position(depth, render_uv_to_screen_uv(uv));
+    float3 view_dir = normalize(get_camera_position() - position_ws);
+    float3 diffuse_factor, specular_factor;
+    NRD_MaterialFactors(normal_ws, view_dir, albedo * (1.0f - metallic),
+        lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
     float3 diff_radiance = (total_radiance - spec_radiance) / diffuse_factor;
     spec_radiance /= specular_factor;
     // reconnection distance from the reuse passes, a real hit t lets reblur shrink kernels at contacts
