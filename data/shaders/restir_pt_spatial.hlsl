@@ -194,7 +194,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (picked_neighbor)
     {
         ShiftResult shifted = try_reconnection_shift(combined.sample, combined.sample.src_pos,
-            pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+            pos_ws, normal_ws, view_dir, albedo, roughness, metallic,
+            normalize(get_camera_position() - combined.sample.src_pos));
         combined.sample = shifted.sample;
     }
 
@@ -232,10 +233,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 gi = float3(0, 0, 0);
     ShiftResult center_self = self_shift_evaluate(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     gi = k_inv * (1.0f + canonical_pair_acc) * center_self.f_dst * max(center.W, 0.0f);
+    float3 specular = gi * restir_primary_specular_fraction(center.sample, pos_ws, normal_ws,
+        view_dir, albedo, roughness, metallic);
 
     for (uint v = 0; v < valid_neighbors; v++)
     {
-        gi += (k_inv * stream_share[v]) * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
+        float3 contribution = (k_inv * stream_share[v]) * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
+        gi += contribution;
+        specular += contribution * restir_primary_specular_fraction(stream_samples[v], pos_ws, normal_ws,
+            view_dir, albedo, roughness, metallic);
     }
 
     // Demodulate once; composition restores the primary albedo.
@@ -266,4 +272,5 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // emissive nee and indirect lighting are already carried by the reservoir
     tex_uav[pixel] = float4(gi, hit_dist);
+    restir_specular_output[pixel] = float4(clamp(specular, 0.0f, gi), hit_dist);
 }

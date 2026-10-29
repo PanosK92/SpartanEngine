@@ -667,7 +667,7 @@ namespace spartan
 
             nrd::DenoiserDesc denoisers[5];
             uint32_t denoiser_count = 1;
-            denoisers[0]            = { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE };
+            denoisers[0]            = { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR };
             const char* pool_name   = "NRD_GI";
             if (preset == Nrd_Preset::Reflections)
             {
@@ -1113,7 +1113,9 @@ namespace spartan
         RHI_Texture* tex_signal_out,
         const math::Vector3* light_direction,
         uint32_t shadow_denoiser_index,
-        uint32_t eye
+        uint32_t eye,
+        RHI_Texture* tex_specular_in,
+        RHI_Texture* tex_specular_out
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -1145,6 +1147,13 @@ namespace spartan
         // make_resource declares these to nri as AccessBits::SHADER_RESOURCE, which nri expands to non pixel plus pixel
         // on a direct list and to non pixel only on a compute one, so the inputs must carry whichever set matches
         const bool include_pixel_stage = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource())->GetType() != D3D12_COMMAND_LIST_TYPE_COMPUTE;
+        if (preset == Nrd_Preset::Gi)
+        {
+            if (!tex_specular_in || !tex_specular_out)
+                return false;
+            cmd_list->EnsureComputeShaderResource(tex_specular_in, include_pixel_stage);
+            cmd_list->PrepareForExternalWrite(tex_specular_out);
+        }
         cmd_list->EnsureComputeShaderResource(tex_mv, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_normal_roughness, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_view_z, include_pixel_stage);
@@ -1212,6 +1221,8 @@ namespace spartan
             }
             snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in, false));
             snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out, true));
+            snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_specular_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_specular_out, true));
         }
         else if (preset == Nrd_Preset::Reflections)
         {

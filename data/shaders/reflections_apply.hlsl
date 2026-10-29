@@ -262,6 +262,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (!is_water_pixel && !is_glass_pixel)
     {
+        if (is_restir_pt_enabled() && restir_coverage(uv) >= 1.0f)
+            return;
         float3 reflection = tex[thread_id.xy].rgb;
         if (dot(reflection, reflection) < 1e-8f)
         {
@@ -291,6 +293,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             layers           = base * (1.0f - coat_f) + coat_f * coat_tint;
         }
         float3 specular_reflection = reflection * layers;
+        if (is_restir_pt_enabled())
+            specular_reflection *= 1.0f - restir_coverage(uv);
         tex_uav[thread_id.xy]     += float4(specular_reflection, 0.0f);
         return;
     }

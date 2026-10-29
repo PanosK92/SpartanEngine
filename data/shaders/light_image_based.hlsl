@@ -274,8 +274,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         diffuse_ibl = 0.0f;
     }
 
-    // restir replaces diffuse ibl so its visibility controls both dark and lit regions, with
-    // unified lighting the same signal also carries direct diffuse from every analytic light
+    // ReSTIR replaces diffuse and specular IBL with visible path contributions,
+    // including direct analytic lighting when the unified direct option is enabled.
     if (pass_bool(pass_light_image_based::restir_enabled) &&
         !surface.is_water() &&
         !surface.is_transparent())
@@ -293,6 +293,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 pass_float(pass_light_image_based::restir_intensity);
 
             diffuse_ibl = lerp(diffuse_ibl, restir_ibl, coverage);
+            specular_ibl *= 1.0f - coverage;
         }
     }
 

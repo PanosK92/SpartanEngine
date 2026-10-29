@@ -681,6 +681,7 @@ namespace spartan
             // BuildEmissiveTriangleNeePool, count comes through buffer_frame.restir_pt_emissive_tri_count
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
+            RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
                 RHI_CommandList::SetTexture(restir_reservoir_uav[i], reservoirs[i]);
@@ -754,6 +755,7 @@ namespace spartan
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
+            RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
             RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
         }
         RHI_CommandList::EndPass();
@@ -831,6 +833,7 @@ namespace spartan
             }
 
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
+            RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
             RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
         }
         RHI_CommandList::EndPass();
@@ -1105,6 +1108,8 @@ namespace spartan
             {
                 SetCommonTextures();
                 RHI_CommandList::SetShader(shader_pack, "restir_pt_nrd_pack");
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
+                RHI_CommandList::SetTexture("restir_specular_input", GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_in));
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_gi_raw);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_mv);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_normal);
@@ -1116,7 +1121,8 @@ namespace spartan
 
             RHI_CommandList::BeginMarker("nrd_dispatch");
             {
-                if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Gi, tex_mv, tex_normal, tex_view_z, tex_in, tex_out))
+                if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Gi, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, nullptr, 0, 0,
+                    GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_in), GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_out)))
                 {
                     Pass_BlitRestirFallback(tex_gi_raw, tex_gi_denoised);
                     RHI_CommandList::EndMarker();
@@ -1129,6 +1135,7 @@ namespace spartan
             RHI_CommandList::BeginMarker("nrd_unpack");
             {
                 RHI_CommandList::SetShader(shader_unpack, "restir_pt_nrd_unpack");
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_out));
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_out);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_gi_previous);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));

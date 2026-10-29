@@ -9,7 +9,9 @@ Commercial use requires written permission and negotiated payment terms.
 #define SPARTAN_RESTIR_RESERVOIR
 #include "rt_visibility.hlsl"
 
-// ReSTIR PT Enhanced (2026), sections 5 and 7.
+[[vk::image_format("unknown")]] RWTexture2D<float4> restir_specular_output : register(u68);
+
+// ReSTIR PT Enhanced (2026).
 static const uint RESTIR_MAX_PATH_LENGTH = 5;
 // Reconstruct the exact G-buffer texel that supplied the normal and material.
 // A filtered depth at a quarter-resolution texel center can place the ray inside
@@ -44,8 +46,9 @@ float get_restir_m_cap_decorrelated(float duplication)
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 // unshadowed ris candidates for the primary analytic light pick, lin 2026 6.1
 uint  get_restir_light_candidates()    { return 32u; }
-// Use several initial trees for robustness at disocclusions. Explicit emitter
-// sampling replaces half the trees when the emissive pool is available.
+// Preserve the robust candidate budget until tiled light presampling and
+// postponed reconnection support the paper's one-tree configuration. At quarter
+// resolution one tree otherwise leaves too few fresh paths after disocclusion.
 uint  get_restir_initial_candidates()  { return buffer_frame.restir_pt_emissive_tri_count > 0.5f ? 4u : 8u; }
 uint  get_restir_emtri_candidates()    { return 4u; }
 // depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
@@ -63,12 +66,13 @@ static const float RESTIR_SKY_DISTANCE              = 1e10f;
 // reconnection criteria, lin 2026 4, dual ray footprint thresholds replace the old fixed
 // world space distance gate, the remaining distance constant is only a numerical floor
 static const float RESTIR_RC_MIN_DISTANCE    = 0.01f;
-static const float RESTIR_RC_COS_FRONT       = 0.05f;
+// Keep the entire front hemisphere: grazing glossy paths can carry substantial energy.
+static const float RESTIR_RC_COS_FRONT       = 0.0f;
 // footprint threshold scale, c / 100 with c = 0.02 from the paper, larger is more conservative
 static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
-// at or above this roughness the rc outgoing lobe is broad enough that reconnection barely
-// perturbs its angular density, so the inverse footprint test does not apply, lin 2026 4
-static const float RESTIR_RC_DIFFUSE_ROUGHNESS = 0.2f;
+// Supplemental section 4: reciprocal squared PDF replaces lobe roughness for
+// a black-box mixture BSDF. Rough glossy mixtures are not diffuse lobes.
+static const float RESTIR_RC_MIN_PDF_ROUGHNESS = 0.2f;
 // brdf / numerics
 static const float RESTIR_MIN_PDF            = 1e-6f;
 
@@ -1171,18 +1175,33 @@ float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, flo
     return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, specular_blend);
 }
 
-// rt reflections owns the entire primary specular lobe at every roughness, so restir is diffuse
-// only at the primary and returns 0 here unconditionally, this used to be a roughness blend band
-// (sharp lobe to rt, glossy lobe to restir) but rt reflections now jitters its ray across the ggx
-// lobe and denoises it so it produces correct rough reflections too, there is no roughness left at
-// which restir should own specular, staying diffuse only also avoids reusing a peaked specular
-// target across pixels which makes the reservoir weight explode into blotches and keeps primary gi
-// albedo proportional so the half res demod and upsample stay exact, suffix bounces past the
-// primary still use the full bsdf since multi bounce glossy interreflection is not something rt
-// reflections (a single primary bounce) can replace
+// A single reservoir owns diffuse and glossy primary transport.
 float restir_primary_specular_blend(float roughness)
 {
-    return 0.0f;
+    return 1.0f;
+}
+
+// Split each RGB resampling contribution before summing it (section 6.3).
+// Splitting only the winning path would throw away the color-noise reduction.
+float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal,
+    float3 view, float3 albedo, float roughness, float metallic)
+{
+    float3 direction;
+    if (is_sky_sample(s))
+        direction = s.rc_pos;
+    else if ((has_reconnection(s) && s.rc_length == 2u) || is_nee_sample(s))
+        direction = normalize(s.rc_pos - pos);
+    else
+    {
+        uint seed = s.seed_path;
+        float unused_pdf;
+        direction = sample_brdf(albedo, roughness, metallic, normal, view,
+            random_float2(seed), unused_pdf, 1.0f);
+    }
+    float pdf;
+    float3 total = evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, 1.0f);
+    float3 diffuse = evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, 0.0f);
+    return saturate((total - diffuse) / max(total, 1e-20f));
 }
 
 // primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale,
@@ -1207,7 +1226,8 @@ struct ShiftResult
 };
 
 ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
-    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic);
+    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view);
+
 
 // Only a light endpoint directly after RC has a view-dependent endpoint MIS
 // weight. Deeper endpoints keep the same incoming direction under reconnection.
@@ -1253,7 +1273,8 @@ ShiftResult try_reconnection_shift(
     float3 dst_view_dir,
     float3 dst_albedo,
     float dst_roughness,
-    float dst_metallic)
+    float dst_metallic,
+    float3 src_view_dir)
 {
     ShiftResult result;
     result.sample = src;
@@ -1279,7 +1300,7 @@ ShiftResult try_reconnection_shift(
     }
 
     // Source positions are full precision; only the actual identity skips gates.
-    bool is_identity = all(dst_pos == src_primary_pos);
+    bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
     if (is_identity)
     {
         result.f_dst = src.F;
@@ -1323,11 +1344,10 @@ ShiftResult try_reconnection_shift(
         return result;
     }
 
-    // Replay must update both the integrand and the path descriptor. Identity
-    // evaluates the cached sample without tracing a different random path.
+    // Replay fixed random dimensions only when the source has no reconnection.
     if (!is_identity && !has_reconnection(src))
         return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
-            dst_albedo, dst_roughness, dst_metallic);
+            dst_albedo, dst_roughness, dst_metallic, src_view_dir);
 
     float3 rc_from_dst = src.rc_pos - dst_pos;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
@@ -1356,14 +1376,18 @@ ShiftResult try_reconnection_shift(
         return result;
 
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
-    // the primary lobe is diffuse only here so the directional pdf is cosine over pi, the
-    // identity shift skips it like self_shift_evaluate does, the path is not being moved
+    // Use the actual mixture PDF on both sides; the supplemental black-box
+    // criterion also rejects a sharply peaked preceding scattering event.
     if (!is_identity)
     {
-        float pdf_dst = max(dot(dst_normal, dir_dst), 0.0f) / PI;
+        float pdf_dst;
+        evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal,
+            dst_view_dir, dir_dst, pdf_dst, restir_primary_specular_blend(dst_roughness));
+        if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
+            return result;
         float fp_dst  = dist_dst_sq / max(pdf_dst * cos_rc_dst, 1e-6f);
         float fp_inverse = 1e30f;
-        if (src.rc_roughness < RESTIR_RC_DIFFUSE_ROUGHNESS && any(src.rc_L_post > 0.0f))
+        if (any(src.rc_L_post > 0.0f))
         {
             float pdf_rc;
             evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
@@ -1610,7 +1634,7 @@ bool emtri_ris_pick_path(
     {
         float3 xi = random_float3(seed);
         float  u  = random_float(seed);
-        if (!pool_ok)
+        if (!pool_ok || (forced_draw >= 0 && i != uint(forced_draw)))
         {
             continue;
         }
@@ -1778,6 +1802,15 @@ RestirLightSample sample_direct_lighting_at_vertex(
         bool is_spot        = (light_flags & (1u << 2)) != 0;
         bool is_area        = (light_flags & (1u << 6)) != 0;
 
+        // Replay evaluates one fixed leaf, never the initial light reservoir.
+        // Consume the area-light dimensions to preserve subsequent BSDF draws.
+        if (forced_light >= 0 && uint(forced_light) != light_idx)
+        {
+            if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
+                random_float2(seed);
+            continue;
+        }
+
         float3 light_color = light.color.rgb;
         float3 light_dir;
         float  light_dist;
@@ -1867,7 +1900,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
     }
 
     // Emissive-triangle NEE contributes one light-ending path.
-    if (is_emtri_pool_active())
+    if (is_emtri_pool_active() && (forced_light < 0 || forced_light == int(RESTIR_ENDPOINT_EMTRI)))
     {
         float3 light_pos, light_normal, emission;
         float W, source_pdf;
@@ -1889,6 +1922,15 @@ RestirLightSample sample_direct_lighting_at_vertex(
         }
     }
 
+    else if (is_emtri_pool_active())
+    {
+        for (uint i = 0u; i < RESTIR_EMTRI_RIS_CANDIDATES; ++i)
+        {
+            random_float3(seed);
+            random_float(seed);
+        }
+    }
+
     // environment nee, cosine hemisphere toward the sun free sky, the analytic loop above
     // owns the sun so the two strategies never overlap
     {
@@ -1899,7 +1941,8 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
         float env_n_dot_l = dot(shading_normal, env_dir);
 
-        if (env_n_dot_l > 0.0f && env_pdf > RESTIR_MIN_PDF)
+        if ((forced_light < 0 || forced_light == int(RESTIR_ENDPOINT_SKY)) &&
+            env_n_dot_l > 0.0f && env_pdf > RESTIR_MIN_PDF)
         {
             float probe_offset = compute_ray_offset(shading_pos);
             RayDesc probe_ray;
@@ -2072,7 +2115,8 @@ float target_pdf_at_dst(
     float dst_roughness,
     float dst_metallic)
 {
-    ShiftResult r = try_reconnection_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic);
+    ShiftResult r = try_reconnection_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic,
+        normalize(get_camera_position() - src_primary_pos));
     if (!r.ok)
         return 0.0f;
 

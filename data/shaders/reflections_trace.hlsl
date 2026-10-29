@@ -33,13 +33,20 @@ void ray_gen()
         return;
     }
 
-    // rt reflections own the full primary specular lobe, restir contributes diffuse only primary gi
+    // ReSTIR owns opaque primary gloss; this pass retains uncovered and transmissive surfaces.
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
     float3 V         = normalize(get_camera_position() - pos_ws);
 
     // the lobe the tracer carries, its roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
     MaterialParameters mat = material_parameters[get_material_index(uv)];
+    float primary_alpha = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a;
+    if (is_restir_pt_enabled() && primary_alpha >= 1.0f &&
+        (mat.flags & (1u << 13)) == 0u && restir_coverage(uv) >= 1.0f)
+    {
+        tex_uav[launch_id] = 0.0f;
+        return;
+    }
     float coat;
     float roughness = get_rt_reflection_roughness(uv, coat);
 

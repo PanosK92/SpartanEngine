@@ -133,6 +133,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  hit_distance     = gbuffer_position.w;
 
     float2 uv_source = (thread_id.xy + 0.5f) / resolution_out;
+    MaterialParameters primary_material = material_parameters[get_material_index(uv_source)];
+    if (is_restir_pt_enabled() &&
+        tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0).a >= 1.0f &&
+        (primary_material.flags & (1u << 13)) == 0u && restir_coverage(uv_source) >= 1.0f)
+    {
+        tex_uav[thread_id.xy] = 0.0f;
+        return;
+    }
     float  source_coat;
     float  source_roughness = get_rt_reflection_roughness(uv_source, source_coat);
     float  source_alpha     = ggx_alpha_from_roughness(source_roughness);

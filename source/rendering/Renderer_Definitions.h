@@ -652,6 +652,9 @@ namespace spartan
         restir_shift0,
         restir_shift1,
         restir_shift2,
+        restir_specular_output,
+        restir_specular_nrd_in,
+        restir_specular_nrd_out,
         // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
         wind_field,
         // water on the occupied car, see CarRain.h

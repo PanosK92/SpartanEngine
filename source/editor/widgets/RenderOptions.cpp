@@ -662,7 +662,11 @@ namespace
             }
             ImGui::EndDisabled();
 
-            cvar_toggle("Ambient occlusion", "r.ssao", "Screen space ambient occlusion, darkens creases and contact areas.");
+            const bool path_tracing_enabled = rt_supported &&
+                (cvar_restir_pt.GetValueAs<bool>() || cvar_path_tracing.GetValueAs<bool>());
+            ImGui::BeginDisabled(path_tracing_enabled);
+            cvar_toggle("Ambient occlusion", "r.ssao", "Screen space ambient occlusion, darkens creases and contact areas. Unavailable while path tracing is enabled.");
+            ImGui::EndDisabled();
         }
         section_end();
     }

@@ -74,7 +74,9 @@ namespace spartan
             RHI_Texture* tex_signal_out,
             const math::Vector3* light_direction = nullptr,
             uint32_t shadow_denoiser_index = 0,
-            uint32_t eye = 0
+            uint32_t eye = 0,
+            RHI_Texture* tex_specular_in = nullptr,
+            RHI_Texture* tex_specular_out = nullptr
         );
     };
 }

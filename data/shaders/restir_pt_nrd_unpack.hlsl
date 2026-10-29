@@ -12,7 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 Texture2D<uint> tex_normal_previous : register(t87);
 
-// unpacks nrd reblur diffuse output into restir_denoised (demodulated gi)
+// combines remodulated nrd diffuse/specular output into restir_denoised
 // tex     = out_diff_radiance_hitdist
 // tex_uav = restir_denoised
 
@@ -29,6 +29,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 radiance = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex[thread_id.xy]).xyz, 0.0f);
     float count = 1.0f;
     float2 uv = (float2(thread_id.xy) + 0.5f) / float2(resolution);
+    float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
+    float metallic = get_material(uv).g;
+    radiance *= max(albedo * (1.0f - metallic), 0.02f);
+    radiance += max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex4[thread_id.xy]).xyz, 0.0f) *
+        max(lerp(0.04f, albedo, metallic), 0.02f);
     if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation))
     {
         float4 history = tex2[thread_id.xy];

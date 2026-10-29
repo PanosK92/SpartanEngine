@@ -1138,19 +1138,12 @@ float luminance(float4 color)
 /*------------------------------------------------------------------------------
     RESTIR GI DEMODULATION
 ------------------------------------------------------------------------------*/
-// restir owns only the diffuse lobe at the primary vertex, so its gi is exactly proportional to
-// albedo, dividing it out stores plain irradiance which the denoiser can filter and the reduced
-// resolution upsample can remodulate against the full res albedo
-// the safety floor scales all three channels by one factor so the divisor keeps the albedo's
-// chroma, a per channel max leaves an albedo tint in the stored signal and every spatial and
-// temporal filter downstream then spreads that tint across material boundaries as colored blobs
+// The composition buffer carries the sum of the separately denoised lobes.
 float3 restir_gi_demodulator(float3 albedo)
 {
-    const float luminance_floor = 0.04f;
-    float lum  = luminance(albedo);
-    float lift = max(luminance_floor, lum) / lum;
-
-    return max(albedo * lift, 1e-3f);
+    // Unified transport contains diffuse and glossy radiance. Each lobe is
+    // demodulated separately at the NRD boundary, then recombined for display.
+    return 1.0f;
 }
 
 // weight of the restir signal on a surface, restir_pt_nrd_pack zeroes texels past nrd's

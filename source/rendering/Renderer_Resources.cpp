@@ -603,6 +603,12 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_output)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_in)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_out)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_output)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_in)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_out)         = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
@@ -619,6 +625,9 @@ namespace spartan
             uint32_t restir_width  = max(static_cast<uint32_t>(width * restir_scale), renderer_resolution_restir_min);
             uint32_t restir_height = max(static_cast<uint32_t>(height * restir_scale), renderer_resolution_restir_min);
             uint32_t restir_flags  = flags | RHI_Texture_ConcurrentSharing;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_specular_output");
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_in) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_specular_nrd_in");
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_out) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_specular_nrd_out");
 
             static const char* reservoir_names[] =
             {
@@ -775,6 +784,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
             at(view_targets(), Renderer_RenderTarget::ray_traced_shadows_local)       = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_output)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_in)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_out)         = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_shift0)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = nullptr;

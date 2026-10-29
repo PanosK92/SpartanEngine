@@ -268,29 +268,26 @@ PathSample trace_path_from_primary(
 
     // scene independent reconnection criteria, lin 2026 4
     // dual ray footprint thresholds bound the area density change at rc and the angular density
-    // change of the rc outgoing lobe, the primary lobe is cosine only so its roughness never
-    // invalidates reconnection
+    // change of the RC outgoing lobe; the mixture PDF also gates glossy primary events.
     float dist_sq             = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
     float footprint_threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal);
 
     // forward footprint, reciprocal area density of rc when traced from the primary
     float cos_at_rc    = abs(dot(s.rc_normal, geometric_dir));
-    float geometric_pdf = max(dot(primary_normal, geometric_dir), 0.0f) / PI;
+    float geometric_pdf = dir_pdf;
     float fp_forward   = dist_sq / max(geometric_pdf * cos_at_rc, 1e-6f);
 
     // inverse footprint, reciprocal area density of the primary when traced back from rc,
-    // skipped for terminal paths and for diffuse rc, where reconnection cannot meaningfully
-    // change the outgoing density, lin 2026 4, keeping the test there only rejects reconnections
-    // that were safe and leaves those paths unreusable
-    bool  rc_is_diffuse = s.rc_roughness >= RESTIR_RC_DIFFUSE_ROUGHNESS;
+    // Skip only terminal paths. A rough glossy mixture still has a view-dependent PDF.
     float fp_inverse    = 1e30f;
-    if (first_pdf > RESTIR_MIN_PDF && !rc_is_diffuse)
+    if (first_pdf > RESTIR_MIN_PDF)
     {
         float cos_at_primary = abs(dot(primary_normal, geometric_dir));
         fp_inverse           = dist_sq / max(first_pdf * cos_at_primary, 1e-6f);
     }
 
     bool rc_valid = (min(fp_forward, fp_inverse) >= footprint_threshold)
+                 && (dir_pdf * dir_pdf * RESTIR_RC_MIN_PDF_ROUGHNESS <= 1.0f)
                  && (dist_sq >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
     if (rc_valid)
         s.flags |= PATH_FLAG_HAS_RC;
@@ -304,7 +301,7 @@ PathSample trace_path_from_primary(
 // Keep the selected leaf fixed. Initial RIS and roulette weights stay in the
 // reservoir weight; rerunning either selection would change the shift domain.
 ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
-    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic)
+    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view)
 {
     ShiftResult result = (ShiftResult)0;
     result.sample = src;
@@ -326,7 +323,7 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
     float2 source_xi = random_float2(source_seed);
     float pdf_src;
     sample_brdf(src.src_albedo, src.src_roughness, src.src_metallic, src.src_normal,
-        normalize(get_camera_position() - src_pos), source_xi, pdf_src,
+        src_view, source_xi, pdf_src,
         restir_primary_specular_blend(src.src_roughness));
     if (pdf_src < RESTIR_MIN_PDF)
         return result;

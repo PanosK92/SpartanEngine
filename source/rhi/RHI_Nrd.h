@@ -139,7 +139,7 @@ namespace spartan
             return reset;
         }
 
-        // restir diffuse gi, temporal heavy, spatial light so material lighting stays
+        // Unified ReSTIR diffuse/specular, temporal heavy with lobe-aware prefiltering
         inline void fill_preset_gi(nrd::ReblurSettings& settings, float delta_time)
         {
             settings                                   = {};
@@ -150,7 +150,9 @@ namespace spartan
             settings.hitDistanceParameters.B           = restir_hit_distance_b;
             settings.hitDistanceParameters.C           = restir_hit_distance_c;
             settings.diffusePrepassBlurRadius          = 8.0f;
-            settings.specularPrepassBlurRadius         = 0.0f;
+            // The unified reservoir supplies a stochastic glossy signal too.
+            // Filter it before temporal accumulation, as in the reflection preset.
+            settings.specularPrepassBlurRadius         = 30.0f;
             settings.maxBlurRadius                     = 16.0f;
             settings.minBlurRadius                     = 1.0f;
             // Quarter-resolution indirect light needs a longer history than reflections.

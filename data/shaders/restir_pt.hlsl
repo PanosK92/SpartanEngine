@@ -19,7 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 // replay shift so the initial trace and the replay evaluate the same integrand
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
-static const float MIN_COS_AT_PRIMARY              = 1e-3f;
+static const float MIN_COS_AT_PRIMARY              = 0.0f;
 
 // power proportional light pick weight, lin 2022 6.1, all four light types are eligible
 float light_pick_weight(LightParameters l)
@@ -324,6 +324,7 @@ void ray_gen()
         tex_reservoir4[launch_id] = t4;
         tex_reservoir5[launch_id] = t5;
         tex_uav[launch_id] = float4(0, 0, 0, 1);
+        restir_specular_output[launch_id] = 0.0f;
         return;
     }
 
@@ -340,9 +341,10 @@ void ray_gen()
 
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);
+    float3 canonical_specular = 0.0f;
 
     // unified direct and indirect, lin 2026 6.1, analytic lights join the same reservoir as a nee
-    // path of length two and the clustered renderer keeps only their specular lobe
+    // path of length two, including both primary diffuse and glossy scattering
     // per sample weight is lin 2022 algorithm 1, w_i = target / sum_t(N_t * p_t(y))
     const uint  n_brdf_count  = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
     const uint  n_light_count = is_restir_pt_direct_enabled() ? clamp(get_restir_light_candidates(), 1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX) : 0u;
@@ -354,7 +356,7 @@ void ray_gen()
     for (uint i = 0; i < n_brdf_count; i++)
     {
         // capture the seed before xi so the replay shift can replay the same primary sample
-        // primary specular is owned by rt reflections, restir samples only the diffuse lobe
+        // Sample the complete primary diffuse/glossy mixture.
         uint   replay_seed = seed;
         float2 xi          = random_float2(seed);
         float  source_pdf;
@@ -373,14 +375,18 @@ void ray_gen()
             candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0);
             // Independent path-tracing estimate: sum the traced light contributions,
             // without selecting a path endpoint or doing spatiotemporal reuse.
-            canonical_gi += eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
-                view_dir, dir, restir_primary_specular_blend(roughness)) * reference_radiance / source_pdf;
+            float3 brdf_all = eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
+                view_dir, dir, 1.0f);
+            float3 brdf_diffuse = eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
+                view_dir, dir, 0.0f);
+            canonical_gi += brdf_all * reference_radiance / source_pdf;
+            canonical_specular += max(brdf_all - brdf_diffuse, 0.0f) * reference_radiance / source_pdf;
             candidate.F = evaluate_path_integrand(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
                 // single strategy weight, the sun free sky is only reachable through brdf sampling
-                weight = target_pdf * candidate.initial_weight / (n_brdf * source_pdf);
+                weight = target_pdf * candidate.initial_weight / (source_pdf * n_brdf);
             }
         }
 
@@ -430,6 +436,8 @@ void ray_gen()
             float light_W  = light_weight_sum / light_pick_target;
             light_weight   = light_pick_target * light_W;
             canonical_gi  += light_pick.F * light_W * n_brdf;
+            canonical_specular += light_pick.F * light_W * n_brdf *
+                restir_primary_specular_fraction(light_pick, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
         }
 
         update_reservoir(reservoir, light_pick, light_weight, random_float(seed));
@@ -456,6 +464,8 @@ void ray_gen()
                 ShiftResult evaluated = self_shift_evaluate(emtri_candidate, pos_ws, normal_ws,
                     view_dir, albedo, roughness, metallic);
                 canonical_gi += evaluated.f_dst * emtri_ris_weight * n_brdf / n_emtri;
+                canonical_specular += evaluated.f_dst * emtri_ris_weight * n_brdf / n_emtri *
+                    restir_primary_specular_fraction(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             }
         }
 
@@ -507,4 +517,5 @@ void ray_gen()
     }
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
+    restir_specular_output[launch_id] = float4(canonical_specular / n_brdf, hit_dist);
 }
