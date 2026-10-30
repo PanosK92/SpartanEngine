@@ -327,10 +327,13 @@ void ray_gen()
             float3 reference_radiance;
             candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0,
                 view_dir, albedo, roughness, metallic, get_camera_position());
-            // Denoising follows the first traced surface, not the endpoint
-            // later chosen by light/path resampling.
-            diffuse_hit_dist += candidate.first_hit_distance;
-            diffuse_hit_count++;
+            // Each denoising guide must follow its own primary lobe, not the
+            // endpoint selected by RIS or a ray drawn from the other lobe.
+            if (xi.x < 1.0f - specular_probability)
+            {
+                diffuse_hit_dist += candidate.first_hit_distance;
+                diffuse_hit_count++;
+            }
             // Reuse only primary rays drawn from the specular component, before
             // light/path resampling can select an unrelated diffuse endpoint.
             if (xi.x >= 1.0f - specular_probability)
@@ -357,6 +360,23 @@ void ray_gen()
         }
 
         update_reservoir(reservoir, candidate, weight, random_float(seed));
+    }
+
+    // A glossy-only draw set still needs a diffuse guide. This independent
+    // cosine ray measures geometry only and never contributes radiance to RIS.
+    if (diffuse_hit_count == 0u && metallic < 1.0f && any(albedo > 0.0f))
+    {
+        uint guide_seed = create_seed_for_pass(launch_id, buffer_frame.frame, 5);
+        float unused_pdf;
+        float3 direction = local_to_world(sample_cosine_hemisphere(random_float2(guide_seed), unused_pdf), normal_ws);
+        RayDesc guide_ray;
+        guide_ray.Origin = pos_ws + normal_ws * compute_ray_offset(pos_ws);
+        guide_ray.Direction = direction;
+        guide_ray.TMin = RESTIR_RAY_T_MIN;
+        guide_ray.TMax = RESTIR_RAY_T_MAX;
+        PathSurface guide = restir_trace_surface(guide_ray);
+        diffuse_hit_dist = guide.hit ? length(guide.hit_position - pos_ws) : RESTIR_RAY_T_MAX;
+        diffuse_hit_count = 1u;
     }
 
     // A diffuse-only draw set still needs a reflection guide. Trace one VNDF
