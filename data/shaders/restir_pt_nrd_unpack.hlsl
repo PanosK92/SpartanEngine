@@ -201,9 +201,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             transpose((float3x3)buffer_frame.view_previous)) + buffer_frame.camera_position_previous;
         float3 separation = previous_receiver - receiver;
         float plane_distance = max(abs(dot(separation, normal)), abs(dot(separation, normal_prev)));
+        // The broad surface-normal gate is insufficient for glossy lighting.
+        // Jitter and camera breathing can change reflection direction while
+        // passing it, freezing a different reflection in the long average.
+        float3 previous_view_dir = normalize(buffer_frame.camera_position_previous - previous_receiver);
+        float3 previous_reflection = reflect(-previous_view_dir, normal_prev);
+        float reflection_half_cos_sq = saturate(0.5f + 0.5f * dot(reflection_dir, previous_reflection));
+        float alpha_sq = roughness * roughness * roughness * roughness;
+        // tan^2(half angle) <= alpha^2: use the GGX characteristic slope width.
+        bool reflection_matches = 1.0f - reflection_half_cos_sq <= alpha_sq * reflection_half_cos_sq;
         bool valid = history.a >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&
             plane_distance < max(z * 0.001f, 0.002f) &&
-            dot(normal, normal_prev) > 0.95f && dot(motion, motion) < 0.01f;
+            dot(normal, normal_prev) > 0.95f && dot(motion, motion) < 0.01f && reflection_matches;
         if (valid)
         {
             // FP32 history avoids FP16 rounding stopping convergence after a few hundred frames.
