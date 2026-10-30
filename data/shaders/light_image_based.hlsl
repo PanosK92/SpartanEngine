@@ -108,8 +108,8 @@ float3 sample_restir_gi_bilateral(
         return result / weight_total;
     }
 
-    // Only eligible surface taps can supply the fallback. If none survived,
-    // composition keeps its environment lighting instead of another surface's GI.
+    // Only eligible surface taps can supply the fallback. Missing path data
+    // must not be interpreted as unoccluded environment lighting.
     valid = best_similarity >= 0.0f;
     return best_value;
 }
@@ -302,7 +302,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 restir_gi = lighting.rgb;
                 history_valid = lighting.a >= 0.0f;
             }
-            coverage *= history_valid ? 1.0f : 0.0f;
+            // Keep replacing analytic IBL even when reconstruction/history is
+            // missing. Restoring the untraced sky here lights shadowed edges
+            // and normal-map creases wherever the surface gates reject taps.
+            restir_gi = history_valid ? restir_gi : 0.0f;
             float3 restir_ibl =
                 restir_gi *
                 restir_gi_demodulator(surface.albedo.rgb) *
