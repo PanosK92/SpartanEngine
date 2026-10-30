@@ -73,6 +73,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular = 0.0f;
     float weight_sum = 0.0f;
     float specular_weight_sum = 0.0f;
+    float weight_scale = 0.0f;
+    float specular_weight_scale = 0.0f;
     float best_similarity = -1.0f;
     float best_specular_similarity = -1.0f;
     float3 best_diffuse = 0.0f;
@@ -117,10 +119,28 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float specular_weight = weight * roughness_weight * lobe_weight;
         float3 d = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex.Load(int3(pixel, 0))).xyz, 0.0f);
         float3 s = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex4.Load(int3(pixel, 0))).xyz, 0.0f);
-        diffuse += d * weight;
-        specular += s * specular_weight;
-        weight_sum += weight;
-        specular_weight_sum += specular_weight;
+        // Normalize relative weights, not their absolute magnitude. Narrow
+        // reflection lobes can make every weight tiny without making their
+        // ratios meaningless. Keep each running sum scaled by its largest tap
+        // to avoid underflow and an arbitrary switch to a single-tap fallback.
+        if (weight > 0.0f)
+        {
+            float scale = max(weight_scale, weight);
+            float rescale = weight_scale / scale;
+            float relative_weight = weight / scale;
+            diffuse = diffuse * rescale + d * relative_weight;
+            weight_sum = weight_sum * rescale + relative_weight;
+            weight_scale = scale;
+        }
+        if (specular_weight > 0.0f)
+        {
+            float scale = max(specular_weight_scale, specular_weight);
+            float rescale = specular_weight_scale / scale;
+            float relative_weight = specular_weight / scale;
+            specular = specular * rescale + s * relative_weight;
+            specular_weight_sum = specular_weight_sum * rescale + relative_weight;
+            specular_weight_scale = scale;
+        }
         if (similarity > best_similarity)
         {
             best_similarity = similarity;
@@ -132,8 +152,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             best_specular = s;
         }
     }
-    diffuse = weight_sum > 1e-5f ? diffuse / weight_sum : best_diffuse;
-    specular = specular_weight_sum > 1e-5f ? specular / specular_weight_sum : best_specular;
+    diffuse = weight_sum > 0.0f ? diffuse / weight_sum : best_diffuse;
+    specular = specular_weight_sum > 0.0f ? specular / specular_weight_sum : best_specular;
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float metallic = material.g;
     // Match packing's GGX-to-NRD conversion using the original material guide,
