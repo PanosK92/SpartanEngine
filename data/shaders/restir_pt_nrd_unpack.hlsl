@@ -15,6 +15,8 @@ Texture2D<uint> tex_normal_previous : register(t87);
 // combines remodulated nrd diffuse/specular output into restir_denoised
 // tex     = out_diff_radiance_hitdist
 // tex_uav = restir_denoised
+// Positive alpha stores integer history count + half the NRD roughness.
+// FP32 retains roughness within 0.001 even at the 4096-frame count limit.
 
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
@@ -178,6 +180,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation))
     {
         float4 history = tex2[thread_id.xy];
+        float history_count = floor(history.a);
+        float previous_roughness = frac(history.a) * 2.0f;
         float depth_prev = tex3.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
         float3 normal_prev = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(uv)]);
         // Velocity is in screen NDC; the tolerance below is in active render
@@ -210,15 +214,19 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float alpha_sq = roughness * roughness * roughness * roughness;
         // tan^2(half angle) <= alpha^2: use the GGX characteristic slope width.
         bool reflection_matches = 1.0f - reflection_half_cos_sq <= alpha_sq * reflection_half_cos_sq;
-        bool valid = history.a >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&
+        // Same geometry can have different lobe widths under subpixel jitter.
+        // Match the roughness tolerance used by spatial reconstruction.
+        bool roughness_matches = previous_roughness > 0.0f &&
+            abs(previous_roughness - roughness) <= max(0.15f * roughness, 0.01f);
+        bool valid = history_count >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&
             plane_distance < max(z * 0.001f, 0.002f) &&
-            dot(normal, normal_prev) > 0.95f && dot(motion, motion) < 0.01f && reflection_matches;
+            dot(normal, normal_prev) > 0.95f && dot(motion, motion) < 0.01f && reflection_matches && roughness_matches;
         if (valid)
         {
             // FP32 history avoids FP16 rounding stopping convergence after a few hundred frames.
-            count = min(history.a + 1.0f, 4096.0f);
+            count = min(history_count + 1.0f, 4096.0f);
             radiance = lerp(history.rgb, radiance, 1.0f / count);
         }
     }
-    tex_uav[thread_id.xy] = float4(radiance, count);
+    tex_uav[thread_id.xy] = float4(radiance, count + 0.5f * saturate(roughness));
 }
