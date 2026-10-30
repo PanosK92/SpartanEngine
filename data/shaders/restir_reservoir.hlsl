@@ -1626,69 +1626,8 @@ uint emtri_pick_index(float u, uint count)
     return min(lo, count - 1u);
 }
 
-// Density of the pool's point sampler at an already known point on a triangle.
-// Keep the small-solid-angle fallback identical to sample_spherical_triangle.
-float emtri_point_pdf(float3 pos, EmissiveTriangle tri, float3 dir, float distance)
-{
-    float3 a = tri.v0 - pos, b = tri.v1 - pos, c = tri.v2 - pos;
-    float la = length(a), lb = length(b), lc = length(c);
-    float3 area_normal = cross(tri.v1 - tri.v0, tri.v2 - tri.v0);
-    float omega = 2.0f * atan2(abs(dot(a, area_normal)),
-        la * lb * lc + dot(a, b) * lc + dot(b, c) * la + dot(c, a) * lb);
-    if (omega < 0.001f || omega > 6.0f)
-        return distance * distance / max(tri.area * dot(tri.normal, -dir), 1e-20f);
-    return 1.0f / omega;
-}
-
-// A local cosine proposal finds visible panels without knowing which room we are
-// in. Reconstruct the same constant emitter and triangle used by the CPU pool;
-// ordinary path hits still suppress this emission, so it is counted only here.
-bool emtri_local_candidate(float3 pos, float3 dir, out EmissiveTriangle tri, out float3 p)
-{
-    tri = (EmissiveTriangle)0;
-    p = 0.0f;
-    RayDesc ray;
-    ray.Origin = pos;
-    ray.Direction = dir;
-    ray.TMin = max(RESTIR_RAY_T_MIN, compute_ray_offset(pos));
-    ray.TMax = 1e15f;
-    RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
-    while (query.Proceed())
-    {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
-            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
-                query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
-            query.CommitNonOpaqueTriangleHit();
-    }
-    if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
-        return false;
-    GeometryInfo geo = geometry_infos[query.CommittedInstanceIndex()];
-    MaterialParameters mat = material_parameters[geo.material_index];
-    if (!mat.is_pooled_emitter())
-        return false;
-    uint base = geo.index_offset + query.CommittedPrimitiveIndex() * 3u;
-    float3x4 transform = query.CommittedObjectToWorld3x4();
-    tri.v0 = mul(transform, float4(geometry_vertices[geo.vertex_offset + geometry_indices[base]].position, 1.0f));
-    tri.v1 = mul(transform, float4(geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position, 1.0f));
-    tri.v2 = mul(transform, float4(geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position, 1.0f));
-    float3 area_normal = cross(tri.v1 - tri.v0, tri.v2 - tri.v0);
-    float twice_area = length(area_normal);
-    if (twice_area <= 1e-12f)
-        return false;
-    tri.area = 0.5f * twice_area;
-    tri.normal = area_normal / twice_area;
-    tri.emission = saturate(mat.color.rgb) * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
-    // BuildEmissiveTriangleNeePool uses these coefficients for its CDF.
-    tri.weight = tri.area * dot(tri.emission, float3(0.299f, 0.587f, 0.114f));
-    p = pos + dir * query.CommittedRayT();
-    return tri.weight > 0.0f && dot(tri.normal, -dir) > 1e-4f;
-}
-
-// Global CDF and local cosine proposals, combined with balance
-// MIS before RIS. Visibility belongs in this inner target: a panel behind a wall
-// must not evict the local visible panel and leave the entire estimate black.
-// Section 6.1: 32 proposals at the primary, decreasing quadratically with depth.
+// Section 6.1: 32 unshadowed RIS proposals at the primary, decreasing
+// quadratically with depth. Callers visibility-test only the selected light.
 // Both tracing and replay derive the count from the same vertex index.
 uint restir_nee_candidate_count(uint vertex) { return max(32u / (vertex * vertex), 1u); }
 
@@ -1718,7 +1657,6 @@ bool emtri_ris_pick_path(
     float weight_sum = 0.0f;
     float target_sel = 0.0f;
 
-    uint local_count = candidate_count / 2u;
     for (uint i = 0u; i < candidate_count; i++)
     {
         float3 xi = random_float3(seed);
@@ -1728,68 +1666,53 @@ bool emtri_ris_pick_path(
             continue;
         }
 
-        EmissiveTriangle tri;
         float3 dir, p;
         float point_pdf;
-        if (i < local_count)
+        EmissiveTriangle tri;
+        tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
+        if (tri.area <= 0.0f || tri.weight <= 0.0f)
         {
-            float cosine_pdf;
-            dir = local_to_world(sample_cosine_hemisphere(xi.yz, cosine_pdf), normal);
-            if (!emtri_local_candidate(pos, dir, tri, p))
-                continue;
-            point_pdf = emtri_point_pdf(pos, tri, dir, length(p - pos));
-        }
-        else
-        {
-            tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
-            if (tri.area <= 0.0f || tri.weight <= 0.0f)
-            {
-                continue;
-            }
-
-            // Reject zero-support triangles before the spherical-triangle trigonometry.
-            // Every point is either behind the shading hemisphere or on the emitter's
-            // back face. Random draws above are still consumed to preserve replay.
-            float3 to_v0 = tri.v0 - pos;
-            float3 to_v1 = tri.v1 - pos;
-            float3 to_v2 = tri.v2 - pos;
-            if (max(dot(normal, to_v0), max(dot(normal, to_v1), dot(normal, to_v2))) <= 0.0f ||
-                dot(tri.normal, -to_v0) <= 0.0f)
-                continue;
-
-            // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
-            float  inverse_pdf;
-            sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, inverse_pdf);
-            if (inverse_pdf <= 0.0f)
-            {
-                continue;
-            }
-
-            float cos_l = dot(normal, dir);
-            float cos_e = dot(-dir, tri.normal);
-            if (cos_l <= 0.0f || cos_e <= 1e-4f)
-            {
-                continue;
-            }
-
-            // the point on the emitter, ray against the triangle plane
-            float t = dot(tri.v0 - pos, tri.normal) / dot(dir, tri.normal);
-            if (t <= 1e-4f || isnan(t) || isinf(t))
-            {
-                continue;
-            }
-            p = pos + dir * t;
-            point_pdf = 1.0f / inverse_pdf;
-            if (!trace_shadow_ray(pos, dir, t))
-                continue;
+            continue;
         }
 
-        float cos_l = max(dot(normal, dir), 0.0f);
+        // Reject zero-support triangles before the spherical-triangle trigonometry.
+        // Every point is either behind the shading hemisphere or on the emitter's
+        // back face. Random draws above are still consumed to preserve replay.
+        float3 to_v0 = tri.v0 - pos;
+        float3 to_v1 = tri.v1 - pos;
+        float3 to_v2 = tri.v2 - pos;
+        if (max(dot(normal, to_v0), max(dot(normal, to_v1), dot(normal, to_v2))) <= 0.0f ||
+            dot(tri.normal, -to_v0) <= 0.0f)
+            continue;
+
+        // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
+        float  inverse_pdf;
+        sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, inverse_pdf);
+        if (inverse_pdf <= 0.0f)
+        {
+            continue;
+        }
+
+        float cos_l = dot(normal, dir);
+        float cos_e = dot(-dir, tri.normal);
+        if (cos_l <= 0.0f || cos_e <= 1e-4f)
+        {
+            continue;
+        }
+
+        // the point on the emitter, ray against the triangle plane
+        float t = dot(tri.v0 - pos, tri.normal) / dot(dir, tri.normal);
+        if (t <= 1e-4f || isnan(t) || isinf(t))
+        {
+            continue;
+        }
+        p = pos + dir * t;
+        point_pdf = 1.0f / inverse_pdf;
+
         float unused_pdf;
         float3 f = evaluate_brdf(albedo, roughness, metallic, normal, view, dir, unused_pdf, 1.0f);
         float target = target_scalar(tri.emission * f);
-        float local_fraction = float(local_count) / float(candidate_count);
-        float pdf_sa = lerp((tri.weight / total_weight) * point_pdf, cos_l / PI, local_fraction);
+        float pdf_sa = (tri.weight / total_weight) * point_pdf;
         if (!(pdf_sa > 0.0f) || !isfinite(pdf_sa))
             continue;
         float w = target / pdf_sa;
