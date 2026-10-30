@@ -2739,12 +2739,12 @@ namespace spartan
             return;
         }
 
-        // an emitter that switched or moved leaves its old emission cached in the reservoirs
-        if (emitter_signature != pool_signature)
-        {
-            m_pass_state.restir.accumulation_valid  = false;
-            m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
-        }
+        // Rebuilding changes triangle indices, source PDFs and cached emission.
+        // A confidence fade cannot make an old endpoint valid in the new pool.
+        // Reset history even when only the backing buffer changed: that also
+        // invalidates the pool represented by the cached endpoint descriptors.
+        m_pass_state.restir.accumulation_valid = false;
+        m_pass_state.restir.history_invalid = true;
 
         // statics avoid heap thrash on rebuilds, the capacity ratchets up to the largest pool seen so far
         static vector<Sb_EmissiveTriangle>      tris;
