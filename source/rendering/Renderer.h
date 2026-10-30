@@ -268,6 +268,7 @@ namespace spartan
         RHI_Api_Type GetRhiApiType();
         bool Screenshot();
         bool Screenshot(const std::string& file_path);
+        bool ScreenshotRestirRadiance(const std::string& file_path, bool specular);
         bool ScreenshotSecondary(
             const std::string& file_path
         );

@@ -1009,7 +1009,7 @@ namespace spartan
         // Cached suffix radiance cannot be edited independently of the selected
         // path and its RIS density. Reject history when transport changes instead.
         // Keep pairing tables and G-buffer history intact on these lightweight resets.
-        if (m_pass_state.restir.history_invalid || reference_mode == 2u)
+        if (m_pass_state.restir.history_invalid || reference_mode == 2u || reference_mode == 5u)
         {
             for (RHI_Texture* reservoir : reservoirs_prev)
                 RHI_CommandList::ClearTexture(reservoir, Color::standard_transparent);
@@ -1051,7 +1051,8 @@ namespace spartan
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
         // counts shifted copies of the same candidate per pixel, next frame's temporal pass lowers the confidence cap where they cluster
-        if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
+        // Validation mode 6 leaves the map at its reset value to isolate adaptive confidence.
+        if (RHI_Texture* tex_duplication = reference_mode == 6u ? nullptr : GetRenderTarget(Renderer_RenderTarget::restir_duplication))
         {
             RHI_Shader* shader_duplication = GetShader(Renderer_Shader::restir_pt_duplication_c);
             if (shader_duplication && shader_duplication->IsCompiled())

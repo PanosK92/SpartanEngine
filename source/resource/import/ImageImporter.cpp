@@ -727,13 +727,14 @@ namespace spartan
             return;
         }
 
-        if (channel_count != 4 || bits_per_channel != 16)
+        if (channel_count != 4 || (bits_per_channel != 16 && bits_per_channel != 32))
         {
-            SP_LOG_ERROR("EXR export expects RGBA half float data");
+            SP_LOG_ERROR("EXR export expects RGBA half or full float data");
             return;
         }
 
         const uint16_t* src_half = static_cast<const uint16_t*>(data);
+        const float* src_float = static_cast<const float*>(data);
         const size_t pixel_count = static_cast<size_t>(width) * height;
 
         std::vector<float> converted(pixel_count * 4);
@@ -747,10 +748,10 @@ namespace spartan
                     const size_t src_index   = pixel_index * 4;
                     const size_t dst_index   = pixel_index * 4;
 
-                    converted[dst_index + 0] = half_to_float(src_half[src_index + 0]);
-                    converted[dst_index + 1] = half_to_float(src_half[src_index + 1]);
-                    converted[dst_index + 2] = half_to_float(src_half[src_index + 2]);
-                    converted[dst_index + 3] = half_to_float(src_half[src_index + 3]);
+                    converted[dst_index + 0] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 0]) : src_float[src_index + 0];
+                    converted[dst_index + 1] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 1]) : src_float[src_index + 1];
+                    converted[dst_index + 2] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 2]) : src_float[src_index + 2];
+                    converted[dst_index + 3] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 3]) : src_float[src_index + 3];
 
                     float* rgb = converted.data() + dst_index;
                     if (color_space == ImageColorSpace::Srgb)
@@ -795,7 +796,7 @@ namespace spartan
         constexpr int exr_save_flags = EXR_DEFAULT;
         #endif
 
-        BOOL saved = FreeImage_Save(FIF_EXR, bitmap, file_path.c_str(), exr_save_flags);
+        BOOL saved = FreeImage_Save(FIF_EXR, bitmap, file_path.c_str(), exr_save_flags | (bits_per_channel == 32 ? EXR_FLOAT : 0));
         FreeImage_Unload(bitmap);
 
         if (!saved)

@@ -462,7 +462,7 @@ struct PathSample
     float rc_nee_pdf; // Source light PDF for the endpoint immediately after RC.
     uint2 endpoint_geometry; // Terminal pooled emitter: instance/primitive or pool index.
     bool endpoint_pooled;
-    float rc_pdf; // RC BSDF PDF; postponed RC paths instead cache incoming geometry density.
+    float rc_pdf; // Postponed RC: incoming geometry density. Primary RC: packed geometric normal.
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
     uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
@@ -544,7 +544,7 @@ void unpack_path_info(uint packed, inout PathSample s)
 // t2: terminal radiance OR source position, packed RC albedo/metallic
 // t3: seed, path descriptor, W, endpoint NEE source PDF (target is derived from F)
 // t4: M, two half-float roughnesses, packed source normal, source albedo/metallic
-// t5: cached RGB integrand paired with W (full precision), RC outgoing BSDF PDF
+// t5: cached RGB integrand paired with W, postponed geometry density OR primary RC geometric normal
 float pack_f16x2_to_float(float a, float b)
 {
     uint packed = f32tof16(a) | (f32tof16(b) << 16u);
@@ -1647,7 +1647,16 @@ ShiftResult try_reconnection_shift(
     // Positive distances and front-facing cosines were checked above. Form the
     // ratios separately: flooring their product changes the Jacobian for short
     // or grazing connections, even making a geometry-preserving shift lose energy.
-    float jacobian = (cos_rc_dst / cos_rc_src) * (dist_src_sq / dist_dst_sq);
+    // The solid-angle/area conversion uses the actual surface normal, not
+    // the normal map used by the BRDF and reconnection eligibility above.
+    // Primary reconnections do not need the postponed incoming density, so
+    // its reservoir word stores this normal without increasing storage.
+    float3 rc_geometric_normal = octahedral_decode(unpack_float_to_f16x2(src.rc_pdf));
+    float geometry_cos_src = abs(dot(rc_geometric_normal, -dir_src));
+    float geometry_cos_dst = abs(dot(rc_geometric_normal, -dir_dst));
+    if (geometry_cos_src <= 0.0f || geometry_cos_dst <= 0.0f)
+        return result;
+    float jacobian = (geometry_cos_dst / geometry_cos_src) * (dist_src_sq / dist_dst_sq);
     if (!(jacobian > 0.0f) || isnan(jacobian) || isinf(jacobian))
         return result;
 

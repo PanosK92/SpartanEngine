@@ -68,6 +68,11 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.rc_outgoing_dir = s.rc_normal;
     float3 delta = rc.hit_position - previous.hit_position;
     s.rc_pdf = rc.hit ? abs(dot(rc.hit_normal, direction)) / max(dot(delta, delta), 1e-20f) : 1.0f;
+    if (vertex == 2u && rc.hit)
+    {
+        float2 geometric_oct = octahedral_encode(rc.geometric_normal);
+        s.rc_pdf = pack_f16x2_to_float(geometric_oct.x, geometric_oct.y);
+    }
     return s;
 }
 

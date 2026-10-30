@@ -3153,6 +3153,23 @@ register_tool(
   { annotations: edit_tool },
 );
 
+register_local_tool("restir_radiance_capture", {
+  title: "ReSTIR radiance capture",
+  description: "Queue a linear EXR of raw ReSTIR diffuse or specular output before denoising and display processing. Diffuse RGB is albedo-demodulated; alpha is a hit-distance guide, not opacity. The file is written asynchronously; use a unique filename and wait for it before reading. Intended for estimator convergence comparisons with r.restir_pt_reference.",
+  inputSchema: {
+    path: z.string().describe("EXR filename inside the engine screenshots directory"),
+    specular: z.boolean().optional(),
+  },
+  annotations: edit_tool,
+}, async (args) => {
+  const minimized = await agent_toolkit.minimized_error();
+  if (minimized) return tool_result(minimized);
+  return tool_result(await send_engine_command("screenshot_take", {
+    path: args.path,
+    source: args.specular ? "restir_specular" : "restir_diffuse",
+  }));
+});
+
 register_local_tool("screenshot_take", {
   title: "screenshot take",
   description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content. Pass ui true to capture the whole editor window with its ImGui panels instead of the pre-tonemap scene (same as cvar r.screenshot_ui 1).",

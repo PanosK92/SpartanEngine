@@ -1158,18 +1158,22 @@ namespace spartan
             }
             std::string extension = std::filesystem::path(path).extension().generic_string();
             std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            if (extension != ".png")
-            {
-                return json_error("screenshot path must be a .png file");
-            }
+            const std::string source = get_argument(request, "source").value_or("scene");
+            const bool radiance = source == "restir_diffuse" || source == "restir_specular";
+            if (source != "scene" && !radiance)
+                return json_error("unknown screenshot source");
+            if (extension != (radiance ? ".exr" : ".png"))
+                return json_error(radiance ? "radiance path must be an .exr file" : "screenshot path must be a .png file");
             std::filesystem::create_directories(
                 std::filesystem::path(path).parent_path()
             );
 
-            const bool accepted = Renderer::Screenshot(path);
+            const bool accepted = radiance
+                ? Renderer::ScreenshotRestirRadiance(path, source == "restir_specular")
+                : Renderer::Screenshot(path);
             if (!accepted)
             {
-                return json_error("screenshot already pending");
+                return json_error("screenshot already pending or requested renderer unavailable");
             }
 
             std::string json = "{\"ok\":true";

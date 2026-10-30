@@ -100,6 +100,8 @@ namespace spartan
             string exr_path;
             ImageColorSpace exr_color_space = ImageColorSpace::LinearRec709;
             bool save_exr = false;
+            bool restir_radiance = false;
+            bool restir_specular = false;
             bool pending  = false;
             bool ready    = false;
             bool secondary_view = false;
@@ -5889,6 +5891,18 @@ namespace spartan
         return true;
     }
 
+    bool Renderer::ScreenshotRestirRadiance(const string& file_path, bool specular)
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (screenshot.pending || screenshot.ready || !cvar_restir_pt.GetValueAs<bool>())
+            return false;
+        screenshot = make_screenshot_request(file_path);
+        screenshot.restir_radiance = true;
+        screenshot.restir_specular = specular;
+        screenshot.ui = false;
+        return true;
+    }
+
     uint32_t Renderer::GetScreenshotSavesInFlight()
     {
         return screenshot_saves_in_flight.load();
@@ -5981,6 +5995,12 @@ namespace spartan
                 !tex_pre_tonemap
             )
             {
+                return;
+            }
+            if (screenshot.restir_radiance)
+            {
+                screenshot.pending = false;
+                screenshot.ready = true;
                 return;
             }
         }
@@ -6144,6 +6164,41 @@ namespace spartan
         for (uint32_t i = 0; i < request_count; i++)
         {
             const screenshot_request& request = requests[i];
+            if (request.restir_radiance)
+            {
+                RHI_Texture* radiance = GetRenderTarget(request.restir_specular
+                    ? Renderer_RenderTarget::restir_specular_output : Renderer_RenderTarget::restir_output);
+                if (!radiance || radiance->GetChannelCount() != 4 || radiance->GetBitsPerChannel() != 32)
+                {
+                    screenshot_save_failures++;
+                    SP_LOG_ERROR("ReSTIR radiance capture requires an RGBA32F output");
+                    continue;
+                }
+                auto staging = copy_texture_to_staging(radiance);
+                const uint32_t width = radiance->GetWidth(), height = radiance->GetHeight();
+                screenshot_saves_in_flight++;
+                ThreadPool::AddTask([request, staging, width, height]()
+                {
+                    struct in_flight_guard
+                    {
+                        ~in_flight_guard() { screenshot_saves_in_flight--; }
+                    } guard;
+                    ensure_screenshot_directory_exists(request.file_path);
+                    const string temporary_path = request.file_path + ".tmp.exr";
+                    if (FileSystem::Exists(temporary_path)) FileSystem::Delete(temporary_path);
+                    ImageImporter::Save(temporary_path, width, height, 4, 32,
+                        staging->GetMappedData(), ImageColorSpace::LinearRec709);
+                    if (!FileSystem::Exists(temporary_path))
+                    {
+                        screenshot_save_failures++;
+                        return;
+                    }
+                    if (FileSystem::Exists(request.file_path)) FileSystem::Delete(request.file_path);
+                    FileSystem::Rename(temporary_path, request.file_path);
+                    if (!FileSystem::Exists(request.file_path)) screenshot_save_failures++;
+                });
+                continue;
+            }
             RHI_Texture* tex_sdr =
                 request.ui
                     ? screenshot_ui_target.get()
