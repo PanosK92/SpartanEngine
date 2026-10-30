@@ -5091,9 +5091,9 @@ namespace spartan
         geometry_info.index_offset   = render->GetIndexOffset(0);
         geometry_info.material_index = instance.instance_custom_index;
         const Matrix inverse = m.Inverted();
-        geometry_info.object_to_world_0 = Vector4(m.m00, m.m01, m.m02, 0.0f);
-        geometry_info.object_to_world_1 = Vector4(m.m10, m.m11, m.m12, 0.0f);
-        geometry_info.object_to_world_2 = Vector4(m.m20, m.m21, m.m22, 0.0f);
+        geometry_info.object_to_world_0 = Vector4(m.m00, m.m01, m.m02, m.m30);
+        geometry_info.object_to_world_1 = Vector4(m.m10, m.m11, m.m12, m.m31);
+        geometry_info.object_to_world_2 = Vector4(m.m20, m.m21, m.m22, m.m32);
         geometry_info.world_to_object_0 = Vector4(inverse.m00, inverse.m01, inverse.m02, 0.0f);
         geometry_info.world_to_object_1 = Vector4(inverse.m10, inverse.m11, inverse.m12, 0.0f);
         geometry_info.world_to_object_2 = Vector4(inverse.m20, inverse.m21, inverse.m22, 0.0f);

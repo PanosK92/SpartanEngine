@@ -18,6 +18,8 @@ struct PathSurface
     float3 geometric_normal;
     float3 albedo;
     float3 emission;
+    uint2 geometry;
+    bool pooled_emitter;
     float  roughness;
     float  metallic;
     bool   hit;
@@ -33,10 +35,12 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     if (!payload.hit)
         return payload;
 
+    payload.geometry = uint2(instance_index, primitive_index);
     GeometryInfo geo = geometry_infos[instance_index];
 
     uint material_index    = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
+    payload.pooled_emitter = mat.is_pooled_emitter() && is_emtri_pool_active();
 
     uint index_base      = geo.index_offset + primitive_index * 3;
     uint i0 = geometry_indices[index_base + 0];
@@ -192,12 +196,9 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     }
     if (mat.emissive_from_albedo())
     {
-        // pooled emitters are sampled by the nee pool, zero them here while it is active to keep
-        // the two strategies from double counting, color textured emitters are not in the pool
-        // because it derives radiance from the flat material color, so they stay on this path
-        emission = mat.is_pooled_emitter() && is_emtri_pool_active()
-            ? float3(0.0f, 0.0f, 0.0f)
-            : albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
+        // Both BSDF hits and NEE carry pooled emission. Their complementary
+        // endpoint MIS weights are applied by the path walk, not the material.
+        emission = albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
     }
 
     float decal_occlusion = 1.0f;

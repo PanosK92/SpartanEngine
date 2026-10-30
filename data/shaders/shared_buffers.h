@@ -866,7 +866,7 @@ struct GeometryInfo
     SHARED_UINT decal_offset SHARED_DEFAULT(0);
     SHARED_UINT decal_count SHARED_DEFAULT(0);
     // Explicit rows of the CPU row-vector matrices, independent of HLSL matrix packing.
-    // Translation is reconstructed from the ray; only the linear transforms are needed.
+    // Object-to-world xyz holds the linear rows; their w components hold translation xyz.
     SHARED_FLOAT4 object_to_world_0;
     SHARED_FLOAT4 object_to_world_1;
     SHARED_FLOAT4 object_to_world_2;

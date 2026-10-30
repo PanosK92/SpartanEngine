@@ -54,7 +54,8 @@ PathSample sample_emissive_tri_candidate(
     // ris over cdf draws, see emtri_ris_pick, the unshadowed geometry term picks the panel
     float3 light_pos, light_normal, emission;
     float  W;
-    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W,
+    uint triangle_index;
+    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W, triangle_index,
         view, albedo, roughness, metallic))
     {
         return s;
@@ -72,6 +73,8 @@ PathSample sample_emissive_tri_candidate(
     s.rc_pos    = light_pos;
     s.rc_normal = light_normal;
     s.rc_L_nee  = emission;
+    s.endpoint_pooled = true;
+    s.endpoint_geometry = uint2(triangle_index, 0u);
     s.rc_L_post = float3(0, 0, 0);
     return s;
 }
@@ -436,9 +439,8 @@ void ray_gen()
     }
 
     // emissive triangle nee strategy, area sampling of the global emissive pool
-    // single strategy weight, while the pool is active brdf paths zero their rc emission in
-    // the path tree so emtri is the only technique carrying this contribution,
-    // mixing in the brdf density here would shrink the weights and lose emissive energy
+    // Complementary BSDF/NEE MIS is part of F. The RIS UCW remains separate
+    // so reconnection can re-evaluate MIS with the destination BSDF and light PDF.
     for (uint ei = 0; ei < n_emtri_count; ei++)
     {
         float emtri_ris_weight;
