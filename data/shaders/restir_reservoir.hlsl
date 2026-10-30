@@ -1466,8 +1466,11 @@ ShiftResult try_reconnection_shift(
     if (all(brdf_cos <= 0.0f))
         return result;
 
-    // solid angle jacobian at rc, (cos_dst * dist_src^2) / (cos_src * dist_dst^2)
-    float jacobian = (cos_rc_dst * dist_src_sq) / max(cos_rc_src * dist_dst_sq, 1e-6f);
+    // Exact geometry ratio for the solid-angle reconnection parameterization.
+    // Positive distances and front-facing cosines were checked above. Form the
+    // ratios separately: flooring their product changes the Jacobian for short
+    // or grazing connections, even making a geometry-preserving shift lose energy.
+    float jacobian = (cos_rc_dst / cos_rc_src) * (dist_src_sq / dist_dst_sq);
     if (!(jacobian > 0.0f) || isnan(jacobian) || isinf(jacobian))
         return result;
 
