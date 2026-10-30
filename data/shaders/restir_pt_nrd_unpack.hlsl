@@ -96,6 +96,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Plane distance keeps bilinear interpolation on sloped floors and walls;
         // raw view-depth differences reject neighbours on the very same plane.
         float plane_distance = max(abs(dot(separation, normal)), abs(dot(separation, sample_normal)));
+        // Soft weights alone cannot reject a footprint containing only other
+        // surfaces: normalization (or the fallback) restores their full energy.
+        // Match the spatial-reuse surface tolerances before interpolating.
+        if (plane_distance > max(view_z * 0.03f, 0.005f) || dot(normal, sample_normal) < 0.9f)
+            continue;
         float similarity = exp(-plane_distance / max(view_z * 0.01f, 0.001f)) *
             pow(saturate(dot(normal, sample_normal)), 16.0f);
         float2 axis_weight = lerp(1.0f - fraction, fraction, float2(offset));
@@ -151,6 +156,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             best_specular_similarity = specular_similarity;
             best_specular = s;
         }
+    }
+    if (best_similarity < 0.0f)
+    {
+        // Negative alpha marks a missing reconstruction, distinct from valid
+        // black lighting or the raw fallback's nonnegative hit distance.
+        tex_uav[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, -1.0f);
+        return;
     }
     diffuse = weight_sum > 0.0f ? diffuse / weight_sum : best_diffuse;
     specular = specular_weight_sum > 0.0f ? specular / specular_weight_sum : best_specular;

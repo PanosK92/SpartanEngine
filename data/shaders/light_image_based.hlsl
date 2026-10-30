@@ -87,7 +87,10 @@ float3 sample_restir_gi_bilateral(
         float similarity = depth_weight * normal_weight;
         float weight     = weights[i] * similarity;
 
-        float3 value = tex4.Load(int3(pixel, 0)).rgb;
+        float4 lighting = tex4.Load(int3(pixel, 0));
+        if (lighting.a < 0.0f) // no compatible low-resolution reconstruction
+            continue;
+        float3 value = lighting.rgb;
 
         result       += value * weight;
         weight_total += weight;
@@ -294,7 +297,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (pass_bool(pass_light_image_based::restir_previous))
                 restir_gi = sample_restir_gi_history(surface.uv, surface.normal, history_valid);
             else
-                restir_gi = tex4.Load(int3(thread_id.xy, 0)).rgb; // already reconstructed at render resolution
+            {
+                float4 lighting = tex4.Load(int3(thread_id.xy, 0)); // reconstructed at render resolution
+                restir_gi = lighting.rgb;
+                history_valid = lighting.a >= 0.0f;
+            }
             coverage *= history_valid ? 1.0f : 0.0f;
             float3 restir_ibl =
                 restir_gi *
