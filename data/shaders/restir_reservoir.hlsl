@@ -70,9 +70,12 @@ static const float RESTIR_EMISSIVE_NITS_TEXTURE     = lighting_emissive_nits_tex
 
 static const float RESTIR_SKY_DISTANCE              = 1e10f;
 
-// reconnection criteria, lin 2026 4, dual ray footprint thresholds replace the old fixed
-// world space distance gate, the remaining distance constant is only a numerical floor
-static const float RESTIR_RC_MIN_DISTANCE    = 0.01f;
+// Section 4 replaces the fixed world-space distance gate with dual footprints.
+// Reject only degenerate distances whose geometry term cannot be represented.
+bool restir_connection_distance_valid(float distance_sq)
+{
+    return distance_sq > 0.0f && isfinite(distance_sq) && isfinite(rcp(distance_sq));
+}
 // Keep the entire front hemisphere: grazing glossy paths can carry substantial energy.
 static const float RESTIR_RC_COS_FRONT       = 0.0f;
 // footprint threshold scale, c / 100 with c = 0.02 from the paper, larger is more conservative
@@ -1412,13 +1415,13 @@ ShiftResult try_reconnection_shift(
 
     float3 rc_from_dst = src.rc_pos - dst_pos;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
-    if (dist_dst_sq < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
+    if (!restir_connection_distance_valid(dist_dst_sq))
         return result;
 
     float3 rc_from_src = is_identity ? rc_from_dst : (src.rc_pos - src_primary_pos);
     float  dist_src_sq = is_identity ? dist_dst_sq : dot(rc_from_src, rc_from_src);
 
-    if (dist_src_sq < 1e-4f)
+    if (!restir_connection_distance_valid(dist_src_sq))
         return result;
 
     float dist_src = sqrt(dist_src_sq);
@@ -2272,7 +2275,7 @@ ShiftResult evaluate_path_integrand(
     {
         float3 to_rc = src.rc_pos - dst_pos;
         float  d2    = dot(to_rc, to_rc);
-        if (d2 < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
+        if (!restir_connection_distance_valid(d2))
             return result;
         dir = to_rc * rsqrt(d2);
 

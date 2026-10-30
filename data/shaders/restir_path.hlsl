@@ -44,7 +44,7 @@ bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, floa
         return true;
     float3 delta = rc.hit_position - previous.hit_position;
     float d2 = dot(delta, delta);
-    if (d2 < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
+    if (!restir_connection_distance_valid(d2))
         return false;
     float3 direction = delta * rsqrt(d2);
     float forward = d2 / max(incoming_pdf * abs(dot(rc.hit_normal, direction)), 1e-6f);
@@ -324,7 +324,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         result.sample = src;
     }
     float3 delta = src.rc_pos - previous.hit_position;
-    if (!is_sky_sample(src) && dot(delta, delta) < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
+    if (!is_sky_sample(src) && !restir_connection_distance_valid(dot(delta, delta)))
         return result;
     float3 direction = is_sky_sample(src) ? src.rc_pos : normalize(delta);
     if (dot(previous.hit_normal, direction) <= 0.0f)
