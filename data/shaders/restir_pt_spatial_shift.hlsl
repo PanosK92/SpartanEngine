@@ -37,13 +37,14 @@ float4 evaluate_pair_shift(uint2 pixel, uint table, Reservoir center, float2 res
     float3 partner_position = restir_primary_position(partner_uv);
     float4 material = get_material(partner_uv);
     float3 normal = get_normal(partner_uv);
+    float3 geometric_normal = get_geometric_normal(partner_uv);
     ShiftResult shift = try_reconnection_shift(center.sample, position, partner_position, normal,
         normalize(get_camera_position() - partner_position),
         saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), partner_uv, 0).rgb),
-        max(material.r, 0.04f), material.g, normalize(get_camera_position() - position));
+        max(material.r, 0.04f), material.g, normalize(get_camera_position() - position), geometric_normal);
     if (!shift.ok || shift.jacobian <= 0.0f)
         return 0.0f;
-    if (!trace_shift_visibility(shift.sample, partner_position, normal))
+    if (!trace_shift_visibility(shift.sample, partner_position, geometric_normal))
         return 0.0f;
     return float4(shift.f_dst, shift.jacobian);
 }

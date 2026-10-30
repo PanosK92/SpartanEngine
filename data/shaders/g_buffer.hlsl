@@ -19,7 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 struct gbuffer
 {
     float4 albedo   : SV_Target0;
-    uint   normal   : SV_Target1; // see gbuffer_pack_normal
+    uint2  normal   : SV_Target1; // shading normal/material index, geometric normal
     uint   material : SV_Target2; // see gbuffer_pack_material
     float4 velocity : SV_Target3; // xy = ndc velocity, z = signed object mask (positive radial), w = previous linear depth
     float3 emissive : SV_Target4; // scene-linear emitted radiance, independent of reflectance
@@ -467,6 +467,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // taken at top level, the terrain paths below sit behind branches where a derivative is undefined
     float3 dpdx_world = ddx(position_world);
     float3 dpdy_world = ddy(position_world);
+    float3 face_normal = cross(dpdx_world, dpdy_world);
+    float face_normal_length_sq = dot(face_normal, face_normal);
+    face_normal = face_normal_length_sq > 0.0f ? face_normal * rsqrt(face_normal_length_sq) : normalize(vertex.normal);
+    face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
 
 #ifdef GRASS_SPECIALIZED
     // the outer ring draws tuft impostor cards, the tufts are cut out before anything is shaded and then
@@ -1076,7 +1080,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     g_buffer.albedo   = albedo;
     uint  material_index = pass_get_material_index();
     float paint          = material_has_flakes(material) ? gbuffer_pack_paint(flake_code, decal_coverage) : decal_coverage;
-    g_buffer.normal      = gbuffer_pack_normal(normal, material_index);
+    g_buffer.normal      = uint2(gbuffer_pack_normal(normal, material_index), gbuffer_pack_normal(face_normal, 0u));
     g_buffer.material    = gbuffer_pack_material(roughness, metalness, paint, occlusion, material_index, noise_interleaved_gradient(vertex.position.xy));
     // previous surface depth lets temporal reconstruction validate object motion along the view axis.
     float previous_depth = vertex.position_previous.w > 0.0f ?

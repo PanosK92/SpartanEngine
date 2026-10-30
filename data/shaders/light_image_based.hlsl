@@ -12,7 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 //====================================
 
 // last frame's opaque gbuffer normals, bound when the gi is last frame's async output
-Texture2D<uint> tex_normal_previous : register(t87);
+Texture2D<uint2> tex_normal_previous : register(t87);
 
 // history taps are matched against last frame's opaque surfaces, tex6 holds that depth
 float3 sample_restir_gi_bilateral(

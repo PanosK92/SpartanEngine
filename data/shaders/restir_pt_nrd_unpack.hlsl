@@ -10,7 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "nrd/NRD.hlsli"
 //===============================
 
-Texture2D<uint> tex_normal_previous : register(t87);
+Texture2D<uint2> tex_normal_previous : register(t87);
 
 // combines remodulated nrd diffuse/specular output into restir_denoised
 // tex     = out_diff_radiance_hitdist

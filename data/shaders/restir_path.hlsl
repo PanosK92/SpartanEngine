@@ -105,7 +105,7 @@ void restir_stream_leaf(inout PathSample selected, inout float weight_sum, PathS
 PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, float3 dir,
     float dir_pdf, uint replay_seed, inout uint seed, out float3 reference_radiance,
     bool replay, PathSample requested, float3 primary_view, float3 primary_albedo,
-    float primary_roughness, float primary_metallic, float3 camera_position)
+    float primary_roughness, float primary_metallic, float3 camera_position, float3 primary_geometric_normal)
 {
     PathSample selected = (PathSample)0;
     PathSample connection = (PathSample)0;
@@ -116,7 +116,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     previous.hit = true;
     previous.hit_position = primary_pos;
     previous.hit_normal = primary_normal;
-    previous.geometric_normal = primary_normal;
+    previous.geometric_normal = primary_geometric_normal;
     previous.albedo = primary_albedo;
     previous.roughness = primary_roughness;
     previous.metallic = primary_metallic;
@@ -129,7 +129,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     float connection_density = 1.0f;
     float incoming_pdf = dir_pdf;
     float roulette_weight = 1.0f;
-    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal, camera_position);
+    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_geometric_normal, camera_position);
     float first_hit_distance = 0.0f;
     float3 first_hit_position = 0.0f;
     [loop] for (uint depth = 2u; depth <= RESTIR_MAX_PATH_LENGTH; ++depth)
@@ -308,7 +308,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
 // Replay just the prefix, reconnect the stored suffix, and require the first
 // admissible connection to remain at the same index in both domains.
 ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float3 view,
-    float3 albedo, float roughness, float metallic, float3 camera_position)
+    float3 albedo, float roughness, float metallic, float3 camera_position, float3 primary_geometric_normal)
 {
     ShiftResult result = (ShiftResult)0;
     result.sample = src;
@@ -319,7 +319,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     primary.hit = true;
     primary.hit_position = pos;
     primary.hit_normal = normal;
-    primary.geometric_normal = normal;
+    primary.geometric_normal = primary_geometric_normal;
     primary.albedo = albedo;
     primary.roughness = roughness;
     primary.metallic = metallic;
@@ -380,7 +380,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     float connect_pdf;
     float3 connect_f = evaluate_brdf(previous.albedo, previous.roughness, previous.metallic,
         previous.hit_normal, -directions[k - 2u], direction, connect_pdf, 1.0f);
-    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(pos, normal, camera_position);
+    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(pos, primary_geometric_normal, camera_position);
     [loop] for (uint j = 2u; j < k; ++j)
     {
         PathSurface v = vertices[j];
@@ -438,7 +438,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
 // reservoir weight; rerunning either selection would change the shift domain.
 ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
     float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view,
-    float3 camera_position)
+    float3 camera_position, float3 dst_geometric_normal)
 {
     ShiftResult result = (ShiftResult)0;
     result.sample = src;
@@ -450,7 +450,7 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
         return result;
     float3 unused_reference;
     PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, src.seed_path, seed, unused_reference, true, src,
-        dst_view, dst_albedo, roughness, metallic, camera_position);
+        dst_view, dst_albedo, roughness, metallic, camera_position, dst_geometric_normal);
     if (has_reconnection(replayed) || replayed.path_length != src.path_length || replayed.endpoint_light != src.endpoint_light)
         return result;
     result.sample = replayed;

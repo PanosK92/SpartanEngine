@@ -193,6 +193,8 @@ namespace spartan
         ASTC,
         // Surface
         B8R8G8A8_Unorm,
+        // Appended to preserve serialized format values.
+        R32G32_Uint,
         // End
         Max
     };
@@ -491,6 +493,7 @@ namespace spartan
             case RHI_Format::R8G8_Unorm:            return 8;
             case RHI_Format::R16G16_Float:          return 16;
             case RHI_Format::R32G32_Float:          return 32;
+            case RHI_Format::R32G32_Uint:           return 32;
             case RHI_Format::R11G11B10_Float:       return 11;
             case RHI_Format::R32G32B32_Float:       return 32;
             case RHI_Format::R8G8B8A8_Unorm:        return 8;
@@ -529,6 +532,7 @@ namespace spartan
             case RHI_Format::R8G8_Unorm:            return 2;
             case RHI_Format::R16G16_Float:          return 2;
             case RHI_Format::R32G32_Float:          return 2;
+            case RHI_Format::R32G32_Uint:           return 2;
             case RHI_Format::R11G11B10_Float:       return 3;
             case RHI_Format::R32G32B32_Float:       return 3;
             case RHI_Format::R8G8B8A8_Unorm:        return 4;
@@ -567,6 +571,7 @@ namespace spartan
             case RHI_Format::R8G8_Unorm:           return "RHI_Format_R8G8_Unorm";
             case RHI_Format::R16G16_Float:         return "RHI_Format_R16G16_Float";
             case RHI_Format::R32G32_Float:         return "RHI_Format_R32G32_Float";
+            case RHI_Format::R32G32_Uint:          return "RHI_Format_R32G32_Uint";
             case RHI_Format::R11G11B10_Float:      return "RHI_Format_R11G11B10_Float";
             case RHI_Format::R32G32B32_Float:      return "RHI_Format_R32G32B32_Float";
             case RHI_Format::R8G8B8A8_Unorm:       return "RHI_Format_R8G8B8A8_Unorm";
@@ -613,6 +618,7 @@ namespace spartan
             case RHI_Format::R8G8_Unorm:            return 2;
             case RHI_Format::R16G16_Float:          return 4;
             case RHI_Format::R32G32_Float:          return 8;
+            case RHI_Format::R32G32_Uint:           return 8;
             case RHI_Format::R11G11B10_Float:       return 4;  // packed 32-bit
             case RHI_Format::R32G32B32_Float:       return 12;
             case RHI_Format::R8G8B8A8_Unorm:        return 4;

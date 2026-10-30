@@ -603,7 +603,7 @@ uint leaf_depth_probe(float3 position, float reach, bool skip_foliage, out float
     }
 
     uint2 texel         = gbuffer_texel(uint2(max(pixel, 0)));
-    uint normal_packed  = tex_normal[texel];
+    uint normal_packed  = tex_normal[texel].x;
     float3 normal       = gbuffer_unpack_normal(normal_packed);
     float normal_length = length(normal);
     if (normal_length <= 0.1)

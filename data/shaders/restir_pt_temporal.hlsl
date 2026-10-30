@@ -10,7 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_reservoir.hlsl"
 //==============================
 
-Texture2D<uint> tex_normal_previous : register(t87);
+Texture2D<uint2> tex_normal_previous : register(t87);
 
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
@@ -114,6 +114,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float3 pos_ws    = restir_primary_position(uv);
     float3 normal_ws = get_normal(uv);
+    float3 geometric_normal_ws = get_geometric_normal(uv);
     float3 view_dir  = normalize(get_camera_position() - pos_ws);
     float4 material  = get_material(uv);
     float3 albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
@@ -238,6 +239,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 // use the stored source primary g-buffer, correct even for moving objects
                 float3 src_primary_pos = temporal.sample.src_pos;
                 float3 src_normal_ws   = temporal.sample.src_normal;
+                float2 source_guide_uv = restir_primary_uv((float2(prev_pixel) + 0.5f) / resolution);
+                float3 src_geometric_normal_ws = gbuffer_unpack_geometric_normal(tex_normal_previous[gbuffer_texel(source_guide_uv)]);
                 float3 src_albedo      = temporal.sample.src_albedo;
                 float  src_roughness   = max(temporal.sample.src_roughness, 0.04f);
                 float  src_metallic    = temporal.sample.src_metallic;
@@ -252,12 +255,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     albedo,
                     roughness,
                     metallic,
-                    src_view_dir
+                    src_view_dir,
+                    geometric_normal_ws
                 );
 
                 if (temporal.W > 0.0f && shift_t_to_c.ok)
                 {
-                    bool visible = trace_shift_visibility(shift_t_to_c.sample, pos_ws, normal_ws);
+                    bool visible = trace_shift_visibility(shift_t_to_c.sample, pos_ws, geometric_normal_ws);
                     if (visible)
                     {
                         target_temp   = target_scalar(shift_t_to_c.f_dst);
@@ -279,10 +283,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     src_roughness,
                     src_metallic,
                     view_dir,
+                    src_geometric_normal_ws,
                     true
                 );
                 if (current.W > 0.0f && shift_c_to_t.ok &&
-                    trace_shift_visibility(shift_c_to_t.sample, src_primary_pos, src_normal_ws))
+                    trace_shift_visibility(shift_c_to_t.sample, src_primary_pos, src_geometric_normal_ws))
                 {
                     target_cur_at_temp   = target_scalar(shift_c_to_t.f_dst);
                     jacobian_cur_at_temp = shift_c_to_t.jacobian;

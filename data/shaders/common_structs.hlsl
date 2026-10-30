@@ -89,7 +89,7 @@ struct Surface
         // access resources
         float4 sample_albedo        = !use_albedo ? 0.0f : tex_albedo.SampleLevel(samplers[sampler_point_clamp], uv, 0);
         uint2 texel                 = gbuffer_texel(uv);
-        uint normal_packed          = tex_normal[texel];
+        uint normal_packed          = tex_normal[texel].x;
         uint material_packed        = tex_material[texel];
         float4 sample_material      = gbuffer_unpack_material(material_packed);
         float sample_depth          = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;

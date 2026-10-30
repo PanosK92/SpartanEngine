@@ -257,7 +257,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     uint2  texel           = gbuffer_texel(uv);
-    uint   normal_packed   = tex_normal[texel];
+    uint   normal_packed   = tex_normal[texel].x;
     uint   material_packed = tex_material[texel];
     float4 sample_material = gbuffer_unpack_material(material_packed);
     MaterialParameters mat = material_parameters[gbuffer_unpack_material_index(normal_packed, material_packed)];

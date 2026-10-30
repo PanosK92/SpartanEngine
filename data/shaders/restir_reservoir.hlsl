@@ -813,7 +813,7 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
 // gbuffer_normal_previous, confidence returns a [0,1] reuse factor
 bool evaluate_disocclusion(
     Texture2D prev_depth_tex,
-    Texture2D<uint> prev_normal_tex,
+    Texture2D<uint2> prev_normal_tex,
     float2 current_uv,
     float2 prev_uv,
     float3 current_normal,
@@ -1402,10 +1402,10 @@ struct ShiftResult
 
 ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
     float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic, float3 src_view,
-    float3 camera_position);
+    float3 camera_position, float3 dst_geometric_normal);
 
 ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float3 view,
-    float3 albedo, float roughness, float metallic, float3 camera_position);
+    float3 albedo, float roughness, float metallic, float3 camera_position, float3 primary_geometric_normal);
 
 
 // Supplemental Section 5: the RIS candidate count scales the source NEE
@@ -1494,6 +1494,7 @@ ShiftResult try_reconnection_shift(
     float dst_roughness,
     float dst_metallic,
     float3 src_view_dir,
+    float3 dst_geometric_normal,
     bool destination_previous_frame = false)
 {
     ShiftResult result;
@@ -1508,7 +1509,7 @@ ShiftResult try_reconnection_shift(
         // Even an unchanged primary can have moving occluders along its prefix.
         // trace_shift_visibility relies on replay to validate these segments.
         return restir_shift_prefix(src, dst_pos, dst_normal, dst_view_dir, dst_albedo,
-            dst_roughness, dst_metallic, destination_camera);
+            dst_roughness, dst_metallic, destination_camera, dst_geometric_normal);
     }
 
     if (is_sky_sample(src))
@@ -1518,7 +1519,7 @@ ShiftResult try_reconnection_shift(
         // NEE sun samples retain their light-sampling parameterization.
         if (!is_nee_sample(src) && !has_reconnection(src))
             return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal,
-                dst_view_dir, dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera);
+                dst_view_dir, dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
         float3 dir = src.rc_pos;
         if (!is_nee_sample(src))
         {
@@ -1546,7 +1547,7 @@ ShiftResult try_reconnection_shift(
     // unchanged primary reuse cached lighting without tracing the current scene.
     if (!has_reconnection(src))
         return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
-            dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera);
+            dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
 
     // Direct reconnections still receive a separate visibility test.
     bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
@@ -1657,10 +1658,10 @@ ShiftResult try_reconnection_shift(
             float pdf_rc;
             evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
                 -dir_dst, src.rc_outgoing_dir, pdf_rc, 1.0f);
-            inverse_pdf_cos = pdf_rc * abs(dot(dst_normal, dir_dst));
+            inverse_pdf_cos = pdf_rc * abs(dot(dst_geometric_normal, dir_dst));
         }
         if (!restir_dual_footprint_allowed(dist_dst_sq, forward_pdf_cos, inverse_pdf_cos,
-            RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal, destination_camera)))
+            RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_geometric_normal, destination_camera)))
             return result;
     }
 
@@ -2455,10 +2456,11 @@ float target_pdf_at_dst(
     float3 dst_view_dir,
     float3 dst_albedo,
     float dst_roughness,
-    float dst_metallic)
+    float dst_metallic,
+    float3 dst_geometric_normal)
 {
     ShiftResult r = try_reconnection_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic,
-        normalize(get_camera_position() - src_primary_pos));
+        normalize(get_camera_position() - src_primary_pos), dst_geometric_normal);
     if (!r.ok)
         return 0.0f;
 

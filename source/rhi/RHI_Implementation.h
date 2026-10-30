@@ -76,6 +76,7 @@ inline constexpr DXGI_FORMAT d3d12_format[] =
     DXGI_FORMAT_UNKNOWN,
     // Surface
     DXGI_FORMAT_B8G8R8A8_UNORM,
+    DXGI_FORMAT_R32G32_UINT,
     // Unknown
     DXGI_FORMAT_UNKNOWN
 };
@@ -213,6 +214,7 @@ inline constexpr VkFormat vulkan_format[] =
     VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
     // Surface
     VK_FORMAT_B8G8R8A8_UNORM,
+    VK_FORMAT_R32G32_UINT,
     // Unknown
     VK_FORMAT_UNDEFINED
 };

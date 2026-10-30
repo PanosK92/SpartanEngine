@@ -883,6 +883,16 @@ float3 gbuffer_unpack_normal(uint packed)
     return gbuffer_octahedral_decode(q * (2.0f / 4095.0f) - 1.0f);
 }
 
+float3 gbuffer_unpack_normal(uint2 packed)
+{
+    return gbuffer_unpack_normal(packed.x);
+}
+
+float3 gbuffer_unpack_geometric_normal(uint2 packed)
+{
+    return gbuffer_unpack_normal(packed.y);
+}
+
 // occlusion and metalness are dithered into their narrow fields, the temporal resolve averages the steps away
 uint gbuffer_pack_material(float roughness, float metalness, float paint, float occlusion, uint material_index, float dither)
 {
@@ -909,6 +919,11 @@ uint gbuffer_unpack_material_index(uint normal_packed, uint material_packed)
     return (normal_packed >> 24u) | ((material_packed >> 26u) << 8u);
 }
 
+uint gbuffer_unpack_material_index(uint2 normal_packed, uint material_packed)
+{
+    return gbuffer_unpack_material_index(normal_packed.x, material_packed);
+}
+
 // integer targets cannot be sampled, this is the texel a point clamp sampler would pick
 uint2 gbuffer_texel(float2 uv)
 {
@@ -932,6 +947,11 @@ float3 get_normal(uint2 pos)
 float3 get_normal(float2 uv)
 {
     return gbuffer_unpack_normal(tex_normal[gbuffer_texel(uv)]);
+}
+
+float3 get_geometric_normal(float2 uv)
+{
+    return gbuffer_unpack_geometric_normal(tex_normal[gbuffer_texel(uv)]);
 }
 
 float4 get_material(float2 uv)

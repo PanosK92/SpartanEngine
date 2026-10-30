@@ -60,6 +60,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float linear_depth = linearize_depth(depth);
     float3 pos_ws      = restir_primary_position(uv);
     float3 normal_ws   = get_normal(uv);
+    float3 geometric_normal_ws = get_geometric_normal(uv);
     float3 view_dir    = normalize(get_camera_position() - pos_ws);
     float4 material    = get_material(uv);
     float3 albedo      = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
@@ -195,7 +196,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         ShiftResult shifted = try_reconnection_shift(combined.sample, combined.sample.src_pos,
             pos_ws, normal_ws, view_dir, albedo, roughness, metallic,
-            normalize(get_camera_position() - combined.sample.src_pos));
+            normalize(get_camera_position() - combined.sample.src_pos), geometric_normal_ws);
         combined.sample = shifted.sample;
     }
 

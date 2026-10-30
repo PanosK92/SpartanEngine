@@ -270,6 +270,7 @@ void ray_gen()
     // gather primary surface properties from the g-buffer
     float3 pos_ws    = restir_primary_position(uv);
     float3 normal_ws = get_normal(uv);
+    float3 geometric_normal_ws = get_geometric_normal(uv);
     float4 material  = get_material(uv);
     float3 albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float  roughness = max(material.r, 0.04f);
@@ -316,7 +317,7 @@ void ray_gen()
         {
             float3 reference_radiance;
             candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0,
-                view_dir, albedo, roughness, metallic, get_camera_position());
+                view_dir, albedo, roughness, metallic, get_camera_position(), geometric_normal_ws);
             // Each denoising guide must follow its own primary lobe, not the
             // endpoint selected by RIS or a ray drawn from the other lobe.
             if (xi.x < 1.0f - specular_probability)
@@ -360,7 +361,7 @@ void ray_gen()
         float unused_pdf;
         float3 direction = local_to_world(sample_cosine_hemisphere(random_float2(guide_seed), unused_pdf), normal_ws);
         RayDesc guide_ray;
-        guide_ray.Origin = pos_ws + normal_ws * compute_ray_offset(pos_ws);
+        guide_ray.Origin = pos_ws + geometric_normal_ws * compute_ray_offset(pos_ws);
         guide_ray.Direction = direction;
         guide_ray.TMin = RESTIR_RAY_T_MIN;
         guide_ray.TMax = RESTIR_RAY_T_MAX;
@@ -382,7 +383,7 @@ void ray_gen()
         if (dot(normal_ws, direction) > 0.0f)
         {
             RayDesc guide_ray;
-            guide_ray.Origin = pos_ws + normal_ws * compute_ray_offset(pos_ws);
+            guide_ray.Origin = pos_ws + geometric_normal_ws * compute_ray_offset(pos_ws);
             guide_ray.Direction = direction;
             guide_ray.TMin = RESTIR_RAY_T_MIN;
             guide_ray.TMax = RESTIR_RAY_T_MAX;
@@ -428,7 +429,7 @@ void ray_gen()
         }
 
         float light_weight = 0.0f;
-        if (light_pick_target > 0.0f && trace_shift_visibility(light_pick, pos_ws, normal_ws))
+        if (light_pick_target > 0.0f && trace_shift_visibility(light_pick, pos_ws, geometric_normal_ws))
         {
             // single strategy weight, analytic lights are not in the bvh and the sun disc is
             // excluded from every sky read so no other strategy reaches this integrand
@@ -456,7 +457,7 @@ void ray_gen()
         {
             emtri_candidate.F = evaluate_path_integrand(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
             float target_pdf = target_pdf_self(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-            if (target_pdf > 0.0f && trace_shift_visibility(emtri_candidate, pos_ws, normal_ws))
+            if (target_pdf > 0.0f && trace_shift_visibility(emtri_candidate, pos_ws, geometric_normal_ws))
             {
                 // the ris weight is the unbiased stand in for 1 / source pdf of the pick
                 emtri_weight = target_pdf * emtri_ris_weight / n_emtri;

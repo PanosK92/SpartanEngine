@@ -1846,7 +1846,7 @@ namespace spartan
                 const uint32_t slot = d3d12_descriptors::AllocateRing(cmd_list, 1);
                 RHI_Context::device->CopyDescriptorsSimple(1, d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(slot), cpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
                 const RHI_Format format = texture->GetFormat();
-                if (format == RHI_Format::R8_Uint || format == RHI_Format::R16_Uint || format == RHI_Format::R32_Uint)
+                if (format == RHI_Format::R8_Uint || format == RHI_Format::R16_Uint || format == RHI_Format::R32_Uint || format == RHI_Format::R32G32_Uint)
                 {
                     const UINT uint_values[4] = { static_cast<UINT>(values[0]), static_cast<UINT>(values[1]), static_cast<UINT>(values[2]), static_cast<UINT>(values[3]) };
                     cmd_list->ClearUnorderedAccessViewUint(d3d12_descriptors::GetCbvSrvUavGpuHandle(slot), cpu, resource, uint_values, 0, nullptr);
