@@ -289,6 +289,8 @@ void ray_gen()
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);
     float3 canonical_specular = 0.0f;
+    float diffuse_hit_dist = 0.0f;
+    uint diffuse_hit_count = 0u;
     // NRD reflection tracking needs an in-lobe first hit, independent of RIS.
     float specular_hit_dist = NRD_FrontEnd_SpecHitDistAveraging_Begin();
     float specular_probability = saturate(compute_spec_probability(albedo, roughness, metallic,
@@ -325,6 +327,10 @@ void ray_gen()
             float3 reference_radiance;
             candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0,
                 view_dir, albedo, roughness, metallic, get_camera_position());
+            // Denoising follows the first traced surface, not the endpoint
+            // later chosen by light/path resampling.
+            diffuse_hit_dist += candidate.first_hit_distance;
+            diffuse_hit_count++;
             // Reuse only primary rays drawn from the specular component, before
             // light/path resampling can select an unrelated diffuse endpoint.
             if (xi.x >= 1.0f - specular_probability)
@@ -493,13 +499,8 @@ void ray_gen()
     canonical_gi /= n_brdf;
     canonical_gi /= restir_gi_demodulator(albedo);
 
-    // real reconnection distance in w so reblur can size its kernels, sky gets the far band,
-    // rc_pos holds a unit direction for sky samples so it must not be treated as a position
-    float hit_dist = 0.0f;
-    if (reservoir.M > 0.0f)
-    {
-        hit_dist = is_sky_sample(reservoir.sample) ? 10000.0f : min(length(reservoir.sample.rc_pos - pos_ws), 10000.0f);
-    }
+    // Keep the primary hit guide independent of the selected light endpoint.
+    float hit_dist = diffuse_hit_count > 0u ? diffuse_hit_dist / float(diffuse_hit_count) : 0.0f;
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
     restir_specular_output[launch_id] = float4(canonical_specular / n_brdf, specular_hit_dist);

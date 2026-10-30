@@ -379,13 +379,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         gi = float3(0, 0, 0);
     }
 
-    // real reconnection distance in w so reblur can size its kernels, sky gets the far band,
-    // keyed on m not w so a clamped or zero weight sample still reports where it landed
-    float hit_dist = 0.0f;
-    if (combined.M > 0.0f)
-    {
-        hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
-    }
+    // Reuse changes radiance, not the current primary's first-hit guide.
+    float hit_dist = tex_uav[pixel].a;
 
     // fall back to the trace pass estimate only when the reservoir is genuinely empty, keying
     // this on a small gi value instead swaps in a different estimator exactly on the pixels

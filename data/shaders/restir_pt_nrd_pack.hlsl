@@ -82,7 +82,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
     float3 diff_radiance = (total_radiance - spec_radiance) / diffuse_factor;
     spec_radiance /= specular_factor;
-    // reconnection distance from the reuse passes, a real hit t lets reblur shrink kernels at contacts
+    // First-hit distance preserved through reuse lets ReBLUR size kernels at contacts.
     float hit_dist = max(tex[thread_id.xy].a, 0.0f);
     float3 hit_dist_params = float3(restir_hit_distance_a, restir_hit_distance_b, restir_hit_distance_c);
     float norm_hit_dist = REBLUR_FrontEnd_GetNormHitDist(hit_dist, view_z, hit_dist_params, 1.0f);
