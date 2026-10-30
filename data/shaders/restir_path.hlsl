@@ -47,8 +47,10 @@ bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, floa
     if (!restir_connection_distance_valid(d2))
         return false;
     float3 direction = delta * rsqrt(d2);
-    float forward_pdf_cos = incoming_pdf * abs(dot(rc.hit_normal, direction));
-    float inverse_pdf_cos = outgoing_pdf * abs(dot(previous.hit_normal, direction));
+    // Equation 5 bounds area densities. BSDF PDFs use the shading normal,
+    // but their solid-angle/area conversion uses the actual surface normal.
+    float forward_pdf_cos = incoming_pdf * abs(dot(rc.geometric_normal, direction));
+    float inverse_pdf_cos = outgoing_pdf * abs(dot(previous.geometric_normal, direction));
     return restir_dual_footprint_allowed(d2, forward_pdf_cos, inverse_pdf_cos, threshold);
 }
 
@@ -386,6 +388,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     rc.hit = !is_sky_sample(src);
     rc.hit_position = src.rc_pos;
     rc.hit_normal = src.rc_normal;
+    rc.geometric_normal = k < src.path_length ? unpack_rc_geometric_normal(src.rc_geometric_normal_packed) : src.rc_normal;
     float pdf_out = 0.0f;
     if (k < src.path_length)
         evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
@@ -394,8 +397,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         return result;
     if (!is_sky_sample(src) && !is_dirac_light_sample(src) && dot(src.rc_normal, -direction) <= 0.0f)
         return result;
-    float3 geometric_normal = k < src.path_length ? unpack_rc_geometric_normal(src.rc_geometric_normal_packed) : src.rc_normal;
-    float geometry = is_sky_sample(src) || is_dirac_light_sample(src) ? 1.0f : abs(dot(geometric_normal, -direction)) / dot(delta, delta);
+    float geometry = is_sky_sample(src) || is_dirac_light_sample(src) ? 1.0f : abs(dot(rc.geometric_normal, -direction)) / dot(delta, delta);
     if (geometry <= 0.0f || src.rc_pdf <= 0.0f)
         return result;
     PathSample connection = src;

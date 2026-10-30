@@ -1636,6 +1636,10 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
+    float3 rc_geometric_normal = octahedral_decode(unpack_float_to_f16x2(src.rc_pdf));
+    float geometry_cos_src = abs(dot(rc_geometric_normal, -dir_src));
+    float geometry_cos_dst = abs(dot(rc_geometric_normal, -dir_dst));
+
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
     // Use the actual mixture PDF on both sides; the supplemental black-box
     // criterion also rejects a sharply peaked preceding scattering event.
@@ -1646,7 +1650,7 @@ ShiftResult try_reconnection_shift(
             dst_view_dir, dir_dst, pdf_dst, restir_primary_specular_blend(dst_roughness));
         if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
             return result;
-        float forward_pdf_cos = pdf_dst * cos_rc_dst;
+        float forward_pdf_cos = pdf_dst * geometry_cos_dst;
         float inverse_pdf_cos = 0.0f;
         if (any(src.rc_L_post > 0.0f))
         {
@@ -1669,12 +1673,9 @@ ShiftResult try_reconnection_shift(
     // ratios separately: flooring their product changes the Jacobian for short
     // or grazing connections, even making a geometry-preserving shift lose energy.
     // The solid-angle/area conversion uses the actual surface normal, not
-    // the normal map used by the BRDF and reconnection eligibility above.
+    // the normal map used by the BRDF above.
     // Primary reconnections do not need the postponed incoming density, so
     // its reservoir word stores this normal without increasing storage.
-    float3 rc_geometric_normal = octahedral_decode(unpack_float_to_f16x2(src.rc_pdf));
-    float geometry_cos_src = abs(dot(rc_geometric_normal, -dir_src));
-    float geometry_cos_dst = abs(dot(rc_geometric_normal, -dir_dst));
     if (geometry_cos_src <= 0.0f || geometry_cos_dst <= 0.0f)
         return result;
     float jacobian = (geometry_cos_dst / geometry_cos_src) * (dist_src_sq / dist_dst_sq);
