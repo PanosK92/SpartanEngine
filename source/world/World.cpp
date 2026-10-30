@@ -341,6 +341,7 @@ namespace spartan
             string pending_path;
             ProgressTask pending_progress;
             uint64_t pending_frame = 0;
+            Stopwatch load_timer;
             WorldPreparation preparation;
         };
         WorldIoOperation io;
@@ -931,6 +932,7 @@ namespace spartan
                 if (result.removed) SP_LOG_INFO("Bake cache reclaimed %.1f MB (%llu files)", result.bytes_removed / 1000000.0, static_cast<unsigned long long>(result.removed));
             });
             world_progress.Finish();
+            SP_LOG_INFO("World ready: %.2f ms from load request", io.load_timer.GetElapsedTimeMs());
             io.state.store(WorldIoState::Idle, memory_order_release);
         }
         else if (work_counter_tick % 1800 == 0)
@@ -2016,6 +2018,7 @@ namespace spartan
             return false;
         }
         io.pending_path = file_path_;
+        io.load_timer.Start();
         io.pending_progress = ProgressTracker::Begin(ProgressType::World,
             FileSystem::GetFileNameFromFilePath(file_path_), "Finishing previous world work");
         io.pending_frame = Renderer::GetFrameNumber();
@@ -2051,6 +2054,8 @@ namespace spartan
         const string file_path_ = move(io.pending_path);
         io.pending_path.clear();
         auto load_progress = move(io.pending_progress);
+        SP_LOG_INFO("World load: waiting for background jobs %.2f ms", io.load_timer.GetElapsedTimeMs());
+        const Stopwatch teardown_timer;
 
         // ensure prefabs are registered before loading
         if (callbacks.before_load) callbacks.before_load();
@@ -2059,6 +2064,7 @@ namespace spartan
         // shutdown synchronously before async loading
         Shutdown();
         Renderer::ResetWorldGeometry();
+        SP_LOG_INFO("World load: teardown and geometry reset %.2f ms", teardown_timer.GetElapsedTimeMs());
         generated_cache::ResetStatistics();
 
         // publish the loading state now so the progress ui shows this frame instead of only once the worker task starts

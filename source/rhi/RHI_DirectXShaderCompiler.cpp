@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "RHI_DirectXShaderCompiler.h"
 #include "../file_system/FileSystem.h"
+#include "../geometry/GeneratedCache.h"
 #include <sstream>
 //=======================================
 
@@ -23,6 +24,8 @@ namespace spartan
         // created on first compile and kept for the lifetime of the process
         IDxcUtils* dxc_utils        = nullptr;
         IDxcCompiler3* compiler = nullptr;
+        once_flag initialization;
+        string compiler_version;
 
         // forwards whatever dxc has to say to the log and returns the compile status
         bool log_diagnostics(IDxcResult* dxc_result)
@@ -66,16 +69,64 @@ namespace spartan
         }
     }
 
-    IDxcResult* DirectXShaderCompiler::Compile(const string& source, vector<string>& arguments)
+    IDxcBlob* DirectXShaderCompiler::Compile(const string& source, vector<string>& arguments)
     {
-        if (!compiler || !dxc_utils)
+        call_once(initialization, []
         {
             if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler))) ||
                 FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxc_utils))))
             {
                 SP_LOG_ERROR("Failed to create DirectXShaderCompiler interfaces");
-                return nullptr;
+                return;
             }
+
+            IDxcVersionInfo2* version = nullptr;
+            if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&version))))
+            {
+                UINT32 major = 0, minor = 0, flags = 0, commits = 0;
+                char* commit = nullptr;
+                if (SUCCEEDED(version->GetVersion(&major, &minor)) &&
+                    SUCCEEDED(version->GetFlags(&flags)) &&
+                    SUCCEEDED(version->GetCommitInfo(&commits, &commit)) && commit && *commit)
+                {
+                    compiler_version = to_string(major) + ":" + to_string(minor) + ":" +
+                        to_string(flags) + ":" + to_string(commits) + ":" + commit;
+                }
+                CoTaskMemFree(commit);
+                version->Release();
+            }
+            IDxcVersionInfo3* custom_version = nullptr;
+            if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&custom_version))))
+            {
+                char* custom = nullptr;
+                if (SUCCEEDED(custom_version->GetCustomVersionString(&custom)) && custom && !compiler_version.empty())
+                    compiler_version += string(":") + custom;
+                CoTaskMemFree(custom);
+                custom_version->Release();
+            }
+        });
+        if (!compiler || !dxc_utils) return nullptr;
+
+        // Source already contains every include. Arguments include backend, stage,
+        // entry point, defines and optimization flags, so edits cannot reuse stale code.
+        generated_cache::Hash hash;
+        hash.Add(string("shader_bytecode_v1"));
+#ifdef _WIN32
+        hash.Add(string("windows"));
+#else
+        hash.Add(string("linux"));
+#endif
+        hash.Add(compiler_version);
+        hash.Add(source);
+        for (const string& argument : arguments) hash.Add(argument);
+        const auto cache_path = compiler_version.empty() ? filesystem::path{} :
+            generated_cache::Path(FileSystem::GetExecutableDirectory(), "shaders", hash.value);
+        vector<uint8_t> bytecode;
+        if (generated_cache::Load(cache_path, hash.value, bytecode) && !bytecode.empty())
+        {
+            IDxcBlobEncoding* cached = nullptr;
+            if (SUCCEEDED(dxc_utils->CreateBlob(bytecode.data(), static_cast<uint32_t>(bytecode.size()), DXC_CP_ACP, &cached)))
+                return cached;
         }
 
         IDxcBlobEncoding* blob_encoding = nullptr;
@@ -110,7 +161,7 @@ namespace spartan
 
         blob_encoding->Release();
 
-        if (FAILED(hr) || !log_diagnostics(dxc_result))
+        if (FAILED(hr) || !dxc_result || !log_diagnostics(dxc_result))
         {
             SP_LOG_ERROR("Shader compilation failed.");
             if (dxc_result)
@@ -120,6 +171,16 @@ namespace spartan
             }
         }
 
-        return dxc_result;
+        if (!dxc_result) return nullptr;
+        IDxcBlob* shader = nullptr;
+        dxc_result->GetResult(&shader);
+        dxc_result->Release();
+        if (shader && !cache_path.empty())
+        {
+            const auto* bytes = static_cast<const uint8_t*>(shader->GetBufferPointer());
+            bytecode.assign(bytes, bytes + shader->GetBufferSize());
+            generated_cache::Save(cache_path, hash.value, bytecode);
+        }
+        return shader;
     }
 }

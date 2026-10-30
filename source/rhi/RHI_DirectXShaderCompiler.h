@@ -27,6 +27,6 @@ namespace spartan
     {
     public:
         // null on failure, the caller owns the result and must release it
-        static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments);
+        static IDxcBlob* Compile(const std::string& source, std::vector<std::string>& arguments);
     };
 }

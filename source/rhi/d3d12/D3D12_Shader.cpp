@@ -101,20 +101,8 @@ namespace spartan
         }
 
         // compile
-        if (IDxcResult* dxc_result = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
+        if (IDxcBlob* shader_buffer = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
         {
-            // get compiled shader buffer, GetResult hands us an owning reference to the blob
-            IDxcBlob* shader_buffer = nullptr;
-            dxc_result->GetResult(&shader_buffer);
-
-            // the dxc result is no longer needed once we hold the blob
-            dxc_result->Release();
-
-            if (!shader_buffer)
-            {
-                return nullptr;
-            }
-
             void* bytecode_ptr = shader_buffer->GetBufferPointer();
 
             // reflect shader resources (so that descriptor sets can be created later)

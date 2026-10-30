@@ -160,12 +160,8 @@ namespace spartan
         }
 
         // compile
-        if (IDxcResult* dxc_result = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
+        if (IDxcBlob* shader_buffer = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
         {
-            // get compiled shader buffer
-            IDxcBlob* shader_buffer = nullptr;
-            dxc_result->GetResult(&shader_buffer);
-
             // create shader module
             VkShaderModule shader_module         = nullptr;
             VkShaderModuleCreateInfo create_info = {};
@@ -194,7 +190,7 @@ namespace spartan
             }
 
             // release
-            dxc_result->Release();
+            shader_buffer->Release();
 
             return static_cast<void*>(shader_module);
         }
