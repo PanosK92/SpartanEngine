@@ -6843,13 +6843,53 @@ namespace spartan
     {
         SP_PROFILE_CPU();
 
-        // hot reloaded shaders swap in here, before anything this frame builds a pipeline from them
+        // Reservoir readers and writers share a layout. Keep the complete live
+        // ReSTIR group until every requested replacement is ready. Failed
+        // members retain their old modules; successful replacements stay staged
+        // until the failed source is repaired and recompiled.
+        auto is_restir_shader = [](const auto& shader)
+        {
+            return shader->GetFilePath().find("restir_pt") != string::npos;
+        };
+        bool restir_reload_pending = false;
+        bool restir_reload_waiting = false;
+        bool restir_reload_failed = false;
         for (const auto& shader : GetShaders())
         {
-            if (shader)
+            if (!shader || !is_restir_shader(shader))
+                continue;
+            if (shader->IsReloading())
+            {
+                restir_reload_pending = true;
+                if (!shader->IsReloadReady())
+                    restir_reload_waiting = true;
+                else if (shader->ReloadReadyFailed())
+                {
+                    shader->ApplyReload(); // Report failure without replacing its live module.
+                    restir_reload_failed = true;
+                }
+            }
+            else if (shader->ReloadFailed())
+                restir_reload_failed = true;
+        }
+        const bool apply_restir_reload = restir_reload_pending && !restir_reload_waiting && !restir_reload_failed;
+
+        // Hot reloaded shaders swap before this frame builds any pipelines.
+        for (const auto& shader : GetShaders())
+        {
+            if (shader && (!is_restir_shader(shader) || apply_restir_reload))
             {
                 shader->ApplyReload();
             }
+        }
+        if (apply_restir_reload)
+        {
+            m_pass_state.restir.reservoirs_initialized = false;
+            m_pass_state.restir.history_invalid = true;
+            m_pass_state.restir.accumulation_valid = false;
+            RHI_VendorTechnology::ResetHistory();
+            ResetTaauHistory();
+            SP_LOG_INFO("ReSTIR shader reload applied as a group; history reset");
         }
 
         // wait until every shader has finished compiling, null entries are safe to skip

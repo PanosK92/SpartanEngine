@@ -45,6 +45,8 @@ namespace spartan
         // module until ApplyReload swaps the result in, on the main thread before a frame records
         bool IsReloading() const   { return m_reloading; }
         bool ReloadFailed() const  { return m_reload_failed; }
+        bool IsReloadReady() const { return m_reload_ready; }
+        bool ReloadReadyFailed() const { return m_reload_ready && !m_reload->IsCompiled(); }
         void ApplyReload();
 
         // source
