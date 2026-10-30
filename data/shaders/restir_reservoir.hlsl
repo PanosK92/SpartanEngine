@@ -1236,7 +1236,15 @@ float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal, flo
 {
     float3 to_cam  = camera_position - primary_pos;
     float  dist_sq = dot(to_cam, to_cam);
-    float  cos_cam = max(dot(primary_normal, normalize(to_cam)), 1e-3f);
+    // Equation 5 uses the actual projected cosine. Flooring it shrinks the
+    // primary footprint at grazing angles and admits overly early reconnection.
+    // A degenerate or back-facing primary has no usable finite footprint;
+    // the dual-footprint test rejects this threshold and keeps random replay.
+    if (!restir_connection_distance_valid(dist_sq))
+        return asfloat(0x7f800000u);
+    float cos_cam = dot(primary_normal, to_cam * rsqrt(dist_sq));
+    if (!(cos_cam > 0.0f) || !isfinite(cos_cam))
+        return asfloat(0x7f800000u);
 
     return dist_sq / (cos_cam / (4.0f * PI));
 }
