@@ -156,7 +156,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // of a pixel can change view depth by more than the old one-percent gate.
         float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) *
             float2(0.5f, -0.5f) * get_render_uv_scale();
-        float3 previous_receiver = get_position(depth_prev, render_uv_to_screen_uv(uv - jitter_delta));
+        // The projection is unchanged while accumulation is enabled, apart
+        // from jitter, but camera breathing can still change the view transform.
+        // Unproject into view space, then use the previous camera's rigid inverse
+        // instead of interpreting the old depth through the current camera pose.
+        float2 previous_screen_uv = render_uv_to_screen_uv(uv - jitter_delta);
+        float4 previous_clip = float4(previous_screen_uv * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), depth_prev, 1.0f);
+        float4 previous_view = mul(previous_clip, get_projection_inverted());
+        float3 previous_receiver = mul(previous_view.xyz / previous_view.w,
+            transpose((float3x3)buffer_frame.view_previous)) + buffer_frame.camera_position_previous;
         float3 separation = previous_receiver - receiver;
         float plane_distance = max(abs(dot(separation, normal)), abs(dot(separation, normal_prev)));
         bool valid = history.a >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&
