@@ -180,7 +180,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float4 history = tex2[thread_id.xy];
         float depth_prev = tex3.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
         float3 normal_prev = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(uv)]);
-        float2 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy * buffer_frame.resolution_render * 0.5f;
+        // Velocity is in screen NDC; the tolerance below is in active render
+        // pixels, not the larger backing texture used by resolution scaling.
+        float2 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy * get_render_resolution_active() * 0.5f;
         float z = linearize_depth(depth);
         // Accumulation is restricted to a stationary camera (or subpixel breathing).
         // The same history pixel lies on a different ray after TAA jitter. Compare
