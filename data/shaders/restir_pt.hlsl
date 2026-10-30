@@ -375,7 +375,7 @@ void ray_gen()
             guide_ray.Origin = pos_ws + normal_ws * compute_ray_offset(pos_ws);
             guide_ray.Direction = direction;
             guide_ray.TMin = RESTIR_RAY_T_MIN;
-            guide_ray.TMax = 1000.0f;
+            guide_ray.TMax = RESTIR_RAY_T_MAX;
             PathSurface guide = restir_trace_surface(guide_ray);
             NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist,
                 guide.hit ? length(guide.hit_position - pos_ws) : 10000.0f);

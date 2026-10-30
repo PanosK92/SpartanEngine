@@ -125,7 +125,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         ray.Origin = previous.hit_position + previous.geometric_normal * compute_ray_offset(previous.hit_position);
         ray.Direction = dir;
         ray.TMin = RESTIR_RAY_T_MIN;
-        ray.TMax = 1000.0f;
+        ray.TMax = RESTIR_RAY_T_MAX;
         PathSurface current = restir_trace_surface(ray);
         if (depth == 2u)
         {
@@ -307,7 +307,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         ray.Origin = v.hit_position + v.geometric_normal * compute_ray_offset(v.hit_position);
         ray.Direction = direction;
         ray.TMin = RESTIR_RAY_T_MIN;
-        ray.TMax = 1000.0f;
+        ray.TMax = RESTIR_RAY_T_MAX;
         vertices[i + 1u] = restir_trace_surface(ray);
         if (!vertices[i + 1u].hit)
             return result;

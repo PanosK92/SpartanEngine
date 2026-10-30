@@ -61,6 +61,8 @@ static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
 static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
+// Fresh paths and sky visibility must see the same distant occluders.
+static const float RESTIR_RAY_T_MAX          = 10000.0f;
 
 // emissive nits calibration, must match light_composition or emitters glow on screen but bounce no light
 static const float RESTIR_EMISSIVE_NITS_FROM_ALBEDO = lighting_emissive_nits_from_albedo;
@@ -1950,7 +1952,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
         if (is_directional)
         {
             light_dir  = -light.direction;
-            light_dist = 1000.0f;
+            light_dist = RESTIR_RAY_T_MAX;
             light_pdf  = 1.0f;
         }
         else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
@@ -2103,7 +2105,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
             probe_ray.Origin    = shading_pos + geometric_normal * probe_offset;
             probe_ray.Direction = env_dir;
             probe_ray.TMin      = probe_offset;
-            probe_ray.TMax      = 10000.0f;
+            probe_ray.TMax      = RESTIR_RAY_T_MAX;
 
             RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
             probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
@@ -2186,7 +2188,7 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
     if (is_sky_sample(src))
     {
         ray.Direction = src.rc_pos;
-        ray.TMax = 10000.0f;
+        ray.TMax = RESTIR_RAY_T_MAX;
     }
     else
     {
