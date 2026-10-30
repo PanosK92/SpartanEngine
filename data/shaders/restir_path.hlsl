@@ -151,13 +151,19 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         reference_radiance += reference_throughput * emitted * endpoint_mis * roulette_weight;
         PathSample leaf = connection;
         float inverse_density = connection_density;
+        // A terminal emitter has no outgoing BRDF. Its normal describes the
+        // actual surface for the connection footprint and solid-angle Jacobian,
+        // not its normal map. Use the same normal when selecting and shifting
+        // this endpoint so the reconnection domain remains reversible.
+        PathSurface endpoint = current;
+        endpoint.hit_normal = current.geometric_normal;
         if (has_reconnection(connection))
         {
             leaf.rc_L_post = suffix * emitted * (depth == connection.rc_length + 1u ? 1.0f : endpoint_mis);
         }
-        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, 0.0f, threshold))
+        else if (restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, 0.0f, threshold))
         {
-            leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
+            leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed);
             leaf.flags |= PATH_FLAG_RC_EMIT;
             leaf.rc_L_nee = emitted;
             leaf.F = throughput * incoming_pdf * emitted * endpoint_mis;
