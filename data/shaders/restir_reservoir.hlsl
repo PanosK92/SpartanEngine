@@ -1354,11 +1354,26 @@ ShiftResult try_reconnection_shift(
     // Dirac endpoints must resolve and re-evaluate current light parameters below.
     if (is_identity && !is_dirac_light_sample(src))
     {
-        result.f_dst = src.F;
-        result.sample.F = src.F;
-        result.jacobian = 1.0f;
-        result.ok = all(isfinite(src.F)) && any(src.F > 0.0f);
-        return result;
+        // Position/view identity alone does not preserve the primary BSDF.
+        // Compare at reservoir precision so normal/material quantization does
+        // not force re-evaluation (and density drift) on an unchanged surface.
+        float2 normal_oct = octahedral_encode(dst_normal);
+        float3 stored_normal = octahedral_decode(unpack_float_to_f16x2(
+            pack_f16x2_to_float(normal_oct.x, normal_oct.y)));
+        float4 stored_material = unpack_float_to_uint8x4(pack_uint8x4_to_float(
+            dst_albedo.r, dst_albedo.g, dst_albedo.b, dst_metallic));
+        float stored_roughness = max(f16tof32(f32tof16(dst_roughness)), 0.04f);
+        bool same_shading = all(src.src_normal == stored_normal) &&
+            all(src.src_albedo == stored_material.rgb) && src.src_metallic == stored_material.a &&
+            src.src_roughness == stored_roughness;
+        if (same_shading)
+        {
+            result.f_dst = src.F;
+            result.sample.F = src.F;
+            result.jacobian = 1.0f;
+            result.ok = all(isfinite(src.F)) && any(src.F > 0.0f);
+            return result;
+        }
     }
 
     // primary nee on a point or spot light, the endpoint is the light itself so there is no rc
