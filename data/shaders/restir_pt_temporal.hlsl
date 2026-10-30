@@ -144,8 +144,10 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         float2 prev_pixel_f      = history_uv * resolution;
         float2 resolution_active = floor(resolution * get_render_uv_scale());
-        bool in_bounds = prev_pixel_f.x >= 0.5f && prev_pixel_f.x < resolution_active.x - 0.5f &&
-                         prev_pixel_f.y >= 0.5f && prev_pixel_f.y < resolution_active.y - 0.5f;
+        // Reservoir history uses a single integer load, not a bilinear footprint.
+        // Every coordinate in [0, active_size) maps to a valid texel, including
+        // the last row/column and the outer half of each edge texel.
+        bool in_bounds = all(prev_pixel_f >= 0.0f) && all(prev_pixel_f < resolution_active);
         if (in_bounds)
         {
             int2 prev_pixel = int2(prev_pixel_f);
