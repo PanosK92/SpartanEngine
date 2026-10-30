@@ -46,7 +46,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 #ifdef INDIRECT_DRAW
     if ((_draw.flags & draw_flag_impostor) != 0u)
     {
-        vertex.uv_misc.z = -1.0f - (float)mi.draw_index;
+        vertex.uv_misc.z = -1.0f - (float)meshlet_instance_draw_index(mi);
     }
 #endif
     return transform_to_clip_space(vertex, position_relative, position_relative_previous, view_id);

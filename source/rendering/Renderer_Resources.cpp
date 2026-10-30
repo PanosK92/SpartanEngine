@@ -134,6 +134,7 @@ namespace spartan
         // Start small. Unused preview slots allocate nothing; active slots grow before their first write.
         constexpr uint32_t indirect_draw_capacity = 1024;
         constexpr uint32_t meshlet_instance_capacity = 1024;
+        static_assert(renderer_max_indirect_draws <= 0x80000000u, "meshlet draw indices reserve the high bit for wind caching");
         constexpr uint32_t visible_triangle_capacity = 2;
         constexpr uint32_t cull_task_capacity = 1024;
         constexpr uint32_t survivor_capacity = 1024;

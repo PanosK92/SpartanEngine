@@ -930,7 +930,7 @@ struct DecalParameters
     SHARED_UINT padding2 SHARED_DEFAULT(0);
 };
 
-// per-draw data for gpu-driven rendering (one entry per renderable lod, looked up from MeshletInstance.draw_index)
+// per-draw data for gpu-driven rendering (one entry per renderable lod, looked up with meshlet_instance_draw_index)
 // flags bit 0: skinned (instance cull uses the dynamic world aabb, phase b keeps every meshlet, triangle pass skips backface)
 // flags bit 1: per-instance (both cull phases rebuild the per-instance world transform from instance_index for per-instance bounds)
 // flags bit 2: retired (was the hw-instancing fallback, the two-phase cull culls every instance individually)
@@ -1103,11 +1103,26 @@ struct CachedTreeWind
 // indexed by the triangle cull pass (one workgroup per surviving meshlet)
 struct MeshletInstance
 {
-    SHARED_UINT draw_index     SHARED_DEFAULT(0);
-    SHARED_UINT meshlet_index  SHARED_DEFAULT(0);
-    SHARED_UINT instance_index SHARED_DEFAULT(0);
-    SHARED_UINT padding0       SHARED_DEFAULT(0); // root-wind cache slot + 1, zero uses the local evaluator
+    // The high bit records whether culling populated the root-wind cache. Its slot is
+    // draw.instance_offset + instance_index, so storing that index again wastes 4 bytes.
+    SHARED_UINT draw_index_and_wind SHARED_DEFAULT(0);
+    SHARED_UINT meshlet_index       SHARED_DEFAULT(0);
+    SHARED_UINT instance_index      SHARED_DEFAULT(0);
 };
+
+inline SHARED_UINT meshlet_instance_draw_index(MeshletInstance instance)
+{
+    return instance.draw_index_and_wind & 0x7fffffffu;
+}
+
+inline SHARED_UINT meshlet_instance_wind_slot(MeshletInstance instance, SHARED_UINT instance_offset)
+{
+    return (instance.draw_index_and_wind & 0x80000000u) != 0u ? instance_offset + instance.instance_index + 1u : 0u;
+}
+
+#ifdef __cplusplus
+static_assert(sizeof(MeshletInstance) == 12);
+#endif
 
 // per-meshlet bounding sphere and topology ranges
 // center/radius are quantized into the lod's local aabb (drawdata.lod_aabb_min, drawdata.lod_aabb_extent), the cull shader dequantizes on read

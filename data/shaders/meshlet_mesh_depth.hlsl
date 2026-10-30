@@ -81,7 +81,7 @@ void main_ms(
 
         {
             gs_mi   = meshlet_instances[mi_idx];
-            gs_draw = indirect_draw_data[gs_mi.draw_index];
+            gs_draw = indirect_draw_data[meshlet_instance_draw_index(gs_mi)];
             gs_mb   = meshlet_bounds[gs_mi.meshlet_index];
 
             const bool is_alpha = (gs_draw.flags & 16u) != 0u;
@@ -94,7 +94,7 @@ void main_ms(
                 gs_first_vertex   = gs_draw.meshlet_vertex_base + meshlet_decode_first_vertex(gs_mb);
                 gs_first_micro    = gs_draw.meshlet_micro_base + gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, gs_mi.padding0);
+                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
             }
         }
     }
@@ -137,7 +137,7 @@ void main_ms(
         out_v.uv_misc        = clipped.uv_misc;
         if ((gs_draw.flags & draw_flag_impostor) != 0u)
         {
-            out_v.uv_misc.z = -1.0f - (float)gs_mi.draw_index;
+            out_v.uv_misc.z = -1.0f - (float)meshlet_instance_draw_index(gs_mi);
         }
         out_v.material_index = clipped.material_index;
         out_v.view_id        = clipped.view_id;

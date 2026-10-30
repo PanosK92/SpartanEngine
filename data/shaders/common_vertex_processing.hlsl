@@ -106,7 +106,7 @@ Vertex_PosUvNorTan pull_visible_triangle_vertex(uint vertex_id, out MeshletInsta
     uint triangle_idx = VISIBLE_TRI_IDX(packed);
 
     mi_out = meshlet_instances[mi_idx];
-    _draw  = indirect_draw_data[mi_out.draw_index];
+    _draw  = indirect_draw_data[meshlet_instance_draw_index(mi_out)];
 
     MeshletBounds mb      = meshlet_bounds[mi_out.meshlet_index];
     uint global_index_pos = _draw.lod_first_index + meshlet_decode_first_index(mb) + triangle_idx * 3u + corner;

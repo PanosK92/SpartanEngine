@@ -126,11 +126,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
         if (m < meshlet_count)
         {
-            uint global_meshlet   = gs_meshlet_offset + m;
-            out_mi.draw_index     = gs_draw_index;
-            out_mi.meshlet_index  = global_meshlet;
-            out_mi.instance_index = gs_instance_index;
-            out_mi.padding0       = gs_wind_slot;
+            uint global_meshlet       = gs_meshlet_offset + m;
+            out_mi.draw_index_and_wind = gs_draw_index | (gs_wind_slot != 0u ? 0x80000000u : 0u);
+            out_mi.meshlet_index       = global_meshlet;
+            out_mi.instance_index      = gs_instance_index;
 
             if (gs_skinned || (gs_draw.flags & (1u << 14)) != 0u)
             {

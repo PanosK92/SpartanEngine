@@ -66,7 +66,7 @@ void main_ms(
 
         {
             gs_mi   = meshlet_instances[mi_idx];
-            gs_draw = indirect_draw_data[gs_mi.draw_index];
+            gs_draw = indirect_draw_data[meshlet_instance_draw_index(gs_mi)];
             gs_mb   = meshlet_bounds[gs_mi.meshlet_index];
 
             const bool is_alpha = (gs_draw.flags & 16u) != 0u;
@@ -79,7 +79,7 @@ void main_ms(
                 gs_first_vertex   = gs_draw.meshlet_vertex_base + meshlet_decode_first_vertex(gs_mb);
                 gs_first_micro    = gs_draw.meshlet_micro_base + gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, gs_mi.padding0);
+                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
             }
         }
     }
@@ -115,7 +115,7 @@ void main_ms(
         gbuffer_vertex vertex             = transform_to_world_space(input, gs_mi.instance_index, gs_draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
         vertex.material_index             = gs_draw.material_index;
         gbuffer_vertex clipped            = transform_to_clip_space(vertex, position_relative, position_relative_previous, 0);
-        out_vertices[v_index]          = pack_gbuffer_indirect(clipped, gs_mi.draw_index);
+        out_vertices[v_index]          = pack_gbuffer_indirect(clipped, meshlet_instance_draw_index(gs_mi));
         gs_world[v_index]              = position_world;
         gs_ndc_w[v_index] = float3(clipped.position.xy / clipped.position.w, clipped.position.w);
     }

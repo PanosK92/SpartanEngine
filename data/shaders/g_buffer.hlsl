@@ -396,7 +396,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 #if defined(GRASS_SPECIALIZED) && defined(GRASS_INSTANCED)
     return pack_gbuffer_scatter(vertex);
 #elif defined(INDIRECT_DRAW)
-    return pack_gbuffer_indirect(vertex, mi.draw_index);
+    return pack_gbuffer_indirect(vertex, meshlet_instance_draw_index(mi));
 #else
     return vertex;
 #endif

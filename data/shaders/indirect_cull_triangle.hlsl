@@ -41,7 +41,7 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
         if (mi_idx < max_meshlet_instances)
         {
             gs_mi             = meshlet_instances[mi_idx];
-            gs_draw           = indirect_draw_data[gs_mi.draw_index];
+            gs_draw           = indirect_draw_data[meshlet_instance_draw_index(gs_mi)];
             gs_mb             = meshlet_bounds[gs_mi.meshlet_index];
             gs_world_xform    = mul(pull_instance_transform(gs_draw.instance_offset, gs_mi.instance_index), gs_draw.transform);
             gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
