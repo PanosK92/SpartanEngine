@@ -5571,6 +5571,11 @@ namespace spartan
             instanced_slots.resize(render_count);
             uint32_t output_count    = 0;
             uint32_t instanced_index = 0;
+            uint64_t emitter_instance_signature = 14695981039346656037ull;
+            auto mix_emitter_instance = [&](uint64_t value)
+            {
+                emitter_instance_signature = (emitter_instance_signature ^ value) * 1099511628211ull;
+            };
             for (uint32_t i = 0; i < render_count; ++i)
             {
                 const SingleTlasCache& cache = single_tlas_caches[i];
@@ -5582,6 +5587,13 @@ namespace spartan
                 }
                 else if (cache.valid)
                 {
+                    // Terminal BSDF emitter paths cache InstanceIndex/PrimitiveIndex.
+                    // Compaction can renumber them when unrelated geometry changes.
+                    if (is_pooled_emitter_material(ray_tracing_renders[i]->GetMaterial()))
+                    {
+                        mix_emitter_instance(cache.entity_id);
+                        mix_emitter_instance(output_count);
+                    }
                     output_count++;
                 }
                 else if (cache.invalid_transform)
@@ -5589,6 +5601,13 @@ namespace spartan
                     ++invalid_transforms;
                     if (!first_invalid_name) first_invalid_name = ray_tracing_renders[i]->GetEntity()->GetObjectName().c_str();
                 }
+            }
+            static uint64_t previous_emitter_instance_signature = 0;
+            if (emitter_instance_signature != previous_emitter_instance_signature)
+            {
+                m_pass_state.restir.history_invalid = true;
+                m_pass_state.restir.accumulation_valid = false;
+                previous_emitter_instance_signature = emitter_instance_signature;
             }
             instances.resize(output_count);
             geometry_infos.resize(output_count);
