@@ -238,6 +238,41 @@ void sample_spherical_rectangle(
     out_pos = origin + xu * x + yv * y + z0 * z;
 }
 
+// Shared domain for sampling and evaluating an existing emitter endpoint.
+// The MIS source density must use the same spherical/area branch as generation.
+float restir_triangle_solid_angle(float3 origin, float3 v0, float3 v1, float3 v2)
+{
+    float3 va = v0 - origin, vb = v1 - origin, vc = v2 - origin;
+    float3 area_normal = cross(v1 - v0, v2 - v0);
+    float la = length(va), lb = length(vb), lc = length(vc);
+    if (length(area_normal) <= 1e-12f || min(la, min(lb, lc)) <= 1e-6f)
+        return 0.0f;
+    return 2.0f * atan2(abs(dot(va, area_normal)),
+        la * lb * lc + dot(va, vb) * lc + dot(vb, vc) * la + dot(vc, va) * lb);
+}
+
+bool restir_triangle_uses_area_sampling(float solid_angle)
+{
+    return solid_angle < 0.001f || solid_angle > 6.0f;
+}
+
+// Conditional point density in solid angle, before the triangle selection PMF.
+// endpoint is a known point on this triangle (a sampled point or a ray hit).
+float restir_triangle_point_pdf(float3 origin, float3 v0, float3 v1, float3 v2, float3 endpoint)
+{
+    float solid_angle = restir_triangle_solid_angle(origin, v0, v1, v2);
+    if (!(solid_angle > 0.0f))
+        return 0.0f;
+    if (!restir_triangle_uses_area_sampling(solid_angle))
+        return rcp(solid_angle);
+    float3 delta = endpoint - origin;
+    float distance_sq = dot(delta, delta);
+    if (distance_sq <= 1e-12f)
+        return 0.0f;
+    float projected_area = 0.5f * abs(dot(cross(v1 - v0, v2 - v0), -delta * rsqrt(distance_sq)));
+    return projected_area > 0.0f ? distance_sq / projected_area : 0.0f;
+}
+
 // arvo 1995 spherical triangle sampling, pbrt v4 formulation, uniform in solid angle
 // returns a unit direction and its inverse solid-angle pdf, zero when degenerate
 // small projected triangles use uniform area sampling: angle-sum cancellation in float32
@@ -270,9 +305,8 @@ void sample_spherical_triangle(
 
     // van Oosterom-Strackee formula, using the original edges for the determinant
     // avoids subtracting nearly equal normalized directions for distant triangles
-    float area = 2.0f * atan2(abs(dot(va, area_normal)),
-        la * lb * lc + dot(va, vb) * lc + dot(vb, vc) * la + dot(vc, va) * lb);
-    if (area < 0.001f || area > 6.0f)
+    float area = restir_triangle_solid_angle(origin, v0, v1, v2);
+    if (restir_triangle_uses_area_sampling(area))
     {
         float su = sqrt(u.x);
         float3 emitter_pos = v0 + edge1 * (su * (1.0f - u.y)) + edge2 * (su * u.y);
@@ -1723,7 +1757,7 @@ bool emtri_ris_pick_path(
             continue;
         }
         p = pos + dir * t;
-        point_pdf = 1.0f / inverse_pdf;
+        point_pdf = restir_triangle_point_pdf(pos, tri.v0, tri.v1, tri.v2, p);
 
         float unused_pdf;
         float3 f = evaluate_brdf(albedo, roughness, metallic, normal, view, dir, unused_pdf, 1.0f);
