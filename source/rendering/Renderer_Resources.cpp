@@ -308,6 +308,11 @@ namespace spartan
             restir_emissive_tri_initial_capacity, nullptr, false, "emissive_triangles"
         );
 
+        at(buffers, Renderer_Buffer::RestirLightTiles) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(4 * sizeof(uint32_t)),
+            128 * 1024, nullptr, false, "restir_light_tiles"
+        );
+
         // three concatenated tileable pairing tables, uploaded once when the restir reservoirs initialize
         at(buffers, Renderer_Buffer::RestirPairing) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
@@ -1413,6 +1418,7 @@ namespace spartan
             { Renderer_Shader::restir_pt_temporal_c,                  RHI_Shader_Type::Compute,       "restir_pt_temporal.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_spatial_shift_c,             RHI_Shader_Type::Compute,       "restir_pt_spatial_shift.hlsl",         RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_light_tiles_c,               RHI_Shader_Type::Compute,       "restir_pt_light_tiles.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_duplication_c,               RHI_Shader_Type::Compute,       "restir_pt_duplication.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_pack_c,                  RHI_Shader_Type::Compute,       "restir_pt_nrd_pack.hlsl",            RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_unpack_c,                RHI_Shader_Type::Compute,       "restir_pt_nrd_unpack.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },

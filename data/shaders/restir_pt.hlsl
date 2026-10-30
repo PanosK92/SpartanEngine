@@ -81,7 +81,6 @@ PathSample sample_emissive_tri_candidate(
 PathSample sample_light_candidate(
     float3 primary_pos,
     float3 primary_normal,
-    float total_weight,
     inout uint seed,
     out float source_pdf)
 {
@@ -109,32 +108,14 @@ PathSample sample_light_candidate(
     if (light_count == 0)
         return s;
 
-    // power proportional pick, lin 2022 6.1, consistent with light_pick_pdf_for_index
-    if (total_weight <= 0.0f)
+    uint4 tile_entry = restir_light_tile_entry(random_float(seed));
+    uint light_idx = tile_entry.x;
+    float pick_pdf = asfloat(tile_entry.y);
+    if (light_idx >= light_count || pick_pdf <= 0.0f)
         return s;
-
-    float xi  = random_float(seed) * total_weight;
-    float cum = 0.0f;
-    uint  light_idx = light_count - 1;
-    for (uint i = 0; i < light_count; i++)
-    {
-        cum += light_pick_weight(light_parameters[i]);
-        if (xi <= cum)
-        {
-            light_idx = i;
-            break;
-        }
-    }
-
     LightParameters light = light_parameters[light_idx];
-    if (light.intensity <= 0.0f)
-        return s;
-
     bool is_directional = (light.flags & (1u << 0)) != 0;
     bool is_area        = (light.flags & (1u << 6)) != 0;
-    float pick_pdf      = light_pick_pdf_for_index(light_idx, total_weight);
-    if (pick_pdf <= 0.0f)
-        return s;
     s.endpoint_light = light_idx;
 
     if (is_directional)
@@ -255,6 +236,8 @@ void ray_gen()
 {
     uint2 launch_id   = DispatchRaysIndex().xy;
     uint2 launch_size = DispatchRaysDimensions().xy;
+    uint2 light_block = launch_id / 8u;
+    restir_light_tile_index = xxhash32(light_block.x ^ xxhash32(light_block.y) ^ buffer_frame.frame) % RESTIR_LIGHT_TILE_COUNT;
     float2 uv = restir_primary_uv((launch_id + 0.5f) / launch_size);
 
     // early out for sky pixels (no primary surface)
@@ -409,14 +392,13 @@ void ray_gen()
     // would otherwise outweigh every bounce and evict the valid indirect samples in shadow
     if (n_light_count > 0u)
     {
-        float total_light_weight = compute_total_light_weight();
         PathSample light_pick    = (PathSample)0;
         float light_weight_sum   = 0.0f;
         float light_pick_target  = 0.0f;
         for (uint li = 0; li < n_light_count; li++)
         {
             float light_source_pdf;
-            PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, total_light_weight, seed, light_source_pdf);
+            PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, seed, light_source_pdf);
             if (light_source_pdf < RESTIR_MIN_PDF)
             {
                 continue;

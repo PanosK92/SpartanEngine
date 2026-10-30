@@ -13,6 +13,17 @@ Commercial use requires written permission and negotiated payment terms.
 
 // ReSTIR PT Enhanced (2026).
 static const uint RESTIR_MAX_PATH_LENGTH = 5;
+// Section 6.1: each 8x8 tracing block draws from one presampled light tile.
+static const uint RESTIR_LIGHT_TILE_COUNT = 128u;
+static const uint RESTIR_LIGHT_TILE_SIZE = 1024u;
+RWStructuredBuffer<uint4> restir_light_tiles : register(u69);
+static uint restir_light_tile_index = 0u;
+uint4 restir_light_tile_entry(float xi)
+{
+    uint entry = min(uint(xi * float(RESTIR_LIGHT_TILE_SIZE)), RESTIR_LIGHT_TILE_SIZE - 1u);
+    return restir_light_tiles[restir_light_tile_index * RESTIR_LIGHT_TILE_SIZE + entry];
+}
+
 // Every pass must sample all primary guides at this full-resolution texel centre.
 // Reduced-resolution centres can land on full-resolution texel boundaries, where
 // point sampling and integer G-buffer loads can select different surfaces.
@@ -1669,7 +1680,10 @@ bool emtri_ris_pick_path(
         float3 dir, p;
         float point_pdf;
         EmissiveTriangle tri;
-        tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
+        uint4 tile_entry = restir_light_tile_entry(xi.x);
+        if (tile_entry.z >= count || asfloat(tile_entry.w) <= 0.0f)
+            continue;
+        tri = emissive_triangles[tile_entry.z];
         if (tri.area <= 0.0f || tri.weight <= 0.0f)
         {
             continue;
@@ -1712,7 +1726,7 @@ bool emtri_ris_pick_path(
         float unused_pdf;
         float3 f = evaluate_brdf(albedo, roughness, metallic, normal, view, dir, unused_pdf, 1.0f);
         float target = target_scalar(tri.emission * f);
-        float pdf_sa = (tri.weight / total_weight) * point_pdf;
+        float pdf_sa = asfloat(tile_entry.w) * point_pdf;
         if (!(pdf_sa > 0.0f) || !isfinite(pdf_sa))
             continue;
         float w = target / pdf_sa;
@@ -1874,26 +1888,17 @@ RestirLightSample sample_direct_lighting_at_vertex(
     // Importance-sampled analytic NEE, with the same depth-dependent budget as
     // emissive NEE. Fixed random dimensions make BSDF-prefix replay cheap.
     uint candidate_count = restir_nee_candidate_count(vertex);
-    float total_light_weight = forced_light == int(RESTIR_ENDPOINT_BSDF) ? 0.0f : compute_total_light_weight();
     for (uint proposal = 0u; proposal < candidate_count; ++proposal)
     {
         float3 light_xi = random_float3(seed);
-        if (total_light_weight <= 0.0f)
+        if (forced_light == int(RESTIR_ENDPOINT_BSDF))
             continue;
-        float cdf_sample = light_xi.x * total_light_weight;
-        float cdf = 0.0f;
-        uint light_idx = light_count - 1u;
-        for (uint index = 0u; index < light_count; ++index)
-        {
-            cdf += light_pick_weight(light_parameters[index]);
-            if (cdf_sample < cdf)
-            {
-                light_idx = index;
-                break;
-            }
-        }
+        uint4 tile_entry = restir_light_tile_entry(light_xi.x);
+        uint light_idx = tile_entry.x;
+        float pick_pdf = asfloat(tile_entry.y);
+        if (light_idx >= light_count || pick_pdf <= 0.0f)
+            continue;
         LightParameters light = light_parameters[light_idx];
-        float pick_pdf = light_pick_pdf_for_index(light_idx, total_light_weight);
 
         if (light.intensity <= 0.0f || pick_pdf <= 0.0f)
             continue;

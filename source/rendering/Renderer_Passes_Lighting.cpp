@@ -680,6 +680,7 @@ namespace spartan
             // emissive triangle nee pool, prefix sum and per-triangle data populated by
             // BuildEmissiveTriangleNeePool, count comes through buffer_frame.restir_pt_emissive_tri_count
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
             RHI_CommandList::SetTexture("restir_specular_output", GetRenderTarget(Renderer_RenderTarget::restir_specular_output));
 
@@ -714,6 +715,7 @@ namespace spartan
             // resources, bind them so the pass has a complete descriptor set
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
@@ -790,6 +792,7 @@ namespace spartan
             // see the matching comment in Pass_ReSTIR_Temporal
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
 
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
@@ -819,6 +822,7 @@ namespace spartan
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             // pre-pass shift results, one per pairing table
@@ -1013,6 +1017,18 @@ namespace spartan
                 RHI_CommandList::ClearTexture(duplication, Color::standard_black);
             m_pass_state.restir.history_invalid = false;
         }
+
+        RHI_Shader* shader_light_tiles = GetShader(Renderer_Shader::restir_pt_light_tiles_c);
+        if (!shader_light_tiles || !shader_light_tiles->IsCompiled())
+            return;
+        RHI_CommandList::BeginPass("restir_pt_light_tiles");
+        {
+            RHI_CommandList::SetShader(shader_light_tiles);
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
+            RHI_CommandList::Dispatch((128 * 1024) / 64, 1, 1);
+        }
+        RHI_CommandList::EndPass();
 
         Pass_ReSTIR_TraceInitial(tlas, tex_gi, tex_skysphere, reservoirs, width, height);
         if (reference_mode == 1u)
