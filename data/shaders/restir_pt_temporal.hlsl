@@ -221,17 +221,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     depth_delta <= lerp(0.12f, 0.04f, motion_factor);
             }
 
-            // the dual candidate skipped the reprojection gate, it is a neighbour on the same
-            // surface or nothing, tested against the stored source primary like the spatial pass
-            if (usable && dual_history)
-            {
-                float3 src_offset  = temporal.sample.src_pos - pos_ws;
-                float  view_dist   = max(length(get_camera_position() - pos_ws), 1e-3f);
-                float  plane_dist  = abs(dot(normal_ws, src_offset));
-                bool   same_plane  = plane_dist <= RESTIR_DEPTH_THRESHOLD * view_dist;
-                bool   same_facing = dot(normal_ws, temporal.sample.src_normal) >= RESTIR_NORMAL_THRESHOLD;
-                usable             = same_plane && same_facing;
-            }
+            // Section 6.4 reuses the dual coordinate as another path-sampling
+            // technique, not as a claim that the two primary surfaces coincide.
+            // Normal maps and object motion can change their shading planes.
+            // The bidirectional shifts and visibility tests below validate the
+            // paths; a same-plane/normal test would discard valid techniques.
 
             if (usable)
             {
