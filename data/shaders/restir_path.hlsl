@@ -31,7 +31,9 @@ PathSurface restir_trace_surface(RayDesc ray)
 float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray)
 {
     uint packed = f32tof16(bary.x) | (f32tof16(bary.y) << 16u);
-    return reconstruct_path_surface(distance, instance, primitive, packed, ray).hit_normal;
+    // This is a terminal light vertex, not a BRDF vertex. Its normal is
+    // used for solid-angle/area conversion when reconnecting the endpoint.
+    return reconstruct_path_surface(distance, instance, primitive, packed, ray).geometric_normal;
 }
 
 // A common criterion for initial selection and both directions of a hybrid shift.
@@ -245,8 +247,12 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             leaf.rc_outgoing_dir = light.endpoint_normal;
             leaf.rc_L_nee = light.endpoint_radiance;
             float3 delta = light.endpoint_position - current.hit_position;
+            float distance_sq = dot(delta, delta);
+            // The probe starts at an offset origin. Cache the geometry of the
+            // actual vertex-to-endpoint edge, as the destination shift does.
             leaf.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
-                abs(dot(light.endpoint_normal, light.direction)) / max(dot(delta, delta), 1e-20f);
+                (restir_connection_distance_valid(distance_sq)
+                    ? abs(dot(light.endpoint_normal, delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
             inverse_density = dir_pdf / max(light.endpoint_pdf, RESTIR_MIN_PDF);
         }
