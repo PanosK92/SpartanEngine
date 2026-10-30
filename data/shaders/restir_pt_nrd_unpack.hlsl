@@ -81,10 +81,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float best_specular_similarity = -1.0f;
     float3 best_diffuse = 0.0f;
     float3 best_specular = 0.0f;
-    [unroll]
-    for (uint i = 0; i < 4; ++i)
+    // Search the surrounding ring only when the bilinear footprint has no
+    // compatible guide. Thin edges can miss all four taps at reduced resolution
+    // even though a matching traced surface exists just outside that footprint.
+    const int2 reconstruction_offsets[16] = {
+        int2(0, 0), int2(1, 0), int2(0, 1), int2(1, 1),
+        int2(-1, -1), int2(0, -1), int2(1, -1), int2(2, -1),
+        int2(-1, 0), int2(2, 0), int2(-1, 1), int2(2, 1),
+        int2(-1, 2), int2(0, 2), int2(1, 2), int2(2, 2)
+    };
+    [loop]
+    for (uint i = 0; i < 16; ++i)
     {
-        int2 offset = int2(i & 1u, i >> 1u);
+        if (i == 4 && best_similarity >= 0.0f)
+            break;
+        int2 offset = reconstruction_offsets[i];
         int2 pixel = clamp(base + offset, int2(0, 0), pixel_max);
         float2 sample_uv = (float2(pixel) + 0.5f) / float2(lighting_size);
         // Match the actual G-buffer sample behind this low-resolution lighting tap.
@@ -106,7 +117,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float similarity = exp(-plane_distance / max(view_z * 0.01f, 0.001f)) *
             pow(saturate(dot(normal, sample_normal)), 16.0f);
         float2 axis_weight = lerp(1.0f - fraction, fraction, float2(offset));
-        float weight = axis_weight.x * axis_weight.y * similarity;
+        // Ring taps use positive distance weights, never extrapolated bilinear
+        // weights. Keep the same surface rejection and per-lobe weights below.
+        float2 tap_distance = float2(offset) - fraction;
+        float spatial_weight = i < 4 ? axis_weight.x * axis_weight.y :
+            rcp(1.0f + dot(tap_distance, tap_distance));
+        float weight = spatial_weight * similarity;
         // Demodulation removes material amplitude, not reflection lobe width.
         // Coplanar glossy/rough surfaces must not share specular interpolation
         // weights. Use NRD's roughness convention and its default 15% fraction.
