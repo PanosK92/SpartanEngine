@@ -133,7 +133,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             first_hit_position = current.hit ? current.hit_position : dir;
         }
         float3 emitted = current.hit ? current.emission : sample_sky(dir);
-        float endpoint_mis = depth == 2u ? 1.0f : power_heuristic(incoming_pdf, sky_nee_pdf_at(dir, previous.hit_normal));
+        float endpoint_mis = depth == 2u ? 1.0f : restir_balance_heuristic(incoming_pdf, sky_nee_pdf_at(dir, previous.hit_normal));
         reference_radiance += reference_throughput * emitted * endpoint_mis * roulette_weight;
         PathSample leaf = connection;
         float inverse_density = connection_density;

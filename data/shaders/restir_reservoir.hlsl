@@ -951,7 +951,9 @@ float3 sample_ggx_vndf(float3 ve, float2 xi, float alpha)
     return normalize(float3(a * nh.x, a * nh.y, max(0.0f, nh.z)));
 }
 
-float power_heuristic(float pdf_a, float pdf_b)
+// Supplemental Sections 1 and 5: balance MIS using each strategy's
+// sample-count-weighted density. The cosine environment proposal has M = 1.
+float restir_balance_heuristic(float pdf_a, float pdf_b)
 {
     // Rescaling preserves the partition of unity even for very small PDFs,
     // and avoids overflow when a narrow lobe has a very large density.
@@ -960,7 +962,7 @@ float power_heuristic(float pdf_a, float pdf_b)
         return 0.0f;
     float a = pdf_a / scale;
     float b = pdf_b / scale;
-    return a * a / (a * a + b * b);
+    return a / (a + b);
 }
 
 // scalar target for ris and pairwise mis, l1/3 treats rgb equally so chromatic gi is not biased
@@ -1289,9 +1291,9 @@ float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, float3 norma
         return 1.0f;
     float env_pdf = max(dot(normal, direction), 0.0f) / PI;
     if (endpoint_light == RESTIR_ENDPOINT_BSDF)
-        return power_heuristic(brdf_pdf, env_pdf);
+        return restir_balance_heuristic(brdf_pdf, env_pdf);
     if (endpoint_light == RESTIR_ENDPOINT_SKY)
-        return power_heuristic(env_pdf, brdf_pdf);
+        return restir_balance_heuristic(env_pdf, brdf_pdf);
     return 1.0f;
 }
 
@@ -2103,7 +2105,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     float  brdf_pdf_probe;
                     float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
 
-                    float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
+                    float mis_weight = restir_balance_heuristic(env_pdf, brdf_pdf_probe);
                     restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
                     if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
                     {
@@ -2125,7 +2127,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
                 float  brdf_pdf_env;
                 float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
 
-                float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
+                float mis_weight_env = restir_balance_heuristic(env_pdf, brdf_pdf_env);
                 restir_stream_light(result, env_dir, env_radiance / env_pdf, brdf_env * mis_weight_env, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
                 if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
                 {
