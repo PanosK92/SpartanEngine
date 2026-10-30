@@ -47,9 +47,9 @@ bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, floa
     if (!restir_connection_distance_valid(d2))
         return false;
     float3 direction = delta * rsqrt(d2);
-    float forward = d2 / max(incoming_pdf * abs(dot(rc.hit_normal, direction)), 1e-6f);
-    float inverse = outgoing_pdf > 0.0f ? d2 / max(outgoing_pdf * abs(dot(previous.hit_normal, direction)), 1e-6f) : 1e30f;
-    return min(forward, inverse) >= threshold;
+    float forward_pdf_cos = incoming_pdf * abs(dot(rc.hit_normal, direction));
+    float inverse_pdf_cos = outgoing_pdf * abs(dot(previous.hit_normal, direction));
+    return restir_dual_footprint_allowed(d2, forward_pdf_cos, inverse_pdf_cos, threshold);
 }
 
 // Initialize a descriptor at a surface or infinite environment endpoint.

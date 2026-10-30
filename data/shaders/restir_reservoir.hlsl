@@ -76,6 +76,17 @@ bool restir_connection_distance_valid(float distance_sq)
 {
     return distance_sq > 0.0f && isfinite(distance_sq) && isfinite(rcp(distance_sq));
 }
+
+bool restir_dual_footprint_allowed(float distance_sq, float forward_pdf_cos, float inverse_pdf_cos, float threshold)
+{
+    // Equation 5: min(d^2 / a, d^2 / b) >= threshold is equivalent to
+    // d^2 >= threshold * max(a, b). No PDF floor or finite stand-in for an
+    // infinite footprint is needed; zero also disables the inverse endpoint test.
+    if (!all(isfinite(float3(forward_pdf_cos, inverse_pdf_cos, threshold))) ||
+        forward_pdf_cos < 0.0f || inverse_pdf_cos < 0.0f || threshold < 0.0f)
+        return false;
+    return distance_sq >= threshold * max(forward_pdf_cos, inverse_pdf_cos);
+}
 // Keep the entire front hemisphere: grazing glossy paths can carry substantial energy.
 static const float RESTIR_RC_COS_FRONT       = 0.0f;
 // footprint threshold scale, c / 100 with c = 0.02 from the paper, larger is more conservative
@@ -1449,16 +1460,17 @@ ShiftResult try_reconnection_shift(
             dst_view_dir, dir_dst, pdf_dst, restir_primary_specular_blend(dst_roughness));
         if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
             return result;
-        float fp_dst  = dist_dst_sq / max(pdf_dst * cos_rc_dst, 1e-6f);
-        float fp_inverse = 1e30f;
+        float forward_pdf_cos = pdf_dst * cos_rc_dst;
+        float inverse_pdf_cos = 0.0f;
         if (any(src.rc_L_post > 0.0f))
         {
             float pdf_rc;
             evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
                 -dir_dst, src.rc_outgoing_dir, pdf_rc, 1.0f);
-            fp_inverse = dist_dst_sq / max(pdf_rc * abs(dot(dst_normal, dir_dst)), 1e-6f);
+            inverse_pdf_cos = pdf_rc * abs(dot(dst_normal, dir_dst));
         }
-        if (min(fp_dst, fp_inverse) < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal, destination_camera))
+        if (!restir_dual_footprint_allowed(dist_dst_sq, forward_pdf_cos, inverse_pdf_cos,
+            RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal, destination_camera)))
             return result;
     }
 
