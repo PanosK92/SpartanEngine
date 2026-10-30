@@ -19,8 +19,10 @@ float3 sample_restir_gi_bilateral(
     float2 uv,
     float depth_linear,
     float3 normal,
-    bool history)
+    bool history,
+    out bool valid)
 {
+    valid = false;
     uint width;
     uint height;
     tex4.GetDimensions(width, height);
@@ -73,6 +75,10 @@ float3 sample_restir_gi_bilateral(
         float depth_difference =
             abs(linearize_depth(depth) - depth_linear) /
             max(depth_linear, 1e-3f);
+        // A normalized bilateral weight alone cannot reject disocclusion:
+        // even tiny weights normalize back to full-strength stale lighting.
+        if (depth_difference > 0.04f || dot(normal, sample_normal) < 0.9f)
+            continue;
         float depth_weight = exp(-depth_difference * 64.0f);
         float normal_weight = pow(
             saturate(dot(normal, sample_normal)),
@@ -95,38 +101,38 @@ float3 sample_restir_gi_bilateral(
 
     if (weight_total > 1e-5f)
     {
+        valid = true;
         return result / weight_total;
     }
 
-    // every tap sits on a different surface, which is the common case along a silhouette at the
-    // quarter resolution restir runs at, a point sample here grabs whatever surface happens to
-    // be under the texel centre and the composition then remodulates that irradiance with this
-    // pixel's albedo, drawing a bright rim along every edge, the closest matching tap at least
-    // carries irradiance from a comparable surface
+    // Only eligible surface taps can supply the fallback. If none survived,
+    // composition keeps its environment lighting instead of another surface's GI.
+    valid = best_similarity >= 0.0f;
     return best_value;
 }
 
 // the async gi lags one frame, so follow this surface back to where it was and match it against
 // its own previous depth, velocity.w carries it with object motion included
-float3 sample_restir_gi_history(float2 uv, float depth_linear, float3 normal)
+float3 sample_restir_gi_history(float2 uv, float3 normal, out bool valid)
 {
+    valid = false;
     float4 velocity     = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f);
     float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
     float2 prev_uv      = uv + (jitter_delta - velocity.xy * float2(0.5f, -0.5f)) * get_render_uv_scale();
 
     float expected_depth = abs(velocity.w);
-    if (expected_depth <= 0.0f || expected_depth >= FLT_MAX_16U || isnan(expected_depth))
+    if (expected_depth <= 0.0f || expected_depth >= FLT_MAX_16U || !isfinite(expected_depth) || !all(isfinite(prev_uv)))
     {
-        expected_depth = depth_linear;
+        return 0.0f;
     }
 
-    // off screen last frame, the closest surface match around the same pixel is the best there is
+    // A newly visible pixel has no history at the clamped screen edge.
     if (!is_valid_render_uv(prev_uv))
     {
-        prev_uv = clamp(prev_uv, 0.0f, get_render_uv_scale());
+        return 0.0f;
     }
 
-    return sample_restir_gi_bilateral(prev_uv, expected_depth, normal, true);
+    return sample_restir_gi_bilateral(prev_uv, expected_depth, normal, true, valid);
 }
 
 // approx of multi-bounce (inter-reflection) for ao
@@ -283,10 +289,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float coverage = restir_coverage(surface.uv);
         if (coverage > 0.0f)
         {
-            float depth_linear = linearize_depth(surface.depth);
-            float3 restir_gi   = pass_bool(pass_light_image_based::restir_previous) ?
-                sample_restir_gi_history(surface.uv, depth_linear, surface.normal) :
-                tex4.Load(int3(thread_id.xy, 0)).rgb; // already reconstructed at render resolution
+            bool history_valid = true;
+            float3 restir_gi;
+            if (pass_bool(pass_light_image_based::restir_previous))
+                restir_gi = sample_restir_gi_history(surface.uv, surface.normal, history_valid);
+            else
+                restir_gi = tex4.Load(int3(thread_id.xy, 0)).rgb; // already reconstructed at render resolution
+            coverage *= history_valid ? 1.0f : 0.0f;
             float3 restir_ibl =
                 restir_gi *
                 restir_gi_demodulator(surface.albedo.rgb) *
