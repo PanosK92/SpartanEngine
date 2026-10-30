@@ -59,8 +59,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float roughness = sqrt(ggx_alpha_from_roughness(max(get_material(uv).r, 0.04f)));
 
     // engine velocity is unjittered ndc delta (curr - prev), nrd wants uv motion as prev = curr + mv
-    float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
-    float2 mv           = velocity_ndc * float2(-0.5f, 0.5f);
+    float4 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float2 mv = velocity.xy * float2(-0.5f, 0.5f);
 
     float3 total_radiance = max(tex[thread_id.xy].rgb, 0.0f);
     float3 spec_radiance = clamp(tex2[thread_id.xy].rgb, 0.0f, total_radiance);
@@ -69,6 +69,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Remove the view/roughness-dependent environment BRDF as well as colour.
     // The unpack pass restores it from full-resolution guides after upsampling.
     float3 position_ws = get_position(depth, render_uv_to_screen_uv(uv));
+    // NRD reconstructs previous view depth as view_z + mv.z. A camera-only
+    // estimate loses object motion along the view axis. The sign of velocity.w
+    // marks cutout coverage; its magnitude stores the actual previous depth.
+    float previous_view_z = abs(velocity.w);
+    if (!isfinite(previous_view_z) || previous_view_z <= 0.0f || previous_view_z >= FLT_MAX_16U)
+        previous_view_z = abs(mul(float4(position_ws, 1.0f), buffer_frame.view_previous).z);
+    float depth_motion = previous_view_z - view_z;
     float3 view_dir = normalize(get_camera_position() - position_ws);
     float3 diffuse_factor, specular_factor;
     NRD_MaterialFactors(normal_ws, view_dir, albedo * (1.0f - metallic),
@@ -80,7 +87,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 hit_dist_params = float3(restir_hit_distance_a, restir_hit_distance_b, restir_hit_distance_c);
     float norm_hit_dist = REBLUR_FrontEnd_GetNormHitDist(hit_dist, view_z, hit_dist_params, 1.0f);
 
-    tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);
+    tex_uav[thread_id.xy]  = float4(mv, depth_motion, 0.0f);
     tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, roughness, 0.0f);
     tex_uav3[thread_id.xy] = float4(view_z, 0.0f, 0.0f, 0.0f);
     tex_uav4[thread_id.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(diff_radiance, norm_hit_dist, true);

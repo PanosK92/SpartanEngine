@@ -79,7 +79,9 @@ namespace spartan
 
             settings.motionVectorScale[0] = 1.0f;
             settings.motionVectorScale[1] = 1.0f;
-            settings.motionVectorScale[2] = 0.0f;
+            // ReSTIR supplies previous-minus-current view depth as well as UV
+            // motion. Other presets still rely on NRD's camera-only Z fallback.
+            settings.motionVectorScale[2] = preset == Nrd_Preset::Gi ? 1.0f : 0.0f;
 
             // NRD wants the sample offset in pixels, opposite to the projected geometry displacement.
             // Convert NDC to the denoising grid, including reduced-resolution denoisers.
