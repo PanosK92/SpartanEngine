@@ -25,6 +25,50 @@ float2 reproject_to_previous_frame(float2 current_uv)
     return current_uv + (jitter_delta - velocity_uv) * get_render_uv_scale();
 }
 
+// Zeng et al. (2021), Eq. 6, used by Lin 2026 section 6.4:
+// y is the ordinary reprojection, z is that occluder's CURRENT location, and
+// the alternate history coordinate is y + (x - z). Invert the current motion
+// field to find z; last frame's velocity is only an initial search guess.
+bool find_dual_history_uv(float2 current_uv, float2 previous_uv, out float2 dual_uv)
+{
+    dual_uv = previous_uv;
+    float previous_depth = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), previous_uv, 0).r;
+    if (previous_depth <= 0.0f)
+        return false;
+    float previous_z = linearize_depth(previous_depth);
+    if (!(previous_z > 0.0f) || !isfinite(previous_z))
+        return false;
+    float2 uv_scale = get_render_uv_scale();
+    float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f) * uv_scale;
+    float2 old_motion = tex6.SampleLevel(GET_SAMPLER(sampler_point_clamp), previous_uv, 0).xy * float2(0.5f, -0.5f) * uv_scale;
+    float2 occluder_uv = previous_uv + old_motion - jitter_delta;
+    [loop]
+    for (uint iteration = 0u; iteration < 8u; ++iteration)
+    {
+        if (!all(isfinite(occluder_uv)) || any(occluder_uv < 0.0f) || any(occluder_uv >= uv_scale))
+            return false;
+        float4 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), occluder_uv, 0);
+        float2 backward = jitter_delta - motion.xy * float2(0.5f, -0.5f) * uv_scale;
+        float2 next_uv = previous_uv - backward;
+        float2 residual = (next_uv - occluder_uv) * buffer_frame.resolution_render;
+        if (all(isfinite(motion)) && dot(residual, residual) <= 0.25f)
+        {
+            // A converged screen coordinate can belong to the revealed background
+            // instead of the old occluder. Match its stored previous-frame depth.
+            float source_z = abs(motion.w);
+            if (source_z <= 0.0f || source_z >= FLT_MAX_16U ||
+                abs(source_z - previous_z) > max(previous_z * 0.01f, 0.001f))
+                return false;
+            dual_uv = current_uv + backward;
+            return all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
+        }
+        occluder_uv = next_uv;
+    }
+    // No verified forward correspondence: keep the fresh technique rather than
+    // treating last frame's displacement as this frame's occluder motion.
+    return false;
+}
+
 // validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
 bool is_temporal_sample_valid(
     float2 current_uv,
@@ -108,21 +152,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     bool   have_history = is_temporal_sample_valid(uv, prev_uv, normal_ws, buffer_frame.resolution_render, temporal_confidence);
     bool   dual_history = false;
 
-    // dual motion vectors on disocclusion, lin 2026 6.4 after zeng 2021, a freshly revealed
-    // pixel has no history of its own but the surface that hid it kept moving, its velocity in
-    // the previous frame, read at prev_uv where it stood, says which way it came from, and the
-    // background just past its earlier silhouette in that direction was visible then, so that
-    // reservoir is offered as the temporal neighbour, the shift moves the path onto this primary
-    // with a proper jacobian so nothing is copy pasted, only the plane gate below is relaxed to
-    // the spatial neighbour tolerance since the source primary is a different surface point
+    // Section 6.4: offer the dual-motion correspondence as a resampling technique.
+    // The shift and spatial surface checks below still validate the reused path.
     float2 uv_scale     = get_render_uv_scale();
     bool prev_on_screen = all(prev_uv > 0.0f) && all(prev_uv < uv_scale);
     if (!have_history && prev_on_screen)
     {
-        float2 occluder_motion = tex6.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).xy * float2(0.5f, -0.5f) * uv_scale;
-        float2 dual_uv         = prev_uv - occluder_motion;
-        // a still occluder reproduces prev_uv, which already failed
-        if (dot(occluder_motion, occluder_motion) > 0.0f && all(dual_uv > 0.0f) && all(dual_uv < uv_scale))
+        float2 dual_uv;
+        if (find_dual_history_uv(uv, prev_uv, dual_uv))
         {
             history_uv   = dual_uv;
             have_history = true;
