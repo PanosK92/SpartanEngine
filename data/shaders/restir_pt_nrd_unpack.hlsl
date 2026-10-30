@@ -53,8 +53,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 upper_center = floor((float2(base) + 1.5f) * guide_ratio) + 0.5f;
     float2 fraction = saturate((receiver_pixel - lower_center) / max(upper_center - lower_center, 1.0f));
     int2 pixel_max = max(int2(float2(lighting_size) * get_render_uv_scale()) - 1, 0);
+    // Match packing's validity range. NRD does not guarantee writes outside
+    // this range, so those output texels can still contain an older surface.
+    const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
-    if (depth <= 0.0f)
+    if (depth <= 0.0f || linearize_depth(depth) >= denoising_range)
     {
         tex_uav[thread_id.xy] = 0.0f;
         return;
@@ -83,7 +86,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Match the actual G-buffer sample behind this low-resolution lighting tap.
         sample_uv = (floor(sample_uv * float2(resolution)) + 0.5f) / float2(resolution);
         float sample_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r;
-        if (sample_depth <= 0.0f)
+        if (sample_depth <= 0.0f || linearize_depth(sample_depth) >= denoising_range)
             continue;
         float3 sample_normal = get_normal(sample_uv);
         float3 sample_position = get_position(sample_depth, render_uv_to_screen_uv(sample_uv));
