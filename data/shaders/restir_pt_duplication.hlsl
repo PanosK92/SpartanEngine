@@ -30,6 +30,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupI
     uint2 pixel = dispatch_id.xy;
     uint resolution_x, resolution_y;
     tex_uav.GetDimensions(resolution_x, resolution_y);
+    // Section 5 counts reservoirs in the rendered image, not unused allocation.
+    // Match the active reservoir bounds used by temporal and spatial reuse.
+    uint2 active_size = uint2(float2(resolution_x, resolution_y) * get_render_uv_scale());
 
     int2 tile_origin = int2(group_id.xy * uint2(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y)) - DUPLICATION_WINDOW_RADIUS;
 
@@ -40,7 +43,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupI
         int2 p     = tile_origin + local;
 
         uint seed = 0u;
-        if (p.x >= 0 && p.y >= 0 && p.x < (int)resolution_x && p.y < (int)resolution_y)
+        if (p.x >= 0 && p.y >= 0 && p.x < (int)active_size.x && p.y < (int)active_size.y)
         {
             seed = asuint(tex[p].x);
         }
@@ -51,6 +54,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupI
 
     if (pixel.x >= resolution_x || pixel.y >= resolution_y)
         return;
+
+    // Keep all lanes through the shared-memory barrier, including inactive ones.
+    if (any(pixel >= active_size))
+    {
+        tex_uav[pixel] = 0.0f;
+        return;
+    }
 
     int2 center   = int2(pixel) - tile_origin;
     uint own_seed = tile_seeds[center.y][center.x];
