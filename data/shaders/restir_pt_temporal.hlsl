@@ -165,6 +165,24 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             // on its draw biases the blend toward the histories that happened to find light.
             bool usable = is_reservoir_valid(temporal) && temporal.M > 0.0f;
 
+            // Reprojection validated the full-resolution pixel, but the selected
+            // reservoir was traced at a snapped guide centre. At reduced tracing
+            // resolution that guide can lie across a silhouette in the same cell.
+            // Validate its previous-frame geometry too, using motion's previous
+            // depth so moving surfaces are compared in the same frame.
+            if (usable && !dual_history)
+            {
+                float2 source_uv = restir_primary_uv((float2(prev_pixel) + 0.5f) / resolution);
+                float source_depth = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), source_uv, 0).r;
+                float3 source_normal = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(source_uv)]);
+                float expected_depth = abs(tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).w);
+                float motion_factor = saturate(length((uv - prev_uv) * buffer_frame.resolution_render) / 32.0f);
+                float depth_delta = abs(linearize_depth(source_depth) - expected_depth) / max(expected_depth, 1e-3f);
+                usable = source_depth > 0.0f &&
+                    dot(normal_ws, source_normal) >= lerp(0.9f, 0.97f, motion_factor) &&
+                    depth_delta <= lerp(0.12f, 0.04f, motion_factor);
+            }
+
             // the dual candidate skipped the reprojection gate, it is a neighbour on the same
             // surface or nothing, tested against the stored source primary like the spatial pass
             if (usable && dual_history)
