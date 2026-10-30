@@ -62,12 +62,16 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.flags = PATH_FLAG_HAS_RC | (rc.hit ? 0u : PATH_FLAG_SKY);
     s.rc_pos = rc.hit ? rc.hit_position : direction;
     s.rc_normal = rc.hit ? rc.hit_normal : -direction;
+    // Cache density using the same geometric normal that survives storage;
+    // otherwise an identity shift could accumulate quantization drift.
+    s.rc_geometric_normal_packed = rc.hit ? pack_rc_geometric_normal(rc.geometric_normal) : 0u;
     s.rc_albedo = rc.albedo;
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
     s.rc_outgoing_dir = s.rc_normal;
     float3 delta = rc.hit_position - previous.hit_position;
-    s.rc_pdf = rc.hit ? abs(dot(rc.hit_normal, direction)) / max(dot(delta, delta), 1e-20f) : 1.0f;
+    float distance_sq = dot(delta, delta);
+    s.rc_pdf = rc.hit ? abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 1.0f;
     if (vertex == 2u && rc.hit)
     {
         float2 geometric_oct = octahedral_encode(rc.geometric_normal);
@@ -165,6 +169,13 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed);
             leaf.flags |= PATH_FLAG_RC_EMIT;
+            // Terminal normals already occupy the shading-normal word.
+            if (depth > 2u && current.hit)
+            {
+                float3 edge = current.hit_position - previous.hit_position;
+                float distance_sq = dot(edge, edge);
+                leaf.rc_pdf = abs(dot(endpoint.hit_normal, edge * rsqrt(distance_sq))) / distance_sq;
+            }
             leaf.rc_L_nee = emitted;
             leaf.F = throughput * incoming_pdf * emitted * endpoint_mis;
             inverse_density = dir_pdf / incoming_pdf;
@@ -381,7 +392,10 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
             -direction, src.rc_outgoing_dir, pdf_out, 1.0f);
     if (!is_nee_sample(src) && !restir_prefix_connection_allowed(previous, rc, connect_pdf, pdf_out, threshold))
         return result;
-    float geometry = is_sky_sample(src) || is_dirac_light_sample(src) ? 1.0f : dot(src.rc_normal, -direction) / dot(delta, delta);
+    if (!is_sky_sample(src) && !is_dirac_light_sample(src) && dot(src.rc_normal, -direction) <= 0.0f)
+        return result;
+    float3 geometric_normal = k < src.path_length ? unpack_rc_geometric_normal(src.rc_geometric_normal_packed) : src.rc_normal;
+    float geometry = is_sky_sample(src) || is_dirac_light_sample(src) ? 1.0f : abs(dot(geometric_normal, -direction)) / dot(delta, delta);
     if (geometry <= 0.0f || src.rc_pdf <= 0.0f)
         return result;
     PathSample connection = src;

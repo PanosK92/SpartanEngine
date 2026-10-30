@@ -469,6 +469,7 @@ struct PathSample
     uint endpoint_emtri_draw;
     float3 rc_pos;
     float3 rc_normal;
+    uint rc_geometric_normal_packed; // Continuing postponed RC: two 12-bit octahedral components.
     float3 rc_outgoing_dir;
     float3 rc_L_post;
     float3 rc_L_nee;
@@ -525,6 +526,18 @@ uint pack_path_info(PathSample s)
         | ((s.endpoint_light & 65535u) << 10u) | ((s.endpoint_emtri_draw & 31u) << 26u) | (uint(s.endpoint_pooled) << 31u);
 }
 
+uint pack_rc_geometric_normal(float3 normal)
+{
+    float2 oct = octahedral_encode(normal);
+    uint2 encoded = uint2(saturate(oct * 0.5f + 0.5f) * 4095.0f + 0.5f);
+    return encoded.x | (encoded.y << 12u);
+}
+
+float3 unpack_rc_geometric_normal(uint packed)
+{
+    return octahedral_decode(float2(packed & 4095u, (packed >> 12u) & 4095u) * (2.0f / 4095.0f) - 1.0f);
+}
+
 void unpack_path_info(uint packed, inout PathSample s)
 {
     s.rc_length = packed & 7u;
@@ -543,7 +556,7 @@ void unpack_path_info(uint packed, inout PathSample s)
 // t1: suffix radiance OR source position, packed outgoing direction
 // t2: terminal radiance OR source position, packed RC albedo/metallic
 // t3: seed, path descriptor, W, endpoint NEE source PDF (target is derived from F)
-// t4: M, two half-float roughnesses, packed source normal, source albedo/metallic
+// t4: 8-bit M + 24-bit RC geometric normal, two roughnesses, source normal, source albedo/metallic
 // t5: cached RGB integrand paired with W, postponed geometry density OR primary RC geometric normal
 float pack_f16x2_to_float(float a, float b)
 {
@@ -602,8 +615,14 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
         r.sample.rc_nee_pdf
     );
     tex5 = float4(r.sample.F, r.sample.rc_pdf);
+    // Supplemental Algorithm 1 stores confidence as an 8-bit integer. The
+    // current cap and three spatial neighbors bound stored M by 4 * 21 = 84.
+    // Use the remaining bits for the postponed RC geometry, not its BRDF normal.
+    uint confidence = uint(clamp(r.M + 0.5f, 0.0f, 255.0f));
+    bool continuing_postponed = !terminal && r.sample.rc_length > 2u && (r.sample.flags & PATH_FLAG_HAS_RC) != 0u;
+    uint geometric = continuing_postponed ? r.sample.rc_geometric_normal_packed : 0u;
     tex4 = float4(
-        r.M,
+        asfloat(confidence | (geometric << 8u)),
         pack_f16x2_to_float(r.sample.rc_roughness, r.sample.src_roughness),
         pack_f16x2_to_float(src_normal_oct.x, src_normal_oct.y),
         pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
@@ -657,7 +676,8 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.src_albedo   = src_albedo_met.rgb;
     r.sample.src_metallic = src_albedo_met.a;
 
-    r.M          = tex4.x;
+    r.M          = float(asuint(tex4.x) & 255u);
+    r.sample.rc_geometric_normal_packed = asuint(tex4.x) >> 8u;
     r.W          = tex3.z;
     r.target_pdf = max(r.sample.F.r + r.sample.F.g + r.sample.F.b, 0.0f) * (1.0f / 3.0f);
     // never stored, the resampling stream rebuilds it from scratch in every pass
@@ -727,6 +747,7 @@ Reservoir create_empty_reservoir()
     Reservoir r;
     r.sample.rc_pos          = float3(0, 0, 0);
     r.sample.rc_normal       = float3(0, 1, 0);
+    r.sample.rc_geometric_normal_packed = 0u;
     r.sample.rc_outgoing_dir = float3(0, 1, 0);
     r.sample.rc_L_post       = float3(0, 0, 0);
     r.sample.rc_L_nee        = float3(0, 0, 0);
