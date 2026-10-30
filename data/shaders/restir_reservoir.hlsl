@@ -1350,7 +1350,9 @@ ShiftResult try_reconnection_shift(
 
     // Direct reconnections still receive a separate visibility test.
     bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
-    if (is_identity)
+    // A stationary primary does not imply a stationary/unchanged light.
+    // Dirac endpoints must resolve and re-evaluate current light parameters below.
+    if (is_identity && !is_dirac_light_sample(src))
     {
         result.f_dst = src.F;
         result.sample.F = src.F;
