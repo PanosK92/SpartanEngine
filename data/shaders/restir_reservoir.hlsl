@@ -1119,6 +1119,14 @@ float3 restir_ray_origin(float3 position, float3 geometric_normal)
         restir_offset_ray_component(position.z, geometric_normal.z));
 }
 
+float3 restir_reconnection_ray_origin(PathSample sample, float3 position, float3 geometric_normal)
+{
+    // Reference Shift::shiftPathReconnection offsets using the retained event,
+    // not a newly inferred direction. Reuse must keep the same interface side.
+    bool transmission = (sample.flags & PATH_FLAG_TRANSMISSION_BEFORE_RC) != 0u;
+    return restir_ray_origin(position, transmission ? -geometric_normal : geometric_normal);
+}
+
 // diffuse vs specular selection probability for the importance sampled brdf, from lobe energy
 float compute_spec_probability(float3 albedo, float roughness, float metallic, float n_dot_v)
 {
@@ -1397,7 +1405,7 @@ float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal,
     if (is_sky_sample(s) && s.rc_length == 2u)
         direction = s.rc_pos;
     else if (s.rc_length == 2u && (has_reconnection(s) || is_nee_sample(s)))
-        direction = normalize(s.rc_pos - restir_ray_origin(pos, geometric_normal));
+        direction = normalize(s.rc_pos - restir_reconnection_ray_origin(s, pos, geometric_normal));
     else
     {
         uint seed = s.seed_path;
@@ -1615,7 +1623,7 @@ ShiftResult try_reconnection_shift(
         return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
             dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
 
-    float3 connection_origin = restir_ray_origin(dst_pos, dst_geometric_normal);
+    float3 connection_origin = restir_reconnection_ray_origin(src, dst_pos, dst_geometric_normal);
     if (is_triangle_reconnection(src) || is_area_light_sample(src))
     {
         if (!restir_reconstruct_rc(src, connection_origin)) return result;
@@ -2090,7 +2098,7 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
     if ((has_reconnection(src) && src.rc_length > 2u) || (src.rc_length == 0u && src.path_length > 0u))
         return true;
     RayDesc ray;
-    ray.Origin = restir_ray_origin(dst_pos, dst_normal);
+    ray.Origin = restir_reconnection_ray_origin(src, dst_pos, dst_normal);
     // Reference evalSegmentVisibility: the surface origin is already offset.
     // Its default disables any additional gap at the start of the segment.
     ray.TMin = 0.0f;

@@ -378,7 +378,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     }
     uint k = src.rc_length;
     PathSurface previous = vertices[k - 1u];
-    float3 connection_origin = restir_ray_origin(previous.hit_position, previous.geometric_normal);
+    float3 connection_origin = restir_reconnection_ray_origin(src, previous.hit_position, previous.geometric_normal);
     if (!restir_reconstruct_rc(src, connection_origin)) return result;
     result.sample = src;
     if (is_dirac_light_sample(src))
