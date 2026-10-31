@@ -944,10 +944,8 @@ int2 restir_pairing_partner(uint2 pixel, uint table)
 
 // g-buffer similarity gate used before attempting a shift on a paired neighbor
 bool is_neighbor_gbuffer_compatible(
+    uint2 center_pixel,
     int2 neighbor_pixel,
-    float3 center_pos,
-    float3 center_normal,
-    float center_linear_depth,
     float2 resolution)
 {
     float2 resolution_active = floor(resolution * get_render_uv_scale());
@@ -955,7 +953,28 @@ bool is_neighbor_gbuffer_compatible(
         neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution_active.y)
         return false;
 
-    float2 neighbor_uv   = restir_primary_uv((neighbor_pixel + 0.5f) / resolution);
+    if (any(center_pixel >= uint2(resolution_active)))
+        return false;
+
+    // Both lanes must evaluate the same ordered pair. Algebraically symmetric
+    // expressions with caller-supplied guides can round differently on the GPU
+    // and disagree at the threshold, breaking paired reuse's reciprocal gate.
+    int2 first = int2(center_pixel);
+    int2 second = neighbor_pixel;
+    if (second.y < first.y || (second.y == first.y && second.x < first.x))
+    {
+        int2 swap_pixel = first;
+        first = second;
+        second = swap_pixel;
+    }
+    float2 center_uv = restir_primary_uv((first + 0.5f) / resolution);
+    float center_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, 0).r;
+    if (center_depth <= 0.0f)
+        return false;
+    float center_linear_depth = linearize_depth(center_depth);
+    float3 center_pos = restir_primary_position(center_uv);
+    float3 center_normal = get_normal(center_uv);
+    float2 neighbor_uv   = restir_primary_uv((second + 0.5f) / resolution);
     float neighbor_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).r;
 
     if (neighbor_depth <= 0.0f)

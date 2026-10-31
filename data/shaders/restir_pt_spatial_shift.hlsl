@@ -74,14 +74,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint group_index : SV_Grou
         Reservoir center = load_pair_reservoir(pixel);
         if (depth > 0.0f && is_reservoir_valid(center) && center.M > 0.0f && center.W > 0.0f)
         {
-            float3 position = restir_primary_position(uv);
-            float3 normal = get_normal(uv);
             bool needs_replay = center.sample.rc_length > 2u ||
                 (!has_reconnection(center.sample) && (!is_sky_sample(center.sample) || !is_nee_sample(center.sample)));
             for (uint t = 0u; t < RESTIR_PAIRING_COUNT; ++t)
             {
                 int2 partner = restir_pairing_partner(pixel, t);
-                if (!is_neighbor_gbuffer_compatible(partner, position, normal, linearize_depth(depth), resolution))
+                if (!is_neighbor_gbuffer_compatible(pixel, partner, resolution))
                     continue;
                 if (needs_replay)
                 {

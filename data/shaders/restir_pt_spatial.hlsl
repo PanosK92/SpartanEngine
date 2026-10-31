@@ -56,7 +56,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         return;
     }
 
-    float linear_depth = linearize_depth(depth);
     float3 pos_ws      = restir_primary_position(uv);
     float3 normal_ws   = get_normal(uv);
     float3 geometric_normal_ws = get_geometric_normal(uv);
@@ -112,7 +111,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         int2 neighbor_pixel = restir_pairing_partner(pixel, t);
 
-        if (!is_neighbor_gbuffer_compatible(neighbor_pixel, pos_ws, normal_ws, linear_depth, resolution))
+        if (!is_neighbor_gbuffer_compatible(pixel, neighbor_pixel, resolution))
             continue;
 
         // Keep every compatible technique, including a zero or occluded draw. Selecting the
