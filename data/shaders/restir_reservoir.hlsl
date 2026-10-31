@@ -124,9 +124,9 @@ float get_restir_m_cap_decorrelated(float duplication)
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 // One BSDF path tree per pixel; its light-ending leaves share the initial RIS.
 uint  get_restir_initial_candidates()  { return 1u; }
-// depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
-static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
-static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
+// Reference isValidGeometry with useSymmetricCondition for paired spatial reuse.
+static const float RESTIR_DEPTH_THRESHOLD    = 0.1f;
+static const float RESTIR_NORMAL_THRESHOLD   = 0.5f;
 static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 // Scatter and guide rays already use restir_ray_origin. Match the reference's
 // zero TMin; another world-space epsilon would skip nearby surfaces.
@@ -979,7 +979,6 @@ bool is_neighbor_gbuffer_compatible(
     float center_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, 0).r;
     if (center_depth <= 0.0f)
         return false;
-    float center_linear_depth = linearize_depth(center_depth);
     float3 center_pos = restir_primary_position(center_uv);
     float3 center_normal = get_normal(center_uv);
     float2 neighbor_uv   = restir_primary_uv(uint2(second), uint2(resolution));
@@ -988,30 +987,19 @@ bool is_neighbor_gbuffer_compatible(
     if (neighbor_depth <= 0.0f)
         return false;
 
-    float neighbor_linear_depth = linearize_depth(neighbor_depth);
-    // Pairing is reciprocal: both ends must agree on eligibility, otherwise one pass can
-    // use a pair whose reverse pre-pass was rejected. Base every gate on the same depth.
-    float pair_depth = min(center_linear_depth, neighbor_linear_depth);
-
     float3 neighbor_normal = get_normal(neighbor_uv);
     float normal_similarity = dot(center_normal, neighbor_normal);
-
-    float adaptive_normal_threshold = lerp(RESTIR_NORMAL_THRESHOLD, 0.98f,
-                                            saturate(pair_depth / 150.0f));
-    if (normal_similarity < adaptive_normal_threshold)
+    if (normal_similarity < RESTIR_NORMAL_THRESHOLD)
         return false;
 
-    // Compare surface planes, not distance along the surface. A raw depth or
-    // Euclidean-distance gate collapses the Gaussian reuse radius on grazing
-    // floors, especially at reduced tracing resolution. Test both planes so
-    // the two ends of a reciprocal pair always agree on eligibility.
+    // Match the reference's symmetric camera-distance gate. Plane separation
+    // admits distant points on grazing floors while rejecting different pairs
+    // on curved surfaces, changing the paper's spatial reuse neighborhood.
     float3 neighbor_pos = restir_primary_position(neighbor_uv);
-    float3 separation = neighbor_pos - center_pos;
-    float plane_distance = max(abs(dot(separation, center_normal)), abs(dot(separation, neighbor_normal)));
-    if (plane_distance > max(pair_depth * RESTIR_DEPTH_THRESHOLD, 0.005f))
-        return false;
-
-    return true;
+    float center_distance = length(center_pos - get_camera_position());
+    float neighbor_distance = length(neighbor_pos - get_camera_position());
+    return abs(center_distance - neighbor_distance) <
+        RESTIR_DEPTH_THRESHOLD * max(center_distance, neighbor_distance);
 }
 
 // sampling helpers
