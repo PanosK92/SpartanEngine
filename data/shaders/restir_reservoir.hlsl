@@ -1916,7 +1916,10 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
     s.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
     s.endpoint_environment = light.light_index == RESTIR_ENDPOINT_SKY;
     s.endpoint_geometry = light.endpoint_dirac ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
-    s.endpoint_emtri_draw = light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG : light.emtri_draw;
+    // Analytic endpoints do not need the proposal index. Keeping it would let
+    // rectangular-light proposal 7 collide with the persistent dirac tag.
+    s.endpoint_emtri_draw = light.light_index < RESTIR_ENDPOINT_EMTRI
+        ? (light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG : 0u) : light.emtri_draw;
     s.rc_nee_pdf = light.endpoint_pdf;
     return s;
 }
