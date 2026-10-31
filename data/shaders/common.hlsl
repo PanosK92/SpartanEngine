@@ -780,6 +780,12 @@ float2 get_render_uv_scale()
     return get_render_resolution_active() / max(buffer_frame.resolution_render, float2(1.0f, 1.0f));
 }
 
+float2 get_render_uv_scale_previous()
+{
+    float2 active = max(floor(buffer_frame.resolution_render * buffer_frame.resolution_scale_previous), float2(1.0f, 1.0f));
+    return active / max(buffer_frame.resolution_render, float2(1.0f, 1.0f));
+}
+
 float2 render_uv_to_screen_uv(float2 uv)
 {
     return uv / get_render_uv_scale();

@@ -2162,6 +2162,7 @@ namespace spartan
         Renderer::view().frame.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
         Renderer::view().frame.delta_time_real       = static_cast<float>(Timer::GetDeltaTimeRealSec());
         Renderer::view().frame.frame                 = ++view().temporal_frame;
+        Renderer::view().frame.resolution_scale_previous = Renderer::view().frame.resolution_scale;
         Renderer::view().frame.resolution_scale      = GetResolutionScale();
         Renderer::view().frame.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
         // 0 = sdr, 1 = hdr10 pq, 2 = hdr scrgb (d3d12 windowed)

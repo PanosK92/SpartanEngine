@@ -865,8 +865,9 @@ bool evaluate_disocclusion(
 {
     confidence = 0.0f;
 
-    // uvs are render uvs, only the scaled top left of the history holds last frame
-    if (!is_valid_render_uv(prev_uv))
+    // History bounds use the rectangle that was rendered last frame.
+    float2 previous_scale = get_render_uv_scale_previous();
+    if (!all(isfinite(prev_uv)) || any(prev_uv < 0.0f) || any(prev_uv >= previous_scale))
         return false;
 
     float4 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0);
@@ -876,11 +877,13 @@ bool evaluate_disocclusion(
         expected_prev_depth <= 0.0f || expected_prev_depth >= FLT_MAX_16U)
         return false;
     float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
-    float2 expected_prev_uv = current_uv + (jitter_delta - velocity.xy * float2(0.5f, -0.5f)) * get_render_uv_scale();
+    float2 current_scale = get_render_uv_scale();
+    float2 expected_prev_uv = current_uv * (previous_scale / current_scale) +
+        (jitter_delta - velocity.xy * float2(0.5f, -0.5f)) * previous_scale;
     float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * resolution;
     float  reproj_dist      = length(reproj_diff);
 
-    float2 motion        = (current_uv - prev_uv) * resolution;
+    float2 motion        = (current_uv - prev_uv * (current_scale / previous_scale)) * resolution;
     float  motion_len    = length(motion);
     float  motion_factor = saturate(motion_len / max(motion_reference, 1.0f));
 

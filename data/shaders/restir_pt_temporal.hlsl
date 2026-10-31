@@ -23,8 +23,11 @@ float2 reproject_to_previous_frame(float2 current_uv, bool reverse_motion = fals
     // The reservoir and G-buffer histories live on jittered pixel grids, while
     // velocity deliberately excludes jitter. Put history UVs on the prior grid.
     float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
-    // both deltas are screen uv, current_uv is a render uv in the scaled subrect
-    return current_uv + (jitter_delta + (reverse_motion ? velocity_uv : -velocity_uv)) * get_render_uv_scale();
+    // Motion is in screen UV. History occupies the previous render rectangle,
+    // which can differ even for a stationary camera under dynamic resolution.
+    float2 previous_scale = get_render_uv_scale_previous();
+    return current_uv * (previous_scale / get_render_uv_scale()) +
+        (jitter_delta + (reverse_motion ? velocity_uv : -velocity_uv)) * previous_scale;
 }
 
 // Zeng et al. (2021), Eq. 6, used by Lin 2026 section 6.4:
@@ -37,7 +40,8 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
     restir_primary_hit_previous.GetDimensions(width, height);
     float2 size = float2(width, height);
     float2 uv_scale = get_render_uv_scale();
-    if (!all(isfinite(previous_uv)) || any(previous_uv < 0.0f) || any(previous_uv >= uv_scale))
+    float2 previous_scale = get_render_uv_scale_previous();
+    if (!all(isfinite(previous_uv)) || any(previous_uv < 0.0f) || any(previous_uv >= previous_scale))
         return false;
     uint2 previous_pixel = uint2(previous_uv * size);
     float4 stored_hit = restir_primary_hit_previous[previous_pixel];
@@ -70,8 +74,9 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
         return false;
     float2 occluder_uv = (clip.xy / clip.w * float2(0.5f, -0.5f) + 0.5f) * uv_scale;
     float2 source_uv = restir_primary_uv((float2(previous_pixel) + 0.5f) / size);
-    dual_uv = current_uv + source_uv - occluder_uv;
-    return all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
+    float2 to_history = previous_scale / uv_scale;
+    dual_uv = current_uv * to_history + source_uv - occluder_uv * to_history;
+    return all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < previous_scale);
 }
 
 // validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
@@ -161,7 +166,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // Section 6.4: offer the dual-motion correspondence as a resampling technique.
     // The shift and spatial surface checks below still validate the reused path.
-    float2 uv_scale     = get_render_uv_scale();
+    float2 uv_scale     = get_render_uv_scale_previous();
     bool prev_on_screen = all(prev_uv >= 0.0f) && all(prev_uv < uv_scale);
     if (!have_history)
     {
@@ -200,7 +205,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (have_history)
     {
         float2 prev_pixel_f      = history_uv * resolution;
-        float2 resolution_active = floor(resolution * get_render_uv_scale());
+        float2 resolution_active = floor(resolution * get_render_uv_scale_previous());
         // Reservoir history uses a single integer load, not a bilinear footprint.
         // Every coordinate in [0, active_size) maps to a valid texel, including
         // the last row/column and the outer half of each edge texel.
@@ -233,7 +238,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 float source_depth = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), source_uv, 0).r;
                 float3 source_normal = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(source_uv)]);
                 float expected_depth = abs(tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).w);
-                float motion_factor = saturate(length((uv - prev_uv) * buffer_frame.resolution_render) / 32.0f);
+                float2 previous_on_current_grid = prev_uv * (get_render_uv_scale() / get_render_uv_scale_previous());
+                float motion_factor = saturate(length((uv - previous_on_current_grid) * buffer_frame.resolution_render) / 32.0f);
                 float depth_delta = abs(linearize_depth(source_depth) - expected_depth) / max(expected_depth, 1e-3f);
                 usable = source_depth > 0.0f &&
                     dot(normal_ws, source_normal) >= lerp(0.9f, 0.97f, motion_factor) &&

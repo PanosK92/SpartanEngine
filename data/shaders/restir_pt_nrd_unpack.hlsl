@@ -193,7 +193,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
     float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
     float count = 1.0f;
-    if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation))
+    // This extra still-camera average reads the same texel, unlike NRD's
+    // reprojected history. A changed render rectangle changes that texel's ray.
+    if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation) &&
+        all(get_render_uv_scale() == get_render_uv_scale_previous()))
     {
         float4 history = tex2[thread_id.xy];
         float history_count = floor(history.a);

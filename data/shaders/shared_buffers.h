@@ -128,7 +128,7 @@ struct FrameBufferData
     SHARED_UINT   is_multiview;
     // horizontal meters added to every cloud noise lookup, rerolled per world load so each level shows a different cloudscape
     SHARED_FLOAT2 cloud_seed_offset;
-    SHARED_UINT   padding_mv2;
+    SHARED_FLOAT  resolution_scale_previous;
 
     // clustered lighting, populated each frame from camera near/far and the grid constants
     // exponential z slicing, slice = floor(log(view_z) * z_scale + z_bias)
