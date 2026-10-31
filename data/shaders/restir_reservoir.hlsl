@@ -299,7 +299,7 @@ float restir_triangle_point_pdf(float3 origin, float3 v0, float3 v1, float3 v2, 
 {
     float3 delta = endpoint - origin;
     float distance_sq = dot(delta, delta);
-    if (distance_sq <= 1e-12f)
+    if (!restir_connection_distance_valid(distance_sq))
         return 0.0f;
     float projected_area = 0.5f * abs(dot(cross(v1 - v0, v2 - v0), -delta * rsqrt(distance_sq)));
     return projected_area > 0.0f ? distance_sq / projected_area : 0.0f;
@@ -345,9 +345,12 @@ float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 norm
         return 0.0f;
     float total = emissive_triangles[count - 1u].cdf;
     float3 delta = endpoint - origin;
-    float distance = length(delta);
-    if (total <= 0.0f || distance <= 1e-4f)
+    float distance_sq = dot(delta, delta);
+    // Match NEE's support even near the emitter. Dropping only this PDF
+    // gives BSDF hits full MIS weight while NEE still contributes there.
+    if (total <= 0.0f || !restir_connection_distance_valid(distance_sq))
         return 0.0f;
+    float distance = sqrt(distance_sq);
     float3 direction = delta / distance;
     if (dot(normal, direction) <= 0.0f || dot(tri.normal, -direction) <= 1e-4f)
         return 0.0f;
