@@ -35,28 +35,6 @@ PathSurface restir_trace_surface(RayDesc ray)
     return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray, 0.0f);
 }
 
-// The environment probe and BSDF walk must evaluate one emission function.
-// Reuse its compressed hit as well, rather than freezing the sampled point.
-void restir_probe_endpoint(float distance, uint3 hit, RayDesc ray,
-    out float3 position, out float3 normal, out float3 emission)
-{
-    position = 0.0f;
-    normal = 0.0f;
-    emission = 0.0f;
-    GeometryInfo geo = geometry_infos[hit.x];
-    MaterialParameters mat = material_parameters[geo.material_index];
-    // Preserve the cheap non-emitter rejection, except where decals can add
-    // emission that the shared BSDF surface evaluation would also see.
-    if ((mat.is_pooled_emitter() && is_emtri_pool_active()) ||
-        (geo.decal_count == 0u && !mat.emissive_from_albedo() && !mat.has_texture_emissive() && !mat.has_emissive_color()))
-        return;
-    PathSurface surface = reconstruct_path_surface(distance, hit.x, hit.y, hit.z, ray, 0.0f);
-    position = surface.hit_position;
-    normal = surface.geometric_normal;
-    // Pooled emitters have their own NEE strategy and corresponding MIS.
-    emission = surface.pooled_emitter ? float3(0, 0, 0) : surface.emission;
-}
-
 // Match the reference's explicit-LOD reconstruction from retained hit identity.
 // The connection supplies the view direction; material lookup must not change
 // its LOD merely because a different primary reconnects to the same vertex.
@@ -208,9 +186,11 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             if (restir_hit_emitter_triangle(current.geometry, emitter))
                 endpoint_nee_pdf = restir_emitter_source_pdf(emitter, previous.hit_position, previous.hit_normal, current.hit_position);
         }
+        // Sky NEE has no support on surface emitters. An unpooled emissive
+        // hit is sampled only by the BSDF and must keep its full contribution.
         float endpoint_mis = current.pooled_emitter
             ? restir_pooled_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, endpoint_nee_pdf, incoming_pdf)
-            : (depth == 2u ? 1.0f : restir_balance_heuristic(incoming_pdf, sky_nee_pdf_at(dir, previous.hit_normal)));
+            : (depth == 2u || current.hit ? 1.0f : restir_balance_heuristic(incoming_pdf, sky_nee_pdf_at(dir, previous.hit_normal)));
         reference_radiance += reference_throughput * emitted * endpoint_mis * roulette_weight;
         PathSample leaf = connection;
         float inverse_density = connection_density;
@@ -245,6 +225,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             inverse_density = dir_pdf;
         }
         leaf.endpoint_pooled = current.pooled_emitter;
+        leaf.endpoint_environment = !current.hit;
         leaf.endpoint_geometry = current.geometry;
         leaf.rc_nee_pdf = endpoint_nee_pdf;
         leaf.path_length = depth;
@@ -268,7 +249,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             current.hit_normal, -dir, light.direction, light_bsdf_pdf, 1.0f);
         float light_mis = light.light_index == RESTIR_ENDPOINT_EMTRI
             ? restir_pooled_endpoint_mis(depth + 1u, light.light_index, light.endpoint_pdf, light_bsdf_pdf)
-            : restir_rc_endpoint_mis(3u, light.light_index, current.hit_normal, light.direction, light_bsdf_pdf);
+            : restir_rc_endpoint_mis(3u, light.light_index, light.light_index == RESTIR_ENDPOINT_SKY,
+                current.hit_normal, light.direction, light_bsdf_pdf);
         leaf = connection;
         inverse_density = connection_density;
         if (has_reconnection(connection))
@@ -307,6 +289,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
         leaf.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
+        leaf.endpoint_environment = light.light_index == RESTIR_ENDPOINT_SKY;
         leaf.endpoint_geometry = light.endpoint_dirac ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
         leaf.rc_nee_pdf = light.endpoint_pdf;
         leaf.path_length = depth + 1u;
@@ -467,7 +450,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         mis = src.endpoint_pooled
             ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light,
                 restir_terminal_emitter_pdf(src, previous.hit_position, previous.hit_normal), connect_pdf)
-            : restir_rc_endpoint_mis(3u, src.endpoint_light, previous.hit_normal, direction, connect_pdf);
+            : restir_rc_endpoint_mis(3u, src.endpoint_light, src.endpoint_environment,
+                previous.hit_normal, direction, connect_pdf);
     float3 radiance = rc_outgoing_radiance(src, direction);
     if (is_dirac_light_sample(src))
     {

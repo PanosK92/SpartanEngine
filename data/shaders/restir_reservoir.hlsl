@@ -353,6 +353,7 @@ struct PathSample
     float rc_nee_pdf; // Source light PDF for the endpoint immediately after RC.
     uint2 endpoint_geometry; // Terminal pooled emitter: instance/primitive or pool index.
     bool endpoint_pooled;
+    bool endpoint_environment; // Sky endpoint, distinct from an emissive BSDF hit.
     float rc_pdf; // Source incoming geometry factor, updated after every reconnection shift.
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
@@ -381,13 +382,12 @@ struct PathSample
 };
 
 // The reference retains triangle hits rather than a frozen world-space point.
-// Environment probes retain TLAS hits; pooled NEE retains pool triangle hits.
+// BSDF paths retain TLAS hits; pooled NEE retains pool triangle hits.
 // Analytic endpoints still use their explicit endpoint representation.
 bool is_triangle_reconnection(PathSample s)
 {
     return (s.flags & PATH_FLAG_HAS_RC) != 0u && (s.flags & PATH_FLAG_SKY) == 0u &&
-        ((s.flags & PATH_FLAG_NEE) == 0u || s.endpoint_light == RESTIR_ENDPOINT_SKY ||
-            s.endpoint_light == RESTIR_ENDPOINT_EMTRI);
+        ((s.flags & PATH_FLAG_NEE) == 0u || s.endpoint_light == RESTIR_ENDPOINT_EMTRI);
 }
 
 // Pool topology changes invalidate history on the CPU. A pool index plus
@@ -460,8 +460,11 @@ float3 octahedral_decode(float2 e)
 
 uint pack_path_info(PathSample s)
 {
+    // BSDF leaves do not use the NEE draw field. Retain their endpoint kind
+    // there so suffix MIS distinguishes sky misses from unpooled emitters.
+    uint endpoint_tag = s.endpoint_light == RESTIR_ENDPOINT_BSDF ? uint(s.endpoint_environment) : s.endpoint_emtri_draw;
     return (s.rc_length & 7u) | ((s.flags & 15u) << 3u) | ((s.path_length & 7u) << 7u)
-        | ((s.endpoint_light & 65535u) << 10u) | ((s.endpoint_emtri_draw & 31u) << 26u) | (uint(s.endpoint_pooled) << 31u);
+        | ((s.endpoint_light & 65535u) << 10u) | ((endpoint_tag & 31u) << 26u) | (uint(s.endpoint_pooled) << 31u);
 }
 
 uint pack_rc_geometric_normal(float3 normal)
@@ -483,6 +486,9 @@ void unpack_path_info(uint packed, inout PathSample s)
     s.path_length = (packed >> 7u) & 7u;
     s.endpoint_light = (packed >> 10u) & 65535u;
     s.endpoint_emtri_draw = (packed >> 26u) & 31u;
+    s.endpoint_environment = s.endpoint_light == RESTIR_ENDPOINT_SKY ||
+        (s.endpoint_light == RESTIR_ENDPOINT_BSDF && (s.endpoint_emtri_draw & 1u) != 0u);
+    if (s.endpoint_light == RESTIR_ENDPOINT_BSDF) s.endpoint_emtri_draw = 0u;
     s.endpoint_pooled = (packed >> 31u) != 0u;
 }
 
@@ -701,6 +707,7 @@ Reservoir create_empty_reservoir()
     r.sample.rc_nee_pdf       = 0.0f;
     r.sample.endpoint_geometry = 0u;
     r.sample.endpoint_pooled = false;
+    r.sample.endpoint_environment = false;
     r.sample.initial_weight  = 1.0f;
     r.sample.first_hit_distance = 0.0f;
     r.sample.endpoint_light  = 65535u;
@@ -1378,9 +1385,10 @@ float restir_primary_emitter_mis(PathSample src, float3 origin, float3 normal, f
 
 // Only a light endpoint directly after RC has a view-dependent endpoint MIS
 // weight. Deeper endpoints keep the same incoming direction under reconnection.
-float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, float3 normal, float3 direction, float brdf_pdf)
+float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, bool endpoint_environment,
+    float3 normal, float3 direction, float brdf_pdf)
 {
-    if (path_length != 3u)
+    if (path_length != 3u || !endpoint_environment)
         return 1.0f;
     float env_pdf = sky_nee_pdf_at(direction, normal);
     if (endpoint_light == RESTIR_ENDPOINT_BSDF)
@@ -1407,7 +1415,8 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
         src.rc_normal, view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
     float mis = src.endpoint_pooled && src.path_length == src.rc_length + 1u
         ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light, src.rc_nee_pdf, pdf)
-        : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.endpoint_light, src.rc_normal, src.rc_outgoing_dir, pdf);
+        : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.endpoint_light,
+            src.endpoint_environment, src.rc_normal, src.rc_outgoing_dir, pdf);
     return src.rc_L_nee + f_rc * src.rc_L_post * mis;
 }
 
@@ -1923,9 +1932,6 @@ bool restir_stream_light(inout RestirLightSample result, float3 direction, float
     return false;
 }
 
-void restir_probe_endpoint(float distance, uint3 hit, RayDesc ray,
-    out float3 position, out float3 normal, out float3 emission);
-
 RestirLightSample sample_direct_lighting_at_vertex(
     float3 shading_pos,
     float3 shading_normal,
@@ -2165,7 +2171,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
             probe_ray.TMin      = probe_offset;
             probe_ray.TMax      = RESTIR_RAY_T_MAX;
 
-            RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
+            RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
             probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
             // Resolve cutouts just like path continuation. A single Proceed can stop
             // at a non-opaque candidate before a wall behind it is visited, so
@@ -2178,35 +2184,9 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     probe_query.CommitNonOpaqueTriangleHit();
             }
 
-            if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
-            {
-                uint3 endpoint_hit = uint3(probe_query.CommittedInstanceIndex(), probe_query.CommittedPrimitiveIndex(),
-                    pack_hit_barycentrics(probe_query.CommittedTriangleBarycentrics()));
-                float3 endpoint_position, endpoint_normal, emission;
-                restir_probe_endpoint(probe_query.CommittedRayT(), endpoint_hit, probe_ray,
-                    endpoint_position, endpoint_normal, emission);
-
-                if (luminance(emission) > 0.0f)
-                {
-                    float  brdf_pdf_probe;
-                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
-
-                    float mis_weight = restir_balance_heuristic(env_pdf, brdf_pdf_probe);
-                    restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
-                    if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
-                    {
-                        result.endpoint_hit = endpoint_hit;
-                        result.endpoint_position = endpoint_position;
-                        result.endpoint_normal = endpoint_normal;
-                        result.endpoint_radiance = emission;
-                        result.endpoint_pdf = env_pdf;
-                        result.endpoint_valid = true;
-                        result.endpoint_sky = false;
-                        result.endpoint_dirac = false;
-                    }
-                }
-            }
-            else
+            // Environment NEE samples the sky only. Geometry blocks this
+            // sample; emissive hits belong to BSDF/pooled-emitter strategies.
+            if (probe_query.CommittedStatus() == COMMITTED_NOTHING)
             {
                 float3 env_radiance = sample_sky(env_dir);
 
