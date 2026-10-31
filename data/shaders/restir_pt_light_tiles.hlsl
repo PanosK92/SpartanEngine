@@ -9,7 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_reservoir.hlsl"
 
 // Section 6.1: cache power-proportional draws once per frame.
-// Store source PMFs, not the empirical frequency within the finite tile.
+// Use source PMFs, not the empirical frequency within the finite tile.
 [numthreads(64, 1, 1)]
 void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
@@ -47,7 +47,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (total_emissive > 0.0f)
         {
             uint i = emtri_pick_index(min(xi, 0.99999994f) * total_emissive, count);
-            entry.zw = uint2(i, asuint(emissive_triangles[i].weight / total_emissive));
+            // A tile stores a complete, receiver-independent emitter sample.
+            // The triangle PMF is recovered from its unchanged power/CDF data.
+            uint point_seed = create_seed_for_pass(uint2(index, 1u), buffer_frame.frame, 6u);
+            float2 point_xi = random_float2(point_seed);
+            float root = sqrt(point_xi.x);
+            float2 bary = float2(root * (1.0f - point_xi.y), root * point_xi.y);
+            entry.zw = uint2(i, pack_hit_barycentrics(bary));
         }
     }
     restir_light_tiles[index] = entry;

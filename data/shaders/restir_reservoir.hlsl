@@ -17,6 +17,7 @@ static const uint RESTIR_MAX_PATH_LENGTH = 5;
 // Section 6.1: each 8x8 tracing block draws from one presampled light tile.
 static const uint RESTIR_LIGHT_TILE_COUNT = 128u;
 static const uint RESTIR_LIGHT_TILE_SIZE = 1024u;
+// xy: analytic light index/PMF; zw: emissive triangle index/packed barycentrics.
 RWStructuredBuffer<uint4> restir_light_tiles : register(u69);
 static uint restir_light_tile_index = 0u;
 uint4 restir_light_tile_entry(float xi)
@@ -243,33 +244,11 @@ void sample_spherical_rectangle(
     out_pos = origin + xu * x + yv * y + z0 * z;
 }
 
-// Shared domain for sampling and evaluating an existing emitter endpoint.
-// The MIS source density must use the same spherical/area branch as generation.
-float restir_triangle_solid_angle(float3 origin, float3 v0, float3 v1, float3 v2)
-{
-    float3 va = v0 - origin, vb = v1 - origin, vc = v2 - origin;
-    float3 area_normal = cross(v1 - v0, v2 - v0);
-    float la = length(va), lb = length(vb), lc = length(vc);
-    if (length(area_normal) <= 1e-12f || min(la, min(lb, lc)) <= 1e-6f)
-        return 0.0f;
-    return 2.0f * atan2(abs(dot(va, area_normal)),
-        la * lb * lc + dot(va, vb) * lc + dot(vb, vc) * la + dot(vc, va) * lb);
-}
-
-bool restir_triangle_uses_area_sampling(float solid_angle)
-{
-    return solid_angle < 0.001f || solid_angle > 6.0f;
-}
-
 // Conditional point density in solid angle, before the triangle selection PMF.
-// endpoint is a known point on this triangle (a sampled point or a ray hit).
+// Cached tile points are uniform in area and independent of the receiver.
+// Convert the same area density for NEE, BSDF-hit MIS and reconnection.
 float restir_triangle_point_pdf(float3 origin, float3 v0, float3 v1, float3 v2, float3 endpoint)
 {
-    float solid_angle = restir_triangle_solid_angle(origin, v0, v1, v2);
-    if (!(solid_angle > 0.0f))
-        return 0.0f;
-    if (!restir_triangle_uses_area_sampling(solid_angle))
-        return rcp(solid_angle);
     float3 delta = endpoint - origin;
     float distance_sq = dot(delta, delta);
     if (distance_sq <= 1e-12f)
@@ -326,116 +305,6 @@ float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 norm
         return 0.0f;
     float pdf = (tri.weight / total) * restir_triangle_point_pdf(origin, tri.v0, tri.v1, tri.v2, endpoint);
     return pdf > 0.0f && isfinite(pdf) ? pdf : 0.0f;
-}
-
-// arvo 1995 spherical triangle sampling, pbrt v4 formulation, uniform in solid angle
-// returns a unit direction and its inverse solid-angle pdf, zero when degenerate
-// small projected triangles use uniform area sampling: angle-sum cancellation in float32
-// otherwise invents solid angle and can send the sample far outside the actual emitter
-// area sampling of an emitter carries dist^2 / cos_e in the pdf, so a receiver near a large
-// triangle sees weights spanning orders of magnitude across one triangle, sampling the solid
-// angle directly makes the weight L * cos * omega with no distance term at all
-void sample_spherical_triangle(
-    float3 origin,
-    float3 v0,
-    float3 v1,
-    float3 v2,
-    float2 u,
-    out float3 out_dir,
-    out float  out_inv_pdf)
-{
-    out_dir         = float3(0.0f, 0.0f, 1.0f);
-    out_inv_pdf = 0.0f;
-
-    float3 va = v0 - origin;
-    float3 vb = v1 - origin;
-    float3 vc = v2 - origin;
-    float3 edge1 = v1 - v0;
-    float3 edge2 = v2 - v0;
-    float3 area_normal = cross(edge1, edge2);
-    float twice_area = length(area_normal);
-    float la = length(va), lb = length(vb), lc = length(vc);
-    if (twice_area <= 1e-12f || min(la, min(lb, lc)) <= 1e-6f)
-        return;
-
-    // van Oosterom-Strackee formula, using the original edges for the determinant
-    // avoids subtracting nearly equal normalized directions for distant triangles
-    float area = restir_triangle_solid_angle(origin, v0, v1, v2);
-    if (restir_triangle_uses_area_sampling(area))
-    {
-        float su = sqrt(u.x);
-        float3 emitter_pos = v0 + edge1 * (su * (1.0f - u.y)) + edge2 * (su * u.y);
-        float3 to = emitter_pos - origin;
-        float dist_sq = dot(to, to);
-        if (dist_sq <= 1e-12f)
-            return;
-        out_dir = to / sqrt(dist_sq);
-        out_inv_pdf = 0.5f * abs(dot(area_normal, -out_dir)) / dist_sq;
-        return;
-    }
-
-    float3 a = va / la;
-    float3 b = vb / lb;
-    float3 c = vc / lc;
-
-    float3 n_ab = cross(a, b);
-    float3 n_bc = cross(b, c);
-    float3 n_ca = cross(c, a);
-    if (dot(n_ab, n_ab) < 1e-12f || dot(n_bc, n_bc) < 1e-12f || dot(n_ca, n_ca) < 1e-12f)
-    {
-        return;
-    }
-    n_ab = normalize(n_ab);
-    n_bc = normalize(n_bc);
-    n_ca = normalize(n_ca);
-
-    float alpha = acos(clamp(dot(n_ab, -n_ca), -1.0f, 1.0f));
-    float area_pi = PI + area;
-    out_inv_pdf = area;
-
-    // pick a sub triangle with a fraction u.x of the area, then locate its third vertex cp on arc ac
-    float ap_pi     = lerp(PI, area_pi, u.x);
-    float cos_alpha = cos(alpha);
-    float sin_alpha = sin(alpha);
-    float sin_phi   = sin(ap_pi) * cos_alpha - cos(ap_pi) * sin_alpha;
-    float cos_phi   = cos(ap_pi) * cos_alpha + sin(ap_pi) * sin_alpha;
-
-    float k1     = cos_phi + cos_alpha;
-    float k2     = sin_phi - sin_alpha * dot(a, b);
-    float denom  = (k2 * sin_phi + k1 * cos_phi) * sin_alpha;
-    denom        = (abs(denom) < 1e-7f) ? (denom < 0.0f ? -1e-7f : 1e-7f) : denom;
-    float cos_bp = (k2 + (k2 * cos_phi - k1 * sin_phi) * cos_alpha) / denom;
-    cos_bp       = clamp(cos_bp, -1.0f, 1.0f);
-    float sin_bp = sqrt(max(1.0f - cos_bp * cos_bp, 0.0f));
-
-    float3 c_perp = c - dot(c, a) * a;
-    if (dot(c_perp, c_perp) < 1e-12f)
-    {
-        out_inv_pdf = 0.0f;
-        return;
-    }
-    float3 cp = cos_bp * a + sin_bp * normalize(c_perp);
-
-    // sample along the arc from b to cp with a fraction u.y of its cosine span
-    float  cos_theta = 1.0f - u.y * (1.0f - dot(cp, b));
-    float  sin_theta = sqrt(max(1.0f - cos_theta * cos_theta, 0.0f));
-    float3 cp_perp   = cp - dot(cp, b) * b;
-    if (dot(cp_perp, cp_perp) < 1e-12f)
-    {
-        out_dir = b;
-        return;
-    }
-    out_dir = normalize(cos_theta * b + sin_theta * normalize(cp_perp));
-
-    // Bound rounding error to the emitter, as in PBRT's spherical-triangle sampler.
-    // Intersecting only its infinite plane could turn an off-triangle sample into a light.
-    float3 plane_point = origin + out_dir * (dot(va, area_normal) / dot(out_dir, area_normal));
-    float3 relative = plane_point - v0;
-    float normal_sq = dot(area_normal, area_normal);
-    float b1 = saturate(dot(cross(relative, edge2), area_normal) / normal_sq);
-    float b2 = saturate(dot(cross(edge1, relative), area_normal) / normal_sq);
-    float sum = max(b1 + b2, 1.0f);
-    out_dir = normalize(v0 + edge1 * (b1 / sum) + edge2 * (b2 / sum) - origin);
 }
 
 // path flags, pack_path_info stores these in a nibble so a fifth bit needs a layout change
@@ -1871,7 +1740,7 @@ bool emtri_ris_pick_path(
         float point_pdf;
         EmissiveTriangle tri;
         uint4 tile_entry = restir_light_tile_entry(xi.x);
-        if (tile_entry.z >= count || asfloat(tile_entry.w) <= 0.0f)
+        if (tile_entry.z >= count)
             continue;
         tri = emissive_triangles[tile_entry.z];
         if (tri.area <= 0.0f || tri.weight <= 0.0f)
@@ -1879,57 +1748,22 @@ bool emtri_ris_pick_path(
             continue;
         }
 
-        // Reject zero-support triangles before the spherical-triangle trigonometry.
-        // Every point is either behind the shading hemisphere or on the emitter's
-        // back face. Random draws above are still consumed to preserve replay.
-        float3 to_v0 = tri.v0 - pos;
-        float3 to_v1 = tri.v1 - pos;
-        float3 to_v2 = tri.v2 - pos;
-        if (max(dot(normal, to_v0), max(dot(normal, to_v1), dot(normal, to_v2))) <= 0.0f ||
-            dot(tri.normal, -to_v0) <= 0.0f)
-            continue;
-
-        // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
-        float  inverse_pdf;
-        sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, inverse_pdf);
-        if (inverse_pdf <= 0.0f)
-        {
-            continue;
-        }
-
-        float cos_l = dot(normal, dir);
-        float cos_e = dot(-dir, tri.normal);
-        if (cos_l <= 0.0f || cos_e <= 1e-4f)
-        {
-            continue;
-        }
-
-        // the point on the emitter, ray against the triangle plane
-        float t = dot(tri.v0 - pos, tri.normal) / dot(dir, tri.normal);
-        if (t <= 1e-4f || isnan(t) || isinf(t))
-        {
-            continue;
-        }
-        p = pos + dir * t;
-        float3 edge1 = tri.v1 - tri.v0, edge2 = tri.v2 - tri.v0;
-        float3 area_normal = cross(edge1, edge2);
-        float normal_sq = dot(area_normal, area_normal);
-        float3 relative = p - tri.v0;
-        float2 bary = float2(dot(cross(relative, edge2), area_normal),
-                            dot(cross(edge1, relative), area_normal)) / normal_sq;
-        uint packed_bary = pack_hit_barycentrics(bary);
-        float3 decoded_bary = unpack_hit_barycentrics(packed_bary);
-        // Evaluate the represented endpoint, including its direction and PDF,
-        // before RIS. Reuse must not silently move a previously weighted point.
-        p = tri.v0 * decoded_bary.x + tri.v1 * decoded_bary.y + tri.v2 * decoded_bary.z;
-        dir = normalize(p - pos);
+        // The tile owns the complete emitter sample, shared by all receivers.
+        // Keep consuming the old fixed random dimensions above for prefix replay.
+        uint packed_bary = tile_entry.w;
+        float3 bary = unpack_hit_barycentrics(packed_bary);
+        p = tri.v0 * bary.x + tri.v1 * bary.y + tri.v2 * bary.z;
+        float3 delta = p - pos;
+        float distance_sq = dot(delta, delta);
+        if (distance_sq <= 1e-12f) continue;
+        dir = delta * rsqrt(distance_sq);
         if (dot(normal, dir) <= 0.0f || dot(-dir, tri.normal) <= 1e-4f) continue;
         point_pdf = restir_triangle_point_pdf(pos, tri.v0, tri.v1, tri.v2, p);
 
         float unused_pdf;
         float3 f = evaluate_brdf(albedo, roughness, metallic, normal, view, dir, unused_pdf, 1.0f);
         float target = target_scalar(tri.emission * f);
-        float pdf_sa = asfloat(tile_entry.w) * point_pdf;
+        float pdf_sa = (tri.weight / total_weight) * point_pdf;
         if (!(pdf_sa > 0.0f) || !isfinite(pdf_sa))
             continue;
         float w = target / pdf_sa;
