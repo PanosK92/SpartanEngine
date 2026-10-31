@@ -184,13 +184,13 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             EmissiveTriangle emitter;
             if (restir_hit_emitter_triangle(current.geometry, emitter))
-                endpoint_nee_pdf = restir_emitter_source_pdf(emitter, previous.hit_position, previous.hit_normal, current.hit_position);
+                endpoint_nee_pdf = restir_emitter_source_pdf(emitter, previous.hit_position, previous.hit_normal, current.hit_position, depth - 1u);
         }
         // Sky NEE has no support on surface emitters. An unpooled emissive
         // hit is sampled only by the BSDF and must keep its full contribution.
         float endpoint_mis = current.pooled_emitter
             ? restir_pooled_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, endpoint_nee_pdf, incoming_pdf)
-            : (depth == 2u || current.hit ? 1.0f : restir_balance_heuristic(incoming_pdf, sky_nee_pdf_at(dir, previous.hit_normal)));
+            : (current.hit ? 1.0f : restir_environment_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, previous.hit_normal, dir, incoming_pdf));
         reference_radiance += reference_throughput * emitted * endpoint_mis * roulette_weight;
         PathSample leaf = connection;
         float inverse_density = connection_density;
@@ -238,18 +238,16 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         if (depth == RESTIR_MAX_PATH_LENGTH)
             break;
 
-        bool requested_nee = replay && requested.path_length == depth + 1u && requested.endpoint_light != RESTIR_ENDPOINT_BSDF;
         RestirLightSample light = sample_direct_lighting_at_vertex(current.hit_position, current.hit_normal,
             current.geometric_normal, -dir, current.albedo, current.roughness, current.metallic, 1.0f, seed,
-            replay ? int(requested_nee ? requested.endpoint_light : RESTIR_ENDPOINT_BSDF) : -1,
-            requested_nee ? int(requested.endpoint_emtri_draw) : -1, depth);
+            replay, depth);
         reference_radiance += reference_throughput * light.radiance_sum * roulette_weight;
         float light_bsdf_pdf;
         float3 light_f = evaluate_brdf(current.albedo, current.roughness, current.metallic,
             current.hit_normal, -dir, light.direction, light_bsdf_pdf, 1.0f);
         float light_mis = light.light_index == RESTIR_ENDPOINT_EMTRI
             ? restir_pooled_endpoint_mis(depth + 1u, light.light_index, light.endpoint_pdf, light_bsdf_pdf)
-            : restir_rc_endpoint_mis(3u, light.light_index, light.light_index == RESTIR_ENDPOINT_SKY,
+            : restir_rc_endpoint_mis(3u, depth + 1u, light.light_index, light.light_index == RESTIR_ENDPOINT_SKY,
                 current.hit_normal, light.direction, light_bsdf_pdf);
         leaf = connection;
         inverse_density = connection_density;
@@ -268,23 +266,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         else
         {
             // Section 6.2.3: force connection to the sampled NEE endpoint.
-            leaf = (PathSample)0;
-            leaf.seed_path = replay_seed;
-            leaf.rc_length = depth + 1u;
-            leaf.flags = PATH_FLAG_HAS_RC | PATH_FLAG_NEE | (light.endpoint_sky ? PATH_FLAG_SKY : 0u);
-            leaf.rc_hit = light.endpoint_hit;
-            leaf.rc_pos = light.endpoint_position;
-            leaf.rc_normal = light.endpoint_normal;
-            leaf.rc_outgoing_dir = light.endpoint_normal;
-            leaf.rc_L_nee = light.endpoint_radiance;
-            float3 delta = light.endpoint_position - current.hit_position;
-            float distance_sq = dot(delta, delta);
-            // The probe starts at an offset origin. Cache the geometry of the
-            // actual vertex-to-endpoint edge, as the destination shift does.
-            leaf.rc_geometric_normal_packed = pack_rc_geometric_normal(light.endpoint_normal);
-            leaf.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
-                (restir_connection_distance_valid(distance_sq)
-                    ? abs(dot(unpack_rc_geometric_normal(leaf.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
+            leaf = restir_light_endpoint_descriptor(light, current.hit_position, depth, replay_seed);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
@@ -299,8 +281,6 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             leaf.F = connection_prefix * rc_outgoing_radiance(leaf, -connection.src_normal);
         restir_stream_leaf(selected, weight_sum, leaf, inverse_density * roulette_weight * light.initial_weight,
             selection_seed, replay, requested);
-        if (requested_nee)
-            break;
 
         if (depth + 1u > 3u + RESTIR_RR_START)
         {
@@ -368,7 +348,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
             // Advance exactly the initial tree's NEE dimensions. A fixed BSDF
             // leaf skips all light evaluation and visibility work.
             sample_direct_lighting_at_vertex(v.hit_position, v.hit_normal, v.geometric_normal,
-                incoming, v.albedo, v.roughness, v.metallic, 1.0f, seed, int(RESTIR_ENDPOINT_BSDF), 0, i);
+                incoming, v.albedo, v.roughness, v.metallic, 1.0f, seed, true, i);
             if (i + 1u > 3u + RESTIR_RR_START)
                 random_float(seed); // no roulette termination during replay
         }
@@ -450,7 +430,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         mis = src.endpoint_pooled
             ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light,
                 restir_terminal_emitter_pdf(src, previous.hit_position, previous.hit_normal), connect_pdf)
-            : restir_rc_endpoint_mis(3u, src.endpoint_light, src.endpoint_environment,
+            : restir_rc_endpoint_mis(3u, src.path_length, src.endpoint_light, src.endpoint_environment,
                 previous.hit_normal, direction, connect_pdf);
     float3 radiance = rc_outgoing_radiance(src, direction);
     if (is_dirac_light_sample(src))

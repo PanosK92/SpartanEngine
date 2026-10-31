@@ -18,13 +18,47 @@ static const uint RESTIR_MAX_PATH_LENGTH = 5;
 // Section 6.1: each 8x8 tracing block draws from one presampled light tile.
 static const uint RESTIR_LIGHT_TILE_COUNT = 128u;
 static const uint RESTIR_LIGHT_TILE_SIZE = 1024u;
+static const uint RESTIR_LIGHT_KIND_ENVIRONMENT = 0u;
+static const uint RESTIR_LIGHT_KIND_EMISSIVE = 1u;
+static const uint RESTIR_LIGHT_KIND_ANALYTIC = 2u;
+
+// Equal default weights for the available light kinds, as in the reference.
+// Use the actual integer tile allocation as the mixture PMF after rounding.
+uint3 restir_light_kind_counts()
+{
+    uint emissive = uint(buffer_frame.restir_pt_emissive_tri_count > 0.5f);
+    uint analytic = uint(buffer_frame.restir_pt_light_count > 0.5f);
+    uint count = RESTIR_LIGHT_TILE_SIZE / (1u + emissive + analytic);
+    return uint3(RESTIR_LIGHT_TILE_SIZE - count * (emissive + analytic), count * emissive, count * analytic);
+}
+float restir_light_kind_pmf(uint kind)
+{
+    return float(restir_light_kind_counts()[kind]) / float(RESTIR_LIGHT_TILE_SIZE);
+}
+uint restir_nee_candidate_count(uint vertex) { return max(32u / (vertex * vertex), 1u); }
+float restir_light_kind_pmf_at_vertex(uint kind, uint vertex)
+{
+    uint count = restir_nee_candidate_count(vertex);
+    uint stride = (RESTIR_LIGHT_TILE_SIZE + count - 1u) / count;
+    uint draws = count * stride;
+    // A ceil stride wraps the first few entries (two at depth three).
+    // Those entries belong to the environment partition. Account for them
+    // in the mixture density averaged over the full candidate set.
+    uint extra = kind == RESTIR_LIGHT_KIND_ENVIRONMENT ? draws - RESTIR_LIGHT_TILE_SIZE : 0u;
+    return float(restir_light_kind_counts()[kind] + extra) / float(draws);
+}
+float restir_environment_source_pdf(float3 direction, float3 normal, uint vertex)
+{
+    return restir_light_kind_pmf_at_vertex(RESTIR_LIGHT_KIND_ENVIRONMENT, vertex) * sky_nee_pdf_at(direction, normal);
+}
 struct RestirLightTileEntry
 {
-    // xy: analytic index/PMF; zw: emissive triangle index/packed barycentrics.
+    // Exactly one light kind per entry. x valid: analytic; z valid: emissive;
+    // both invalid: environment. y stores the full discrete selection PMF.
     uint4 lights;
-    uint analytic_position; // Two uniform 16-bit coordinates for distant lights.
+    uint analytic_position;
     float3 environment_direction;
-    float environment_pdf; // Original solid-angle density, not tile frequency.
+    float environment_pdf;
 };
 RWStructuredBuffer<RestirLightTileEntry> restir_light_tiles : register(u69);
 float2 restir_analytic_sample_position(RestirLightTileEntry entry)
@@ -33,7 +67,7 @@ float2 restir_analytic_sample_position(RestirLightTileEntry entry)
 }
 static uint restir_light_tile_index = 0u;
 // LightTileRIS::GenerateSample uses one random offset and a fixed stride.
-// Later xi draws are still consumed by callers so prefix replay stays aligned.
+// Prefix replay consumes the same offset draw without evaluating candidates.
 RestirLightTileEntry restir_light_tile_entry(float xi, uint proposal, uint count, inout uint offset)
 {
     uint stride = (RESTIR_LIGHT_TILE_SIZE + count - 1u) / count;
@@ -81,11 +115,8 @@ float get_restir_m_cap_decorrelated(float duplication)
     return lerp(get_restir_m_cap(), RESTIR_C_CAP_DUPLICATED, d);
 }
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
-// unshadowed ris candidates for the primary analytic light pick, lin 2026 6.1
-uint  get_restir_light_candidates()    { return 32u; }
 // One BSDF path tree per pixel; its light-ending leaves share the initial RIS.
 uint  get_restir_initial_candidates()  { return 1u; }
-uint  get_restir_emtri_candidates()    { return 1u; }
 // depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
 static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
@@ -307,7 +338,7 @@ bool restir_hit_emitter_triangle(uint2 identity, out EmissiveTriangle tri)
     return tri.weight > 0.0f;
 }
 
-float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 normal, float3 endpoint)
+float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 normal, float3 endpoint, uint vertex)
 {
     uint count = (uint)buffer_frame.restir_pt_emissive_tri_count;
     if (count == 0u || tri.weight <= 0.0f)
@@ -320,7 +351,8 @@ float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 norm
     float3 direction = delta / distance;
     if (dot(normal, direction) <= 0.0f || dot(tri.normal, -direction) <= 1e-4f)
         return 0.0f;
-    float pdf = (tri.weight / total) * restir_triangle_point_pdf(origin, tri.v0, tri.v1, tri.v2, endpoint);
+    float pdf = (tri.weight / total) * restir_light_kind_pmf_at_vertex(RESTIR_LIGHT_KIND_EMISSIVE, vertex) *
+        restir_triangle_point_pdf(origin, tri.v0, tri.v1, tri.v2, endpoint);
     return pdf > 0.0f && isfinite(pdf) ? pdf : 0.0f;
 }
 
@@ -1345,14 +1377,12 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     float3 albedo, float roughness, float metallic, float3 camera_position, float3 primary_geometric_normal);
 
 
-// Supplemental Section 5: the RIS candidate count scales the source NEE
-// density. Primary outer candidate counts also enter when they differ.
+// Supplemental Section 5: the RIS candidate count scales the full source
+// density, including the light kind's probability in the shared tile.
 float restir_pooled_endpoint_mis(uint path_length, uint endpoint_light, float nee_pdf, float bsdf_pdf)
 {
     uint vertex = path_length - 1u;
     float nee_count = float(max(32u / (vertex * vertex), 1u));
-    if (vertex == 1u)
-        nee_count *= float(get_restir_emtri_candidates()) / float(get_restir_initial_candidates());
     float nee_density = nee_count * nee_pdf;
     return endpoint_light == RESTIR_ENDPOINT_EMTRI ? restir_balance_heuristic(nee_density, bsdf_pdf)
                                                   : restir_balance_heuristic(bsdf_pdf, nee_density);
@@ -1369,33 +1399,36 @@ float restir_terminal_emitter_pdf(PathSample src, float3 origin, float3 normal)
     }
     else if (!restir_hit_emitter_triangle(src.endpoint_geometry, tri))
         return 0.0f;
-    return restir_emitter_source_pdf(tri, origin, normal, src.rc_pos);
+    return restir_emitter_source_pdf(tri, origin, normal, src.rc_pos, src.path_length - 1u);
 }
 
-float restir_primary_emitter_mis(PathSample src, float3 origin, float3 normal, float3 view,
+float restir_environment_endpoint_mis(uint path_length, uint endpoint_light,
+    float3 normal, float3 direction, float bsdf_pdf)
+{
+    uint vertex = path_length - 1u;
+    float nee_density = float(max(32u / (vertex * vertex), 1u)) * restir_environment_source_pdf(direction, normal, vertex);
+    return endpoint_light == RESTIR_ENDPOINT_SKY ? restir_balance_heuristic(nee_density, bsdf_pdf)
+                                                 : restir_balance_heuristic(bsdf_pdf, nee_density);
+}
+
+float restir_primary_endpoint_mis(PathSample src, float3 origin, float3 normal, float3 view,
     float3 albedo, float roughness, float metallic, float3 direction)
 {
-    if (!src.endpoint_pooled || src.rc_length != src.path_length)
-        return 1.0f;
+    if (src.rc_length != src.path_length || (!src.endpoint_pooled && !src.endpoint_environment)) return 1.0f;
     float bsdf_pdf;
     evaluate_brdf(albedo, roughness, metallic, normal, view, direction, bsdf_pdf, restir_primary_specular_blend(roughness));
-    return restir_pooled_endpoint_mis(src.path_length, src.endpoint_light,
-        restir_terminal_emitter_pdf(src, origin, normal), bsdf_pdf);
+    return src.endpoint_pooled ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light,
+        restir_terminal_emitter_pdf(src, origin, normal), bsdf_pdf) :
+        restir_environment_endpoint_mis(src.path_length, src.endpoint_light, normal, direction, bsdf_pdf);
 }
 
-// Only a light endpoint directly after RC has a view-dependent endpoint MIS
-// weight. Deeper endpoints keep the same incoming direction under reconnection.
-float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, bool endpoint_environment,
-    float3 normal, float3 direction, float brdf_pdf)
+// Only the endpoint directly after RC has view-dependent MIS. The proposal
+// count depends on its actual path depth, not its distance from RC.
+float restir_rc_endpoint_mis(uint rc_endpoint_length, uint path_length, uint endpoint_light,
+    bool endpoint_environment, float3 normal, float3 direction, float brdf_pdf)
 {
-    if (path_length != 3u || !endpoint_environment)
-        return 1.0f;
-    float env_pdf = sky_nee_pdf_at(direction, normal);
-    if (endpoint_light == RESTIR_ENDPOINT_BSDF)
-        return restir_balance_heuristic(brdf_pdf, env_pdf);
-    if (endpoint_light == RESTIR_ENDPOINT_SKY)
-        return restir_balance_heuristic(env_pdf, brdf_pdf);
-    return 1.0f;
+    if (rc_endpoint_length != 3u || !endpoint_environment) return 1.0f;
+    return restir_environment_endpoint_mis(path_length, endpoint_light, normal, direction, brdf_pdf);
 }
 
 // radiance leaving rc toward dst primary, L_at_rc = L_nee + f_rc(dst_view, rc_outgoing_dir) * L_post
@@ -1415,7 +1448,7 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
         src.rc_normal, view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
     float mis = src.endpoint_pooled && src.path_length == src.rc_length + 1u
         ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light, src.rc_nee_pdf, pdf)
-        : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.endpoint_light,
+        : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.path_length, src.endpoint_light,
             src.endpoint_environment, src.rc_normal, src.rc_outgoing_dir, pdf);
     return src.rc_L_nee + f_rc * src.rc_L_post * mis;
 }
@@ -1492,7 +1525,8 @@ ShiftResult try_reconnection_shift(
         if (all(brdf_cos <= 0.0f))
             return result;
 
-        result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir);
+        result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir) *
+            restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
         result.jacobian = 1.0f;
         result.ok       = true;
         result.sample.F = result.f_dst;
@@ -1639,7 +1673,7 @@ ShiftResult try_reconnection_shift(
     // RC outgoing direction is represented in solid angle, so reconnecting
     // preserves that coordinate. Its initial sampling PDF is already in W.
     result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst) *
-        restir_primary_emitter_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
+        restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
     result.jacobian = jacobian;
     result.sample.rc_pdf = geometry_dst;
     result.ok       = true;
@@ -1649,7 +1683,6 @@ ShiftResult try_reconnection_shift(
 
 // forward declarations, the helpers are defined later in this header
 bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal);
-bool trace_shadow_ray(float3 origin, float3 direction, float max_dist);
 
 // shared path tracing parameters used by the initial trace suffix, a constant continuation
 // probability keeps the roulette decision dependent only on the seed draw
@@ -1719,114 +1752,6 @@ uint emtri_pick_index(float u, uint count)
     return min(lo, count - 1u);
 }
 
-// Section 6.1: 32 unshadowed RIS proposals at the primary, decreasing
-// quadratically with depth. Callers visibility-test only the selected light.
-// Both tracing and replay derive the count from the same vertex index.
-uint restir_nee_candidate_count(uint vertex) { return max(32u / (vertex * vertex), 1u); }
-
-bool emtri_ris_pick_path(
-    float3 pos,
-    float3 normal,
-    inout uint seed,
-    out float3 out_pos,
-    out float3 out_normal,
-    out float3 out_emission,
-    out float out_W,
-    out float out_pdf,
-    out uint out_draw, out uint out_triangle, out uint out_barycentrics,
-    int forced_draw, uint candidate_count, float3 view, float3 albedo, float roughness, float metallic)
-{
-    out_pdf = 0.0f;
-    out_draw = 0u;
-    out_triangle = 0u;
-    out_barycentrics = 0u;
-    out_pos      = float3(0.0f, 0.0f, 0.0f);
-    out_normal   = float3(0.0f, 1.0f, 0.0f);
-    out_emission = float3(0.0f, 0.0f, 0.0f);
-    out_W        = 0.0f;
-
-    uint  count        = (uint)buffer_frame.restir_pt_emissive_tri_count;
-    float total_weight = (count > 0u) ? emissive_triangles[count - 1u].cdf : 0.0f;
-    bool  pool_ok      = count > 0u && total_weight > 0.0f;
-
-    float weight_sum = 0.0f;
-    float target_sel = 0.0f;
-    uint tile_offset = 0u;
-
-    for (uint i = 0u; i < candidate_count; i++)
-    {
-        float3 xi = random_float3(seed);
-        float  u  = random_float(seed);
-        RestirLightTileEntry tile_entry = restir_light_tile_entry(xi.x, i, candidate_count, tile_offset);
-        if (!pool_ok || (forced_draw >= 0 && i != uint(forced_draw)))
-        {
-            continue;
-        }
-
-        float3 dir, p;
-        float point_pdf;
-        EmissiveTriangle tri;
-        if (tile_entry.lights.z >= count)
-            continue;
-        tri = emissive_triangles[tile_entry.lights.z];
-        if (tri.area <= 0.0f || tri.weight <= 0.0f)
-        {
-            continue;
-        }
-
-        // The tile owns the complete emitter sample, shared by all receivers.
-        // Keep consuming the old fixed random dimensions above for prefix replay.
-        uint packed_bary = tile_entry.lights.w;
-        float3 bary = unpack_hit_barycentrics(packed_bary);
-        p = tri.v0 * bary.x + tri.v1 * bary.y + tri.v2 * bary.z;
-        float3 delta = p - pos;
-        float distance_sq = dot(delta, delta);
-        if (distance_sq <= 1e-12f) continue;
-        dir = delta * rsqrt(distance_sq);
-        if (dot(normal, dir) <= 0.0f || dot(-dir, tri.normal) <= 1e-4f) continue;
-        point_pdf = restir_triangle_point_pdf(pos, tri.v0, tri.v1, tri.v2, p);
-
-        float unused_pdf;
-        float3 f = evaluate_brdf(albedo, roughness, metallic, normal, view, dir, unused_pdf, 1.0f);
-        float target = target_scalar(tri.emission * f);
-        float pdf_sa = (tri.weight / total_weight) * point_pdf;
-        if (!(pdf_sa > 0.0f) || !isfinite(pdf_sa))
-            continue;
-        float w = target / pdf_sa;
-
-        weight_sum += w;
-        if (forced_draw >= 0 ? i == uint(forced_draw) : u * weight_sum < w)
-        {
-            out_pdf = pdf_sa;
-            out_draw = i;
-            out_triangle = tile_entry.lights.z;
-            out_barycentrics = packed_bary;
-            out_pos      = p;
-            out_normal   = tri.normal;
-            out_emission = tri.emission;
-            target_sel   = target;
-        }
-    }
-
-    if (weight_sum <= 0.0f || target_sel <= 0.0f)
-    {
-        return false;
-    }
-
-    out_W = weight_sum / (float(candidate_count) * target_sel);
-    return true;
-}
-
-bool emtri_ris_pick(float3 pos, float3 normal, inout uint seed,
-    out float3 light_pos, out float3 light_normal, out float3 emission, out float W, out uint triangle_index, out uint barycentrics,
-    float3 view, float3 albedo, float roughness, float metallic)
-{
-    float pdf;
-    uint draw;
-    return emtri_ris_pick_path(pos, normal, seed, light_pos, light_normal, emission, W, pdf, draw, triangle_index, barycentrics, -1,
-        restir_nee_candidate_count(1u), view, albedo, roughness, metallic);
-}
-
 // power proportional light pick weight, lin 2022 6.1, all four light types are eligible
 float light_pick_weight(LightParameters l)
 {
@@ -1874,19 +1799,7 @@ float compute_total_light_weight()
     return total;
 }
 
-// importance pick pdf for a known light index, used by the brdf strategy mis denominator
-float light_pick_pdf_for_index(uint light_idx, float total_weight)
-{
-    if (total_weight <= 0.0f)
-        return 0.0f;
-    return light_pick_weight(light_parameters[light_idx]) / total_weight;
-}
-
-// direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
-// specular_blend weights the specular lobe; RC vertices use the full BRDF.
-// Stream light-ending paths without adding their radiances into one stored path.
-// Keep physical radiance/PDF separate from the RIS weight. Replay evaluates
-// the stored leaf rather than resampling a different endpoint at the destination.
+// The selected NEE endpoint retains physical radiance and its full source PDF.
 struct RestirLightSample
 {
     float3 radiance_sum;
@@ -1909,308 +1822,177 @@ struct RestirLightSample
     bool endpoint_dirac;
 };
 
-bool restir_stream_light(inout RestirLightSample result, float3 direction, float3 incident,
-    float3 brdf_cos, inout uint selection_seed, float candidate_weight,
-    uint light_index, uint emtri_draw, int forced_light)
+PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 origin, uint vertex, uint seed)
 {
-    float target = target_scalar(brdf_cos * incident);
-    if (!(target > 0.0f) || isnan(target) || isinf(target))
-        return false;
-    result.radiance_sum += brdf_cos * incident * candidate_weight;
-    float weight = target * candidate_weight;
-    result.weight_sum += weight;
-    float u = random_float(selection_seed);
-    if (forced_light >= 0 ? uint(forced_light) == light_index : u * result.weight_sum < weight)
-    {
-        result.light_index = light_index;
-        result.emtri_draw = emtri_draw;
-        result.direction = direction;
-        result.incident = incident;
-        result.selected_target = target;
-        return true;
-    }
-    return false;
+    PathSample s = (PathSample)0;
+    if (!light.endpoint_valid) return s;
+    s.seed_path = seed;
+    s.rc_length = vertex + 1u;
+    s.path_length = vertex + 1u;
+    s.flags = PATH_FLAG_HAS_RC | PATH_FLAG_NEE | (light.endpoint_sky ? PATH_FLAG_SKY : 0u);
+    s.rc_hit = light.endpoint_hit;
+    s.rc_pos = light.endpoint_position;
+    s.rc_normal = light.endpoint_normal;
+    s.rc_outgoing_dir = light.endpoint_normal;
+    s.rc_L_nee = light.endpoint_radiance;
+    s.rc_geometric_normal_packed = pack_rc_geometric_normal(light.endpoint_normal);
+    float3 delta = light.endpoint_position - origin;
+    float distance_sq = dot(delta, delta);
+    s.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
+        (restir_connection_distance_valid(distance_sq) ?
+            abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
+    s.endpoint_light = light.light_index;
+    s.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
+    s.endpoint_environment = light.light_index == RESTIR_ENDPOINT_SKY;
+    s.endpoint_geometry = light.endpoint_dirac ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
+    s.endpoint_emtri_draw = light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG : light.emtri_draw;
+    s.rc_nee_pdf = light.endpoint_pdf;
+    return s;
 }
 
+// One light-tile RIS technique per vertex, with 32/v^2 unshadowed proposals.
+// Selection uses a separate RNG stream; prefix replay consumes only its seed.
 RestirLightSample sample_direct_lighting_at_vertex(
-    float3 shading_pos,
-    float3 shading_normal,
-    float3 geometric_normal,
-    float3 view_dir,
-    float3 albedo,
-    float roughness,
-    float metallic,
-    float  specular_blend,
-    inout uint seed,
-    int forced_light,
-    int forced_emtri_draw, uint vertex)
+    float3 shading_pos, float3 shading_normal, float3 geometric_normal,
+    float3 view_dir, float3 albedo, float roughness, float metallic,
+    float specular_blend, inout uint seed, bool replay, uint vertex)
 {
     RestirLightSample result = (RestirLightSample)0;
+    float offset_xi = random_float(seed);
     uint selection_seed = seed ^ 0x9e3779b9u;
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    float shading_offset = compute_ray_offset(shading_pos);
-    float3 ray_origin_light = shading_pos + geometric_normal * shading_offset;
-
-    // Importance-sampled analytic NEE, with the same depth-dependent budget as
-    // emissive NEE. Fixed random dimensions make BSDF-prefix replay cheap.
+    if (replay) return result; // NEE leaves always reconnect; full replay is BSDF-only.
     uint candidate_count = restir_nee_candidate_count(vertex);
     uint tile_offset = 0u;
-    for (uint proposal = 0u; proposal < candidate_count; ++proposal)
+    [loop] for (uint proposal = 0u; proposal < candidate_count; ++proposal)
     {
-        float3 light_xi = random_float3(seed);
-        RestirLightTileEntry tile_entry = restir_light_tile_entry(light_xi.x, proposal, candidate_count, tile_offset);
-        if (forced_light == int(RESTIR_ENDPOINT_BSDF))
-            continue;
-        uint light_idx = tile_entry.lights.x;
-        float pick_pdf = asfloat(tile_entry.lights.y);
-        if (light_idx >= light_count || pick_pdf <= 0.0f)
-            continue;
-        LightParameters light = light_parameters[light_idx];
-
-        if (light.intensity <= 0.0f || pick_pdf <= 0.0f)
-            continue;
-
-        uint light_flags    = light.flags;
-        bool is_directional = (light_flags & (1u << 0)) != 0;
-        bool is_point       = (light_flags & (1u << 1)) != 0;
-        bool is_spot        = (light_flags & (1u << 2)) != 0;
-        bool is_area        = (light_flags & (1u << 6)) != 0;
-
-        if (forced_light >= 0 && uint(forced_light) != light_idx)
-            continue;
-
-        float3 light_color = light.color.rgb;
-        float3 light_dir;
-        float  light_dist;
-        float  light_pdf    = 1.0f;
-        float  attenuation  = 1.0f;
-        float3 endpoint_position = light.position;
-        float3 endpoint_normal = -light.direction;
-
-        if (is_directional)
+        RestirLightTileEntry entry = restir_light_tile_entry(offset_xi, proposal, candidate_count, tile_offset);
+        float u = random_float(selection_seed);
+        RestirLightSample candidate = (RestirLightSample)0;
+        candidate.emtri_draw = proposal;
+        if (entry.lights.x != 0xffffffffu)
         {
-            light_dir = sample_restir_sun_cone(-light.direction, restir_analytic_sample_position(tile_entry), light_pdf);
-            light_dist = RESTIR_RAY_T_MAX;
-            attenuation = light_pdf; // irradiance normalization -> disk radiance
-            endpoint_normal = -light_dir;
-        }
-        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-        {
-            float3 light_normal = light.direction;
-            // Use the authored roll, matching the primary rectangle and shadows.
-            float3 light_right = normalize(light.direction_right);
-            float3 light_up = normalize(cross(light_normal, light_right));
-
-            // urena 2013 spherical rectangle solid angle sampling
-            float3 ex          = light_right * light.area_width;
-            float3 ey          = light_up    * light.area_height;
-            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
-
-            float2 xi = light_xi.yz;
-            float3 light_sample_pos;
-            float  solid_angle;
-            sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
-            endpoint_position = light_sample_pos;
-            endpoint_normal = light_normal;
-
-            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
-                continue;
-
-            float3 to_light = light_sample_pos - shading_pos;
-            light_dist      = length(to_light);
-            if (light_dist < 1e-3f)
-                continue;
-            light_dir       = to_light / light_dist;
-
-            float cos_light = dot(-light_dir, light_normal);
-            if (cos_light <= 0.0f)
-                continue;
-
-            light_pdf   = 1.0f / solid_angle;
-            // the 1/d^2 term is baked into the solid angle pdf, only the artistic range window applies
-            attenuation = restir_range_window(light_dist, light.range);
-        }
-        else if (is_point || is_spot)
-        {
-            float3 to_light = light.position - shading_pos;
-            light_dist      = length(to_light);
-            light_dir       = to_light / light_dist;
-            light_pdf       = 1.0f;
-
-            if (light.range <= 0.0f || light_dist >= light.range)
+            if (vertex == 1u && !is_restir_pt_direct_enabled()) continue;
+            uint index = entry.lights.x;
+            if (index >= (uint)buffer_frame.restir_pt_light_count) continue;
+            LightParameters light = light_parameters[index];
+            float pick_pdf = asfloat(entry.lights.y);
+            if (light.intensity <= 0.0f || !restir_pdf_valid(pick_pdf)) continue;
+            candidate.light_index = index;
+            candidate.endpoint_identity = uint2(light.identity_low, light.identity_high);
+            float attenuation = 1.0f;
+            float point_pdf = 1.0f;
+            if ((light.flags & (1u << 0)) != 0u)
             {
-                continue;
+                candidate.direction = sample_restir_sun_cone(-light.direction, restir_analytic_sample_position(entry), point_pdf);
+                candidate.endpoint_position = candidate.direction;
+                candidate.endpoint_normal = -candidate.direction;
+                candidate.endpoint_sky = true;
+                attenuation = point_pdf;
             }
-
-            attenuation = restir_range_window(light_dist, light.range) / (light_dist * light_dist + 0.0001f);
-
-            if (is_spot)
+            else
             {
-                attenuation *= light_spot_factor(light_flags, -light_dir, light.direction, light.direction_right, light.angle);
+                float3 endpoint = light.position;
+                bool area = (light.flags & (1u << 6)) != 0u;
+                bool punctual = (light.flags & ((1u << 1) | (1u << 2))) != 0u;
+                if (area)
+                {
+                    if (light.area_width <= 0.0f || light.area_height <= 0.0f) continue;
+                    float3 right = normalize(light.direction_right);
+                    float3 up = normalize(cross(light.direction, right));
+                    float2 position = restir_analytic_sample_position(entry) - 0.5f;
+                    endpoint += position.x * light.area_width * right + position.y * light.area_height * up;
+                    candidate.endpoint_normal = light.direction;
+                }
+                else if (!punctual) continue;
+                float3 delta = endpoint - shading_pos;
+                float distance_sq = dot(delta, delta);
+                if (!restir_connection_distance_valid(distance_sq)) continue;
+                float distance = sqrt(distance_sq);
+                candidate.direction = delta / distance;
+                candidate.endpoint_position = endpoint;
+                if (area)
+                {
+                    float cosine = dot(light.direction, -candidate.direction);
+                    if (cosine <= 0.0f) continue;
+                    point_pdf = distance_sq / (light.area_width * light.area_height * cosine);
+                    attenuation = restir_range_window(distance, light.range);
+                }
+                else
+                {
+                    if (light.range <= 0.0f || distance >= light.range) continue;
+                    candidate.endpoint_dirac = true;
+                    candidate.endpoint_normal = -candidate.direction;
+                    attenuation = restir_range_window(distance, light.range) / (distance_sq + 0.0001f);
+                    attenuation *= restir_spot_factor(light, candidate.direction);
+                }
             }
+            candidate.endpoint_radiance = light.color.rgb * light.intensity * attenuation;
+            candidate.endpoint_pdf = pick_pdf * point_pdf;
+        }
+        else if (entry.lights.z != 0xffffffffu)
+        {
+            uint index = entry.lights.z;
+            if (index >= (uint)buffer_frame.restir_pt_emissive_tri_count) continue;
+            EmissiveTriangle tri = emissive_triangles[index];
+            float3 bary = unpack_hit_barycentrics(entry.lights.w);
+            float3 endpoint = tri.v0 * bary.x + tri.v1 * bary.y + tri.v2 * bary.z;
+            float3 delta = endpoint - shading_pos;
+            float distance_sq = dot(delta, delta);
+            if (!restir_connection_distance_valid(distance_sq)) continue;
+            candidate.direction = delta * rsqrt(distance_sq);
+            if (dot(tri.normal, -candidate.direction) <= 1e-4f) continue;
+            candidate.light_index = RESTIR_ENDPOINT_EMTRI;
+            candidate.emitter_triangle = index;
+            candidate.endpoint_hit = uint3(index, 0u, entry.lights.w);
+            candidate.endpoint_position = endpoint;
+            candidate.endpoint_normal = tri.normal;
+            candidate.endpoint_radiance = tri.emission;
+            candidate.endpoint_pdf = asfloat(entry.lights.y) * restir_triangle_point_pdf(shading_pos, tri.v0, tri.v1, tri.v2, endpoint);
         }
         else
         {
-            continue;
+            candidate.light_index = RESTIR_ENDPOINT_SKY;
+            candidate.direction = entry.environment_direction;
+            candidate.endpoint_position = candidate.direction;
+            candidate.endpoint_normal = -candidate.direction;
+            candidate.endpoint_sky = true;
+            candidate.endpoint_radiance = sample_sky(candidate.direction);
+            candidate.endpoint_pdf = entry.environment_pdf;
         }
-
-        float n_dot_l = dot(shading_normal, light_dir);
-        if (n_dot_l <= 0.0f)
-            continue;
-
-        // The selected incident radiance is independent of the incoming RC view.
-        float  brdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, specular_blend);
-
-        // analytical lights are not in the bvh, single strategy mis weight of 1 is correct
-        float mis_weight = 1.0f;
-
-        float3 Li = light_color * light.intensity * attenuation;
-        bool selected = restir_stream_light(result, light_dir, Li * mis_weight / max(light_pdf, 1e-6f), brdf,
-            selection_seed, 1.0f / (float(candidate_count) * pick_pdf), light_idx, 0u, forced_light);
-        if (selected)
+        uint kind = candidate.light_index == RESTIR_ENDPOINT_SKY ? RESTIR_LIGHT_KIND_ENVIRONMENT :
+            (candidate.light_index == RESTIR_ENDPOINT_EMTRI ? RESTIR_LIGHT_KIND_EMISSIVE : RESTIR_LIGHT_KIND_ANALYTIC);
+        candidate.endpoint_pdf *= restir_light_kind_pmf_at_vertex(kind, vertex) / max(restir_light_kind_pmf(kind), 1e-20f);
+        if (dot(shading_normal, candidate.direction) <= 0.0f || !restir_pdf_valid(candidate.endpoint_pdf)) continue;
+        float bsdf_pdf;
+        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal,
+            view_dir, candidate.direction, bsdf_pdf, specular_blend);
+        float mis = candidate.light_index == RESTIR_ENDPOINT_EMTRI ?
+            restir_pooled_endpoint_mis(vertex + 1u, candidate.light_index, candidate.endpoint_pdf, bsdf_pdf) :
+            (candidate.light_index == RESTIR_ENDPOINT_SKY ?
+                restir_environment_endpoint_mis(vertex + 1u, candidate.light_index, shading_normal, candidate.direction, bsdf_pdf) : 1.0f);
+        float3 contribution = brdf * candidate.endpoint_radiance * mis;
+        float target = target_scalar(contribution);
+        float weight = target / candidate.endpoint_pdf;
+        if (!(weight > 0.0f) || !isfinite(weight)) continue;
+        float weight_sum = result.weight_sum + weight;
+        if (u * weight_sum < weight)
         {
-            result.endpoint_position = is_directional ? light_dir : endpoint_position;
-            result.endpoint_normal = endpoint_normal;
-            result.endpoint_radiance = Li;
-            result.endpoint_pdf = light_pdf;
+            result = candidate;
+            result.radiance_sum = contribution;
+            result.selected_target = target;
             result.endpoint_valid = true;
-            result.endpoint_sky = is_directional;
-            result.endpoint_dirac = is_point || is_spot;
-            result.endpoint_identity = uint2(light.identity_low, light.identity_high);
         }
+        result.weight_sum = weight_sum;
     }
-
-    // Select analytic NEE with an unshadowed target, as in section 6.1.
-    // The RIS estimate is F(selected) * sum(weights) / target(selected).
-    // Test only that endpoint; an occluded winner is a zero draw, not a
-    // reason to resample another light or renormalize the candidate set.
-    if (result.selected_target > 0.0f)
-    {
-        float distance = result.endpoint_sky ? RESTIR_RAY_T_MAX :
-            length(result.endpoint_position - shading_pos);
-        if (trace_shadow_ray(ray_origin_light, result.direction, distance))
-        {
-            float unused_pdf;
-            float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal,
-                view_dir, result.direction, unused_pdf, specular_blend);
-            result.radiance_sum = brdf * result.incident * (result.weight_sum / result.selected_target);
-        }
-        else
-        {
-            result = (RestirLightSample)0;
-        }
-    }
-
-    // Emissive-triangle NEE contributes one light-ending path.
-    if (is_emtri_pool_active() && (forced_light < 0 || forced_light == int(RESTIR_ENDPOINT_EMTRI)))
-    {
-        float3 light_pos, light_normal, emission;
-        float W, source_pdf;
-        uint draw, triangle_index, barycentrics;
-        if (emtri_ris_pick_path(shading_pos, shading_normal, seed, light_pos, light_normal, emission,
-            W, source_pdf, draw, triangle_index, barycentrics, forced_light == int(RESTIR_ENDPOINT_EMTRI) ? forced_emtri_draw : -1,
-            restir_nee_candidate_count(vertex), view_dir, albedo, roughness, metallic))
-        {
-            float3 to_light = light_pos - shading_pos;
-            float distance = length(to_light);
-            float3 direction = to_light / max(distance, 1e-6f);
-            if (distance > RESTIR_RAY_T_MIN && trace_shadow_ray(ray_origin_light, direction, distance))
-            {
-                float pdf;
-                float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir,
-                    direction, pdf, specular_blend);
-                float mis = restir_pooled_endpoint_mis(vertex + 1u, RESTIR_ENDPOINT_EMTRI, source_pdf, pdf);
-                restir_stream_light(result, direction, emission / source_pdf, brdf * mis, selection_seed,
-                    W * source_pdf, RESTIR_ENDPOINT_EMTRI, draw, forced_light);
-                if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_EMTRI)
-                {
-                    result.emitter_triangle = triangle_index;
-                    result.endpoint_hit = uint3(triangle_index, 0u, barycentrics);
-                    result.endpoint_position = light_pos;
-                    result.endpoint_normal = light_normal;
-                    result.endpoint_radiance = emission;
-                    result.endpoint_pdf = source_pdf;
-                    result.endpoint_valid = true;
-                    result.endpoint_sky = false;
-                    result.endpoint_dirac = false;
-                }
-            }
-        }
-    }
-
-    else if (is_emtri_pool_active())
-    {
-        for (uint i = 0u; i < restir_nee_candidate_count(vertex); ++i)
-        {
-            random_float3(seed);
-            random_float(seed);
-        }
-    }
-
-    // environment NEE, luminance-weighted sampling of the sun-free sky; the analytic loop above
-    // owns the sun so the two strategies never overlap
-    {
-        float2 env_xi = random_float2(seed);
-        // Keep both random dimensions consumed for prefix replay. The complete
-        // sky sample is shared across receivers, just like other tile lights.
-        uint env_offset = 0u;
-        RestirLightTileEntry env_entry = restir_light_tile_entry(env_xi.x, 0u, 1u, env_offset);
-        float env_pdf = env_entry.environment_pdf;
-        float3 env_dir = env_entry.environment_direction;
-
-        float env_n_dot_l = dot(shading_normal, env_dir);
-
-        if ((forced_light < 0 || forced_light == int(RESTIR_ENDPOINT_SKY)) &&
-            env_n_dot_l > 0.0f && restir_pdf_valid(env_pdf))
-        {
-            float probe_offset = compute_ray_offset(shading_pos);
-            RayDesc probe_ray;
-            probe_ray.Origin    = shading_pos + geometric_normal * probe_offset;
-            probe_ray.Direction = env_dir;
-            probe_ray.TMin      = probe_offset;
-            probe_ray.TMax      = RESTIR_RAY_T_MAX;
-
-            RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
-            probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
-            // Resolve cutouts just like path continuation. A single Proceed can stop
-            // at a non-opaque candidate before a wall behind it is visited, so
-            // COMMITTED_NOTHING is not yet a sky miss.
-            while (probe_query.Proceed())
-            {
-                if (probe_query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
-                    rt_candidate_opaque(probe_query.CandidateInstanceIndex(), probe_query.CandidatePrimitiveIndex(),
-                        probe_query.CandidateTriangleBarycentrics(), probe_ray.Origin + probe_ray.Direction * probe_query.CandidateTriangleRayT()))
-                    probe_query.CommitNonOpaqueTriangleHit();
-            }
-
-            // Environment NEE samples the sky only. Geometry blocks this
-            // sample; emissive hits belong to BSDF/pooled-emitter strategies.
-            if (probe_query.CommittedStatus() == COMMITTED_NOTHING)
-            {
-                float3 env_radiance = sample_sky(env_dir);
-
-                float  brdf_pdf_env;
-                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
-
-                float mis_weight_env = restir_balance_heuristic(env_pdf, brdf_pdf_env);
-                restir_stream_light(result, env_dir, env_radiance / env_pdf, brdf_env * mis_weight_env, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
-                if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
-                {
-                    result.endpoint_position = env_dir;
-                    result.endpoint_normal = -env_dir;
-                    result.endpoint_radiance = env_radiance;
-                    result.endpoint_pdf = env_pdf;
-                    result.endpoint_valid = true;
-                    result.endpoint_sky = true;
-                    result.endpoint_dirac = false;
-                }
-            }
-        }
-    }
-
-    if (result.selected_target > 0.0f)
-        result.initial_weight = result.weight_sum / result.selected_target;
+    if (!result.endpoint_valid) return result;
+    // Trace only the RIS winner, using the same segment and alpha handling as
+    // reconnection. An occluded winner remains a zero draw, never a replacement.
+    PathSample endpoint = restir_light_endpoint_descriptor(result, shading_pos, 1u, seed);
+    if (!trace_shift_visibility(endpoint, shading_pos, geometric_normal)) return (RestirLightSample)0;
+    float inverse_density = result.weight_sum / (float(candidate_count) * result.selected_target);
+    result.radiance_sum *= inverse_density;
+    result.incident = result.endpoint_radiance / result.endpoint_pdf;
+    result.initial_weight = inverse_density * result.endpoint_pdf;
     return result;
 }
 
@@ -2311,7 +2093,7 @@ ShiftResult evaluate_path_integrand(
 
     // dst incoming equals src incoming by construction so f_rc matches the original, no drift
     result.f_dst = brdf_cos * rc_outgoing_radiance(src, dir) *
-        restir_primary_emitter_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
+        restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
     result.ok    = true;
     return result;
 }
@@ -2365,31 +2147,6 @@ float target_pdf_self(
         return 0.0f;
 
     return target_scalar(r.f_dst);
-}
-
-// inline ray traced shadow ray, returns true if the segment is unoccluded
-bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
-{
-    float epsilon = max(RESTIR_RAY_T_MIN, compute_ray_offset(origin));
-
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = epsilon;
-    ray.TMax      = max(max_dist - epsilon, epsilon);
-
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    // Grass (0x04) remains visible to path rays, but casts only screen-space shadows.
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
-    while (query.Proceed())
-    {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
-            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
-                query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
-            query.CommitNonOpaqueTriangleHit();
-    }
-
-    return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
 // shades the reservoir sample at the current pixel via self shift

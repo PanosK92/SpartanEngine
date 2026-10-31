@@ -19,218 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 // rr and sun/sky sampling constants and helpers live in restir_reservoir.hlsl, shared with the
 // replay shift so the initial trace and the replay evaluate the same integrand
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
-static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 0.0f;
-
-// samples a candidate whose rc sits on an area sampled point of an emissive triangle
-// returns the rc position, emitted radiance and the ris weight standing in for 1 / source pdf
-PathSample sample_emissive_tri_candidate(
-    float3 primary_pos,
-    float3 primary_normal,
-    inout uint seed,
-    out float ris_weight, float3 view, float3 albedo, float roughness, float metallic)
-{
-    PathSample s = (PathSample)0;
-    s.rc_pos          = float3(0, 0, 0);
-    s.rc_normal       = float3(0, 1, 0);
-    s.rc_outgoing_dir = float3(0, 1, 0);
-    s.rc_L_post       = float3(0, 0, 0);
-    s.rc_L_nee        = float3(0, 0, 0);
-    s.rc_albedo       = float3(0, 0, 0);
-    s.rc_roughness    = 1.0f;
-    s.rc_metallic     = 0.0f;
-    s.src_pos         = float3(0, 0, 0);
-    s.src_normal      = float3(0, 1, 0);
-    s.src_normal_roughness = gbuffer_pack_normal(s.src_normal, 0u) | 0xff000000u;
-    s.src_albedo      = float3(0, 0, 0);
-    s.src_roughness   = 1.0f;
-    s.src_metallic    = 0.0f;
-    s.seed_path       = seed;
-    s.path_length     = 2;
-    s.rc_length       = 2;
-    s.flags           = 0;
-    s.endpoint_light  = RESTIR_ENDPOINT_EMTRI;
-    ris_weight        = 0.0f;
-
-    // ris over cdf draws, see emtri_ris_pick, the unshadowed geometry term picks the panel
-    float3 light_pos, light_normal, emission;
-    float  W;
-    uint triangle_index, barycentrics;
-    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W, triangle_index, barycentrics,
-        view, albedo, roughness, metallic))
-    {
-        return s;
-    }
-
-    float3 to   = light_pos - primary_pos;
-    float  dist = length(to);
-    if (dist < 1e-3f || dot(to / dist, primary_normal) <= MIN_COS_AT_PRIMARY)
-    {
-        return s;
-    }
-
-    ris_weight  = W;
-    s.flags    |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
-    s.rc_hit    = uint3(triangle_index, 0u, barycentrics);
-    s.rc_pos    = light_pos;
-    s.rc_normal = light_normal;
-    s.rc_geometric_normal_packed = pack_rc_geometric_normal(light_normal);
-    s.rc_pdf = abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), to / dist)) / dot(to, to);
-    s.rc_L_nee  = emission;
-    s.endpoint_pooled = true;
-    s.endpoint_geometry = uint2(triangle_index, 0u);
-    s.rc_L_post = float3(0, 0, 0);
-    return s;
-}
-
-// builds a candidate by directly sampling an analytical light or the sun cone
-// rc is the sampled light point, source_pdf is in solid angle at the primary
-PathSample sample_light_candidate(
-    float3 primary_pos,
-    float3 primary_normal,
-    inout uint seed,
-    out float source_pdf, uint proposal, uint candidate_count, inout uint tile_offset)
-{
-    PathSample s = (PathSample)0;
-    s.rc_pos          = float3(0, 0, 0);
-    s.rc_normal       = float3(0, 1, 0);
-    s.rc_outgoing_dir = float3(0, 1, 0);
-    s.rc_L_post       = float3(0, 0, 0);
-    s.rc_L_nee        = float3(0, 0, 0);
-    s.rc_albedo       = float3(0, 0, 0);
-    s.rc_roughness    = 1.0f;
-    s.rc_metallic     = 0.0f;
-    s.src_pos         = float3(0, 0, 0);
-    s.src_normal      = float3(0, 1, 0);
-    s.src_normal_roughness = gbuffer_pack_normal(s.src_normal, 0u) | 0xff000000u;
-    s.src_albedo      = float3(0, 0, 0);
-    s.src_roughness   = 1.0f;
-    s.src_metallic    = 0.0f;
-    s.seed_path       = seed;
-    s.path_length     = 2;
-    s.rc_length       = 2;
-    s.flags           = 0;
-    source_pdf        = 0.0f;
-
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    if (light_count == 0)
-        return s;
-
-    RestirLightTileEntry tile_entry = restir_light_tile_entry(random_float(seed), proposal, candidate_count, tile_offset);
-    uint light_idx = tile_entry.lights.x;
-    float pick_pdf = asfloat(tile_entry.lights.y);
-    if (light_idx >= light_count || pick_pdf <= 0.0f)
-        return s;
-    LightParameters light = light_parameters[light_idx];
-    bool is_directional = (light.flags & (1u << 0)) != 0;
-    bool is_area        = (light.flags & (1u << 6)) != 0;
-    s.endpoint_light = light_idx;
-
-    if (is_directional)
-    {
-        // continuous sun cone, sole owner of the sun since sky reads exclude the disc
-        float sun_cone_pdf;
-        random_float2(seed); // Preserve the existing candidate random dimensions.
-        float3 sampled = sample_restir_sun_cone(-light.direction, restir_analytic_sample_position(tile_entry), sun_cone_pdf);
-
-        if (dot(sampled, primary_normal) <= MIN_COS_AT_PRIMARY)
-            return s;
-
-        // no continuation past rc, rc_L_post stays zero
-        // The same disk radiance and PDF are used at secondary vertices.
-        s.flags      |= PATH_FLAG_SKY | PATH_FLAG_NEE;
-        s.rc_pos      = sampled;
-        s.rc_normal   = -sampled;
-        s.rc_L_nee    = light.color.rgb * light.intensity * sun_cone_pdf;
-        s.rc_L_post   = float3(0, 0, 0);
-        source_pdf    = pick_pdf * sun_cone_pdf;
-        return s;
-    }
-
-    if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-    {
-        // urena 2013 solid angle sampling, source pdf is in solid angle directly
-        float3 light_normal = light.direction;
-        float3 light_right  = normalize(light.direction_right);
-        float3 light_up     = normalize(cross(light_normal, light_right));
-
-        float3 ex          = light_right * light.area_width;
-        float3 ey          = light_up    * light.area_height;
-        float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
-
-        float2 xi = random_float2(seed);
-        float3 sampled_pos;
-        float  solid_angle;
-        sample_spherical_rectangle(primary_pos, rect_origin, ex, ey, xi, sampled_pos, solid_angle);
-
-        if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
-            return s;
-
-        float3 to   = sampled_pos - primary_pos;
-        float  dist = length(to);
-        if (dist < 1e-3f)
-            return s;
-
-        float3 dir       = to / dist;
-        float  cos_light = dot(-dir, light_normal);
-        if (cos_light <= 0.0f || dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
-            return s;
-
-        // area light, rc is the emitter surface, no continuation past rc
-        s.rc_pos      = sampled_pos;
-        s.rc_normal   = light_normal;
-        s.rc_geometric_normal_packed = pack_rc_geometric_normal(light_normal);
-        s.rc_pdf = abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), dir)) / dot(to, to);
-        s.rc_L_nee    = light.color.rgb * light.intensity * restir_range_window(dist, light.range);
-        s.rc_L_post   = float3(0, 0, 0);
-        s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
-
-        float sa_pdf = 1.0f / solid_angle;
-        source_pdf   = pick_pdf * sa_pdf;
-        return s;
-    }
-
-    bool is_point = (light.flags & (1u << 1)) != 0;
-    bool is_spot  = (light.flags & (1u << 2)) != 0;
-    if (is_point || is_spot)
-    {
-        // dirac local light, attenuation and spot cone folded into rc_L_nee, single strategy mis
-        float3 to        = light.position - primary_pos;
-        float  light_dist = length(to);
-        if (light_dist < 1e-3f)
-            return s;
-
-        float3 dir = to / light_dist;
-        if (dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
-            return s;
-
-        if (light.range <= 0.0f || light_dist >= light.range)
-        {
-            return s;
-        }
-
-        float attenuation = restir_range_window(light_dist, light.range) / (light_dist * light_dist + 0.0001f);
-        attenuation      *= restir_spot_factor(light, dir);
-        if (attenuation <= 0.0f)
-        {
-            return s;
-        }
-
-        s.rc_pos              = light.position;
-        s.rc_normal           = -dir;
-        s.rc_L_nee            = light.color.rgb * light.intensity * attenuation;
-        s.rc_L_post           = float3(0, 0, 0);
-        s.flags              |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
-        s.endpoint_emtri_draw = RESTIR_ENDPOINT_DIRAC_TAG;
-        s.endpoint_geometry = uint2(light.identity_low, light.identity_high);
-
-        // unit solid angle pdf keeps dirac candidates on the same scale as the area branch
-        source_pdf = pick_pdf;
-        return s;
-    }
-
-    return s;
-}
 
 [[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_hit_output : register(u71);
 [[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_surface_output : register(u72);
@@ -309,15 +98,9 @@ void ray_gen()
     float specular_probability = saturate(compute_spec_probability(albedo, roughness, metallic,
         dot(normal_ws, view_dir)) * restir_primary_specular_blend(roughness));
 
-    // unified direct and indirect, lin 2026 6.1, analytic lights join the same reservoir as a nee
-    // path of length two, including both primary diffuse and glossy scattering
-    // per sample weight is lin 2022 algorithm 1, w_i = target / sum_t(N_t * p_t(y))
-    const uint  n_brdf_count  = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
-    const uint  n_light_count = is_restir_pt_direct_enabled() ? clamp(get_restir_light_candidates(), 1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX) : 0u;
-    const uint  n_emtri_count = is_emtri_pool_active() ? clamp(get_restir_emtri_candidates(), 1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX) : 0u;
-    const float n_brdf        = float(n_brdf_count);
-    const float n_light       = float(n_light_count);
-    const float n_emtri       = float(n_emtri_count);
+    // One BSDF path tree and one primary NEE leaf share the initial RIS.
+    const uint n_brdf_count = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
+    const float n_brdf = float(n_brdf_count);
 
     for (uint i = 0; i < n_brdf_count; i++)
     {
@@ -367,7 +150,7 @@ void ray_gen()
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                // single strategy weight, the sun free sky is only reachable through brdf sampling
+                // Endpoint MIS is already in F; the path-tree RIS weight stays separate.
                 weight = target_pdf * candidate.initial_weight / (source_pdf * n_brdf);
             }
         }
@@ -416,84 +199,27 @@ void ray_gen()
     }
     NRD_FrontEnd_SpecHitDistAveraging_End(specular_hit_dist);
 
-    // analytic light pick, lin 2026 6.1, ris over unshadowed candidates then one visibility ray
-    // for the winner, the sub reservoir contribution weight stands in for 1 / source pdf so the
-    // main stream stays unbiased, visibility must still enter the main target, an occluded sun
-    // would otherwise outweigh every bounce and evict the valid indirect samples in shadow
-    if (n_light_count > 0u)
+    // Section 6.1: all light kinds compete in the same 32-proposal RIS.
+    RestirLightSample light = sample_direct_lighting_at_vertex(pos_ws, normal_ws, geometric_normal_ws,
+        view_dir, albedo, roughness, metallic, 1.0f, seed, false, 1u);
+    PathSample light_candidate = restir_light_endpoint_descriptor(light, pos_ws, 1u, seed);
+    float light_weight = 0.0f;
+    if (light.endpoint_valid && restir_pdf_valid(light.endpoint_pdf))
     {
-        PathSample light_pick    = (PathSample)0;
-        float light_weight_sum   = 0.0f;
-        float light_pick_target  = 0.0f;
-        uint tile_offset = 0u;
-        for (uint li = 0; li < n_light_count; li++)
-        {
-            float light_source_pdf;
-            PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, seed, light_source_pdf, li, n_light_count, tile_offset);
-            if (!restir_pdf_valid(light_source_pdf))
-            {
-                continue;
-            }
-
-            light_candidate.F  = evaluate_path_integrand(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
-            float target       = target_scalar(light_candidate.F);
-            if (!(target > 0.0f) || !isfinite(target))
-            {
-                continue;
-            }
-
-            float w           = target / (n_light * light_source_pdf);
-            light_weight_sum += w;
-            if (random_float(seed) * light_weight_sum < w)
-            {
-                light_pick        = light_candidate;
-                light_pick_target = target;
-            }
-        }
-
-        float light_weight = 0.0f;
-        if (light_pick_target > 0.0f && trace_shift_visibility(light_pick, pos_ws, geometric_normal_ws))
-        {
-            // single strategy weight, analytic lights are not in the bvh and the sun disc is
-            // excluded from every sky read so no other strategy reaches this integrand
-            float light_W  = light_weight_sum / light_pick_target;
-            light_weight   = light_pick_target * light_W;
-            canonical_gi  += light_pick.F * light_W * n_brdf;
-            canonical_specular += light_pick.F * light_W * n_brdf *
-                restir_primary_specular_fraction(light_pick, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-        }
-
-        update_reservoir(reservoir, light_pick, light_weight, random_float(seed));
+        float bsdf_pdf;
+        float3 brdf = evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, light.direction, bsdf_pdf, 1.0f);
+        float mis = light_candidate.endpoint_pooled ?
+            restir_pooled_endpoint_mis(2u, light.light_index, light.endpoint_pdf, bsdf_pdf) :
+            (light_candidate.endpoint_environment ?
+                restir_environment_endpoint_mis(2u, light.light_index, normal_ws, light.direction, bsdf_pdf) : 1.0f);
+        light_candidate.F = brdf * light.endpoint_radiance * mis;
+        float W = light.initial_weight / light.endpoint_pdf;
+        light_weight = target_scalar(light_candidate.F) * W;
+        canonical_gi += light.radiance_sum * n_brdf;
+        canonical_specular += light.radiance_sum * n_brdf *
+            restir_primary_specular_fraction(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     }
-
-    // emissive triangle nee strategy, area sampling of the global emissive pool
-    // Complementary BSDF/NEE MIS is part of F. The RIS UCW remains separate
-    // so reconnection can re-evaluate MIS with the destination BSDF and light PDF.
-    for (uint ei = 0; ei < n_emtri_count; ei++)
-    {
-        float emtri_ris_weight;
-        PathSample emtri_candidate = sample_emissive_tri_candidate(pos_ws, normal_ws, seed, emtri_ris_weight,
-            view_dir, albedo, roughness, metallic);
-
-        float emtri_weight = 0.0f;
-        if (emtri_ris_weight > 0.0f)
-        {
-            emtri_candidate.F = evaluate_path_integrand(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
-            float target_pdf = target_pdf_self(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-            if (target_pdf > 0.0f && trace_shift_visibility(emtri_candidate, pos_ws, geometric_normal_ws))
-            {
-                // the ris weight is the unbiased stand in for 1 / source pdf of the pick
-                emtri_weight = target_pdf * emtri_ris_weight / n_emtri;
-                ShiftResult evaluated = self_shift_evaluate(emtri_candidate, pos_ws, normal_ws,
-                    view_dir, albedo, roughness, metallic);
-                canonical_gi += evaluated.f_dst * emtri_ris_weight * n_brdf / n_emtri;
-                canonical_specular += evaluated.f_dst * emtri_ris_weight * n_brdf / n_emtri *
-                    restir_primary_specular_fraction(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-            }
-        }
-
-        update_reservoir(reservoir, emtri_candidate, emtri_weight, random_float(seed));
-    }
+    update_reservoir(reservoir, light_candidate, light_weight, random_float(seed));
 
     // no 1/M divide, the balance mis weights already encode the 1/N_s normalization
     // the winner is visible by construction so the finalize target needs no visibility factor
