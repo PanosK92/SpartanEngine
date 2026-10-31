@@ -441,7 +441,7 @@ void sample_spherical_triangle(
 // path flags, pack_path_info stores these in a nibble so a fifth bit needs a layout change
 static const uint PATH_FLAG_SKY      = 1 << 0;  // rc is the sky dome, rc_pos stores a unit direction
 static const uint PATH_FLAG_HAS_RC   = 1 << 1;  // reconnection vertex is valid for the reconnection shift
-static const uint PATH_FLAG_RC_EMIT  = 1 << 2;  // rc surface emits, its stored radiance cannot be re-derived
+static const uint PATH_FLAG_RC_EMIT  = 1 << 2;  // terminal BSDF-hit emitter
 static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light nee strategy
 
 // endpoint_light values that are not analytic light indices, fixed so a sample keeps its technique
@@ -495,10 +495,12 @@ struct PathSample
 };
 
 // The reference retains triangle hits rather than a frozen world-space point.
-// Analytic/forced-NEE endpoints still use their explicit endpoint representation.
+// Environment-NEE probes also carry real triangle hits. Analytic and pool-NEE
+// endpoints still use their explicit endpoint representation.
 bool is_triangle_reconnection(PathSample s)
 {
-    return (s.flags & PATH_FLAG_HAS_RC) != 0u && (s.flags & (PATH_FLAG_SKY | PATH_FLAG_NEE)) == 0u;
+    return (s.flags & PATH_FLAG_HAS_RC) != 0u && (s.flags & PATH_FLAG_SKY) == 0u &&
+        ((s.flags & PATH_FLAG_NEE) == 0u || s.endpoint_light == RESTIR_ENDPOINT_SKY);
 }
 
 bool restir_rc_hit_position(uint3 hit, out float3 position)
@@ -1793,63 +1795,6 @@ bool is_emtri_pool_active()
     return buffer_frame.restir_pt_emissive_tri_count > 0.5f;
 }
 
-float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary, float3 hit_position, float ray_t)
-{
-    GeometryInfo geo = geometry_infos[instance_index];
-    uint material_index = geo.material_index;
-    MaterialParameters mat = material_parameters[material_index];
-    if ((!mat.emissive_from_albedo() && !mat.has_texture_emissive() && !mat.has_emissive_color()) ||
-        (mat.is_pooled_emitter() && is_emtri_pool_active()))
-        return 0.0f;
-
-    if (!mat.emissive_from_albedo() && !mat.has_texture_emissive())
-        return mat.emissive_color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
-
-    // This is part of the radiance estimator, not just a sampling weight. Using
-    // material color here invents light for black emission maps and tints GI.
-    uint index_base = geo.index_offset + primitive_index * 3;
-    PulledVertex v0 = geometry_vertices[geo.vertex_offset + geometry_indices[index_base]];
-    PulledVertex v1 = geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 1]];
-    PulledVertex v2 = geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 2]];
-    float3 bary = float3(1.0f - hit_bary.x - hit_bary.y, hit_bary);
-    float2 uv = unpack_vertex_uv(v0.uv) * bary.x + unpack_vertex_uv(v1.uv) * bary.y + unpack_vertex_uv(v2.uv) * bary.z;
-    float3 normal_object = normalize(unpack_vertex_oct(v0.normal) * bary.x + unpack_vertex_oct(v1.normal) * bary.y + unpack_vertex_oct(v2.normal) * bary.z);
-    float3x3 world_to_object = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
-    float3 normal_world = normalize(mul(normal_object, transpose(world_to_object)));
-    if (mat.is_terrain())
-        uv = hit_position.xz;
-    else if (geo.uv_world_space > 0.0f)
-        uv = compute_world_space_uv(hit_position, normal_world);
-    uv = uv * geo.uv_tiling + geo.uv_offset;
-    if (!mat.is_terrain() && geo.uv_world_space > 0.0f)
-        uv = lerp(uv, 1.0f - frac(uv) + floor(uv), step(0.5f, geo.uv_invert));
-    if (geo.uv_rotation != 0.0f)
-        uv = rotate_uv_90(uv, geo.uv_rotation);
-    float mip_level = clamp(log2(max(ray_t * 0.5f, 1.0f)), 0.0f, 4.0f);
-
-    if (!mat.emissive_from_albedo())
-    {
-        float3 emission = material_textures[get_material_texture_index(material_index, material_texture_index_emission)].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
-        if (mat.is_emissive_srgb())
-            emission = srgb_to_linear(emission);
-        return emission * mat.emissive_color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
-    }
-
-    float3 albedo = mat.color.rgb;
-    if (mat.is_terrain() && mat.terrain_layer_count > 0)
-        albedo = terrain_shade_lod(mat, hit_position, normal_world, uv, mip_level).albedo;
-    else if (mat.has_texture_albedo())
-    {
-        float3 sample_albedo = material_textures[get_material_texture_index(material_index, material_texture_index_albedo)].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
-        if (mat.is_albedo_srgb())
-            sample_albedo = srgb_to_linear(sample_albedo);
-        albedo *= sample_albedo;
-    }
-    return saturate(albedo) * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
-}
-
 // binary search over the cdf, returns the triangle whose cumulative weight first exceeds u
 uint emtri_pick_index(float u, uint count)
 {
@@ -2069,6 +2014,7 @@ struct RestirLightSample
     uint emtri_draw;
     uint emitter_triangle;
     uint2 endpoint_identity;
+    uint3 endpoint_hit; // Instance, primitive and packed barycentrics for an environment-probe hit.
     float3 endpoint_position;
     float3 endpoint_normal;
     float3 endpoint_radiance;
@@ -2101,7 +2047,8 @@ bool restir_stream_light(inout RestirLightSample result, float3 direction, float
     return false;
 }
 
-float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray);
+void restir_probe_endpoint(float distance, uint3 hit, RayDesc ray,
+    out float3 position, out float3 normal, out float3 emission);
 
 RestirLightSample sample_direct_lighting_at_vertex(
     float3 shading_pos,
@@ -2352,10 +2299,11 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
             if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
             {
-                float3 emission = probe_emission(
-                    probe_query.CommittedInstanceIndex(), probe_query.CommittedPrimitiveIndex(),
-                    probe_query.CommittedTriangleBarycentrics(),
-                    probe_ray.Origin + probe_ray.Direction * probe_query.CommittedRayT(), probe_query.CommittedRayT());
+                uint3 endpoint_hit = uint3(probe_query.CommittedInstanceIndex(), probe_query.CommittedPrimitiveIndex(),
+                    pack_hit_barycentrics(probe_query.CommittedTriangleBarycentrics()));
+                float3 endpoint_position, endpoint_normal, emission;
+                restir_probe_endpoint(probe_query.CommittedRayT(), endpoint_hit, probe_ray,
+                    endpoint_position, endpoint_normal, emission);
 
                 if (luminance(emission) > 0.0f)
                 {
@@ -2366,9 +2314,9 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
                     if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_SKY)
                     {
-                        result.endpoint_position = probe_ray.Origin + probe_ray.Direction * probe_query.CommittedRayT();
-                        result.endpoint_normal = restir_endpoint_normal(probe_query.CommittedRayT(), probe_query.CommittedInstanceIndex(),
-                            probe_query.CommittedPrimitiveIndex(), probe_query.CommittedTriangleBarycentrics(), probe_ray);
+                        result.endpoint_hit = endpoint_hit;
+                        result.endpoint_position = endpoint_position;
+                        result.endpoint_normal = endpoint_normal;
                         result.endpoint_radiance = emission;
                         result.endpoint_pdf = env_pdf;
                         result.endpoint_valid = true;

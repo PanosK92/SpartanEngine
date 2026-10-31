@@ -35,12 +35,26 @@ PathSurface restir_trace_surface(RayDesc ray)
     return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray, 0.0f);
 }
 
-float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray)
+// The environment probe and BSDF walk must evaluate one emission function.
+// Reuse its compressed hit as well, rather than freezing the sampled point.
+void restir_probe_endpoint(float distance, uint3 hit, RayDesc ray,
+    out float3 position, out float3 normal, out float3 emission)
 {
-    uint packed = pack_hit_barycentrics(bary);
-    // This is a terminal light vertex, not a BRDF vertex. Its normal is
-    // used for solid-angle/area conversion when reconnecting the endpoint.
-    return reconstruct_path_surface(distance, instance, primitive, packed, ray).geometric_normal;
+    position = 0.0f;
+    normal = 0.0f;
+    emission = 0.0f;
+    GeometryInfo geo = geometry_infos[hit.x];
+    MaterialParameters mat = material_parameters[geo.material_index];
+    // Preserve the cheap non-emitter rejection, except where decals can add
+    // emission that the shared BSDF surface evaluation would also see.
+    if ((mat.is_pooled_emitter() && is_emtri_pool_active()) ||
+        (geo.decal_count == 0u && !mat.emissive_from_albedo() && !mat.has_texture_emissive() && !mat.has_emissive_color()))
+        return;
+    PathSurface surface = reconstruct_path_surface(distance, hit.x, hit.y, hit.z, ray, 0.0f);
+    position = surface.hit_position;
+    normal = surface.geometric_normal;
+    // Pooled emitters have their own NEE strategy and corresponding MIS.
+    emission = surface.pooled_emitter ? float3(0, 0, 0) : surface.emission;
 }
 
 // Match the reference's explicit-LOD reconstruction from retained hit identity.
@@ -61,12 +75,13 @@ bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
     ray.TMax = sqrt(d2);
     PathSurface rc = reconstruct_path_surface(ray.TMax, s.rc_hit.x, s.rc_hit.y, s.rc_hit.z, ray, 0.0f);
     s.rc_pos = rc.hit_position;
-    s.rc_normal = is_rc_emissive(s) ? rc.geometric_normal : rc.hit_normal;
+    bool terminal = is_rc_emissive(s) || is_nee_sample(s);
+    s.rc_normal = terminal ? rc.geometric_normal : rc.hit_normal;
     s.rc_geometric_normal_packed = pack_rc_geometric_normal(rc.geometric_normal);
     s.rc_albedo = rc.albedo;
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
-    if (is_rc_emissive(s)) s.rc_L_nee = rc.emission;
+    if (terminal) s.rc_L_nee = rc.emission;
     return all(isfinite(s.rc_normal));
 }
 
@@ -265,6 +280,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             leaf.seed_path = replay_seed;
             leaf.rc_length = depth + 1u;
             leaf.flags = PATH_FLAG_HAS_RC | PATH_FLAG_NEE | (light.endpoint_sky ? PATH_FLAG_SKY : 0u);
+            leaf.rc_hit = light.endpoint_hit;
             leaf.rc_pos = light.endpoint_position;
             leaf.rc_normal = light.endpoint_normal;
             leaf.rc_outgoing_dir = light.endpoint_normal;
