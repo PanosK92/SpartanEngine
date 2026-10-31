@@ -16,8 +16,10 @@ struct [raypayload] HitPayload
 
 float3 unpack_hit_barycentrics(uint packed)
 {
-    float2 uv = float2(f16tof32(packed & 0xffffu), f16tof32(packed >> 16));
-    // Independent half rounding can move an edge sample just outside the triangle.
+    // ReSTIR PT Enhanced stores barycentrics as UNORM16x2. Unlike half floats,
+    // this preserves uniform precision across the entire triangle.
+    float2 uv = float2(packed & 0xffffu, packed >> 16) / 65535.0f;
+    // Independent rounding can move an edge sample just outside the triangle.
     float3 bary = float3(max(0.0f, 1.0f - uv.x - uv.y), uv);
     return bary / (bary.x + bary.y + bary.z);
 }
@@ -29,7 +31,8 @@ void closest_hit(inout HitPayload payload : SV_RayPayload, in BuiltInTriangleInt
 #if DEBUG_RAY_TRACING != 1
     payload.instance_index    = InstanceIndex();
     payload.primitive_index   = PrimitiveIndex();
-    payload.barycentrics_packed = f32tof16(attribs.barycentrics.x) | (f32tof16(attribs.barycentrics.y) << 16);
+    uint2 barycentrics = uint2(round(saturate(attribs.barycentrics) * 65535.0f));
+    payload.barycentrics_packed = barycentrics.x | (barycentrics.y << 16);
 #endif
 }
 
