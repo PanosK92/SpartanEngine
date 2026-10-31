@@ -56,5 +56,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             entry.zw = uint2(i, pack_hit_barycentrics(bary));
         }
     }
-    restir_light_tiles[index] = entry;
+    RestirLightTileEntry cached;
+    cached.lights = entry;
+    // Reference LightSample stores distant-light sample coordinates, so every
+    // receiver evaluates the same cached direction rather than resampling it.
+    uint analytic_seed = create_seed_for_pass(uint2(index, 2u), buffer_frame.frame, 6u);
+    uint2 analytic_position = min(uint2(random_float2(analytic_seed) * 65536.0f), 65535u);
+    cached.analytic_position = analytic_position.x | (analytic_position.y << 16u);
+    restir_light_tiles[index] = cached;
 }

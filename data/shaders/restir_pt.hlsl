@@ -116,9 +116,9 @@ PathSample sample_light_candidate(
     if (light_count == 0)
         return s;
 
-    uint4 tile_entry = restir_light_tile_entry(random_float(seed), proposal, candidate_count, tile_offset);
-    uint light_idx = tile_entry.x;
-    float pick_pdf = asfloat(tile_entry.y);
+    RestirLightTileEntry tile_entry = restir_light_tile_entry(random_float(seed), proposal, candidate_count, tile_offset);
+    uint light_idx = tile_entry.lights.x;
+    float pick_pdf = asfloat(tile_entry.lights.y);
     if (light_idx >= light_count || pick_pdf <= 0.0f)
         return s;
     LightParameters light = light_parameters[light_idx];
@@ -130,7 +130,8 @@ PathSample sample_light_candidate(
     {
         // continuous sun cone, sole owner of the sun since sky reads exclude the disc
         float sun_cone_pdf;
-        float3 sampled = sample_restir_sun_cone(-light.direction, random_float2(seed), sun_cone_pdf);
+        random_float2(seed); // Preserve the existing candidate random dimensions.
+        float3 sampled = sample_restir_sun_cone(-light.direction, restir_analytic_sample_position(tile_entry), sun_cone_pdf);
 
         if (dot(sampled, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;

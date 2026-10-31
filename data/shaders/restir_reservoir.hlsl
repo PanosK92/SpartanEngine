@@ -17,12 +17,21 @@ static const uint RESTIR_MAX_PATH_LENGTH = 5;
 // Section 6.1: each 8x8 tracing block draws from one presampled light tile.
 static const uint RESTIR_LIGHT_TILE_COUNT = 128u;
 static const uint RESTIR_LIGHT_TILE_SIZE = 1024u;
-// xy: analytic light index/PMF; zw: emissive triangle index/packed barycentrics.
-RWStructuredBuffer<uint4> restir_light_tiles : register(u69);
+struct RestirLightTileEntry
+{
+    // xy: analytic index/PMF; zw: emissive triangle index/packed barycentrics.
+    uint4 lights;
+    uint analytic_position; // Two uniform 16-bit coordinates for distant lights.
+};
+RWStructuredBuffer<RestirLightTileEntry> restir_light_tiles : register(u69);
+float2 restir_analytic_sample_position(RestirLightTileEntry entry)
+{
+    return float2(entry.analytic_position & 65535u, entry.analytic_position >> 16u) / 65536.0f;
+}
 static uint restir_light_tile_index = 0u;
 // LightTileRIS::GenerateSample uses one random offset and a fixed stride.
 // Later xi draws are still consumed by callers so prefix replay stays aligned.
-uint4 restir_light_tile_entry(float xi, uint proposal, uint count, inout uint offset)
+RestirLightTileEntry restir_light_tile_entry(float xi, uint proposal, uint count, inout uint offset)
 {
     uint stride = (RESTIR_LIGHT_TILE_SIZE + count - 1u) / count;
     if (proposal == 0u)
@@ -1737,7 +1746,7 @@ bool emtri_ris_pick_path(
     {
         float3 xi = random_float3(seed);
         float  u  = random_float(seed);
-        uint4 tile_entry = restir_light_tile_entry(xi.x, i, candidate_count, tile_offset);
+        RestirLightTileEntry tile_entry = restir_light_tile_entry(xi.x, i, candidate_count, tile_offset);
         if (!pool_ok || (forced_draw >= 0 && i != uint(forced_draw)))
         {
             continue;
@@ -1746,9 +1755,9 @@ bool emtri_ris_pick_path(
         float3 dir, p;
         float point_pdf;
         EmissiveTriangle tri;
-        if (tile_entry.z >= count)
+        if (tile_entry.lights.z >= count)
             continue;
-        tri = emissive_triangles[tile_entry.z];
+        tri = emissive_triangles[tile_entry.lights.z];
         if (tri.area <= 0.0f || tri.weight <= 0.0f)
         {
             continue;
@@ -1756,7 +1765,7 @@ bool emtri_ris_pick_path(
 
         // The tile owns the complete emitter sample, shared by all receivers.
         // Keep consuming the old fixed random dimensions above for prefix replay.
-        uint packed_bary = tile_entry.w;
+        uint packed_bary = tile_entry.lights.w;
         float3 bary = unpack_hit_barycentrics(packed_bary);
         p = tri.v0 * bary.x + tri.v1 * bary.y + tri.v2 * bary.z;
         float3 delta = p - pos;
@@ -1779,7 +1788,7 @@ bool emtri_ris_pick_path(
         {
             out_pdf = pdf_sa;
             out_draw = i;
-            out_triangle = tile_entry.z;
+            out_triangle = tile_entry.lights.z;
             out_barycentrics = packed_bary;
             out_pos      = p;
             out_normal   = tri.normal;
@@ -1941,11 +1950,11 @@ RestirLightSample sample_direct_lighting_at_vertex(
     for (uint proposal = 0u; proposal < candidate_count; ++proposal)
     {
         float3 light_xi = random_float3(seed);
-        uint4 tile_entry = restir_light_tile_entry(light_xi.x, proposal, candidate_count, tile_offset);
+        RestirLightTileEntry tile_entry = restir_light_tile_entry(light_xi.x, proposal, candidate_count, tile_offset);
         if (forced_light == int(RESTIR_ENDPOINT_BSDF))
             continue;
-        uint light_idx = tile_entry.x;
-        float pick_pdf = asfloat(tile_entry.y);
+        uint light_idx = tile_entry.lights.x;
+        float pick_pdf = asfloat(tile_entry.lights.y);
         if (light_idx >= light_count || pick_pdf <= 0.0f)
             continue;
         LightParameters light = light_parameters[light_idx];
@@ -1972,7 +1981,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
         if (is_directional)
         {
-            light_dir = sample_restir_sun_cone(-light.direction, light_xi.yz, light_pdf);
+            light_dir = sample_restir_sun_cone(-light.direction, restir_analytic_sample_position(tile_entry), light_pdf);
             light_dist = RESTIR_RAY_T_MAX;
             attenuation = light_pdf; // irradiance normalization -> disk radiance
             endpoint_normal = -light_dir;
