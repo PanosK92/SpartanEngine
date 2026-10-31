@@ -205,7 +205,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf.rc_L_post = suffix * emitted * (depth == connection.rc_length + 1u ? 1.0f : endpoint_mis);
         }
-        else if (restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, 0.0f, threshold))
+        else if (restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, RESTIR_RC_EMITTER_PDF, threshold))
         {
             leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed);
             leaf.flags |= PATH_FLAG_RC_EMIT;
@@ -415,7 +415,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     rc.hit_position = src.rc_pos;
     rc.hit_normal = src.rc_normal;
     rc.geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
-    float pdf_out = 0.0f;
+    float pdf_out = is_rc_emissive(src) ? RESTIR_RC_EMITTER_PDF : 0.0f;
     if (k < src.path_length)
         evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed),
             -direction, src.rc_outgoing_dir, pdf_out, 1.0f);

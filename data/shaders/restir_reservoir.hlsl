@@ -157,6 +157,9 @@ bool restir_dual_footprint_allowed(float distance_sq, float forward_pdf_cos, flo
 static const float RESTIR_RC_COS_FRONT       = 0.0f;
 // footprint threshold scale, c / 100 with c = 0.02 from the paper, larger is more conservative
 static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
+// Reference getDiffusePseudoPdf: a BSDF-hit emitter has a diffuse inverse
+// footprint even though no outgoing scattering event is sampled there.
+static const float RESTIR_RC_EMITTER_PDF     = 1.0f / (2.0f * PI);
 // Supplemental section 4: reciprocal squared PDF replaces lobe roughness for
 // a black-box mixture BSDF. Rough glossy mixtures are not diffuse lobes.
 static const float RESTIR_RC_MIN_PDF_ROUGHNESS = 0.2f;
@@ -1784,8 +1787,9 @@ ShiftResult try_reconnection_shift(
         if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
             return result;
         float forward_pdf_cos = pdf_dst * geometry_cos_dst;
-        float inverse_pdf_cos = 0.0f;
-        if (any(src.rc_L_post > 0.0f))
+        float inverse_pdf_cos = is_rc_emissive(src)
+            ? RESTIR_RC_EMITTER_PDF * abs(dot(dst_geometric_normal, dir_dst)) : 0.0f;
+        if (!is_rc_emissive(src) && any(src.rc_L_post > 0.0f))
         {
             float pdf_rc;
             evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed),
