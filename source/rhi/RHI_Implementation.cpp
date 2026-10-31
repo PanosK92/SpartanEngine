@@ -34,6 +34,12 @@ namespace spartan
     VkDevice         RHI_Context::device                      = nullptr;
     uint32_t         RHI_Context::sdl_window_flags            = SDL_WINDOW_VULKAN;
     bool             RHI_Context::supports_imgui_multi_viewport = true;
+#elif defined(API_GRAPHICS_METAL)
+    RHI_Api_Type RHI_Context::api_type                    = RHI_Api_Type::Metal;
+    const char*  RHI_Context::api_type_str                = "Metal";
+    MTL::Device* RHI_Context::device                      = nullptr;
+    uint32_t     RHI_Context::sdl_window_flags            = SDL_WINDOW_METAL;
+    bool         RHI_Context::supports_imgui_multi_viewport = false;
 #endif
 
     // api agnostic

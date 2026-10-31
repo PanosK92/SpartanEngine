@@ -63,7 +63,7 @@ namespace spartan
 
     sol::reference Component::AsLua(sol::state_view state)
     {
-        return sol::nil;
+        return sol::lua_nil;
     }
 
     // auto-generated from SP_COMPONENT_LIST - no manual registration needed

@@ -46,6 +46,9 @@ function configure_graphics_api()
     elseif ARG_API_GRAPHICS == "vulkan" then
         API_CPP_DEFINE = "API_GRAPHICS_VULKAN"
         EXECUTABLE_NAME = EXECUTABLE_NAME .. "_vulkan"
+    elseif ARG_API_GRAPHICS == "metal" then
+        API_CPP_DEFINE = "API_GRAPHICS_METAL"
+        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_metal"
     else
         error("Unsupported graphics API: " .. tostring(ARG_API_GRAPHICS))
     end
@@ -144,11 +147,17 @@ function solution_configuration()
             architecture "x86_64"
             buildoptions { "-mavx2", "-mfma", "-mf16c" }
 
+        -- metal 4 needs macos 26
+        filter { "system:macosx" }
+            platforms { "arm64" }
+            architecture "ARM64"
+            systemversion "26.0"
+
         -- physx headers refuse to compile unless NDEBUG or _DEBUG is defined
-        filter { "system:linux", "configurations:debug" }
+        filter { "system:linux or macosx", "configurations:debug" }
             defines { "_DEBUG" }
 
-        filter { "system:linux", "configurations:release or development" }
+        filter { "system:linux or macosx", "configurations:release or development" }
             defines { "NDEBUG" }
 
         filter { "system:linux", "configurations:release" }
@@ -222,13 +231,19 @@ function spartan_project_configuration()
         filter {}
 
         if ARG_API_GRAPHICS == "d3d12" then
-            removefiles { SOURCE_DIR .. "/rhi/vulkan/**" }
+            removefiles { SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**" }
         elseif ARG_API_GRAPHICS == "vulkan" then
-            removefiles { SOURCE_DIR .. "/rhi/d3d12/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/metal/**" }
+        elseif ARG_API_GRAPHICS == "metal" then
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**" }
         end
 
         pchheader "pch.h"
         pchsource(SOURCE_DIR .. "/core/pch.cpp")
+        -- xcode takes the prefix header as a path, not an include name
+        filter { "action:xcode4" }
+            pchheader "source/core/pch.h"
+        filter {}
 
         -- lzma sdk: compile into spartan, no separate solution project
         filter { "files:**/lzma_sdk/**" }
@@ -303,6 +318,35 @@ function spartan_project_configuration()
             links { "dxcompiler", "vulkan", "pthread", "dl", "m" }
             -- libdxcompiler.so and libdxil.so ship next to the executable
             linkoptions { "-Wl,-rpath,'$$ORIGIN'" }
+
+        -- libraries built by tools/macos_dependencies.sh, freeimage comes from homebrew
+        -- a plain executable instead of a bundle, so it runs from binaries/ next to data/ like the other platforms
+        filter { "system:macosx" }
+            kind "ConsoleApp"
+            -- premake hands xcode the include dirs as quote-only user paths, angled includes need them too
+            xcodebuildsettings { HEADER_SEARCH_PATHS = "$(USER_HEADER_SEARCH_PATHS)" }
+            includedirs {
+                SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
+                "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/physx/physx",
+                "../third_party/free_image", "../third_party/free_type", "../third_party/renderdoc",
+                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
+                "../third_party/lua", "../third_party/lua/lua", "../third_party/metal_cpp", "../third_party/sse2neon",
+                "../third_party/lzma_sdk/spartan", LIBRARY_DIR .. "/macos/include"
+            }
+            libdirs { LIBRARY_DIR .. "/macos", "/opt/homebrew/opt/freeimage/lib" }
+            links { "SDL3", "assimp", "freetype", "freeimage", "meshoptimizer", "openxr_loader", "lua", "dxcompiler", "metalirconverter", "z", "iconv" }
+            links {
+                "PhysX_static", "PhysXCommon_static", "PhysXFoundation_static", "PhysXExtensions_static",
+                "PhysXPvdSDK_static", "PhysXVehicle_static", "PhysXCharacterKinematic_static"
+            }
+            links {
+                "Metal.framework", "QuartzCore.framework", "Foundation.framework", "Cocoa.framework", "IOKit.framework",
+                "CoreVideo.framework", "CoreAudio.framework", "AudioToolbox.framework", "Carbon.framework",
+                "ForceFeedback.framework", "GameController.framework", "CoreHaptics.framework",
+                "UniformTypeIdentifiers.framework", "AVFoundation.framework", "CoreMedia.framework"
+            }
+            -- libdxcompiler.dylib and libmetalirconverter.dylib ship next to the executable
+            linkoptions { "-Wl,-rpath,@executable_path" }
 
         filter { "configurations:release or development" }
             targetdir(TARGET_DIR)

@@ -297,7 +297,7 @@ namespace spartan
                     return comp->AsLua(World::GetLuaState());
                 }
 
-                return sol::nil;
+                return sol::lua_nil;
             },
             "AddComponent", [](Entity* Self, ComponentType Type) -> sol::reference
             {
@@ -306,7 +306,7 @@ namespace spartan
                     return comp->AsLua(World::GetLuaState());
                 }
 
-                return sol::nil;
+                return sol::lua_nil;
             },
             "RemoveComponent", [](Entity* Self, ComponentType Type)
             {

@@ -12,7 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
-#include <xmmintrin.h>
+#include "../math/Intrinsics.h"
 //==========================
 
 // Procedural rain. What the ear calls rain is thousands of tiny impacts per second that fuse into a

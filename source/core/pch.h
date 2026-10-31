@@ -5,6 +5,9 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
+// xcode prefixes every source with this header, the c sources (mimalloc, lz4, lzma) must not see it
+#ifdef __cplusplus
+
 // memory
 #include "../memory/MemoryOverrides.h"
 
@@ -53,3 +56,5 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../math/Frustum.h"
 #include "../math/Plane.h"
 #include "../math/Helper.h"
+
+#endif // __cplusplus

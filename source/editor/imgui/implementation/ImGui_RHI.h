@@ -287,6 +287,7 @@ namespace ImGui::RHI
         {
             case spartan::RHI_Api_Type::D3d12:  return ImGui_ImplSDL3_InitForD3D(window);
             case spartan::RHI_Api_Type::Vulkan: return ImGui_ImplSDL3_InitForVulkan(window);
+            case spartan::RHI_Api_Type::Metal:  return ImGui_ImplSDL3_InitForMetal(window);
         }
 
         return false;

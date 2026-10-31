@@ -191,7 +191,7 @@ namespace spartan
             optional<string> value = ConsoleRegistry::Get().GetValueAsString(name);
             if (!value)
             {
-                return sol::nil;
+                return sol::lua_nil;
             }
             return sol::make_object(lua_state, *value);
         };
@@ -300,7 +300,7 @@ namespace spartan
                 result["position"] = hit_position;
                 return result;
             }
-            return sol::nil;
+            return sol::lua_nil;
         };
 
         lua_state.new_usertype<Vector2>("Vector2",

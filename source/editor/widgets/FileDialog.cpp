@@ -226,7 +226,9 @@ return MyScript
             snprintf(buffer, sizeof(buffer), "%lld days ago", static_cast<long long>(seconds / 86400));
             return buffer;
         }
-        const time_t stamp = chrono::system_clock::to_time_t(chrono::clock_cast<chrono::system_clock>(time));
+        // libc++ has no clock_cast, offsetting by both clocks' now is exact to within the call
+        const auto system_time = chrono::time_point_cast<chrono::system_clock::duration>(time - filesystem::file_time_type::clock::now() + chrono::system_clock::now());
+        const time_t stamp     = chrono::system_clock::to_time_t(system_time);
         tm local = {};
         localtime_s(&local, &stamp);
         strftime(buffer, sizeof(buffer), "%d %b %Y", &local);

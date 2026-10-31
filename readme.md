@@ -5,7 +5,7 @@
 <h2 align="center">Path traced. GPU driven. Started before AI and developed alongside me while in the game industry</h2>
 
 <p align="center">
-  <sub>12 YEARS &nbsp;·&nbsp; 1 ENGINEER &nbsp;·&nbsp; WINDOWS AND LINUX &nbsp;·&nbsp; DIRECTX 12 AND VULKAN</sub>
+  <sub>12 YEARS &nbsp;·&nbsp; 1 ENGINEER &nbsp;·&nbsp; WINDOWS, LINUX AND MACOS &nbsp;·&nbsp; DIRECTX 12, VULKAN AND METAL</sub>
 </p>
 
 <p align="center">
@@ -81,7 +81,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 - **GPU-driven indirect rendering** with per-meshlet frustum, Hi-Z occlusion and backface cone culling; the CPU issues a single `DrawIndexedIndirectCount` per pass
 - **Meshlet clustering** via meshoptimizer, with mesh shaders when available and a vertex-pulling fallback
 - **Bindless everything**: materials, lights, samplers, uber shaders, minimal PSO permutations
-- **Universal HLSL** compiled for both Vulkan (SPIR-V) and DirectX 12
+- **Universal HLSL** compiled for Vulkan (SPIR-V), DirectX 12 and Metal (Metal Shader Converter)
 - **GPU-side asset processing**: mip generation (FidelityFX SPD) and texture compression (Compressonator) at load time, not baked offline
 - **Unified deferred rendering**: opaque and transparent surfaces share the same BSDF and render path
 - **Async compute** for SSAO and screen-space shadows, in parallel with shadow rasterization
@@ -137,7 +137,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 | System               | Details                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
-| **Platforms**        | Windows (DirectX 12 and Vulkan) and Linux (Vulkan), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)** |
+| **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)** |
 | **Physics**          | PhysX with rigid bodies, character kinematics and vehicle dynamics                                |
 | **Animation**        | Skeletal animation with keyframed clips, crossfade blending, four-bone skinning and two-bone IK with ground-aware foot planting |
 | **Particles**        | GPU-driven compute emission and simulation, depth-buffer collision and soft blending              |
@@ -169,6 +169,12 @@ generate_project_files.bat vs2026 vulkan
 tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make config=release_x64
 ```
 
+```bash
+# macOS 26.0+ (Apple silicon, Metal 4): needs Xcode 26, Homebrew (brew install cmake ninja) and the
+# Metal Shader Converter from developer.apple.com/metal/shader-converter, then open spartan.xcworkspace
+tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
+```
+
 Worlds live in `worlds/` as XML; their assets live in `binaries/project/`, excluded from Git and downloaded during setup. Start reading at **[Engine.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp)**, the entry point, and the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting)** for gameplay code.
 
 <details>
@@ -189,6 +195,11 @@ With dependencies already installed, regenerate without downloading them:
 
 ```powershell
 tools/premake5.exe --file=tools/premake.lua --skip-setup vs2026 vulkan
+```
+
+```bash
+# macOS
+tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 ```
 
 **Engine and world boundary.** There is no game layer in C++. `source/world/WorldSystems.cpp` installs the world lifecycle hooks: camera controls, vehicle render submissions, breakable trees and the optional world systems (ambient wildlife, ambient atmosphere, road details, layered road surfaces). Vehicle physics and state live under `source/car`, vehicle MCP commands in `source/mcp/McpCommandsCar.cpp`, and traffic, race drivers, route drivers, car resets and skid marks are regular components in `source/world/components`. The optional world systems are off by default; a world turns them on through the `WorldSystems` Lua table from its companion script, the `.lua` with the same name next to the `.world` (`worlds/plan.lua` for `plan.world`), which runs on every load before the roads are built. Worker model imports publish their entity hierarchy through `World::EntityBatch::Commit()` after construction succeeds.

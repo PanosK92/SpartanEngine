@@ -7296,7 +7296,7 @@ namespace spartan
 
             std::string json = "{\"ok\":true";
             const sol::object return_value = result;
-            if (return_value.valid() && return_value.get_type() != sol::type::nil)
+            if (return_value.valid() && return_value.get_type() != sol::type::lua_nil)
             {
                 const sol::protected_function to_string = lua["tostring"];
                 const sol::protected_function_result to_string_result = to_string(return_value);

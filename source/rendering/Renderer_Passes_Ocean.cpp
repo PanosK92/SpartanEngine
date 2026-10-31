@@ -34,7 +34,7 @@ namespace spartan
 {
     namespace
     {
-        atomic<shared_ptr<const vector<Vector4>>>
+        atomic_shared_ptr<const vector<Vector4>>
             ocean_heights_cache;
         future<void> ocean_readback_copy_task;
         uint32_t ocean_readback_copy_index =
@@ -84,7 +84,7 @@ namespace spartan
                 vector<Vector4> texels; // x = signed distance, yz = shoreward direction, w = beach slope
             };
 
-            atomic<shared_ptr<const Field>> field_current;
+            atomic_shared_ptr<const Field> field_current;
             shared_ptr<Field> field_pending;
             future<void> field_task;
             shared_ptr<RHI_Texture> texture;

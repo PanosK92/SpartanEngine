@@ -19,6 +19,8 @@ local LIBRARY_HASH     = "f7b452e04879967408109f95c7dfba1dbd86ea8358b2a805edb825
 
 local LINUX_LIBRARIES_DIR     = path.join(LIBRARIES_DIR, "linux")
 local LINUX_RUNTIME_LIBRARIES = { "libdxcompiler.so", "libdxil.so" }
+local MACOS_LIBRARIES_DIR     = path.join(LIBRARIES_DIR, "macos")
+local MACOS_RUNTIME_LIBRARIES = { "libdxcompiler.dylib", "libmetalirconverter.dylib" }
 
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
@@ -203,6 +205,8 @@ local function copy_file(src, dst)
     end
 
     os.mkdir(path.getdirectory(dst))
+    -- macos caches the code signature of a binary per file, overwriting one in place gets the next launch killed
+    os.remove(dst)
     local ok, err = os.copyfile(src, dst)
     if not ok then
         error(string.format("failed to copy %s -> %s: %s", src, dst, tostring(err)))
@@ -581,18 +585,23 @@ local function ensure_steamworks()
     end
 end
 
--- libraries.7z only holds windows binaries, linux builds them with tools/linux_dependencies.sh
+-- libraries.7z only holds windows binaries, linux and macos build them with tools/<os>_dependencies.sh
 local function run_linux()
+    local is_macos     = os.host() == "macosx"
+    local library_dir  = is_macos and MACOS_LIBRARIES_DIR or LINUX_LIBRARIES_DIR
+    local libraries    = is_macos and MACOS_RUNTIME_LIBRARIES or LINUX_RUNTIME_LIBRARIES
+    local dependencies = is_macos and "tools/macos_dependencies.sh" or "tools/linux_dependencies.sh"
+
     print("\n[1/2] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
 
     print("\n[2/2] copying runtime libraries into binaries...")
-    for _, so in ipairs(LINUX_RUNTIME_LIBRARIES) do
-        local source = path.join(LINUX_LIBRARIES_DIR, so)
+    for _, so in ipairs(libraries) do
+        local source = path.join(library_dir, so)
         if file_exists(source) then
             copy_file(source, path.join(BINARIES_DIR, so))
         else
-            print("  missing " .. so .. ", run tools/linux_dependencies.sh first")
+            print("  missing " .. so .. ", run " .. dependencies .. " first")
         end
     end
 

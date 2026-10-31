@@ -556,6 +556,9 @@ namespace spartan
                 Renderer::GetRhiApiType() ==
                     RHI_Api_Type::Vulkan ?
                         "vulkan" :
+                    Renderer::GetRhiApiType() ==
+                    RHI_Api_Type::Metal ?
+                        "metal" :
                         "d3d12";
             const bool gpu_timing_enabled =
                 cvar_debug_gpu_timing.GetValue();

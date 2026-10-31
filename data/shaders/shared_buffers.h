@@ -93,7 +93,13 @@ struct FrameBufferData
     SHARED_FLOAT3 camera_position_previous;
     SHARED_FLOAT  resolution_scale;
 
+#if defined(API_GRAPHICS_METAL) || defined(API_METAL)
+    // metal gpus have no fp64, the padding keeps the double's 8 bytes so the layout matches the other apis
+    SHARED_FLOAT  time;
+    SHARED_FLOAT  time_padding;
+#else
     SHARED_DOUBLE time;
+#endif
     SHARED_FLOAT  camera_fov;
     SHARED_FLOAT  restir_pt_scale;
 
@@ -1029,10 +1035,16 @@ struct SurvivingInstance
 #define CULL_PHASE_MESHLET_BASE_ALPHA   1u
 #define CULL_PHASE_TRIANGLE_BASE_OPAQUE 2u
 #define CULL_PHASE_TRIANGLE_BASE_ALPHA  3u
-#define CULL_PHASE_COUNT                4u
+#define CULL_PHASE_MESHLET_COUNT        4u // 4 entries, the meshlets in triangle_dispatch_args slots 0 to 3, the mesh grids round them up
+#define CULL_PHASE_COUNT                8u
 #define CULL_PHASE_MODE_SNAPSHOT        0u
 #define CULL_PHASE_MODE_LATE_MESHLETS   1u
 #define CULL_PHASE_MODE_LATE_TRIANGLES  2u
+
+// a dispatch dimension is capped at 65535 groups, so mesh draws lay their meshlets out in rows of this many groups
+// triangle_dispatch_args slots 4 to 7 hold the grids of slots 0 to 3, a power of two keeps every grid within 2^22 groups
+#define MESH_GRID_WIDTH                 32768u
+#define MESH_GRID_ARGS_SLOT             4u
 
 // gpu-driven shadow maps, one record per shadow casting draw, culled per (atlas slice, instance) by shadow_cull.hlsl
 // the lod geometry is stored twice because directional cascades bias the lod one step coarser than local lights

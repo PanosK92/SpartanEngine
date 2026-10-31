@@ -13,7 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <condition_variable>
 #include <deque>
 #include <chrono>
-#include <immintrin.h>
+#include "../math/Intrinsics.h"
 //============================
 
 //= NAMESPACES =====

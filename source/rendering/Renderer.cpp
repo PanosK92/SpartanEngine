@@ -12,7 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <unordered_map>
 #include <future>
 #include <cmath>
-#include <immintrin.h>
+#include "../math/Intrinsics.h"
 #include "Renderer_Internal.h"
 #include "Material.h"
 #include "IesProfile.h"
@@ -1660,8 +1660,8 @@ namespace spartan
         args_buffer->Update(&draw_args[0], sizeof(draw_args));
 
         // indirect dispatch args, slot 0 opaque (or full list for vs path), slot 1 alpha for mesh path, slots 2 and 3 their late ranges
-        // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1
-        Sb_IndirectDispatchArgs dispatch_args[4] = {};
+        // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1, slots 4 to 7 are the mesh grids cull_phase writes
+        Sb_IndirectDispatchArgs dispatch_args[MESH_GRID_ARGS_SLOT + 4] = {};
         RHI_Buffer* dispatch_args_buffer         = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
         dispatch_args_buffer->ResetOffset();
         dispatch_args_buffer->Update(&dispatch_args[0], sizeof(dispatch_args));

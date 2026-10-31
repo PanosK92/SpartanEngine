@@ -8,12 +8,12 @@ Commercial use requires written permission and negotiated payment terms.
 #pragma once
 
 //= INCLUDES ==========
-#include <immintrin.h>
+#include "Intrinsics.h"
 #include <limits>
 //=====================
 
-#if !defined(__AVX2__)
-#error "spartan math requires avx2 and fma, build with /arch:AVX2 (msvc) or -mavx2 -mfma (gcc/clang)"
+#if !defined(__AVX2__) && !defined(__aarch64__)
+#error "spartan math requires avx2 and fma, build with /arch:AVX2 (msvc) or -mavx2 -mfma (gcc/clang), arm64 maps them to neon"
 #endif
 
 namespace spartan::math::simd

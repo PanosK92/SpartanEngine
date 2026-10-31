@@ -37,6 +37,7 @@ cat <<'EOF'
   [1] visual studio 2026 - vulkan
   [2] visual studio 2026 - d3d12
   [3] gmake - vulkan (linux, run tools/linux_dependencies.sh first)
+  [4] xcode - metal (macos, run tools/macos_dependencies.sh first)
   [0] exit
 
 EOF
@@ -46,6 +47,7 @@ case "$choice" in
     1) $premake --file="$lua" vs2026 vulkan ;;
     2) $premake --file="$lua" vs2026 d3d12 ;;
     3) $premake --file="$lua" gmake vulkan ;;
+    4) $premake --file="$lua" xcode4 metal ;;
     0) exit 0 ;;
     *) echo "invalid choice: $choice"; exit 1 ;;
 esac

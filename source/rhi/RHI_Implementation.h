@@ -146,6 +146,140 @@ inline constexpr D3D12_BLEND_OP d3d12_blend_operation[] =
 
 #endif // API_GRAPHICS_D3D12
 
+// definition - Metal
+#if defined(API_GRAPHICS_METAL)
+#include <Foundation/Foundation.hpp>
+#include <Metal/Metal.hpp>
+#include <Metal/MTL4AccelerationStructure.hpp> // metal-cpp's umbrella header leaves it out
+#include <QuartzCore/QuartzCore.hpp>
+
+// must match the RHI_CullMode enum order, Back, Front, None
+inline constexpr MTL::CullMode metal_cull_mode[] =
+{
+    MTL::CullModeBack,
+    MTL::CullModeFront,
+    MTL::CullModeNone
+};
+
+inline constexpr MTL::TriangleFillMode metal_polygon_mode[] =
+{
+    MTL::TriangleFillModeFill,
+    MTL::TriangleFillModeLines
+};
+
+inline constexpr MTL::PrimitiveType metal_primitive_topology[] =
+{
+    MTL::PrimitiveTypeTriangle,
+    MTL::PrimitiveTypeLine,
+    MTL::PrimitiveTypePoint
+};
+
+inline constexpr MTL::PixelFormat metal_format[] =
+{
+    // R
+    MTL::PixelFormatR8Unorm,
+    MTL::PixelFormatR8Uint,
+    MTL::PixelFormatR16Unorm,
+    MTL::PixelFormatR16Uint,
+    MTL::PixelFormatR16Float,
+    MTL::PixelFormatR32Uint,
+    MTL::PixelFormatR32Float,
+    // RG
+    MTL::PixelFormatRG8Unorm,
+    MTL::PixelFormatRG16Float,
+    MTL::PixelFormatRG32Float,
+    // RGB
+    MTL::PixelFormatRG11B10Float,
+    MTL::PixelFormatInvalid, // metal has no 96 bit texture format
+    // RGBA
+    MTL::PixelFormatRGBA8Unorm,
+    MTL::PixelFormatRGB10A2Unorm,
+    MTL::PixelFormatRGBA16Unorm,
+    MTL::PixelFormatRGBA16Snorm,
+    MTL::PixelFormatRGBA16Float,
+    MTL::PixelFormatRGBA32Float,
+    // Depth
+    MTL::PixelFormatDepth16Unorm,
+    MTL::PixelFormatDepth32Float,
+    MTL::PixelFormatDepth32Float_Stencil8,
+    // Compressed
+    MTL::PixelFormatBC1_RGBA,
+    MTL::PixelFormatBC3_RGBA,
+    MTL::PixelFormatBC5_RGUnorm,
+    MTL::PixelFormatBC7_RGBAUnorm,
+    MTL::PixelFormatInvalid,
+    // Surface
+    MTL::PixelFormatBGRA8Unorm,
+    MTL::PixelFormatRG32Uint,
+    // Unknown
+    MTL::PixelFormatInvalid
+};
+
+inline constexpr MTL::SamplerAddressMode metal_sampler_address_mode[] =
+{
+    MTL::SamplerAddressModeRepeat,
+    MTL::SamplerAddressModeMirrorRepeat,
+    MTL::SamplerAddressModeClampToEdge,
+    MTL::SamplerAddressModeClampToBorderColor,
+    MTL::SamplerAddressModeMirrorClampToEdge
+};
+
+inline constexpr MTL::CompareFunction metal_comparison_function[] =
+{
+    MTL::CompareFunctionNever,
+    MTL::CompareFunctionLess,
+    MTL::CompareFunctionEqual,
+    MTL::CompareFunctionLessEqual,
+    MTL::CompareFunctionGreater,
+    MTL::CompareFunctionNotEqual,
+    MTL::CompareFunctionGreaterEqual,
+    MTL::CompareFunctionAlways
+};
+
+inline constexpr MTL::StencilOperation metal_stencil_operation[] =
+{
+    MTL::StencilOperationKeep,
+    MTL::StencilOperationZero,
+    MTL::StencilOperationReplace,
+    MTL::StencilOperationIncrementClamp,
+    MTL::StencilOperationDecrementClamp,
+    MTL::StencilOperationInvert,
+    MTL::StencilOperationIncrementWrap,
+    MTL::StencilOperationDecrementWrap
+};
+
+inline constexpr MTL::BlendFactor metal_blend_factor[] =
+{
+    MTL::BlendFactorZero,
+    MTL::BlendFactorOne,
+    MTL::BlendFactorSourceColor,
+    MTL::BlendFactorOneMinusSourceColor,
+    MTL::BlendFactorSourceAlpha,
+    MTL::BlendFactorOneMinusSourceAlpha,
+    MTL::BlendFactorDestinationAlpha,
+    MTL::BlendFactorOneMinusDestinationAlpha,
+    MTL::BlendFactorDestinationColor,
+    MTL::BlendFactorOneMinusDestinationColor,
+    MTL::BlendFactorSourceAlphaSaturated,
+    MTL::BlendFactorBlendColor,
+    MTL::BlendFactorOneMinusBlendColor,
+    MTL::BlendFactorSource1Color,
+    MTL::BlendFactorOneMinusSource1Color,
+    MTL::BlendFactorSource1Alpha,
+    MTL::BlendFactorOneMinusSource1Alpha
+};
+
+inline constexpr MTL::BlendOperation metal_blend_operation[] =
+{
+    MTL::BlendOperationAdd,
+    MTL::BlendOperationSubtract,
+    MTL::BlendOperationReverseSubtract,
+    MTL::BlendOperationMin,
+    MTL::BlendOperationMax
+};
+
+#endif // API_GRAPHICS_METAL
+
 // definition - vulkan
 #if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
@@ -396,6 +530,8 @@ namespace spartan
             static VkInstance instance;
             static VkDevice device;
             static VkPhysicalDevice device_physical;
+        #elif defined(API_GRAPHICS_METAL)
+            static MTL::Device* device;
         #endif
 
         // api agnostic

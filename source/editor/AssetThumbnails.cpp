@@ -251,7 +251,7 @@ namespace
         {
             return "";
         }
-        return to_string(size) + ":" + to_string(time.time_since_epoch().count()) + ":" + to_string(cache_version);
+        return to_string(size) + ":" + to_string(static_cast<int64_t>(time.time_since_epoch().count())) + ":" + to_string(cache_version);
     }
 
     string cache_path_for(const string& key, const string& stamp)
