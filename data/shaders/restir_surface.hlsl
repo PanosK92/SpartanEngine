@@ -150,8 +150,9 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     float3 edge1_world   = mul(pv1.position - pv0.position, obj_to_world_3x3);
     float3 edge2_world   = mul(pv2.position - pv0.position, obj_to_world_3x3);
     float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
+    bool front_facing = dot(geometric_normal, ray.Direction) <= 0.0f;
 
-    if (dot(geometric_normal, ray.Direction) > 0.0f)
+    if (!front_facing)
         geometric_normal = -geometric_normal;
     if (dot(normal_world, geometric_normal) < 0.0f)
         normal_world = -normal_world;
@@ -222,7 +223,10 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     payload.hit_normal       = normal_world;
     payload.geometric_normal = geometric_normal;
     payload.albedo           = albedo;
-    payload.emission         = emission;
+    // Reference StandardMaterial emits only on the original front face, even
+    // when the reflection frame is flipped for a back-facing surface hit.
+    // Match the emissive-triangle NEE sampler's front-side support.
+    payload.emission         = front_facing ? emission : 0.0f;
     payload.roughness        = roughness;
     payload.metallic         = metallic;
     return payload;
