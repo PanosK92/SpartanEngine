@@ -1047,7 +1047,9 @@ float3 world_to_local(float3 world_dir, float3 n)
 // alpha must match the brdf model via restir_d_ggx_alpha or the pdf and integrand densities diverge
 float3 sample_ggx_vndf(float3 ve, float2 xi, float alpha)
 {
-    float a = max(alpha, 1e-3f);
+    // Keep the sampled distribution consistent with the alpha used by the PDF.
+    // Delta callers handle alpha == 0 before reaching this continuous sampler.
+    float a = alpha;
 
     float3 vh = normalize(float3(a * ve.x, a * ve.y, ve.z));
 
