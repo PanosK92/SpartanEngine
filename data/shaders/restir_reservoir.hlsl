@@ -602,8 +602,9 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     tex0 = float4(endpoint, asfloat(terminal ? r.sample.rc_geometric_normal_packed : pack_rc_outgoing_direction(r.sample.rc_outgoing_dir)));
     tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post, r.sample.rc_pdf);
     tex2 = float4(r.sample.F, r.W);
-    tex3 = float4(asfloat(r.sample.seed_path), asfloat(pack_path_info(r.sample)), r.sample.rc_nee_pdf,
-        asfloat(uint(clamp(r.M + 0.5f, 0.0f, 255.0f))));
+    // Reference PathReservoir::M is floating point. Duplication-driven caps
+    // produce fractional confidence; retain it through every reuse pass.
+    tex3 = float4(asfloat(r.sample.seed_path), asfloat(pack_path_info(r.sample)), r.sample.rc_nee_pdf, r.M);
 }
 
 Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
@@ -655,7 +656,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
     float4 material = unpack_float_to_uint8x4(asfloat(primary_material));
     r.sample.src_albedo = material.rgb;
     r.sample.src_metallic = material.a;
-    r.M = float(asuint(tex3.w) & 255u);
+    r.M = tex3.w;
     r.target_pdf = target_scalar(r.sample.F);
     return r;
 }
@@ -707,7 +708,7 @@ bool is_reservoir_valid(Reservoir r)
     if (any(isnan(r.sample.rc_L_nee))  || any(isinf(r.sample.rc_L_nee)))  return false;
     if (any(isnan(r.sample.rc_normal)) || any(isinf(r.sample.rc_normal))) return false;
     if (isnan(r.W) || isinf(r.W) || r.W < 0)                              return false;
-    if (isnan(r.M) || r.M < 0)                                            return false;
+    if (!isfinite(r.M) || r.M < 0)                                       return false;
     // target_pdf is the own domain density in the pairwise mis shares, reject corrupt values
     if (isnan(r.target_pdf) || isinf(r.target_pdf) || r.target_pdf < 0)   return false;
     if (r.sample.rc_length > RESTIR_MAX_PATH_LENGTH)                      return false;
