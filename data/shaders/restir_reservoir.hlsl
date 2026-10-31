@@ -121,7 +121,9 @@ uint  get_restir_initial_candidates()  { return 1u; }
 static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
 static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
-static const float RESTIR_RAY_T_MIN          = 0.001f;
+// Scatter and guide rays already use restir_ray_origin. Match the reference's
+// zero TMin; another world-space epsilon would skip nearby surfaces.
+static const float RESTIR_RAY_T_MIN          = 0.0f;
 // Fresh paths and sky visibility must see the same distant occluders.
 static const float RESTIR_RAY_T_MAX          = 10000.0f;
 
