@@ -29,7 +29,7 @@ float2 reproject_to_previous_frame(float2 current_uv, bool reverse_motion = fals
 // Zeng et al. (2021), Eq. 6, used by Lin 2026 section 6.4:
 // y is the old occluder's pixel, z is that triangle's CURRENT projected position.
 // Retained hit identity provides z even when the occluder has left the screen.
-bool find_dual_history_uv(float2 current_uv, float2 previous_uv, out float2 dual_uv)
+bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_position, out float2 dual_uv)
 {
     dual_uv = previous_uv;
     uint width, height;
@@ -40,11 +40,18 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, out float2 dual
         return false;
     uint2 previous_pixel = uint2(previous_uv * size);
     float4 stored_hit = restir_primary_hit_previous[previous_pixel];
-    // Compare both surfaces in the previous camera's view-depth domain. A
-    // normal/material mismatch alone does not establish an occluding surface.
-    float expected_depth = abs(tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).w);
-    if (!(stored_hit.w > 0.0f) || !(expected_depth > 0.0f) || expected_depth >= FLT_MAX_16U ||
-        expected_depth - stored_hit.w <= 0.1f * expected_depth)
+    if (!(stored_hit.w > 0.0f))
+        return false;
+    // Match the reference's isReprojectedToOccluder: measure both world-space
+    // points from the current camera. The old primary position is independent
+    // of the selected lighting path; every reuse pass re-stamps it at its pixel.
+    Reservoir source = unpack_reservoir(tex_reservoir_prev0[previous_pixel], tex_reservoir_prev1[previous_pixel],
+        tex_reservoir_prev2[previous_pixel], tex_reservoir_prev3[previous_pixel],
+        tex_reservoir_prev4[previous_pixel], tex_reservoir_prev5[previous_pixel]);
+    float current_distance = length(current_position - get_camera_position());
+    float occluder_distance = length(source.sample.src_pos - get_camera_position());
+    if (!isfinite(current_distance) || !isfinite(occluder_distance) ||
+        current_distance - occluder_distance <= 0.1f * current_distance)
         return false;
 
     uint3 hit = asuint(stored_hit.xyz);
@@ -162,7 +169,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         bool alternate_valid;
         if (prev_on_screen)
         {
-            alternate_valid = find_dual_history_uv(uv, prev_uv, dual_uv);
+            alternate_valid = find_dual_history_uv(uv, prev_uv, pos_ws, dual_uv);
         }
         else
         {
