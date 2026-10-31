@@ -199,9 +199,14 @@ bool restir_dirac_light_radiance(uint light_index, float3 pos, out float3 radian
         return false;
     }
 
-    float3 to   = light.position - pos;
-    float  dist = length(to);
-    if (dist < 1e-3f || light.range <= 0.0f || dist >= light.range)
+    float3 to = light.position - pos;
+    float distance_sq = dot(to, to);
+    // Initial NEE accepts every representable nonzero distance. Reuse must
+    // retain those paths rather than imposing a separate near-light cutoff.
+    if (!restir_connection_distance_valid(distance_sq))
+        return true;
+    float dist = sqrt(distance_sq);
+    if (light.range <= 0.0f || dist >= light.range)
     {
         return true;
     }
@@ -1707,10 +1712,11 @@ ShiftResult try_reconnection_shift(
         result.sample.rc_pos         = light_parameters[light_index].position;
 
         float3 to_light = result.sample.rc_pos - connection_origin;
-        float  dist     = length(to_light);
-        if (dist < 1e-3f || all(dirac_radiance <= 0.0f))
+        float distance_sq = dot(to_light, to_light);
+        if (!restir_connection_distance_valid(distance_sq) || all(dirac_radiance <= 0.0f))
             return result;
 
+        float dist = sqrt(distance_sq);
         float3 dir = to_light / dist;
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
