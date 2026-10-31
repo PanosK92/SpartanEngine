@@ -945,7 +945,9 @@ uint xxhash32(uint seed)
 float random_float(inout uint seed)
 {
     seed = pcg_hash(seed);
-    return float(seed) / 4294967295.0f;
+    // Keep the upper 24 bits so FP32 conversion cannot round up to 1.
+    // Reservoir selection and inverse-CDF sampling require [0, 1).
+    return float(seed >> 8u) * (1.0f / 16777216.0f);
 }
 
 float2 random_float2(inout uint seed) { return float2(random_float(seed), random_float(seed)); }
