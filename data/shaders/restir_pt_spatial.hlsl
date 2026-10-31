@@ -93,7 +93,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float center_M = max(center.M, 0.0f);
 
-    float canonical_pair_acc = 0.0f;
     uint  valid_neighbors    = 0;
 
     // collected per neighbor so the canonical defensive share is known before the streaming insert
@@ -102,6 +101,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float      stream_jacobian[RESTIR_PAIRING_COUNT];
     float      stream_W       [RESTIR_PAIRING_COUNT];
     float      stream_share   [RESTIR_PAIRING_COUNT];
+    float      stream_M       [RESTIR_PAIRING_COUNT];
+    float      stream_own_target[RESTIR_PAIRING_COUNT];
+    float      stream_backward_target[RESTIR_PAIRING_COUNT];
     // rgb integrand per neighbor for vector shading weights, lin 2026 6.3
     float3     stream_f       [RESTIR_PAIRING_COUNT];
 
@@ -139,36 +141,42 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float jacobian_c_to_j = backward.a > 0.0f ? backward.a                  : 0.0f;
         float jacobian_j_to_c = max(forward.a, 0.0f);
 
-        // pairwise mis shares, lin 2022 5.2, each share evaluates one sample under both
-        // techniques, own domain target in the numerator, shifted target times the shift
-        // jacobian in the other denominator term
-
-        // canonical sample x_c under canonical and neighbor densities
-        float canon_denom = center_M * target_cur + neighbor.M * target_c_at_j * jacobian_c_to_j;
-        canonical_pair_acc += (canon_denom > 0.0f) ? (center_M * target_cur) / canon_denom : 1.0f;
-
-        // neighbor sample x_j under neighbor and canonical densities, own domain target is
-        // stored in the neighbor reservoir from its own finalize
-        float target_j_own = max(neighbor.target_pdf, 0.0f);
-        float neigh_denom  = neighbor.M * target_j_own + center_M * target_j_at_c * jacobian_j_to_c;
-        float neigh_share  = (neigh_denom > 0.0f) ? (neighbor.M * target_j_own) / neigh_denom : 0.0f;
-
+        // Gather every technique before computing the confidence-weighted
+        // defensive pairwise shares. Their denominators need the sum of all
+        // neighbor confidences, not this neighbor's M alone.
         stream_samples [valid_neighbors] = neighbor.sample;
         stream_samples [valid_neighbors].src_pos = restir_primary_position((neighbor_pixel + 0.5f) / resolution);
         stream_target  [valid_neighbors] = target_j_at_c;
         stream_jacobian[valid_neighbors] = jacobian_j_to_c;
         stream_W       [valid_neighbors] = neighbor.W;
-        stream_share   [valid_neighbors] = neigh_share;
+        stream_M       [valid_neighbors] = neighbor.M;
+        stream_own_target[valid_neighbors] = max(neighbor.target_pdf, 0.0f);
+        stream_backward_target[valid_neighbors] = target_c_at_j * jacobian_c_to_j;
         stream_f       [valid_neighbors] = forward.rgb;
         valid_neighbors++;
 
         M_total += neighbor.M;
     }
 
-    // defensive pairwise mis weights, k == 0 gives the canonical the full weight
-    float k_inv = 1.0f / float(valid_neighbors + 1);
+    // ReSTIR PT Enhanced reference: C.c_sum is all compatible techniques'
+    // confidence, C.c_c is the canonical confidence. The defensive canonical
+    // share starts at C.c_c / C.c_sum; each pair receives M_j / C.c_sum.
+    float neighbor_M = max(M_total - center_M, 0.0f);
+    float canonical_share = M_total > 0.0f ? center_M / M_total : 1.0f;
+    for (uint p = 0u; p < valid_neighbors; ++p)
+    {
+        float pair_share = stream_M[p] / M_total;
+        float canonical_term = center_M * target_cur;
+        float canonical_denom = canonical_term + neighbor_M * stream_backward_target[p];
+        float canonical_pair_share = canonical_denom > 0.0f ? canonical_term / canonical_denom : 1.0f;
+        canonical_share += pair_share * canonical_pair_share;
 
-    float weight_c = k_inv * (1.0f + canonical_pair_acc) * target_cur * center.W;
+        float neighbor_term = neighbor_M * stream_own_target[p];
+        float neighbor_denom = neighbor_term + center_M * stream_target[p] * stream_jacobian[p];
+        stream_share[p] = neighbor_denom > 0.0f ? pair_share * neighbor_term / neighbor_denom : 0.0f;
+    }
+
+    float weight_c = canonical_share * target_cur * center.W;
     combined.weight_sum = max(weight_c, 0.0f);
 
     // gris streaming weights, w_j = m_j * p_hat * W_j * jacobian, jacobian appears once here
@@ -176,7 +184,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     for (uint j = 0; j < valid_neighbors; j++)
     {
         float target_at_c = stream_target[j];
-        float m_j         = k_inv * stream_share[j];
+        float m_j         = stream_share[j];
         float weight_j    = max(m_j * target_at_c * stream_W[j] * stream_jacobian[j], 0.0f);
 
         combined.weight_sum += weight_j;
@@ -235,13 +243,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float specular_hit_dist = restir_specular_output[pixel].a;
     float3 gi = float3(0, 0, 0);
     ShiftResult center_self = self_shift_evaluate(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    gi = k_inv * (1.0f + canonical_pair_acc) * center_self.f_dst * max(center.W, 0.0f);
+    gi = canonical_share * center_self.f_dst * max(center.W, 0.0f);
     float3 specular = gi * restir_primary_specular_fraction(center.sample, pos_ws, normal_ws,
         view_dir, albedo, roughness, metallic);
 
     for (uint v = 0; v < valid_neighbors; v++)
     {
-        float3 contribution = (k_inv * stream_share[v]) * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
+        float3 contribution = stream_share[v] * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
         gi += contribution;
         specular += contribution * restir_primary_specular_fraction(stream_samples[v], pos_ws, normal_ws,
             view_dir, albedo, roughness, metallic);
