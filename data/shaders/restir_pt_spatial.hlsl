@@ -39,7 +39,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (pixel.x >= resolution_x || pixel.y >= resolution_y)
         return;
 
-    float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
+    float2 uv = restir_primary_uv(pixel, uint2(resolution));
 
     float depth = all(pixel < uint2(resolution * get_render_uv_scale()))
         ? tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r : 0.0f;
@@ -120,7 +120,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float4 forward = read_shift(t, neighbor_pixel);
         float target_j_at_c = forward.a > 0.0f ? target_scalar(forward.rgb) : 0.0f;
 
-        float2 neighbor_uv = restir_primary_uv((neighbor_pixel + 0.5f) / resolution);
+        float2 neighbor_uv = restir_primary_uv(uint2(neighbor_pixel), uint2(resolution));
         Reservoir neighbor = unpack_reservoir(
             tex_reservoir_prev0[neighbor_pixel],
             tex_reservoir_prev1[neighbor_pixel],
@@ -144,7 +144,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         // defensive pairwise shares. Their denominators need the sum of all
         // neighbor confidences, not this neighbor's M alone.
         stream_samples [valid_neighbors] = neighbor.sample;
-        stream_samples [valid_neighbors].src_pos = restir_primary_position((neighbor_pixel + 0.5f) / resolution);
+        stream_samples [valid_neighbors].src_pos = restir_primary_position(neighbor_uv);
         stream_target  [valid_neighbors] = target_j_at_c;
         stream_jacobian[valid_neighbors] = jacobian_j_to_c;
         stream_W       [valid_neighbors] = neighbor.W;

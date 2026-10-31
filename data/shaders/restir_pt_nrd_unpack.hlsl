@@ -46,13 +46,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // the nominal low-resolution centres. At 25% these differ by half a
     // full-resolution pixel. Bracket the receiver using the actual centres
     // before computing interpolation weights (also handles noninteger scales).
-    float2 guide_ratio = float2(resolution) / float2(lighting_size);
     float2 receiver_pixel = uv * float2(resolution);
-    float2 lower_center = floor((float2(base) + 0.5f) * guide_ratio) + 0.5f;
+    float2 lower_center = restir_guide_center(base, lighting_size, resolution);
     base -= int2(receiver_pixel.x < lower_center.x ? 1 : 0,
                  receiver_pixel.y < lower_center.y ? 1 : 0);
-    lower_center = floor((float2(base) + 0.5f) * guide_ratio) + 0.5f;
-    float2 upper_center = floor((float2(base) + 1.5f) * guide_ratio) + 0.5f;
+    lower_center = restir_guide_center(base, lighting_size, resolution);
+    float2 upper_center = restir_guide_center(base + 1, lighting_size, resolution);
     float2 fraction = saturate((receiver_pixel - lower_center) / max(upper_center - lower_center, 1.0f));
     int2 pixel_max = max(int2(float2(lighting_size) * get_render_uv_scale()) - 1, 0);
     // Match packing's validity range. NRD does not guarantee writes outside
@@ -97,9 +96,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             break;
         int2 offset = reconstruction_offsets[i];
         int2 pixel = clamp(base + offset, int2(0, 0), pixel_max);
-        float2 sample_uv = (float2(pixel) + 0.5f) / float2(lighting_size);
         // Match the actual G-buffer sample behind this low-resolution lighting tap.
-        sample_uv = (floor(sample_uv * float2(resolution)) + 0.5f) / float2(resolution);
+        float2 sample_uv = (float2(restir_guide_pixel(uint2(pixel), lighting_size, resolution)) + 0.5f) / float2(resolution);
         float sample_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r;
         if (sample_depth <= 0.0f || linearize_depth(sample_depth) >= denoising_range)
             continue;

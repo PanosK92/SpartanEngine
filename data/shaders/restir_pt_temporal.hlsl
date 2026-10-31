@@ -73,7 +73,7 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
     if (!all(isfinite(clip)) || clip.w <= 0.0f)
         return false;
     float2 occluder_uv = (clip.xy / clip.w * float2(0.5f, -0.5f) + 0.5f) * uv_scale;
-    float2 source_uv = restir_primary_uv((float2(previous_pixel) + 0.5f) / size);
+    float2 source_uv = restir_primary_uv(uint2(previous_pixel), uint2(size));
     float2 to_history = previous_scale / uv_scale;
     dual_uv = current_uv * to_history + source_uv - occluder_uv * to_history;
     // Select the occlusion correspondence even outside the history rectangle.
@@ -118,7 +118,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // Use the same full-resolution texel centre as the primary position and
     // motion vector. The low-resolution cell centre can differ by half a pixel.
-    float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
+    float2 uv = restir_primary_uv(pixel, uint2(resolution));
 
     float depth = all(pixel < uint2(resolution * get_render_uv_scale()))
         ? tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r : 0.0f;
@@ -235,7 +235,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             // depth so moving surfaces are compared in the same frame.
             if (usable && !dual_history)
             {
-                float2 source_uv = restir_primary_uv((float2(prev_pixel) + 0.5f) / resolution);
+                float2 source_uv = restir_primary_uv(uint2(prev_pixel), uint2(resolution));
                 float source_depth = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), source_uv, 0).r;
                 float3 source_normal = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(source_uv)]);
                 float expected_depth = abs(tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).w);
@@ -259,7 +259,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 // use the stored source primary g-buffer, correct even for moving objects
                 float3 src_primary_pos = temporal.sample.src_pos;
                 float3 src_normal_ws   = temporal.sample.src_normal;
-                float2 source_guide_uv = restir_primary_uv((float2(prev_pixel) + 0.5f) / resolution);
+                float2 source_guide_uv = restir_primary_uv(uint2(prev_pixel), uint2(resolution));
                 float3 src_geometric_normal_ws = gbuffer_unpack_geometric_normal(tex_normal_previous[gbuffer_texel(source_guide_uv)]);
                 float3 src_albedo      = temporal.sample.src_albedo;
                 float  src_roughness   = max(temporal.sample.src_roughness, 0.04f);

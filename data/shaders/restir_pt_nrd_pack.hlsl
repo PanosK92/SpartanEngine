@@ -42,7 +42,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Use the same full-resolution surface texel as all reservoir passes.
     uint2 guide_size;
     tex_depth.GetDimensions(guide_size.x, guide_size.y);
-    uint2 guide_pixel = min(uint2((thread_id.xy + 0.5f) / float2(resolution) * float2(guide_size)), guide_size - 1u);
+    uint2 guide_pixel = restir_guide_pixel(thread_id.xy, resolution, guide_size);
     const float2 uv = (float2(guide_pixel) + 0.5f) / float2(guide_size);
 
     // Match the primary ray's point-sampled surface. Filtering depth blends unrelated

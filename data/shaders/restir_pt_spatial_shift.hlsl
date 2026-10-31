@@ -25,7 +25,7 @@ Reservoir load_pair_reservoir(uint2 pixel)
 {
     uint width, height;
     tex_reservoir_prev0.GetDimensions(width, height);
-    float2 uv = restir_primary_uv((pixel + 0.5f) / float2(width, height));
+    float2 uv = restir_primary_uv(pixel, uint2(width, height));
     return unpack_reservoir(tex_reservoir_prev0[pixel], tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel], tex_reservoir_prev3[pixel],
         restir_primary_surface(uv), restir_primary_material(uv));
@@ -34,9 +34,9 @@ Reservoir load_pair_reservoir(uint2 pixel)
 float4 evaluate_pair_shift(uint2 pixel, uint table, Reservoir center, float2 resolution)
 {
     int2 partner = restir_pairing_partner(pixel, table);
-    float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
+    float2 uv = restir_primary_uv(pixel, uint2(resolution));
     float3 position = restir_primary_position(uv);
-    float2 partner_uv = restir_primary_uv((partner + 0.5f) / resolution);
+    float2 partner_uv = restir_primary_uv(uint2(partner), uint2(resolution));
     float3 partner_position = restir_primary_position(partner_uv);
     float4 material = get_material(partner_uv);
     float3 normal = get_normal(partner_uv);
@@ -68,7 +68,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint group_index : SV_Grou
         tex_uav[pixel] = 0.0f;
         tex_uav2[pixel] = 0.0f;
         tex_uav3[pixel] = 0.0f;
-        float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
+        float2 uv = restir_primary_uv(pixel, uint2(resolution));
         float depth = all(pixel < uint2(resolution * get_render_uv_scale()))
             ? tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r : 0.0f;
         Reservoir center = load_pair_reservoir(pixel);

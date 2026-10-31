@@ -786,6 +786,25 @@ float2 get_render_uv_scale_previous()
     return active / max(buffer_frame.resolution_render, float2(1.0f, 1.0f));
 }
 
+// Map sample centers without a normalized-UV round trip. FP32 division followed
+// by multiplication can fall below an integer boundary and select another surface.
+uint2 restir_guide_pixel(uint2 pixel, uint2 sample_size, uint2 guide_size)
+{
+    return min(((2u * pixel + 1u) * guide_size) / (2u * sample_size), guide_size - 1u);
+}
+
+// Reconstruction also needs centers just outside the image to bracket edge
+// pixels. Signed integer division truncates; correct it to floor for negatives.
+float2 restir_guide_center(int2 pixel, uint2 sample_size, uint2 guide_size)
+{
+    int2 numerator = (2 * pixel + 1) * int2(guide_size);
+    int2 denominator = 2 * int2(sample_size);
+    int2 mapped = numerator / denominator;
+    mapped -= int2(numerator.x < 0 && numerator.x % denominator.x != 0 ? 1 : 0,
+                   numerator.y < 0 && numerator.y % denominator.y != 0 ? 1 : 0);
+    return float2(mapped) + 0.5f;
+}
+
 float2 render_uv_to_screen_uv(float2 uv)
 {
     return uv / get_render_uv_scale();

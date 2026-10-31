@@ -31,7 +31,7 @@ void ray_gen()
     uint2 launch_size = DispatchRaysDimensions().xy;
     uint2 light_block = launch_id / 8u;
     restir_light_tile_index = xxhash32(light_block.x ^ xxhash32(light_block.y) ^ buffer_frame.frame) % RESTIR_LIGHT_TILE_COUNT;
-    float2 uv = restir_primary_uv((launch_id + 0.5f) / launch_size);
+    float2 uv = restir_primary_uv(launch_id, launch_size);
 
     restir_primary_hit_output[launch_id] = 0.0f;
     restir_primary_surface_output[launch_id] = 0.0f;

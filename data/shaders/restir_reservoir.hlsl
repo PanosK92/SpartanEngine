@@ -90,6 +90,13 @@ float2 restir_primary_uv(float2 uv)
     return (float2(pixel) + 0.5f) / float2(size);
 }
 
+float2 restir_primary_uv(uint2 pixel, uint2 sample_size)
+{
+    uint2 size;
+    tex_depth.GetDimensions(size.x, size.y);
+    return (float2(restir_guide_pixel(pixel, sample_size, size)) + 0.5f) / float2(size);
+}
+
 float3 restir_primary_position(float2 uv)
 {
     float2 sample_uv = restir_primary_uv(uv);
@@ -1047,14 +1054,14 @@ bool is_neighbor_gbuffer_compatible(
         first = second;
         second = swap_pixel;
     }
-    float2 center_uv = restir_primary_uv((first + 0.5f) / resolution);
+    float2 center_uv = restir_primary_uv(uint2(first), uint2(resolution));
     float center_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, 0).r;
     if (center_depth <= 0.0f)
         return false;
     float center_linear_depth = linearize_depth(center_depth);
     float3 center_pos = restir_primary_position(center_uv);
     float3 center_normal = get_normal(center_uv);
-    float2 neighbor_uv   = restir_primary_uv((second + 0.5f) / resolution);
+    float2 neighbor_uv   = restir_primary_uv(uint2(second), uint2(resolution));
     float neighbor_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).r;
 
     if (neighbor_depth <= 0.0f)
