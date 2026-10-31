@@ -119,7 +119,8 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     else if (mat.has_texture_albedo())
     {
         uint albedo_texture_index = get_material_texture_index(material_index, material_texture_index_albedo);
-        float4 sampled = material_textures[albedo_texture_index].SampleLevel(
+        // Secondary/replayed rays in one wave can hit different materials.
+        float4 sampled = material_textures[NonUniformResourceIndex(albedo_texture_index)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
         if (mat.is_albedo_srgb())
         {
@@ -138,7 +139,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     }
     else if (mat.has_texture_roughness() || mat.has_texture_metalness())
     {
-        float4 packed = material_textures[get_material_texture_index(material_index, material_texture_index_packed)].SampleLevel(
+        float4 packed = material_textures[NonUniformResourceIndex(get_material_texture_index(material_index, material_texture_index_packed))].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
         roughness *= lerp(1.0f, packed.g, (float)mat.has_texture_roughness());
         metallic  *= lerp(1.0f, packed.b, (float)mat.has_texture_metalness());
@@ -174,7 +175,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     if (!terrain_shaded && mat.has_texture_normal())
     {
         uint normal_texture_index = get_material_texture_index(material_index, material_texture_index_normal);
-        float3 normal_sample = material_textures[normal_texture_index].SampleLevel(
+        float3 normal_sample = material_textures[NonUniformResourceIndex(normal_texture_index)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
 
         // Same two-channel normal decode and strength as the raster G-buffer.
@@ -195,7 +196,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     if (mat.has_texture_emissive())
     {
         uint emissive_texture_index = get_material_texture_index(material_index, material_texture_index_emission);
-        float3 emissive_sample = material_textures[emissive_texture_index].SampleLevel(
+        float3 emissive_sample = material_textures[NonUniformResourceIndex(emissive_texture_index)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
         if (mat.is_emissive_srgb())
         {
