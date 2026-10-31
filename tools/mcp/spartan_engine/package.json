@@ -14,7 +14,7 @@
   "dependencies": {
     "@connectrpc/connect-node": "2.2.0",
     "@cursor/sdk": "1.0.19",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.32.0",
     "zod": "4.4.3"
   }
 }
