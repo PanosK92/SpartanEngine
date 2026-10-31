@@ -1578,6 +1578,7 @@ namespace spartan
                 pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
                 pso.vrs_input_texture                =
                     cvar_variable_rate_shading.GetValueAs<bool>() &&
+                    !cvar_restir_pt.GetValueAs<bool>() &&
                     !IsSecondaryViewActive()
                         ? GetRenderTarget(
                             Renderer_RenderTarget::shading_rate
@@ -1660,6 +1661,7 @@ namespace spartan
                 pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
                 pso.vrs_input_texture                =
                     cvar_variable_rate_shading.GetValueAs<bool>() &&
+                    !cvar_restir_pt.GetValueAs<bool>() &&
                     !IsSecondaryViewActive()
                         ? GetRenderTarget(
                             Renderer_RenderTarget::shading_rate
@@ -1765,6 +1767,7 @@ namespace spartan
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.vrs_input_texture                =
             cvar_variable_rate_shading.GetValueAs<bool>() &&
+            !cvar_restir_pt.GetValueAs<bool>() &&
             !IsSecondaryViewActive()
                 ? GetRenderTarget(
                     Renderer_RenderTarget::shading_rate
@@ -1875,6 +1878,7 @@ namespace spartan
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.vrs_input_texture                =
             cvar_variable_rate_shading.GetValueAs<bool>() &&
+            !cvar_restir_pt.GetValueAs<bool>() &&
             !IsSecondaryViewActive()
                 ? GetRenderTarget(
                     Renderer_RenderTarget::shading_rate

@@ -6472,8 +6472,12 @@ namespace spartan
 
     void Renderer::Pass_VariableRateShading()
     {
+        // ReSTIR needs per-pixel primary surface and motion guides. Coarse
+        // shading selected from last frame's luminance makes those inputs
+        // depend on lighting history, changing normal-map detail and transport.
         if (
             !cvar_variable_rate_shading.GetValueAs<bool>() ||
+            cvar_restir_pt.GetValueAs<bool>() ||
             IsSecondaryViewActive()
         )
         {
