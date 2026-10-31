@@ -35,12 +35,32 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/Prefab.h"
 #include "../io/pugixml.hpp"
 #include <mutex>
+#include "CarPhysicsMeshView.h"
 //==========================================
 
 namespace spartan
 {
     namespace
     {
+        // Both views traverse the same complete skeleton. Only the primitive
+        // backend changes; force/contact/constraint lines remain diagnostic overlays.
+        thread_local CarPhysicsMeshView* skeleton_meshes = nullptr;
+        struct SkeletonMeshScope
+        {
+            CarPhysicsMeshView* previous = skeleton_meshes;
+            ~SkeletonMeshScope()
+            {
+                if (skeleton_meshes) skeleton_meshes->end();
+                skeleton_meshes = previous;
+            }
+        };
+
+        void draw_visualization_sphere(const math::Vector3& center, float radius, int segments, const Color& color)
+        {
+            if (skeleton_meshes) skeleton_meshes->sphere(center, radius, color);
+            else Renderer::DrawSphere(center, radius, segments, color);
+        }
+
         // structure colors are reserved by nature, load only tints inside the same hue
         const Color skeleton_color_frame       = Color(0.55f, 0.62f, 0.72f, 1.0f);
         const Color skeleton_color_suspension  = Color(0.98f, 0.70f, 0.12f, 1.0f);
@@ -72,11 +92,16 @@ namespace spartan
 
         void draw_skeleton_joint(const math::Vector3& position, const Color& color)
         {
-            Renderer::DrawSphere(position, 0.035f, 6, color);
+            draw_visualization_sphere(position, 0.035f, 6, color);
         }
 
         void draw_skeleton_cylinder(const math::Vector3& start, const math::Vector3& end, float radius, const Color& color)
         {
+            if (skeleton_meshes)
+            {
+                skeleton_meshes->cylinder(start, end, radius, color);
+                return;
+            }
             const math::Vector3 axis = end - start;
             const float length = axis.Length();
             if (length <= 0.001f)
@@ -113,6 +138,11 @@ namespace spartan
 
         void draw_skeleton_spring(const math::Vector3& start, const math::Vector3& end, const math::Vector3& reference, float radius, const Color& color)
         {
+            if (skeleton_meshes)
+            {
+                skeleton_meshes->coil(start, end, reference, radius, color);
+                return;
+            }
             const math::Vector3 axis = end - start;
             const float length = axis.Length();
             if (length <= 0.001f)
@@ -148,6 +178,7 @@ namespace spartan
 
         void draw_skeleton_shaft(const math::Vector3& start, const math::Vector3& end, float radius, float rotation, float twist, const Color& color)
         {
+            if (skeleton_meshes) skeleton_meshes->cylinder(start, end, radius, color);
             const math::Vector3 axis = end - start;
             const float length = axis.Length();
             if (length <= 0.001f)
@@ -162,7 +193,7 @@ namespace spartan
             const int radial_segments = 12;
             const int length_segments = 8;
 
-            for (int length_index = 0; length_index <= length_segments; length_index++)
+            for (int length_index = 0; !skeleton_meshes && length_index <= length_segments; length_index++)
             {
                 const float t = static_cast<float>(length_index) / static_cast<float>(length_segments);
                 const math::Vector3 center = lerp_skeleton(start, end, t);
@@ -256,6 +287,11 @@ namespace spartan
             Transform&& to_render
         )
         {
+            if (skeleton_meshes)
+            {
+                skeleton_meshes->shape(shape_pose, shape_geometry, color, to_render);
+                return;
+            }
             auto line = [&](const physx::PxVec3& a, const physx::PxVec3& b)
             {
                 Renderer::DrawLine(to_render(a), to_render(b), color, color);
@@ -400,7 +436,7 @@ namespace spartan
             }
             along.Normalize();
             draw_skeleton_cylinder(pivot - along * 0.022f, pivot + along * 0.022f, 0.030f + load * 0.008f, bush_color);
-            Renderer::DrawSphere(pivot, 0.014f, 5, bush_color);
+            draw_visualization_sphere(pivot, 0.014f, 5, bush_color);
         }
 
         template<typename Transform>
@@ -454,10 +490,16 @@ namespace spartan
         }
     }
 
+    void Car::ClearPhysicsMeshes()
+    {
+        if (m_physics_mesh_view) m_physics_mesh_view->clear();
+        m_physics_mesh_view.reset();
+    }
+
     void Car::TickVisualization()
     {
         if (
-            m_visualization_preset != CarVisualizationPreset::Skeleton ||
+            m_visualization_preset == CarVisualizationPreset::Full ||
             !m_vehicle_entity
         )
         {
@@ -498,18 +540,30 @@ namespace spartan
         Physics* physics = m_vehicle_entity->GetComponent<Physics>();
         if (!physics)
         {
+            ClearPhysicsMeshes();
             return;
         }
 
         ::car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
         if (!simulation)
         {
+            ClearPhysicsMeshes();
             return;
         }
+        std::lock_guard<std::recursive_mutex> physics_lock(PhysicsWorld::GetMutex());
         physx::PxRigidDynamic* body = simulation->get_body();
         if (!body)
         {
+            ClearPhysicsMeshes();
             return;
+        }
+
+        SkeletonMeshScope mesh_scope;
+        if (m_visualization_preset == CarVisualizationPreset::PhysicsMeshes)
+        {
+            if (!m_physics_mesh_view) m_physics_mesh_view = std::make_shared<CarPhysicsMeshView>();
+            m_physics_mesh_view->tick(m_vehicle_entity, CarPhysics::Get(*physics), *simulation);
+            skeleton_meshes = m_physics_mesh_view.get();
         }
 
         Entity* wheel_entities[4] =
@@ -676,7 +730,7 @@ namespace spartan
             const math::Vector3 wheel_axis_render = (to_render(wheel_pose.p + wheel_axis) - wheel_world[i]).Normalized();
             const float wheel_torque_reference = std::max(preset.handbrake_torque + preset.brake_force * wheel_radius, 1.0f);
             draw_skeleton_torque_arc(wheel_world[i], wheel_axis_render, wheel_radius * 0.72f, wheel.net_torque / wheel_torque_reference, skeleton_color_torque);
-            Renderer::DrawSphere(wheel_world[i], 0.052f, 7, get_skeleton_tire_temperature_color(wheel.thermal.core, wheel.wear, preset));
+            draw_visualization_sphere(wheel_world[i], 0.052f, 7, get_skeleton_tire_temperature_color(wheel.thermal.core, wheel.wear, preset));
             const bool is_front_wheel = i < 2;
             const float axle_brake_share = is_front_wheel ? preset.brake_bias_front : 1.0f - preset.brake_bias_front;
             const float wheel_radius_for_brake = config.wheel_radius_for(i);
@@ -685,7 +739,7 @@ namespace spartan
             const float brake_actuation = std::clamp(applied_brake_torque / brake_reference, 0.0f, 1.0f);
             const float caliper_size = 0.050f + brake_actuation * 0.016f;
             const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
-            Renderer::DrawSphere(to_render(upright_pose.transform(physx::PxVec3(0, brake_radius * 0.72f, brake_radius * 0.45f))), caliper_size, 6, brake_color);
+            draw_visualization_sphere(to_render(upright_pose.transform(physx::PxVec3(0, brake_radius * 0.72f, brake_radius * 0.45f))), caliper_size, 6, brake_color);
 
             // the upright box is sized from the ball joint spread, drawing a fixed length rod here
             // hid every geometry change the preset made to it
@@ -771,7 +825,8 @@ namespace spartan
             else
             {
                 draw_skeleton_cylinder(shock_top, shock_mid, 0.030f, damper_color);
-                Renderer::DrawLine(shock_mid, shock_bottom, skeleton_color_suspension, skeleton_color_suspension);
+                if (skeleton_meshes) draw_skeleton_cylinder(shock_mid, shock_bottom, 0.012f, skeleton_color_suspension);
+                else Renderer::DrawLine(shock_mid, shock_bottom, skeleton_color_suspension, skeleton_color_suspension);
                 draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
                 draw_skeleton_joint(shock_top, skeleton_color_suspension);
                 draw_skeleton_joint(shock_bottom, skeleton_color_suspension);
@@ -786,11 +841,11 @@ namespace spartan
             const float shock_travel = config.suspension_travel * corner.design_motion_ratio;
             if (current_compression > shock_travel * preset.bump_stop_threshold)
             {
-                Renderer::DrawSphere(shock_bottom, 0.065f, 8, skeleton_color_torque);
+                draw_visualization_sphere(shock_bottom, 0.065f, 8, skeleton_color_torque);
             }
             if (current_compression > shock_travel * preset.packer_threshold)
             {
-                Renderer::DrawSphere(shock_bottom, 0.088f, 9, skeleton_color_long_force);
+                draw_visualization_sphere(shock_bottom, 0.088f, 9, skeleton_color_long_force);
             }
 
             // the distance joint is a hard backstop on droop and bump that no spring force reveals
@@ -807,8 +862,8 @@ namespace spartan
                 const math::Vector3 droop_mark = shock_top + shock_axis * -maximum;
                 const math::Vector3 bump_mark  = shock_top + shock_axis * -minimum;
                 Renderer::DrawLine(droop_mark, bump_mark, travel_color, travel_color);
-                Renderer::DrawSphere(droop_mark, at_droop ? 0.034f : 0.018f, 5, travel_color);
-                Renderer::DrawSphere(bump_mark, at_bump ? 0.034f : 0.018f, 5, travel_color);
+                draw_visualization_sphere(droop_mark, at_droop ? 0.034f : 0.018f, 5, travel_color);
+                draw_visualization_sphere(bump_mark, at_bump ? 0.034f : 0.018f, 5, travel_color);
             }
 
             // the steering lock, a twist limit on the upright about the chassis vertical. running out of
@@ -822,7 +877,7 @@ namespace spartan
                 draw_skeleton_torque_arc(wheel_world[i], steering_axis, wheel_radius * 0.86f, twist / corner.steering_limit, lock_color);
                 if (lock > 0.98f)
                 {
-                    Renderer::DrawSphere(wheel_world[i], wheel_radius * 0.30f, 8, lock_color);
+                    draw_visualization_sphere(wheel_world[i], wheel_radius * 0.30f, 8, lock_color);
                 }
             }
             physx::PxVec3 sweep_origin;
@@ -831,7 +886,7 @@ namespace spartan
             simulation->get_debug_sweep(i, sweep_origin, sweep_endpoint, sweep_hit);
             const Color& sweep_color = sweep_hit ? skeleton_color_contact : skeleton_color_collision;
             Renderer::DrawLine(to_render(sweep_origin), to_render(sweep_endpoint), sweep_color, sweep_color);
-            Renderer::DrawSphere(to_render(sweep_endpoint), 0.025f, 6, sweep_color);
+            draw_visualization_sphere(to_render(sweep_endpoint), 0.025f, 6, sweep_color);
 
             // the tread rows the contact model actually loaded, the stalk length is that row's share of
             // the load so an uneven patch from camber or a kerb edge is visible rather than inferred
@@ -847,7 +902,7 @@ namespace spartan
                 const math::Vector3 row_base = to_render(row_point);
                 const math::Vector3 row_tip  = to_render(row_point + row_normal * (row_load * 0.00006f));
                 Renderer::DrawLine(row_base, row_tip, skeleton_color_contact, skeleton_color_contact);
-                Renderer::DrawSphere(row_base, 0.012f, 5, skeleton_color_contact);
+                draw_visualization_sphere(row_base, 0.012f, 5, skeleton_color_contact);
             }
             if (wheel.grounded)
             {
@@ -883,7 +938,7 @@ namespace spartan
                 {
                     contact_color = Color(1.00f, 0.90f, 0.20f, 1.0f);
                 }
-                Renderer::DrawSphere(contact, 0.045f, 8, contact_color);
+                draw_visualization_sphere(contact, 0.045f, 8, contact_color);
                 Renderer::DrawLine(contact, to_render(normal_endpoint), skeleton_color_contact, skeleton_color_contact);
                 Renderer::DrawLine(to_render(forces.tire_point), to_render(longitudinal_endpoint), skeleton_color_long_force, skeleton_color_long_force);
                 Renderer::DrawLine(to_render(forces.tire_point), to_render(lateral_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
@@ -902,7 +957,7 @@ namespace spartan
                 {
                     Renderer::DrawLine(to_render(wheel.contact_point - wheel_forward * patch_half), to_render(wheel.contact_point + wheel_forward * patch_half), skeleton_color_contact, skeleton_color_contact);
                 }
-                Renderer::DrawSphere(to_render(wheel.contact_point - wheel_forward * trail), 0.018f, 5, skeleton_color_steering);
+                draw_visualization_sphere(to_render(wheel.contact_point - wheel_forward * trail), 0.018f, 5, skeleton_color_steering);
             }
         }
 
@@ -917,8 +972,8 @@ namespace spartan
             const bool separated = (a.p - b.p).magnitude() > 0.001f;
             const Color& color = separated ? skeleton_color_torque : skeleton_color_suspension;
             Renderer::DrawLine(to_render(a.p), to_render(b.p), color, color);
-            Renderer::DrawSphere(to_render(a.p), separated ? 0.024f : 0.012f, 5, color);
-            Renderer::DrawSphere(to_render(b.p), 0.012f, 5, skeleton_color_steering);
+            draw_visualization_sphere(to_render(a.p), separated ? 0.024f : 0.012f, 5, color);
+            draw_visualization_sphere(to_render(b.p), 0.012f, 5, skeleton_color_steering);
             if (joint->is<physx::PxRevoluteJoint>())
             {
                 Renderer::DrawLine(to_render(a.p), to_render(a.transform(physx::PxVec3(0.12f, 0, 0))), color, color);
@@ -942,8 +997,10 @@ namespace spartan
         draw_skeleton_cylinder(frame_front_left, frame_front_right, 0.025f, skeleton_color_frame);
         draw_skeleton_cylinder(frame_center_left, frame_center_right, 0.025f, skeleton_color_frame);
         draw_skeleton_cylinder(frame_rear_left, frame_rear_right, 0.025f, skeleton_color_frame);
-        Renderer::DrawLine(frame_front_left, frame_rear_right, skeleton_color_frame, skeleton_color_frame);
-        Renderer::DrawLine(frame_front_right, frame_rear_left, skeleton_color_frame, skeleton_color_frame);
+        if (skeleton_meshes) draw_skeleton_cylinder(frame_front_left, frame_rear_right, 0.012f, skeleton_color_frame);
+        else Renderer::DrawLine(frame_front_left, frame_rear_right, skeleton_color_frame, skeleton_color_frame);
+        if (skeleton_meshes) draw_skeleton_cylinder(frame_front_right, frame_rear_left, 0.012f, skeleton_color_frame);
+        else Renderer::DrawLine(frame_front_right, frame_rear_left, skeleton_color_frame, skeleton_color_frame);
         draw_skeleton_cylinder(frame_front_left, shock_top_world[0], 0.018f, skeleton_color_frame);
         draw_skeleton_cylinder(frame_front_right, shock_top_world[1], 0.018f, skeleton_color_frame);
         draw_skeleton_cylinder(frame_rear_left, shock_top_world[2], 0.018f, skeleton_color_frame);
@@ -1077,7 +1134,7 @@ namespace spartan
 
         const physx::PxTransform body_pose = body->getGlobalPose();
         const math::Vector3 center_of_mass = to_render(body_pose.transform(body->getCMassLocalPose().p));
-        Renderer::DrawSphere(center_of_mass, 0.075f, 10, skeleton_color_frame);
+        draw_visualization_sphere(center_of_mass, 0.075f, 10, skeleton_color_frame);
 
         // principal inertia axes at the com, length scales with sqrt(i) so yaw vs roll is readable
         {
@@ -1176,7 +1233,7 @@ namespace spartan
 
         const math::Vector3 flywheel_axis = vehicle_rotation * math::Vector3::Right * 0.10f;
         draw_skeleton_shaft(gearbox - flywheel_axis, gearbox + flywheel_axis, 0.075f + simulation->get_clutch() * 0.015f, simulation->get_engine_rotation(), 0.0f, power_unit_color);
-        Renderer::DrawSphere(gearbox, 0.10f, 8, power_unit_color);
+        draw_visualization_sphere(gearbox, 0.10f, 8, power_unit_color);
 
         const ::car::driveline_assembly& driveline = multibody.driveline;
         auto is_driveline_actor = [&](physx::PxRigidDynamic* actor) -> bool
@@ -1270,12 +1327,12 @@ namespace spartan
                     0.11f,
                     driveshaft_torque / 6000.0f,
                     loaded_drivetrain_color);
-                Renderer::DrawSphere(flange_center, 0.055f, 7, power_unit_color);
+                draw_visualization_sphere(flange_center, 0.055f, 7, power_unit_color);
             }
             if (driveline.axle_input)
             {
                 draw_skeleton_actor_shapes(driveline.axle_input, loaded_drivetrain_color, to_render);
-                Renderer::DrawSphere(
+                draw_visualization_sphere(
                     to_render(driveline.axle_input->getGlobalPose().p),
                     0.045f,
                     7,
@@ -1300,7 +1357,7 @@ namespace spartan
                     continue;
                 }
                 draw_skeleton_actor_shapes(differential, skeleton_color_drivetrain, to_render);
-                Renderer::DrawSphere(
+                draw_visualization_sphere(
                     to_render(differential->getGlobalPose().p),
                     0.09f,
                     8,
@@ -1321,16 +1378,19 @@ namespace spartan
                 float shaft_radius = 0.04f;
                 if (get_capsule_endpoints(shaft, shaft_start, shaft_end, shaft_radius))
                 {
-                    Renderer::DrawSphere(to_render(shaft_start), 0.028f, 6, skeleton_color_drivetrain);
-                    Renderer::DrawSphere(to_render(shaft_end), 0.028f, 6, skeleton_color_drivetrain);
+                    draw_visualization_sphere(to_render(shaft_start), 0.028f, 6, skeleton_color_drivetrain);
+                    draw_visualization_sphere(to_render(shaft_end), 0.028f, 6, skeleton_color_drivetrain);
                 }
             }
 
             if (driveline.gearbox_output && driveline.axle_input)
             {
-                // Reduced-model power flow between mounted flanges, not a
-                // physical shaft with the engine's scalar torsional deflection.
-                Renderer::DrawLine(
+                // The debug view includes this reduced-model connection even when
+                // there is no rigid propshaft actor. The mesh backend must include it too.
+                if (skeleton_meshes)
+                    draw_skeleton_cylinder(to_render(driveline.gearbox_output->getGlobalPose().p),
+                        to_render(driveline.axle_input->getGlobalPose().p), 0.025f, loaded_drivetrain_color);
+                else Renderer::DrawLine(
                     to_render(driveline.gearbox_output->getGlobalPose().p),
                     to_render(driveline.axle_input->getGlobalPose().p),
                     loaded_drivetrain_color,
@@ -1347,7 +1407,7 @@ namespace spartan
                 (simulation->get_wheel_rotation(2) + simulation->get_wheel_rotation(3)) * 0.5f * preset.final_drive;
             if (drives_front)
             {
-                Renderer::DrawSphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
+                draw_visualization_sphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
                 draw_skeleton_shaft(
                     front_diff,
                     wheel_world[0],
@@ -1374,7 +1434,7 @@ namespace spartan
             }
             if (drives_rear)
             {
-                Renderer::DrawSphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
+                draw_visualization_sphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
                 draw_skeleton_shaft(
                     rear_diff,
                     wheel_world[2],
@@ -1428,7 +1488,7 @@ namespace spartan
             if (!covered)
             {
                 draw_skeleton_actor_shapes(actor, skeleton_color_collision, to_render);
-                Renderer::DrawSphere(to_render(actor->getGlobalPose().p), 0.06f, 7, skeleton_color_torque);
+                draw_visualization_sphere(to_render(actor->getGlobalPose().p), 0.06f, 7, skeleton_color_torque);
             }
         }
     }

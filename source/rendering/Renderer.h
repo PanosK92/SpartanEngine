@@ -498,9 +498,9 @@ namespace spartan
         void Pass_Light(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Ibl(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
-        void Pass_Lut_BrdfSpecular();
-        void Pass_Lut_AtmosphericScattering();
-        void Pass_CloudNoise();
+        bool Pass_Lut_BrdfSpecular();
+        bool Pass_Lut_AtmosphericScattering();
+        bool Pass_CloudNoise();
         // passes - particles
         void Pass_Particles();
         // passes - gpu procedural grass

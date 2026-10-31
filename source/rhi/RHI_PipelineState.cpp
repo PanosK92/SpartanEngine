@@ -15,6 +15,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_DepthStencilState.h"
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
+#include "RHI_Pipeline.h"
+#include "RHI_Compiler.h"
 //================================
 
 //= NAMESPACES ===============
@@ -209,6 +211,58 @@ namespace spartan
         }
     }
 
+    RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
+    {
+        struct Inputs
+        {
+            string name;
+            array<shared_ptr<RHI_Shader>, static_cast<size_t>(RHI_Shader_Type::Max)> shaders;
+            RHI_RasterizerState rasterizer;
+            RHI_BlendState blend;
+            RHI_DepthStencilState depth;
+        };
+        auto inputs = make_shared<Inputs>();
+        m_compilation_inputs = inputs;
+        m_state = pipeline_state;
+        inputs->name = pipeline_state.name;
+        m_state.name = inputs->name.c_str();
+        for (size_t i = 0; i < m_state.shaders.size(); ++i)
+        {
+            if (m_state.shaders[i])
+            {
+                inputs->shaders[i] = m_state.shaders[i]->CreateSnapshot();
+                m_state.shaders[i] = inputs->shaders[i].get();
+            }
+        }
+        if (m_state.rasterizer_state)
+        {
+            inputs->rasterizer = *m_state.rasterizer_state;
+            m_state.rasterizer_state = &inputs->rasterizer;
+        }
+        if (m_state.blend_state)
+        {
+            inputs->blend = *m_state.blend_state;
+            m_state.blend_state = &inputs->blend;
+        }
+        if (m_state.depth_stencil_state)
+        {
+            inputs->depth = *m_state.depth_stencil_state;
+            m_state.depth_stencil_state = &inputs->depth;
+        }
+        m_compile_task = RHI_Compiler::Pipelines().Submit([this, descriptor_set_layout]()
+        {
+            try
+            {
+                Create(m_state, descriptor_set_layout);
+            }
+            catch (const std::exception& error)
+            {
+                SP_LOG_ERROR("Pipeline '%s' compilation failed: %s", m_state.name, error.what());
+            }
+            m_ready.store(true, memory_order_release);
+        });
+    }
+
     RHI_PipelineState::RHI_PipelineState()
     {
         clear_color.fill(rhi_color_load);
@@ -226,6 +280,11 @@ namespace spartan
         m_hash = compute_hash(*this);
         get_dimensions(*this, &m_width, &m_height);
         validate(*this);
+        for (uint32_t i = 0; i < rhi_max_render_target_count; ++i)
+            color_formats[i] = render_target_color_textures[i] ? render_target_color_textures[i]->GetFormat() : RHI_Format::Max;
+        swapchain_format = render_target_swapchain ? render_target_swapchain->GetFormat() : RHI_Format::Max;
+        depth_format = render_target_depth_texture ? render_target_depth_texture->GetFormat() : RHI_Format::Max;
+        depth_has_stencil = render_target_depth_texture && render_target_depth_texture->IsStencilFormat();
     }
 
     void RHI_PipelineState::SetColorTargets(

@@ -92,7 +92,6 @@ local material_defs =
     pool_tile_aqua   = { dir = TEX .. "backrooms/pool_tiles", ext = "png", tiling = 1.0, color = { 0.42, 0.78, 0.86 } },
     pool_tile_pale   = { dir = TEX .. "backrooms/pool_tiles", ext = "png", tiling = 1.0, color = { 0.56, 0.86, 0.93 } },
     pool_tile_band   = { dir = TEX .. "backrooms/pool_tiles", ext = "png", tiling = 1.0, color = { 0.10, 0.30, 0.55 } },
-    pool_deck        = { dir = TEX .. "tile_white", ext = "png", tiling = 1 / 2.25, color = { 0.80, 0.85, 0.87 } },
     pool_water       = { color = { 0.6, 0.9, 0.95, 0.85 }, roughness = 0.03, water = true },
 
     paint_white      = { color = { 0.86, 0.86, 0.84 }, roughness = 0.7 },
@@ -177,12 +176,7 @@ local material_defs =
     indicator_amber  = { color = { 1.0, 0.45, 0.05 }, emissive = true },
     menu_glow        = { color = { 1.0, 0.95, 0.8 }, emissive = true },
     pool_light       = { color = { 0.75, 0.95, 1.0 }, emissive = true },
-    lane_blue        = { color = { 0.05, 0.12, 0.32 }, roughness = 0.2 },
     coping           = { color = { 0.90, 0.90, 0.87 }, roughness = 0.35 },
-    rope_red         = { color = { 0.80, 0.08, 0.08 }, roughness = 0.5 },
-    rope_white       = { color = { 0.90, 0.90, 0.90 }, roughness = 0.5 },
-    rope_blue        = { color = { 0.08, 0.25, 0.75 }, roughness = 0.5 },
-    lifeguard_white  = { color = { 0.92, 0.92, 0.90 }, roughness = 0.4 },
 }
 
 -- light fixture archetypes, on/off/dim are emissive materials, the rest drives pooled point lights
@@ -1858,7 +1852,7 @@ local function build_mall(ctx)
 end
 
 --------------------------------------------------------------------------------
--- pools, a tiled natatorium or the flooded pool rooms, water sits a little below the deck
+-- poolrooms, an endless tiled water labyrinth with no sports-pool equipment
 --------------------------------------------------------------------------------
 
 -- a horizontal round bar between two points that differ along x or along z
@@ -1917,38 +1911,6 @@ local function basin(ctx, x0, z0, x1, z1, depth, water_y, opts)
     aabb(ctx, "pool_water", x0, water_y - 0.02, z0, x1, water_y, z1, false, "water")
 end
 
--- a ladder hung on a basin wall, the rails rise out of the water and curl over onto the deck
--- axis and line name the wall face like wall(), dir points from the wall into the water
-local function pool_ladder(ctx, axis, line, dir, a, reach)
-    local function at(u, v)
-        if axis == "x" then
-            return u, v
-        end
-        return v, u
-    end
-    reach = reach or 1.15
-    local v_water, v_deck = line + dir * 0.16, line - dir * 0.38
-    for _, u in ipairs({ a - 0.26, a + 0.26 }) do
-        local wx, wz = at(u, v_water)
-        local dx, dz = at(u, v_deck)
-        cyl(ctx, "chrome", wx, -reach, wz, 0.022, reach + 0.85, false, "ladder_rail")
-        cyl(ctx, "chrome", dx, 0, dz, 0.022, 0.85, true, "ladder_rail")
-        bar(ctx, "chrome", wx, wz, dx, dz, 0.85, 0.022, "ladder_rail")
-        sphere(ctx, "chrome", wx, 0.85, wz, 0.032, "ladder_joint")
-        sphere(ctx, "chrome", dx, 0.85, dz, 0.032, "ladder_joint")
-        cyl(ctx, "steel", dx, 0, dz, 0.05, 0.035, false, "ladder_flange")
-    end
-    local va, vb = math.min(line, line + dir * 0.2), math.max(line, line + dir * 0.2)
-    for k = 1, 3 do
-        local y = -0.28 * k
-        if axis == "x" then
-            aabb(ctx, "steel", a - 0.25, y - 0.025, va, a + 0.25, y, vb, false, "ladder_tread")
-        else
-            aabb(ctx, "steel", va, y - 0.025, a - 0.25, vb, y, a + 0.25, false, "ladder_tread")
-        end
-    end
-end
-
 -- a railing of posts with a top and a mid bar, along x or along z
 local function railing(ctx, mat, x0, z0, x1, z1, y0, height, spacing)
     local len = math.max(math.abs(x1 - x0), math.abs(z1 - z0))
@@ -1961,182 +1923,18 @@ local function railing(ctx, mat, x0, z0, x1, z1, y0, height, spacing)
     bar(ctx, mat, x0, z0, x1, z1, y0 + height * 0.5, 0.015, "rail_mid")
 end
 
-local function pool_wall_band(ctx, ports, h)
-    for side, ops in pairs(ports) do
-        local axis = (side == "W" or side == "E") and "z" or "x"
-        local low = side == "W" or side == "S"
-        local face = low and WALL or CHUNK - WALL
-        local dir = low and 1 or -1
-        for _, span in ipairs(free_spans(WALL, CHUNK - WALL, ops, true)) do
-            face_box(ctx, "pool_tile_band", axis, face, dir, span[1], span[2], 1.1, 1.28, 0.006, false, "wall_band")
-        end
-    end
-end
-
-local function build_natatorium(ctx)
-    local h = 5.5
-    local rnd = ctx.rnd
-    local x0, x1 = 9.0, 34.0
-    local lanes, lane_w = 6, 2.25
-    local z0 = 13.0
-    local z1 = z0 + lanes * lane_w
-    local depth = 1.8
-    local wy = -0.12
-
-    slab_with_holes(ctx, "pool_deck", -0.3, 0, 0, 0, CHUNK, CHUNK, { { x0, z0, x1, z1 } }, true)
-    local ports = perimeter(ctx, "pool_tile", h, { skirting = "pool_tile_band", skirting_h = 0.15 })
-    pool_wall_band(ctx, ports, h)
-    basin(ctx, x0, z0, x1, z1, depth, wy, { band = true, coping = true })
-
-    -- lane lines and end wall targets, lanes read through the water from the deck
-    for k = 0, lanes - 1 do
-        local zc = z0 + (k + 0.5) * lane_w
-        aabb(ctx, "lane_blue", x0 + 2.0, -depth, zc - 0.12, x1 - 2.0, -depth + 0.006, zc + 0.12, false, "lane_line")
-        aabb(ctx, "lane_blue", x0 + 2.0, -depth, zc - 0.5, x0 + 2.25, -depth + 0.006, zc + 0.5, false, "lane_t")
-        aabb(ctx, "lane_blue", x1 - 2.25, -depth, zc - 0.5, x1 - 2.0, -depth + 0.006, zc + 0.5, false, "lane_t")
-        face_box(ctx, "lane_blue", "z", x1, -1, zc - 0.12, zc + 0.12, -depth, -0.35, 0.006, false, "target")
-        face_box(ctx, "lane_blue", "z", x1, -1, zc - 0.4, zc + 0.4, -0.7, -0.5, 0.006, false, "target")
-        if k > 0 then
-            face_box(ctx, "lane_blue", "z", x0, 1, zc - 0.12, zc + 0.12, -depth, -0.35, 0.006, false, "target")
-        end
-    end
-
-    -- floating lane ropes, red near the walls
-    for k = 1, lanes - 1 do
-        local z = z0 + k * lane_w
-        local seg = 2.5
-        local n = math.floor((x1 - x0) / seg + 0.5)
-        -- the first rope clears the handrail of the walk in steps
-        for s = (k == 1) and 1 or 0, n - 1 do
-            local a = x0 + s * seg
-            local mat = (s < 2 or s >= n - 2) and "rope_red" or (s % 2 == 0 and "rope_blue" or "rope_white")
-            bar(ctx, mat, a, z, a + seg, z, wy + 0.01, 0.05, "lane_rope")
-        end
-    end
-
-    -- backstroke flags five meters from each wall
-    local flag_colors = { "rope_red", "rope_white", "rope_blue" }
-    for _, fx in ipairs({ x0 + 5.0, x1 - 5.0 }) do
-        local za, zb = z0 - 1.0, z1 + 1.0
-        cyl(ctx, "chrome", fx, 0, za, 0.03, 2.0, true, "flag_post")
-        cyl(ctx, "chrome", fx, 0, zb, 0.03, 2.0, true, "flag_post")
-        bar(ctx, "rope_white", fx, za, fx, zb, 1.88, 0.008, "flag_line")
-        local i = 0
-        for z = za + 0.45, zb - 0.3, 0.5 do
-            i = i + 1
-            aabb(ctx, flag_colors[i % 3 + 1], fx - 0.003, 1.64, z - 0.1, fx + 0.003, 1.88, z + 0.1, false, "flag")
-        end
-    end
-
-    -- starting blocks at the deep end
-    for k = 0, lanes - 1 do
-        local zc = z0 + (k + 0.5) * lane_w
-        aabb(ctx, "lifeguard_white", x1 + 0.35, 0, zc - 0.28, x1 + 0.95, 0.68, zc + 0.28, true, "starting_block")
-        aabb(ctx, "lane_blue", x1 + 0.3, 0.68, zc - 0.3, x1 + 1.0, 0.74, zc + 0.3, false, "block_top")
-        bar(ctx, "chrome", x1 + 0.36, zc - 0.22, x1 + 0.36, zc + 0.22, 0.45, 0.018, "backstroke_grip")
-    end
-
-    pool_ladder(ctx, "x", z0, 1, x1 - 1.6)
-    pool_ladder(ctx, "x", z1, -1, x1 - 1.6)
-
-    -- walk in steps at the shallow end with a nosing stripe and a handrail
-    local steps = 6
-    local rise = depth / steps
-    local sz0, sz1 = z0, z0 + lane_w
-    for i = 1, steps - 1 do
-        local xa, xb = x0 + 0.4 * (i - 1), x0 + 0.4 * i
-        aabb(ctx, "pool_tile", xa, -depth, sz0, xb, -rise * i, sz1, true, "pool_step")
-        aabb(ctx, "lane_blue", xb - 0.06, -rise * i, sz0, xb, -rise * i + 0.004, sz1, false, "step_nosing")
-    end
-    cyl(ctx, "chrome", x0 - 0.4, 0, sz1 + 0.05, 0.025, 0.9, true, "handrail_post")
-    cyl(ctx, "chrome", x0 + 2.0, -depth + 1.2 * rise, sz1 + 0.05, 0.025, 1.0, false, "handrail_post")
-    slope_x(ctx, "chrome", x0 - 0.4, x0 + 2.0, 0.9, -depth + 1.2 * rise + 1.0, sz1 + 0.025, sz1 + 0.075, 0.05, false, "handrail")
-
-    -- underwater lights along the long walls
-    for x = x0 + 2.5, x1 - 2.4, 5.0 do
-        make_light(ctx, disc(ctx, "pool_light", "x", z0, 1, x, -0.85, 0.15, 0.03, "underwater_light"), fixtures.underwater, 0.0)
-        make_light(ctx, disc(ctx, "pool_light", "x", z1, -1, x, -0.85, 0.15, 0.03, "underwater_light"), fixtures.underwater, 0.0, 0x81)
-    end
-
-    -- the lifeguard chair watches the lanes from the south deck
-    local gx, gz = HALF - 2.5, z0 - 1.8
-    for _, o in ipairs({ { -0.35, -0.3 }, { 0.35, -0.3 }, { -0.35, 0.3 }, { 0.35, 0.3 } }) do
-        cyl(ctx, "lifeguard_white", gx + o[1], 0, gz + o[2], 0.04, 1.8, true, "lifeguard_leg")
-    end
-    aabb(ctx, "lifeguard_white", gx - 0.42, 1.8, gz - 0.36, gx + 0.42, 1.86, gz + 0.36, false, "lifeguard_seat")
-    aabb(ctx, "lifeguard_white", gx - 0.42, 1.86, gz - 0.36, gx + 0.42, 2.5, gz - 0.31, false, "lifeguard_back")
-    for k = 1, 4 do
-        bar(ctx, "lifeguard_white", gx - 0.35, gz + 0.3, gx + 0.35, gz + 0.3, k * 0.4, 0.022, "lifeguard_rung")
-    end
-    aabb(ctx, "rope_red", gx + 0.43, 0.9, gz - 0.12, gx + 0.52, 1.7, gz + 0.12, false, "rescue_tube")
-
-    -- bleachers along the north deck
-    local zb = z1 + 3.0
-    local bx0, bx1 = x0 + 1.0, x1 - 1.0
-    for i = 0, 3 do
-        local za = zb + i * 0.85
-        local top = 0.45 * (i + 1)
-        aabb(ctx, "concrete", bx0, 0, za, bx1, top, za + 0.85, true, "bleacher")
-        aabb(ctx, "chair_plastic", bx0, top, za + 0.05, bx1, top + 0.04, za + 0.45, false, "bleacher_seat")
-    end
-    railing(ctx, "chrome", bx0, zb - 0.1, bx1, zb - 0.1, 0, 1.0, 2.0)
-    if rnd() < 0.6 then
-        local tx = bx0 + 1 + rnd() * (bx1 - bx0 - 2)
-        aabb(ctx, rnd() < 0.5 and "garment_a" or "garment_b", tx - 0.35, 0.94, zb + 0.9, tx + 0.35, 0.96, zb + 1.3, false, "towel")
-    end
-
-    -- pace clock above the south deck
-    disc(ctx, "black_plastic", "x", WALL, 1, HALF, 3.1, 0.66, 0.03, "clock_rim")
-    disc(ctx, "lifeguard_white", "x", WALL + 0.03, 1, HALF, 3.1, 0.6, 0.02, "pace_clock")
-    aabb(ctx, "black_plastic", HALF - 0.015, 3.1, WALL + 0.05, HALF + 0.015, 3.6, WALL + 0.06, false, "clock_hand")
-    aabb(ctx, "rope_red", HALF, 3.09, WALL + 0.06, HALF + 0.45, 3.11, WALL + 0.07, false, "clock_hand")
-
-    -- kickboards stacked by the wall, a bench, a drain line along the deck
-    local kick = { "zone_blue", "paint_yellow", "zone_red", "zone_green" }
-    for k = 0, 5 do
-        aabb(ctx, kick[k % 4 + 1], 44.0, k * 0.035, 3.0, 44.45, k * 0.035 + 0.03, 3.3, false, "kickboard")
-    end
-    aabb(ctx, "wood_light", 36.0, 0.42, WALL + 0.05, 42.0, 0.47, WALL + 0.45, false, "bench_seat")
-    aabb(ctx, "steel", 36.2, 0, WALL + 0.1, 36.3, 0.42, WALL + 0.4, true, "bench_leg")
-    aabb(ctx, "steel", 41.7, 0, WALL + 0.1, 41.8, 0.42, WALL + 0.4, true, "bench_leg")
-    aabb(ctx, "black_plastic", x0, 0, z0 - 0.6, x1, 0.004, z0 - 0.5, false, "deck_drain")
-    aabb(ctx, "black_plastic", x0, 0, z1 + 0.5, x1, 0.004, z1 + 0.6, false, "deck_drain")
-
-    -- roof trusses, then a skylight over the water or high bay pendants everywhere
-    local skylight = rnd() < 0.5
-    local holes = skylight and { { x0 + 1.0, z0 + 1.0, x1 - 1.0, z1 - 1.0 } } or {}
-    slab_with_holes(ctx, "ceiling_white", h, h + 0.3, 0, 0, CHUNK, CHUNK, holes, false)
-    for x = 4.0, CHUNK - 3.0, 5.0 do
-        aabb(ctx, "lifeguard_white", x - 0.12, h - 0.7, WALL, x + 0.12, h, CHUNK - WALL, false, "truss")
-        aabb(ctx, "lifeguard_white", x - 0.02, h - 0.68, WALL, x + 0.02, h - 0.02, CHUNK - WALL, false, "truss_web")
-    end
-    if skylight then
-        aabb(ctx, "sky_panel", x0 + 1.0, h + 0.25, z0 + 1.0, x1 - 1.0, h + 0.3, z1 - 1.0, false, "skylight")
-        for x = x0 + 3.5, x1 - 2.0, 6.0 do
-            make_light(ctx, aabb(ctx, "sky_panel", x - 0.01, h + 0.2, HALF - 0.01, x + 0.01, h + 0.21, HALF + 0.01, false, "sky_probe"), fixtures.skylight, 3.0)
-        end
-    end
-    for x = 6.5, CHUNK - 3.0, 5.0 do
-        for _, z in ipairs({ 5.5, z0 + 3.5, z1 - 3.5, 35.5, 43.0 }) do
-            if not (skylight and x > x0 and x < x1 and z > z0 and z < z1) then
-                cyl(ctx, "steel", x, h - 1.4, z, 0.008, 1.4, false, "pendant_cable")
-                cyl(ctx, "steel", x, h - 1.55, z, 0.36, 0.15, false, "pendant_body")
-                make_light(ctx, cyl(ctx, "panel_cool", x, h - 1.56, z, 0.32, 0.01, false, "pendant_lens"), fixtures.hall, 0.2)
-            end
-        end
-    end
-end
-
 -- the pool rooms, a warren of white tiled halls half under water
 local function build_poolrooms(ctx)
-    local h = 3.6
+    local h = P.pool.ceiling
     local rnd = ctx.rnd
     local cell = 16.0
     local holes, cells = {}, {}
     for j = 0, 2 do
         for i = 0, 2 do
             local r = rnd()
-            local kind = r < 0.45 and "flood" or (r < 0.65 and "deep" or (r < 0.87 and "dry" or "stairs"))
+            local kind = r < 0.55 and "flood" or (r < 0.80 and "deep" or (r < 0.92 and "dry" or "stairs"))
+            -- Every chunk has water, even when the surrounding cells roll dry.
+            if i == 1 and j == 1 then kind = "flood" end
             local c = { i = i, j = j, kind = kind, x0 = i * cell, z0 = j * cell, x1 = (i + 1) * cell, z1 = (j + 1) * cell }
             if kind == "flood" then
                 c.hole = { c.x0 + 1.4, c.z0 + 1.4, c.x1 - 1.4, c.z1 - 1.4 }
@@ -2151,7 +1949,7 @@ local function build_poolrooms(ctx)
     end
 
     slab_with_holes(ctx, "pool_tile", -0.3, 0, 0, 0, CHUNK, CHUNK, holes, true)
-    local ports = perimeter(ctx, "pool_tile", h, { skirting = "pool_tile_band", skirting_h = 0.12 })
+    perimeter(ctx, "pool_tile", h)
 
     -- inner walls on the cell lines, each run keeps at least one arch so the warren stays connected
     for _, line in ipairs({ cell, cell * 2 }) do
@@ -2168,8 +1966,8 @@ local function build_poolrooms(ctx)
                     end
                     wall(ctx, "pool_tile", axis, line, 0.3, a0 + (k == 0 and WALL or 0.15), a1 - (k == 2 and WALL or 0.15), 0, h, ops, "tiled_wall")
                     for _, o in ipairs(ops) do
-                        casing(ctx, "pool_tile_band", axis, line + 0.15, 1, o.a, o.b, o.top, 0.12, 0.012)
-                        casing(ctx, "pool_tile_band", axis, line - 0.15, -1, o.a, o.b, o.top, 0.12, 0.012)
+                        casing(ctx, "pool_tile", axis, line + 0.15, 1, o.a, o.b, o.top, 0.12, 0.012)
+                        casing(ctx, "pool_tile", axis, line - 0.15, -1, o.a, o.b, o.top, 0.12, 0.012)
                     end
                 else
                     -- no wall, a pair of tiled piers marks the cell line instead
@@ -2210,17 +2008,12 @@ local function build_poolrooms(ctx)
         elseif c.kind == "deep" then
             local x0, z0, x1, z1 = c.hole[1], c.hole[2], c.hole[3], c.hole[4]
             local depth = 1.6 + rnd() * 0.8
-            basin(ctx, x0, z0, x1, z1, depth, -0.12, { band = true, coping = true })
-            pool_ladder(ctx, "x", z0, 1, x1 - 1.4)
-            if rnd() < 0.6 then
-                pool_ladder(ctx, "x", z1, -1, x0 + 1.4)
-            end
+            basin(ctx, x0, z0, x1, z1, depth, -0.12, { tile = "pool_tile_pale" })
             -- steps down one short side so you are never trapped in the water
-            local steps = math.floor(depth / 0.3 + 0.5)
+            local steps = math.ceil(depth / 0.2)
             local rise = depth / steps
             for s = 1, steps - 1 do
-                aabb(ctx, "pool_tile_aqua", x0 + 0.35 * (s - 1), -depth, z0 + 2.0, x0 + 0.35 * s, -rise * s, z1 - 2.0, true, "pool_step")
-                aabb(ctx, "lane_blue", x0 + 0.35 * s - 0.05, -rise * s, z0 + 2.0, x0 + 0.35 * s, -rise * s + 0.004, z1 - 2.0, false, "step_nosing")
+                aabb(ctx, "pool_tile_pale", x0 + 0.4 * (s - 1), -depth, z0 + 0.6, x0 + 0.4 * s, -rise * s, z1 - 0.6, true, "pool_step")
             end
             for x = x0 + 2.0, x1 - 1.9, 3.0 do
                 make_light(ctx, disc(ctx, "pool_light", "x", z0, 1, x, -0.8, 0.14, 0.03, "underwater_light"), fixtures.underwater, 0.0)
@@ -2228,26 +2021,13 @@ local function build_poolrooms(ctx)
             end
             sky_holes[#sky_holes + 1] = { x0 + 1.0, z0 + 1.0, x1 - 1.0, z1 - 1.0 }
         elseif c.kind == "dry" then
-            -- a raised hot tub, empty rooms around it
-            local tx0, tz0, tx1, tz1 = cx - 1.7, cz - 1.7, cx + 1.7, cz + 1.7
-            local rim = 0.55
-            aabb(ctx, "pool_tile", tx0, 0, tz0, tx1, rim, tz0 + 0.25, true, "tub_wall")
-            aabb(ctx, "pool_tile", tx0, 0, tz1 - 0.25, tx1, rim, tz1, true, "tub_wall")
-            aabb(ctx, "pool_tile", tx0, 0, tz0 + 0.25, tx0 + 0.25, rim, tz1 - 0.25, true, "tub_wall")
-            aabb(ctx, "pool_tile", tx1 - 0.25, 0, tz0 + 0.25, tx1, rim, tz1 - 0.25, true, "tub_wall")
-            aabb(ctx, "pool_tile_aqua", tx0 + 0.25, 0, tz0 + 0.25, tx1 - 0.25, 0.04, tz1 - 0.25, false, "tub_floor")
-            aabb(ctx, "pool_tile_aqua", tx0 + 0.25, 0.04, tz0 + 0.25, tx0 + 0.7, 0.28, tz1 - 0.25, false, "tub_bench")
-            aabb(ctx, "pool_water", tx0 + 0.25, rim - 0.1, tz0 + 0.25, tx1 - 0.25, rim - 0.08, tz1 - 0.25, false, "water")
-            aabb(ctx, "coping", tx0 - 0.05, rim, tz0 - 0.05, tx1 + 0.05, rim + 0.04, tz0 + 0.25, false, "tub_coping")
-            aabb(ctx, "coping", tx0 - 0.05, rim, tz1 - 0.25, tx1 + 0.05, rim + 0.04, tz1 + 0.05, false, "tub_coping")
-            aabb(ctx, "coping", tx0 - 0.05, rim, tz0 + 0.25, tx0 + 0.25, rim + 0.04, tz1 - 0.25, false, "tub_coping")
-            aabb(ctx, "coping", tx1 - 0.25, rim, tz0 + 0.25, tx1 + 0.05, rim + 0.04, tz1 - 0.25, false, "tub_coping")
-            make_light(ctx, disc(ctx, "pool_light", "x", tz1 - 0.25, -1, cx, 0.22, 0.1, 0.02, "underwater_light"), fixtures.underwater, 0.0, 0x83)
-            -- tiled ledges along the cell walls
-            aabb(ctx, "pool_tile", c.x0 + 2.0, 0, c.z0 + 0.3, c.x1 - 2.0, 0.45, c.z0 + 0.8, true, "ledge")
-            if rnd() < 0.5 then
-                aabb(ctx, "pool_tile", c.x0 + 0.3, 0, c.z0 + 2.0, c.x0 + 0.8, 0.45, c.z1 - 2.0, true, "ledge")
+            -- An empty colonnade between flooded chambers: no spa furniture.
+            for _, px in ipairs({ cx - 3.5, cx + 3.5 }) do
+                for _, pz in ipairs({ cz - 3.5, cz + 3.5 }) do
+                    aabb(ctx, "pool_tile", px - 0.65, 0, pz - 0.65, px + 0.65, h, pz + 0.65, true, "pier")
+                end
             end
+            sky_holes[#sky_holes + 1] = { cx - 1.0, c.z0 + 2.0, cx + 1.0, c.z1 - 2.0 }
         else
             -- stairs up to a door that opens onto nothing
             local sx0, sx1 = cx - 1.25, cx + 1.25
@@ -2299,14 +2079,6 @@ local function build_poolrooms(ctx)
     end
 end
 
-local function build_pool(ctx)
-    if hash_unit(ctx.cx, ctx.cz, 0x800) < 0.4 then
-        build_natatorium(ctx)
-    else
-        build_poolrooms(ctx)
-    end
-end
-
 --------------------------------------------------------------------------------
 -- program registry, edge rules are how two chunks of the same building join up
 --------------------------------------------------------------------------------
@@ -2317,7 +2089,7 @@ register("hotel",     { weight = 2.0, ceiling = 2.55, edge = { width = 2.2, heig
 register("school",    { weight = 1.5, ceiling = 3.0,  edge = { width = 3.2, height = 3.1 },  exit_signs = true,  build = build_school,    acoustic = { 0.55, 0.50, 0.22 }, hum = { 0.06, 1.04 } })
 register("garage",    { weight = 1.5, ceiling = 2.7,  edge = { open = true },                exit_signs = true,  build = build_garage,    acoustic = { 0.80, 0.62, 0.30 }, hum = { 0.05, 0.86 } })
 register("mall",      { weight = 1.5, ceiling = 10.5, edge = { width = 12.0, height = 10.6 }, exit_signs = true, build = build_mall,      acoustic = { 0.90, 0.70, 0.34 }, hum = { 0.045, 0.93 } })
-register("pool",      { weight = 2.0, ceiling = 3.6,  edge = { width = 6.0, height = 3.0 },   exit_signs = true, build = build_pool,      acoustic = { 0.95, 0.85, 0.45 }, hum = { 0.03, 0.82 } })
+register("pool",      { weight = 2.0, ceiling = 4.8,  edge = { width = 6.0, height = 3.0 },   exit_signs = false, build = build_poolrooms,      acoustic = { 0.95, 0.85, 0.45 }, hum = { 0.03, 0.82 } })
 
 -- read only, lets tools find where a program is without streaming the world
 function liminal.program_name_at(cx, cz)
@@ -2327,6 +2099,203 @@ end
 --------------------------------------------------------------------------------
 -- chunk build and streaming
 --------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Surface details use their own random stream and existing geometry as anchors.
+-- No new colliders or lights: streaming, door swings and walking routes stay intact.
+--------------------------------------------------------------------------------
+
+local function detail_chunk(ctx)
+    local base_count = #ctx.jobs
+    local budget = 480
+    local name = ctx.program.name
+    local rnd = prng_new(hash_u32(ctx.cx, ctx.cz, 0xd37a))
+    set_quadrant(ctx, 0)
+
+    -- u follows the long horizontal axis of a box, v its short axis.
+    -- Coordinates are metres relative to the anchor; y is absolute world height.
+    local function box(j, mat, u, y, v, w, height, depth, label)
+        if #ctx.jobs - base_count >= budget then return end
+        local along_x = j.sx >= j.sz
+        push(ctx, {
+            material = mat, label = label, physics = false,
+            px = j.px + (along_x and u or v), py = y,
+            pz = j.pz + (along_x and v or u),
+            sx = along_x and w or depth, sy = height,
+            sz = along_x and depth or w,
+        })
+    end
+    local function face(j, mat, u, y, w, height, depth, label, side)
+        side = side or 1
+        box(j, mat, u, y, side * (math.min(j.sx, j.sz) * 0.5 + depth * 0.5 + 0.002), w, height, depth, label)
+    end
+
+    -- Visit anchors in a seeded permutation so the detail budget is shared across
+    -- the whole chunk, including all four mirrored quadrants.
+    local anchors = {}
+    for i = 1, base_count do anchors[i] = ctx.jobs[i] end
+    for i = base_count, 2, -1 do
+        local k = math.floor(rnd() * i) + 1
+        anchors[i], anchors[k] = anchors[k], anchors[i]
+    end
+    for _, j in ipairs(anchors) do
+        if #ctx.jobs - base_count >= budget then break end
+        local label = j.label
+        local width, depth = math.max(j.sx, j.sz), math.min(j.sx, j.sz)
+        local bottom, top = j.py - j.sy * 0.5, j.py + j.sy * 0.5
+        if not j.mesh and not j.yaw and not j.roll and not j.pitch and not j.door then
+            if label == "desk" and width > 1 and depth > 0.35 then
+                -- Paper, a closed notebook and a pencil stay on the desktop.
+                box(j, "paper", -width * 0.28, top + 0.009, 0, 0.22, 0.018, 0.28, "paper_stack")
+                box(j, name == "school" and "zone_blue" or "wood_dark", width * 0.28, top + 0.018, 0, 0.19, 0.036, 0.25, "notebook")
+                box(j, "paint_yellow", -width * 0.28 + 0.08, top + 0.023, 0, 0.008, 0.008, 0.16, "pencil")
+                if name == "office" then
+                    box(j, "black_plastic", 0, top + 0.015, depth * 0.28, 0.42, 0.03, 0.13, "keyboard")
+                    for k = -1, 1 do
+                        box(j, "steel", 0, top + 0.032, depth * 0.28 + k * 0.035, 0.37, 0.004, 0.012, "keyboard_keys")
+                    end
+                end
+            elseif label == "pedestal" or label == "dresser" or label == "base_cabinets" then
+                local n = math.min(4, math.max(1, math.floor(width / 0.55)))
+                for k = 1, n do
+                    local u = -width * 0.5 + (k - 0.5) * width / n
+                    for _, side in ipairs({ -1, 1 }) do
+                        face(j, "skirting_dark", u, top - 0.22, width / n - 0.03, 0.008, 0.006, "drawer_seam", side)
+                        face(j, "steel", u, top - 0.12, math.min(0.14, width / n * 0.5), 0.018, 0.025, "drawer_pull", side)
+                    end
+                end
+            elseif label == "lockers" then
+                local n = math.max(1, math.floor(width / 0.38))
+                for k = 1, n do
+                    local u = -width * 0.5 + (k - 0.5) * width / n
+                    for _, side in ipairs({ -1, 1 }) do
+                        face(j, "steel", u, 1.12, 0.035, 0.13, 0.025, "locker_latch", side)
+                        face(j, "paper", u, 1.65, 0.12, 0.05, 0.006, "locker_plate", side)
+                        for v = 0, 2 do
+                            face(j, "skirting_dark", u, 1.42 + v * 0.045, 0.19, 0.012, 0.006, "locker_vent", side)
+                        end
+                    end
+                end
+            elseif label == "chalkboard" then
+                for row = 0, 3 do
+                    local w = math.min(width - 0.3, 0.9 + rnd() * 1.6)
+                    face(j, "paper", -width * 0.5 + 0.15 + w * 0.5, bottom + 0.25 + row * 0.19, w, 0.012, 0.004, "chalk_marks")
+                end
+            elseif label == "shelving" then
+                -- Shelf lips and packages break up otherwise solid storage blocks.
+                for level = 1, 3 do
+                    local y = bottom + j.sy * level / 3 - 0.12
+                    for _, side in ipairs({ -1, 1 }) do
+                        face(j, "steel", 0, y, width, 0.04, 0.025, "shelf_lip", side)
+                        for k = 1, math.min(5, math.floor(width / 0.65)) do
+                            local u = -width * 0.5 + 0.4 + (k - 1) * 0.65
+                            face(j, k % 2 == 0 and "cardboard" or "garment_c", u, y + 0.12, 0.38, 0.2, 0.04, "stored_package", side)
+                        end
+                    end
+                end
+            elseif name == "hotel" and label == "headboard" then
+                for k = 1, 4 do
+                    local u = -width * 0.5 + k * width / 5
+                    for _, side in ipairs({ -1, 1 }) do
+                        face(j, "brass", u, 0.95, 0.012, 0.28, 0.006, "headboard_inlay", side)
+                    end
+                end
+            elseif name == "hotel" and label == "nightstand" then
+                box(j, "paper", 0.07, top + 0.006, 0.12, 0.13, 0.012, 0.16, "guest_card")
+            elseif name == "hotel" and label == "wainscot" and width > 0.55 then
+                local n = math.max(1, math.floor(width / 0.8))
+                for k = 1, n do
+                    local u = -width * 0.5 + (k - 0.5) * width / n
+                    for _, side in ipairs({ -1, 1 }) do
+                        face(j, "wood_dark", u, 0.45, width / n - 0.12, 0.57, 0.008, "panel_recess", side)
+                        face(j, "wood_panel", u, 0.45, width / n - 0.17, 0.52, 0.015, "panel_inset", side)
+                    end
+                end
+            elseif name == "backrooms" and label == "wall" and bottom < 0.1 and j.sy > 2.4 and width > 1.2 then
+                for _, side in ipairs({ -1, 1 }) do
+                    face(j, "wood_light", 0, 0.055, width, 0.11, 0.018, "aged_baseboard", side)
+                    face(j, "paint_white", width * 0.2, 0.34, 0.09, 0.13, 0.015, "socket_plate", side)
+                    face(j, "skirting_dark", width * 0.2, 0.34, 0.025, 0.045, 0.019, "socket_slot", side)
+                    if rnd() < 0.45 then
+                        face(j, "wall_patch", -width * 0.2, 1.2, math.min(0.55, width * 0.3), 0.85, 0.004, "wallpaper_repair", side)
+                    end
+                end
+            elseif label == "troffer" and rnd() < 0.35 then
+                -- End clips and louvers give the fluorescent housings some depth.
+                for k = -1, 1 do
+                    box(j, "fixture_frame", k * width * 0.28, bottom - 0.008, 0, 0.012, 0.016, depth * 0.85, "fixture_louver")
+                end
+            elseif name == "garage" and label == "sprinkler_main" then
+                for u = -width * 0.5 + 1, width * 0.5 - 0.5, 4 do
+                    box(j, "steel", u, j.py, 0, 0.12, j.sy + 0.025, depth + 0.025, "pipe_coupling")
+                    box(j, "pipe_red", u, bottom - 0.045, 0, 0.025, 0.09, 0.025, "sprinkler_drop")
+                    box(j, "brass", u, bottom - 0.095, 0, 0.065, 0.01, 0.065, "sprinkler_head")
+                end
+            elseif name == "garage" and label == "bay_line" and rnd() < 0.45 then
+                box(j, "skirting_dark", 0, 0.006, 0.65, math.min(0.9, width * 0.3), 0.004, 0.42, "oil_mark")
+                box(j, "concrete_floor", 0.12, 0.009, 0.7, math.min(0.55, width * 0.2), 0.003, 0.2, "oil_mark_breakup")
+            elseif name == "garage" and label == "wheel_stop" then
+                for _, u in ipairs({ -width * 0.3, width * 0.3 }) do
+                    box(j, "steel", u, top + 0.006, 0, 0.06, 0.012, 0.06, "anchor_bolt")
+                end
+            elseif name == "garage" and label == "beam" then
+                for u = -width * 0.5 + 1.5, width * 0.5 - 1, 8 do
+                    box(j, "steel", u, bottom - 0.012, 0, 0.22, 0.024, depth + 0.04, "beam_plate")
+                    for _, v in ipairs({ -depth * 0.3, depth * 0.3 }) do
+                        box(j, "black_plastic", u, bottom - 0.03, v, 0.035, 0.012, 0.035, "beam_bolt")
+                    end
+                end
+            elseif name == "garage" and label == "column" then
+                for _, side in ipairs({ -1, 1 }) do
+                    face(j, "steel", 0.18, 1.15, 0.035, 2.1, 0.035, "column_conduit", side)
+                    face(j, "steel", 0.16, 1.2, 0.17, 0.22, 0.07, "junction_box", side)
+                    face(j, "black_plastic", 0.16, 1.2, 0.035, 0.06, 0.075, "junction_latch", side)
+                end
+            elseif name == "mall" and (label == "shutter" or label == "half_shutter") then
+                for _, side in ipairs({ -1, 1 }) do
+                    face(j, "steel", 0, bottom + 0.04, width, 0.08, 0.04, "shutter_bottom_rail", side)
+                    face(j, "black_plastic", 0, bottom + 0.16, 0.3, 0.055, 0.025, "shutter_handle", side)
+                end
+            elseif name == "mall" and label == "bench_seat" then
+                for k = -1, 1 do
+                    box(j, "wood_dark", 0, top + 0.003, k * depth * 0.25, width - 0.06, 0.006, 0.012, "bench_slats")
+                end
+            elseif name == "mall" and label == "counter" and width > 1 and depth > 0.35 then
+                box(j, "black_plastic", 0, top + 0.04, 0, 0.34, 0.08, 0.28, "register_base")
+                box(j, "screen_dead", 0, top + 0.2, 0, 0.3, 0.24, 0.06, "register_screen")
+                box(j, "paper", width * 0.28, top + 0.06, 0, 0.16, 0.12, 0.08, "counter_card")
+            elseif name == "hotel" and label == "bathtub" then
+                box(j, "glass_frost", 0, top + 0.004, 0, width - 0.18, 0.008, depth - 0.18, "tub_inset")
+                box(j, "chrome", -width * 0.4, top + 0.09, 0, 0.04, 0.18, 0.04, "bath_tap")
+                box(j, "chrome", -width * 0.4 + 0.06, top + 0.17, 0, 0.16, 0.025, 0.04, "bath_spout")
+            elseif name == "pool" and label == "water" then
+                -- A narrow overflow gutter follows each basin without occupying the deck.
+                for _, side in ipairs({ -1, 1 }) do
+                    box(j, "vent_shadow", 0, 0.005, side * (depth * 0.5 + 0.11), width, 0.01, 0.08, "overflow_gutter")
+                    box(j, "vent_shadow", side * (width * 0.5 + 0.11), 0.005, 0, 0.08, 0.01, depth, "overflow_gutter")
+                    for u = -width * 0.5 + 0.4, width * 0.5 - 0.3, 1.2 do
+                        box(j, "pool_tile", u, 0.012, side * (depth * 0.5 + 0.11), 0.025, 0.004, 0.09, "gutter_bridge")
+                    end
+                end
+            elseif name == "pool" and label == "basin_floor" then
+                -- Flush drain grates sit on the basin floor, clear of the entry steps.
+                local u = width * 0.28
+                box(j, "steel", u, top + 0.004, 0, 0.32, 0.008, 0.32, "basin_drain")
+                for k = -2, 2 do
+                    box(j, "vent_shadow", u + k * 0.05, top + 0.01, 0, 0.02, 0.004, 0.27, "drain_slot")
+                end
+            elseif name == "pool" and label == "basin_wall" and width > 3 then
+                for _, side in ipairs({ -1, 1 }) do
+                    face(j, "pool_tile", 0, -0.045, width - 0.08, 0.08, 0.008, "waterline_tile", side)
+                end
+            elseif name == "pool" and label == "pillar" then
+                for _, side in ipairs({ -1, 1 }) do
+                    face(j, "pool_tile_pale", 0, 0.02, width, 0.16, 0.008, "pillar_watermark", side)
+                end
+            end
+        end
+    end
+end
 
 local function build_chunk(cx, cz)
     local program = program_at(cx, cz)
@@ -2349,6 +2318,7 @@ local function build_chunk(cx, cz)
         ctx.edges[side] = { width = spec.width, height = spec.height, open = spec.open, door = spec.door, other = other }
     end
     program.build(ctx)
+    detail_chunk(ctx)
     return ctx
 end
 

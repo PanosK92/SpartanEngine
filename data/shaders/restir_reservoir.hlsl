@@ -600,16 +600,12 @@ void unpack_path_info(uint packed, inout PathSample s)
     s.endpoint_pooled = (packed >> 31u) != 0u;
 }
 
-// Six RGBA32F textures (96 bytes), including the exact cached RGB integrand. A single path has either terminal emission
-// or a continuing suffix, never both. The unused radiance triplet stores the
-// source primary position losslessly; half-float offsets previously changed
-// shift Jacobians and could quantize sky-path primaries by meters.
-// t0: triangle hit OR explicit RC position, packed RC normal
-// t1: suffix radiance OR source position, packed outgoing direction
-// t2: terminal radiance OR source position, packed RC albedo/metallic
-// t3: seed, path descriptor, W, endpoint NEE source PDF (target is derived from F)
-// t4: 8-bit M + 24-bit RC geometric normal, RC roughness, source normal/roughness, source albedo/metallic
-// t5: cached RGB integrand paired with W, source incoming geometry factor
+// Four RGBA32F textures (64 bytes). Primary surface history is shared per pixel;
+// RC material state is reconstructed from retained geometry before a shift.
+// t0: triangle hit / explicit endpoint / stable dirac identity, outgoing direction or terminal geometric normal
+// t1: suffix or terminal radiance, source incoming geometry factor
+// t2: cached RGB integrand paired with W, W
+// t3: initial seed, path descriptor, endpoint NEE PDF, confidence
 float pack_f16x2_to_float(float a, float b)
 {
     uint packed = f32tof16(a) | (f32tof16(b) << 16u);
@@ -652,106 +648,85 @@ float target_scalar(float3 f)
 }
 
 bool is_dirac_light_sample(PathSample s);
+bool restir_resolve_dirac_light(PathSample s, out uint light_index);
 
-void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
+float4 restir_primary_surface(float2 uv)
 {
-    float2 rc_normal_oct  = octahedral_encode(r.sample.rc_normal);
-    float2 rc_out_oct     = octahedral_encode(r.sample.rc_outgoing_dir);
-
-    bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
-    tex0 = float4(is_triangle_reconnection(r.sample) ? asfloat(r.sample.rc_hit) : r.sample.rc_pos,    pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
-    tex1 = float4(terminal ? r.sample.src_pos : r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x,    rc_out_oct.y));
-    tex2 = float4(
-        terminal ? r.sample.rc_L_nee : r.sample.src_pos,
-        pack_uint8x4_to_float(r.sample.rc_albedo.r, r.sample.rc_albedo.g, r.sample.rc_albedo.b, r.sample.rc_metallic)
-    );
-    if (terminal && (r.sample.endpoint_pooled || is_dirac_light_sample(r.sample)))
-    {
-        tex1.w = asfloat(r.sample.endpoint_geometry.x);
-        tex2.w = asfloat(r.sample.endpoint_geometry.y);
-    }
-    tex3 = float4(
-        asfloat(r.sample.seed_path),
-        asfloat(pack_path_info(r.sample)),
-        r.W,
-        r.sample.rc_nee_pdf
-    );
-    tex5 = float4(r.sample.F, r.sample.rc_pdf);
-    // Supplemental Algorithm 1 stores confidence as an 8-bit integer. The
-    // current cap and three spatial neighbors bound stored M by 4 * 21 = 84.
-    // Use the remaining bits for the RC geometry, not its BRDF normal.
-    uint confidence = uint(clamp(r.M + 0.5f, 0.0f, 255.0f));
-    uint geometric = r.sample.rc_geometric_normal_packed;
-    tex4 = float4(
-        asfloat(confidence | (geometric << 8u)),
-        pack_f16x2_to_float(r.sample.rc_roughness, 0.0f),
-        asfloat(r.sample.src_normal_roughness),
-        pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
-    );
+    uint normal_roughness = (tex_normal[gbuffer_texel(uv)].x & 0x00ffffffu) |
+        ((tex_material[gbuffer_texel(uv)] & 255u) << 24u);
+    return float4(restir_primary_position(uv), asfloat(normal_roughness));
 }
 
-Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4, float4 tex5)
+uint restir_primary_material(float2 uv)
 {
-    Reservoir r;
-    r.sample.F = tex5.rgb;
-    r.sample.rc_nee_pdf = tex3.w;
-    r.sample.endpoint_geometry = uint2(asuint(tex1.w), asuint(tex2.w));
-    r.sample.rc_pdf = tex5.a;
-    r.sample.initial_weight = 1.0f;
-    r.sample.first_hit_distance = 0.0f;
+    float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
+    return asuint(pack_uint8x4_to_float(albedo.r, albedo.g, albedo.b, get_material(uv).g));
+}
 
-    float2 rc_normal_oct = unpack_float_to_f16x2(tex0.w);
-    float2 rc_out_oct    = unpack_float_to_f16x2(tex1.w);
+void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3)
+{
+    bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
+    float2 outgoing = octahedral_encode(r.sample.rc_outgoing_dir);
+    float3 endpoint = is_triangle_reconnection(r.sample) ? asfloat(r.sample.rc_hit) : r.sample.rc_pos;
+    if (is_dirac_light_sample(r.sample)) endpoint = float3(asfloat(r.sample.endpoint_geometry), 0.0f);
+    tex0 = float4(endpoint, terminal ? asfloat(r.sample.rc_geometric_normal_packed) : pack_f16x2_to_float(outgoing.x, outgoing.y));
+    tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post, r.sample.rc_pdf);
+    tex2 = float4(r.sample.F, r.W);
+    tex3 = float4(asfloat(r.sample.seed_path), asfloat(pack_path_info(r.sample)), r.sample.rc_nee_pdf,
+        asfloat(uint(clamp(r.M + 0.5f, 0.0f, 255.0f))));
+}
 
-    r.sample.rc_hit = asuint(tex0.xyz);
-    r.sample.rc_pos          = tex0.xyz;
-    r.sample.rc_normal       = octahedral_decode(rc_normal_oct);
-    r.sample.rc_L_post       = tex1.xyz;
-    r.sample.rc_outgoing_dir = octahedral_decode(rc_out_oct);
-
-    r.sample.rc_L_nee     = tex2.xyz;
-    float4 rc_albedo_met  = unpack_float_to_uint8x4(tex2.w);
-    r.sample.rc_albedo    = rc_albedo_met.rgb;
-    r.sample.rc_metallic  = rc_albedo_met.a;
-
+Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
+    float4 primary_surface, uint primary_material)
+{
+    Reservoir r = (Reservoir)0;
+    r.sample.F = tex2.rgb;
+    r.W = tex2.a;
+    r.sample.rc_pdf = tex1.w;
+    r.sample.rc_nee_pdf = tex3.z;
     r.sample.seed_path = asuint(tex3.x);
-
+    r.sample.initial_weight = 1.0f;
     unpack_path_info(asuint(tex3.y), r.sample);
+    bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
+    r.sample.rc_hit = asuint(tex0.xyz);
+    r.sample.rc_pos = tex0.xyz;
+    r.sample.rc_normal = float3(0, 1, 0);
+    r.sample.rc_roughness = 1.0f;
+    if (terminal)
+    {
+        r.sample.rc_L_nee = tex1.rgb;
+        r.sample.rc_geometric_normal_packed = asuint(tex0.w);
+        r.sample.rc_normal = unpack_rc_geometric_normal(r.sample.rc_geometric_normal_packed);
+        r.sample.rc_outgoing_dir = r.sample.rc_normal;
+    }
+    else
+    {
+        r.sample.rc_L_post = tex1.rgb;
+        r.sample.rc_outgoing_dir = octahedral_decode(unpack_float_to_f16x2(tex0.w));
+    }
     if (is_triangle_reconnection(r.sample))
     {
-        if (r.sample.endpoint_light == RESTIR_ENDPOINT_EMTRI && (r.sample.flags & PATH_FLAG_NEE) != 0u)
-            restir_pool_hit_position(r.sample.rc_hit, r.sample.rc_pos);
-        else
-            restir_rc_hit_position(r.sample.rc_hit, r.sample.rc_pos);
+        bool pool_hit = r.sample.endpoint_light == RESTIR_ENDPOINT_EMTRI && (r.sample.flags & PATH_FLAG_NEE) != 0u;
+        if (pool_hit) restir_pool_hit_position(r.sample.rc_hit, r.sample.rc_pos);
+        else restir_rc_hit_position(r.sample.rc_hit, r.sample.rc_pos);
+        if (terminal && r.sample.endpoint_pooled)
+            r.sample.endpoint_geometry = pool_hit ? uint2(r.sample.rc_hit.x, 0u) : r.sample.rc_hit.xy;
     }
-    float2 roughness = unpack_float_to_f16x2(tex4.y);
-    r.sample.rc_roughness = max(roughness.x, 0.04f);
-    r.sample.src_normal_roughness = asuint(tex4.z);
-    r.sample.src_roughness = max(float(r.sample.src_normal_roughness >> 24u) / 255.0f, 0.04f);
-    bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
-    if (terminal && (r.sample.endpoint_pooled || is_dirac_light_sample(r.sample)))
+    else if (is_dirac_light_sample(r.sample))
     {
-        r.sample.rc_outgoing_dir = r.sample.rc_normal;
-        r.sample.rc_albedo = 0.0f;
-        r.sample.rc_metallic = 0.0f;
+        r.sample.endpoint_geometry = asuint(tex0.xy);
+        uint light_index;
+        r.sample.rc_pos = restir_resolve_dirac_light(r.sample, light_index) ? light_parameters[light_index].position : 0.0f;
     }
-    r.sample.rc_L_post = terminal ? float3(0, 0, 0) : tex1.xyz;
-    r.sample.rc_L_nee = terminal ? tex2.xyz : float3(0, 0, 0);
-
-    float4 src_albedo_met = unpack_float_to_uint8x4(tex4.w);
-
-    r.sample.src_pos      = terminal ? tex1.xyz : tex2.xyz;
-    r.sample.src_normal   = gbuffer_unpack_normal(r.sample.src_normal_roughness);
-    r.sample.src_albedo   = src_albedo_met.rgb;
-    r.sample.src_metallic = src_albedo_met.a;
-
-    r.M          = float(asuint(tex4.x) & 255u);
-    r.sample.rc_geometric_normal_packed = asuint(tex4.x) >> 8u;
-    r.W          = tex3.z;
+    r.sample.src_pos = primary_surface.xyz;
+    r.sample.src_normal_roughness = asuint(primary_surface.w);
+    r.sample.src_normal = gbuffer_unpack_normal(r.sample.src_normal_roughness);
+    r.sample.src_roughness = max(float(r.sample.src_normal_roughness >> 24u) / 255.0f, 0.04f);
+    float4 material = unpack_float_to_uint8x4(asfloat(primary_material));
+    r.sample.src_albedo = material.rgb;
+    r.sample.src_metallic = material.a;
+    r.M = float(asuint(tex3.w) & 255u);
     r.target_pdf = target_scalar(r.sample.F);
-    // never stored, the resampling stream rebuilds it from scratch in every pass
-    r.weight_sum = 0.0f;
-
     return r;
 }
 

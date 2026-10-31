@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =====================
 #include "pch.h"
+#include "../RHI_Compiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_DescriptorSet.h"
@@ -1041,6 +1042,8 @@ namespace spartan
 
     void RHI_Device::Destroy()
     {
+        RHI_Compiler::Shaders().Flush();
+        RHI_Compiler::Pipelines().Flush();
         DestroySwapChain();
         QueueWaitAll();
 
@@ -1948,11 +1951,12 @@ namespace spartan
             it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
         }
 
-        pipeline = it->second.get();
+        pipeline = it->second->IsReady() && it->second->GetRhiResource() ? it->second.get() : nullptr;
     }
 
     uint32_t RHI_Device::GetPipelineCount()
     {
+        lock_guard<mutex> lock(descriptors::pipeline_mutex);
         return static_cast<uint32_t>(descriptors::pipelines.size());
     }
 

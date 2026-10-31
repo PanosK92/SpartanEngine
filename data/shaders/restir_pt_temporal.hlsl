@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 Texture2D<uint2> tex_normal_previous : register(t87);
 Texture2D<float4> restir_primary_hit_previous : register(t94);
+Texture2D<float4> restir_primary_surface_previous : register(t95);
 
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
@@ -40,21 +41,19 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
         return false;
     uint2 previous_pixel = uint2(previous_uv * size);
     float4 stored_hit = restir_primary_hit_previous[previous_pixel];
-    if (!(stored_hit.w > 0.0f))
+    if (asuint(stored_hit.x) == 0u)
         return false;
     // Match the reference's isReprojectedToOccluder: measure both world-space
     // points from the current camera. The old primary position is independent
     // of the selected lighting path; every reuse pass re-stamps it at its pixel.
-    Reservoir source = unpack_reservoir(tex_reservoir_prev0[previous_pixel], tex_reservoir_prev1[previous_pixel],
-        tex_reservoir_prev2[previous_pixel], tex_reservoir_prev3[previous_pixel],
-        tex_reservoir_prev4[previous_pixel], tex_reservoir_prev5[previous_pixel]);
     float current_distance = length(current_position - get_camera_position());
-    float occluder_distance = length(source.sample.src_pos - get_camera_position());
+    float occluder_distance = length(restir_primary_surface_previous[previous_pixel].xyz - get_camera_position());
     if (!isfinite(current_distance) || !isfinite(occluder_distance) ||
         current_distance - occluder_distance <= 0.1f * current_distance)
         return false;
 
     uint3 hit = asuint(stored_hit.xyz);
+    hit.x -= 1u;
     GeometryInfo geometry = geometry_infos[hit.x];
     uint index_base = geometry.index_offset + hit.y * 3u;
     float3 bary = unpack_hit_barycentrics(hit.z);
@@ -132,8 +131,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir1[pixel],
         tex_reservoir2[pixel],
         tex_reservoir3[pixel],
-        tex_reservoir4[pixel],
-        tex_reservoir5[pixel]
+        restir_primary_surface(uv),
+        restir_primary_material(uv)
     );
 
     if (!is_reservoir_valid(current))
@@ -214,8 +213,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 tex_reservoir_prev1[prev_pixel],
                 tex_reservoir_prev2[prev_pixel],
                 tex_reservoir_prev3[prev_pixel],
-                tex_reservoir_prev4[prev_pixel],
-                tex_reservoir_prev5[prev_pixel]
+                restir_primary_surface_previous[prev_pixel],
+                asuint(restir_primary_hit_previous[prev_pixel].w)
             );
 
             // A valid zero-weight history is still a sampled technique. Dropping it based
@@ -400,14 +399,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample.src_roughness = roughness;
     combined.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4, t5;
-    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
+    float4 t0, t1, t2, t3;
+    pack_reservoir(combined, t0, t1, t2, t3);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
-    tex_reservoir4[pixel] = t4;
-    tex_reservoir5[pixel] = t5;
 
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise

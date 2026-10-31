@@ -98,7 +98,7 @@ namespace spartan
         pso_subobject<D3D12_VIEW_INSTANCING_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING> view_instancing;
     };
 
-    RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
+    void RHI_Pipeline::Create(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_state = pipeline_state;
 
@@ -299,13 +299,13 @@ namespace spartan
         {
             if (state.render_target_color_textures[i])
             {
-                desc.RTVFormats[i] = d3d12_format[rhi_format_to_index(state.render_target_color_textures[i]->GetFormat())];
+                desc.RTVFormats[i] = d3d12_format[rhi_format_to_index(state.color_formats[i])];
                 rt_count           = i + 1;
             }
         }
         if (rt_count == 0 && state.render_target_swapchain)
         {
-            desc.RTVFormats[0] = d3d12_format[rhi_format_to_index(state.render_target_swapchain->GetFormat())];
+            desc.RTVFormats[0] = d3d12_format[rhi_format_to_index(state.swapchain_format)];
             rt_count           = 1;
         }
         desc.NumRenderTargets = rt_count;
@@ -314,7 +314,7 @@ namespace spartan
         if (state.render_target_depth_texture)
         {
             DXGI_FORMAT dsv = DXGI_FORMAT_D32_FLOAT;
-            switch (state.render_target_depth_texture->GetFormat())
+            switch (state.depth_format)
             {
                 case RHI_Format::D16_Unorm:             dsv = DXGI_FORMAT_D16_UNORM; break;
                 case RHI_Format::D32_Float:             dsv = DXGI_FORMAT_D32_FLOAT; break;
@@ -897,6 +897,8 @@ namespace spartan
 
     RHI_Pipeline::~RHI_Pipeline()
     {
+        if (m_compile_task.valid())
+            m_compile_task.wait();
         // route through the deletion queue so any in-flight cmd lists referencing the pso/root sig finish first
         if (m_rhi_resource)
         {

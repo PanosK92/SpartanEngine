@@ -1345,6 +1345,11 @@ namespace spartan
 
     bool RHI_CommandList::IsPendingPipelineReady() const
     {
+        for (RHI_Shader* shader : m_pso_pending.shaders)
+        {
+            if (shader && !shader->IsCompiled())
+                return false;
+        }
         if (m_pso_pending.IsCompute())
         {
             RHI_Shader* shader = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)];
@@ -1379,10 +1384,15 @@ namespace spartan
 
     void RHI_CommandList::TryBindPendingPipeline()
     {
-        if (!m_pipeline_state_dirty || !IsPendingPipelineReady())
+        if (!m_pipeline_state_dirty)
+            return;
+        if (!IsPendingPipelineReady())
         {
+            m_pipeline = nullptr;
             return;
         }
+        if (m_pending_cull_mode != RHI_CullMode::Max)
+            m_pso_pending.cull_mode = m_pending_cull_mode;
 
         // an unnamed pass takes the name of its first shader
         if (!m_pso_pending.name)
@@ -1403,6 +1413,11 @@ namespace spartan
         m_binding_replay = true;
         set_pipeline_state(m_pso_pending);
         m_tracked_buffers_read = buffers_read;
+        if (!m_pipeline)
+        {
+            m_binding_replay = false;
+            return;
+        }
         m_resources_dirty      = true;
 
         for (const RHI_Pass_Binding& binding : m_pass_bindings)
@@ -1560,6 +1575,11 @@ namespace spartan
                 push_constants(0, size, data);
             }
         }
+    }
+
+    bool RHI_CommandList::IsPipelineReady()
+    {
+        return RHI_Device::Cmd()->IsPipelineBound();
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
@@ -2040,6 +2060,8 @@ namespace spartan
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
         cmd_list->TryBindPendingPipeline();
+        if (!cmd_list->m_pipeline)
+            return;
         cmd_list->begin_occlusion_query(entity_id);
     }
 

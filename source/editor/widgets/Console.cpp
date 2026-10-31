@@ -868,30 +868,18 @@ void Console::ShowLog(const float height)
         const float scroll_y     = ImGui::GetScrollY();
         const float scroll_max_y = ImGui::GetScrollMaxY();
         m_user_scrolled_up       = (scroll_max_y > 0.0f) && (scroll_y < scroll_max_y - line_height);
-        if (!m_user_scrolled_up)
-        {
-            m_unseen_count = 0;
-        }
-
         if (m_scroll_to_bottom)
         {
-            ImGui::SetScrollY(ImGui::GetScrollMaxY() + line_height * 4.0f);
+            // the clipper has advanced the cursor past all rows, including messages added this frame
+            ImGui::SetScrollFromPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().WindowPadding.y, 1.0f);
             m_scroll_to_bottom = false;
+            m_user_scrolled_up = false;
         }
 
-        // reading back through the log pauses auto scroll, a pill says so and counts what arrived meanwhile,
-        // drawn in this window rather than the foreground list so it no longer paints over popups and other windows
+        // allow returning to the latest row manually while no new messages are arriving
         if (m_user_scrolled_up)
         {
-            char label[64];
-            if (m_unseen_count > 0)
-            {
-                snprintf(label, sizeof(label), m_unseen_count == 1 ? "1 new message" : "%u new messages", m_unseen_count);
-            }
-            else
-            {
-                snprintf(label, sizeof(label), "Jump to latest");
-            }
+            const char* label = "Jump to latest";
 
             const ImVec2 text_size  = ImGui::CalcTextSize(label);
             const float chevron     = ImGui::GetFontSize() * 0.9f;
@@ -1173,14 +1161,7 @@ void Console::AddLogPackage(const LogPackage& package)
 
     if (m_log_type_visibility[package.error_level])
     {
-        if (m_user_scrolled_up)
-        {
-            m_unseen_count++;
-        }
-        else
-        {
-            m_scroll_to_bottom = true;
-        }
+        m_scroll_to_bottom = true;
     }
 }
 
@@ -1197,7 +1178,6 @@ void Console::Clear()
     m_log_type_count[0] = 0;
     m_log_type_count[1] = 0;
     m_log_type_count[2] = 0;
-    m_unseen_count      = 0;
     m_selection.Clear();
     m_scroll_to_bottom = false;
     m_user_scrolled_up = false;

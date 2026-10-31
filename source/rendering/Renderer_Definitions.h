@@ -68,7 +68,7 @@ namespace spartan
     // Initial capacity of the ReSTIR emissive pool; it grows to retain every emitter.
     const uint32_t restir_emissive_tri_initial_capacity         = 16384;
     // rgba32f textures per reservoir set, must match pack_reservoir in restir_reservoir.hlsl
-    const uint32_t restir_reservoir_textures       = 6;
+    const uint32_t restir_reservoir_textures       = 4;
     // a lighting change that keeps the reservoirs caps temporal confidence this low for this many
     // frames, stale radiance from a light that switched halves every frame instead of living for
     // the full default cap, clearing the reservoirs instead restarts every pixel from one sample
@@ -600,6 +600,8 @@ namespace spartan
         restir_duplication,
         restir_primary_hit,
         restir_primary_hit_previous,
+        restir_primary_surface,
+        restir_primary_surface_previous,
         restir_denoised,
         restir_denoised_previous,
         // opaque gbuffer copies the async restir list reads while graphics moves on to the next frame,
@@ -635,22 +637,16 @@ namespace spartan
         restir_reservoir1,
         restir_reservoir2,
         restir_reservoir3,
-        restir_reservoir4,
-        restir_reservoir5,
         // restir reservoir buffers (previous frame for temporal)
         restir_reservoir_prev0,
         restir_reservoir_prev1,
         restir_reservoir_prev2,
         restir_reservoir_prev3,
-        restir_reservoir_prev4,
-        restir_reservoir_prev5,
         // restir reservoir buffers (spatial ping-pong)
         restir_reservoir_spatial0,
         restir_reservoir_spatial1,
         restir_reservoir_spatial2,
         restir_reservoir_spatial3,
-        restir_reservoir_spatial4,
-        restir_reservoir_spatial5,
         // paired spatial reuse shift results, lin 2026 3, one per pairing table
         restir_shift0,
         restir_shift1,

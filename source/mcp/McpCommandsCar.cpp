@@ -838,6 +838,27 @@ namespace spartan
             return car_status_json(car);
         }
 
+        std::string command_vehicle_visualization(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading()) return json_error("world is loading");
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (!car) return json_error(error);
+            const std::string mode = to_lower_copy(get_argument(request, "mode").value_or(""));
+            if (!mode.empty() && mode != "full" && mode != "skeleton" && mode != "meshes")
+                return json_error("mode must be full, skeleton, or meshes");
+            bool collision = car->GetSkeletonShowCollision();
+            if (const auto value = get_argument(request, "collision"))
+                if (!parse_bool(*value, collision)) return json_error("invalid collision");
+            if (!mode.empty())
+                car->SetVisualizationPreset(mode == "full" ? CarVisualizationPreset::Full :
+                    mode == "skeleton" ? CarVisualizationPreset::Skeleton : CarVisualizationPreset::PhysicsMeshes);
+            car->SetSkeletonShowCollision(collision);
+            const char* selected = car->GetVisualizationPreset() == CarVisualizationPreset::Full ? "full" :
+                car->GetVisualizationPreset() == CarVisualizationPreset::Skeleton ? "skeleton" : "meshes";
+            return std::string("{\"ok\":true,\"mode\":\"") + selected + "\",\"collision\":" + (collision ? "true" : "false") + "}";
+        }
+
         // records what the procedural engine sound actually plays, with its control track, for tools/engine_sound/analyze.py
         std::string command_engine_sound_capture(const McpRequest& request)
         {
@@ -1027,6 +1048,7 @@ namespace spartan
         RegisterMcpCommand("vehicle_shift", command_vehicle_shift);
         RegisterMcpCommand("vehicle_reset", command_vehicle_reset);
         RegisterMcpCommand("vehicle_set_view", command_vehicle_set_view);
+        RegisterMcpCommand("vehicle_visualization", command_vehicle_visualization);
         RegisterMcpCommand("vehicle_telemetry", command_vehicle_telemetry);
         RegisterMcpCommand("vehicle_export_hull", command_vehicle_export_hull);
         RegisterMcpCommand("engine_sound_capture", command_engine_sound_capture);

@@ -59,6 +59,12 @@ namespace spartan
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
         //=================================================================================
 
+        // Captured by Prepare: pipeline workers never dereference live render targets.
+        std::array<RHI_Format, rhi_max_render_target_count> color_formats = {};
+        RHI_Format swapchain_format = RHI_Format::Max;
+        RHI_Format depth_format = RHI_Format::Max;
+        bool depth_has_stencil = false;
+
         // dynamic properties, changing these will not create a new PSO
         bool resolution_scale       = false;
         bool use_standard_resources = true;

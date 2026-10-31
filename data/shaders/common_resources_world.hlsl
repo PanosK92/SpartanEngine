@@ -29,18 +29,11 @@ Texture2D<float>  tex_terrain_detail_atlas : register(t42);
 // the terrain reads it to carry the grass carpet past the last blade ring
 Texture2D<float4> tex_terrain_prop_mask : register(t21);
 
-// restir reservoir textures (shared across path tracing, temporal, and spatial passes)
-// kept contiguous so a single loop can bind all five slots starting from tex_reservoir_prev0
-// the 5th slot carries the source primary g-buffer for the chosen path so the temporal and
-// spatial passes can evaluate the source brdf and reconnection jacobian without resampling
-// the current frame's g-buffer at a reprojected pixel (which is wrong on motion)
-// layout is documented at pack_reservoir in restir_reservoir.hlsl
+// Four 16-byte textures per ReSTIR reservoir; primary history is stored separately.
 Texture2D<float4> tex_reservoir_prev0 : register(t22);
 Texture2D<float4> tex_reservoir_prev1 : register(t23);
 Texture2D<float4> tex_reservoir_prev2 : register(t24);
 Texture2D<float4> tex_reservoir_prev3 : register(t25);
-Texture2D<float4> tex_reservoir_prev4 : register(t26);
-Texture2D<float4> tex_reservoir_prev5 : register(t67);
 
 // fft ocean displacement history
 Texture2DArray<float4> tex_ocean_displacement_previous : register(t27);
@@ -99,7 +92,5 @@ RWTexture2D<float4> tex_reservoir0 : register(u21);
 RWTexture2D<float4> tex_reservoir1 : register(u22);
 RWTexture2D<float4> tex_reservoir2 : register(u23);
 RWTexture2D<float4> tex_reservoir3 : register(u24);
-RWTexture2D<float4> tex_reservoir4 : register(u25);
-RWTexture2D<float4> tex_reservoir5 : register(u67);
 
 #endif

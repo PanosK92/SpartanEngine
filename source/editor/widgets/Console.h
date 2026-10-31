@@ -150,7 +150,6 @@ private:
 
     uint32_t                           m_log_max_count      = 1000;
     uint32_t                           m_log_type_count[3]  = { 0, 0, 0 };
-    uint32_t                           m_unseen_count       = 0;
     int                                m_history_position   = -1;
     int                                m_autocomplete_selection = 0;
 

@@ -1606,7 +1606,7 @@ namespace spartan
             RHI_Device::InvokePipelineBound(this);
         }
         m_push_constant_size   = 0;
-        m_pipeline_state_dirty = false;
+        m_pipeline_state_dirty = !pipeline;
     }
 
     void RHI_CommandList::RenderPassBegin()
@@ -1917,6 +1917,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         // always flush queued transitions, otherwise they accumulate across failed psos and diverge from the actual gpu state
@@ -1935,6 +1937,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
@@ -1952,6 +1956,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         SP_ASSERT(args_buffer != nullptr);
         SP_ASSERT(draw_count != 0);
         SP_ASSERT(args_offset + static_cast<uint64_t>(draw_count) * sizeof(D3D12_DRAW_INDEXED_ARGUMENTS) <= static_cast<uint64_t>(args_buffer->GetElementCount()) * args_buffer->GetStride());
@@ -2004,6 +2010,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
@@ -2057,6 +2065,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
@@ -2073,6 +2083,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -2123,6 +2135,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         SP_ASSERT_MSG(RHI_Device::IsSupportedMeshShaders(), "Mesh shaders are not supported on this device");
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
@@ -2181,6 +2195,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -2230,6 +2246,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
+        if (!m_pipeline)
+            return;
 
         if (width == 0 || height == 0)
         {
@@ -2961,8 +2979,6 @@ namespace spartan
             return;
         }
 
-        m_cull_mode = cull_mode;
-
         // build a variant of the currently bound pso that only differs by cull mode
         RHI_PipelineState pso_variant = m_pso;
         pso_variant.cull_mode         = cull_mode;
@@ -2980,6 +2996,13 @@ namespace spartan
             // keep state in sync so the next SetPipelineState diff detection stays correct
             m_pso      = pso_variant;
             m_pipeline = pipeline;
+            m_cull_mode = cull_mode;
+        }
+        else
+        {
+            m_pso_pending = pso_variant;
+            m_pipeline_state_dirty = true;
+            m_pipeline = nullptr;
         }
     }
 
@@ -3080,6 +3103,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         TryBindPendingPipeline();
+        if (!m_pipeline)
+            return;
         SP_ASSERT(data != nullptr);
         m_push_constant_size = size;
 

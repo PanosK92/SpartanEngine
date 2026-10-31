@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =========================
 #include "pch.h"
+#include "../RHI_Compiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Texture.h"
 #include "../RHI_DirectXShaderCompiler.h"
@@ -68,7 +69,6 @@ float main_ps_depth(VsOut v) : SV_Depth
     static const uint32_t root_param_constants = 0;
     static const uint32_t root_param_srv_table = 1;
 
-    static mutex                                                init_mutex;
     static bool                                                 initialized      = false;
     static ID3D12RootSignature*                                 root_signature   = nullptr;
     static IDxcBlob*                                            vs_bytecode      = nullptr;
@@ -114,16 +114,13 @@ float main_ps_depth(VsOut v) : SV_Depth
         args.emplace_back("-Qstrip_reflect");
 
         string source = shader_source;
-        IDxcResult* result = DirectXShaderCompiler::Compile(source, args);
-        if (!result)
+        IDxcBlob* bytecode = DirectXShaderCompiler::Compile(source, args);
+        if (!bytecode)
         {
             SP_LOG_ERROR("Failed to compile blit shader entry '%s'", entry_point);
             return nullptr;
         }
 
-        IDxcBlob* bytecode = nullptr;
-        result->GetResult(&bytecode);
-        result->Release();
         return bytecode;
     }
 
@@ -227,31 +224,14 @@ float main_ps_depth(VsOut v) : SV_Depth
 
     void initialize()
     {
-        lock_guard<mutex> lock(init_mutex);
-        initialize_internal();
+        RHI_Compiler::Pipelines().Submit([] { initialize_internal(); });
     }
 
-    static ID3D12PipelineState* get_or_create_pso(DXGI_FORMAT target_format, bool is_depth)
+    static ID3D12PipelineState* create_pso(DXGI_FORMAT target_format, bool is_depth)
     {
-        PsoKey key{ target_format, is_depth };
-
-        {
-            lock_guard<mutex> lock(pso_cache_mutex);
-            auto it = pso_cache.find(key);
-            if (it != pso_cache.end())
-            {
-                return it->second;
-            }
-        }
-
+        initialize_internal();
         if (!initialized)
-        {
-            initialize();
-        }
-        if (!initialized)
-        {
             return nullptr;
-        }
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature                          = root_signature;
@@ -299,19 +279,24 @@ float main_ps_depth(VsOut v) : SV_Depth
             return nullptr;
         }
 
-        {
-            lock_guard<mutex> lock(pso_cache_mutex);
-            // double-check after locking, another thread may have inserted the same key while we created the pso
-            auto it = pso_cache.find(key);
-            if (it != pso_cache.end())
-            {
-                pso->Release();
-                return it->second;
-            }
-            pso_cache[key] = pso;
-        }
-
         return pso;
+    }
+
+    static ID3D12PipelineState* get_or_create_pso(DXGI_FORMAT target_format, bool is_depth)
+    {
+        const PsoKey key{ target_format, is_depth };
+        lock_guard<mutex> lock(pso_cache_mutex);
+        auto [it, inserted] = pso_cache.emplace(key, nullptr);
+        if (inserted)
+        {
+            RHI_Compiler::Pipelines().Submit([key]
+            {
+                ID3D12PipelineState* pso = create_pso(key.format, key.is_depth);
+                lock_guard<mutex> lock(pso_cache_mutex);
+                pso_cache[key] = pso;
+            });
+        }
+        return it->second;
     }
 
     void blit(
@@ -319,15 +304,6 @@ float main_ps_depth(VsOut v) : SV_Depth
         const BlitParams&          params
     )
     {
-        if (!initialized)
-        {
-            initialize();
-        }
-        if (!initialized)
-        {
-            return;
-        }
-
         const bool is_depth        = params.is_depth_destination;
         DXGI_FORMAT target_format  = params.destination_format;
         ID3D12PipelineState* pso   = get_or_create_pso(target_format, is_depth);

@@ -899,7 +899,7 @@ namespace spartan::car_hud
         }
         const int previous_selection = options.selected;
         options.full_simulation = s.full_simulation;
-        options.skeleton = car_instance->GetVisualizationPreset() == CarVisualizationPreset::Skeleton;
+        options.visualization = static_cast<int>(car_instance->GetVisualizationPreset());
         options.collision = car_instance->GetSkeletonShowCollision();
         const double now = ImGui::GetTime();
         history.update(s, now);
@@ -1070,7 +1070,7 @@ namespace spartan::car_hud
         const VehicleSimMode mode = options.full_simulation ? VehicleSimMode::Full : VehicleSimMode::Cheap;
         if (mode != car_instance->GetVehicleSimMode())
             car_instance->SetVehicleSimMode(mode);
-        const CarVisualizationPreset view = options.skeleton ? CarVisualizationPreset::Skeleton : CarVisualizationPreset::Full;
+        const CarVisualizationPreset view = static_cast<CarVisualizationPreset>(options.visualization);
         if (view != car_instance->GetVisualizationPreset())
             car_instance->SetVisualizationPreset(view);
         if (options.collision != car_instance->GetSkeletonShowCollision())

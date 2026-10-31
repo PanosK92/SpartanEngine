@@ -6289,7 +6289,7 @@ namespace spartan
         const auto environment = World::GetEnvironment();
         const bool celestial_changed = (environment.moon - m_pass_state.cloud_environment.sky_moon).LengthSquared() > 0.0001f ||
             (environment.equatorial_x - m_pass_state.cloud_environment.sky_equatorial_x).LengthSquared() > 0.0001f;
-        const bool cloud_state_changed   = celestial_changed || m_pass_state.sky.first_frame || light_changed || wind_changed || seed_changed || time_discontinuous || camera_teleported;
+        const bool cloud_state_changed   = !m_pass_state.atmosphere_lut_produced || !m_pass_state.cloud_noise_produced || celestial_changed || m_pass_state.sky.first_frame || light_changed || wind_changed || seed_changed || time_discontinuous || camera_teleported;
         m_pass_state.sky.state_changed_this_frame =
             cloud_state_changed;
         if (cloud_state_changed)
@@ -6524,9 +6524,9 @@ namespace spartan
             if (lut_shader && lut_shader->IsCompiled() &&
                 (!m_pass_state.brdf_lut_produced || m_pass_state.brdf_lut_shader_hash != lut_hash))
             {
-                Pass_Lut_BrdfSpecular();
-                m_pass_state.brdf_lut_produced    = true;
-                m_pass_state.brdf_lut_shader_hash = lut_hash;
+                m_pass_state.brdf_lut_produced = Pass_Lut_BrdfSpecular();
+                if (m_pass_state.brdf_lut_produced)
+                    m_pass_state.brdf_lut_shader_hash = lut_hash;
             }
         }
 
@@ -6534,13 +6534,11 @@ namespace spartan
         {
             if (!m_pass_state.atmosphere_lut_produced)
             {
-                Pass_Lut_AtmosphericScattering();
-                m_pass_state.atmosphere_lut_produced = true;
+                m_pass_state.atmosphere_lut_produced = Pass_Lut_AtmosphericScattering();
             }
             if (!m_pass_state.cloud_noise_produced)
             {
-                Pass_CloudNoise();
-                m_pass_state.cloud_noise_produced = true;
+                m_pass_state.cloud_noise_produced = Pass_CloudNoise();
             }
         }
 
@@ -6908,7 +6906,7 @@ namespace spartan
             SP_LOG_INFO("ReSTIR shader reload applied as a group; history reset");
         }
 
-        // wait until every shader has finished compiling, null entries are safe to skip
+        // Skip scene recording during initial shader compilation; never wait on the compiler here.
         static bool shaders_ready = false;
         if (!shaders_ready)
         {

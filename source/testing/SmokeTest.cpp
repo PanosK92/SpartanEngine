@@ -19,6 +19,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../resource/import/ImageImporter.h"
 #include "../resource/IResource.h"
 #include "../rhi/RHI_Shader.h"
+#include "../rhi/RHI_Compiler.h"
+#include "../rhi/RHI_Pipeline.h"
 #include "../rhi/RHI_InputLayout.h"
 #include "../rhi/RHI_Texture.h"
 #include "../rhi/RHI_Buffer.h"
@@ -163,6 +165,7 @@ namespace spartan
         // The editor can render its first UI frame while scene shaders are still queued.
         for (const auto& shader : Renderer::GetShaders())
             if (shader && !shader->IsCompiled()) setup_frame = Renderer::GetFrameNumber();
+        if (!RHI_Compiler::Pipelines().IsIdle()) setup_frame = Renderer::GetFrameNumber();
         render_test_ready = test_camera && Renderer::GetFrameNumber() >= setup_frame + 8;
         if (render_test_ready || Timer::GetTimeMs() - m_start_time_ms > 60000.0)
         {
@@ -455,7 +458,8 @@ namespace spartan
         }
 
         auto shader = std::make_unique<RHI_Shader>();
-        shader->Compile(RHI_Shader_Type::Vertex, test_vs_path, false);
+        shader->Compile(RHI_Shader_Type::Vertex, test_vs_path, true);
+        RHI_Compiler::Shaders().Flush();
         
         // Cleanup file
         FileSystem::Delete(test_vs_path);
@@ -463,6 +467,43 @@ namespace spartan
         if (!shader->IsCompiled())
         {
             out_error = "Shader compilation failed";
+            return false;
+        }
+
+        // Hold the queue to exercise a deterministic pending pipeline and a skipped draw.
+        std::promise<void> release;
+        auto gate = release.get_future().share();
+        RHI_Compiler::Pipelines().Submit([gate] { gate.wait(); });
+        auto target = std::make_unique<RHI_Texture>(
+            RHI_Texture_Type::Type2D, 16, 16, 1, 1, RHI_Format::D32_Float,
+            RHI_Texture_Srv | RHI_Texture_Rtv, "smoke_async_depth");
+        RHI_PipelineState pso;
+        pso.name = "smoke_async_pipeline";
+        pso.use_standard_resources = false;
+        pso.shaders[RHI_Shader_Type::Vertex] = shader.get();
+        pso.SetDepthTarget(target.get());
+        pso.Prepare();
+        RHI_Pipeline* pipeline = nullptr;
+        RHI_DescriptorSetLayout* layout = nullptr;
+        RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+        const uint32_t count = RHI_Device::GetPipelineCount();
+        RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+        const bool pending = !pipeline && count == RHI_Device::GetPipelineCount();
+        if (RHI_CommandList* cmd = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
+        {
+            RHI_CommandList::SetPipelineState(pso);
+            RHI_CommandList::Draw(3);
+            RHI_CommandList::ImmediateExecutionEnd(cmd);
+        }
+        // Compilation must own its inputs even when the caller releases them.
+        shader.reset();
+        target.reset();
+        release.set_value();
+        RHI_Compiler::Pipelines().Flush();
+        RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+        if (!pending || !pipeline || !pipeline->GetRhiResource())
+        {
+            out_error = "Async pipeline did not transition from a deduplicated pending entry to ready";
             return false;
         }
 

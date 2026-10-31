@@ -116,7 +116,7 @@ namespace spartan
         array<shared_ptr<Font>, static_cast<uint32_t>(Renderer_Font::Max)>                   fonts;
         shared_ptr<Material>                                                                 standard_material;
 
-        // five reservoirs across current, previous and spatial slots, the 5th slot holds the source g-buffer for brdf and jacobian
+        // Four 16-byte reservoir textures across current, previous and spatial slots.
         const uint32_t restir_reservoir_slot_count = restir_reservoir_textures * 3;
 
         // visit every restir reservoir slot offset by index, fn signature is void(uint32_t i, Renderer_RenderTarget rt)
@@ -617,7 +617,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_out)         = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_primary_hit)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_surface)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_primary_hit_previous)     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_surface_previous)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
             m_pass_state.restir.accumulation_valid = false;
@@ -639,9 +641,9 @@ namespace spartan
 
             static const char* reservoir_names[] =
             {
-                "restir_reservoir0",         "restir_reservoir1",         "restir_reservoir2",         "restir_reservoir3",         "restir_reservoir4", "restir_reservoir5",
-                "restir_reservoir_prev0",    "restir_reservoir_prev1",    "restir_reservoir_prev2",    "restir_reservoir_prev3",    "restir_reservoir_prev4", "restir_reservoir_prev5",
-                "restir_reservoir_spatial0", "restir_reservoir_spatial1", "restir_reservoir_spatial2", "restir_reservoir_spatial3", "restir_reservoir_spatial4", "restir_reservoir_spatial5",
+                "restir_reservoir0",         "restir_reservoir1",         "restir_reservoir2",         "restir_reservoir3",
+                "restir_reservoir_prev0",    "restir_reservoir_prev1",    "restir_reservoir_prev2",    "restir_reservoir_prev3",
+                "restir_reservoir_spatial0", "restir_reservoir_spatial1", "restir_reservoir_spatial2", "restir_reservoir_spatial3",
             };
             for_restir_reservoir_slot([&](uint32_t i, Renderer_RenderTarget rt)
             {
@@ -654,7 +656,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_output");
             // Triangle identity history follows the tracing grid, independently of reservoir selection.
             at(view_targets(), Renderer_RenderTarget::restir_primary_hit) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_primary_hit");
+            at(view_targets(), Renderer_RenderTarget::restir_primary_surface) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_primary_surface");
             at(view_targets(), Renderer_RenderTarget::restir_primary_hit_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_primary_hit_previous");
+            at(view_targets(), Renderer_RenderTarget::restir_primary_surface_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_primary_surface_previous");
             // Preserve all 289 duplication counts before the nonlinear M-cap; R8_UNORM rounds the score.
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,          restir_flags, "restir_duplication");
             // Reconstruct lighting before remodulating full-resolution material detail.
@@ -806,7 +810,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_primary_hit)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_surface)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_primary_hit_previous)     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_surface_previous)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
             m_pass_state.restir.accumulation_valid = false;
@@ -1467,10 +1473,10 @@ namespace spartan
             { Renderer_Shader::grass_gbuffer_p,                       RHI_Shader_Type::Pixel, "g_buffer.hlsl", RHI_Vertex_Type::Max, "GRASS_SPECIALIZED"                                        },
 
             // gpu texture compression, synchronous so encode-on-load can wait
-            { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
-            { Renderer_Shader::texture_compress_bc3_c,                RHI_Shader_Type::Compute, "texture_compress_bc3.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
-            { Renderer_Shader::texture_compress_bc5_c,                RHI_Shader_Type::Compute, "texture_compress_bc5.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
-            { Renderer_Shader::texture_compress_bc7_c,                RHI_Shader_Type::Compute, "texture_compress_bc7.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
+            { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         true },
+            { Renderer_Shader::texture_compress_bc3_c,                RHI_Shader_Type::Compute, "texture_compress_bc3.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         true },
+            { Renderer_Shader::texture_compress_bc5_c,                RHI_Shader_Type::Compute, "texture_compress_bc5.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         true },
+            { Renderer_Shader::texture_compress_bc7_c,                RHI_Shader_Type::Compute, "texture_compress_bc7.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         true },
         };
 
         for (const ShaderEntry& e : table)

@@ -82,7 +82,7 @@ namespace spartan
         }
     }
 
-    RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
+    void RHI_Pipeline::Create(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_state = pipeline_state;
 
@@ -174,7 +174,11 @@ namespace spartan
             pipeline_layout_info.pPushConstantRanges        = push_constant_ranges.data();
 
             // create
-            SP_ASSERT_VK(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_rhi_resource_layout)));
+            if (const VkResult result = vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_rhi_resource_layout)); result != VK_SUCCESS)
+            {
+                SP_LOG_ERROR("Pipeline '%s' compilation failed (%d)", pipeline_state.name, static_cast<int>(result));
+                return;
+            }
 
             // name
             RHI_Device::SetResourceName(m_rhi_resource_layout, RHI_Resource_Type::PipelineLayout, pipeline_state.name);
@@ -187,7 +191,11 @@ namespace spartan
             pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_rhi_resource_layout);
             pipeline_info.stage                       = shader_stages[0];
 
-            SP_ASSERT_VK(vkCreateComputePipelines(RHI_Context::device, static_cast<VkPipelineCache>(RHI_Device::GetPipelineCache()), 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)));
+            if (const VkResult result = vkCreateComputePipelines(RHI_Context::device, static_cast<VkPipelineCache>(RHI_Device::GetPipelineCache()), 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)); result != VK_SUCCESS)
+            {
+                SP_LOG_ERROR("Pipeline '%s' compilation failed (%d)", pipeline_state.name, static_cast<int>(result));
+                return;
+            }
             RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::Pipeline, pipeline_state.name);
         }
         else if (pipeline_state.IsGraphics())
@@ -414,7 +422,7 @@ namespace spartan
                     // swapchain buffer as a render target
                     if (m_state.render_target_swapchain)
                     {
-                        attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(m_state.render_target_swapchain->GetFormat())]);
+                        attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(m_state.swapchain_format)]);
                     }
                     else // regular render target(s)
                     {
@@ -426,16 +434,15 @@ namespace spartan
                                 break;
                             }
                 
-                            attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(texture->GetFormat())]);
+                            attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(m_state.color_formats[i])]);
                         }
                     }
                 
                     // depth
                     if (m_state.render_target_depth_texture)
                     {
-                        RHI_Texture* tex_depth    = m_state.render_target_depth_texture;
-                        attachment_format_depth   = vulkan_format[rhi_format_to_index(tex_depth->GetFormat())];
-                        attachment_format_stencil = tex_depth->IsStencilFormat() ? attachment_format_depth : VK_FORMAT_UNDEFINED;
+                        attachment_format_depth   = vulkan_format[rhi_format_to_index(m_state.depth_format)];
+                        attachment_format_stencil = m_state.depth_has_stencil ? attachment_format_depth : VK_FORMAT_UNDEFINED;
                     }
                 
                     // variable rate shading
@@ -480,7 +487,11 @@ namespace spartan
                     pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_rhi_resource_layout);
                     pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
                 
-                    SP_ASSERT_VK(vkCreateGraphicsPipelines(RHI_Context::device, static_cast<VkPipelineCache>(RHI_Device::GetPipelineCache()), 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)));
+                    if (const VkResult result = vkCreateGraphicsPipelines(RHI_Context::device, static_cast<VkPipelineCache>(RHI_Device::GetPipelineCache()), 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)); result != VK_SUCCESS)
+                    {
+                        SP_LOG_ERROR("Pipeline '%s' compilation failed (%d)", pipeline_state.name, static_cast<int>(result));
+                        return;
+                    }
                     RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::Pipeline, pipeline_state.name);
                 }
             }
@@ -527,15 +538,20 @@ namespace spartan
             pipeline_info.maxPipelineRayRecursionDepth      = 2; // number of bounces (2 for gi second bounce)
             pipeline_info.layout                            = static_cast<VkPipelineLayout>(m_rhi_resource_layout);
 
-            SP_ASSERT_VK(pfn_vk_create_ray_tracing_pipelines_khr(RHI_Context::device, VK_NULL_HANDLE, static_cast<VkPipelineCache>(RHI_Device::GetPipelineCache()), 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)));
+            if (const VkResult result = pfn_vk_create_ray_tracing_pipelines_khr(RHI_Context::device, VK_NULL_HANDLE, static_cast<VkPipelineCache>(RHI_Device::GetPipelineCache()), 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)); result != VK_SUCCESS)
+            {
+                SP_LOG_ERROR("Pipeline '%s' compilation failed (%d)", pipeline_state.name, static_cast<int>(result));
+                return;
+            }
             RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::Pipeline, pipeline_state.name);
         }
 
-        SP_ASSERT(m_rhi_resource != nullptr);
     }
     
     RHI_Pipeline::~RHI_Pipeline()
     {
+        if (m_compile_task.valid())
+            m_compile_task.wait();
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Pipeline, m_rhi_resource);
         m_rhi_resource = nullptr;
         

@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ==========================
 #include "pch.h"
+#include "../RHI_Compiler.h"
 #include <fstream>
 #include "../../profiling/Profiler.h"
 #include "../rendering/Renderer.h"
@@ -2467,6 +2468,8 @@ namespace spartan
 
     void RHI_Device::Destroy()
     {
+        RHI_Compiler::Shaders().Flush();
+        RHI_Compiler::Pipelines().Flush();
         SP_ASSERT(queues::graphics != nullptr);
 
         DestroySwapChain();
@@ -2880,11 +2883,12 @@ namespace spartan
             it = descriptors::pipelines.emplace(hash, descriptors::CachedPipeline{move(layout), move(created)}).first;
         }
         descriptor_set_layout = it->second.layout.get();
-        pipeline = it->second.pipeline.get();
+        pipeline = it->second.pipeline->IsReady() && it->second.pipeline->GetRhiResource() ? it->second.pipeline.get() : nullptr;
     }
 
     uint32_t RHI_Device::GetPipelineCount()
     {
+        lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
         return static_cast<uint32_t>(descriptors::pipelines.size());
     }
 

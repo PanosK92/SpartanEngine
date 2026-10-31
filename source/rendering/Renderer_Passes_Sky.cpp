@@ -58,6 +58,8 @@ namespace spartan
                     RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                     RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
                     RHI_CommandList::Dispatch(tex_lut_sky_view);
+                    if (!RHI_CommandList::IsPipelineReady())
+                        m_pass_state.sky.first_frame = true;
                 }
 
                 // cumulus transmittance along the sun on the cloud base plane, the fog march samples it for sun shafts
@@ -67,6 +69,8 @@ namespace spartan
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_cloud_shadow);
                     RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
                     RHI_CommandList::Dispatch(tex_cloud_shadow);
+                    if (!RHI_CommandList::IsPipelineReady())
+                        m_pass_state.sky.first_frame = true;
 
                     // the raw bake has texel-rate edges that moire against the screen grid, blur and mips remove them
                     Pass_Blur(tex_cloud_shadow, false, 4.0f, 0);
@@ -92,6 +96,8 @@ namespace spartan
                 if (m_pass_state.sky.warmup_this_frame)
                 {
                     RHI_CommandList::Dispatch(tex_skysphere);
+                    if (!RHI_CommandList::IsPipelineReady())
+                        m_pass_state.sky.first_frame = true;
                 }
                 else
                 {
@@ -102,6 +108,8 @@ namespace spartan
                     const uint32_t dispatch_x        = (quarter_w + thread_group_size - 1) / thread_group_size;
                     const uint32_t dispatch_y        = (quarter_h + thread_group_size - 1) / thread_group_size;
                     RHI_CommandList::Dispatch(dispatch_x, dispatch_y);
+                    if (!RHI_CommandList::IsPipelineReady())
+                        m_pass_state.sky.first_frame = true;
                 }
             }
 
@@ -139,6 +147,8 @@ namespace spartan
                         const uint32_t dispatch_x = (mip_w + 7) / 8;
                         const uint32_t dispatch_y = (mip_h + 7) / 8;
                         RHI_CommandList::Dispatch(dispatch_x, dispatch_y);
+                        if (!RHI_CommandList::IsPipelineReady())
+                            m_pass_state.sky.first_frame = true;
                     }
                 }
 
@@ -386,24 +396,28 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_Lut_BrdfSpecular()
+    bool Renderer::Pass_Lut_BrdfSpecular()
     {
         RHI_Texture* tex_lut_brdf_specular = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
 
+        bool produced = true;
         RHI_CommandList::BeginPass("lut_brdf_specular");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
             RHI_CommandList::Dispatch(tex_lut_brdf_specular);
+            produced &= RHI_CommandList::IsPipelineReady();
         }
         RHI_CommandList::EndPass();
+        return produced;
     }
 
-    void Renderer::Pass_Lut_AtmosphericScattering()
+    bool Renderer::Pass_Lut_AtmosphericScattering()
     {
         RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
         RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 
+        bool produced = true;
         RHI_CommandList::BeginPass("lut_atmospheric_scattering");
         {
             // transmittance lut
@@ -414,6 +428,7 @@ namespace spartan
                 );
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
                 RHI_CommandList::Dispatch(tex_lut_atmosphere_transmittance);
+                produced &= RHI_CommandList::IsPipelineReady();
             }
 
             // multi-scatter lut
@@ -425,34 +440,39 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
                 RHI_CommandList::Dispatch(tex_lut_atmosphere_multiscatter);
+                produced &= RHI_CommandList::IsPipelineReady();
             }
         }
         RHI_CommandList::EndPass();
+        return produced;
     }
 
-    void Renderer::Pass_CloudNoise()
+    bool Renderer::Pass_CloudNoise()
     {
         // bakes the 3d noise volume sampled by the cloud passes
         // expensive but only runs once at startup
         RHI_Texture* tex_cloud_noise = GetRenderTarget(Renderer_RenderTarget::cloud_noise);
         if (!tex_cloud_noise)
         {
-            return;
+            return false;
         }
 
         RHI_Shader* shader = GetShader(Renderer_Shader::clouds_noise_c);
         if (!shader || !shader->IsCompiled())
         {
-            return;
+            return false;
         }
 
+        bool produced = true;
         RHI_CommandList::BeginPass("cloud_noise");
         {
             RHI_CommandList::SetShader(shader);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_cloud_noise);
             RHI_CommandList::Dispatch(tex_cloud_noise);
+            produced &= RHI_CommandList::IsPipelineReady();
         }
         RHI_CommandList::EndPass();
+        return produced;
     }
 
     void Renderer::Pass_WindField()

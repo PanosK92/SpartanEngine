@@ -9,6 +9,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =================
 #include "RHI_PipelineState.h"
+#include <atomic>
+#include <future>
+#include <memory>
 #include "../core/SpartanObject.h"
 //============================
 
@@ -20,6 +23,7 @@ namespace spartan
         RHI_Pipeline() = default;
         RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
         ~RHI_Pipeline();
+        bool IsReady() const { return m_ready.load(std::memory_order_acquire); }
 
         RHI_PipelineState* GetState()            { return &m_state; }
         void* GetRhiResource() const             { return m_rhi_resource; }
@@ -29,6 +33,10 @@ namespace spartan
         uint32_t GetPushConstantStages() const   { return m_push_constant_stages; }
 
     private:
+        void Create(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
+        std::atomic<bool> m_ready = false;
+        std::future<void> m_compile_task;
+        std::shared_ptr<void> m_compilation_inputs;
         RHI_PipelineState m_state;
  
         // rhi

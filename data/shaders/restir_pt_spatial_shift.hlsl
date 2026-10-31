@@ -23,9 +23,12 @@ void store_pair_shift(uint2 pixel, uint table, float4 value)
 
 Reservoir load_pair_reservoir(uint2 pixel)
 {
+    uint width, height;
+    tex_reservoir_prev0.GetDimensions(width, height);
+    float2 uv = restir_primary_uv((pixel + 0.5f) / float2(width, height));
     return unpack_reservoir(tex_reservoir_prev0[pixel], tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel], tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel], tex_reservoir_prev5[pixel]);
+        restir_primary_surface(uv), restir_primary_material(uv));
 }
 
 float4 evaluate_pair_shift(uint2 pixel, uint table, Reservoir center, float2 resolution)

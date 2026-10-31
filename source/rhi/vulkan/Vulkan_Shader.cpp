@@ -267,6 +267,7 @@ namespace spartan
         );
 
         m_rhi_resource      = static_cast<void*>(shader_module);
+        OwnResource();
         m_compilation_state = RHI_ShaderCompilationState::Succeeded;
     }
 }

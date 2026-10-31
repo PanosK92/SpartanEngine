@@ -46,14 +46,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         // the resample writes into a separate slot that later rotates into the temporal history,
         // leaving sky texels untouched would carry a stale reservoir forward, clear them instead
-        float4 e0, e1, e2, e3, e4, e5;
-        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3, e4, e5);
+        float4 e0, e1, e2, e3;
+        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3);
         tex_reservoir0[pixel] = e0;
         tex_reservoir1[pixel] = e1;
         tex_reservoir2[pixel] = e2;
         tex_reservoir3[pixel] = e3;
-        tex_reservoir4[pixel] = e4;
-        tex_reservoir5[pixel] = e5;
         return;
     }
 
@@ -72,8 +70,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel],
         tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel],
-        tex_reservoir_prev5[pixel]
+        restir_primary_surface(uv),
+        restir_primary_material(uv)
     );
 
     if (!is_reservoir_valid(center))
@@ -122,13 +120,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float4 forward = read_shift(t, neighbor_pixel);
         float target_j_at_c = forward.a > 0.0f ? target_scalar(forward.rgb) : 0.0f;
 
+        float2 neighbor_uv = restir_primary_uv((neighbor_pixel + 0.5f) / resolution);
         Reservoir neighbor = unpack_reservoir(
             tex_reservoir_prev0[neighbor_pixel],
             tex_reservoir_prev1[neighbor_pixel],
             tex_reservoir_prev2[neighbor_pixel],
             tex_reservoir_prev3[neighbor_pixel],
-            tex_reservoir_prev4[neighbor_pixel],
-            tex_reservoir_prev5[neighbor_pixel]
+            restir_primary_surface(neighbor_uv),
+            restir_primary_material(neighbor_uv)
         );
 
         if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f)
@@ -229,14 +228,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample.src_roughness = roughness;
     combined.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4, t5;
-    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
+    float4 t0, t1, t2, t3;
+    pack_reservoir(combined, t0, t1, t2, t3);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
-    tex_reservoir4[pixel] = t4;
-    tex_reservoir5[pixel] = t5;
 
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise

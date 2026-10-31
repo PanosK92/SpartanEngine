@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =====================
 #include <atomic>
+#include <future>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -48,6 +49,7 @@ namespace spartan
         bool IsReloadReady() const { return m_reload_ready; }
         bool ReloadReadyFailed() const { return m_reload_ready && !m_reload->IsCompiled(); }
         void ApplyReload();
+        std::shared_ptr<RHI_Shader> CreateSnapshot() const;
 
         // source
         void LoadFromDrive(const std::string& file_path);
@@ -96,6 +98,9 @@ namespace spartan
         std::atomic<bool> m_reload_ready = false;
         bool m_reload_failed             = false;
 
+        void OwnResource();
+        std::shared_ptr<void> m_resource_owner;
+        std::future<void> m_compile_task;
         void* m_rhi_resource = nullptr;
     };
 }

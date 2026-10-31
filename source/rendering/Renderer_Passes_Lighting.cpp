@@ -43,9 +43,7 @@ namespace spartan
             Renderer_BindingsUav::reservoir0,
             Renderer_BindingsUav::reservoir1,
             Renderer_BindingsUav::reservoir2,
-            Renderer_BindingsUav::reservoir3,
-            Renderer_BindingsUav::reservoir4,
-            Renderer_BindingsUav::reservoir5
+            Renderer_BindingsUav::reservoir3
         };
 
         const Renderer_BindingsSrv restir_reservoir_srv[] =
@@ -53,9 +51,7 @@ namespace spartan
             Renderer_BindingsSrv::reservoir_prev0,
             Renderer_BindingsSrv::reservoir_prev1,
             Renderer_BindingsSrv::reservoir_prev2,
-            Renderer_BindingsSrv::reservoir_prev3,
-            Renderer_BindingsSrv::reservoir_prev4,
-            Renderer_BindingsSrv::reservoir_prev5
+            Renderer_BindingsSrv::reservoir_prev3
         };
     }
 
@@ -688,6 +684,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(restir_reservoir_uav[i], reservoirs[i]);
 
             RHI_CommandList::SetTexture("restir_primary_hit_output", GetRenderTarget(Renderer_RenderTarget::restir_primary_hit));
+            RHI_CommandList::SetTexture("restir_primary_surface_output", GetRenderTarget(Renderer_RenderTarget::restir_primary_surface));
 
             RHI_CommandList::TraceRays(width, height);
         }
@@ -738,6 +735,7 @@ namespace spartan
             }
 
             RHI_CommandList::SetTexture("restir_primary_hit_previous", GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous));
+            RHI_CommandList::SetTexture("restir_primary_surface_previous", GetRenderTarget(Renderer_RenderTarget::restir_primary_surface_previous));
 
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
@@ -855,6 +853,8 @@ namespace spartan
     void Renderer::Pass_ReSTIR_SwapReservoirs()
     {
         auto& render_targets = GetRenderTargets();
+        swap(render_targets[static_cast<uint32_t>(Renderer_RenderTarget::restir_primary_surface)],
+             render_targets[static_cast<uint32_t>(Renderer_RenderTarget::restir_primary_surface_previous)]);
         swap(render_targets[static_cast<uint32_t>(Renderer_RenderTarget::restir_primary_hit)],
              render_targets[static_cast<uint32_t>(Renderer_RenderTarget::restir_primary_hit_previous)]);
         for (uint32_t i = 0; i < restir_reservoir_textures; i++)
@@ -976,7 +976,9 @@ namespace spartan
         if (!m_pass_state.restir.reservoirs_initialized)
         {
             RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_hit), Color::standard_transparent);
+            RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_surface), Color::standard_transparent);
             RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous), Color::standard_transparent);
+            RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_surface_previous), Color::standard_transparent);
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
                 RHI_CommandList::ClearTexture(reservoirs[i],         Color::standard_transparent);
@@ -1014,6 +1016,7 @@ namespace spartan
         if (m_pass_state.restir.history_invalid || reference_mode == 2u || reference_mode == 5u)
         {
             RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous), Color::standard_transparent);
+            RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_surface_previous), Color::standard_transparent);
             for (RHI_Texture* reservoir : reservoirs_prev)
                 RHI_CommandList::ClearTexture(reservoir, Color::standard_transparent);
             if (RHI_Texture* duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))

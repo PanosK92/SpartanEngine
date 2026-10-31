@@ -36,6 +36,7 @@ namespace spartan
     class Physics;
     class CarSurfaceEffects;
     class AiDriver;
+    class CarPhysicsMeshView;
 
     // view modes for car camera
     enum class CarView
@@ -48,7 +49,8 @@ namespace spartan
     enum class CarVisualizationPreset
     {
         Full,
-        Skeleton
+        Skeleton,
+        PhysicsMeshes
     };
 
     // headlight beam, the values match the mode numbers car_lights.lua reads
@@ -165,7 +167,7 @@ namespace spartan
         bool GetShowTelemetry() const { return m_show_telemetry; }
         void SetVisualizationPreset(CarVisualizationPreset preset);
         CarVisualizationPreset GetVisualizationPreset() const { return m_visualization_preset; }
-        // skeleton view: toggle chassis collision hull debug draw, mesh stays hidden
+        // physics views: toggle chassis collision hull overlay, painted mesh stays hidden
         void SetSkeletonShowCollision(bool show);
         bool GetSkeletonShowCollision() const { return m_skeleton_show_collision; }
         void SetVehicleSimMode(VehicleSimMode mode);
@@ -242,6 +244,7 @@ namespace spartan
         void TickViewSwitch();
         void TickSummon();
         void TickVisualization();
+        void ClearPhysicsMeshes();
         void TickCarPicker();
         void StopSounds();
         void ApplySkeletonBodyVisibility();
@@ -275,6 +278,7 @@ namespace spartan
         CarView           m_current_view    = CarView::Chase;
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
         bool              m_skeleton_show_collision = false;
+        std::shared_ptr<CarPhysicsMeshView> m_physics_mesh_view;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         bool              m_customize_materials = true;

@@ -232,6 +232,7 @@ PathSample sample_light_candidate(
 }
 
 [[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_hit_output : register(u71);
+[[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_surface_output : register(u72);
 
 [shader("raygeneration")]
 void ray_gen()
@@ -243,20 +244,19 @@ void ray_gen()
     float2 uv = restir_primary_uv((launch_id + 0.5f) / launch_size);
 
     restir_primary_hit_output[launch_id] = 0.0f;
+    restir_primary_surface_output[launch_id] = 0.0f;
 
     // early out for sky pixels (no primary surface)
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
         Reservoir empty = create_empty_reservoir();
-        float4 t0, t1, t2, t3, t4, t5;
-        pack_reservoir(empty, t0, t1, t2, t3, t4, t5);
+        float4 t0, t1, t2, t3;
+        pack_reservoir(empty, t0, t1, t2, t3);
         tex_reservoir0[launch_id] = t0;
         tex_reservoir1[launch_id] = t1;
         tex_reservoir2[launch_id] = t2;
         tex_reservoir3[launch_id] = t3;
-        tex_reservoir4[launch_id] = t4;
-        tex_reservoir5[launch_id] = t5;
         tex_uav[launch_id] = float4(0, 0, 0, 1);
         restir_specular_output[launch_id] = 0.0f;
         return;
@@ -274,6 +274,10 @@ void ray_gen()
     float  metallic  = material.g;
     float3 view_dir  = normalize(get_camera_position() - pos_ws);
 
+    restir_primary_surface_output[launch_id] = restir_primary_surface(uv);
+    uint primary_material = restir_primary_material(uv);
+    restir_primary_hit_output[launch_id] = float4(0, 0, 0, asfloat(primary_material));
+
     // Retain the primary triangle independently of the RIS winner. Dual motion
     // needs this old occluder even when it is not visible in the current image.
     RayDesc primary_ray;
@@ -288,7 +292,7 @@ void ray_gen()
     // Raster-only/deformed surfaces can differ from the RT scene. Never label
     // such a surface with a nearby triangle from a different representation.
     if (primary_hit_distance > 0.0f && abs(primary_hit_distance - primary_distance) <= match_tolerance)
-        restir_primary_hit_output[launch_id] = float4(asfloat(primary_hit), linearize_depth(depth));
+        restir_primary_hit_output[launch_id] = float4(asfloat(uint3(primary_hit.x + 1u, primary_hit.yz)), asfloat(primary_material));
 
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);
@@ -511,14 +515,12 @@ void ray_gen()
     reservoir.sample.src_roughness = roughness;
     reservoir.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4, t5;
-    pack_reservoir(reservoir, t0, t1, t2, t3, t4, t5);
+    float4 t0, t1, t2, t3;
+    pack_reservoir(reservoir, t0, t1, t2, t3);
     tex_reservoir0[launch_id] = t0;
     tex_reservoir1[launch_id] = t1;
     tex_reservoir2[launch_id] = t2;
     tex_reservoir3[launch_id] = t3;
-    tex_reservoir4[launch_id] = t4;
-    tex_reservoir5[launch_id] = t5;
 
     canonical_gi /= n_brdf;
     canonical_gi /= restir_gi_demodulator(albedo);

@@ -1528,6 +1528,13 @@ namespace spartan
         m_pso_pending = pso;
         RHI_DescriptorSetLayout* descriptor_layout_shared = nullptr;
         RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, descriptor_layout_shared);
+        m_render_pass_pending = m_pso.IsGraphics();
+        if (!m_pipeline)
+        {
+            m_descriptor_layout_current = nullptr;
+            m_pipeline_state_dirty = true;
+            return;
+        }
         const uint64_t descriptor_layout_key = reinterpret_cast<uint64_t>(descriptor_layout_shared);
         auto [layout_it, inserted] = m_descriptor_layouts_local.try_emplace(descriptor_layout_key);
         if (inserted)
@@ -1819,7 +1826,7 @@ namespace spartan
 
     void* RHI_CommandList::GetRhiResourcePipeline()
     {
-        return m_pipeline->GetRhiResource();
+        return m_pipeline ? m_pipeline->GetRhiResource() : nullptr;
     }
 
     void RHI_CommandList::render_pass_end()
@@ -1910,6 +1917,8 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -1926,6 +1935,8 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -1948,6 +1959,8 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         vkCmdDrawIndexedIndirect(
             static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -1969,6 +1982,8 @@ namespace spartan
         TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         // stride between consecutive indirect commands (5 uint32s = 20 bytes)
         static const uint32_t stride = sizeof(uint32_t) * 5;
@@ -1993,6 +2008,8 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         // single non-indexed indirect draw, args layout matches VkDrawIndirectCommand
         vkCmdDrawIndirect(
@@ -2020,6 +2037,8 @@ namespace spartan
         }
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         static PFN_vkCmdDrawMeshTasksIndirectEXT pfn_draw_mesh_tasks_indirect = nullptr;
         if (!pfn_draw_mesh_tasks_indirect)
@@ -2065,6 +2084,8 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         // args layout matches VkDispatchIndirectCommand: group_count_x, group_count_y, group_count_z
         vkCmdDispatchIndirect(
@@ -2087,6 +2108,8 @@ namespace spartan
 
         // bind descriptor sets (same as draw/dispatch)
         PreDraw();
+        if (!m_pipeline)
+            return;
 
         // get or create an sbt for the currently bound pipeline
         void* pipeline_handle = GetRhiResourcePipeline();

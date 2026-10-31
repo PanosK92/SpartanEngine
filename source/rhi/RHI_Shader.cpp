@@ -11,7 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
 #include "RHI_Device.h"
-#include "../core/ThreadPool.h"
+#include "RHI_Compiler.h"
 //=============================
 
 //= NAMESPACES =====
@@ -37,15 +37,42 @@ namespace spartan
 
     RHI_Shader::~RHI_Shader()
     {
-        if (m_rhi_resource)
+        if (m_compile_task.valid())
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
-            m_rhi_resource = nullptr;
+            m_compile_task.wait();
         }
+    }
+
+    void RHI_Shader::OwnResource()
+    {
+        m_resource_owner = shared_ptr<void>(m_rhi_resource, [](void* resource)
+        {
+            if (resource)
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, resource);
+        });
+    }
+
+    shared_ptr<RHI_Shader> RHI_Shader::CreateSnapshot() const
+    {
+        SP_ASSERT(IsCompiled());
+        auto snapshot = make_shared<RHI_Shader>();
+        snapshot->m_resource_owner = m_resource_owner;
+        snapshot->m_rhi_resource = m_rhi_resource;
+        snapshot->m_object_size = m_object_size;
+        snapshot->m_shader_type = m_shader_type;
+        snapshot->m_vertex_type = m_vertex_type;
+        snapshot->m_input_layout = m_input_layout;
+        snapshot->m_descriptors = m_descriptors;
+        snapshot->m_hash = m_hash;
+        snapshot->m_compilation_state = RHI_ShaderCompilationState::Succeeded;
+        return snapshot;
     }
 
     void RHI_Shader::Compile(const RHI_Shader_Type shader_type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
     {
+        if (m_compilation_state == RHI_ShaderCompilationState::Compiling)
+            return;
+
         if (!FileSystem::IsFile(file_path))
         {
             SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
@@ -73,7 +100,7 @@ namespace spartan
 
             if (async)
             {
-                ThreadPool::AddTask(reload);
+                m_compile_task = RHI_Compiler::Shaders().Submit(move(reload));
             }
             else
             {
@@ -98,7 +125,7 @@ namespace spartan
 
         // compile
         {
-            m_compilation_state = RHI_ShaderCompilationState::Idle;
+            m_compilation_state = RHI_ShaderCompilationState::Compiling;
 
             auto compile = [this, shader_type, async]()
             {
@@ -108,8 +135,8 @@ namespace spartan
                 // compile
                 m_compilation_state = RHI_ShaderCompilationState::Compiling;
                 void* resource      = RHI_Compile();
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
                 m_rhi_resource      = resource;
+                OwnResource();
                 m_compilation_state = m_rhi_resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
 
                 // log failure
@@ -139,7 +166,7 @@ namespace spartan
 
             if (async)
             {
-                ThreadPool::AddTask(compile);
+                m_compile_task = RHI_Compiler::Shaders().Submit(move(compile));
             }
             else
             {
@@ -168,7 +195,7 @@ namespace spartan
         // a failed reload keeps serving the last good module
         if (!m_reload_failed)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
+            m_resource_owner       = move(staged->m_resource_owner);
             m_rhi_resource          = staged->m_rhi_resource;
             staged->m_rhi_resource  = nullptr;
             // d3d12 psos read the bytecode length from here, a stale size makes every reloaded pso invalid

@@ -357,6 +357,17 @@ namespace spartan
                 RHI_PipelineState pso;
                 pso.name = pso_name;
                 pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
+                pso.Prepare();
+                RHI_Pipeline* pipeline = nullptr;
+                RHI_DescriptorSetLayout* layout = nullptr;
+                RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+                if (!pipeline)
+                {
+                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+                    Breadcrumbs::EndMarker(); // dispatch
+                    Breadcrumbs::EndMarker(); // compress_gpu
+                    return false;
+                }
                 RHI_CommandList::SetPipelineState(pso);
 
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::compress_input, pool::input.get());

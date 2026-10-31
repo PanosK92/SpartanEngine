@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Renderer_Internal.h"
 #include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_Shader.h"
 #include "../rhi/RHI_Texture.h"
 #include "../rhi/RHI_Buffer.h"
@@ -710,6 +711,23 @@ namespace spartan
         {
             return;
         }
+
+        // The FFT chain must start together; otherwise a skipped spectrum init
+        // would be marked clean and subsequent frames would consume uninitialized data.
+        bool pipelines_ready = true;
+        for (RHI_Shader* shader : {shader_init, shader_update, shader_fft_h, shader_fft_v, shader_assemble})
+        {
+            RHI_PipelineState pso;
+            pso.name = shader->GetObjectName().c_str();
+            pso.shaders[RHI_Shader_Type::Compute] = shader;
+            pso.Prepare();
+            RHI_Pipeline* pipeline = nullptr;
+            RHI_DescriptorSetLayout* layout = nullptr;
+            RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+            pipelines_ready &= pipeline != nullptr;
+        }
+        if (!pipelines_ready)
+            return;
 
         const uint32_t readback_index =
             m_frame_resource_index;

@@ -183,68 +183,68 @@ namespace spartan
     }
 
     // debug visualization
-    TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,                                                    "draw axis-aligned bounding boxes");
-    TConsoleVar<float> cvar_volumes                        ("r.volumes",                        1.0f,                                                    "draw volume components (audio and reverb regions)");
-    TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,                                                    "draw picking ray");
-    TConsoleVar<float> cvar_grid                           ("r.grid",                           0.0f,                                                    "draw editor grid");
-    TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
-    TConsoleVar<float> cvar_transform_snap                 ("r.transform_snap",                 1.0f,                                                    "snap transform handles");
-    TConsoleVar<float> cvar_transform_snap_translate       ("r.transform_snap_translate",       0.1f,                                                    "translate snap step");
-    TConsoleVar<float> cvar_transform_snap_rotate          ("r.transform_snap_rotate",          10.0f,                                                   "rotate snap step in degrees");
-    TConsoleVar<float> cvar_transform_snap_scale           ("r.transform_snap_scale",           0.1f,                                                    "scale snap step");
-    TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
-    TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,                                                    "draw entity icons and debug visuals");
-    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
-    TConsoleVar<float> cvar_screenshot_ui                  ("r.screenshot_ui",                  0.0f,                                                    "screenshots capture the whole editor window, ui included");
-    TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
-    TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,                                                    "draw ragdoll capsules and joints in play mode");
-    TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
-    // post-processing
-    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "lens scattering strength, 1 redistributes about 4 percent of light, 0 disables");
-    TConsoleVar<float> cvar_bloom_scatter                  ("r.bloom_scatter",                  0.7f,                                                    "bloom halo spread, 0.05 to 0.95, higher is wider");
-    TConsoleVar<float> cvar_mist_density ("r.atmosphere.mist_density", 1.0f, "additional haze and mist density; 0 is clear air, baseline atmospheric scattering always remains");
-    TConsoleVar<float> cvar_fog_debug ("r.fog.debug", 0.0f, "volume inspection: 0 composed, 1 scattering, 2 transmittance, 3 surface lighting");
-    TConsoleVar<float> cvar_mist_height ("r.atmosphere.mist_height", 300.0f, "altitude scale of additional haze in metres; does not change baseline atmospheric air");
-    TConsoleVar<float> cvar_ground_mist ("r.atmosphere.ground_mist", 1.0f, "ground mist relative to mist density, strongest in sheltered valleys");
-    TConsoleVar<float> cvar_mist_variation ("r.atmosphere.mist_variation", 0.65f, "wind driven variation in additional mist, 0 to 1");
-    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,                                                    "screen space ambient occlusion, unavailable while path tracing is enabled", on_ssao_change);
-    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections",                  on_ray_traced_reflections_change);
-    TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights",       on_ray_traced_shadows_change);
-    TConsoleVar<float> cvar_path_tracing                  ("r.path_tracing", 0.0f, "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);
-    TConsoleVar<float> cvar_path_tracing_bounces          ("r.path_tracing_bounces", 8.0f, "maximum path scattering events (1-32)");
-    TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination", on_path_tracing_change);
-    TConsoleVar<float> cvar_restir_pt_async                ("r.restir_pt_async",                0.0f,                                                    "trace and denoise restir across the frame boundary, lighting uses the previous frame's reprojected result, only wins when ray tracing leaves the gpu partly idle");
-    TConsoleVar<float> cvar_restir_pt_direct               ("r.restir_pt_direct",               1.0f,                                                    "restir owns direct diffuse and specular from analytic lights (unified direct and indirect)");
-    TConsoleVar<float> cvar_restir_pt_emissive_pool        ("r.restir_pt_emissive_pool",        1.0f,                                                    "sample flat color emissive triangles directly, 0 leaves emitters to brdf bounces");
-    TConsoleVar<float> cvar_restir_pt_reference            ("r.restir_pt_reference",            0.0f,                                                    "validation: 0 normal, 1 reference path sum, 2 initial RIS, 3 temporal, 4 spatial, 5 spatial without temporal history, 6 full reuse without duplication map; modes 1-6 bypass denoising");
-    TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                0.25f,                                                   "restir resolution scale (0.1-1.0)",       on_restir_pt_scale_change);
-    TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,                                                    "motion blur");
-    TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,                                                    "depth of field");
-    TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,                                                    "film grain effect");
-    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,                                                    "NTSC VHS playback: tape jitter, colour bandwidth loss, dropouts and head switching");
-    TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,                                                    "chromatic aberration");
-    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,                                                    "dithering to reduce banding");
-    TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,                                                    "sharpening intensity");
-    // quality settings
-    TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau), "aa/upsampling method index",              on_antialiasing_change);
-    TConsoleVar<float> cvar_dlss_reactivity            ("r.dlss_reactivity",               1.0f,                                                    "shared temporal upscaler current-frame bias on disocclusion; particles add coverage rejection");
-    // display
-    TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
-    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "legacy display gamma metadata; SDR output uses the fixed sRGB transfer");
-    TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
-    TConsoleVar<float> cvar_frame_generation               ("r.frame_generation",               0.0f,                                                    "amd fsr 3.1 frame generation, presents a generated frame between every two rendered ones, works on any vendor", on_frame_generation_change);
-    // resolution
-    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);
-    TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,                                                    "mesh shaders for opaque/alpha depth+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);
-    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.25-1.0)",       on_resolution_scale_change);
-    TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
-    // misc
-    TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");    TConsoleVar<float> cvar_foliage_impostors              ("r.foliage_impostors",              1.0f,                                                    "draw distant foliage as its baked impostor card, the final gpu lod");
-    TConsoleVar<float> cvar_gpu_lod                        ("r.gpu_lod",                        1.0f,                                                    "non-instanced gpu-driven draws pick their lod on the gpu, every frame from screen coverage; disable for the cpu lod");
-    TConsoleVar<float> cvar_tessellation_gpu_driven        ("r.tessellation_gpu_driven",        1.0f,                                                    "tessellated draws are culled (frustum, distance, hi-z) and given their lod on the gpu; disable for cpu visibility and lod");
-    TConsoleVar<float> cvar_meshlet_cull_skinned           ("r.meshlet_cull_skinned",           0.0f,                                                    "enable per-meshlet hi-z culling for skinned meshes (off by default since the local sphere is inexact after skinning)");
-    TConsoleVar<float> cvar_meshlet_visualize              ("r.meshlet_visualize",              0.0f,                                                    "meshlet debug visualisation written to debug_output (0 off, 1 color by meshlet id, 2 wireframe by meshlet id, 3 color by post-cull draw id, 4 wireframe by post-cull draw id)");
-    TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,                                                    "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");
-    TConsoleVar<float> cvar_cluster_visualize_cap          ("r.cluster_visualize_cap",          4.0f,                                                    "lights per cluster mapped to full red on the heatmap, lower for more contrast in lightly populated scenes");
+    TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,   "draw axis-aligned bounding boxes");
+    TConsoleVar<float> cvar_volumes                        ("r.volumes",                        1.0f,   "draw volume components (audio and reverb regions)");
+    TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,   "draw picking ray");
+    TConsoleVar<float> cvar_grid                           ("r.grid",                           0.0f,   "draw editor grid");
+    TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,   "draw transform handles");
+    TConsoleVar<float> cvar_transform_snap                 ("r.transform_snap",                 1.0f,   "snap transform handles");
+    TConsoleVar<float> cvar_transform_snap_translate       ("r.transform_snap_translate",       0.1f,   "translate snap step");
+    TConsoleVar<float> cvar_transform_snap_rotate          ("r.transform_snap_rotate",          10.0f,  "rotate snap step in degrees");
+    TConsoleVar<float> cvar_transform_snap_scale           ("r.transform_snap_scale",           0.1f,   "scale snap step");
+    TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,   "draw selection outline");
+    TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,   "draw entity icons and debug visuals");
+    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,   "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
+    TConsoleVar<float> cvar_screenshot_ui                  ("r.screenshot_ui",                  0.0f,   "screenshots capture the whole editor window, ui included");
+    TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,   "draw physics debug");
+    TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,   "draw ragdoll capsules and joints in play mode");
+    TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,   "render in wireframe mode");
+    // post-processing                                                                                  
+    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,   "lens scattering strength, 1 redistributes about 4 percent of light, 0 disables");
+    TConsoleVar<float> cvar_bloom_scatter                  ("r.bloom_scatter",                  0.7f,   "bloom halo spread, 0.05 to 0.95, higher is wider");
+    TConsoleVar<float> cvar_mist_density                   ("r.atmosphere.mist_density",        1.0f,   "additional haze and mist density; 0 is clear air, baseline atmospheric scattering always remains");
+    TConsoleVar<float> cvar_fog_debug                      ("r.fog.debug",                      0.0f,   "volume inspection: 0 composed, 1 scattering, 2 transmittance, 3 surface lighting");
+    TConsoleVar<float> cvar_mist_height                    ("r.atmosphere.mist_height",         300.0f, "altitude scale of additional haze in metres; does not change baseline atmospheric air");
+    TConsoleVar<float> cvar_ground_mist                    ("r.atmosphere.ground_mist",         1.0f,   "ground mist relative to mist density, strongest in sheltered valleys");
+    TConsoleVar<float> cvar_mist_variation                 ("r.atmosphere.mist_variation",      0.65f,  "wind driven variation in additional mist, 0 to 1");
+    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,   "screen space ambient occlusion, unavailable while path tracing is enabled", on_ssao_change);
+    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections", on_ray_traced_reflections_change);
+    TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights", on_ray_traced_shadows_change);
+    TConsoleVar<float> cvar_path_tracing                   ("r.path_tracing",                   0.0f,   "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);
+    TConsoleVar<float> cvar_path_tracing_bounces           ("r.path_tracing_bounces",           8.0f,   "maximum path scattering events (1-32)");
+    TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,   "restir path tracing global illumination", on_path_tracing_change);
+    TConsoleVar<float> cvar_restir_pt_async                ("r.restir_pt_async",                0.0f,   "trace and denoise restir across the frame boundary, lighting uses the previous frame's reprojected result, only wins when ray tracing leaves the gpu partly idle");
+    TConsoleVar<float> cvar_restir_pt_direct               ("r.restir_pt_direct",               1.0f,   "restir owns direct diffuse and specular from analytic lights (unified direct and indirect)");
+    TConsoleVar<float> cvar_restir_pt_emissive_pool        ("r.restir_pt_emissive_pool",        1.0f,   "sample flat color emissive triangles directly, 0 leaves emitters to brdf bounces");
+    TConsoleVar<float> cvar_restir_pt_reference            ("r.restir_pt_reference",            0.0f,   "validation: 0 normal, 1 reference path sum, 2 initial RIS, 3 temporal, 4 spatial, 5 spatial without temporal history, 6 full reuse without duplication map; modes 1-6 bypass denoising");
+    TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                0.5f,   "restir resolution scale (0.1-1.0)", on_restir_pt_scale_change);
+    TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,   "motion blur");
+    TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,   "depth of field");
+    TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,   "film grain effect");
+    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,   "NTSC VHS playback: tape jitter, colour bandwidth loss, dropouts and head switching");
+    TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,   "chromatic aberration");
+    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,   "dithering to reduce banding");
+    TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,   "sharpening intensity");
+    // quality settings                                                                               
+    TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,   "tonemapping algorithm index");
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau), "aa/upsampling method index", on_antialiasing_change);
+    TConsoleVar<float> cvar_dlss_reactivity                ("r.dlss_reactivity",                1.0f,   "shared temporal upscaler current-frame bias on disocclusion; particles add coverage rejection");
+    // display                                                                                        
+    TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,   "enable hdr output", on_hdr_change);
+    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,   "legacy display gamma metadata; SDR output uses the fixed sRGB transfer");
+    TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,   "vertical sync", on_vsync_change);
+    TConsoleVar<float> cvar_frame_generation               ("r.frame_generation",               0.0f,   "amd fsr 3.1 frame generation, presents a generated frame between every two rendered ones, works on any vendor", on_frame_generation_change);
+    // resolution                                                                                       
+    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,   "variable rate shading", on_vrs_change);
+    TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,   "mesh shaders for opaque/alpha depth+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);
+    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,   "render resolution scale (0.25-1.0)", on_resolution_scale_change);
+    TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,   "automatic resolution scaling");
+    // misc                                                                                             
+    TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,   "hi-z occlusion culling for gpu-driven rendering"); TConsoleVar<float> cvar_foliage_impostors ("r.foliage_impostors", 1.0f, "draw distant foliage as its baked impostor card, the final gpu lod");
+    TConsoleVar<float> cvar_gpu_lod                        ("r.gpu_lod",                        1.0f,   "non-instanced gpu-driven draws pick their lod on the gpu, every frame from screen coverage; disable for the cpu lod");
+    TConsoleVar<float> cvar_tessellation_gpu_driven        ("r.tessellation_gpu_driven",        1.0f,   "tessellated draws are culled (frustum, distance, hi-z) and given their lod on the gpu; disable for cpu visibility and lod");
+    TConsoleVar<float> cvar_meshlet_cull_skinned           ("r.meshlet_cull_skinned",           0.0f,   "enable per-meshlet hi-z culling for skinned meshes (off by default since the local sphere is inexact after skinning)");
+    TConsoleVar<float> cvar_meshlet_visualize              ("r.meshlet_visualize",              0.0f,   "meshlet debug visualisation written to debug_output (0 off, 1 color by meshlet id, 2 wireframe by meshlet id, 3 color by post-cull draw id, 4 wireframe by post-cull draw id)");
+    TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,   "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");
+    TConsoleVar<float> cvar_cluster_visualize_cap          ("r.cluster_visualize_cap",          4.0f,   "lights per cluster mapped to full red on the heatmap, lower for more contrast in lightly populated scenes");
 }

@@ -236,30 +236,6 @@ void Viewport::OnTickVisible()
         }
     }
 
-    if (Engine::IsFlagSet(EngineMode::Playing))
-    {
-        // a status readout floats in the top left, clear of the performance overlay
-        const bool paused     = Engine::IsFlagSet(EngineMode::Paused);
-        const ImVec4 signal   = paused ? ImGui::Style::color_warning : ImGui::Style::color_accent_1;
-        const float inset     = ImGui::EditorUi::scaled(14.0f);
-        const ImVec2 hud_min  = ImVec2(image_rect_min.x + inset, image_rect_min.y + inset);
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-        const char* label      = paused ? "paused" : "live";
-        const float pill_h     = ImGui::EditorUi::scaled(20.0f);
-        const float pad        = ImGui::EditorUi::scaled(9.0f);
-        const float dot_r      = ImGui::EditorUi::scaled(3.0f);
-        const float label_w    = ImGui::EditorUi::micro_label_width(label, Editor::font_mono_medium);
-        const float pill_w     = pad * 2.0f + dot_r * 2.0f + ImGui::EditorUi::scaled(8.0f) + label_w;
-        const ImVec2 pill_min  = ImVec2(IM_ROUND(hud_min.x), IM_ROUND(hud_min.y));
-        const ImVec2 pill_max  = ImVec2(pill_min.x + pill_w, pill_min.y + pill_h);
-        ImGui::EditorUi::draw_glow(draw_list, pill_min, pill_max, signal, pill_h * 0.5f, ImGui::EditorUi::scaled(10.0f), 0.8f);
-        draw_list->AddRectFilled(pill_min, pill_max, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.80f)), pill_h * 0.5f);
-        ImGui::EditorUi::draw_lit_rim(draw_list, pill_min, pill_max, pill_h * 0.5f, ImGui::EditorUi::alpha(signal, 0.9f), ImGui::EditorUi::alpha(signal, 0.25f), pill_h);
-        ImGui::EditorUi::status_dot(draw_list, ImVec2(pill_min.x + pad + dot_r, (pill_min.y + pill_max.y) * 0.5f), dot_r, signal, !paused);
-        ImGui::EditorUi::draw_micro_label(draw_list, ImVec2(pill_min.x + pad + dot_r * 2.0f + ImGui::EditorUi::scaled(8.0f), pill_min.y), pill_h, label, signal, Editor::font_mono_medium);
-    }
-
     // let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());
 

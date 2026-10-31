@@ -4,6 +4,7 @@ local dreamcore = {}
 dreamcore.seed = 17 -- fixed seeds reproduce the island; 0 rolls a new one on load
 
 local initialized = false
+local turbine_rotors = {}
 local surface, slab, path_width = 2.5, 1.0, 4.4
 local material_files = {
     porcelain = "project/dreamcore_resources/materials/porcelain.xml",
@@ -14,6 +15,9 @@ local material_files = {
 }
 -- Untextured surfaces made at load; emissive is 0-1 of the calibrated emissive nits.
 local runtime_materials = {
+    horizon_pearl = { color = { 0.72, 0.77, 0.83 } },
+    horizon_lilac = { color = { 0.57, 0.59, 0.72 } },
+    horizon_rose = { color = { 0.73, 0.64, 0.68 } },
     glow = { color = { 1.0, 0.8, 0.55 }, emissive = 0.45 },
     portal = { color = { 1.0, 0.72, 0.84 }, emissive = 0.3 },
     sun = { color = { 1.0, 0.66, 0.6 }, emissive = 0.03 },
@@ -51,7 +55,7 @@ end
 -- before physics starts. All geometry uses the original platform's 2.5 m deck height.
 local function make_plan(seed)
     local random = random_source(seed)
-    local jobs, lights, platforms, bridges = {}, {}, {}, {}
+    local jobs, lights, platforms, bridges, rotors = {}, {}, {}, {}, {}
     local colors = { "rose", "mint", "lilac", "butter" }
     local columns = { -32 - random() * 3, 0, 32 + random() * 3 }
     local rows = { 0, 33 + random() * 3, 67 + random() * 3 }
@@ -198,6 +202,7 @@ local function make_plan(seed)
         end
     end
     platforms[2].exits.south = true -- the pier to nowhere leaves the arrival terrace southwards
+    platforms[1].exits.west = true -- a quiet lookout beyond the bathhouse
 
     for i, p in ipairs(platforms) do
         -- Motifs use local coordinates, leaving both central axes free for circulation.
@@ -517,6 +522,37 @@ local function make_plan(seed)
         box("landing_bench", p.x + 3.2, surface + 0.24, lz + 1.4, 0.85, 0.48, 2.4, "porcelain", owner)
     end
 
+    -- An unadorned sea-facing deck: the only furnishing is a single chair.
+    do
+        local p, owner = platforms[1], "quiet_chair_lookout"
+        local mouth = p.x - p.w / 2
+        local x, z = mouth - 17, p.z
+        box("lookout_walkway", mouth - 6.5, surface - slab / 2, z, 13.2, slab, path_width, "porcelain", owner, true)
+        for _, side in ipairs({ -1, 1 }) do
+            box("walkway_curb", mouth - 6.5, surface + 0.12, z + side * (path_width / 2 - 0.1),
+                13, 0.24, 0.2, "lilac", owner)
+        end
+        box("lookout_deck", x, surface - slab / 2, z, 8, slab, 8, "porcelain", owner, true)
+        box("lookout_fascia", x, surface - 0.65, z, 8.06, 0.25, 8.06, "lilac", owner, false, trim)
+        for _, dx in ipairs({ -3, 3 }) do
+            for _, dz in ipairs({ -3, 3 }) do
+                box("lookout_pile", x + dx, -0.9, z + dz, 0.65, 5.8, 0.65, "lilac", owner)
+            end
+        end
+        -- Back on the east side, looking west; leave two metres of deck in front.
+        local chair_x = x - 1
+        box("chair_seat", chair_x, surface + 0.46, z, 0.55, 0.09, 0.58, "butter", owner)
+        for _, dx in ipairs({ -0.21, 0.21 }) do
+            for _, dz in ipairs({ -0.23, 0.23 }) do
+                box("chair_leg", chair_x + dx, surface + 0.21, z + dz, 0.065, 0.42, 0.065, "butter", owner)
+            end
+        end
+        for _, dz in ipairs({ -0.23, 0.23 }) do
+            box("chair_back_post", chair_x + 0.23, surface + 0.72, z + dz, 0.065, 0.5, 0.065, "butter", owner)
+        end
+        box("chair_backrest", chair_x + 0.23, surface + 0.86, z, 0.07, 0.23, 0.58, "butter", owner)
+    end
+
     -- The sea around the island: things that should not be standing in water.
     do
         local owner = "sea_dreams"
@@ -559,7 +595,68 @@ local function make_plan(seed)
         end
         box("pale_moon", -360, 150, 520, 60, 60, 60, "moon", owner, false, glow)
     end
-    return jobs, lights, platforms, bridges
+    -- Sparse, muted silhouettes beyond the near-water dream objects. No distant colliders.
+    do
+        local far = { solid = false, shadows = false }
+        local function distant(label, x, y, z, w, h, d, material, owner, mesh, rotation)
+            box(label, x, y, z, w, h, d, material, owner, false,
+                { mesh = mesh or "cube", rotation = rotation, solid = false, shadows = false })
+        end
+        -- Staggered turbines 2-3.5 km offshore; keep their size so they read as horizon objects.
+        -- Rotor geometry remains local to its moving hub.
+        for k, site in ipairs({ { 180, 270, 43 }, { 241, 302, 48 }, { 313, 284, 40 },
+            { 365, 366, 51 }, { 258, 411, 44 }, { 433, 393, 46 } }) do
+            local x, z, h = site[1] * 6, site[2] * 6, site[3]
+            local owner, rotor = "distant_turbine_" .. k, "turbine_rotor_" .. k
+            distant("tower", x, (h - 4) / 2, z, 1.5, h + 4, 1.5, "horizon_pearl", owner, "cylinder")
+            distant("nacelle", x, h, z + 0.6, 2.2, 2, 5, "horizon_pearl", owner)
+            rotors[#rotors + 1] = { owner = rotor, x = x, y = h, z = z - 2.2, phase = k * 37, speed = 5 + k * 0.35 }
+            distant("hub", 0, 0, 0, 2.3, 2.3, 2, "horizon_pearl", rotor, "sphere")
+            local length = h * 0.39
+            for blade = 0, 2 do
+                local angle = math.rad(blade * 120)
+                -- Two tapered-looking segments keep the blades slim at the tips.
+                for segment = 1, 2 do
+                    local radius = length * (segment == 1 and 0.28 or 0.75)
+                    distant("blade", -math.sin(angle) * radius, math.cos(angle) * radius, 0,
+                        segment == 1 and 1.25 or 0.65, length * (segment == 1 and 0.55 or 0.42), 0.28,
+                        "horizon_pearl", rotor, "cube", { 0, 0, blade * 120 })
+                end
+            end
+        end
+        -- A drowned aqueduct on the western horizon, interrupted by two missing spans.
+        local owner, x = "distant_broken_aqueduct", -1950
+        for k = 0, 9 do
+            local z = -115 + k * 26
+            distant("aqueduct_pier", x, 6, z, 4, 20, 3, "horizon_lilac", owner)
+            if k < 9 and k ~= 3 and k ~= 7 then
+                local radius, spring = 13, 14
+                for segment = 0, 11 do
+                    local a = (segment + 0.5) / 12 * math.pi
+                    distant("aqueduct_arch", x, spring + radius * math.sin(a), z + 13 + radius * math.cos(a),
+                        3.8, 1.8, 3.8, "horizon_lilac", owner, "cube", { -math.deg(a) - 90, 0, 0 })
+                end
+                distant("aqueduct_channel", x, 28, z + 13, 4.4, 1.7, 27, "horizon_rose", owner)
+            else
+                distant("broken_crown", x, 16.8, z, 4.2, 1.6, 4, "horizon_rose", owner)
+            end
+        end
+        -- A small lighthouse, alone on a low stone island to the southeast.
+        owner = "distant_lighthouse"
+        local lx, lz = 1470, -1380
+        distant("lighthouse_islet", lx, -1.5, lz, 37, 8, 27, "horizon_lilac", owner, "sphere")
+        distant("lighthouse_tower", lx, 13, lz, 5.5, 25, 5.5, "horizon_pearl", owner, "cylinder")
+        distant("lighthouse_band", lx, 20, lz, 5.6, 2.5, 5.6, "horizon_rose", owner, "cylinder")
+        distant("lantern_balcony", lx, 26, lz, 8, 0.8, 8, "horizon_lilac", owner, "cylinder")
+        box("lantern_glow", lx, 28, lz, 3.1, 3, 3.1, "glow", owner, false, far)
+        for _, dx in ipairs({ -2, 2 }) do
+            for _, dz in ipairs({ -2, 2 }) do
+                distant("lantern_post", lx + dx, 28, lz + dz, 0.35, 3.5, 0.35, "horizon_lilac", owner)
+            end
+        end
+        distant("lantern_roof", lx, 30.5, lz, 7.5, 2.4, 7.5, "horizon_rose", owner, "cone")
+    end
+    return jobs, lights, platforms, bridges, rotors
 end
 
 local function new_child(parent, name)
@@ -612,11 +709,18 @@ function dreamcore.Initialize(self, host)
         local entropy = math.randomseed()
         seed = math.floor((tonumber(entropy) or 1) % 4294967296)
     end
-    local jobs, lights = make_plan(seed)
+    local jobs, lights, _, _, rotors = make_plan(seed)
     local groups = {}
     local function group(owner)
         if not groups[owner] then groups[owner] = new_child(root, owner) end
         return groups[owner]
+    end
+    turbine_rotors = {}
+    for _, spec in ipairs(rotors) do
+        local entity = group(spec.owner)
+        entity:SetPositionLocal(Vector3(spec.x, spec.y, spec.z))
+        entity:SetRotationLocal(Quaternion.FromEulerAngles(0, 0, spec.phase))
+        turbine_rotors[#turbine_rotors + 1] = { entity = entity, angle = spec.phase, speed = spec.speed }
     end
     for _, job in ipairs(jobs) do
         local entity = new_child(group(job.owner), job.label)
@@ -649,6 +753,14 @@ function dreamcore.Initialize(self, host)
         light:SetFlag(LightFlags.ShadowsScreenSpace, false)
     end
     initialized = true
+end
+
+function dreamcore.Tick(self, host)
+    local dt = Timer.GetDeltaTimeSec()
+    for _, rotor in ipairs(turbine_rotors) do
+        rotor.angle = (rotor.angle + rotor.speed * dt) % 360
+        rotor.entity:SetRotationLocal(Quaternion.FromEulerAngles(0, 0, rotor.angle))
+    end
 end
 
 return dreamcore

@@ -261,6 +261,7 @@ namespace spartan
     public:
         // bound list, Class::Method, no instance pointer
         static void SetPipelineState(RHI_PipelineState& pso);
+        static bool IsPipelineReady();
         // the one scope, nestable, it times the work (cpu, and gpu when gpu_timing is set), labels it for debuggers
         // and gives it clean state: begin and end both drop the pending pipeline, bindings, dynamic state and push constants
         static void BeginPass(const char* name, const bool gpu_timing = true);

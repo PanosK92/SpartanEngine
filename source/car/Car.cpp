@@ -625,7 +625,7 @@ namespace spartan
     {
         if (m_is_occupied) Input::GamepadStopFeedback();
         m_haptic_initialized = false;
-        if (m_visualization_preset == CarVisualizationPreset::Skeleton)
+        if (m_visualization_preset != CarVisualizationPreset::Full)
         {
             SetVisualizationPreset(CarVisualizationPreset::Full);
         }
@@ -637,11 +637,12 @@ namespace spartan
 
     void Car::ApplySkeletonBodyVisibility()
     {
+        ClearPhysicsMeshes();
         ClearBodyRenderStates(true);
 
-        // skeleton mode always hides the painted 3d mesh, collision hull is a separate debug toggle
+        // physics views hide the painted mesh; collision hulls remain a separate overlay
         if (
-            m_visualization_preset != CarVisualizationPreset::Skeleton ||
+            m_visualization_preset == CarVisualizationPreset::Full ||
             !m_vehicle_entity
         )
         {
@@ -700,6 +701,7 @@ namespace spartan
 
     void Car::SetVisualizationPreset(CarVisualizationPreset preset)
     {
+        if (m_visualization_preset == preset) return;
         m_visualization_preset = preset;
         ApplySkeletonBodyVisibility();
     }
@@ -723,7 +725,7 @@ namespace spartan
         }
 
         const CarVisualizationPreset visualization_preset = m_visualization_preset;
-        if (visualization_preset == CarVisualizationPreset::Skeleton)
+        if (visualization_preset != CarVisualizationPreset::Full)
         {
             SetVisualizationPreset(CarVisualizationPreset::Full);
         }
@@ -812,9 +814,9 @@ namespace spartan
             }
         }
 
-        if (visualization_preset == CarVisualizationPreset::Skeleton)
+        if (visualization_preset != CarVisualizationPreset::Full)
         {
-            SetVisualizationPreset(CarVisualizationPreset::Skeleton);
+            SetVisualizationPreset(visualization_preset);
         }
     }
 
@@ -1086,10 +1088,10 @@ namespace spartan
             }
         }
 
-        // show window when outside, skeleton mode keeps all painted mesh hidden
+        // show window when outside; physics views keep the painted mesh hidden
         if (
             m_window_entity &&
-            m_visualization_preset != CarVisualizationPreset::Skeleton
+            m_visualization_preset == CarVisualizationPreset::Full
         )
         {
             m_window_entity->SetActive(true);

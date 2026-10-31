@@ -26,7 +26,8 @@ namespace spartan::car_hud::telemetry
     {
         std::vector<std::string> names;
         int selected = -1;
-        bool full_simulation = true, skeleton = false, collision = false;
+        bool full_simulation = true, collision = false;
+        int visualization = 0;
     };
     struct corner
     {
@@ -222,21 +223,19 @@ namespace spartan::car_hud::telemetry
         p.text(664, 5, 11, muted, "VISUALIZATION");
         ImGui::SetCursorScreenPos(p.point(664, 22));
         ImGui::SetNextItemWidth(258 * p.scale);
-        int view = options.skeleton ? 1 : 0;
-        if (ImGui::Combo("##visualization", &view, "Full car\0Physics skeleton\0"))
-            options.skeleton = view == 1;
+        ImGui::Combo("##visualization", &options.visualization, "Full car\0Physics skeleton\0Physics meshes\0");
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Skeleton hides the body mesh and shows physical bodies, joints and forces. Frame and engine internals are schematic.");
+            ImGui::SetTooltip("Skeleton shows bodies, joints and forces. Physics meshes renders the live mechanical parts with solid materials. Full simulation includes suspension and drivetrain.");
 
         ImGui::SetCursorScreenPos(p.point(950, 22));
-        bool collision = options.skeleton && options.collision;
+        bool collision = options.visualization != 0 && options.collision;
         if (ImGui::Checkbox("Collision shape", &collision))
         {
             options.collision = collision;
-            if (collision) options.skeleton = true;
+            if (collision && options.visualization == 0) options.visualization = 1;
         }
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Draw the chassis collision hull in purple. Enabling this also selects the physics skeleton view.");
+            ImGui::SetTooltip("Draw the chassis collision hull in purple. From Full car this selects the physics skeleton view.");
         ImGui::PopStyleVar(2);
         ImGui::PopFont();
         ImGui::PopID();
