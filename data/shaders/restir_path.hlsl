@@ -62,6 +62,7 @@ void restir_probe_endpoint(float distance, uint3 hit, RayDesc ray,
 // its LOD merely because a different primary reconnects to the same vertex.
 bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
 {
+    restir_refresh_environment_endpoint(s);
     if (!is_triangle_reconnection(s)) return true;
     if (is_nee_sample(s) && s.endpoint_light == RESTIR_ENDPOINT_EMTRI)
     {

@@ -1544,6 +1544,21 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
     return src.rc_L_nee + f_rc * src.rc_L_post * mis;
 }
 
+float3 sample_sky(float3 dir);
+
+// Reference TraceTemporalUpdate refreshes environment endpoints in the current
+// scene even when light-tile RIS disables general suffix replay. Analytic sun
+// endpoints belong to a separate light strategy and must retain that identity.
+void restir_refresh_environment_endpoint(inout PathSample s)
+{
+    if (is_sky_sample(s) &&
+        (s.endpoint_light == RESTIR_ENDPOINT_BSDF || s.endpoint_light == RESTIR_ENDPOINT_SKY))
+    {
+        s.rc_L_nee = sample_sky(s.rc_pos);
+        s.rc_L_post = 0.0f;
+    }
+}
+
 // reconnection shift from source primary to destination, ok=false on degenerate geometry
 // visibility is checked separately so non visibility critical passes can skip the ray cast
 // Non-reconnectable paths use shared-random-number replay and carry its updated descriptor.
@@ -1583,6 +1598,8 @@ ShiftResult try_reconnection_shift(
         if (!is_nee_sample(src) && !has_reconnection(src))
             return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal,
                 dst_view_dir, dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
+        restir_refresh_environment_endpoint(src);
+        result.sample = src;
         float3 dir = src.rc_pos;
         if (!is_nee_sample(src))
         {
