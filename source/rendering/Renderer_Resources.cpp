@@ -314,6 +314,16 @@ namespace spartan
             128 * 1024, nullptr, false, "restir_light_tiles"
         );
 
+        // float2 cell mass/CDF plus one float2 marginal entry per row. Zero initialization
+        // keeps the uniform fallback valid while the asynchronous pipelines compile.
+        vector<float> environment_cdf_zero(2 * 512 * (1024 + 1), 0.0f);
+        at(buffers, Renderer_Buffer::RestirEnvironmentCdf) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(2 * sizeof(float)),
+            512 * (1024 + 1), nullptr, false, "restir_environment_cdf"
+        );
+        at(buffers, Renderer_Buffer::RestirEnvironmentCdf)->UploadSubRegion(
+            environment_cdf_zero.data(), 0, environment_cdf_zero.size() * sizeof(float));
+
         // three concatenated tileable pairing tables, uploaded once when the restir reservoirs initialize
         at(buffers, Renderer_Buffer::RestirPairing) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
@@ -1434,6 +1444,8 @@ namespace spartan
             { Renderer_Shader::restir_pt_spatial_shift_c,             RHI_Shader_Type::Compute,       "restir_pt_spatial_shift.hlsl",         RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_light_tiles_c,               RHI_Shader_Type::Compute,       "restir_pt_light_tiles.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_environment_rows_c,          RHI_Shader_Type::Compute,       "restir_pt_environment.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_environment_marginal_c,      RHI_Shader_Type::Compute,       "restir_pt_environment.hlsl",           RHI_Vertex_Type::Max, "ENV_MARGINAL",                true,  true },
             { Renderer_Shader::restir_pt_duplication_c,               RHI_Shader_Type::Compute,       "restir_pt_duplication.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_pack_c,                  RHI_Shader_Type::Compute,       "restir_pt_nrd_pack.hlsl",            RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_unpack_c,                RHI_Shader_Type::Compute,       "restir_pt_nrd_unpack.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },

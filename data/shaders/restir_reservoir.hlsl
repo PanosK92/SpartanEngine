@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #define SPARTAN_RESTIR_RESERVOIR
 #include "common_ray_hit.hlsl"
 #include "rt_visibility.hlsl"
+#include "restir_environment.hlsl"
 
 [[vk::image_format("unknown")]] RWTexture2D<float4> restir_specular_output : register(u68);
 
@@ -1373,7 +1374,7 @@ float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, float3 norma
 {
     if (path_length != 3u)
         return 1.0f;
-    float env_pdf = max(dot(normal, direction), 0.0f) / PI;
+    float env_pdf = sky_nee_pdf_at(direction, normal);
     if (endpoint_light == RESTIR_ENDPOINT_BSDF)
         return restir_balance_heuristic(brdf_pdf, env_pdf);
     if (endpoint_light == RESTIR_ENDPOINT_SKY)
@@ -1673,13 +1674,6 @@ float3 sample_sky(float3 dir)
     float2 uv  = direction_sphere_uv(dir);
     float3 sky = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, SKY_MIP_LEVEL).rgb;
     return sky;
-}
-
-// env nee density at a given direction, cosine hemisphere only, the sun is owned by the
-// analytic light loop so the env strategy no longer mixes a sun cone
-float sky_nee_pdf_at(float3 dir, float3 shading_normal)
-{
-    return max(dot(dir, shading_normal), 0.0f) / PI;
 }
 
 // emissive triangle nee pool active check, false skips the emtri strategy entirely
@@ -2140,13 +2134,12 @@ RestirLightSample sample_direct_lighting_at_vertex(
         }
     }
 
-    // environment nee, cosine hemisphere toward the sun free sky, the analytic loop above
+    // environment NEE, luminance-weighted sampling of the sun-free sky; the analytic loop above
     // owns the sun so the two strategies never overlap
     {
         float2 env_xi = random_float2(seed);
         float  env_pdf;
-        float3 env_local = sample_cosine_hemisphere(env_xi, env_pdf);
-        float3 env_dir   = local_to_world(env_local, shading_normal);
+        float3 env_dir = sample_restir_environment(env_xi, env_pdf);
 
         float env_n_dot_l = dot(shading_normal, env_dir);
 

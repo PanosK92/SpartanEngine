@@ -464,6 +464,8 @@ namespace spartan
         restir_pt_spatial_shift_c,
         restir_pt_spatial_c,
         restir_pt_light_tiles_c,
+        restir_pt_environment_rows_c,
+        restir_pt_environment_marginal_c,
         restir_pt_duplication_c,
         restir_pt_nrd_pack_c,
         restir_pt_nrd_unpack_c,
@@ -731,6 +733,7 @@ namespace spartan
         OceanHeightsReadback3,
         EmissiveTriangles,         // restir nee pool, rebuilt each frame from render components with non-zero emission
         RestirLightTiles,
+        RestirEnvironmentCdf,
         RestirPairing,             // restir spatial reuse tables, built once when the reservoirs initialize
         RadianceCache,             // world space hash grid of incoming radiance, read and written by the ray traced reflection passes
         // gpu-driven particles
