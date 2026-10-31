@@ -23,6 +23,16 @@ struct PathSurface
     bool pooled_emitter;
     float  roughness;
     float  metallic;
+    // Keep the original interface orientation before face-forwarding the
+    // shading frame. Medium transitions need material identity and entry/exit
+    // independently of the normal used to evaluate the BSDF.
+    uint   material_index;
+    bool   front_facing;
+    float  material_alpha;
+    float  alpha_blend;
+    float  ior;
+    float  absorption;
+    float  thickness;
     bool   hit;
 };
 
@@ -42,6 +52,12 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
 
     uint material_index    = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
+    payload.material_index = material_index;
+    payload.material_alpha = mat.color.a;
+    payload.alpha_blend = mat.alpha_blend;
+    payload.ior = mat.ior;
+    payload.absorption = mat.absorption;
+    payload.thickness = mat.thickness;
     payload.pooled_emitter = mat.is_pooled_emitter() && is_emtri_pool_active();
 
     uint index_base      = geo.index_offset + primitive_index * 3;
@@ -152,6 +168,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     float3 edge2_world   = mul(pv2.position - pv0.position, obj_to_world_3x3);
     float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
     bool front_facing = dot(geometric_normal, ray.Direction) <= 0.0f;
+    payload.front_facing = front_facing;
 
     if (!front_facing)
         geometric_normal = -geometric_normal;
