@@ -1454,6 +1454,7 @@ namespace spartan
             { Renderer_Shader::restir_pt_duplication_c,               RHI_Shader_Type::Compute,       "restir_pt_duplication.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_pack_c,                  RHI_Shader_Type::Compute,       "restir_pt_nrd_pack.hlsl",            RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_unpack_c,                RHI_Shader_Type::Compute,       "restir_pt_nrd_unpack.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_repair_c,                    RHI_Shader_Type::Compute,       "restir_pt_repair.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
 
             // wind field
             { Renderer_Shader::wind_field_c,                          RHI_Shader_Type::Compute, "wind_field.hlsl"                                                                                    },

@@ -469,6 +469,7 @@ namespace spartan
         restir_pt_duplication_c,
         restir_pt_nrd_pack_c,
         restir_pt_nrd_unpack_c,
+        restir_pt_repair_c,
         // baked wind field
         wind_field_c,
         // water on the occupied car

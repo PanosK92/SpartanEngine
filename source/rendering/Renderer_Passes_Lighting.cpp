@@ -1223,6 +1223,24 @@ namespace spartan
             RHI_CommandList::EndMarker();
         }
         RHI_CommandList::EndPass();
+
+        RHI_Shader* shader_repair = GetShader(Renderer_Shader::restir_pt_repair_c);
+        RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+        if (shader_repair && shader_repair->IsCompiled() && tlas && !m_pass_state.skip_rt_trace)
+        {
+            RHI_CommandList::BeginPass("restir_pt_repair");
+            SetCommonTextures();
+            RHI_CommandList::SetShader(shader_repair);
+            RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetBuffer("restir_light_tiles", GetBuffer(Renderer_Buffer::RestirLightTiles));
+            RHI_CommandList::SetBuffer("restir_environment_cdf", GetBuffer(Renderer_Buffer::RestirEnvironmentCdf));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
+            RHI_CommandList::Dispatch(tex_gi_denoised);
+            RHI_CommandList::EndPass();
+        }
     }
 
     void Renderer::Pass_ScreenSpaceShadows()
