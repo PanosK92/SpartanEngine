@@ -69,7 +69,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint group_index : SV_Grou
         tex_uav2[pixel] = 0.0f;
         tex_uav3[pixel] = 0.0f;
         float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
-        float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+        float depth = all(pixel < uint2(resolution * get_render_uv_scale()))
+            ? tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r : 0.0f;
         Reservoir center = load_pair_reservoir(pixel);
         if (depth > 0.0f && is_reservoir_valid(center) && center.M > 0.0f && center.W > 0.0f)
         {

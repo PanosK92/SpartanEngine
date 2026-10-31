@@ -113,7 +113,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // motion vector. The low-resolution cell centre can differ by half a pixel.
     float2 uv = restir_primary_uv((pixel + 0.5f) / resolution);
 
-    float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    float depth = all(pixel < uint2(resolution * get_render_uv_scale()))
+        ? tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r : 0.0f;
     if (depth <= 0.0f)
         return;
 

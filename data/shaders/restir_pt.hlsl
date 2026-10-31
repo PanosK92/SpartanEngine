@@ -248,7 +248,11 @@ void ray_gen()
     restir_primary_surface_output[launch_id] = 0.0f;
 
     // early out for sky pixels (no primary surface)
-    float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    // Allocation padding is not part of the rendered image. Its depth can be
+    // left over from a larger viewport and must never generate paths/history.
+    uint2 active_size = uint2(float2(launch_size) * get_render_uv_scale());
+    float depth = all(launch_id < active_size)
+        ? tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r : 0.0f;
     if (depth <= 0.0f)
     {
         Reservoir empty = create_empty_reservoir();
