@@ -490,16 +490,23 @@ void unpack_path_info(uint packed, inout PathSample s)
 // t1: suffix or terminal radiance, source incoming geometry factor
 // t2: cached RGB integrand paired with W, W
 // t3: initial seed, path descriptor, endpoint NEE PDF, confidence
-float pack_f16x2_to_float(float a, float b)
+// The reference's compressed PathReservoir::reconnectionWi uses octahedral SNORM16x2.
+// Half-float coordinates waste precision near the octahedron's edges, where
+// direction errors can change a narrow glossy lobe on every reuse.
+uint pack_rc_outgoing_direction(float3 direction)
 {
-    uint packed = f32tof16(a) | (f32tof16(b) << 16u);
-    return asfloat(packed);
+    float2 oct = octahedral_encode(direction);
+    oct = float2(isnan(oct.x) ? 0.0f : clamp(oct.x, -1.0f, 1.0f),
+                 isnan(oct.y) ? 0.0f : clamp(oct.y, -1.0f, 1.0f));
+    int2 encoded = int2(oct * 32767.0f + float2(oct.x >= 0.0f ? 0.5f : -0.5f,
+                                              oct.y >= 0.0f ? 0.5f : -0.5f));
+    return (asuint(encoded.x) & 65535u) | ((asuint(encoded.y) & 65535u) << 16u);
 }
 
-float2 unpack_float_to_f16x2(float p)
+float3 unpack_rc_outgoing_direction(uint packed)
 {
-    uint packed = asuint(p);
-    return float2(f16tof32(packed & 0xFFFFu), f16tof32(packed >> 16u));
+    int2 encoded = int2(int(packed << 16u) >> 16, int(packed) >> 16);
+    return octahedral_decode(max(float2(encoded) / 32767.0f, -1.0f));
 }
 
 float pack_uint8x4_to_float(float r, float g, float b, float a)
@@ -550,10 +557,9 @@ uint restir_primary_material(float2 uv)
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3)
 {
     bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
-    float2 outgoing = octahedral_encode(r.sample.rc_outgoing_dir);
     float3 endpoint = is_triangle_reconnection(r.sample) ? asfloat(r.sample.rc_hit) : r.sample.rc_pos;
     if (is_dirac_light_sample(r.sample)) endpoint = float3(asfloat(r.sample.endpoint_geometry), 0.0f);
-    tex0 = float4(endpoint, terminal ? asfloat(r.sample.rc_geometric_normal_packed) : pack_f16x2_to_float(outgoing.x, outgoing.y));
+    tex0 = float4(endpoint, asfloat(terminal ? r.sample.rc_geometric_normal_packed : pack_rc_outgoing_direction(r.sample.rc_outgoing_dir)));
     tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post, r.sample.rc_pdf);
     tex2 = float4(r.sample.F, r.W);
     tex3 = float4(asfloat(r.sample.seed_path), asfloat(pack_path_info(r.sample)), r.sample.rc_nee_pdf,
@@ -586,7 +592,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
     else
     {
         r.sample.rc_L_post = tex1.rgb;
-        r.sample.rc_outgoing_dir = octahedral_decode(unpack_float_to_f16x2(tex0.w));
+        r.sample.rc_outgoing_dir = unpack_rc_outgoing_direction(asuint(tex0.w));
     }
     if (is_triangle_reconnection(r.sample))
     {
