@@ -13,7 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 // counts reservoirs in the surrounding 17x17 window that carry the same replay seed as this
 // pixel, i.e. shifted copies of the same initial candidate, the normalized score feeds the
 // adaptive confidence cap in the temporal pass to decorrelate firefly blobs
-// input on tex is reservoir texture 3 whose x channel stores the replay seed
+// tex carries reservoir texture 3 (replay seed); tex2 carries texture 2 (weight).
 
 static const int DUPLICATION_WINDOW_RADIUS = 8;
 static const int DUPLICATION_TILE_X        = THREAD_GROUP_COUNT_X + 2 * DUPLICATION_WINDOW_RADIUS;
@@ -45,7 +45,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupI
         uint seed = 0u;
         if (p.x >= 0 && p.y >= 0 && p.x < (int)active_size.x && p.y < (int)active_size.y)
         {
-            seed = asuint(tex[p].x);
+            // Reference FillSampleID excludes zero-weight reservoirs even when
+            // resampling retained their path descriptor and replay seed.
+            seed = tex2[p].w == 0.0f ? 0u : asuint(tex[p].x);
         }
         tile_seeds[local.y][local.x] = seed;
     }

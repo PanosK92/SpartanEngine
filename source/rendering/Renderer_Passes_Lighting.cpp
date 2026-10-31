@@ -1088,7 +1088,9 @@ namespace spartan
                 {
                     RHI_CommandList::SetShader(shader_duplication);
                     RHI_Texture* reservoir_seed = ran_spatial ? reservoirs_spatial[3] : reservoirs[3];
+                    RHI_Texture* reservoir_weight = ran_spatial ? reservoirs_spatial[2] : reservoirs[2];
                     RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, reservoir_seed);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, reservoir_weight);
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_duplication);
                     RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
                 }
