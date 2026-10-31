@@ -55,8 +55,8 @@ PathSample sample_emissive_tri_candidate(
     // ris over cdf draws, see emtri_ris_pick, the unshadowed geometry term picks the panel
     float3 light_pos, light_normal, emission;
     float  W;
-    uint triangle_index;
-    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W, triangle_index,
+    uint triangle_index, barycentrics;
+    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W, triangle_index, barycentrics,
         view, albedo, roughness, metallic))
     {
         return s;
@@ -71,6 +71,7 @@ PathSample sample_emissive_tri_candidate(
 
     ris_weight  = W;
     s.flags    |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
+    s.rc_hit    = uint3(triangle_index, 0u, barycentrics);
     s.rc_pos    = light_pos;
     s.rc_normal = light_normal;
     s.rc_geometric_normal_packed = pack_rc_geometric_normal(light_normal);

@@ -63,6 +63,15 @@ void restir_probe_endpoint(float distance, uint3 hit, RayDesc ray,
 bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
 {
     if (!is_triangle_reconnection(s)) return true;
+    if (is_nee_sample(s) && s.endpoint_light == RESTIR_ENDPOINT_EMTRI)
+    {
+        if (!restir_pool_hit_position(s.rc_hit, s.rc_pos)) return false;
+        EmissiveTriangle tri = emissive_triangles[s.rc_hit.x];
+        s.rc_normal = tri.normal;
+        s.rc_geometric_normal_packed = pack_rc_geometric_normal(tri.normal);
+        s.rc_L_nee = tri.emission;
+        return true;
+    }
     float3 position;
     if (!restir_rc_hit_position(s.rc_hit, position)) return false;
     float3 delta = position - previous_position;

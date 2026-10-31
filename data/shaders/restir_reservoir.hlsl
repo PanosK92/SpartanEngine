@@ -472,7 +472,7 @@ struct PathSample
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
     uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
     uint endpoint_emtri_draw;
-    uint3 rc_hit; // Triangle identity and UNORM16 barycentrics for BSDF reconnections.
+    uint3 rc_hit; // TLAS instance/primitive or pool index/zero, then UNORM16 barycentrics.
     float3 rc_pos;
     float3 rc_normal;
     uint rc_geometric_normal_packed; // Surface RC: two 12-bit octahedral components.
@@ -495,12 +495,25 @@ struct PathSample
 };
 
 // The reference retains triangle hits rather than a frozen world-space point.
-// Environment-NEE probes also carry real triangle hits. Analytic and pool-NEE
-// endpoints still use their explicit endpoint representation.
+// Environment probes retain TLAS hits; pooled NEE retains pool triangle hits.
+// Analytic endpoints still use their explicit endpoint representation.
 bool is_triangle_reconnection(PathSample s)
 {
     return (s.flags & PATH_FLAG_HAS_RC) != 0u && (s.flags & PATH_FLAG_SKY) == 0u &&
-        ((s.flags & PATH_FLAG_NEE) == 0u || s.endpoint_light == RESTIR_ENDPOINT_SKY);
+        ((s.flags & PATH_FLAG_NEE) == 0u || s.endpoint_light == RESTIR_ENDPOINT_SKY ||
+            s.endpoint_light == RESTIR_ENDPOINT_EMTRI);
+}
+
+// Pool topology changes invalidate history on the CPU. A pool index plus
+// barycentrics therefore identifies the same emitter point throughout reuse.
+bool restir_pool_hit_position(uint3 hit, out float3 position)
+{
+    position = 0.0f;
+    if (hit.x >= (uint)buffer_frame.restir_pt_emissive_tri_count) return false;
+    EmissiveTriangle tri = emissive_triangles[hit.x];
+    float3 bary = unpack_hit_barycentrics(hit.z);
+    position = tri.v0 * bary.x + tri.v1 * bary.y + tri.v2 * bary.z;
+    return tri.area > 0.0f && all(isfinite(position));
 }
 
 bool restir_rc_hit_position(uint3 hit, out float3 position)
@@ -705,7 +718,12 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
 
     unpack_path_info(asuint(tex3.y), r.sample);
     if (is_triangle_reconnection(r.sample))
-        restir_rc_hit_position(r.sample.rc_hit, r.sample.rc_pos);
+    {
+        if (r.sample.endpoint_light == RESTIR_ENDPOINT_EMTRI && (r.sample.flags & PATH_FLAG_NEE) != 0u)
+            restir_pool_hit_position(r.sample.rc_hit, r.sample.rc_pos);
+        else
+            restir_rc_hit_position(r.sample.rc_hit, r.sample.rc_pos);
+    }
     float2 roughness = unpack_float_to_f16x2(tex4.y);
     r.sample.rc_roughness = max(roughness.x, 0.04f);
     r.sample.src_normal_roughness = asuint(tex4.z);
@@ -1829,12 +1847,13 @@ bool emtri_ris_pick_path(
     out float3 out_emission,
     out float out_W,
     out float out_pdf,
-    out uint out_draw, out uint out_triangle,
+    out uint out_draw, out uint out_triangle, out uint out_barycentrics,
     int forced_draw, uint candidate_count, float3 view, float3 albedo, float roughness, float metallic)
 {
     out_pdf = 0.0f;
     out_draw = 0u;
     out_triangle = 0u;
+    out_barycentrics = 0u;
     out_pos      = float3(0.0f, 0.0f, 0.0f);
     out_normal   = float3(0.0f, 1.0f, 0.0f);
     out_emission = float3(0.0f, 0.0f, 0.0f);
@@ -1900,6 +1919,19 @@ bool emtri_ris_pick_path(
             continue;
         }
         p = pos + dir * t;
+        float3 edge1 = tri.v1 - tri.v0, edge2 = tri.v2 - tri.v0;
+        float3 area_normal = cross(edge1, edge2);
+        float normal_sq = dot(area_normal, area_normal);
+        float3 relative = p - tri.v0;
+        float2 bary = float2(dot(cross(relative, edge2), area_normal),
+                            dot(cross(edge1, relative), area_normal)) / normal_sq;
+        uint packed_bary = pack_hit_barycentrics(bary);
+        float3 decoded_bary = unpack_hit_barycentrics(packed_bary);
+        // Evaluate the represented endpoint, including its direction and PDF,
+        // before RIS. Reuse must not silently move a previously weighted point.
+        p = tri.v0 * decoded_bary.x + tri.v1 * decoded_bary.y + tri.v2 * decoded_bary.z;
+        dir = normalize(p - pos);
+        if (dot(normal, dir) <= 0.0f || dot(-dir, tri.normal) <= 1e-4f) continue;
         point_pdf = restir_triangle_point_pdf(pos, tri.v0, tri.v1, tri.v2, p);
 
         float unused_pdf;
@@ -1916,6 +1948,7 @@ bool emtri_ris_pick_path(
             out_pdf = pdf_sa;
             out_draw = i;
             out_triangle = tile_entry.z;
+            out_barycentrics = packed_bary;
             out_pos      = p;
             out_normal   = tri.normal;
             out_emission = tri.emission;
@@ -1933,12 +1966,12 @@ bool emtri_ris_pick_path(
 }
 
 bool emtri_ris_pick(float3 pos, float3 normal, inout uint seed,
-    out float3 light_pos, out float3 light_normal, out float3 emission, out float W, out uint triangle_index,
+    out float3 light_pos, out float3 light_normal, out float3 emission, out float W, out uint triangle_index, out uint barycentrics,
     float3 view, float3 albedo, float roughness, float metallic)
 {
     float pdf;
     uint draw;
-    return emtri_ris_pick_path(pos, normal, seed, light_pos, light_normal, emission, W, pdf, draw, triangle_index, -1,
+    return emtri_ris_pick_path(pos, normal, seed, light_pos, light_normal, emission, W, pdf, draw, triangle_index, barycentrics, -1,
         restir_nee_candidate_count(1u), view, albedo, roughness, metallic);
 }
 
@@ -2014,7 +2047,7 @@ struct RestirLightSample
     uint emtri_draw;
     uint emitter_triangle;
     uint2 endpoint_identity;
-    uint3 endpoint_hit; // Instance, primitive and packed barycentrics for an environment-probe hit.
+    uint3 endpoint_hit; // TLAS or pool triangle identity, followed by packed barycentrics.
     float3 endpoint_position;
     float3 endpoint_normal;
     float3 endpoint_radiance;
@@ -2224,9 +2257,9 @@ RestirLightSample sample_direct_lighting_at_vertex(
     {
         float3 light_pos, light_normal, emission;
         float W, source_pdf;
-        uint draw, triangle_index;
+        uint draw, triangle_index, barycentrics;
         if (emtri_ris_pick_path(shading_pos, shading_normal, seed, light_pos, light_normal, emission,
-            W, source_pdf, draw, triangle_index, forced_light == int(RESTIR_ENDPOINT_EMTRI) ? forced_emtri_draw : -1,
+            W, source_pdf, draw, triangle_index, barycentrics, forced_light == int(RESTIR_ENDPOINT_EMTRI) ? forced_emtri_draw : -1,
             restir_nee_candidate_count(vertex), view_dir, albedo, roughness, metallic))
         {
             float3 to_light = light_pos - shading_pos;
@@ -2243,6 +2276,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
                 if (result.selected_target > 0.0f && result.light_index == RESTIR_ENDPOINT_EMTRI)
                 {
                     result.emitter_triangle = triangle_index;
+                    result.endpoint_hit = uint3(triangle_index, 0u, barycentrics);
                     result.endpoint_position = light_pos;
                     result.endpoint_normal = light_normal;
                     result.endpoint_radiance = emission;
