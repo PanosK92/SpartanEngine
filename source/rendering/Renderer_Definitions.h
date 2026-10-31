@@ -247,7 +247,7 @@ namespace spartan
         terrain_prop_mask = 21,
 
         // restir reservoir srv bindings (for temporal/spatial read)
-        // kept contiguous so a single loop can bind all five slots starting from reservoir_prev0
+        // Four active reservoir slots remain contiguous; legacy register numbers stay reserved.
         reservoir_prev0    = 22,
         reservoir_prev1    = 23,
         reservoir_prev2    = 24,

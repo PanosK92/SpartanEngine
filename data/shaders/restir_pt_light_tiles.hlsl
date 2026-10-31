@@ -8,20 +8,26 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common.hlsl"
 #include "restir_reservoir.hlsl"
 
-// Section 6.1: cache independent power-proportional draws once per frame.
+// Section 6.1: cache power-proportional draws once per frame.
 // Store source PMFs, not the empirical frequency within the finite tile.
 [numthreads(64, 1, 1)]
 void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
     uint index = dispatch_id.x;
-    uint seed = create_seed_for_pass(uint2(index, 0u), buffer_frame.frame, 6u);
-    float2 xi = random_float2(seed);
+    // Match GenerateLightTiles::getStratifiedRandom: one random rotation per
+    // tile, with evenly spaced CDF samples. Each entry retains its original
+    // marginal PMF; stratification must not replace it with a tile frequency.
+    uint tile = index / RESTIR_LIGHT_TILE_SIZE;
+    uint sample_index = index % RESTIR_LIGHT_TILE_SIZE;
+    uint seed = create_seed_for_pass(uint2(tile, 0u), buffer_frame.frame, 6u);
+    float offset = random_float(seed);
+    float xi = frac(offset + float(sample_index) / float(RESTIR_LIGHT_TILE_SIZE));
     uint4 entry = uint4(0xffffffffu, 0u, 0xffffffffu, 0u);
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
     float total = compute_total_light_weight();
     if (total > 0.0f)
     {
-        float target = min(xi.x, 0.99999994f) * total;
+        float target = min(xi, 0.99999994f) * total;
         float cdf = 0.0f;
         for (uint i = 0u; i < light_count; ++i)
         {
@@ -40,7 +46,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float total_emissive = emissive_triangles[count - 1u].cdf;
         if (total_emissive > 0.0f)
         {
-            uint i = emtri_pick_index(min(xi.y, 0.99999994f) * total_emissive, count);
+            uint i = emtri_pick_index(min(xi, 0.99999994f) * total_emissive, count);
             entry.zw = uint2(i, asuint(emissive_triangles[i].weight / total_emissive));
         }
     }
