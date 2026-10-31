@@ -594,6 +594,14 @@ float4 unpack_float_to_uint8x4(float p)
     );
 }
 
+// Supplemental Algorithm 1: pHat = luminance(F). Keep black at zero;
+// common luminance() floors to FLT_MIN for display-oriented consumers.
+// Section 6.3 still uses the full RGB integrand for shading weights.
+float target_scalar(float3 f)
+{
+    return max(dot(f, srgb_color_space_coefficient), 0.0f);
+}
+
 bool is_dirac_light_sample(PathSample s);
 
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
@@ -685,7 +693,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.M          = float(asuint(tex4.x) & 255u);
     r.sample.rc_geometric_normal_packed = asuint(tex4.x) >> 8u;
     r.W          = tex3.z;
-    r.target_pdf = max(r.sample.F.r + r.sample.F.g + r.sample.F.b, 0.0f) * (1.0f / 3.0f);
+    r.target_pdf = target_scalar(r.sample.F);
     // never stored, the resampling stream rebuilds it from scratch in every pass
     r.weight_sum = 0.0f;
 
@@ -1092,12 +1100,6 @@ float restir_balance_heuristic(float pdf_a, float pdf_b)
     float a = pdf_a / scale;
     float b = pdf_b / scale;
     return a / (a + b);
-}
-
-// scalar target for ris and pairwise mis, l1/3 treats rgb equally so chromatic gi is not biased
-float target_scalar(float3 f)
-{
-    return max(f.r + f.g + f.b, 0.0f) * (1.0f / 3.0f);
 }
 
 // ray offset for self intersection avoidance, scales with position magnitude and camera distance
