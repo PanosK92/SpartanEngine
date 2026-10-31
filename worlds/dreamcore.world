@@ -1,33 +1,65 @@
 <?xml version="1.0"?>
 <World name="dreamcore" description="A pastel tile city above an endless ocean, nine dreamlike terraces joined by walkable causeways">
+ <OwnedResources>
+  <Resource file="albedo.texture" />
+  <Resource file="butter.xml" />
+  <Resource file="butter_packed_slot0.tex_packed.texture" />
+  <Resource file="dreamcore_glow.xml" />
+  <Resource file="dreamcore_horizon_lilac.xml" />
+  <Resource file="dreamcore_horizon_pearl.xml" />
+  <Resource file="dreamcore_horizon_rose.xml" />
+  <Resource file="dreamcore_moon.xml" />
+  <Resource file="dreamcore_orb_butter.xml" />
+  <Resource file="dreamcore_orb_lilac.xml" />
+  <Resource file="dreamcore_orb_mint.xml" />
+  <Resource file="dreamcore_orb_rose.xml" />
+  <Resource file="dreamcore_pearl.xml" />
+  <Resource file="dreamcore_pool.xml" />
+  <Resource file="dreamcore_portal.xml" />
+  <Resource file="dreamcore_sun.xml" />
+  <Resource file="lilac.xml" />
+  <Resource file="lilac_packed_slot0.tex_packed.texture" />
+  <Resource file="mint.xml" />
+  <Resource file="mint_packed_slot0.tex_packed.texture" />
+  <Resource file="normal.texture" />
+  <Resource file="porcelain.xml" />
+  <Resource file="porcelain_packed_slot0.tex_packed.texture" />
+  <Resource file="rose.xml" />
+  <Resource file="rose_packed_slot0.tex_packed.texture" />
+ </OwnedResources>
+ <Environment utc_days="9665.2506397366524" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0" />
  <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="0 3.44659 -5" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.00400000019" iso="100" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="1" flags="17" />
+  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="30.4471 5.71125 -2.11957" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0.0114198 0.912477 -0.0255293 0.40817" scale="1 1 1">
+    <camera flags="17" preset="1" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="11" shutter_speed="0.00400000019" iso="100" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
-  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.00719141 0.350769 -0.00269378 0.93643" scale="1 1 1">
-   <light flags="7" light_type="0" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="1" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0" />
-   <script file_path="project/scripts/sun.lua" rot_pitch="35" Initialize="" rot_yaw="45" preset="dusk" volumetric="true" rot_roll="0" override_rotation="false" />
+  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="-0.00090951 0.870061 0.00160532 0.492941" scale="1 1 1">
+   <light flags="7" light_type="0" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <script file_path="project/scripts/sun.lua" rot_roll="0" volumetric="true" override_rotation="false" Initialize="" rot_yaw="45" preset="dusk" rot_pitch="35" />
   </Entity>
-  <Entity name="ocean" id="2001000000000000006" active="true" position="2.5 0 2" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="./project/dreamcore_resources/water_fft.xml" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  <Entity name="ocean" id="2001000000000000006" active="true" position="30 0 -2.5" rotation="0 0 0 1" scale="1 1 1">
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <water>
-    <water cascade_count="4" amplitude="1" choppiness="0.600000024" displacement_scale="1" normal_strength="1" sea_level="0" turbidity="1" caustics_intensity="1" />
+    <water wave_size="1" surf_size="0.899999976" clarity="0.75" sea_level="0" />
    </water>
   </Entity>
   <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/ambient/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+   <audio_source path="project/music/ambient/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="ambient_music" id="2001000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+   <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="dreamcore_generator" id="2001000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/dreamcore.lua" seed="17" />
+   <script file_path="../worlds/dreamcore.lua" Initialize="" Tick="" seed="17" />
   </Entity>
  </Entities>
 </World>

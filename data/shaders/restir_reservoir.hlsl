@@ -1024,18 +1024,14 @@ float3 sample_cosine_hemisphere(float2 xi, out float pdf)
 
 void build_orthonormal_basis_fast(float3 n, out float3 t, out float3 b)
 {
-    if (n.z < -0.9999999f)
-    {
-        t = float3(0, -1, 0);
-        b = float3(-1, 0, 0);
-    }
-    else
-    {
-        float a = 1.0f / (1.0f + n.z);
-        float d = -n.x * n.y * a;
-        t = float3(1.0f - n.x * n.x * a, d, -n.x);
-        b = float3(d, 1.0f - n.y * n.y * a, -n.y);
-    }
+    // Duff et al., Building an Orthonormal Basis, Revisited (2017), also
+    // used by Falcor's branchlessONB. The denominator stays away from zero;
+    // 1 / (1 + n.z) loses orthogonality near the negative Z pole in FP32.
+    float sign_z = n.z >= 0.0f ? 1.0f : -1.0f;
+    float a = -1.0f / (sign_z + n.z);
+    float d = n.x * n.y * a;
+    t = float3(1.0f + sign_z * n.x * n.x * a, sign_z * d, -sign_z * n.x);
+    b = float3(d, sign_z + n.y * n.y * a, -n.y);
 }
 
 float3 local_to_world(float3 local_dir, float3 n)

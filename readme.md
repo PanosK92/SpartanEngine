@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp" alt="Spartan Engine" width="100%"/>
 </p>
 
-<h2 align="center">Path traced. GPU driven. Started before AI. Developed with me a professional</h2>
+<h2 align="center">Path traced. GPU driven. Started before AI and developed alongside me while in the game industry</h2>
 
 <p align="center">
   <sub>TWELVE YEARS &nbsp;·&nbsp; ONE ENGINEER &nbsp;·&nbsp; NEARLY 8,000 COMMITS &nbsp;·&nbsp; WINDOWS AND LINUX &nbsp;·&nbsp; DIRECTX 12 AND VULKAN</sub>
