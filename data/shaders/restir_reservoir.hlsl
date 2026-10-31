@@ -594,6 +594,8 @@ float4 unpack_float_to_uint8x4(float p)
     );
 }
 
+bool is_dirac_light_sample(PathSample s);
+
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
 {
     float2 rc_normal_oct  = octahedral_encode(r.sample.rc_normal);
@@ -607,7 +609,7 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
         terminal ? r.sample.rc_L_nee : r.sample.src_pos,
         pack_uint8x4_to_float(r.sample.rc_albedo.r, r.sample.rc_albedo.g, r.sample.rc_albedo.b, r.sample.rc_metallic)
     );
-    if (terminal && r.sample.endpoint_pooled)
+    if (terminal && (r.sample.endpoint_pooled || is_dirac_light_sample(r.sample)))
     {
         tex1.w = asfloat(r.sample.endpoint_geometry.x);
         tex2.w = asfloat(r.sample.endpoint_geometry.y);
@@ -663,7 +665,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.rc_roughness = max(roughness.x, 0.04f);
     r.sample.src_roughness = max(roughness.y, 0.04f);
     bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
-    if (terminal && r.sample.endpoint_pooled)
+    if (terminal && (r.sample.endpoint_pooled || is_dirac_light_sample(r.sample)))
     {
         r.sample.rc_outgoing_dir = r.sample.rc_normal;
         r.sample.rc_albedo = 0.0f;
@@ -700,29 +702,27 @@ bool is_dirac_light_sample(PathSample s)
         s.endpoint_emtri_draw == RESTIR_ENDPOINT_DIRAC_TAG;
 }
 
-// a light index only holds while the light set is unchanged, culling or switching a light off
-// shifts every index after it, so the light is accepted at its index while it stays near the stored
-// position (a moving light) and is otherwise looked up by exact position, a light that is gone fails
-static const float RESTIR_DIRAC_LIGHT_TRACK_DISTANCE = 1.0f;
+// Buffer indices can change as lights are culled, added or removed. Resolve
+// the persistent light identity; position is not an identity, even nearby.
 bool restir_resolve_dirac_light(PathSample s, out uint light_index)
 {
     const uint dirac_flags = (1u << 1) | (1u << 2);
-    uint light_count       = (uint)buffer_frame.restir_pt_light_count;
-    light_index            = s.endpoint_light;
-
+    uint light_count = (uint)buffer_frame.restir_pt_light_count;
+    light_index = s.endpoint_light;
+    if (!any(s.endpoint_geometry != 0u))
+        return false;
     if (light_index < light_count)
     {
         LightParameters light = light_parameters[light_index];
-        float3 offset         = light.position - s.rc_pos;
-        if ((light.flags & dirac_flags) != 0u && dot(offset, offset) < RESTIR_DIRAC_LIGHT_TRACK_DISTANCE * RESTIR_DIRAC_LIGHT_TRACK_DISTANCE)
+        if ((light.flags & dirac_flags) != 0u &&
+            all(uint2(light.identity_low, light.identity_high) == s.endpoint_geometry))
             return true;
     }
-
-    for (uint i = 0; i < light_count; i++)
+    for (uint i = 0u; i < light_count; ++i)
     {
         LightParameters light = light_parameters[i];
-        float3 offset         = light.position - s.rc_pos;
-        if ((light.flags & dirac_flags) != 0u && dot(offset, offset) < 1e-6f)
+        if ((light.flags & dirac_flags) != 0u &&
+            all(uint2(light.identity_low, light.identity_high) == s.endpoint_geometry))
         {
             light_index = i;
             return true;
@@ -2031,6 +2031,7 @@ struct RestirLightSample
     uint light_index;
     uint emtri_draw;
     uint emitter_triangle;
+    uint2 endpoint_identity;
     float3 endpoint_position;
     float3 endpoint_normal;
     float3 endpoint_radiance;
@@ -2209,6 +2210,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
             result.endpoint_valid = true;
             result.endpoint_sky = is_directional;
             result.endpoint_dirac = is_point || is_spot;
+            result.endpoint_identity = uint2(light.identity_low, light.identity_high);
         }
     }
 

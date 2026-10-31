@@ -3987,6 +3987,9 @@ namespace spartan
             light_buffer_entry.direction_right                   = light_component->GetEntity()->GetRight();
             light_buffer_entry.area_width                        = light_component->GetAreaWidth();
             light_buffer_entry.area_height                       = light_component->GetAreaHeight();
+            const uint64_t light_identity = light_component->GetEntity()->GetObjectId();
+            light_buffer_entry.identity_low = static_cast<uint32_t>(light_identity);
+            light_buffer_entry.identity_high = static_cast<uint32_t>(light_identity >> 32u);
             light_buffer_entry.flags                             = 0;
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
@@ -4211,7 +4214,7 @@ namespace spartan
         // a light that changes restarts the progressive accumulation but keeps the reservoirs, the
         // temporal confidence cap ages stale radiance out within a few frames, a change in the light set
         // (a light culled, switched off or added) fades them out faster, point and spot samples find their
-        // light again by position when its index moved, see restir_resolve_dirac_light, clearing instead
+        // light again by persistent identity when its index moved, see restir_resolve_dirac_light, clearing instead
         // restarted every pixel from one sample whenever a light left the frustum
         // a secondary view uploads its own studio lights, those are not a change to the primary's set
         if (cvar_restir_pt.GetValueAs<bool>() && !secondary_render_root_active)

@@ -838,6 +838,8 @@ struct LightParameters
     SHARED_FLOAT2 atlas_offsets[6];
     SHARED_FLOAT2 atlas_scales[6];
     SHARED_FLOAT2 atlas_texel_sizes[6];
+    SHARED_UINT   identity_low;
+    SHARED_UINT   identity_high;
 };
 
 struct Aabb

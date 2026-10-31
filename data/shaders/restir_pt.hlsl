@@ -218,6 +218,7 @@ PathSample sample_light_candidate(
         s.rc_L_post           = float3(0, 0, 0);
         s.flags              |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
         s.endpoint_emtri_draw = RESTIR_ENDPOINT_DIRAC_TAG;
+        s.endpoint_geometry = uint2(light.identity_low, light.identity_high);
 
         // unit solid angle pdf keeps dirac candidates on the same scale as the area branch
         source_pdf = pick_pdf;

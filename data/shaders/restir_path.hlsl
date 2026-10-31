@@ -257,7 +257,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
         leaf.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
-        leaf.endpoint_geometry = uint2(light.emitter_triangle, 0u);
+        leaf.endpoint_geometry = light.endpoint_dirac ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
         leaf.rc_nee_pdf = light.endpoint_pdf;
         leaf.path_length = depth + 1u;
         leaf.endpoint_light = light.light_index;
