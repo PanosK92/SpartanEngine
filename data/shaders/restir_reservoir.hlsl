@@ -595,11 +595,12 @@ float4 unpack_float_to_uint8x4(float p)
 }
 
 // Supplemental Algorithm 1: pHat = luminance(F). Keep black at zero;
-// common luminance() floors to FLT_MIN for display-oriented consumers.
+// Match PathRISState::toScalar in NVIDIA's ReSTIR PT Enhanced reference;
+// display luminance uses different coefficients and floors black to FLT_MIN.
 // Section 6.3 still uses the full RGB integrand for shading weights.
 float target_scalar(float3 f)
 {
-    return max(dot(f, srgb_color_space_coefficient), 0.0f);
+    return max(dot(f, float3(0.299f, 0.587f, 0.114f)), 0.0f);
 }
 
 bool is_dirac_light_sample(PathSample s);
