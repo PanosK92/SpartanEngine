@@ -156,7 +156,10 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     if (dot(normal_world, geometric_normal) < 0.0f)
         normal_world = -normal_world;
 
-    float3 tangent_projected = tangent_world - geometric_normal * dot(tangent_world, geometric_normal);
+    // Normal maps perturb the interpolated shading frame, as in the G-buffer
+    // and the reference material reconstruction. Keep the face normal separate
+    // for visibility offsets and solid-angle/area density conversion.
+    float3 tangent_projected = tangent_world - normal_world * dot(tangent_world, normal_world);
     if (dot(tangent_projected, tangent_projected) > 1e-6f)
     {
         tangent_world = normalize(tangent_projected);
@@ -164,7 +167,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     else
     {
         float3 fallback_bitangent;
-        build_orthonormal_basis_fast(geometric_normal, tangent_world, fallback_bitangent);
+        build_orthonormal_basis_fast(normal_world, tangent_world, fallback_bitangent);
     }
 
     if (!terrain_shaded && mat.has_texture_normal())
@@ -178,8 +181,8 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         normal_sample.z = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
         normal_sample.xy *= saturate(max(0.01f, mat.normal));
 
-        float3 bitangent = normalize(cross(geometric_normal, tangent_world));
-        float3x3 tbn     = float3x3(tangent_world, bitangent, geometric_normal);
+        float3 bitangent = normalize(cross(normal_world, tangent_world));
+        float3x3 tbn     = float3x3(tangent_world, bitangent, normal_world);
 
         normal_world = normalize(mul(normal_sample, tbn));
         if (dot(normal_world, geometric_normal) < 0.0f)
