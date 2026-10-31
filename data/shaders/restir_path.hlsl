@@ -176,7 +176,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         PathSurface current = restir_trace_surface(ray);
         if (depth == 2u)
         {
-            first_hit_distance = current.hit ? length(current.hit_position - primary_pos) : 10000.0f;
+            first_hit_distance = current.hit ? length(current.hit_position - primary_pos) : RESTIR_MISS_HIT_DISTANCE;
             first_hit_position = current.hit ? current.hit_position : dir;
         }
         float3 emitted = current.hit ? current.emission : sample_sky(dir);

@@ -124,8 +124,11 @@ static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 // Scatter and guide rays already use restir_ray_origin. Match the reference's
 // zero TMin; another world-space epsilon would skip nearby surfaces.
 static const float RESTIR_RAY_T_MIN          = 0.0f;
-// Fresh paths and sky visibility must see the same distant occluders.
-static const float RESTIR_RAY_T_MAX          = 10000.0f;
+// Match the reference's kRayTMax for scattering, replay and sky visibility.
+// A finite scene-scale cutoff can turn a distant surface into a sky miss.
+static const float RESTIR_RAY_T_MAX          = 1e30f;
+// Denoising guide value for a miss, independent of the traversal interval.
+static const float RESTIR_MISS_HIT_DISTANCE  = 10000.0f;
 
 // emissive nits calibration, must match light_composition or emitters glow on screen but bounce no light
 static const float RESTIR_EMISSIVE_NITS_FROM_ALBEDO = lighting_emissive_nits_from_albedo;

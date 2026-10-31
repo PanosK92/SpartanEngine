@@ -171,7 +171,7 @@ void ray_gen()
         guide_ray.TMin = RESTIR_RAY_T_MIN;
         guide_ray.TMax = RESTIR_RAY_T_MAX;
         PathSurface guide = restir_trace_surface(guide_ray);
-        diffuse_hit_dist = guide.hit ? length(guide.hit_position - pos_ws) : RESTIR_RAY_T_MAX;
+        diffuse_hit_dist = guide.hit ? length(guide.hit_position - pos_ws) : RESTIR_MISS_HIT_DISTANCE;
         diffuse_hit_count = 1u;
     }
 
@@ -194,7 +194,7 @@ void ray_gen()
             guide_ray.TMax = RESTIR_RAY_T_MAX;
             PathSurface guide = restir_trace_surface(guide_ray);
             NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist,
-                guide.hit ? length(guide.hit_position - pos_ws) : 10000.0f);
+                guide.hit ? length(guide.hit_position - pos_ws) : RESTIR_MISS_HIT_DISTANCE);
         }
     }
     NRD_FrontEnd_SpecHitDistAveraging_End(specular_hit_dist);
