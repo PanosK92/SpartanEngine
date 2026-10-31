@@ -276,7 +276,10 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         leaf.rc_nee_pdf = light.endpoint_pdf;
         leaf.path_length = depth + 1u;
         leaf.endpoint_light = light.light_index;
-        leaf.endpoint_emtri_draw = is_nee_sample(leaf) && light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG : light.emtri_draw;
+        // Forced NEE reconnection already has the endpoint's persistent type
+        // tag. Only continuing surface paths need the suffix proposal index.
+        if (!is_nee_sample(leaf))
+            leaf.endpoint_emtri_draw = light.emtri_draw;
         if (has_reconnection(connection))
             leaf.F = connection_prefix * rc_outgoing_radiance(leaf, -connection.src_normal);
         restir_stream_leaf(selected, weight_sum, leaf, inverse_density * roulette_weight * light.initial_weight,
