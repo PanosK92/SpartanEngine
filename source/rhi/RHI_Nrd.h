@@ -23,6 +23,15 @@ namespace spartan
         constexpr nrd::Identifier id_shadows         = 2;
         constexpr nrd::Identifier id_shadows_local0  = 3;
 
+        inline uint32_t get_gi_rect_dimension(uint32_t dimension, float render_dimension, float resolution_scale)
+        {
+            // Match get_render_uv_scale(): round the G-buffer rectangle before
+            // mapping it into the independently sized ReSTIR allocation.
+            const float active_render_dimension = (std::max)(std::floor(render_dimension * resolution_scale), 1.0f);
+            const float uv_scale = active_render_dimension / (std::max)(render_dimension, 1.0f);
+            return static_cast<uint32_t>(static_cast<float>(dimension) * uv_scale);
+        }
+
         // engine uses row vectors (v * m), nrd uses column vectors (m * v), so pass the transpose
         inline void copy_matrix_for_nrd(float destination[16], const math::Matrix& matrix)
         {

@@ -36,11 +36,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // Match the primary ray's point-sampled surface. Filtering depth blends unrelated
     // surfaces at edges; a world-space round trip also loses precision far from the origin.
-    float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    uint2 active_size = uint2(float2(resolution) * get_render_uv_scale());
+    float depth = 0.0f;
+    if (all(thread_id.xy < active_size))
+        depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     float view_z = linearize_depth(depth);
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
 
-    // sky, mark invalid for nrd, reverse-z clears far to 0
+    // Sky and untraced allocation padding are invalid for NRD; reverse-Z clears far to 0.
     if (depth <= 0.0f || view_z >= denoising_range)
     {
         tex_uav[thread_id.xy]  = float4(0.0f, 0.0f, 0.0f, 0.0f);

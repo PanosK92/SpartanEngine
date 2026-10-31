@@ -1175,8 +1175,12 @@ namespace spartan
         // setcommonsettings once per pool per frame, nrd integration asserts frameindex advances by 1
         if (!already_set || reset_history)
         {
-            const uint32_t rect_width  = RHI_Device::ScaleDimension(width, common::resolution_scale);
-            const uint32_t rect_height = RHI_Device::ScaleDimension(height, common::resolution_scale);
+            const uint32_t rect_width = preset == Nrd_Preset::Gi
+                ? nrd_common::get_gi_rect_dimension(width, common::cb_frame->resolution_render.x, common::cb_frame->resolution_scale)
+                : RHI_Device::ScaleDimension(width, common::resolution_scale);
+            const uint32_t rect_height = preset == Nrd_Preset::Gi
+                ? nrd_common::get_gi_rect_dimension(height, common::cb_frame->resolution_render.y, common::cb_frame->resolution_scale)
+                : RHI_Device::ScaleDimension(height, common::resolution_scale);
             const bool has_prev        = pool.rect_width_prev != 0 && pool.rect_height_prev != 0 && !reset_history;
 
             nrd::CommonSettings common_settings = {};
