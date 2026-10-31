@@ -650,7 +650,8 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift1");
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift2");
             at(view_targets(), Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_output");
-            at(view_targets(), Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
+            // Preserve all 289 duplication counts before the nonlinear M-cap; R8_UNORM rounds the score.
+            at(view_targets(), Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,          restir_flags, "restir_duplication");
             // Reconstruct lighting before remodulating full-resolution material detail.
             // Tracing, reservoirs and NRD remain at restir_scale.
             at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
