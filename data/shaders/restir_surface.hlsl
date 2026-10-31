@@ -73,7 +73,14 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
 
     // full uv state is per-renderable, fetched from geometry_infos[InstanceIndex()]
-    float3 hit_position = ray.Origin + ray.Direction * ray_t;
+    // Reconstruct position from the same compressed hit used by the material.
+    // The reference's loadShadingData/getVertexData follows this route too;
+    // ray t would describe a different point after barycentric quantization.
+    // Keeping position independent of the original ray also lets retained
+    // reconnection hits reproduce their surface from triangle identity alone.
+    float3 position_object = pv0.position * bary.x + pv1.position * bary.y + pv2.position * bary.z;
+    float3 hit_position = mul(position_object, obj_to_world) +
+        float3(geo.object_to_world_0.w, geo.object_to_world_1.w, geo.object_to_world_2.w);
     if (mat.is_terrain())
     {
         // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
