@@ -223,6 +223,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // re-stamp the source primary g-buffer, the combine may have copied a neighbor src_*
     combined.sample.src_pos       = pos_ws;
     combined.sample.src_normal    = normal_ws;
+    combined.sample.src_normal_roughness = (tex_normal[gbuffer_texel(uv)].x & 0x00ffffffu) |
+        ((tex_material[gbuffer_texel(uv)] & 255u) << 24u);
     combined.sample.src_albedo    = albedo;
     combined.sample.src_roughness = roughness;
     combined.sample.src_metallic  = metallic;

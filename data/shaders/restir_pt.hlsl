@@ -41,6 +41,7 @@ PathSample sample_emissive_tri_candidate(
     s.rc_metallic     = 0.0f;
     s.src_pos         = float3(0, 0, 0);
     s.src_normal      = float3(0, 1, 0);
+    s.src_normal_roughness = gbuffer_pack_normal(s.src_normal, 0u) | 0xff000000u;
     s.src_albedo      = float3(0, 0, 0);
     s.src_roughness   = 1.0f;
     s.src_metallic    = 0.0f;
@@ -100,6 +101,7 @@ PathSample sample_light_candidate(
     s.rc_metallic     = 0.0f;
     s.src_pos         = float3(0, 0, 0);
     s.src_normal      = float3(0, 1, 0);
+    s.src_normal_roughness = gbuffer_pack_normal(s.src_normal, 0u) | 0xff000000u;
     s.src_albedo      = float3(0, 0, 0);
     s.src_roughness   = 1.0f;
     s.src_metallic    = 0.0f;
@@ -502,6 +504,8 @@ void ray_gen()
     // pixel, which fixes ghosting on moving objects
     reservoir.sample.src_pos       = pos_ws;
     reservoir.sample.src_normal    = normal_ws;
+    reservoir.sample.src_normal_roughness = (tex_normal[gbuffer_texel(uv)].x & 0x00ffffffu) |
+        ((tex_material[gbuffer_texel(uv)] & 255u) << 24u);
     reservoir.sample.src_albedo    = albedo;
     reservoir.sample.src_roughness = roughness;
     reservoir.sample.src_metallic  = metallic;

@@ -480,6 +480,7 @@ struct PathSample
     float3 rc_albedo;
     float  rc_roughness;
     float  rc_metallic;
+    uint src_normal_roughness; // Exact G-buffer normal (24 bits) and roughness (8 bits).
     float3 src_pos;
     float3 src_normal;
     float3 src_albedo;
@@ -560,7 +561,7 @@ void unpack_path_info(uint packed, inout PathSample s)
 // t1: suffix radiance OR source position, packed outgoing direction
 // t2: terminal radiance OR source position, packed RC albedo/metallic
 // t3: seed, path descriptor, W, endpoint NEE source PDF (target is derived from F)
-// t4: 8-bit M + 24-bit RC geometric normal, two roughnesses, source normal, source albedo/metallic
+// t4: 8-bit M + 24-bit RC geometric normal, RC roughness, source normal/roughness, source albedo/metallic
 // t5: cached RGB integrand paired with W, postponed geometry density OR primary RC geometric normal
 float pack_f16x2_to_float(float a, float b)
 {
@@ -609,7 +610,6 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
 {
     float2 rc_normal_oct  = octahedral_encode(r.sample.rc_normal);
     float2 rc_out_oct     = octahedral_encode(r.sample.rc_outgoing_dir);
-    float2 src_normal_oct = octahedral_encode(r.sample.src_normal);
 
     bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
     tex0 = float4(r.sample.rc_pos,    pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
@@ -638,8 +638,8 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     uint geometric = continuing_postponed ? r.sample.rc_geometric_normal_packed : 0u;
     tex4 = float4(
         asfloat(confidence | (geometric << 8u)),
-        pack_f16x2_to_float(r.sample.rc_roughness, r.sample.src_roughness),
-        pack_f16x2_to_float(src_normal_oct.x, src_normal_oct.y),
+        pack_f16x2_to_float(r.sample.rc_roughness, 0.0f),
+        asfloat(r.sample.src_normal_roughness),
         pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
     );
 }
@@ -672,7 +672,8 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     unpack_path_info(asuint(tex3.y), r.sample);
     float2 roughness = unpack_float_to_f16x2(tex4.y);
     r.sample.rc_roughness = max(roughness.x, 0.04f);
-    r.sample.src_roughness = max(roughness.y, 0.04f);
+    r.sample.src_normal_roughness = asuint(tex4.z);
+    r.sample.src_roughness = max(float(r.sample.src_normal_roughness >> 24u) / 255.0f, 0.04f);
     bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
     if (terminal && (r.sample.endpoint_pooled || is_dirac_light_sample(r.sample)))
     {
@@ -683,11 +684,10 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.rc_L_post = terminal ? float3(0, 0, 0) : tex1.xyz;
     r.sample.rc_L_nee = terminal ? tex2.xyz : float3(0, 0, 0);
 
-    float2 src_normal_oct = unpack_float_to_f16x2(tex4.z);
     float4 src_albedo_met = unpack_float_to_uint8x4(tex4.w);
 
     r.sample.src_pos      = terminal ? tex1.xyz : tex2.xyz;
-    r.sample.src_normal   = octahedral_decode(src_normal_oct);
+    r.sample.src_normal   = gbuffer_unpack_normal(r.sample.src_normal_roughness);
     r.sample.src_albedo   = src_albedo_met.rgb;
     r.sample.src_metallic = src_albedo_met.a;
 
@@ -767,6 +767,7 @@ Reservoir create_empty_reservoir()
     r.sample.rc_albedo       = float3(0, 0, 0);
     r.sample.rc_roughness    = 1.0f;
     r.sample.rc_metallic     = 0.0f;
+    r.sample.src_normal_roughness = gbuffer_pack_normal(float3(0, 1, 0), 0u) | 0xff000000u;
     r.sample.src_pos         = float3(0, 0, 0);
     r.sample.src_normal      = float3(0, 1, 0);
     r.sample.src_albedo      = float3(0, 0, 0);
@@ -1562,18 +1563,13 @@ ShiftResult try_reconnection_shift(
     // Dirac endpoints must resolve and re-evaluate current light parameters below.
     if (is_identity && !is_dirac_light_sample(src))
     {
-        // Position/view identity alone does not preserve the primary BSDF.
-        // Compare at reservoir precision so normal/material quantization does
-        // not force re-evaluation (and density drift) on an unchanged surface.
-        float2 normal_oct = octahedral_encode(dst_normal);
-        float3 stored_normal = octahedral_decode(unpack_float_to_f16x2(
-            pack_f16x2_to_float(normal_oct.x, normal_oct.y)));
+        // Primary normals and roughness retain their original G-buffer bits.
+        // Compare the actual source BSDF, without a second quantization step.
         float4 stored_material = unpack_float_to_uint8x4(pack_uint8x4_to_float(
             dst_albedo.r, dst_albedo.g, dst_albedo.b, dst_metallic));
-        float stored_roughness = max(f16tof32(f32tof16(dst_roughness)), 0.04f);
-        bool same_shading = all(src.src_normal == stored_normal) &&
+        bool same_shading = all(src.src_normal == dst_normal) &&
             all(src.src_albedo == stored_material.rgb) && src.src_metallic == stored_material.a &&
-            src.src_roughness == stored_roughness;
+            src.src_roughness == dst_roughness;
         if (same_shading)
         {
             result.f_dst = src.F;
