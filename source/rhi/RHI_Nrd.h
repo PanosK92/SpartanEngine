@@ -39,6 +39,29 @@ namespace spartan
             memcpy(destination, transposed.Data(), sizeof(float) * 16);
         }
 
+        // actual guide UV = scale * NRD pixel UV + offset. Integer guide strides
+        // form an affine grid; noninteger strides need per-pixel reconstruction.
+        inline math::Vector2 get_gi_grid_axis(uint32_t dimension, uint32_t rect, float guide_dimension, float resolution_scale)
+        {
+            const uint32_t guide = static_cast<uint32_t>(guide_dimension);
+            if (dimension == 0 || guide < dimension || guide % dimension != 0)
+                return math::Vector2(1.0f, 0.0f);
+            const uint32_t stride = guide / dimension;
+            const float active = (std::max)(std::floor(guide_dimension * resolution_scale), 1.0f);
+            return math::Vector2(static_cast<float>(rect * stride) / active, (stride % 2 == 0 ? 0.5f : 0.0f) / active);
+        }
+
+        inline math::Matrix map_gi_projection(const math::Matrix& projection, const math::Vector2& x, const math::Vector2& y)
+        {
+            // Row-vector clip transform, preserving clip Z and W.
+            const math::Matrix mapping(
+                1.0f / x.x, 0, 0, 0,
+                0, 1.0f / y.x, 0, 0,
+                0, 0, 1, 0,
+                (1.0f - 2.0f * x.y - x.x) / x.x, (y.x - 1.0f + 2.0f * y.y) / y.x, 0, 1);
+            return projection * mapping;
+        }
+
         // the frame buffer has no previous view for the right eye, so a right eye instance remembers its own
         struct view_history
         {
@@ -67,7 +90,7 @@ namespace spartan
             // unjittered projection only, view_projection_unjittered = view * proj
             const bool right_eye             = eye == 1 && cb_frame->is_multiview != 0;
             const math::Matrix world_to_view = right_eye ? cb_frame->view_right : cb_frame->view;
-            const math::Matrix view_to_clip  = math::Matrix::Invert(world_to_view) * (right_eye ? cb_frame->view_projection_unjittered_right : cb_frame->view_projection_unjittered);
+            math::Matrix view_to_clip  = math::Matrix::Invert(world_to_view) * (right_eye ? cb_frame->view_projection_unjittered_right : cb_frame->view_projection_unjittered);
 
             math::Matrix world_to_view_prev = cb_frame->view_previous;
             math::Matrix view_to_clip_prev  = math::Matrix::Invert(cb_frame->view_previous) * cb_frame->view_projection_previous_unjittered;
@@ -80,6 +103,17 @@ namespace spartan
             history.world_to_view = world_to_view;
             history.view_to_clip  = view_to_clip;
             history.valid         = true;
+
+            math::Vector2 grid_x(1.0f, 0.0f), grid_y(1.0f, 0.0f), grid_x_prev(1.0f, 0.0f), grid_y_prev(1.0f, 0.0f);
+            if (preset == Nrd_Preset::Gi)
+            {
+                grid_x = get_gi_grid_axis(width, rect_width, cb_frame->resolution_render.x, cb_frame->resolution_scale);
+                grid_y = get_gi_grid_axis(height, rect_height, cb_frame->resolution_render.y, cb_frame->resolution_scale);
+                grid_x_prev = get_gi_grid_axis(width, rect_width_prev, cb_frame->resolution_render.x, cb_frame->resolution_scale_previous);
+                grid_y_prev = get_gi_grid_axis(height, rect_height_prev, cb_frame->resolution_render.y, cb_frame->resolution_scale_previous);
+                view_to_clip = map_gi_projection(view_to_clip, grid_x, grid_y);
+                view_to_clip_prev = map_gi_projection(view_to_clip_prev, grid_x_prev, grid_y_prev);
+            }
 
             copy_matrix_for_nrd(settings.viewToClipMatrix, view_to_clip);
             copy_matrix_for_nrd(settings.viewToClipMatrixPrev, view_to_clip_prev);
@@ -104,10 +138,10 @@ namespace spartan
                 return (std::max)(-0.5f, (std::min)(value, 0.5f));
             };
 
-            settings.cameraJitter[0]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.x * 0.5f * rect_width);
-            settings.cameraJitter[1]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.y * 0.5f * rect_height);
-            settings.cameraJitterPrev[0] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.x * 0.5f * rect_width_prev);
-            settings.cameraJitterPrev[1] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.y * 0.5f * rect_height_prev);
+            settings.cameraJitter[0]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.x * 0.5f * rect_width / grid_x.x);
+            settings.cameraJitter[1]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.y * 0.5f * rect_height / grid_y.x);
+            settings.cameraJitterPrev[0] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.x * 0.5f * rect_width_prev / grid_x_prev.x);
+            settings.cameraJitterPrev[1] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.y * 0.5f * rect_height_prev / grid_y_prev.x);
 
             // the textures stay full size and resolution scale renders into their top left corner, nrd reconstructs
             // positions and reprojects over the rect, so it has to be the scaled area the image actually covers

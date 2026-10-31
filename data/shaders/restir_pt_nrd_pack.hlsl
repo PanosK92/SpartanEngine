@@ -18,6 +18,17 @@ Commercial use requires written permission and negotiated payment terms.
 // tex_uav4 = in_diff_radiance_hitdist
 // tex       = restir_output (combined diffuse and specular radiance)
 
+// Match nrd_common::get_gi_grid_axis. Noninteger strides are not affine.
+float2 nrd_guide_grid_axis(uint size, uint guide_size, float scale)
+{
+    if (guide_size < size || guide_size % size != 0u)
+        return float2(1.0f, 0.0f);
+    uint stride = guide_size / size;
+    float active = max(floor(float(guide_size) * scale), 1.0f);
+    float rect = floor(float(size) * (active / float(guide_size)));
+    return float2(rect * float(stride) / active, (stride % 2u == 0u ? 0.5f : 0.0f) / active);
+}
+
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -64,6 +75,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // engine velocity is unjittered ndc delta (curr - prev), nrd wants uv motion as prev = curr + mv
     float4 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float2 mv = velocity.xy * float2(-0.5f, 0.5f);
+    float2 grid_x = nrd_guide_grid_axis(resolution.x, guide_size.x, buffer_frame.resolution_scale);
+    float2 grid_y = nrd_guide_grid_axis(resolution.y, guide_size.y, buffer_frame.resolution_scale);
+    float2 grid_x_prev = nrd_guide_grid_axis(resolution.x, guide_size.x, buffer_frame.resolution_scale_previous);
+    float2 grid_y_prev = nrd_guide_grid_axis(resolution.y, guide_size.y, buffer_frame.resolution_scale_previous);
+    float2 grid_scale = float2(grid_x.x, grid_y.x);
+    float2 grid_offset = float2(grid_x.y, grid_y.y);
+    float2 grid_scale_prev = float2(grid_x_prev.x, grid_y_prev.x);
+    float2 grid_offset_prev = float2(grid_x_prev.y, grid_y_prev.y);
+    float2 unjittered_uv = render_uv_to_screen_uv(uv) - buffer_frame.taa_jitter_current * float2(0.5f, -0.5f);
+    mv = (unjittered_uv + mv - grid_offset_prev) / grid_scale_prev -
+         (unjittered_uv - grid_offset) / grid_scale;
 
     float3 total_radiance = max(tex[thread_id.xy].rgb, 0.0f);
     float3 spec_radiance = clamp(tex2[thread_id.xy].rgb, 0.0f, total_radiance);
