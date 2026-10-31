@@ -14,8 +14,6 @@ Texture2D<uint2> tex_normal_previous : register(t87);
 Texture2D<float4> restir_primary_hit_previous : register(t94);
 Texture2D<float4> restir_primary_surface_previous : register(t95);
 
-static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
-
 float2 reproject_to_previous_frame(float2 current_uv, bool reverse_motion = false)
 {
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
@@ -81,30 +79,6 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
     return all(isfinite(dual_uv));
 }
 
-// validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
-bool is_temporal_sample_valid(
-    float2 current_uv,
-    float2 prev_uv,
-    float3 current_normal,
-    float2 screen_resolution,
-    out float confidence)
-{
-    bool ok = evaluate_disocclusion(
-        tex,
-        tex_normal_previous,
-        current_uv,
-        prev_uv,
-        current_normal,
-        screen_resolution,
-        1.5f, 0.75f,  // reproj tol min/max in pixels
-        0.9f, 0.97f,  // normal threshold min/max
-        0.12f, 0.04f, // relative depth delta min/max
-        32.0f,        // motion length reference in pixels
-        confidence
-    );
-    return ok && confidence >= TEMPORAL_MIN_CONFIDENCE;
-}
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
@@ -159,19 +133,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.target_pdf  = target_cur;
 
     float2 prev_uv     = reproject_to_previous_frame(uv);
-    float  temporal_confidence = 0.0f;
 
     // where the history reservoir is read from, prev_uv unless the dual motion vector takes over
     float2 history_uv   = prev_uv;
-    bool   have_history = is_temporal_sample_valid(uv, prev_uv, normal_ws, buffer_frame.resolution_render, temporal_confidence);
-    bool   dual_history = false;
+    bool   have_history = all(isfinite(prev_uv));
 
     // Section 6.4: offer the dual-motion correspondence as a resampling technique.
-    // The shift and spatial surface checks below still validate the reused path.
+    // Bidirectional shifts and visibility checks below validate the reused path.
     float2 uv_scale     = get_render_uv_scale_previous();
     bool prev_on_screen = all(prev_uv >= 0.0f) && all(prev_uv < uv_scale);
-    // The reference selects dual motion from occlusion before validating
-    // history. Ordinary depth tolerance can still accept a foreground occluder.
+    // Select the occlusion correspondence before checking the chosen history.
+    // An on-screen ordinary coordinate may still refer to the foreground.
     float2 dual_uv;
     bool alternate_valid;
     if (prev_on_screen)
@@ -190,7 +162,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         history_uv   = dual_uv;
         have_history = true;
-        dual_history = true;
     }
 
     bool have_temporal = false;
@@ -226,32 +197,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             // A valid zero-weight history is still a sampled technique. Dropping it based
             // on its draw biases the blend toward the histories that happened to find light.
-            bool usable = is_reservoir_valid(temporal) && temporal.M > 0.0f;
-
-            // Reprojection validated the full-resolution pixel, but the selected
-            // reservoir was traced at a snapped guide centre. At reduced tracing
-            // resolution that guide can lie across a silhouette in the same cell.
-            // Validate its previous-frame geometry too, using motion's previous
-            // depth so moving surfaces are compared in the same frame.
-            if (usable && !dual_history)
-            {
-                float2 source_uv = restir_primary_uv(uint2(prev_pixel), uint2(resolution));
-                float source_depth = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), source_uv, 0).r;
-                float3 source_normal = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(source_uv)]);
-                float expected_depth = abs(tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).w);
-                float2 previous_on_current_grid = prev_uv * (get_render_uv_scale() / get_render_uv_scale_previous());
-                float motion_factor = saturate(length((uv - previous_on_current_grid) * buffer_frame.resolution_render) / 32.0f);
-                float depth_delta = abs(linearize_depth(source_depth) - expected_depth) / max(expected_depth, 1e-3f);
-                usable = source_depth > 0.0f &&
-                    dot(normal_ws, source_normal) >= lerp(0.9f, 0.97f, motion_factor) &&
-                    depth_delta <= lerp(0.12f, 0.04f, motion_factor);
-            }
-
-            // Section 6.4 reuses the dual coordinate as another path-sampling
-            // technique, not as a claim that the two primary surfaces coincide.
-            // Normal maps and object motion can change their shading planes.
-            // The bidirectional shifts and visibility tests below validate the
-            // paths; a same-plane/normal test would discard valid techniques.
+            // Match TemporalPathRetrace / GenerateRetraceWorkload: a temporal
+            // technique needs a valid prior primary hit, not a similar surface.
+            // Normal/depth confidence rejection discards usable paths under
+            // jitter and motion, especially when tracing a reduced guide grid.
+            // Both shift directions below still evaluate transport and visibility.
+            bool usable = asuint(restir_primary_hit_previous[prev_pixel].x) != 0u &&
+                is_reservoir_valid(temporal) && temporal.M > 0.0f;
 
             if (usable)
             {
