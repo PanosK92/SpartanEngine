@@ -1730,25 +1730,18 @@ ShiftResult try_reconnection_shift(
     if (!restir_connection_distance_valid(dist_dst_sq))
         return result;
 
-    float3 rc_from_src = is_identity ? rc_from_dst : (src.rc_pos - src_primary_pos);
-    float  dist_src_sq = is_identity ? dist_dst_sq : dot(rc_from_src, rc_from_src);
-
-    if (!restir_connection_distance_valid(dist_src_sq))
-        return result;
-
-    float dist_src = sqrt(dist_src_sq);
     float dist_dst = sqrt(dist_dst_sq);
-
-    float3 dir_src = rc_from_src / dist_src;
     float3 dir_dst = rc_from_dst / dist_dst;
 
     if (dot(dst_normal, dir_dst) <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float cos_rc_src = dot(src.rc_normal, -dir_src);
     float cos_rc_dst = dot(src.rc_normal, -dir_dst);
 
-    if ((!is_triangle_reconnection(src) && !is_area_light_sample(src) && cos_rc_src <= RESTIR_RC_COS_FRONT) || cos_rc_dst <= RESTIR_RC_COS_FRONT)
+    // The source edge belongs to the frame in which the sample was drawn.
+    // Its geometry factor is retained in rc_pdf; connecting the current RC
+    // to the old primary can be degenerate after motion and is not that edge.
+    if (cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
     float3 rc_geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
