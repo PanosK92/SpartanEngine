@@ -23,6 +23,8 @@ struct RestirLightTileEntry
     // xy: analytic index/PMF; zw: emissive triangle index/packed barycentrics.
     uint4 lights;
     uint analytic_position; // Two uniform 16-bit coordinates for distant lights.
+    float3 environment_direction;
+    float environment_pdf; // Original solid-angle density, not tile frequency.
 };
 RWStructuredBuffer<RestirLightTileEntry> restir_light_tiles : register(u69);
 float2 restir_analytic_sample_position(RestirLightTileEntry entry)
@@ -2144,8 +2146,12 @@ RestirLightSample sample_direct_lighting_at_vertex(
     // owns the sun so the two strategies never overlap
     {
         float2 env_xi = random_float2(seed);
-        float  env_pdf;
-        float3 env_dir = sample_restir_environment(env_xi, env_pdf);
+        // Keep both random dimensions consumed for prefix replay. The complete
+        // sky sample is shared across receivers, just like other tile lights.
+        uint env_offset = 0u;
+        RestirLightTileEntry env_entry = restir_light_tile_entry(env_xi.x, 0u, 1u, env_offset);
+        float env_pdf = env_entry.environment_pdf;
+        float3 env_dir = env_entry.environment_direction;
 
         float env_n_dot_l = dot(shading_normal, env_dir);
 

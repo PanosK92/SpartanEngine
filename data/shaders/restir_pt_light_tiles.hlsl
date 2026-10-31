@@ -63,5 +63,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     uint analytic_seed = create_seed_for_pass(uint2(index, 2u), buffer_frame.frame, 6u);
     uint2 analytic_position = min(uint2(random_float2(analytic_seed) * 65536.0f), 65535u);
     cached.analytic_position = analytic_position.x | (analytic_position.y << 16u);
+    uint environment_seed = create_seed_for_pass(uint2(index, 3u), buffer_frame.frame, 6u);
+    cached.environment_direction = sample_restir_environment(
+        float2(xi, random_float(environment_seed)), cached.environment_pdf);
     restir_light_tiles[index] = cached;
 }

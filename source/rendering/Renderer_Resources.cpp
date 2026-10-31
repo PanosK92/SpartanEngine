@@ -308,9 +308,9 @@ namespace spartan
             restir_emissive_tri_initial_capacity, nullptr, false, "emissive_triangles"
         );
 
-        // RestirLightTileEntry: four selection/hit words and packed analytic coordinates.
+        // RestirLightTileEntry: selection/hit words, analytic coordinates, sky direction/PDF.
         at(buffers, Renderer_Buffer::RestirLightTiles) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Storage, static_cast<uint32_t>(5 * sizeof(uint32_t)),
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(9 * sizeof(uint32_t)),
             128 * 1024, nullptr, false, "restir_light_tiles"
         );
 
