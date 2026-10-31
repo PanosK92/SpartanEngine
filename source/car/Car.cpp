@@ -2557,6 +2557,7 @@ namespace spartan
                 auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
                 simulation->mount_dyno(Engine::IsFlagSet(EngineMode::Playing));
                 car_hud::draw_dyno_window(this, physics);
+                TickVisualization();
                 if (Engine::IsFlagSet(EngineMode::Playing)) TickSounds();
             }
             return;
@@ -3252,7 +3253,8 @@ namespace spartan
         Physics* car_physics = m_vehicle_entity->GetComponent<Physics>();
         const math::Vector3 velocity = car_physics ? car_physics->GetLinearVelocity() : math::Vector3(0.0f);
         m_chase_camera.Update(m_vehicle_entity->GetPosition(), m_vehicle_entity->GetForward(), velocity,
-            static_cast<float>(Timer::GetDeltaTimeRealSec()), m_camera_wind_shake, m_camera_speed_effects);
+            static_cast<float>(Timer::GetDeltaTimeRealSec()), PhysicsWorld::GetStepStatistics().simulated_seconds,
+            m_camera_wind_shake, m_camera_speed_effects);
 
         camera->SetPosition(m_chase_camera.position);
         if (Camera* camera_component = camera->GetComponent<Camera>())

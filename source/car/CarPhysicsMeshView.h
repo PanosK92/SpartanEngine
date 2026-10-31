@@ -79,7 +79,8 @@ namespace spartan
         struct Part { uint64_t id = 0; std::string geometry; bool used = false; };
         std::unordered_map<std::string, Part> parts;
         std::unordered_map<std::string, std::shared_ptr<Mesh>> meshes;
-        std::shared_ptr<Material> steel, alloy, rubber, spring, chrome, brake;
+        std::shared_ptr<Material> steel, alloy, rubber, spring, chrome, brake, copper, electrical, charge;
+        void draw_systems(Entity* root, Entity* vehicle, CarPhysics& physics, ::car::Simulation& simulation);
         uint64_t root_id = 0;
         uint32_t primitive_index = 0;
 
@@ -245,6 +246,9 @@ namespace spartan
                 spring->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                 chrome = material("Polished damper rod", Color(0.7f, 0.72f, 0.75f, 1), 1, 0.12f);
                 brake = material("Brake disc iron", Color(0.28f, 0.29f, 0.30f, 1), 1, 0.42f);
+                copper = material("Motor windings", Color(0.72f, 0.28f, 0.09f, 1), 1, 0.27f);
+                electrical = material("High voltage insulation", Color(0.95f, 0.22f, 0.015f, 1), 0, 0.45f);
+                charge = material("Battery state", Color(0.05f, 0.55f, 0.22f, 1), 0.4f, 0.3f);
             }
             // Retired actors and optional parts disappear even when a simulation is rebuilt.
             for (auto& [name, part] : parts) part.used = false;
@@ -255,6 +259,7 @@ namespace spartan
             const auto& multibody = simulation.get_multibody_state();
             const auto& config = simulation.get_config();
             const bool full = physics.GetVehicleSimMode() != VehicleSimMode::Cheap && simulation.has_multibody();
+            draw_systems(root, vehicle, physics, simulation);
             for (int i = 0; i < 4; ++i)
             {
                 const auto& corner = multibody.corners[i];

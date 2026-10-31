@@ -160,7 +160,7 @@ namespace spartan
         }
 
         // compile
-        if (IDxcBlob* shader_buffer = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
+        if (IDxcBlob* shader_buffer = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments, m_object_name))
         {
             // create shader module
             VkShaderModule shader_module         = nullptr;

@@ -1023,6 +1023,10 @@ namespace spartan
 
             SP_PROFILE_CPU_END();
             if (callbacks.after_pretick) callbacks.after_pretick();
+            // Physics and car follow have settled. Apply camera input and refresh its
+            // matrices before either the spatial query or per-render frustum tests.
+            if (callbacks.controls) callbacks.controls();
+            if (Camera* active_camera = GetCamera()) active_camera->RefreshMatrices();
             Animator::BeginSkinningBatch();
             SP_PROFILE_CPU_START("world_render_tick");
             const auto& all_render_entries = GetRenderSceneData();
@@ -1175,7 +1179,6 @@ namespace spartan
                 if (entity->GetActive()) entity->Tick(false);
             SP_PROFILE_CPU_END();
             SP_PROFILE_CPU_END();
-            if (callbacks.controls) callbacks.controls();
             SP_PROFILE_CPU_START("world_logic_tick");
             for (Entity* entity : views.logic)
             {

@@ -89,6 +89,8 @@ namespace spartan
         void Remove() override;
         // discard the current actors and build them again from the component's current state
         void Rebuild() { Create(); }
+        // Patch terrain detail holes without recooking the unchanged height samples.
+        bool UpdateHeightfieldHoles(int32_t x0, int32_t z0, int32_t x1, int32_t z1);
         bool PrepareWorld() override;
         void PreTick() override;
         void Tick() override;

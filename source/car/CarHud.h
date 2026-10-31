@@ -21,6 +21,7 @@ namespace spartan
 
         // full telemetry laid out around the car on screen, toggled with F3
         void draw_telemetry_hud(Car* car, Physics* physics);
+        void draw_simulated_systems(Physics* physics);
 
         // every car in play, top right, returns the one the player clicked: drive it if it is free, spectate it if someone else drives
         Car* draw_car_picker(Car* viewed);

@@ -1759,4 +1759,89 @@ namespace spartan::car_hud
 
         return chosen;
     }
+    void draw_simulated_systems(Physics* physics)
+    {
+        if (!physics) return;
+        auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
+        if (!simulation) return;
+        auto& s = *simulation;
+        const auto& p = s.get_spec();
+        const auto& rotations = s.get_visual_rotations();
+        const auto* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + 20, viewport->WorkPos.y + 80), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(380, 600), ImGuiCond_FirstUseEver);
+        const std::string title = "Simulated systems###car_systems_" + std::to_string(physics->GetEntity()->GetObjectId());
+        if (ImGui::Begin(title.c_str(), nullptr, ImGuiWindowFlags_NoSavedSettings))
+        {
+            ImGui::TextWrapped("Physics bodies use solved poses. Powertrain mounts and housing sizes follow this car's packaging preset; motion follows simulation time.");
+            ImGui::TextWrapped(!p.packaging.authored ? "Mounts: generic fallback (no packaging preset)." : p.packaging.estimated ? "Mounts: per-car engineering estimates, not factory measurements." : "Mounts: authored measured packaging.");
+            ImGui::TextDisabled("Cylinder and valve internals are kinematic illustrations.");
+            if (CarPhysics::Get(*physics).GetVehicleSimMode() == VehicleSimMode::Cheap)
+                ImGui::TextWrapped("Cheap simulation: select Full simulation to inspect the complete mechanical assembly.");
+            if (ImGui::CollapsingHeader("Engine and combustion", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Text("%d cylinders / %d banks / %.2f litres", p.engine_sound_cylinders, p.engine_sound_banks, p.engine_displacement_l);
+                ImGui::Text("%s   %.0f RPM   %.1f Nm", s.get_engine_running() ? "RUNNING" : "STOPPED", s.get_current_engine_rpm(), s.get_engine_output_torque());
+                ImGui::Text("Bore / stroke: %.1f / %.1f mm", p.engine_bore_mm, p.engine_stroke_mm);
+                ImGui::Text("Crank: %.1f deg / 720", rotations.combustion_cycle * 180.0f / pi);
+                ImGui::Text("Starter: %s   Intake: %s", s.get_starter_engaged() ? "engaged" : "off", s.get_intake_flooded() ? "FLOODED" : "clear");
+                ImGui::Text("Limiter: %s", s.get_rev_limiter_active() ? "FUEL CUT" : "off");
+            }
+            if (ImGui::CollapsingHeader("Clutch, gearbox and driveshaft", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                const int gear = std::clamp(s.get_current_gear(), 0, p.gear_count - 1);
+                const float input_rpm = s.get_gearbox_input_angular_velocity() * 60.0f / (2*pi);
+                ImGui::Text("Gear: %s   Ratio: %.3f   Final: %.3f", s.get_gear_string(), p.gear_ratios[gear], p.final_drive);
+                ImGui::Text("Clutch: %.0f%%   Slip: %.0f RPM", s.get_clutch()*100, s.get_current_engine_rpm()-input_rpm);
+                ImGui::Text("Gearbox input: %.0f RPM   %s", input_rpm, s.get_is_shifting() ? "SHIFTING" : "engaged");
+                ImGui::Text("Shaft: %.1f Nm   Twist: %.4f rad", s.get_driveshaft_torque(), s.get_driveshaft_twist());
+                ImGui::Text("Differential: %s   %s", s.get_diff_type_name(), p.drivetrain_type == 0 ? "RWD" : p.drivetrain_type == 1 ? "FWD" : "AWD");
+                if (p.drivetrain_type == 2) ImGui::Text("Front torque split: %.0f%%", p.torque_split_front*100);
+                ImGui::TextDisabled("Selected gear pair is highlighted in orange.");
+            }
+            if (ImGui::CollapsingHeader("Electric motor and energy storage", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                if (!p.electric_enabled) ImGui::TextDisabled("Not enabled on this car.");
+                else
+                {
+                    const auto& battery = s.get_hybrid_state();
+                    const float soc = battery.energy_j / std::max(p.battery_capacity_kwh * 3600000.0f, 1.0f);
+                    ImGui::Text("Motor: %.1f Nm   %.1f kW", s.get_motor_torque(), s.get_motor_power_kw());
+                    ImGui::Text("%s   %d pole pairs", battery.electrical_power_w < 0 ? "REGENERATING" : battery.electrical_power_w > 0 ? "MOTORING" : "IDLE", p.electric_motor_pole_pairs);
+                    ImGui::ProgressBar(std::clamp(soc,0.0f,1.0f), ImVec2(-1,0), "Battery state of charge");
+                    ImGui::Text("%.3f / %.3f kWh   %.1f C", battery.energy_j/3600000.0f, p.battery_capacity_kwh, battery.temperature);
+                    ImGui::Text("Electrical: %.1f kW   Loss: %.0f W", battery.electrical_power_w/1000, battery.loss_power_w);
+                    ImGui::Text("Thermal derating: %.0f%%", (1-std::clamp((p.battery_cutoff_temp-battery.temperature)/std::max(p.battery_cutoff_temp-p.battery_derate_temp,1.0f),0.0f,1.0f))*100);
+                }
+            }
+            if (ImGui::CollapsingHeader("Boost and driver assists"))
+            {
+                ImGui::Text("Boost: %s   %.2f / %.2f bar", s.get_turbo_enabled() ? "enabled" : "not fitted", s.get_boost_pressure(), p.boost_max_pressure);
+                ImGui::Text("ABS: %s   TC: %s", s.is_abs_active_any() ? "ACTIVE" : "idle", s.is_tc_active() ? "ACTIVE" : "idle");
+                ImGui::Text("Yaw control: %s", p.yaw_control_enabled ? "enabled" : "disabled");
+                ImGui::Text("Throttle %.0f%%   Brake %.0f%%   Steering %.2f", s.get_throttle()*100, s.get_brake()*100, s.get_steering());
+            }
+            if (ImGui::CollapsingHeader("Tires, suspension and brake thermals"))
+            {
+                for (int i = 0; i < 4; ++i)
+                {
+                    const auto& w = s.get_wheel_state(i);
+                    ImGui::Text("%s: %.0f N   %.2f bar   radius %.3f m", car::wheel_names[i], w.tire_load, w.pressure_bar, w.effective_radius);
+                    ImGui::Text("  Tire %.0f C / core %.0f C / wear %.1f%%", w.thermal.avg_surface(), w.thermal.core, w.wear*100);
+                    ImGui::Text("  Brake %.0f C / %.0f%%   Slip %.3f", s.get_wheel_brake_temp(i), s.get_wheel_brake_efficiency(i)*100, w.slip_ratio);
+                    ImGui::Text("  Spring %.0f N / drive %.0f Nm", s.get_wheel_suspension_force(i), w.drive_torque);
+                }
+            }
+            if (ImGui::CollapsingHeader("Aerodynamics and ground effect"))
+            {
+                const auto& a = s.get_aero_debug();
+                ImGui::Text("Drag %.0f N   Side %.0f N", a.drag_force.magnitude(), a.side_force.magnitude());
+                ImGui::Text("Downforce front %.0f / rear %.0f N", a.front_downforce.magnitude(), a.rear_downforce.magnitude());
+                ImGui::Text("Ride height %.3f m   Ground factor %.2f", a.ride_height, a.ground_effect_factor);
+                ImGui::Text("DRS: %s", s.get_drs_active() ? "OPEN" : "closed");
+            }
+        }
+        ImGui::End();
+    }
+
 }

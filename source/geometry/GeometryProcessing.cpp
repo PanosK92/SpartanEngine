@@ -486,7 +486,8 @@ namespace spartan::geometry_processing
         std::vector<Sb_MeshletBounds>& meshlets_out,
         std::vector<uint32_t>& unique_vertices_out,
         std::vector<uint32_t>& micro_indices_out,
-        math::BoundingBox& lod_aabb_out
+        math::BoundingBox& lod_aabb_out,
+        bool scan
     )
     {
         meshlets_out.clear();
@@ -529,7 +530,10 @@ namespace spartan::geometry_processing
         std::vector<unsigned char> meshlet_triangles(max_meshlets * meshlet_max_triangles * 3);
 
         // cone_weight 0.5 biases meshlet builds toward triangles with similar normals so cone backface culling is effective
-        const size_t meshlet_count = meshopt_buildMeshlets(
+        const size_t meshlet_count = scan ? meshopt_buildMeshletsScan(
+            meshlets.data(), meshlet_vertices.data(), meshlet_triangles.data(),
+            indices.data(), index_count, vertex_count, meshlet_max_vertices, meshlet_max_triangles
+        ) : meshopt_buildMeshlets(
             meshlets.data(),
             meshlet_vertices.data(),
             meshlet_triangles.data(),

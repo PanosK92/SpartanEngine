@@ -528,6 +528,17 @@ namespace spartan
             return;
         }
 
+        // Driving disables the player capsule, but the chase camera remains its
+        // child. Gravity/platform motion here would move that camera again after
+        // the car positioned it, depending on the entity pre-tick order.
+        if (is_playing && !m_enabled)
+        {
+            m_velocity = Vector3::Zero;
+            m_ground_actor = nullptr;
+            m_ground_yaw = 0.0f;
+            return;
+        }
+
         PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
 
         if (is_playing)
@@ -2550,6 +2561,84 @@ namespace spartan
                     break;
             }
         }
+    }
+
+    bool Physics::UpdateHeightfieldHoles(int32_t x0, int32_t z0, int32_t x1, int32_t z1)
+    {
+        lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+        if (m_body_type != BodyType::Heightfield || !m_mesh_is_heightfield || !m_mesh)
+            return false;
+
+        Entity* entity = GetEntity();
+        Terrain* terrain = entity->GetComponent<Terrain>();
+        int tile_index = -1;
+        if (!terrain && entity->GetParent())
+        {
+            terrain = entity->GetParent()->GetComponent<Terrain>();
+            tile_index = Terrain::ParseTileIndex(entity);
+        }
+        if (!terrain || !terrain->HasHeightfield()) return false;
+
+        auto* heightfield = static_cast<PxHeightField*>(m_mesh);
+        const int32_t rows = static_cast<int32_t>(heightfield->getNbRows());
+        const int32_t columns = static_cast<int32_t>(heightfield->getNbColumns());
+        if (rows < 2 || columns < 2) return false;
+        int32_t start_x = 0, start_z = 0;
+        if (tile_index >= 0)
+        {
+            const uint32_t n = max(terrain->GetTileCountAxis(), 1u);
+            start_x = ((static_cast<uint32_t>(tile_index) % n) * (terrain->GetDenseWidth() - 1)) / n;
+            start_z = ((static_cast<uint32_t>(tile_index) / n) * (terrain->GetDenseHeight() - 1)) / n;
+        }
+        // PhysX rows run along terrain x, columns along z. Only cells, not the
+        // shared final sample row/column, own triangle materials.
+        int32_t row0 = max(x0 - start_x, 0), row1 = min(x1 - start_x, rows - 2);
+        int32_t col0 = max(z0 - start_z, 0), col1 = min(z1 - start_z, columns - 2);
+        if (row0 > row1 || col0 > col1) return true;
+        row1 = max(row1, row0 + 1);
+        col1 = max(col1, col0 + 1);
+        const uint32_t patch_columns = col1 - col0 + 1;
+        vector<PxHeightFieldSample> samples(static_cast<size_t>(row1 - row0 + 1) * patch_columns);
+        bool changed = false;
+        for (int32_t row = row0; row <= row1; ++row)
+        {
+            for (int32_t col = col0; col <= col1; ++col)
+            {
+                auto& sample = samples[static_cast<size_t>(row - row0) * patch_columns + col - col0];
+                sample = heightfield->getSample(row, col);
+                if (row == rows - 1 || col == columns - 1) continue;
+                const PxU8 material = terrain->IsDetailCell(start_x + row, start_z + col) ? PxHeightFieldMaterial::eHOLE : 0;
+                changed |= static_cast<PxU8>(sample.materialIndex0) != material || static_cast<PxU8>(sample.materialIndex1) != material;
+                const bool tessellated = sample.tessFlag() != 0;
+                sample.materialIndex0 = material;
+                sample.materialIndex1 = material;
+                if (tessellated) sample.setTessFlag();
+            }
+        }
+        if (!changed) return true;
+        PxHeightFieldDesc patch;
+        patch.nbRows = row1 - row0 + 1;
+        patch.nbColumns = patch_columns;
+        patch.samples.data = samples.data();
+        patch.samples.stride = sizeof(PxHeightFieldSample);
+        // Heights and bounds are unchanged; shrinkBounds would rescan the entire tile.
+        if (!heightfield->modifySamples(col0, row0, patch, false)) return false;
+        for (void* handle : m_actors)
+        {
+            if (!handle) continue;
+            auto* actor = static_cast<PxRigidActor*>(handle);
+            vector<PxShape*> shapes(actor->getNbShapes());
+            actor->getShapes(shapes.data(), static_cast<PxU32>(shapes.size()));
+            for (PxShape* shape : shapes)
+            {
+                if (shape->getGeometry().getType() == PxGeometryType::eHEIGHTFIELD)
+                {
+                    const auto geometry = static_cast<const PxHeightFieldGeometry&>(shape->getGeometry());
+                    if (geometry.heightField == heightfield) shape->setGeometry(geometry);
+                }
+            }
+        }
+        return true;
     }
 
     void Physics::CreateHeightfield()

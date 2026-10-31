@@ -794,6 +794,8 @@ namespace spartan
         generated_cache::Hash cache_hash;
         cache_hash.Add(uint32_t(1)); // meshlet generator/cache version
         cache_hash.Add(sizeof(Sb_MeshletBounds));
+        const bool scan_meshlets = (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessMeshletsScan)) != 0;
+        if (scan_meshlets) cache_hash.Add(uint32_t(0x5343414e));
         const bool use_cache = indices.size() >= 192 && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
         if (use_cache)
         {
@@ -811,7 +813,7 @@ namespace spartan
         else
         {
             geometry_processing::build_meshlets(vertices, indices, lod_meshlets,
-                lod_unique_vertices, lod_micro_indices, lod_aabb);
+                lod_unique_vertices, lod_micro_indices, lod_aabb, scan_meshlets);
             cached_bounds = {lod_aabb.GetMin(), lod_aabb.GetMax()};
             if (use_cache) generated_cache::Save(cache_path, cache_hash.value,
                 lod_meshlets, lod_unique_vertices, lod_micro_indices, cached_bounds, indices);
@@ -1112,7 +1114,8 @@ namespace spartan
             meshlets,
             unique_vertices,
             micro_indices,
-            aabb
+            aabb,
+            (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessMeshletsScan)) != 0
         );
 
         if (

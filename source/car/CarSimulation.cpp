@@ -87,6 +87,23 @@ namespace car
     { return engine_rotation; }
 
 
+    void Simulation::advance_visual_rotations(float dt)
+    {
+        auto advance = [dt](float& angle, float speed, float period = PxTwoPi)
+        {
+            if (std::isfinite(speed)) angle = fmodf(angle + speed * dt, period);
+            if (!std::isfinite(angle)) angle = 0;
+        };
+        advance(visual_rotations.combustion_cycle, engine_rpm * PxTwoPi / 60.0f, 2 * PxTwoPi);
+        advance(visual_rotations.gearbox_input, gearbox_input_angular_velocity);
+        for (int gear = 0; gear < max_gears; ++gear)
+            if (gear < spec.gear_count && fabsf(spec.gear_ratios[gear]) > 0.001f)
+                advance(visual_rotations.gearbox_gears[gear], gearbox_input_angular_velocity / spec.gear_ratios[gear]);
+        const float driven_speed = get_average_driven_angular_velocity(false);
+        advance(visual_rotations.motor, driven_speed * spec.final_drive);
+        advance(visual_rotations.shaft, driven_speed);
+    }
+
     void Simulation::set_simulation_enabled(bool enabled)
     {
             if (simulation_enabled == enabled)
@@ -5061,6 +5078,7 @@ namespace car
             regen_axle_torque = 0;
             engine_rpm = spec.engine_idle_rpm;
             engine_rotation = 0.0f;
+            visual_rotations = {};
             current_gear = (spec.gear_count > 2) ? 2 : 1;
             shift_timer = 0.0f;
             is_shifting = false;
@@ -5540,6 +5558,7 @@ namespace car
             update_boost(input.throttle, engine_rpm, h);
             integrate_powertrain(h);
             engine_rotation = fmodf(engine_rotation + engine_rpm * PxTwoPi / 60 * h, PxTwoPi);
+            advance_visual_rotations(h);
             dyno.sample_clock += h;
             if (dyno.sample_clock >= 0.02f)
             {
@@ -5811,6 +5830,7 @@ namespace car
             apply_drivetrain(forward_speed * 3.6f, dt);
             update_handbrake();
             engine_rotation = fmodf(engine_rotation + engine_rpm * PxPi * 2.0f / 60.0f * dt, PxPi * 2.0f);
+            advance_visual_rotations(dt);
             if (!std::isfinite(engine_rotation))
             {
                 engine_rotation = 0.0f;

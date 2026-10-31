@@ -79,7 +79,8 @@ namespace spartan::geometry_processing
         std::vector<Sb_MeshletBounds>& meshlets_out,
         std::vector<uint32_t>& unique_vertices_out,
         std::vector<uint32_t>& micro_indices_out,
-        math::BoundingBox& lod_aabb_out
+        math::BoundingBox& lod_aabb_out,
+        bool scan = false
     );
 
     // splits a row major grid surface into tile_count x tile_count tiles, each tile is a rectangular

@@ -36,6 +36,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../io/pugixml.hpp"
 #include <mutex>
 #include "CarPhysicsMeshView.h"
+#include "CarPhysicsMeshSystems.h"
 //==========================================
 
 namespace spartan
@@ -564,6 +565,9 @@ namespace spartan
             if (!m_physics_mesh_view) m_physics_mesh_view = std::make_shared<CarPhysicsMeshView>();
             m_physics_mesh_view->tick(m_vehicle_entity, CarPhysics::Get(*physics), *simulation);
             skeleton_meshes = m_physics_mesh_view.get();
+            Camera* camera = World::GetCamera();
+            if (IsViewed() || (camera && math::Vector3::DistanceSquared(camera->GetEntity()->GetPosition(), m_vehicle_entity->GetPosition()) < 100.0f))
+                car_hud::draw_simulated_systems(physics);
         }
 
         Entity* wheel_entities[4] =
@@ -1195,24 +1199,8 @@ namespace spartan
         const bool drives_front = drivetrain_type == 1 || drivetrain_type == 2;
         const bool drives_rear  = drivetrain_type == 0 || drivetrain_type == 2;
         const float axle_y = (wheel_local[0].y + wheel_local[2].y) * 0.5f;
-        float gearbox_z = preset.center_of_mass_z;
-        if (drives_front && !drives_rear)
-        {
-            gearbox_z = front_z;
-        }
-        else if (drives_rear && !drives_front)
-        {
-            gearbox_z = rear_z;
-        }
-        {
-            const float driven_axle_z = drives_rear ? rear_z : front_z;
-            if (fabsf(gearbox_z - driven_axle_z) < 0.08f)
-            {
-                const float toward_center = (driven_axle_z >= 0.0f) ? -1.0f : 1.0f;
-                gearbox_z = driven_axle_z + toward_center * 0.10f;
-            }
-        }
-        const math::Vector3 gearbox = to_world(math::Vector3(0.0f, axle_y, gearbox_z));
+        const auto& mount = preset.packaging.gearbox.position;
+        const math::Vector3 gearbox = to_world(math::Vector3(mount[0], mount[1], mount[2]));
         const float driveshaft_torque = simulation->get_driveshaft_torque();
         const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
         const Color loaded_drivetrain_color = tint_skeleton_color(skeleton_color_drivetrain, torque_load, 0.45f);
@@ -1231,7 +1219,7 @@ namespace spartan
             power_unit_color = tint_skeleton_color(skeleton_color_drivetrain, 1.0f, 0.55f);
         }
 
-        const math::Vector3 flywheel_axis = vehicle_rotation * math::Vector3::Right * 0.10f;
+        const math::Vector3 flywheel_axis = vehicle_rotation * math::Vector3(preset.engine_crank_axis_x, preset.engine_crank_axis_y, preset.engine_crank_axis_z) * 0.10f;
         draw_skeleton_shaft(gearbox - flywheel_axis, gearbox + flywheel_axis, 0.075f + simulation->get_clutch() * 0.015f, simulation->get_engine_rotation(), 0.0f, power_unit_color);
         draw_visualization_sphere(gearbox, 0.10f, 8, power_unit_color);
 

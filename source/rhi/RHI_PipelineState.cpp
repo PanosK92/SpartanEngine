@@ -251,9 +251,13 @@ namespace spartan
         }
         m_compile_task = RHI_Compiler::Pipelines().Submit([this, descriptor_set_layout]()
         {
+            SP_LOG_INFO("Compiling PSO '%s'", m_state.name);
+            const Stopwatch compile_timer;
             try
             {
                 Create(m_state, descriptor_set_layout);
+                if (m_rhi_resource)
+                    SP_LOG_INFO("Compiled PSO '%s' in %.2f ms", m_state.name, compile_timer.GetElapsedTimeMs());
             }
             catch (const std::exception& error)
             {

@@ -31,6 +31,16 @@ namespace car
         bool                create_mechanisms = true; // false skips suspension multibody for cheap sim
     };
 
+    // Integrated on the simulation clock, including dyno runs. Rendering never advances these.
+    struct powertrain_visual_state
+    {
+        float combustion_cycle = 0; // radians over the four-stroke 720-degree cycle
+        float gearbox_input = 0;
+        float gearbox_gears[max_gears] = {};
+        float motor = 0;
+        float shaft = 0;
+    };
+
     // the whole vehicle model, a physx chassis body plus per-wheel tire, suspension, drivetrain and aero
     class Simulation
     {
@@ -66,6 +76,8 @@ namespace car
         float           reverse_request_timer   = 0.0f;
         float           engine_rpm              = 800.0f;
         float           engine_rotation         = 0.0f;
+        powertrain_visual_state visual_rotations;
+        void advance_visual_rotations(float dt);
         int             current_gear            = 1;
         float           shift_timer             = 0.0f;
         bool            is_shifting             = false;
@@ -168,6 +180,7 @@ namespace car
         bool get_rev_limiter_active() const;
         float get_clutch() const;
         float get_engine_rotation() const;
+        const powertrain_visual_state& get_visual_rotations() const { return visual_rotations; }
         void set_simulation_enabled(bool enabled);
         // toggles suspension multibody actors only, chassis stays as set by set_simulation_enabled
         void set_mechanism_simulation_enabled(bool enabled);

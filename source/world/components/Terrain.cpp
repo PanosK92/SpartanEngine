@@ -2409,6 +2409,7 @@ namespace spartan
         // everything below is a from scratch upload, pending region repairs are moot
         m_height_dirty.Clear();
         m_physics_dirty.Clear();
+        m_detail_collision_dirty.Clear();
         m_prop_mask_bake_dirty.Clear();
         m_props_dirty.Clear();
 
@@ -3632,7 +3633,7 @@ namespace spartan
         }
     }
 
-    void Terrain::RebuildPhysicsInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z)
+    void Terrain::RebuildPhysicsInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z, bool holes_only)
     {
         if (!m_entity_ptr)
         {
@@ -3652,7 +3653,13 @@ namespace spartan
 
             if (Physics* physics = child->GetComponent<Physics>())
             {
-                physics->Rebuild();
+                const TerrainGridMapping mapping = GetGridMapping();
+                if (!holes_only || !physics->UpdateHeightfieldHoles(
+                    static_cast<int32_t>(floorf((local_min_x + mapping.offset_x) / mapping.scale_x)),
+                    static_cast<int32_t>(floorf((local_min_z + mapping.offset_z) / mapping.scale_z)),
+                    static_cast<int32_t>(ceilf((local_max_x + mapping.offset_x) / mapping.scale_x)),
+                    static_cast<int32_t>(ceilf((local_max_z + mapping.offset_z) / mapping.scale_z))))
+                    physics->Rebuild();
             }
         }
     }
@@ -3766,9 +3773,20 @@ namespace spartan
 
     void Terrain::FlushPendingPhysics()
     {
+        if (!m_detail_collision_dirty.IsEmpty() && HasHeightfield())
+        {
+            const auto rect = m_detail_collision_dirty;
+            m_detail_collision_dirty.Clear();
+            const TerrainGridMapping mapping = GetGridMapping();
+            RebuildPhysicsInRegion(rect.x0 * mapping.scale_x - mapping.offset_x,
+                rect.z0 * mapping.scale_z - mapping.offset_z,
+                rect.x1 * mapping.scale_x - mapping.offset_x,
+                rect.z1 * mapping.scale_z - mapping.offset_z, true);
+        }
         if (m_physics_dirty.IsEmpty() || !HasHeightfield())
         {
             m_physics_dirty.Clear();
+            m_detail_collision_dirty.Clear();
             return;
         }
 
@@ -3778,6 +3796,7 @@ namespace spartan
         const float min_z = static_cast<float>(m_physics_dirty.z0) * mapping.scale_z - mapping.offset_z;
         const float max_z = static_cast<float>(m_physics_dirty.z1) * mapping.scale_z - mapping.offset_z;
         m_physics_dirty.Clear();
+        m_detail_collision_dirty.Clear();
 
         RebuildPhysicsInRegion(min_x, min_z, max_x, max_z);
     }
@@ -5305,6 +5324,7 @@ namespace spartan
         if (!preview)
         {
             m_physics_dirty.Clear();
+            m_detail_collision_dirty.Clear();
             m_prop_mask_bake_dirty.Clear();
         }
         if (update_placement)
@@ -5600,6 +5620,7 @@ namespace spartan
         m_live_track_entity  = 0;
         m_height_dirty.Clear();
         m_physics_dirty.Clear();
+        m_detail_collision_dirty.Clear();
         m_prop_mask_dirty.Clear();
         m_prop_mask_bake_dirty.Clear();
         m_props_dirty.Clear();

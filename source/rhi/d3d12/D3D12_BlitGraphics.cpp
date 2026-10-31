@@ -114,7 +114,7 @@ float main_ps_depth(VsOut v) : SV_Depth
         args.emplace_back("-Qstrip_reflect");
 
         string source = shader_source;
-        IDxcBlob* bytecode = DirectXShaderCompiler::Compile(source, args);
+        IDxcBlob* bytecode = DirectXShaderCompiler::Compile(source, args, "blit");
         if (!bytecode)
         {
             SP_LOG_ERROR("Failed to compile blit shader entry '%s'", entry_point);
@@ -272,6 +272,8 @@ float main_ps_depth(VsOut v) : SV_Depth
         }
 
         ID3D12PipelineState* pso = nullptr;
+        SP_LOG_INFO("Compiling PSO 'blit' (format %u, depth %d)", target_format, is_depth ? 1 : 0);
+        const Stopwatch compile_timer;
         HRESULT hr = RHI_Context::device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pso));
         if (FAILED(hr))
         {
@@ -279,6 +281,7 @@ float main_ps_depth(VsOut v) : SV_Depth
             return nullptr;
         }
 
+        SP_LOG_INFO("Compiled PSO 'blit' (format %u, depth %d) in %.2f ms", target_format, is_depth ? 1 : 0, compile_timer.GetElapsedTimeMs());
         return pso;
     }
 

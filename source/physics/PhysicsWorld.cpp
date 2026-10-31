@@ -580,6 +580,7 @@ namespace spartan
                 PxSimulationStatistics stats;
                 scene->getSimulationStatistics(stats);
                 ++step_statistics.steps;
+                step_statistics.simulated_seconds += step;
                 step_statistics.active_bodies = max(step_statistics.active_bodies, stats.nbActiveDynamicBodies);
                 step_statistics.active_constraints = max(step_statistics.active_constraints, stats.nbActiveConstraints);
                 step_statistics.solver_rows = max(step_statistics.solver_rows, stats.nbAxisSolverConstraints);

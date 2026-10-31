@@ -597,20 +597,27 @@ local function make_plan(seed)
     end
     -- Sparse, muted silhouettes beyond the near-water dream objects. No distant colliders.
     do
-        local far = { solid = false, shadows = false }
+        -- Enlarge each landmark around its sea-level anchor, not the world origin.
+        local scenery_scale = 5
+        local anchor_x, anchor_z = 0, 0
         local function distant(label, x, y, z, w, h, d, material, owner, mesh, rotation)
-            box(label, x, y, z, w, h, d, material, owner, false,
+            box(label, anchor_x + (x - anchor_x) * scenery_scale, y * scenery_scale,
+                anchor_z + (z - anchor_z) * scenery_scale,
+                w * scenery_scale, h * scenery_scale, d * scenery_scale, material, owner, false,
                 { mesh = mesh or "cube", rotation = rotation, solid = false, shadows = false })
         end
-        -- Staggered turbines 2-3.5 km offshore; keep their size so they read as horizon objects.
+        -- Staggered turbines 2-3.5 km offshore, enlarged to remain legible on the horizon.
         -- Rotor geometry remains local to its moving hub.
         for k, site in ipairs({ { 180, 270, 43 }, { 241, 302, 48 }, { 313, 284, 40 },
             { 365, 366, 51 }, { 258, 411, 44 }, { 433, 393, 46 } }) do
             local x, z, h = site[1] * 6, site[2] * 6, site[3]
             local owner, rotor = "distant_turbine_" .. k, "turbine_rotor_" .. k
+            anchor_x, anchor_z = x, z
             distant("tower", x, (h - 4) / 2, z, 1.5, h + 4, 1.5, "horizon_pearl", owner, "cylinder")
             distant("nacelle", x, h, z + 0.6, 2.2, 2, 5, "horizon_pearl", owner)
-            rotors[#rotors + 1] = { owner = rotor, x = x, y = h, z = z - 2.2, phase = k * 37, speed = 5 + k * 0.35 }
+            rotors[#rotors + 1] = { owner = rotor, x = x, y = h * scenery_scale,
+                z = z - 2.2 * scenery_scale, phase = k * 37, speed = 5 + k * 0.35 }
+            anchor_x, anchor_z = 0, 0 -- blades and hub are local to the rotor
             distant("hub", 0, 0, 0, 2.3, 2.3, 2, "horizon_pearl", rotor, "sphere")
             local length = h * 0.39
             for blade = 0, 2 do
@@ -626,6 +633,7 @@ local function make_plan(seed)
         end
         -- A drowned aqueduct on the western horizon, interrupted by two missing spans.
         local owner, x = "distant_broken_aqueduct", -1950
+        anchor_x, anchor_z = x, 2 -- centre of the full run
         for k = 0, 9 do
             local z = -115 + k * 26
             distant("aqueduct_pier", x, 6, z, 4, 20, 3, "horizon_lilac", owner)
@@ -644,11 +652,12 @@ local function make_plan(seed)
         -- A small lighthouse, alone on a low stone island to the southeast.
         owner = "distant_lighthouse"
         local lx, lz = 1470, -1380
+        anchor_x, anchor_z = lx, lz
         distant("lighthouse_islet", lx, -1.5, lz, 37, 8, 27, "horizon_lilac", owner, "sphere")
         distant("lighthouse_tower", lx, 13, lz, 5.5, 25, 5.5, "horizon_pearl", owner, "cylinder")
         distant("lighthouse_band", lx, 20, lz, 5.6, 2.5, 5.6, "horizon_rose", owner, "cylinder")
         distant("lantern_balcony", lx, 26, lz, 8, 0.8, 8, "horizon_lilac", owner, "cylinder")
-        box("lantern_glow", lx, 28, lz, 3.1, 3, 3.1, "glow", owner, false, far)
+        distant("lantern_glow", lx, 28, lz, 3.1, 3, 3.1, "glow", owner)
         for _, dx in ipairs({ -2, 2 }) do
             for _, dz in ipairs({ -2, 2 }) do
                 distant("lantern_post", lx + dx, 28, lz + dz, 0.35, 3.5, 0.35, "horizon_lilac", owner)

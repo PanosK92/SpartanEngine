@@ -75,6 +75,7 @@ namespace spartan
         struct StepStatistics
         {
             uint32_t steps = 0;
+            float simulated_seconds = 0.0f; // time advanced by the completed batch, including time scale
             uint32_t assisted_tasks = 0;
             uint32_t active_bodies = 0;
             uint32_t active_constraints = 0;

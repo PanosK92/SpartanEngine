@@ -14,18 +14,16 @@ namespace spartan::car_camera
 {
     constexpr float base_fov_deg = 90.0f;
 
-    // damped spring integrated in fixed substeps, so low frame rates cannot make it explode
-    inline void spring_step(float& value, float& velocity, float target, float omega, float zeta, float dt)
+    // Exact critically damped response: no ringing and no timestep-dependent
+    // instability when streaming stalls a frame. Capped substep counts cannot
+    // guarantee a bounded integration step during a long hitch.
+    inline void spring_step(float& value, float& velocity, float target, float omega, float dt)
     {
-        constexpr float max_step = 1.0f / 240.0f;
-        const int steps = std::clamp(static_cast<int>(ceilf(dt / max_step)), 1, 64);
-        const float h = dt / static_cast<float>(steps);
-        for (int i = 0; i < steps; ++i)
-        {
-            const float acceleration = omega * omega * (target - value) - 2.0f * zeta * omega * velocity;
-            velocity += acceleration * h;
-            value += velocity * h;
-        }
+        const float offset = value - target;
+        const float impulse = velocity + omega * offset;
+        const float decay = expf(-omega * dt);
+        value = target + (offset + impulse * dt) * decay;
+        velocity = (velocity - omega * impulse * dt) * decay;
     }
 
     // Follow the rendered car in translation and smooth only the heading.
@@ -43,8 +41,7 @@ namespace spartan::car_camera
         float orbit_pitch = 0;
         float speed_factor = 0;
         float fov_deg = base_fov_deg;
-        float previous_forward_speed = 0;
-        float previous_vertical_speed = 0;
+        math::Vector3 previous_velocity = math::Vector3(0.0f);
         float forward_acceleration = 0;
         float surge = 0;
         float surge_velocity = 0;
@@ -54,13 +51,12 @@ namespace spartan::car_camera
         bool initialized = false;
 
         void Update(const math::Vector3& car_position, const math::Vector3& car_forward, const math::Vector3& car_velocity,
-                    float dt, bool wind_enabled, bool speed_effects_enabled)
+                    float dt, float velocity_dt, bool wind_enabled, bool speed_effects_enabled)
         {
             dt = std::isfinite(dt) ? std::max(dt, 0.0f) : 0.0f;
             const bool velocity_valid = std::isfinite(car_velocity.x) && std::isfinite(car_velocity.y) && std::isfinite(car_velocity.z);
             const math::Vector3 velocity = velocity_valid ? car_velocity : math::Vector3(0.0f);
             const float speed = velocity.Length();
-            const float forward_speed = velocity.Dot(car_forward);
             const float target_yaw = atan2f(car_forward.x, car_forward.z);
             const float target_speed = std::clamp((speed - 15.0f) / 50.0f, 0.0f, 1.0f);
             // Respawns/teleports must not carry the old heading into the new shot.
@@ -71,8 +67,7 @@ namespace spartan::car_camera
                 speed_factor = target_speed;
                 orbit_yaw = yaw_bias;
                 orbit_pitch = pitch_bias;
-                previous_forward_speed = forward_speed;
-                previous_vertical_speed = velocity.y;
+                previous_velocity = velocity;
                 forward_acceleration = 0;
                 surge = surge_velocity = 0;
                 heave = heave_velocity = 0;
@@ -89,27 +84,35 @@ namespace spartan::car_camera
 
             // Speed cues are driven by acceleration, never by speed itself, so a car
             // cruising at any speed sits at the same distance and the orbit stays a sphere.
-            // Physics runs at its own rate, render frames see velocity in steps, so the
-            // derivative is low passed and clamped against contact spikes.
+            // Velocity belongs to the last completed physics batch, not this render
+            // frame. Dividing by render dt produces alternating acceleration spikes
+            // at uneven frame rates, and zero-step frames are not zero acceleration.
+            float vertical_delta = 0.0f;
+            if (std::isfinite(velocity_dt) && velocity_dt > 1e-5f && velocity_valid)
+            {
+                const math::Vector3 delta = velocity - previous_velocity;
+                // Project the velocity change into one heading; differentiating two
+                // separately projected speeds also mistakes body rotation for acceleration.
+                const float raw_forward = std::clamp(delta.Dot(car_forward) / velocity_dt, -40.0f, 40.0f);
+                vertical_delta = std::clamp(delta.y / velocity_dt, -80.0f, 80.0f) * velocity_dt;
+                forward_acceleration += (raw_forward - forward_acceleration) * (1.0f - expf(-velocity_dt / 0.12f));
+                previous_velocity = velocity;
+            }
             if (dt > 1e-5f)
             {
-                const float raw_forward = std::clamp((forward_speed - previous_forward_speed) / dt, -40.0f, 40.0f);
-                const float raw_vertical = std::clamp((velocity.y - previous_vertical_speed) / dt, -80.0f, 80.0f);
-                forward_acceleration += (raw_forward - forward_acceleration) * (1.0f - expf(-dt / 0.12f));
-                previous_forward_speed = forward_speed;
-                previous_vertical_speed = velocity.y;
-
                 // throttle pulls the camera back, braking lets the car come toward it
                 const float surge_target = speed_effects_enabled ? std::clamp(forward_acceleration * 0.07f, -0.45f, 0.6f) : 0.0f;
-                spring_step(surge, surge_velocity, surge_target, 5.0f, 0.55f, dt);
+                spring_step(surge, surge_velocity, surge_target, 5.0f, dt);
 
                 // the camera has inertia the body does not: bumps and landings move the car in frame
                 if (speed_effects_enabled)
                 {
-                    heave_velocity -= raw_vertical * dt * 0.25f;
+                    heave_velocity -= vertical_delta * 0.25f;
                 }
-                spring_step(heave, heave_velocity, 0.0f, 9.0f, 0.6f, dt);
+                spring_step(heave, heave_velocity, 0.0f, 9.0f, dt);
                 heave = std::clamp(heave, -0.35f, 0.35f);
+                if ((heave <= -0.35f && heave_velocity < 0.0f) || (heave >= 0.35f && heave_velocity > 0.0f))
+                    heave_velocity = 0.0f;
             }
 
             const float speed_ease = speed_factor * speed_factor * (3.0f - 2.0f * speed_factor);

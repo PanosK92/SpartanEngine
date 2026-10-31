@@ -69,7 +69,7 @@ namespace spartan
         }
     }
 
-    IDxcBlob* DirectXShaderCompiler::Compile(const string& source, vector<string>& arguments)
+    IDxcBlob* DirectXShaderCompiler::Compile(const string& source, vector<string>& arguments, const string& name)
     {
         call_once(initialization, []
         {
@@ -150,6 +150,14 @@ namespace spartan
             arguments_pointers[i] = arguments_wide[i].c_str();
         }
 
+        string variant;
+        for (size_t i = 0; i + 1 < arguments.size(); ++i)
+        {
+            if (arguments[i] == "-T" || arguments[i] == "-E" || arguments[i] == "-D")
+                variant += (variant.empty() ? "" : ", ") + arguments[i + 1];
+        }
+        SP_LOG_INFO("Compiling shader '%s' (%s)", name.c_str(), variant.c_str());
+        const Stopwatch compile_timer;
         IDxcResult* dxc_result = nullptr;
         HRESULT hr             = compiler->Compile(
             &dxc_buffer,
@@ -163,7 +171,7 @@ namespace spartan
 
         if (FAILED(hr) || !dxc_result || !log_diagnostics(dxc_result))
         {
-            SP_LOG_ERROR("Shader compilation failed.");
+            SP_LOG_ERROR("Shader '%s' (%s) compilation failed after %.2f ms", name.c_str(), variant.c_str(), compile_timer.GetElapsedTimeMs());
             if (dxc_result)
             {
                 dxc_result->Release();
@@ -175,6 +183,8 @@ namespace spartan
         IDxcBlob* shader = nullptr;
         dxc_result->GetResult(&shader);
         dxc_result->Release();
+        if (shader)
+            SP_LOG_INFO("Compiled shader '%s' (%s) in %.2f ms", name.c_str(), variant.c_str(), compile_timer.GetElapsedTimeMs());
         if (shader && !cache_path.empty())
         {
             const auto* bytes = static_cast<const uint8_t*>(shader->GetBufferPointer());

@@ -176,6 +176,51 @@ namespace car
             read_float(node, "skidpad_g_max", validation.skidpad_g_max);
         }
 
+        void load_packaging(pugi::xml_node node, car_preset& preset)
+        {
+            auto& layout = preset.packaging;
+            layout.authored = !!node;
+            read_bool(node, "estimated", layout.estimated);
+            read_float(node, "engine_output_side", layout.engine_output_side);
+            auto read = [&](const char* name, component_packaging& part)
+            {
+                auto child = node.child(name);
+                read_float_array(child, "position", part.position, 3);
+                read_float_array(child, "size", part.size, 3);
+                read_float_array(child, "axis", part.axis, 3);
+            };
+            read("engine", layout.engine); read("gearbox", layout.gearbox);
+            read("motor", layout.motor); read("battery", layout.battery);
+            read("inverter", layout.inverter); read("controller", layout.controller);
+            for (int i = 0; i < 4; ++i) read(("boost" + std::to_string(i)).c_str(), layout.boost[i]);
+        }
+
+        void load_vehicle_packaging(pugi::xml_node root, const string& car_path, car_preset& preset)
+        {
+            // Explicit vehicle data wins. The tracked catalogue supplies packaging
+            // for the bundled asset pack, whose .car files live outside source control.
+            if (auto node = root.child("packaging")) { load_packaging(node, preset); return; }
+            string directory = spartan::FileSystem::GetExecutableDirectory();
+            pugi::xml_document catalogue;
+            for (int level = 0; level < 8; ++level)
+            {
+                if (catalogue.load_file((directory + "/data/cars/packaging.xml").c_str())) break;
+                const string parent = spartan::FileSystem::GetParentDirectory(directory);
+                if (parent == directory) break;
+                directory = parent;
+            }
+            const string file = spartan::FileSystem::GetFileNameFromFilePath(car_path);
+            for (auto node : catalogue.child("vehicle_packaging").children("car"))
+                if (file == node.attribute("file").as_string()) { load_packaging(node, preset); return; }
+            // Unknown/custom cars retain a clearly labelled fallback, never a guessed make/model.
+            auto& layout = preset.packaging;
+            layout.engine.position[2] = preset.center_of_mass_z;
+            layout.gearbox.position[2] = preset.center_of_mass_z - 0.5f;
+            layout.gearbox.size[0] = 0.40f; layout.gearbox.size[1] = 0.35f; layout.gearbox.size[2] = 0.60f;
+            layout.battery.position[1] = preset.underfloor_y + 0.08f;
+            layout.battery.size[0] = 0.8f; layout.battery.size[1] = 0.12f; layout.battery.size[2] = 0.6f;
+        }
+
         bool validate_preset(car_preset& preset, const string& name)
         {
             auto finite_range = [](float value, float minimum, float maximum) { return std::isfinite(value) && value >= minimum && value <= maximum; };
@@ -189,6 +234,21 @@ namespace car
                 }
             };
 
+            const auto& layout = preset.packaging;
+            require(layout.engine_output_side == -1 || layout.engine_output_side == 1, "packaging.engine_output_side");
+            auto check_packaging = [&](const component_packaging& part)
+            {
+                float axis_length = 0;
+                for (int i = 0; i < 3; ++i)
+                {
+                    require(finite_range(part.position[i], -8, 8), "packaging.position");
+                    require(finite_range(part.size[i], 0.01f, 5), "packaging.size");
+                    axis_length += part.axis[i] * part.axis[i];
+                }
+                require(finite_range(axis_length, 0.99f, 1.01f), "packaging.axis");
+            };
+            for (const auto* part : {&layout.engine, &layout.gearbox, &layout.motor, &layout.battery, &layout.inverter, &layout.controller}) check_packaging(*part);
+            for (const auto& part : layout.boost) check_packaging(part);
             require(finite_range(preset.mass, 200.0f, 5000.0f), "mass");
             require(finite_range(preset.length, 2.0f, 8.0f), "length");
             require(finite_range(preset.width, 1.0f, 3.0f), "width");
@@ -937,6 +997,7 @@ namespace car
         load_suspension_geometry(root.child("rear_suspension"), definition.performance.rear_geometry);
         load_assists(root.child("assists"), definition.performance.assists);
         load_validation_targets(root.child("validation"), definition.performance.validation);
+        load_vehicle_packaging(root, path, definition.performance);
         derive_engine_layout(definition.performance);
         if (!validate_preset(definition.performance, definition.name))
         {

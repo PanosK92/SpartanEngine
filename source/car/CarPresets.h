@@ -85,11 +85,31 @@ namespace car
         float skidpad_g_max = 1.50f;
     };
 
+    // Render packaging in chassis actor coordinates: metres, X right/Y up/Z forward.
+    // Position is the component centre (engine: crank centre); size is local XYZ.
+    // Axis is local +Z (gearbox input-to-output, motor shaft). No added solver mass.
+    struct component_packaging
+    {
+        float position[3] = {};
+        float size[3] = {0.3f, 0.3f, 0.3f};
+        float axis[3] = {0, 0, 1};
+    };
+
+    struct vehicle_packaging
+    {
+        bool authored = false;
+        bool estimated = true;
+        float engine_output_side = 1;
+        component_packaging engine, gearbox, motor, battery, inverter, controller;
+        component_packaging boost[4];
+    };
+
     struct car_preset
     {
         car_preset()
         {
             memset(this, 0, sizeof(car_preset));
+            packaging = vehicle_packaging();
             front_geometry       = suspension_geometry();
             rear_geometry        = suspension_geometry();
             upright_mass         = 14.0f;
@@ -185,6 +205,7 @@ namespace car
         }
 
         const char* name;
+        vehicle_packaging packaging;
 
         // chassis dimensions set physical footprint static weight distribution and inertia
         float mass;                  // kg, curb weight with fluids

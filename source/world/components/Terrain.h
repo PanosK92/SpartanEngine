@@ -435,7 +435,7 @@ namespace spartan
         void RefreshSplineHeightCarves();
         void ClearRoadCarve();
         void PatchTilesInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z);
-        void RebuildPhysicsInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z);
+        void RebuildPhysicsInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z, bool holes_only = false);
         void PunchPropMaskFootprint(
             float center_x,
             float center_z,
@@ -738,6 +738,8 @@ namespace spartan
         std::unordered_map<uint32_t, std::vector<float>> m_detail_pages;
         std::unordered_map<uint32_t, float> m_detail_drop;
         std::unordered_map<uint64_t, std::shared_ptr<Mesh>> m_detail_meshes;
+        std::vector<std::shared_ptr<Mesh>> m_detail_mesh_pool;
+        std::unordered_map<uint64_t, std::vector<uint32_t>> m_detail_topology;
         std::vector<std::array<int32_t, 4>> m_detail_dirty;
         bool m_detail_dirty_cook = false;
         std::shared_ptr<RHI_Texture> m_detail_table_gpu;
@@ -762,6 +764,7 @@ namespace spartan
         // dense cells edited since the last flush, and cells whose collision still needs a rebuild
         TerrainDirtyRect m_height_dirty;
         TerrainDirtyRect m_physics_dirty;
+        TerrainDirtyRect m_detail_collision_dirty;
         // prop mask pixels rewritten since the last upload
         TerrainDirtyRect m_prop_mask_dirty;
         // dense cells whose slope changed, the biome mask under them rebakes on the next commit

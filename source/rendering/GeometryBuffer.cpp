@@ -148,6 +148,10 @@ namespace spartan
         using StagedWrites = map<uint32_t, vector<T>>;
         StagedWrites<RHI_Vertex_PosTexNorTan> vertex_writes;
         StagedWrites<Instance> instance_writes;
+        StagedWrites<uint32_t> index_writes;
+        StagedWrites<Sb_MeshletBounds> meshlet_bounds_writes;
+        StagedWrites<uint32_t> meshlet_vertex_writes;
+        StagedWrites<uint8_t> meshlet_micro_writes;
 
         // Only animated ranges get history storage; static geometry keeps its compact layout.
         struct VertexHistory
@@ -501,7 +505,7 @@ namespace spartan
         lock_guard<mutex> lock(buffer_mutex);
 
         SP_ASSERT(offset + count <= indices.size());
-        write(indices, static_cast<StagedWrites<uint32_t>*>(nullptr), index_buffer.get(), data, offset, count);
+        write(indices, &index_writes, index_buffer.get(), data, offset, count);
     }
 
     void GeometryBuffer::UpdateMeshletBounds(const Sb_MeshletBounds* data, const uint32_t offset, const uint32_t count)
@@ -509,7 +513,7 @@ namespace spartan
         lock_guard<mutex> lock(buffer_mutex);
 
         SP_ASSERT(offset + count <= meshlet_bounds.size());
-        write(meshlet_bounds, static_cast<StagedWrites<Sb_MeshletBounds>*>(nullptr), meshlet_bounds_buffer.get(), data, offset, count);
+        write(meshlet_bounds, &meshlet_bounds_writes, meshlet_bounds_buffer.get(), data, offset, count);
     }
 
     void GeometryBuffer::UpdateMeshletVertices(const uint32_t* data, const uint32_t offset, const uint32_t count)
@@ -517,7 +521,7 @@ namespace spartan
         lock_guard<mutex> lock(buffer_mutex);
 
         SP_ASSERT(offset + count <= meshlet_vertices.size());
-        write(meshlet_vertices, static_cast<StagedWrites<uint32_t>*>(nullptr), meshlet_vertex_buffer.get(), data, offset, count);
+        write(meshlet_vertices, &meshlet_vertex_writes, meshlet_vertex_buffer.get(), data, offset, count);
     }
 
     void GeometryBuffer::UpdateMeshletMicroIndices(const uint32_t* data, const uint32_t offset, const uint32_t count)
@@ -537,17 +541,21 @@ namespace spartan
         for (uint32_t i = 0; i < count; ++i)
             bytes[i] = static_cast<uint8_t>(data[i]);
 
-        write(meshlet_micro_indices, static_cast<StagedWrites<uint8_t>*>(nullptr), meshlet_micro_index_buffer.get(), bytes.data(), offset, padded_count);
+        write(meshlet_micro_indices, &meshlet_micro_writes, meshlet_micro_index_buffer.get(), bytes.data(), offset, padded_count);
     }
 
     void GeometryBuffer::BuildIfDirty()
     {
         lock_guard<mutex> lock(buffer_mutex);
 
-        // once per frame sync point for skinning and other deformables, must run before the dirty
-        // early out because deformable writes do not mark the buffer dirty
+        // Flush both deformation and topology edits once per frame. In-place writes
+        // do not mark the arena dirty, so these must run before the early out.
         flush_staged(vertex_writes, vertex_buffer.get(), vertices.committed);
         flush_staged(instance_writes, instance_buffer.get(), instances.committed);
+        flush_staged(index_writes, index_buffer.get(), indices.committed);
+        flush_staged(meshlet_bounds_writes, meshlet_bounds_buffer.get(), meshlet_bounds.committed);
+        flush_staged(meshlet_vertex_writes, meshlet_vertex_buffer.get(), meshlet_vertices.committed);
+        flush_staged(meshlet_micro_writes, meshlet_micro_index_buffer.get(), meshlet_micro_indices.committed);
 
         if (!dirty || vertices.size() == 0 || indices.size() == 0)
         {
@@ -792,6 +800,10 @@ namespace spartan
             impostor_texels.tail.capacity() * sizeof(uint32_t);
         for (const auto& [offset, data] : vertex_writes) bytes += data.capacity() * sizeof(RHI_Vertex_PosTexNorTan);
         for (const auto& [offset, data] : instance_writes) bytes += data.capacity() * sizeof(Instance);
+        for (const auto& [offset, data] : index_writes) bytes += data.capacity() * sizeof(uint32_t);
+        for (const auto& [offset, data] : meshlet_bounds_writes) bytes += data.capacity() * sizeof(Sb_MeshletBounds);
+        for (const auto& [offset, data] : meshlet_vertex_writes) bytes += data.capacity() * sizeof(uint32_t);
+        for (const auto& [offset, data] : meshlet_micro_writes) bytes += data.capacity();
         for (const auto& [offset, history] : vertex_history) bytes += history.pose.capacity() * sizeof(RHI_Vertex_PosTexNorTan);
         return bytes;
     }
@@ -882,6 +894,10 @@ namespace spartan
         instances.reset();
         vertex_writes.clear();
         instance_writes.clear();
+        index_writes.clear();
+        meshlet_bounds_writes.clear();
+        meshlet_vertex_writes.clear();
+        meshlet_micro_writes.clear();
         vertex_capacity                = 0;
         index_capacity                 = 0;
         meshlet_bounds_capacity        = 0;

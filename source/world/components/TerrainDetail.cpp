@@ -1002,8 +1002,11 @@ namespace spartan
                 static_cast<float>(px1) * mapping.scale_x - mapping.offset_x,
                 static_cast<float>(pz1) * mapping.scale_z - mapping.offset_z
             );
-            m_physics_dirty.Merge(px0, pz0, px1, pz1);
+
         }
+        // Detail changes alter collision materials, not the coarse height samples.
+        // Keep preview changes pending until commit, including holes without a vertex drop.
+        if (!changed_cells.empty()) m_detail_collision_dirty.Merge(rx0, rz0, rx1, rz1);
         FlushHeightEdits(cook_physics);
 
         // a chunk's skirts and border normals read the cells next to it, so a change reaches one cell out
@@ -1098,6 +1101,7 @@ namespace spartan
         SP_PROFILE_CPU_START("detail_chunk_vertices");
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
+        vector<uint32_t> topology = {n, x_end - x_begin, z_end - z_begin};
         for (uint32_t z = z_begin; z < z_end; z++)
         {
             for (uint32_t x = x_begin; x < x_end; x++)
@@ -1105,6 +1109,7 @@ namespace spartan
                 const auto page = m_detail_pages.find(z * cells_x + x);
                 if (page == m_detail_pages.end() || page->second.size() != static_cast<size_t>(stride) * stride)
                 {
+                    topology.push_back(0);
                     continue;
                 }
 
@@ -1112,6 +1117,7 @@ namespace spartan
                 const bool right  = !has_page(static_cast<int64_t>(x) + 1, z);
                 const bool bottom = !has_page(x, static_cast<int64_t>(z) - 1);
                 const bool top    = !has_page(x, static_cast<int64_t>(z) + 1);
+                topology.push_back(1u | (left << 1) | (right << 2) | (bottom << 3) | (top << 4));
 
                 const uint32_t base = static_cast<uint32_t>(vertices.size());
                 const float* heights = page->second.data();
@@ -1199,7 +1205,14 @@ namespace spartan
                 }
                 World::RemoveEntity(child);
             }
-            m_detail_meshes.erase(key);
+            // Keep the arena slices for incoming chunks instead of leaking them on every window shift.
+            if (auto it = m_detail_meshes.find(key); it != m_detail_meshes.end())
+            {
+                it->second->InvalidateAllBlas();
+                m_detail_mesh_pool.push_back(move(it->second));
+                m_detail_meshes.erase(it);
+            }
+            m_detail_topology.erase(key);
             m_detail_cook_pending.erase(key);
             return;
         }
@@ -1215,20 +1228,37 @@ namespace spartan
         }
         child->SetPositionLocal(Vector3(origin_x, 0.0f, origin_z));
 
-        shared_ptr<Mesh> mesh = make_shared<Mesh>();
-        mesh->SetObjectName(name);
-        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
-        // chunks are rebuilt as the camera moves, a disk cache entry per build is a write nothing ever reads back
-        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
-        mesh->SetDynamic(true);
-        mesh->SetPersistent(false);
+        shared_ptr<Mesh> mesh;
+        if (auto it = m_detail_meshes.find(key); it != m_detail_meshes.end())
+        {
+            mesh = it->second;
+        }
+        else if (!m_detail_mesh_pool.empty())
+        {
+            mesh = move(m_detail_mesh_pool.back());
+            m_detail_mesh_pool.pop_back();
+        }
+
+        // Rebuild topology in the existing slices. Only a chunk that outgrows its
+        // allocation needs new arena space; normal traversal recycles retired chunks.
         SP_PROFILE_CPU_START("detail_chunk_geometry");
-        mesh->AddGeometry(vertices, indices, false);
-        SP_PROFILE_CPU_END();
-        SP_PROFILE_CPU_START("detail_chunk_gpu");
-        mesh->CreateGpuBuffers();
+        const auto previous_topology = m_detail_topology.find(key);
+        const bool refitted = mesh && previous_topology != m_detail_topology.end() &&
+            previous_topology->second == topology && mesh->UpdateVertices(vertices);
+        if (!refitted && (!mesh || !mesh->UpdateGeometry(vertices, indices)))
+        {
+            mesh = make_shared<Mesh>();
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessMeshletsScan), true);
+            mesh->SetDynamic(true);
+            mesh->SetPersistent(false);
+            mesh->AddGeometry(vertices, indices, false);
+            mesh->CreateGpuBuffers();
+        }
+        mesh->SetObjectName(name);
         SP_PROFILE_CPU_END();
 
         Render* render = child->GetComponent<Render>();
@@ -1244,6 +1274,7 @@ namespace spartan
             render->SetMaterial(m_material);
         }
         m_detail_meshes[key] = mesh;
+        m_detail_topology[key] = move(topology);
         SP_PROFILE_CPU_END();
 
         if (cook_physics)
@@ -1276,6 +1307,9 @@ namespace spartan
             m_detail_pages.clear();
             m_detail_drop.clear();
             m_detail_meshes.clear();
+            m_detail_mesh_pool.clear();
+            m_detail_topology.clear();
+            m_detail_collision_dirty.Clear();
             m_detail_dirty.clear();
             m_detail_dirty_cook = false;
         }

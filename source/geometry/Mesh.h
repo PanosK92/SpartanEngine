@@ -46,6 +46,7 @@ namespace spartan
         PostProcessPreserveTerrainEdges = 1 << 7,
         PostProcessPreserveLod0         = 1 << 8, // keep authored detail, optimize layout without reducing geometry
         PostProcessSkipCache            = 1 << 9, // the owning generator caches the complete prepared mesh
+        PostProcessMeshletsScan         = 1 << 10, // linear clustering for spatially ordered procedural grids
     };
 
     enum class MeshType

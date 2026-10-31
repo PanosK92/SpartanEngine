@@ -1,0 +1,165 @@
+<?xml version='1.0' encoding='utf-8'?>
+<vehicle_packaging>
+    <!-- Chassis actor metres: X right, Y up, Z forward; axle centres are +/- wheelbase/2. All mounting coordinates and housing sizes are engineering estimates, NOT factory measurements. Engine geometry still uses preset bore/stroke/bank/crank data. The catalogue distinguishes front/mid/rear and transverse/longitudinal packaging; explicit .car <packaging> overrides it. size is component local XYZ, axis is local +Z; engine position is crank centre and engine_output_side selects crank end. Battery position is pack centre; module grid is illustrative, not a claimed cell count. -->
+    <!-- Architecture references: Ferrari launch release https://www.prnewswire.com/news-releases/the-laferrari-unveiled-at-geneva-195229671.html (floor battery, gearbox-coupled motor); Nissan https://www.nissan-global.com/EN/HERITAGE_COLLECTION/418_nissan_gt-r.html (rear transaxle); Porsche https://neworleans.porsche.com/en/mid-engine-vs-rear-engine-porsche-layouts-metairie-la (718 mid, 911 rear). Other catalogue layouts are provisional and require model-specific measurement/audit. -->
+    <car file="bmw_m3_competition_g80.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,1.1485" />
+        <gearbox position="0,-0.17,0.4485" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.9485" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,1.0385" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost1 position="0.4,-0.02,1.0385" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="bmw_m3_e30.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,1.0025" />
+        <gearbox position="0,-0.17,0.3025" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.8025" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,0.8925" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="bugatti_veyron_16_4.car" architecture="mid engine / gearbox ahead" estimated="true" engine_output_side="1">
+        <engine position="0,-0.12,-1.075" />
+        <gearbox position="0,-0.17,-0.05" size="0.4,0.34,0.6" axis="0,0,1" />
+        <controller position="0.42,0.02,0.875" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-1.185" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost1 position="0.4,-0.02,-1.185" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost2 position="-0.4,-0.02,-0.965" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost3 position="0.4,-0.02,-0.965" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="can_am_maverick_r_x_rs.car" architecture="mid longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,-0.7315" />
+        <gearbox position="0,-0.17,-1.5015" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.8915" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-0.8415" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="ferrari_f40.car" architecture="mid longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,-0.585" />
+        <gearbox position="0,-0.17,-1.355" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.745" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-0.695" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost1 position="0.4,-0.02,-0.695" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="ferrari_laferrari.car" architecture="mid longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,-0.685" />
+        <gearbox position="0,-0.18,-1.28" size="0.44,0.34,0.62" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.845" size="0.26,0.055,0.13" axis="0,0,1" />
+        <motor position="0,-0.18,-1.79" size="0.29,0.29,0.24" axis="0,0,-1" />
+        <battery position="0,-0.37,0.3" size="1.05,0.12,0.82" axis="0,0,1" />
+        <inverter position="0,0.07,-1.25" size="0.38,0.12,0.34" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-0.795" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="fiat_panda_100hp.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,0.8695" />
+        <gearbox position="0.43,-0.15,0.8695" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.6695" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.7595" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="ford_mustang_gt_s550.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,1.08" />
+        <gearbox position="0,-0.17,0.38" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.88" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,0.97" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="honda_nsx_na1.car" architecture="mid transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,-0.625" />
+        <gearbox position="0.43,-0.15,-0.625" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.785" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,-0.735" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="lamborghini_huracan_lp610_4.car" architecture="mid longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,-0.67" />
+        <gearbox position="0,-0.17,-1.44" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.83" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-0.78" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="lancia_delta_hf_integrale_evo.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,0.96" />
+        <gearbox position="0.43,-0.15,0.96" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.76" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.85" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="mazda_mx5_nd_2_0.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,0.875" />
+        <gearbox position="0,-0.17,0.175" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.675" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,0.765" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="mclaren_720s.car" architecture="mid longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,-0.695" />
+        <gearbox position="0,-0.17,-1.465" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.855" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-0.805" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost1 position="0.4,-0.02,-0.805" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="mini_cooper_s_r53.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,0.9535" />
+        <gearbox position="0.43,-0.15,0.9535" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.7535" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.8435" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="mitsubishi_lancer_evo_ix.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,1.0325" />
+        <gearbox position="0.43,-0.15,1.0325" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.8325" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.9225" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="nissan_gt_r_r35.car" architecture="front engine / rear transaxle" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,1.11" />
+        <gearbox position="0,-0.18,-1.29" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.91" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,1" size="0.15,0.15,0.16" axis="1,0,0" />
+        <boost1 position="0.4,-0.02,1" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="peugeot_205_gti_1_9.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,0.93" />
+        <gearbox position="0.43,-0.15,0.93" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.73" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.82" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="porsche_718_cayman_gt4.car" architecture="mid longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,-0.602" />
+        <gearbox position="0,-0.17,-1.372" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.762" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-0.712" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="porsche_911_carrera_rs_2_7.car" architecture="rear longitudinal" estimated="true" engine_output_side="1">
+        <engine position="0,-0.12,-1.5555" />
+        <gearbox position="0,-0.17,-0.8555" size="0.4,0.34,0.6" axis="0,0,1" />
+        <controller position="0.42,0.02,0.6555" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-1.6655" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="porsche_911_gt3.car" architecture="rear longitudinal" estimated="true" engine_output_side="1">
+        <engine position="0,-0.12,-1.6485" />
+        <gearbox position="0,-0.17,-0.9485" size="0.4,0.34,0.6" axis="0,0,1" />
+        <controller position="0.42,0.02,0.7485" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,-1.7585" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="reference_fwd.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,1.04" />
+        <gearbox position="0.43,-0.15,1.04" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.84" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.93" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+    <car file="suzuki_jimny_jb74.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,0.845" />
+        <gearbox position="0,-0.17,0.145" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.645" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,0.735" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="toyota_corolla_gt_ae86.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,0.92" />
+        <gearbox position="0,-0.17,0.22" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.72" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,0.81" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="toyota_gr_supra_3_0.car" architecture="front longitudinal" estimated="true" engine_output_side="-1">
+        <engine position="0,-0.12,0.955" />
+        <gearbox position="0,-0.17,0.255" size="0.4,0.34,0.6" axis="0,0,-1" />
+        <controller position="0.42,0.02,0.755" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.4,-0.02,0.845" size="0.15,0.15,0.16" axis="1,0,0" />
+    </car>
+    <car file="volkswagen_golf_gti_mk2_16v.car" architecture="front transverse" estimated="true" engine_output_side="1">
+        <engine position="-0.2,-0.12,0.9575" />
+        <gearbox position="0.43,-0.15,0.9575" size="0.4,0.34,0.36" axis="1,0,0" />
+        <controller position="0.42,0.02,0.7575" size="0.26,0.055,0.13" axis="0,0,1" />
+        <boost0 position="-0.6,-0.02,0.8475" size="0.15,0.15,0.16" axis="0,0,1" />
+    </car>
+</vehicle_packaging>
