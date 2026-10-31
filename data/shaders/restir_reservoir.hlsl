@@ -820,6 +820,13 @@ Reservoir create_empty_reservoir()
     return r;
 }
 
+// Reference PathReservoir::merge rejects a non-finite contribution before it
+// enters the accumulated weight. Finite inputs can still overflow in products.
+float restir_sanitize_resampling_weight(float weight)
+{
+    return isfinite(weight) ? max(weight, 0.0f) : 0.0f;
+}
+
 // streaming ris sample insert, lin 2022 algorithm 1
 // M here is a pass local candidate count, the initial pass overwrites it with a confidence of one
 // before the store so the mis denominators never see how many candidates happened to score

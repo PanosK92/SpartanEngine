@@ -176,7 +176,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     float weight_c = canonical_share * target_cur * center.W;
-    combined.weight_sum = max(weight_c, 0.0f);
+    combined.weight_sum = restir_sanitize_resampling_weight(weight_c);
 
     // gris streaming weights, w_j = m_j * p_hat * W_j * jacobian, jacobian appears once here
     bool picked_neighbor = false;
@@ -184,7 +184,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         float target_at_c = stream_target[j];
         float m_j         = stream_share[j];
-        float weight_j    = max(m_j * target_at_c * stream_W[j] * stream_jacobian[j], 0.0f);
+        float weight_j    = restir_sanitize_resampling_weight(m_j * target_at_c * stream_W[j] * stream_jacobian[j]);
 
         combined.weight_sum += weight_j;
 
@@ -217,7 +217,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
     // the selection time target is reused instead of a re-evaluation, for replay shifted
     // samples the two evaluation paths differ slightly and a mismatched divide skews W
-    combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
+    combined.W = restir_sanitize_resampling_weight(
+        (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f);
 
     // re-stamp the source primary g-buffer, the combine may have copied a neighbor src_*
     combined.sample.src_pos       = pos_ws;

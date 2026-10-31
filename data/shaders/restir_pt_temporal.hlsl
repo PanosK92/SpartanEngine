@@ -372,7 +372,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         weight_cur = target_cur * current.W;
     }
 
-    combined.weight_sum = max(weight_cur, 0.0f);
+    weight_cur = restir_sanitize_resampling_weight(weight_cur);
+    weight_tmp = restir_sanitize_resampling_weight(weight_tmp);
+    combined.weight_sum = weight_cur;
     combined.M          = current.M;
 
     if (have_temporal)
@@ -396,7 +398,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
     // the selection time target is reused instead of a re-evaluation, for replay shifted
     // samples the two evaluation paths differ slightly and a mismatched divide skews W
-    combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
+    combined.W = restir_sanitize_resampling_weight(
+        (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f);
 
     // re-stamp the source primary g-buffer, downstream shifts originate from the current pixel
     combined.sample.src_pos       = pos_ws;
