@@ -5,7 +5,7 @@
 <h2 align="center">Path traced. GPU driven. Started before AI and developed alongside me while in the game industry</h2>
 
 <p align="center">
-  <sub>TWELVE YEARS &nbsp;·&nbsp; ONE ENGINEER &nbsp;·&nbsp; NEARLY 8,000 COMMITS &nbsp;·&nbsp; WINDOWS AND LINUX &nbsp;·&nbsp; DIRECTX 12 AND VULKAN</sub>
+  <sub>12 YEARS &nbsp;·&nbsp; 1 ENGINEER &nbsp;·&nbsp; WINDOWS AND LINUX &nbsp;·&nbsp; DIRECTX 12 AND VULKAN</sub>
 </p>
 
 <p align="center">
