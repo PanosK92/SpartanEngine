@@ -2057,7 +2057,9 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
         return true;
     RayDesc ray;
     ray.Origin = restir_ray_origin(dst_pos, dst_normal);
-    ray.TMin = RESTIR_RAY_T_MIN;
+    // Reference evalSegmentVisibility: the surface origin is already offset.
+    // Its default disables any additional gap at the start of the segment.
+    ray.TMin = 0.0f;
     if (is_sky_sample(src))
     {
         ray.Direction = src.rc_pos;
@@ -2069,11 +2071,12 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
         // from the unoffset direction tests a different segment near corners.
         float3 to_rc = src.rc_pos - ray.Origin;
         float distance = length(to_rc);
-        float endpoint_epsilon = max(RESTIR_RAY_T_MIN, compute_ray_offset(src.rc_pos));
-        if (distance <= endpoint_epsilon + ray.TMin)
-            return true;
+        if (!(distance > 0.0f) || !isfinite(distance))
+            return false;
         ray.Direction = to_rc / distance;
-        ray.TMax = distance - endpoint_epsilon;
+        // Reference kShadowRayTMaxRatio. A camera-dependent endpoint gap can
+        // skip nearby occluders and change visibility when only the camera moves.
+        ray.TMax = 0.999f * distance;
     }
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
