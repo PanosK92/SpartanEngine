@@ -166,7 +166,7 @@ void ray_gen()
         float unused_pdf;
         float3 direction = local_to_world(sample_cosine_hemisphere(random_float2(guide_seed), unused_pdf), normal_ws);
         RayDesc guide_ray;
-        guide_ray.Origin = pos_ws + geometric_normal_ws * compute_ray_offset(pos_ws);
+        guide_ray.Origin = restir_ray_origin(pos_ws, geometric_normal_ws);
         guide_ray.Direction = direction;
         guide_ray.TMin = RESTIR_RAY_T_MIN;
         guide_ray.TMax = RESTIR_RAY_T_MAX;
@@ -188,7 +188,7 @@ void ray_gen()
         if (dot(normal_ws, direction) > 0.0f)
         {
             RayDesc guide_ray;
-            guide_ray.Origin = pos_ws + geometric_normal_ws * compute_ray_offset(pos_ws);
+            guide_ray.Origin = restir_ray_origin(pos_ws, geometric_normal_ws);
             guide_ray.Direction = direction;
             guide_ray.TMin = RESTIR_RAY_T_MIN;
             guide_ray.TMax = RESTIR_RAY_T_MAX;
@@ -202,7 +202,7 @@ void ray_gen()
     // Section 6.1: all light kinds compete in the same 32-proposal RIS.
     RestirLightSample light = sample_direct_lighting_at_vertex(pos_ws, normal_ws, geometric_normal_ws,
         view_dir, albedo, roughness, metallic, 1.0f, seed, false, 1u);
-    PathSample light_candidate = restir_light_endpoint_descriptor(light, pos_ws, 1u, seed);
+    PathSample light_candidate = restir_light_endpoint_descriptor(light, restir_ray_origin(pos_ws, geometric_normal_ws), 1u, seed);
     float light_weight = 0.0f;
     if (light.endpoint_valid && restir_pdf_valid(light.endpoint_pdf))
     {
@@ -217,7 +217,7 @@ void ray_gen()
         light_weight = target_scalar(light_candidate.F) * W;
         canonical_gi += light.radiance_sum * n_brdf;
         canonical_specular += light.radiance_sum * n_brdf *
-            restir_primary_specular_fraction(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+            restir_primary_specular_fraction(light_candidate, pos_ws, normal_ws, geometric_normal_ws, view_dir, albedo, roughness, metallic);
     }
     update_reservoir(reservoir, light_candidate, light_weight, random_float(seed));
 

@@ -1077,6 +1077,21 @@ float compute_ray_offset(float3 pos_ws)
     return max(max(p_mag * 1e-5f, dist * 1e-4f), 2e-4f);
 }
 
+// Falcor GeometryHelpers::computeRayOrigin: component-wise floating-point
+// offset. The same origin must define tracing, connection PDFs and shifts.
+float restir_offset_ray_component(float position, float normal)
+{
+    int offset = int(normal * (3.0f * 256.0f));
+    float displaced = asfloat(asint(position) + (position < 0.0f ? -offset : offset));
+    return abs(position) < (1.0f / 16.0f) ? position + normal * (3.0f / 65536.0f) : displaced;
+}
+float3 restir_ray_origin(float3 position, float3 geometric_normal)
+{
+    return float3(restir_offset_ray_component(position.x, geometric_normal.x),
+        restir_offset_ray_component(position.y, geometric_normal.y),
+        restir_offset_ray_component(position.z, geometric_normal.z));
+}
+
 // diffuse vs specular selection probability for the importance sampled brdf, from lobe energy
 float compute_spec_probability(float3 albedo, float roughness, float metallic, float n_dot_v)
 {
@@ -1314,14 +1329,14 @@ float restir_primary_specular_blend(float roughness)
 
 // Split each RGB resampling contribution before summing it (section 6.3).
 // Splitting only the winning path would throw away the color-noise reduction.
-float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal,
+float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal, float3 geometric_normal,
     float3 view, float3 albedo, float roughness, float metallic)
 {
     float3 direction;
     if (is_sky_sample(s) && s.rc_length == 2u)
         direction = s.rc_pos;
     else if (s.rc_length == 2u && (has_reconnection(s) || is_nee_sample(s)))
-        direction = normalize(s.rc_pos - pos);
+        direction = normalize(s.rc_pos - restir_ray_origin(pos, geometric_normal));
     else
     {
         uint seed = s.seed_path;
@@ -1539,9 +1554,10 @@ ShiftResult try_reconnection_shift(
         return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
             dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
 
+    float3 connection_origin = restir_ray_origin(dst_pos, dst_geometric_normal);
     if (is_triangle_reconnection(src))
     {
-        if (!restir_reconstruct_rc(src, dst_pos)) return result;
+        if (!restir_reconstruct_rc(src, connection_origin)) return result;
         result.sample = src;
     }
 
@@ -1574,13 +1590,13 @@ ShiftResult try_reconnection_shift(
     {
         uint light_index;
         float3 dirac_radiance;
-        if (!restir_resolve_dirac_light(src, light_index) || !restir_dirac_light_radiance(light_index, dst_pos, dirac_radiance))
+        if (!restir_resolve_dirac_light(src, light_index) || !restir_dirac_light_radiance(light_index, connection_origin, dirac_radiance))
             return result;
 
         result.sample.endpoint_light = light_index;
         result.sample.rc_pos         = light_parameters[light_index].position;
 
-        float3 to_light = result.sample.rc_pos - dst_pos;
+        float3 to_light = result.sample.rc_pos - connection_origin;
         float  dist     = length(to_light);
         if (dist < 1e-3f || all(dirac_radiance <= 0.0f))
             return result;
@@ -1602,7 +1618,7 @@ ShiftResult try_reconnection_shift(
         return result;
     }
 
-    float3 rc_from_dst = src.rc_pos - dst_pos;
+    float3 rc_from_dst = src.rc_pos - connection_origin;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
     if (!restir_connection_distance_valid(dist_dst_sq))
         return result;
@@ -1673,7 +1689,7 @@ ShiftResult try_reconnection_shift(
     // RC outgoing direction is represented in solid angle, so reconnecting
     // preserves that coordinate. Its initial sampling PDF is already in W.
     result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst) *
-        restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
+        restir_primary_endpoint_mis(src, connection_origin, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
     result.jacobian = jacobian;
     result.sample.rc_pdf = geometry_dst;
     result.ok       = true;
@@ -1861,6 +1877,8 @@ RestirLightSample sample_direct_lighting_at_vertex(
     float offset_xi = random_float(seed);
     uint selection_seed = seed ^ 0x9e3779b9u;
     if (replay) return result; // NEE leaves always reconnect; full replay is BSDF-only.
+    float3 surface_pos = shading_pos;
+    shading_pos = restir_ray_origin(surface_pos, geometric_normal);
     uint candidate_count = restir_nee_candidate_count(vertex);
     uint tile_offset = 0u;
     [loop] for (uint proposal = 0u; proposal < candidate_count; ++proposal)
@@ -1988,7 +2006,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
     // Trace only the RIS winner, using the same segment and alpha handling as
     // reconnection. An occluded winner remains a zero draw, never a replacement.
     PathSample endpoint = restir_light_endpoint_descriptor(result, shading_pos, 1u, seed);
-    if (!trace_shift_visibility(endpoint, shading_pos, geometric_normal)) return (RestirLightSample)0;
+    if (!trace_shift_visibility(endpoint, surface_pos, geometric_normal)) return (RestirLightSample)0;
     float inverse_density = result.weight_sum / (float(candidate_count) * result.selected_target);
     result.radiance_sum *= inverse_density;
     result.incident = result.endpoint_radiance / result.endpoint_pdf;
@@ -2002,9 +2020,8 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
     // Prefix replay already traced the actual last-prefix-to-RC segment.
     if ((has_reconnection(src) && src.rc_length > 2u) || (src.rc_length == 0u && src.path_length > 0u))
         return true;
-    float offset = compute_ray_offset(dst_pos);
     RayDesc ray;
-    ray.Origin = dst_pos + dst_normal * offset;
+    ray.Origin = restir_ray_origin(dst_pos, dst_normal);
     ray.TMin = RESTIR_RAY_T_MIN;
     if (is_sky_sample(src))
     {

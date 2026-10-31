@@ -81,7 +81,7 @@ bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, floa
         return false;
     if (!rc.hit)
         return true;
-    float3 delta = rc.hit_position - previous.hit_position;
+    float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal);
     float d2 = dot(delta, delta);
     if (!restir_connection_distance_valid(d2))
         return false;
@@ -111,7 +111,7 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
     s.rc_outgoing_dir = s.rc_normal;
-    float3 delta = rc.hit_position - previous.hit_position;
+    float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal);
     float distance_sq = dot(delta, delta);
     s.rc_pdf = rc.hit ? abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 1.0f;
     return s;
@@ -168,7 +168,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     [loop] for (uint depth = 2u; depth <= RESTIR_MAX_PATH_LENGTH; ++depth)
     {
         RayDesc ray;
-        ray.Origin = previous.hit_position + previous.geometric_normal * compute_ray_offset(previous.hit_position);
+        ray.Origin = restir_ray_origin(previous.hit_position, previous.geometric_normal);
         ray.Direction = dir;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
@@ -184,7 +184,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             EmissiveTriangle emitter;
             if (restir_hit_emitter_triangle(current.geometry, emitter))
-                endpoint_nee_pdf = restir_emitter_source_pdf(emitter, previous.hit_position, previous.hit_normal, current.hit_position, depth - 1u);
+                endpoint_nee_pdf = restir_emitter_source_pdf(emitter, ray.Origin, previous.hit_normal, current.hit_position, depth - 1u);
         }
         // Sky NEE has no support on surface emitters. An unpooled emissive
         // hit is sampled only by the BSDF and must keep its full contribution.
@@ -266,7 +266,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         else
         {
             // Section 6.2.3: force connection to the sampled NEE endpoint.
-            leaf = restir_light_endpoint_descriptor(light, current.hit_position, depth, replay_seed);
+            leaf = restir_light_endpoint_descriptor(light, restir_ray_origin(current.hit_position, current.geometric_normal), depth, replay_seed);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
@@ -364,7 +364,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         prefix *= evaluate_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
             incoming, direction, unused_pdf, blend) / pdf;
         RayDesc ray;
-        ray.Origin = v.hit_position + v.geometric_normal * compute_ray_offset(v.hit_position);
+        ray.Origin = restir_ray_origin(v.hit_position, v.geometric_normal);
         ray.Direction = direction;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
@@ -374,7 +374,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     }
     uint k = src.rc_length;
     PathSurface previous = vertices[k - 1u];
-    if (!restir_reconstruct_rc(src, previous.hit_position)) return result;
+    float3 connection_origin = restir_ray_origin(previous.hit_position, previous.geometric_normal);
+    if (!restir_reconstruct_rc(src, connection_origin)) return result;
     result.sample = src;
     if (is_dirac_light_sample(src))
     {
@@ -385,7 +386,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         src.rc_pos = light_parameters[light_index].position;
         result.sample = src;
     }
-    float3 delta = src.rc_pos - previous.hit_position;
+    float3 delta = src.rc_pos - connection_origin;
     if (!is_sky_sample(src) && !restir_connection_distance_valid(dot(delta, delta)))
         return result;
     float3 direction = is_sky_sample(src) ? src.rc_pos : normalize(delta);
@@ -429,14 +430,14 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     if (k == src.path_length)
         mis = src.endpoint_pooled
             ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light,
-                restir_terminal_emitter_pdf(src, previous.hit_position, previous.hit_normal), connect_pdf)
+                restir_terminal_emitter_pdf(src, connection_origin, previous.hit_normal), connect_pdf)
             : restir_rc_endpoint_mis(3u, src.path_length, src.endpoint_light, src.endpoint_environment,
                 previous.hit_normal, direction, connect_pdf);
     float3 radiance = rc_outgoing_radiance(src, direction);
     if (is_dirac_light_sample(src))
     {
         uint light_index;
-        if (!restir_resolve_dirac_light(src, light_index) || !restir_dirac_light_radiance(light_index, previous.hit_position, radiance))
+        if (!restir_resolve_dirac_light(src, light_index) || !restir_dirac_light_radiance(light_index, connection_origin, radiance))
             return result;
         result.sample.rc_L_nee = radiance;
     }
