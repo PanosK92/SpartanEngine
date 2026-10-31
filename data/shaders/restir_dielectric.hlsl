@@ -7,7 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 #ifndef SPARTAN_RESTIR_DIELECTRIC
 #define SPARTAN_RESTIR_DIELECTRIC
-#include "restir_reservoir.hlsl"
+// Included after the reservoir's shared GGX/VNDF primitives. Do not include
+// the reservoir here: it also includes the path walker and surface BSDF adapter.
 
 float restir_dielectric_ndf(float3 h, float alpha)
 {

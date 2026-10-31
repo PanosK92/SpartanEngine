@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 #ifndef SPARTAN_RESTIR_PATH
 #define SPARTAN_RESTIR_PATH
 #include "restir_surface.hlsl"
+#include "restir_bsdf.hlsl"
 
 uint3 restir_trace_hit(RayDesc ray, out float hit_distance)
 {
@@ -292,15 +293,13 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             if (!replay && rr >= RESTIR_RR_CONTINUATION) break;
             if (!replay) roulette_weight /= RESTIR_RR_CONTINUATION;
         }
-        float outgoing_pdf;
-        float3 outgoing = sample_reflection_brdf(current.albedo, current.roughness, current.metallic,
-            current.hit_normal, current.geometric_normal, -dir, random_float2(seed), outgoing_pdf, 1.0f);
-        if (!restir_pdf_valid(outgoing_pdf) || dot(outgoing, current.hit_normal) <= 0.0f || any(!isfinite(outgoing)))
+        RestirSurfaceSample scatter = restir_surface_sample(current, -dir, float3(random_float2(seed), 0.0f), 1.0f);
+        if (!scatter.valid)
             break;
-        float3 f = evaluate_reflection_brdf(current.albedo, current.roughness, current.metallic,
-            current.hit_normal, current.geometric_normal, -dir, outgoing, unused_pdf, 1.0f);
+        float3 outgoing = scatter.direction;
+        float outgoing_pdf = scatter.pdf;
         if (has_reconnection(connection))
-            suffix *= f / outgoing_pdf;
+            suffix *= scatter.weight;
         else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold))
         {
             connection = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
@@ -310,8 +309,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             connection_density = dir_pdf / (incoming_pdf * outgoing_pdf);
             suffix = 1.0f;
         }
-        throughput *= f / outgoing_pdf;
-        reference_throughput *= f / outgoing_pdf;
+        throughput *= scatter.weight;
+        reference_throughput *= scatter.weight;
         previous = current;
         dir = outgoing;
         incoming_pdf = outgoing_pdf;
@@ -357,16 +356,13 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
                 random_float(seed); // no roulette termination during replay
         }
         float blend = i == 1u ? restir_primary_specular_blend(roughness) : 1.0f;
-        float pdf;
-        float3 direction = sample_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
-            incoming, random_float2(seed), pdf, blend);
-        if (!restir_pdf_valid(pdf) || dot(v.hit_normal, direction) <= 0.0f || any(!isfinite(direction)))
+        RestirSurfaceSample scatter = restir_surface_sample(v, incoming, float3(random_float2(seed), 0.0f), blend);
+        if (!scatter.valid)
             return result;
+        float3 direction = scatter.direction;
         directions[i] = direction;
-        pdfs[i] = pdf;
-        float unused_pdf;
-        prefix *= evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
-            incoming, direction, unused_pdf, blend) / pdf;
+        pdfs[i] = scatter.pdf;
+        prefix *= scatter.weight;
         RayDesc ray;
         ray.Origin = restir_ray_origin(v.hit_position, v.geometric_normal);
         ray.Direction = direction;
