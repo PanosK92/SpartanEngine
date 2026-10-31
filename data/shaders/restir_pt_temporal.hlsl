@@ -76,7 +76,9 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
     float2 source_uv = restir_primary_uv((float2(previous_pixel) + 0.5f) / size);
     float2 to_history = previous_scale / uv_scale;
     dual_uv = current_uv * to_history + source_uv - occluder_uv * to_history;
-    return all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < previous_scale);
+    // Select the occlusion correspondence even outside the history rectangle.
+    // The reservoir bounds check must reject it, not fall back to the occluder.
+    return all(isfinite(dual_uv));
 }
 
 // validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
@@ -168,28 +170,27 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // The shift and spatial surface checks below still validate the reused path.
     float2 uv_scale     = get_render_uv_scale_previous();
     bool prev_on_screen = all(prev_uv >= 0.0f) && all(prev_uv < uv_scale);
-    if (!have_history)
+    // The reference selects dual motion from occlusion before validating
+    // history. Ordinary depth tolerance can still accept a foreground occluder.
+    float2 dual_uv;
+    bool alternate_valid;
+    if (prev_on_screen)
     {
-        float2 dual_uv;
-        bool alternate_valid;
-        if (prev_on_screen)
-        {
-            alternate_valid = find_dual_history_uv(uv, prev_uv, pos_ws, dual_uv);
-        }
-        else
-        {
-            // The reference's disocclusion-motion pass reverses motion when
-            // ordinary reprojection is outside the image. Reverse physical
-            // motion only: both lookups still target the same jittered history.
-            dual_uv = reproject_to_previous_frame(uv, true);
-            alternate_valid = all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
-        }
-        if (alternate_valid)
-        {
-            history_uv   = dual_uv;
-            have_history = true;
-            dual_history = true;
-        }
+        alternate_valid = find_dual_history_uv(uv, prev_uv, pos_ws, dual_uv);
+    }
+    else
+    {
+        // The reference's disocclusion-motion pass reverses motion when
+        // ordinary reprojection is outside the image. Reverse physical
+        // motion only: both lookups still target the same jittered history.
+        dual_uv = reproject_to_previous_frame(uv, true);
+        alternate_valid = all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
+    }
+    if (alternate_valid)
+    {
+        history_uv   = dual_uv;
+        have_history = true;
+        dual_history = true;
     }
 
     bool have_temporal = false;
