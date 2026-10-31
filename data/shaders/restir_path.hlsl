@@ -83,11 +83,6 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     float3 delta = rc.hit_position - previous.hit_position;
     float distance_sq = dot(delta, delta);
     s.rc_pdf = rc.hit ? abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 1.0f;
-    if (vertex == 2u && rc.hit)
-    {
-        float2 geometric_oct = octahedral_encode(rc.geometric_normal);
-        s.rc_pdf = pack_f16x2_to_float(geometric_oct.x, geometric_oct.y);
-    }
     return s;
 }
 
@@ -180,13 +175,6 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed);
             leaf.flags |= PATH_FLAG_RC_EMIT;
-            // Terminal normals already occupy the shading-normal word.
-            if (depth > 2u && current.hit)
-            {
-                float3 edge = current.hit_position - previous.hit_position;
-                float distance_sq = dot(edge, edge);
-                leaf.rc_pdf = abs(dot(endpoint.hit_normal, edge * rsqrt(distance_sq))) / distance_sq;
-            }
             leaf.rc_L_nee = emitted;
             leaf.F = throughput * incoming_pdf * emitted * endpoint_mis;
             inverse_density = dir_pdf / incoming_pdf;
@@ -257,9 +245,10 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             float distance_sq = dot(delta, delta);
             // The probe starts at an offset origin. Cache the geometry of the
             // actual vertex-to-endpoint edge, as the destination shift does.
+            leaf.rc_geometric_normal_packed = pack_rc_geometric_normal(light.endpoint_normal);
             leaf.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
                 (restir_connection_distance_valid(distance_sq)
-                    ? abs(dot(light.endpoint_normal, delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
+                    ? abs(dot(unpack_rc_geometric_normal(leaf.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
@@ -401,7 +390,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     rc.hit = !is_sky_sample(src);
     rc.hit_position = src.rc_pos;
     rc.hit_normal = src.rc_normal;
-    rc.geometric_normal = k < src.path_length ? unpack_rc_geometric_normal(src.rc_geometric_normal_packed) : src.rc_normal;
+    rc.geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
     float pdf_out = 0.0f;
     if (k < src.path_length)
         evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,

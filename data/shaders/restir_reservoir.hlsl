@@ -466,14 +466,14 @@ struct PathSample
     float rc_nee_pdf; // Source light PDF for the endpoint immediately after RC.
     uint2 endpoint_geometry; // Terminal pooled emitter: instance/primitive or pool index.
     bool endpoint_pooled;
-    float rc_pdf; // Postponed RC: incoming geometry density. Primary RC: packed geometric normal.
+    float rc_pdf; // Source incoming geometry factor, updated after every reconnection shift.
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
     uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
     uint endpoint_emtri_draw;
     float3 rc_pos;
     float3 rc_normal;
-    uint rc_geometric_normal_packed; // Continuing postponed RC: two 12-bit octahedral components.
+    uint rc_geometric_normal_packed; // Surface RC: two 12-bit octahedral components.
     float3 rc_outgoing_dir;
     float3 rc_L_post;
     float3 rc_L_nee;
@@ -562,7 +562,7 @@ void unpack_path_info(uint packed, inout PathSample s)
 // t2: terminal radiance OR source position, packed RC albedo/metallic
 // t3: seed, path descriptor, W, endpoint NEE source PDF (target is derived from F)
 // t4: 8-bit M + 24-bit RC geometric normal, RC roughness, source normal/roughness, source albedo/metallic
-// t5: cached RGB integrand paired with W, postponed geometry density OR primary RC geometric normal
+// t5: cached RGB integrand paired with W, source incoming geometry factor
 float pack_f16x2_to_float(float a, float b)
 {
     uint packed = f32tof16(a) | (f32tof16(b) << 16u);
@@ -632,10 +632,9 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     tex5 = float4(r.sample.F, r.sample.rc_pdf);
     // Supplemental Algorithm 1 stores confidence as an 8-bit integer. The
     // current cap and three spatial neighbors bound stored M by 4 * 21 = 84.
-    // Use the remaining bits for the postponed RC geometry, not its BRDF normal.
+    // Use the remaining bits for the RC geometry, not its BRDF normal.
     uint confidence = uint(clamp(r.M + 0.5f, 0.0f, 255.0f));
-    bool continuing_postponed = !terminal && r.sample.rc_length > 2u && (r.sample.flags & PATH_FLAG_HAS_RC) != 0u;
-    uint geometric = continuing_postponed ? r.sample.rc_geometric_normal_packed : 0u;
+    uint geometric = r.sample.rc_geometric_normal_packed;
     tex4 = float4(
         asfloat(confidence | (geometric << 8u)),
         pack_f16x2_to_float(r.sample.rc_roughness, 0.0f),
@@ -1640,8 +1639,7 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 rc_geometric_normal = octahedral_decode(unpack_float_to_f16x2(src.rc_pdf));
-    float geometry_cos_src = abs(dot(rc_geometric_normal, -dir_src));
+    float3 rc_geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
     float geometry_cos_dst = abs(dot(rc_geometric_normal, -dir_dst));
 
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
@@ -1672,17 +1670,14 @@ ShiftResult try_reconnection_shift(
     if (all(brdf_cos <= 0.0f))
         return result;
 
-    // Exact geometry ratio for the solid-angle reconnection parameterization.
-    // Positive distances and front-facing cosines were checked above. Form the
-    // ratios separately: flooring their product changes the Jacobian for short
-    // or grazing connections, even making a geometry-preserving shift lose energy.
-    // The solid-angle/area conversion uses the actual surface normal, not
-    // the normal map used by the BRDF above.
-    // Primary reconnections do not need the postponed incoming density, so
-    // its reservoir word stores this normal without increasing storage.
-    if (geometry_cos_src <= 0.0f || geometry_cos_dst <= 0.0f)
+    // Reference shiftPathReconnection: preserve the source geometry factor
+    // across stores, then replace it with the destination factor for the next
+    // shift. Recomputing the denominator from a reconstructed/moving RC loses
+    // the geometry of the sample that actually produced the cached integrand.
+    float geometry_dst = geometry_cos_dst / dist_dst_sq;
+    if (!(src.rc_pdf > 0.0f) || !(geometry_dst > 0.0f))
         return result;
-    float jacobian = (geometry_cos_dst / geometry_cos_src) * (dist_src_sq / dist_dst_sq);
+    float jacobian = geometry_dst / src.rc_pdf;
     if (!(jacobian > 0.0f) || isnan(jacobian) || isinf(jacobian))
         return result;
 
@@ -1691,6 +1686,7 @@ ShiftResult try_reconnection_shift(
     result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst) *
         restir_primary_emitter_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
     result.jacobian = jacobian;
+    result.sample.rc_pdf = geometry_dst;
     result.ok       = true;
     result.sample.F = result.f_dst;
     return result;

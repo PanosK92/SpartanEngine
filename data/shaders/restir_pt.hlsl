@@ -73,8 +73,8 @@ PathSample sample_emissive_tri_candidate(
     s.flags    |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
     s.rc_pos    = light_pos;
     s.rc_normal = light_normal;
-    float2 geometric_oct = octahedral_encode(light_normal);
-    s.rc_pdf = pack_f16x2_to_float(geometric_oct.x, geometric_oct.y);
+    s.rc_geometric_normal_packed = pack_rc_geometric_normal(light_normal);
+    s.rc_pdf = abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), to / dist)) / dot(to, to);
     s.rc_L_nee  = emission;
     s.endpoint_pooled = true;
     s.endpoint_geometry = uint2(triangle_index, 0u);
@@ -177,8 +177,8 @@ PathSample sample_light_candidate(
         // area light, rc is the emitter surface, no continuation past rc
         s.rc_pos      = sampled_pos;
         s.rc_normal   = light_normal;
-        float2 geometric_oct = octahedral_encode(light_normal);
-        s.rc_pdf = pack_f16x2_to_float(geometric_oct.x, geometric_oct.y);
+        s.rc_geometric_normal_packed = pack_rc_geometric_normal(light_normal);
+        s.rc_pdf = abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), dir)) / dot(to, to);
         s.rc_L_nee    = light.color.rgb * light.intensity * restir_range_window(dist, light.range);
         s.rc_L_post   = float3(0, 0, 0);
         s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
