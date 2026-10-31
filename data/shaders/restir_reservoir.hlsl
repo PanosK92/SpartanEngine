@@ -379,11 +379,15 @@ float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 norm
     return pdf > 0.0f && isfinite(pdf) ? pdf : 0.0f;
 }
 
-// path flags, pack_path_info stores these in a nibble so a fifth bit needs a layout change
+// Terminal type is derived from the endpoint strategy and connection length
+// when unpacking. This leaves two packed bits for the scattering events on
+// either side of RC without sacrificing the five-bit NEE proposal identity.
 static const uint PATH_FLAG_SKY      = 1 << 0;  // rc is the sky dome, rc_pos stores a unit direction
 static const uint PATH_FLAG_HAS_RC   = 1 << 1;  // reconnection vertex is valid for the reconnection shift
 static const uint PATH_FLAG_RC_EMIT  = 1 << 2;  // terminal BSDF-hit emitter
 static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light nee strategy
+static const uint PATH_FLAG_TRANSMISSION_BEFORE_RC = 1 << 4;
+static const uint PATH_FLAG_TRANSMISSION_AFTER_RC  = 1 << 5;
 
 // endpoint_light values that are not analytic light indices, fixed so a sample keeps its technique
 // when the light count changes under it, light indices stay below them (16 bit packed field)
@@ -519,7 +523,9 @@ uint pack_path_info(PathSample s)
     // BSDF leaves do not use the NEE draw field. Retain their endpoint kind
     // there so suffix MIS distinguishes sky misses from unpooled emitters.
     uint endpoint_tag = s.endpoint_light == RESTIR_ENDPOINT_BSDF ? uint(s.endpoint_environment) : s.endpoint_emtri_draw;
-    return (s.rc_length & 7u) | ((s.flags & 15u) << 3u) | ((s.path_length & 7u) << 7u)
+    uint stored_flags = (s.flags & (PATH_FLAG_SKY | PATH_FLAG_HAS_RC)) |
+        ((s.flags & (PATH_FLAG_TRANSMISSION_BEFORE_RC | PATH_FLAG_TRANSMISSION_AFTER_RC)) >> 2u);
+    return (s.rc_length & 7u) | (stored_flags << 3u) | ((s.path_length & 7u) << 7u)
         | ((s.endpoint_light & 65535u) << 10u) | ((endpoint_tag & 31u) << 26u) | (uint(s.endpoint_pooled) << 31u);
 }
 
@@ -538,7 +544,8 @@ float3 unpack_rc_geometric_normal(uint packed)
 void unpack_path_info(uint packed, inout PathSample s)
 {
     s.rc_length = packed & 7u;
-    s.flags = (packed >> 3u) & 15u;
+    uint stored_flags = (packed >> 3u) & 15u;
+    s.flags = (stored_flags & 3u) | ((stored_flags & 12u) << 2u);
     s.path_length = (packed >> 7u) & 7u;
     s.endpoint_light = (packed >> 10u) & 65535u;
     s.endpoint_emtri_draw = (packed >> 26u) & 31u;
@@ -546,6 +553,8 @@ void unpack_path_info(uint packed, inout PathSample s)
         (s.endpoint_light == RESTIR_ENDPOINT_BSDF && (s.endpoint_emtri_draw & 1u) != 0u);
     if (s.endpoint_light == RESTIR_ENDPOINT_BSDF) s.endpoint_emtri_draw = 0u;
     s.endpoint_pooled = (packed >> 31u) != 0u;
+    if ((s.flags & PATH_FLAG_HAS_RC) != 0u && s.rc_length == s.path_length)
+        s.flags |= s.endpoint_light == RESTIR_ENDPOINT_BSDF ? PATH_FLAG_RC_EMIT : PATH_FLAG_NEE;
 }
 
 // Four RGBA32F textures (64 bytes). Primary surface history is shared per pixel;
