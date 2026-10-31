@@ -89,7 +89,7 @@ PathSample sample_light_candidate(
     float3 primary_pos,
     float3 primary_normal,
     inout uint seed,
-    out float source_pdf)
+    out float source_pdf, uint proposal, uint candidate_count, inout uint tile_offset)
 {
     PathSample s = (PathSample)0;
     s.rc_pos          = float3(0, 0, 0);
@@ -116,7 +116,7 @@ PathSample sample_light_candidate(
     if (light_count == 0)
         return s;
 
-    uint4 tile_entry = restir_light_tile_entry(random_float(seed));
+    uint4 tile_entry = restir_light_tile_entry(random_float(seed), proposal, candidate_count, tile_offset);
     uint light_idx = tile_entry.x;
     float pick_pdf = asfloat(tile_entry.y);
     if (light_idx >= light_count || pick_pdf <= 0.0f)
@@ -420,10 +420,11 @@ void ray_gen()
         PathSample light_pick    = (PathSample)0;
         float light_weight_sum   = 0.0f;
         float light_pick_target  = 0.0f;
+        uint tile_offset = 0u;
         for (uint li = 0; li < n_light_count; li++)
         {
             float light_source_pdf;
-            PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, seed, light_source_pdf);
+            PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, seed, light_source_pdf, li, n_light_count, tile_offset);
             if (!restir_pdf_valid(light_source_pdf))
             {
                 continue;

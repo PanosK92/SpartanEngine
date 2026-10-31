@@ -20,9 +20,14 @@ static const uint RESTIR_LIGHT_TILE_SIZE = 1024u;
 // xy: analytic light index/PMF; zw: emissive triangle index/packed barycentrics.
 RWStructuredBuffer<uint4> restir_light_tiles : register(u69);
 static uint restir_light_tile_index = 0u;
-uint4 restir_light_tile_entry(float xi)
+// LightTileRIS::GenerateSample uses one random offset and a fixed stride.
+// Later xi draws are still consumed by callers so prefix replay stays aligned.
+uint4 restir_light_tile_entry(float xi, uint proposal, uint count, inout uint offset)
 {
-    uint entry = min(uint(xi * float(RESTIR_LIGHT_TILE_SIZE)), RESTIR_LIGHT_TILE_SIZE - 1u);
+    uint stride = (RESTIR_LIGHT_TILE_SIZE + count - 1u) / count;
+    if (proposal == 0u)
+        offset = min(uint(xi * float(stride)), stride - 1u);
+    uint entry = (offset + proposal * stride) % RESTIR_LIGHT_TILE_SIZE;
     return restir_light_tiles[restir_light_tile_index * RESTIR_LIGHT_TILE_SIZE + entry];
 }
 
@@ -1726,11 +1731,13 @@ bool emtri_ris_pick_path(
 
     float weight_sum = 0.0f;
     float target_sel = 0.0f;
+    uint tile_offset = 0u;
 
     for (uint i = 0u; i < candidate_count; i++)
     {
         float3 xi = random_float3(seed);
         float  u  = random_float(seed);
+        uint4 tile_entry = restir_light_tile_entry(xi.x, i, candidate_count, tile_offset);
         if (!pool_ok || (forced_draw >= 0 && i != uint(forced_draw)))
         {
             continue;
@@ -1739,7 +1746,6 @@ bool emtri_ris_pick_path(
         float3 dir, p;
         float point_pdf;
         EmissiveTriangle tri;
-        uint4 tile_entry = restir_light_tile_entry(xi.x);
         if (tile_entry.z >= count)
             continue;
         tri = emissive_triangles[tile_entry.z];
@@ -1931,12 +1937,13 @@ RestirLightSample sample_direct_lighting_at_vertex(
     // Importance-sampled analytic NEE, with the same depth-dependent budget as
     // emissive NEE. Fixed random dimensions make BSDF-prefix replay cheap.
     uint candidate_count = restir_nee_candidate_count(vertex);
+    uint tile_offset = 0u;
     for (uint proposal = 0u; proposal < candidate_count; ++proposal)
     {
         float3 light_xi = random_float3(seed);
+        uint4 tile_entry = restir_light_tile_entry(light_xi.x, proposal, candidate_count, tile_offset);
         if (forced_light == int(RESTIR_ENDPOINT_BSDF))
             continue;
-        uint4 tile_entry = restir_light_tile_entry(light_xi.x);
         uint light_idx = tile_entry.x;
         float pick_pdf = asfloat(tile_entry.y);
         if (light_idx >= light_count || pick_pdf <= 0.0f)
