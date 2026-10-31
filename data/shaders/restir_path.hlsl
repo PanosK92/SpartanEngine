@@ -23,14 +23,14 @@ PathSurface restir_trace_surface(RayDesc ray)
     if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
         return (PathSurface)0;
     float2 bary = query.CommittedTriangleBarycentrics();
-    uint packed_bary = f32tof16(bary.x) | (f32tof16(bary.y) << 16u);
+    uint packed_bary = pack_hit_barycentrics(bary);
     return reconstruct_path_surface(query.CommittedRayT(), query.CommittedInstanceIndex(),
         query.CommittedPrimitiveIndex(), packed_bary, ray);
 }
 
 float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray)
 {
-    uint packed = f32tof16(bary.x) | (f32tof16(bary.y) << 16u);
+    uint packed = pack_hit_barycentrics(bary);
     // This is a terminal light vertex, not a BRDF vertex. Its normal is
     // used for solid-angle/area conversion when reconnecting the endpoint.
     return reconstruct_path_surface(distance, instance, primitive, packed, ray).geometric_normal;

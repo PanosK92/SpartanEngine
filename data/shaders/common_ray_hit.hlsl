@@ -14,6 +14,12 @@ struct [raypayload] HitPayload
 #endif
 };
 
+uint pack_hit_barycentrics(float2 barycentrics)
+{
+    uint2 uv = uint2(round(saturate(barycentrics) * 65535.0f));
+    return uv.x | (uv.y << 16u);
+}
+
 float3 unpack_hit_barycentrics(uint packed)
 {
     // ReSTIR PT Enhanced stores barycentrics as UNORM16x2. Unlike half floats,
@@ -31,8 +37,7 @@ void closest_hit(inout HitPayload payload : SV_RayPayload, in BuiltInTriangleInt
 #if DEBUG_RAY_TRACING != 1
     payload.instance_index    = InstanceIndex();
     payload.primitive_index   = PrimitiveIndex();
-    uint2 barycentrics = uint2(round(saturate(attribs.barycentrics) * 65535.0f));
-    payload.barycentrics_packed = barycentrics.x | (barycentrics.y << 16);
+    payload.barycentrics_packed = pack_hit_barycentrics(attribs.barycentrics);
 #endif
 }
 
