@@ -1708,6 +1708,19 @@ static const float RESTIR_RR_CONTINUATION = 0.75f;
 static const float SKY_MIP_LEVEL             = 2.0f;
 // sun cone half angle, matches the real sun angular radius
 static const float SUN_CONE_HALF_ANGLE       = 0.0047f;
+
+// Use one finite sun emitter for primary and secondary NEE. Its radiance is
+// authored directional intensity times this solid-angle PDF at every bounce.
+float3 sample_restir_sun_cone(float3 direction, float2 xi, out float pdf)
+{
+    float cos_max = cos(SUN_CONE_HALF_ANGLE);
+    pdf = 1.0f / (2.0f * PI * (1.0f - cos_max));
+    float phi = 2.0f * PI * xi.x;
+    float cos_theta = lerp(cos_max, 1.0f, xi.y);
+    float sin_theta = sqrt(max(0.0f, 1.0f - cos_theta * cos_theta));
+    return local_to_world(float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta), direction);
+}
+
 // the analytic directional light exclusively owns the sun, every restir sky read excludes the
 // panorama disc so its energy is never counted a second time, the exclusion radius covers the
 // disc (0.00935) plus the mip 2 blur halo, cos(0.05)
@@ -2108,9 +2121,10 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
         if (is_directional)
         {
-            light_dir  = -light.direction;
+            light_dir = sample_restir_sun_cone(-light.direction, light_xi.yz, light_pdf);
             light_dist = RESTIR_RAY_T_MAX;
-            light_pdf  = 1.0f;
+            attenuation = light_pdf; // irradiance normalization -> disk radiance
+            endpoint_normal = -light_dir;
         }
         else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
         {

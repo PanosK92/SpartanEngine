@@ -126,25 +126,14 @@ PathSample sample_light_candidate(
     if (is_directional)
     {
         // continuous sun cone, sole owner of the sun since sky reads exclude the disc
-        float3 sun_dir = -light.direction;
-        if (dot(sun_dir, primary_normal) <= MIN_COS_AT_PRIMARY)
-            return s;
-
-        float  sun_cos_max  = cos(SUN_CONE_HALF_ANGLE);
-        float  sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-
-        float2 xi      = random_float2(seed);
-        float  phi     = 2.0f * PI * xi.x;
-        float  cos_th  = lerp(sun_cos_max, 1.0f, xi.y);
-        float  sin_th  = sqrt(max(0.0f, 1.0f - cos_th * cos_th));
-        float3 local   = float3(cos(phi) * sin_th, sin(phi) * sin_th, cos_th);
-        float3 sampled = local_to_world(local, sun_dir);
+        float sun_cone_pdf;
+        float3 sampled = sample_restir_sun_cone(-light.direction, random_float2(seed), sun_cone_pdf);
 
         if (dot(sampled, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
         // no continuation past rc, rc_L_post stays zero
-        // directional intensity is irradiance, scaling by 1/solid_angle turns it into cone radiance so the estimator integrates back to the authored energy, matches the delta sun in direct_lighting_at_vertex
+        // The same disk radiance and PDF are used at secondary vertices.
         s.flags      |= PATH_FLAG_SKY | PATH_FLAG_NEE;
         s.rc_pos      = sampled;
         s.rc_normal   = -sampled;
