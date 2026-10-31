@@ -10,13 +10,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "nrd/NRD.hlsli"
 //===============================
 
-Texture2D<uint2> tex_normal_previous : register(t87);
-
 // combines remodulated nrd diffuse/specular output into restir_denoised
 // tex     = out_diff_radiance_hitdist
 // tex_uav = restir_denoised
-// Positive alpha stores integer history count + half the NRD roughness.
-// FP32 retains roughness within 0.001 even at the 4096-frame count limit.
 
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
@@ -190,60 +186,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     NRD_MaterialFactors(normal, view_dir, albedo * (1.0f - metallic),
         lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
     float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
-    float count = 1.0f;
-    // This extra still-camera average reads the same texel, unlike NRD's
-    // reprojected history. A changed render rectangle changes that texel's ray.
-    if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation) &&
-        all(get_render_uv_scale() == get_render_uv_scale_previous()))
-    {
-        float4 history = tex2[thread_id.xy];
-        float history_count = floor(history.a);
-        float previous_roughness = frac(history.a) * 2.0f;
-        float depth_prev = tex3.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
-        float3 normal_prev = gbuffer_unpack_normal(tex_normal_previous[gbuffer_texel(uv)]);
-        // Velocity is in screen NDC; the tolerance below is in active render
-        // pixels, not the larger backing texture used by resolution scaling.
-        float2 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy * get_render_resolution_active() * 0.5f;
-        float z = linearize_depth(depth);
-        // Accumulation is restricted to a stationary camera (or subpixel breathing).
-        // The same history pixel lies on a different ray after TAA jitter. Compare
-        // surface planes, not view depths: on a distant grazing floor a fraction
-        // of a pixel can change view depth by more than the old one-percent gate.
-        float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) *
-            float2(0.5f, -0.5f) * get_render_uv_scale();
-        // The projection is unchanged while accumulation is enabled, apart
-        // from jitter, but camera breathing can still change the view transform.
-        // Unproject into view space, then use the previous camera's rigid inverse
-        // instead of interpreting the old depth through the current camera pose.
-        float2 previous_screen_uv = render_uv_to_screen_uv(uv - jitter_delta);
-        float4 previous_clip = float4(previous_screen_uv * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), depth_prev, 1.0f);
-        float4 previous_view = mul(previous_clip, get_projection_inverted());
-        float3 previous_receiver = mul(previous_view.xyz / previous_view.w,
-            transpose((float3x3)buffer_frame.view_previous)) + buffer_frame.camera_position_previous;
-        float3 separation = previous_receiver - receiver;
-        float plane_distance = max(abs(dot(separation, normal)), abs(dot(separation, normal_prev)));
-        // The broad surface-normal gate is insufficient for glossy lighting.
-        // Jitter and camera breathing can change reflection direction while
-        // passing it, freezing a different reflection in the long average.
-        float3 previous_view_dir = normalize(buffer_frame.camera_position_previous - previous_receiver);
-        float3 previous_reflection = reflect(-previous_view_dir, normal_prev);
-        float reflection_half_cos_sq = saturate(0.5f + 0.5f * dot(reflection_dir, previous_reflection));
-        float alpha_sq = roughness * roughness * roughness * roughness;
-        // tan^2(half angle) <= alpha^2: use the GGX characteristic slope width.
-        bool reflection_matches = 1.0f - reflection_half_cos_sq <= alpha_sq * reflection_half_cos_sq;
-        // Same geometry can have different lobe widths under subpixel jitter.
-        // Match the roughness tolerance used by spatial reconstruction.
-        bool roughness_matches = previous_roughness > 0.0f &&
-            abs(previous_roughness - roughness) <= max(0.15f * roughness, 0.01f);
-        bool valid = history_count >= 1.0f && all(isfinite(history)) && depth > 0.0f && depth_prev > 0.0f &&
-            plane_distance < max(z * 0.001f, 0.002f) &&
-            dot(normal, normal_prev) > 0.95f && dot(motion, motion) < 0.01f && reflection_matches && roughness_matches;
-        if (valid)
-        {
-            // FP32 history avoids FP16 rounding stopping convergence after a few hundred frames.
-            count = min(history_count + 1.0f, 4096.0f);
-            radiance = lerp(history.rgb, radiance, 1.0f / count);
-        }
-    }
-    tex_uav[thread_id.xy] = float4(radiance, count + 0.5f * saturate(roughness));
+    // NRD already accumulates reprojected radiance. Averaging its output again
+    // retains NRD's transient history after lighting changes, even when the
+    // extra average was reset on the changed frame.
+    tex_uav[thread_id.xy] = float4(radiance, 1.0f);
 }

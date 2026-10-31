@@ -972,7 +972,6 @@ namespace spartan
         {
             m_pass_state.restir.reference_mode = reference_mode;
             m_pass_state.restir.reservoirs_initialized = false;
-            m_pass_state.restir.accumulation_valid = false;
         }
 
         // one-shot clear after (re)allocation, new textures are not guaranteed zeroed, depth_previous is cleared by the depth
@@ -1061,7 +1060,6 @@ namespace spartan
         if (reference_mode == 1u)
         {
             // Reference samples never enter the history consumed by the reuse estimator.
-            m_pass_state.restir.accumulation_valid = false;
             return;
         }
         Pass_ReSTIR_Temporal(tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
@@ -1072,7 +1070,6 @@ namespace spartan
         if (reference_mode == 2u || reference_mode == 3u)
         {
             Pass_ReSTIR_SwapReservoirs();
-            m_pass_state.restir.accumulation_valid = false;
             return;
         }
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
@@ -1112,7 +1109,6 @@ namespace spartan
 
         RHI_Texture* tex_gi_raw      = GetRenderTarget(Renderer_RenderTarget::restir_output);
         RHI_Texture* tex_gi_denoised = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
-        RHI_Texture* tex_gi_previous = GetRenderTarget(Renderer_RenderTarget::restir_denoised_previous);
         if (cvar_restir_pt_reference.GetValueAs<bool>())
         {
             if (tex_gi_raw && tex_gi_denoised)
@@ -1124,7 +1120,7 @@ namespace spartan
         RHI_Texture* tex_view_z      = GetRenderTarget(Renderer_RenderTarget::nrd_in_viewz);
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::nrd_in_diff_radiance);
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance);
-        if (!tex_gi_raw || !tex_gi_denoised || !tex_gi_previous || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
+        if (!tex_gi_raw || !tex_gi_denoised || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
         {
             if (tex_gi_raw && tex_gi_denoised)
             {
@@ -1183,42 +1179,8 @@ namespace spartan
                 RHI_CommandList::SetShader(shader_unpack, "restir_pt_nrd_unpack");
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::restir_specular_nrd_out));
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_out);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_gi_previous);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous));
-                bool camera_still = Renderer::view().frame.view_projection_unjittered == Renderer::view().frame.view_projection_previous_unjittered;
-
-                // the play camera breathes by a few millimeters while idle, so no two frames are ever
-                // identical, a standing player counts as still while each frame barely moves and the
-                // pose stays close to where the average started, walking or looking around restarts it
-                static Vector3 anchor_position = Vector3::Zero;
-                static Vector3 anchor_forward  = Vector3::Zero;
-                static float   anchor_fov      = 0.0f;
-                const Vector3 camera_position  = Renderer::view().frame.camera_position;
-                const Vector3 camera_forward   = Renderer::view().frame.camera_forward;
-                const float   camera_fov       = Renderer::GetViewCamera() ? Renderer::GetViewCamera()->GetFovHorizontalRad() : 0.0f;
-                if (!camera_still && Engine::IsFlagSet(EngineMode::Playing))
-                {
-                    const bool frame_still  = Vector3::Distance(camera_position, Renderer::view().frame.camera_position_previous) < 0.001f;
-                    const bool near_anchor  = Vector3::Distance(camera_position, anchor_position) < 0.01f && Vector3::Dot(camera_forward, anchor_forward) > 0.999998f;
-                    camera_still = frame_still && near_anchor && camera_fov == anchor_fov;
-                }
-                if (!camera_still || !m_pass_state.restir.accumulation_valid)
-                {
-                    anchor_position = camera_position;
-                    anchor_forward  = camera_forward;
-                    anchor_fov      = camera_fov;
-                }
-
-                // Moving scenes retain NRD's responsive temporal filtering. A still camera, in play
-                // or edit mode, progressively averages the remaining Monte Carlo variance, any
-                // renderable or light change clears restir_accumulation_valid before it can ghost.
-                const bool accumulate = m_pass_state.restir.accumulation_valid && camera_still && !IsSecondaryViewActive();
-                m_pcb_pass_cpu.set(pass_restir_nrd_unpack::reset_accumulation, !accumulate);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
                 RHI_CommandList::Dispatch(tex_gi_denoised);
-                m_pass_state.restir.accumulation_valid = true;
             }
             RHI_CommandList::EndMarker();
         }

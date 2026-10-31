@@ -456,11 +456,6 @@ namespace pass_path_tracing
     static const SHARED_UINT has_scene = 2;
 }
 
-namespace pass_restir_nrd_unpack
-{
-    static const SHARED_UINT reset_accumulation = 0; // bool
-}
-
 namespace pass_restir_temporal
 {
     static const SHARED_UINT history_m_cap = 0; // float, 0 keeps the default confidence cap

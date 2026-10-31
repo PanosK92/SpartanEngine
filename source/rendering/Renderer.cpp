@@ -1435,7 +1435,6 @@ namespace spartan
         restir_fade_pending         |= world_changed;
         if (restir_invalidation_pending || restir_fade_pending)
         {
-            m_pass_state.restir.accumulation_valid = false;
             if (restir_invalidation_pending)
             {
                 m_pass_state.restir.history_invalid = true;
@@ -2410,7 +2409,6 @@ namespace spartan
         if (!secondary_render_root_active && restir_direct != ((Renderer::view().frame.options & (1u << 4)) != 0))
         {
             m_pass_state.restir.history_invalid    = true;
-            m_pass_state.restir.accumulation_valid = false;
         }
         Renderer::view().frame.set_bit(restir_direct, 1 << 4);
     }
@@ -2647,7 +2645,6 @@ namespace spartan
 
         const uint64_t fnv_basis  = 14695981039346656037ull;
         uint64_t scene_signature  = fnv_basis;
-        uint64_t motion_signature = fnv_basis;
         uint64_t emitter_signature = fnv_basis;
         auto mix = [](uint64_t& signature, uint64_t value) { signature = (signature ^ value) * 1099511628211ull; };
         auto mix_float = [&mix](uint64_t& signature, float value)
@@ -2688,8 +2685,6 @@ namespace spartan
             }
 
             mix(scene_signature, entity->GetObjectId());
-            mix(motion_signature, entity->GetTransformRevision());
-            mix(motion_signature, entity->GetChildDataRevision());
 
             Render* render     = nullptr;
             Material* material = emitter_material(entity, render);
@@ -2718,22 +2713,16 @@ namespace spartan
         }
         mix(emitter_signature, pool_representable ? 1u : 0u);
 
-        // a change in the set of renderables fades the reservoirs out, motion only restarts the progressive
-        // accumulation, a moving car would otherwise leave restir without temporal reuse every frame
+        // A change in the set of renderables fades the reservoirs out. Motion retains temporal
+        // reuse so a moving car does not discard its history every frame.
         // worlds that stream geometry around the camera change the set on most frames while walking, so
         // clearing here left restir with no temporal reuse, reuse re-traces visibility and new surfaces
         // have no history of their own, so only radiance cached from removed geometry goes stale
         if (scene_signature != m_pass_state.restir.scene_signature)
         {
-            m_pass_state.restir.accumulation_valid  = false;
             m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
         }
-        if (motion_signature != m_pass_state.restir.motion_signature)
-        {
-            m_pass_state.restir.accumulation_valid = false;
-        }
         m_pass_state.restir.scene_signature  = scene_signature;
-        m_pass_state.restir.motion_signature = motion_signature;
 
         RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
         if (emitter_signature == pool_signature && emissive_triangles_buffer == pool_buffer)
@@ -2746,7 +2735,6 @@ namespace spartan
         // A confidence fade cannot make an old endpoint valid in the new pool.
         // Reset history even when only the backing buffer changed: that also
         // invalidates the pool represented by the cached endpoint descriptors.
-        m_pass_state.restir.accumulation_valid = false;
         m_pass_state.restir.history_invalid = true;
 
         // statics avoid heap thrash on rebuilds, the capacity ratchets up to the largest pool seen so far
@@ -4209,68 +4197,17 @@ namespace spartan
             m_bindless_lights[0].direction       = Vector3(0.0f, -1.0f, 0.0f);
             m_bindless_lights[0].direction_right = Vector3(1.0f, 0.0f, 0.0f);
         }
-        // Progressive GI must react to changes in light intensity, placement and shape.
-        // only the fields that shape emitted radiance are compared, the shadow matrices and atlas
-        // placement follow the camera, comparing them wiped all restir history on every camera move
-        // a light that changes restarts the progressive accumulation but keeps the reservoirs, the
-        // temporal confidence cap ages stale radiance out within a few frames, a change in the light set
-        // (a light culled, switched off or added) fades them out faster, point and spot samples find their
-        // light again by persistent identity when its index moved, see restir_resolve_dirac_light, clearing instead
-        // restarted every pixel from one sample whenever a light left the frustum
-        // a secondary view uploads its own studio lights, those are not a change to the primary's set
+        // Preserve reservoir confidence fading when the primary light count changes.
+        // Secondary views upload studio lights independently of the primary view.
         if (cvar_restir_pt.GetValueAs<bool>() && !secondary_render_root_active)
         {
-            struct light_transport
-            {
-                Color    color;
-                Vector3  position;
-                float    intensity;
-                Vector3  direction;
-                float    range;
-                float    angle;
-                uint32_t flags;
-                float    area_width;
-                float    area_height;
-            };
-            auto transport_of = [](const Sb_Light& light)
-            {
-                light_transport transport = {};
-                transport.color       = light.color;
-                transport.position    = light.position;
-                transport.intensity   = light.intensity;
-                transport.direction   = light.direction;
-                transport.range       = light.range;
-                transport.angle       = light.angle;
-                transport.flags       = light.flags;
-                transport.area_width  = light.area_width;
-                transport.area_height = light.area_height;
-                return transport;
-            };
-
-            static vector<light_transport> previous_lights;
+            static uint32_t previous_light_count = 0;
             const uint32_t count = max(m_count_active_lights, 1u);
-            if (previous_lights.size() != count)
+            if (previous_light_count != count)
             {
-                m_pass_state.restir.accumulation_valid  = false;
                 m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
             }
-            else
-            {
-                for (uint32_t i = 0; i < count; i++)
-                {
-                    const light_transport current = transport_of(m_bindless_lights[i]);
-                    if (memcmp(&current, &previous_lights[i], sizeof(light_transport)) != 0)
-                    {
-                        m_pass_state.restir.accumulation_valid = false;
-                        break;
-                    }
-                }
-            }
-            previous_lights.resize(count);
-            for (uint32_t i = 0; i < count; i++)
-            {
-                previous_lights[i] = transport_of(m_bindless_lights[i]);
-            }
+            previous_light_count = count;
         }
         RHI_CommandList::UpdateBuffer(buffer, 0, buffer->GetStride() * max(m_count_active_lights, 1u), &m_bindless_lights[0]);
 
@@ -5625,7 +5562,6 @@ namespace spartan
             if (geometry_instance_signature != previous_geometry_instance_signature)
             {
                 m_pass_state.restir.history_invalid = true;
-                m_pass_state.restir.accumulation_valid = false;
                 previous_geometry_instance_signature = geometry_instance_signature;
             }
             instances.resize(output_count);
@@ -6913,7 +6849,6 @@ namespace spartan
         {
             m_pass_state.restir.reservoirs_initialized = false;
             m_pass_state.restir.history_invalid = true;
-            m_pass_state.restir.accumulation_valid = false;
             RHI_VendorTechnology::ResetHistory();
             ResetTaauHistory();
             SP_LOG_INFO("ReSTIR shader reload applied as a group; history reset");
