@@ -598,6 +598,8 @@ namespace spartan
         restir_output,
         // sample duplication score map driving the adaptive temporal confidence cap, lin 2026
         restir_duplication,
+        restir_primary_hit,
+        restir_primary_hit_previous,
         restir_denoised,
         restir_denoised_previous,
         // opaque gbuffer copies the async restir list reads while graphics moves on to the next frame,

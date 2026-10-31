@@ -5123,6 +5123,7 @@ namespace spartan
         uint32_t mask           = 0;
         vector<RHI_AccelerationStructureInstance> instances;
         vector<Sb_GeometryInfo> geometry_infos;
+        vector<uint32_t> source_indices;
     };
     static vector<InstancedTlasCache> instanced_tlas_caches;
 
@@ -5153,6 +5154,7 @@ namespace spartan
         const Render::InstanceBoundsGroup* group = nullptr;
         vector<RHI_AccelerationStructureInstance> instances;
         vector<Sb_GeometryInfo> geometry_infos;
+        vector<uint32_t> source_indices;
     };
 
     // true when the cache must be rebuilt, its header is then updated and its instance lists cleared
@@ -5192,6 +5194,7 @@ namespace spartan
         cache.group_count    = static_cast<uint32_t>(render->GetInstanceBoundsGroups().size());
         cache.instances.clear();
         cache.geometry_infos.clear();
+        cache.source_indices.clear();
         return true;
     }
 
@@ -5199,6 +5202,7 @@ namespace spartan
     {
         work.instances.clear();
         work.geometry_infos.clear();
+        work.source_indices.clear();
         Render* render              = work.render;
         const Vector3& center       = cache.cull_center;
         const float cull_radius     = cache.cull_radius + instanced_tlas_hysteresis;
@@ -5220,6 +5224,7 @@ namespace spartan
             }
 
             build_tlas_instance(render, work.material, world, cache.blas_address, work.instances.emplace_back(), work.geometry_infos.emplace_back());
+            work.source_indices.push_back(index);
         }
     }
 
@@ -5453,6 +5458,7 @@ namespace spartan
                         InstancedTlasCache& cache    = instanced_tlas_caches[work.cache_index];
                         cache.instances.insert(cache.instances.end(), work.instances.begin(), work.instances.end());
                         cache.geometry_infos.insert(cache.geometry_infos.end(), work.geometry_infos.begin(), work.geometry_infos.end());
+                        cache.source_indices.insert(cache.source_indices.end(), work.source_indices.begin(), work.source_indices.end());
                     }
                 }
                 SP_PROFILE_CPU_END();
@@ -5576,10 +5582,10 @@ namespace spartan
             instanced_slots.resize(render_count);
             uint32_t output_count    = 0;
             uint32_t instanced_index = 0;
-            uint64_t emitter_instance_signature = 14695981039346656037ull;
-            auto mix_emitter_instance = [&](uint64_t value)
+            uint64_t geometry_instance_signature = 14695981039346656037ull;
+            auto mix_geometry_instance = [&](uint64_t value)
             {
-                emitter_instance_signature = (emitter_instance_signature ^ value) * 1099511628211ull;
+                geometry_instance_signature = (geometry_instance_signature ^ value) * 1099511628211ull;
             };
             for (uint32_t i = 0; i < render_count; ++i)
             {
@@ -5588,17 +5594,24 @@ namespace spartan
                 if (cache.instanced)
                 {
                     instanced_slots[i] = instanced_index;
-                    output_count += static_cast<uint32_t>(instanced_tlas_caches[instanced_index++].instances.size());
+                    const InstancedTlasCache& instances_cache = instanced_tlas_caches[instanced_index++];
+                    mix_geometry_instance(instances_cache.render_id);
+                    mix_geometry_instance(output_count);
+                    mix_geometry_instance(instances_cache.blas_address);
+                    mix_geometry_instance(instances_cache.source_indices.size());
+                    for (uint32_t source_index : instances_cache.source_indices)
+                        mix_geometry_instance(source_index);
+                    output_count += static_cast<uint32_t>(instances_cache.instances.size());
                 }
                 else if (cache.valid)
                 {
-                    // Terminal BSDF emitter paths cache InstanceIndex/PrimitiveIndex.
-                    // Compaction can renumber them when unrelated geometry changes.
-                    if (is_pooled_emitter_material(ray_tracing_renders[i]->GetMaterial()))
-                    {
-                        mix_emitter_instance(cache.entity_id);
-                        mix_emitter_instance(output_count);
-                    }
+                    // Primary hit history and terminal emitters both cache TLAS indices.
+                    // Moving transforms preserve identity; compaction or geometry replacement does not.
+                    mix_geometry_instance(cache.entity_id);
+                    mix_geometry_instance(cache.instance.device_address);
+                    mix_geometry_instance(output_count);
+                    mix_geometry_instance(cache.geometry.vertex_offset);
+                    mix_geometry_instance(cache.geometry.index_offset);
                     output_count++;
                 }
                 else if (cache.invalid_transform)
@@ -5607,12 +5620,12 @@ namespace spartan
                     if (!first_invalid_name) first_invalid_name = ray_tracing_renders[i]->GetEntity()->GetObjectName().c_str();
                 }
             }
-            static uint64_t previous_emitter_instance_signature = 0;
-            if (emitter_instance_signature != previous_emitter_instance_signature)
+            static uint64_t previous_geometry_instance_signature = 0;
+            if (geometry_instance_signature != previous_geometry_instance_signature)
             {
                 m_pass_state.restir.history_invalid = true;
                 m_pass_state.restir.accumulation_valid = false;
-                previous_emitter_instance_signature = emitter_instance_signature;
+                previous_geometry_instance_signature = geometry_instance_signature;
             }
             instances.resize(output_count);
             geometry_infos.resize(output_count);

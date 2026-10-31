@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 //==============================
 
 Texture2D<uint2> tex_normal_previous : register(t87);
+Texture2D<float4> restir_primary_hit_previous : register(t94);
 
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
@@ -26,47 +27,45 @@ float2 reproject_to_previous_frame(float2 current_uv)
 }
 
 // Zeng et al. (2021), Eq. 6, used by Lin 2026 section 6.4:
-// y is the ordinary reprojection, z is that occluder's CURRENT location, and
-// the alternate history coordinate is y + (x - z). Invert the current motion
-// field to find z; last frame's velocity is only an initial search guess.
+// y is the old occluder's pixel, z is that triangle's CURRENT projected position.
+// Retained hit identity provides z even when the occluder has left the screen.
 bool find_dual_history_uv(float2 current_uv, float2 previous_uv, out float2 dual_uv)
 {
     dual_uv = previous_uv;
-    float previous_depth = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), previous_uv, 0).r;
-    if (previous_depth <= 0.0f)
-        return false;
-    float previous_z = linearize_depth(previous_depth);
-    if (!(previous_z > 0.0f) || !isfinite(previous_z))
-        return false;
+    uint width, height;
+    restir_primary_hit_previous.GetDimensions(width, height);
+    float2 size = float2(width, height);
     float2 uv_scale = get_render_uv_scale();
-    float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f) * uv_scale;
-    float2 old_motion = tex6.SampleLevel(GET_SAMPLER(sampler_point_clamp), previous_uv, 0).xy * float2(0.5f, -0.5f) * uv_scale;
-    float2 occluder_uv = previous_uv + old_motion - jitter_delta;
-    [loop]
-    for (uint iteration = 0u; iteration < 8u; ++iteration)
-    {
-        if (!all(isfinite(occluder_uv)) || any(occluder_uv < 0.0f) || any(occluder_uv >= uv_scale))
-            return false;
-        float4 motion = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), occluder_uv, 0);
-        float2 backward = jitter_delta - motion.xy * float2(0.5f, -0.5f) * uv_scale;
-        float2 next_uv = previous_uv - backward;
-        float2 residual = (next_uv - occluder_uv) * buffer_frame.resolution_render;
-        if (all(isfinite(motion)) && dot(residual, residual) <= 0.25f)
-        {
-            // A converged screen coordinate can belong to the revealed background
-            // instead of the old occluder. Match its stored previous-frame depth.
-            float source_z = abs(motion.w);
-            if (source_z <= 0.0f || source_z >= FLT_MAX_16U ||
-                abs(source_z - previous_z) > max(previous_z * 0.01f, 0.001f))
-                return false;
-            dual_uv = current_uv + backward;
-            return all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
-        }
-        occluder_uv = next_uv;
-    }
-    // No verified forward correspondence: keep the fresh technique rather than
-    // treating last frame's displacement as this frame's occluder motion.
-    return false;
+    if (!all(isfinite(previous_uv)) || any(previous_uv < 0.0f) || any(previous_uv >= uv_scale))
+        return false;
+    uint2 previous_pixel = uint2(previous_uv * size);
+    float4 stored_hit = restir_primary_hit_previous[previous_pixel];
+    // Compare both surfaces in the previous camera's view-depth domain. A
+    // normal/material mismatch alone does not establish an occluding surface.
+    float expected_depth = abs(tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).w);
+    if (!(stored_hit.w > 0.0f) || !(expected_depth > 0.0f) || expected_depth >= FLT_MAX_16U ||
+        expected_depth - stored_hit.w <= 0.1f * expected_depth)
+        return false;
+
+    uint3 hit = asuint(stored_hit.xyz);
+    GeometryInfo geometry = geometry_infos[hit.x];
+    uint index_base = geometry.index_offset + hit.y * 3u;
+    float3 bary = unpack_hit_barycentrics(hit.z);
+    float3 p0 = geometry_vertices[geometry.vertex_offset + geometry_indices[index_base]].position;
+    float3 p1 = geometry_vertices[geometry.vertex_offset + geometry_indices[index_base + 1u]].position;
+    float3 p2 = geometry_vertices[geometry.vertex_offset + geometry_indices[index_base + 2u]].position;
+    float3 local_position = p0 * bary.x + p1 * bary.y + p2 * bary.z;
+    float3x3 transform = float3x3(geometry.object_to_world_0.xyz,
+        geometry.object_to_world_1.xyz, geometry.object_to_world_2.xyz);
+    float3 position = mul(local_position, transform) + float3(geometry.object_to_world_0.w,
+        geometry.object_to_world_1.w, geometry.object_to_world_2.w);
+    float4 clip = mul(float4(position, 1.0f), get_view_projection());
+    if (!all(isfinite(clip)) || clip.w <= 0.0f)
+        return false;
+    float2 occluder_uv = (clip.xy / clip.w * float2(0.5f, -0.5f) + 0.5f) * uv_scale;
+    float2 source_uv = restir_primary_uv((float2(previous_pixel) + 0.5f) / size);
+    dual_uv = current_uv + source_uv - occluder_uv;
+    return all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
 }
 
 // validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
@@ -431,4 +430,5 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     tex_uav[pixel] = float4(gi, hit_dist);
     restir_specular_output[pixel] = float4(clamp(specular, 0.0f, gi), specular_hit_dist);
+
 }

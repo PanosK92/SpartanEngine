@@ -9,7 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #define SPARTAN_RESTIR_PATH
 #include "restir_surface.hlsl"
 
-PathSurface restir_trace_surface(RayDesc ray)
+uint3 restir_trace_hit(RayDesc ray, out float hit_distance)
 {
     RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -20,12 +20,19 @@ PathSurface restir_trace_surface(RayDesc ray)
                 query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
             query.CommitNonOpaqueTriangleHit();
     }
+    hit_distance = -1.0f;
     if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
-        return (PathSurface)0;
-    float2 bary = query.CommittedTriangleBarycentrics();
-    uint packed_bary = pack_hit_barycentrics(bary);
-    return reconstruct_path_surface(query.CommittedRayT(), query.CommittedInstanceIndex(),
-        query.CommittedPrimitiveIndex(), packed_bary, ray);
+        return 0u;
+    hit_distance = query.CommittedRayT();
+    return uint3(query.CommittedInstanceIndex(), query.CommittedPrimitiveIndex(),
+        pack_hit_barycentrics(query.CommittedTriangleBarycentrics()));
+}
+
+PathSurface restir_trace_surface(RayDesc ray)
+{
+    float hit_distance;
+    uint3 hit = restir_trace_hit(ray, hit_distance);
+    return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray);
 }
 
 float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray)

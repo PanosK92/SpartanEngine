@@ -228,6 +228,8 @@ PathSample sample_light_candidate(
     return s;
 }
 
+[[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_hit_output : register(u71);
+
 [shader("raygeneration")]
 void ray_gen()
 {
@@ -236,6 +238,8 @@ void ray_gen()
     uint2 light_block = launch_id / 8u;
     restir_light_tile_index = xxhash32(light_block.x ^ xxhash32(light_block.y) ^ buffer_frame.frame) % RESTIR_LIGHT_TILE_COUNT;
     float2 uv = restir_primary_uv((launch_id + 0.5f) / launch_size);
+
+    restir_primary_hit_output[launch_id] = 0.0f;
 
     // early out for sky pixels (no primary surface)
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
@@ -266,6 +270,22 @@ void ray_gen()
     float  roughness = max(material.r, 0.04f);
     float  metallic  = material.g;
     float3 view_dir  = normalize(get_camera_position() - pos_ws);
+
+    // Retain the primary triangle independently of the RIS winner. Dual motion
+    // needs this old occluder even when it is not visible in the current image.
+    RayDesc primary_ray;
+    primary_ray.Origin = get_camera_position();
+    primary_ray.Direction = -view_dir;
+    primary_ray.TMin = RESTIR_RAY_T_MIN;
+    float primary_distance = length(pos_ws - primary_ray.Origin);
+    float match_tolerance = max(0.001f, primary_distance * 0.0001f);
+    primary_ray.TMax = primary_distance + match_tolerance;
+    float primary_hit_distance;
+    uint3 primary_hit = restir_trace_hit(primary_ray, primary_hit_distance);
+    // Raster-only/deformed surfaces can differ from the RT scene. Never label
+    // such a surface with a nearby triangle from a different representation.
+    if (primary_hit_distance > 0.0f && abs(primary_hit_distance - primary_distance) <= match_tolerance)
+        restir_primary_hit_output[launch_id] = float4(asfloat(primary_hit), linearize_depth(depth));
 
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);

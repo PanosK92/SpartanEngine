@@ -687,6 +687,8 @@ namespace spartan
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
                 RHI_CommandList::SetTexture(restir_reservoir_uav[i], reservoirs[i]);
 
+            RHI_CommandList::SetTexture("restir_primary_hit_output", GetRenderTarget(Renderer_RenderTarget::restir_primary_hit));
+
             RHI_CommandList::TraceRays(width, height);
         }
         RHI_CommandList::EndPass();
@@ -735,11 +737,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, normal_prev);
             }
 
-            // previous frame velocity, occluder motion for the dual motion vector on disocclusion, lin 2026 6.4
-            if (RHI_Texture* velocity_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity_previous))
-            {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, velocity_prev);
-            }
+            RHI_CommandList::SetTexture("restir_primary_hit_previous", GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous));
 
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
@@ -857,6 +855,8 @@ namespace spartan
     void Renderer::Pass_ReSTIR_SwapReservoirs()
     {
         auto& render_targets = GetRenderTargets();
+        swap(render_targets[static_cast<uint32_t>(Renderer_RenderTarget::restir_primary_hit)],
+             render_targets[static_cast<uint32_t>(Renderer_RenderTarget::restir_primary_hit_previous)]);
         for (uint32_t i = 0; i < restir_reservoir_textures; i++)
         {
             uint32_t idx_cur  = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)      + i;
@@ -975,6 +975,8 @@ namespace spartan
         // prepass, the normal and velocity history are render targets only, ProduceFrame clears them on the graphics queue
         if (!m_pass_state.restir.reservoirs_initialized)
         {
+            RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_hit), Color::standard_transparent);
+            RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous), Color::standard_transparent);
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
                 RHI_CommandList::ClearTexture(reservoirs[i],         Color::standard_transparent);
@@ -1011,6 +1013,7 @@ namespace spartan
         // Keep pairing tables and G-buffer history intact on these lightweight resets.
         if (m_pass_state.restir.history_invalid || reference_mode == 2u || reference_mode == 5u)
         {
+            RHI_CommandList::ClearTexture(GetRenderTarget(Renderer_RenderTarget::restir_primary_hit_previous), Color::standard_transparent);
             for (RHI_Texture* reservoir : reservoirs_prev)
                 RHI_CommandList::ClearTexture(reservoir, Color::standard_transparent);
             if (RHI_Texture* duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))

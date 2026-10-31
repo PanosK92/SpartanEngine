@@ -616,6 +616,8 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_in)          = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_specular_nrd_out)         = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_hit)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_hit_previous)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
             m_pass_state.restir.accumulation_valid = false;
@@ -650,6 +652,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift1");
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift2");
             at(view_targets(), Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_output");
+            // Triangle identity history follows the tracing grid, independently of reservoir selection.
+            at(view_targets(), Renderer_RenderTarget::restir_primary_hit) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_primary_hit");
+            at(view_targets(), Renderer_RenderTarget::restir_primary_hit_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_primary_hit_previous");
             // Preserve all 289 duplication counts before the nonlinear M-cap; R8_UNORM rounds the score.
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,          restir_flags, "restir_duplication");
             // Reconstruct lighting before remodulating full-resolution material detail.
@@ -800,6 +805,8 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_hit)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_primary_hit_previous)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
             m_pass_state.restir.accumulation_valid = false;
