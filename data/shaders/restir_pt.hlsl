@@ -306,7 +306,7 @@ void ray_gen()
         float  source_pdf;
         float3 dir         = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, source_pdf, restir_primary_specular_blend(roughness));
 
-        bool dir_valid = (source_pdf >= RESTIR_MIN_PDF) &&
+        bool dir_valid = restir_pdf_valid(source_pdf) &&
                          (dot(dir, normal_ws) >= MIN_COS_AT_PRIMARY) &&
                          !any(isnan(dir));
 
@@ -407,7 +407,7 @@ void ray_gen()
         {
             float light_source_pdf;
             PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, seed, light_source_pdf);
-            if (light_source_pdf < RESTIR_MIN_PDF)
+            if (!restir_pdf_valid(light_source_pdf))
             {
                 continue;
             }

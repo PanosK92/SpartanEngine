@@ -105,8 +105,12 @@ static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
 // Supplemental section 4: reciprocal squared PDF replaces lobe roughness for
 // a black-box mixture BSDF. Rough glossy mixtures are not diffuse lobes.
 static const float RESTIR_RC_MIN_PDF_ROUGHNESS = 0.2f;
-// brdf / numerics
-static const float RESTIR_MIN_PDF            = 1e-6f;
+// A probability density has no scene-independent positive lower bound.
+// Reject undefined techniques, not valid low-probability paths.
+bool restir_pdf_valid(float pdf)
+{
+    return pdf > 0.0f && isfinite(pdf);
+}
 
 // nee
 static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
@@ -2209,7 +2213,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
         {
             float3 to_light = light_pos - shading_pos;
             float distance = length(to_light);
-            float3 direction = to_light / max(distance, RESTIR_MIN_PDF);
+            float3 direction = to_light / max(distance, 1e-6f);
             if (distance > RESTIR_RAY_T_MIN && trace_shadow_ray(ray_origin_light, direction, distance))
             {
                 float pdf;
@@ -2253,7 +2257,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
         float env_n_dot_l = dot(shading_normal, env_dir);
 
         if ((forced_light < 0 || forced_light == int(RESTIR_ENDPOINT_SKY)) &&
-            env_n_dot_l > 0.0f && env_pdf > RESTIR_MIN_PDF)
+            env_n_dot_l > 0.0f && restir_pdf_valid(env_pdf))
         {
             float probe_offset = compute_ray_offset(shading_pos);
             RayDesc probe_ray;

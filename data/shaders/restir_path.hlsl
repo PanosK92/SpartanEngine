@@ -254,7 +254,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
                 (restir_connection_distance_valid(distance_sq)
                     ? abs(dot(light.endpoint_normal, delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
-            inverse_density = dir_pdf / max(light.endpoint_pdf, RESTIR_MIN_PDF);
+            inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
         leaf.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
         leaf.endpoint_geometry = uint2(light.emitter_triangle, 0u);
@@ -278,7 +278,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         float outgoing_pdf;
         float3 outgoing = sample_brdf(current.albedo, current.roughness, current.metallic,
             current.hit_normal, -dir, random_float2(seed), outgoing_pdf, 1.0f);
-        if (outgoing_pdf < RESTIR_MIN_PDF || dot(outgoing, current.hit_normal) <= 0.0f || any(!isfinite(outgoing)))
+        if (!restir_pdf_valid(outgoing_pdf) || dot(outgoing, current.hit_normal) <= 0.0f || any(!isfinite(outgoing)))
             break;
         float3 f = evaluate_brdf(current.albedo, current.roughness, current.metallic,
             current.hit_normal, -dir, outgoing, unused_pdf, 1.0f);
@@ -343,7 +343,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         float pdf;
         float3 direction = sample_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
             incoming, random_float2(seed), pdf, blend);
-        if (pdf < RESTIR_MIN_PDF || dot(v.hit_normal, direction) <= 0.0f || any(!isfinite(direction)))
+        if (!restir_pdf_valid(pdf) || dot(v.hit_normal, direction) <= 0.0f || any(!isfinite(direction)))
             return result;
         directions[i] = direction;
         pdfs[i] = pdf;
@@ -446,7 +446,7 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
     float pdf_dst;
     float3 dir = sample_brdf(dst_albedo, roughness, metallic, dst_normal, dst_view,
         random_float2(seed), pdf_dst, restir_primary_specular_blend(roughness));
-    if (pdf_dst < RESTIR_MIN_PDF || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
+    if (!restir_pdf_valid(pdf_dst) || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
         return result;
     float3 unused_reference;
     PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, src.seed_path, seed, unused_reference, true, src,
