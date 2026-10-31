@@ -18,15 +18,23 @@ Commercial use requires written permission and negotiated payment terms.
 // tex_uav4 = in_diff_radiance_hitdist
 // tex       = restir_output (combined diffuse and specular radiance)
 
-// Match nrd_common::get_gi_grid_axis. Noninteger strides are not affine.
+// Match nrd_common::get_gi_grid_axis, including uniform active rectangles
+// within allocations whose full guide/sample ratio is noninteger.
 float2 nrd_guide_grid_axis(uint size, uint guide_size, float scale)
 {
-    if (guide_size < size || guide_size % size != 0u)
+    if (guide_size < size)
         return float2(1.0f, 0.0f);
     uint stride = guide_size / size;
     float active = max(floor(float(guide_size) * scale), 1.0f);
-    float rect = floor(float(size) * (active / float(guide_size)));
-    return float2(rect * float(stride) / active, (stride % 2u == 0u ? 0.5f : 0.0f) / active);
+    uint rect = uint(float(size) * (active / float(guide_size)));
+    if (rect == 0u)
+        return float2(1.0f, 0.0f);
+    uint first = guide_size / (2u * size);
+    uint last = ((2u * rect - 1u) * guide_size) / (2u * size);
+    if (last - first != (rect - 1u) * stride)
+        return float2(1.0f, 0.0f);
+    return float2(float(rect * stride) / active,
+        (float(first) + 0.5f - 0.5f * float(stride)) / active);
 }
 
 [numthreads(8, 8, 1)]

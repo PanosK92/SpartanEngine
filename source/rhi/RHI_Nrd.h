@@ -39,16 +39,24 @@ namespace spartan
             memcpy(destination, transposed.Data(), sizeof(float) * 16);
         }
 
-        // actual guide UV = scale * NRD pixel UV + offset. Integer guide strides
-        // form an affine grid; noninteger strides need per-pixel reconstruction.
+        // actual guide UV = scale * NRD pixel UV + offset. Test the active
+        // rectangle: a noninteger allocation ratio can still have uniform
+        // guide spacing throughout the smaller rendered viewport.
         inline math::Vector2 get_gi_grid_axis(uint32_t dimension, uint32_t rect, float guide_dimension, float resolution_scale)
         {
             const uint32_t guide = static_cast<uint32_t>(guide_dimension);
-            if (dimension == 0 || guide < dimension || guide % dimension != 0)
+            if (dimension == 0 || rect == 0 || guide < dimension)
                 return math::Vector2(1.0f, 0.0f);
             const uint32_t stride = guide / dimension;
+            const uint32_t first = guide / (2 * dimension);
+            const uint32_t last = static_cast<uint32_t>((static_cast<uint64_t>(2 * rect - 1) * guide) / (2 * dimension));
+            // floor((i + 1/2) * guide / dimension) - i * stride is
+            // nondecreasing. Equal endpoints prove every residual is equal.
+            if (last - first != (rect - 1) * stride)
+                return math::Vector2(1.0f, 0.0f);
             const float active = (std::max)(std::floor(guide_dimension * resolution_scale), 1.0f);
-            return math::Vector2(static_cast<float>(rect * stride) / active, (stride % 2 == 0 ? 0.5f : 0.0f) / active);
+            return math::Vector2(static_cast<float>(rect * stride) / active,
+                (static_cast<float>(first) + 0.5f - 0.5f * stride) / active);
         }
 
         inline math::Matrix map_gi_projection(const math::Matrix& projection, const math::Vector2& x, const math::Vector2& y)
