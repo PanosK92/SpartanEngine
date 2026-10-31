@@ -15,7 +15,7 @@ Texture2D<float4> restir_primary_hit_previous : register(t94);
 
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
-float2 reproject_to_previous_frame(float2 current_uv)
+float2 reproject_to_previous_frame(float2 current_uv, bool reverse_motion = false)
 {
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
     float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
@@ -23,7 +23,7 @@ float2 reproject_to_previous_frame(float2 current_uv)
     // velocity deliberately excludes jitter. Put history UVs on the prior grid.
     float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
     // both deltas are screen uv, current_uv is a render uv in the scaled subrect
-    return current_uv + (jitter_delta - velocity_uv) * get_render_uv_scale();
+    return current_uv + (jitter_delta + (reverse_motion ? velocity_uv : -velocity_uv)) * get_render_uv_scale();
 }
 
 // Zeng et al. (2021), Eq. 6, used by Lin 2026 section 6.4:
@@ -155,11 +155,24 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // Section 6.4: offer the dual-motion correspondence as a resampling technique.
     // The shift and spatial surface checks below still validate the reused path.
     float2 uv_scale     = get_render_uv_scale();
-    bool prev_on_screen = all(prev_uv > 0.0f) && all(prev_uv < uv_scale);
-    if (!have_history && prev_on_screen)
+    bool prev_on_screen = all(prev_uv >= 0.0f) && all(prev_uv < uv_scale);
+    if (!have_history)
     {
         float2 dual_uv;
-        if (find_dual_history_uv(uv, prev_uv, dual_uv))
+        bool alternate_valid;
+        if (prev_on_screen)
+        {
+            alternate_valid = find_dual_history_uv(uv, prev_uv, dual_uv);
+        }
+        else
+        {
+            // The reference's disocclusion-motion pass reverses motion when
+            // ordinary reprojection is outside the image. Reverse physical
+            // motion only: both lookups still target the same jittered history.
+            dual_uv = reproject_to_previous_frame(uv, true);
+            alternate_valid = all(isfinite(dual_uv)) && all(dual_uv >= 0.0f) && all(dual_uv < uv_scale);
+        }
+        if (alternate_valid)
         {
             history_uv   = dual_uv;
             have_history = true;
