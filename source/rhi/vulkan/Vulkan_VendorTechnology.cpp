@@ -1221,14 +1221,16 @@ namespace spartan
         {
             if (!tex_specular_in || !tex_specular_out)
                 return false;
-            tex_specular_in->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->PrepareForExternalRead(tex_specular_in);
             cmd_list->PrepareForExternalWrite(tex_specular_out);
         }
 
-        tex_mv->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_normal_roughness->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_view_z->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_signal_in->SetLayout(RHI_Image_Layout::General, cmd_list);
+        // NRD dispatches outside our resource tracker. A GENERAL-to-GENERAL
+        // layout request does not make the packing shader's writes visible.
+        cmd_list->PrepareForExternalRead(tex_mv);
+        cmd_list->PrepareForExternalRead(tex_normal_roughness);
+        cmd_list->PrepareForExternalRead(tex_view_z);
+        cmd_list->PrepareForExternalRead(tex_signal_in);
         cmd_list->PrepareForExternalWrite(tex_signal_out);
         RHI_CommandList::RenderPassEnd();
         cmd_list->FlushBarriers();
