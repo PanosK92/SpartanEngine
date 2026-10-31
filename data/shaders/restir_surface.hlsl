@@ -19,6 +19,7 @@ struct PathSurface
     float3 albedo;
     float3 emission;
     uint2 geometry;
+    uint hit_barycentrics;
     bool pooled_emitter;
     float  roughness;
     float  metallic;
@@ -26,9 +27,9 @@ struct PathSurface
 };
 
 // Read payload fields at the call site so DXC's payload-access analysis sees them.
-PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray);
+PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray, float explicit_lod = -1.0f);
 
-PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray)
+PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray, float explicit_lod)
 {
     PathSurface payload = (PathSurface)0;
     payload.hit = ray_t >= 0.0f;
@@ -36,6 +37,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         return payload;
 
     payload.geometry = uint2(instance_index, primitive_index);
+    payload.hit_barycentrics = barycentrics_packed;
     GeometryInfo geo = geometry_infos[instance_index];
 
     uint material_index    = geo.material_index;
@@ -98,7 +100,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
 
     float dist      = ray_t;
-    float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
+    float mip_level = explicit_lod >= 0.0f ? explicit_lod : clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
 
     // terrain, same layer weights as the raster path, one layer and no hex tiling because a
     // secondary bounce cannot resolve the detail, without this gi lit the world as if it were grass
@@ -209,7 +211,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     }
 
     float decal_occlusion = 1.0f;
-    float footprint = max(ray_t * 0.001f, 0.001f);
+    float footprint = explicit_lod >= 0.0f ? 0.001f * exp2(explicit_lod) : max(ray_t * 0.001f, 0.001f);
     apply_decals(uint2(geo.decal_offset, geo.decal_count), hit_position, geometric_normal,
         tangent_world * footprint, cross(geometric_normal, tangent_world) * footprint,
         albedo, normal_world, roughness, metallic, decal_occlusion, emission);

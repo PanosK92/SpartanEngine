@@ -32,7 +32,7 @@ PathSurface restir_trace_surface(RayDesc ray)
 {
     float hit_distance;
     uint3 hit = restir_trace_hit(ray, hit_distance);
-    return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray);
+    return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray, 0.0f);
 }
 
 float3 restir_endpoint_normal(float distance, uint instance, uint primitive, float2 bary, RayDesc ray)
@@ -41,6 +41,33 @@ float3 restir_endpoint_normal(float distance, uint instance, uint primitive, flo
     // This is a terminal light vertex, not a BRDF vertex. Its normal is
     // used for solid-angle/area conversion when reconnecting the endpoint.
     return reconstruct_path_surface(distance, instance, primitive, packed, ray).geometric_normal;
+}
+
+// Match the reference's explicit-LOD reconstruction from retained hit identity.
+// The connection supplies the view direction; material lookup must not change
+// its LOD merely because a different primary reconnects to the same vertex.
+bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
+{
+    if (!is_triangle_reconnection(s)) return true;
+    float3 position;
+    if (!restir_rc_hit_position(s.rc_hit, position)) return false;
+    float3 delta = position - previous_position;
+    float d2 = dot(delta, delta);
+    if (!restir_connection_distance_valid(d2)) return false;
+    RayDesc ray;
+    ray.Origin = previous_position;
+    ray.Direction = delta * rsqrt(d2);
+    ray.TMin = 0.0f;
+    ray.TMax = sqrt(d2);
+    PathSurface rc = reconstruct_path_surface(ray.TMax, s.rc_hit.x, s.rc_hit.y, s.rc_hit.z, ray, 0.0f);
+    s.rc_pos = rc.hit_position;
+    s.rc_normal = is_rc_emissive(s) ? rc.geometric_normal : rc.hit_normal;
+    s.rc_geometric_normal_packed = pack_rc_geometric_normal(rc.geometric_normal);
+    s.rc_albedo = rc.albedo;
+    s.rc_roughness = max(rc.roughness, 0.04f);
+    s.rc_metallic = rc.metallic;
+    if (is_rc_emissive(s)) s.rc_L_nee = rc.emission;
+    return all(isfinite(s.rc_normal));
 }
 
 // A common criterion for initial selection and both directions of a hybrid shift.
@@ -71,6 +98,7 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.seed_path = replay_seed;
     s.rc_length = vertex;
     s.flags = PATH_FLAG_HAS_RC | (rc.hit ? 0u : PATH_FLAG_SKY);
+    s.rc_hit = uint3(rc.geometry, rc.hit_barycentrics);
     s.rc_pos = rc.hit ? rc.hit_position : direction;
     s.rc_normal = rc.hit ? rc.hit_normal : -direction;
     // Cache density using the same geometric normal that survives storage;
@@ -357,6 +385,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     }
     uint k = src.rc_length;
     PathSurface previous = vertices[k - 1u];
+    if (!restir_reconstruct_rc(src, previous.hit_position)) return result;
+    result.sample = src;
     if (is_dirac_light_sample(src))
     {
         uint light_index;

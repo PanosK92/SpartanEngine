@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
+#include "common_ray_hit.hlsl"
 #include "rt_visibility.hlsl"
 
 [[vk::image_format("unknown")]] RWTexture2D<float4> restir_specular_output : register(u68);
@@ -471,6 +472,7 @@ struct PathSample
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
     uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
     uint endpoint_emtri_draw;
+    uint3 rc_hit; // Triangle identity and UNORM16 barycentrics for BSDF reconnections.
     float3 rc_pos;
     float3 rc_normal;
     uint rc_geometric_normal_packed; // Surface RC: two 12-bit octahedral components.
@@ -491,6 +493,36 @@ struct PathSample
     uint   rc_length;
     uint   flags;
 };
+
+// The reference retains triangle hits rather than a frozen world-space point.
+// Analytic/forced-NEE endpoints still use their explicit endpoint representation.
+bool is_triangle_reconnection(PathSample s)
+{
+    return (s.flags & PATH_FLAG_HAS_RC) != 0u && (s.flags & (PATH_FLAG_SKY | PATH_FLAG_NEE)) == 0u;
+}
+
+bool restir_rc_hit_position(uint3 hit, out float3 position)
+{
+    position = 0.0f;
+    uint count, stride;
+    geometry_infos.GetDimensions(count, stride);
+    if (hit.x >= count) return false;
+    GeometryInfo geo = geometry_infos[hit.x];
+    uint index_count;
+    geometry_indices.GetDimensions(index_count, stride);
+    uint base = geo.index_offset + hit.y * 3u;
+    if (base >= index_count || index_count - base < 3u) return false;
+    float3 bary = unpack_hit_barycentrics(hit.z);
+    float3 p0 = geometry_vertices[geo.vertex_offset + geometry_indices[base]].position;
+    float3 p1 = geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position;
+    float3 p2 = geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position;
+    float3x3 transform = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
+    position = mul(p0 * bary.x + p1 * bary.y + p2 * bary.z, transform) +
+        float3(geo.object_to_world_0.w, geo.object_to_world_1.w, geo.object_to_world_2.w);
+    return all(isfinite(position));
+}
+
+bool restir_reconstruct_rc(inout PathSample s, float3 previous_position);
 
 // weight_sum is a pass local accumulator, it is never read back after a store because W and
 // target_pdf carry everything the next pass needs, so it stays out of the packed layout
@@ -557,7 +589,7 @@ void unpack_path_info(uint packed, inout PathSample s)
 // or a continuing suffix, never both. The unused radiance triplet stores the
 // source primary position losslessly; half-float offsets previously changed
 // shift Jacobians and could quantize sky-path primaries by meters.
-// t0: RC position, packed RC normal
+// t0: triangle hit OR explicit RC position, packed RC normal
 // t1: suffix radiance OR source position, packed outgoing direction
 // t2: terminal radiance OR source position, packed RC albedo/metallic
 // t3: seed, path descriptor, W, endpoint NEE source PDF (target is derived from F)
@@ -612,7 +644,7 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     float2 rc_out_oct     = octahedral_encode(r.sample.rc_outgoing_dir);
 
     bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
-    tex0 = float4(r.sample.rc_pos,    pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
+    tex0 = float4(is_triangle_reconnection(r.sample) ? asfloat(r.sample.rc_hit) : r.sample.rc_pos,    pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
     tex1 = float4(terminal ? r.sample.src_pos : r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x,    rc_out_oct.y));
     tex2 = float4(
         terminal ? r.sample.rc_L_nee : r.sample.src_pos,
@@ -656,6 +688,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     float2 rc_normal_oct = unpack_float_to_f16x2(tex0.w);
     float2 rc_out_oct    = unpack_float_to_f16x2(tex1.w);
 
+    r.sample.rc_hit = asuint(tex0.xyz);
     r.sample.rc_pos          = tex0.xyz;
     r.sample.rc_normal       = octahedral_decode(rc_normal_oct);
     r.sample.rc_L_post       = tex1.xyz;
@@ -669,6 +702,8 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.seed_path = asuint(tex3.x);
 
     unpack_path_info(asuint(tex3.y), r.sample);
+    if (is_triangle_reconnection(r.sample))
+        restir_rc_hit_position(r.sample.rc_hit, r.sample.rc_pos);
     float2 roughness = unpack_float_to_f16x2(tex4.y);
     r.sample.rc_roughness = max(roughness.x, 0.04f);
     r.sample.src_normal_roughness = asuint(tex4.z);
@@ -757,6 +792,7 @@ bool is_reservoir_valid(Reservoir r)
 Reservoir create_empty_reservoir()
 {
     Reservoir r;
+    r.sample.rc_hit          = 0u;
     r.sample.rc_pos          = float3(0, 0, 0);
     r.sample.rc_normal       = float3(0, 1, 0);
     r.sample.rc_geometric_normal_packed = 0u;
@@ -1556,11 +1592,17 @@ ShiftResult try_reconnection_shift(
         return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
             dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
 
+    if (is_triangle_reconnection(src))
+    {
+        if (!restir_reconstruct_rc(src, dst_pos)) return result;
+        result.sample = src;
+    }
+
     // Direct reconnections still receive a separate visibility test.
     bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
     // A stationary primary does not imply a stationary/unchanged light.
     // Dirac endpoints must resolve and re-evaluate current light parameters below.
-    if (is_identity && !is_dirac_light_sample(src))
+    if (is_identity && !is_dirac_light_sample(src) && !is_triangle_reconnection(src))
     {
         // Primary normals and roughness retain their original G-buffer bits.
         // Compare the actual source BSDF, without a second quantization step.
@@ -1636,7 +1678,7 @@ ShiftResult try_reconnection_shift(
     float cos_rc_src = dot(src.rc_normal, -dir_src);
     float cos_rc_dst = dot(src.rc_normal, -dir_dst);
 
-    if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
+    if ((!is_triangle_reconnection(src) && cos_rc_src <= RESTIR_RC_COS_FRONT) || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
     float3 rc_geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
@@ -1645,7 +1687,7 @@ ShiftResult try_reconnection_shift(
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
     // Use the actual mixture PDF on both sides; the supplemental black-box
     // criterion also rejects a sharply peaked preceding scattering event.
-    if (!is_identity && !is_nee_sample(src))
+    if ((!is_identity || is_triangle_reconnection(src)) && !is_nee_sample(src))
     {
         float pdf_dst;
         evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal,
