@@ -2176,9 +2176,6 @@ RestirLightSample sample_direct_lighting_at_vertex(
         if (n_dot_l <= 0.0f)
             continue;
 
-        if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
-            continue;
-
         // The selected incident radiance is independent of the incoming RC view.
         float  brdf_pdf;
         float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, specular_blend);
@@ -2198,6 +2195,27 @@ RestirLightSample sample_direct_lighting_at_vertex(
             result.endpoint_valid = true;
             result.endpoint_sky = is_directional;
             result.endpoint_dirac = is_point || is_spot;
+        }
+    }
+
+    // Select analytic NEE with an unshadowed target, as in section 6.1.
+    // The RIS estimate is F(selected) * sum(weights) / target(selected).
+    // Test only that endpoint; an occluded winner is a zero draw, not a
+    // reason to resample another light or renormalize the candidate set.
+    if (result.selected_target > 0.0f)
+    {
+        float distance = result.endpoint_sky ? RESTIR_RAY_T_MAX :
+            length(result.endpoint_position - shading_pos);
+        if (trace_shadow_ray(ray_origin_light, result.direction, distance))
+        {
+            float unused_pdf;
+            float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal,
+                view_dir, result.direction, unused_pdf, specular_blend);
+            result.radiance_sum = brdf * result.incident * (result.weight_sum / result.selected_target);
+        }
+        else
+        {
+            result = (RestirLightSample)0;
         }
     }
 
