@@ -446,7 +446,7 @@ namespace spartan
         void Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async);
         void Pass_ComputeBatchB(bool include_gi);
         bool Pass_ReSTIR_CopyGBuffer();
-        void Pass_ReSTIR_Async();
+        void Pass_ReSTIR_WithOpaqueHistory(bool use_current_copy);
         void Pass_GraphicsPhase2_ShadowsAndRT();
         void WaitForAsyncFog();
         void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early);

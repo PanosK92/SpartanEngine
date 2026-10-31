@@ -6553,18 +6553,17 @@ namespace spartan
         Pass_RayTracedShadows();
         if (include_gi)
         {
-            Pass_ReSTIR_PathTracing();
-            Pass_ReSTIR_Denoising();
+            Pass_ReSTIR_WithOpaqueHistory(false);
         }
         RHI_CommandList::EndMarker();
     }
 
     bool Renderer::Pass_ReSTIR_CopyGBuffer()
     {
-        // two sets of copies are needed, so restir has to be live, ray traced and mono, and overlapping a time sliced
-        // compute queue only adds a frame of latency, so the copies are skipped there
+        // ReSTIR records opaque primaries. Preserve their geometry before the
+        // transparent pass overwrites the main G-buffer, including in sync mode.
         const bool async_wanted = cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent();
-        if (!async_wanted || secondary_render_root_active || IsStereoView() || Window::IsMinimized() || !cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
+        if (secondary_render_root_active || IsStereoView() || Window::IsMinimized() || !cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
         {
             m_pass_state.restir.gbuffer_copy_frames = 0;
             return false;
@@ -6583,6 +6582,8 @@ namespace spartan
         };
         for (uint32_t i = 0; i < 6; i++)
         {
+            if (!async_wanted && i != 1 && i != 5)
+                continue;
             RHI_Texture* source      = GetRenderTarget(sources[i]);
             RHI_Texture* destination = GetRenderTarget(static_cast<Renderer_RenderTarget>(base + i));
             if (!source || !destination || source->GetWidth() != destination->GetWidth() || source->GetHeight() != destination->GetHeight())
@@ -6595,6 +6596,8 @@ namespace spartan
         RHI_CommandList::BeginMarker("restir_gbuffer_copy");
         for (uint32_t i = 0; i < 6; i++)
         {
+            if (!async_wanted && i != 1 && i != 5)
+                continue;
             RHI_CommandList::Copy(GetRenderTarget(sources[i]), GetRenderTarget(static_cast<Renderer_RenderTarget>(base + i)), false);
         }
         RHI_CommandList::EndMarker();
@@ -6604,10 +6607,10 @@ namespace spartan
         return true;
     }
 
-    void Renderer::Pass_ReSTIR_Async()
+    void Renderer::Pass_ReSTIR_WithOpaqueHistory(bool use_current_copy)
     {
-        // the passes resolve the gbuffer through the render target table, point it at this frame's
-        // copy and its history at last frame's copy, graphics is free to overwrite the real ones
+        // Sync tracing reads the live opaque G-buffer and its preserved history.
+        // Async tracing also reads current copies so graphics can overwrite the originals.
         const uint32_t current  = m_pass_state.restir.gbuffer_copy_index;
         const uint32_t base     = static_cast<uint32_t>(current == 0 ? Renderer_RenderTarget::restir_gbuffer_color_0 : Renderer_RenderTarget::restir_gbuffer_color_1);
         const uint32_t base_old = static_cast<uint32_t>(current == 0 ? Renderer_RenderTarget::restir_gbuffer_color_1 : Renderer_RenderTarget::restir_gbuffer_color_0);
@@ -6628,12 +6631,17 @@ namespace spartan
         {
             for (const auto& [target, copy] : redirects)
             {
+                if (!use_current_copy &&
+                    (m_pass_state.restir.gbuffer_copy_frames < 2 ||
+                     (target != Renderer_RenderTarget::gbuffer_normal_previous &&
+                      target != Renderer_RenderTarget::gbuffer_depth_previous)))
+                    continue;
                 swap(render_targets[static_cast<uint32_t>(target)], render_targets[copy]);
             }
         };
 
         redirect();
-        RHI_CommandList::BeginMarker("restir_async");
+        RHI_CommandList::BeginMarker(use_current_copy ? "restir_async" : "restir_sync");
         Pass_ReSTIR_PathTracing();
         Pass_ReSTIR_Denoising();
         RHI_CommandList::EndMarker();
@@ -7100,6 +7108,7 @@ namespace spartan
                 gbuffer_copy.timeline &&
                 gbuffer_history &&
                 cvar_restir_pt_async.GetValueAs<bool>() &&
+                RHI_Device::IsAsyncComputeConcurrent() &&
                 m_pass_state.restir.reservoirs_initialized;
             m_pass_state.restir.async_this_frame = restir_async;
 
@@ -7110,8 +7119,8 @@ namespace spartan
                 nullptr,
                 false,
                 nullptr,
-                phase1.timeline.get(),
-                phase1.value
+                gbuffer_copy.timeline ? gbuffer_copy.timeline.get() : phase1.timeline.get(),
+                gbuffer_copy.timeline ? gbuffer_copy.value : phase1.value
             );
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline.get();
             const uint64_t compute_b_value        = batch_b.value;
@@ -7130,7 +7139,7 @@ namespace spartan
                 RHI_CommandList* gi_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 gi_commands->Begin();
                 RHI_Device::Bind(gi_commands);
-                Pass_ReSTIR_Async();
+                Pass_ReSTIR_WithOpaqueHistory(true);
                 gi_commands->Submit(nullptr, false, nullptr, gbuffer_copy.timeline.get(), gbuffer_copy.value);
                 const RHI_Work gi_work = gi_commands->GetWork();
                 m_cross_queue_sync.gi_timeline       = gi_work.timeline.get();

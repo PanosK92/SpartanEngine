@@ -704,13 +704,16 @@ namespace spartan
             m_pass_state.restir.reservoirs_initialized = false;
         }
 
-        // copies of the opaque gbuffer for the async gi, same footprint as the gbuffer so a plain copy fills them,
-        // stereo renders into arrays and keeps restir in the frame, so it gets none, neither does a time sliced compute queue
+        // Sync reuse needs opaque depth/normal history, unaffected by transparent
+        // draws. Async tracing additionally needs copies of the other G-buffer channels.
         {
             RHI_Texture* gbuffer_color = at(view_targets(), Renderer_RenderTarget::gbuffer_color).get();
-            const bool need_copies     = need_restir && cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent() && gbuffer_color && gbuffer_color->GetArrayLength() == 1;
-            RHI_Texture* copy_color    = at(view_targets(), Renderer_RenderTarget::restir_gbuffer_color_0).get();
-            const bool copies_stale    = copy_color && (!need_copies || copy_color->GetWidth() != gbuffer_color->GetWidth() || copy_color->GetHeight() != gbuffer_color->GetHeight());
+            const bool need_copies     = need_restir && gbuffer_color && gbuffer_color->GetArrayLength() == 1;
+            const bool need_full_copy  = cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent();
+            RHI_Texture* copy_normal   = at(view_targets(), Renderer_RenderTarget::restir_gbuffer_normal_0).get();
+            const bool have_full_copy  = at(view_targets(), Renderer_RenderTarget::restir_gbuffer_color_0) != nullptr;
+            const bool copies_stale    = copy_normal && (!need_copies || need_full_copy != have_full_copy ||
+                copy_normal->GetWidth() != gbuffer_color->GetWidth() || copy_normal->GetHeight() != gbuffer_color->GetHeight());
             if (copies_stale)
             {
                 for (uint32_t i = static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_color_0); i <= static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_depth_1); i++)
@@ -719,7 +722,7 @@ namespace spartan
                 }
                 m_pass_state.restir.gbuffer_copy_frames = 0;
             }
-            if (need_copies && !at(view_targets(), Renderer_RenderTarget::restir_gbuffer_color_0))
+            if (need_copies && !at(view_targets(), Renderer_RenderTarget::restir_gbuffer_normal_0))
             {
                 const uint32_t gbuffer_width  = gbuffer_color->GetWidth();
                 const uint32_t gbuffer_height = gbuffer_color->GetHeight();
@@ -732,6 +735,8 @@ namespace spartan
                 };
                 for (uint32_t i = 0; i < 12; i++)
                 {
+                    if (!need_full_copy && i % 6 != 1 && i % 6 != 5)
+                        continue;
                     const Renderer_RenderTarget target = static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_gbuffer_color_0) + i);
                     at(view_targets(), target) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, gbuffer_width, gbuffer_height, 1, 1, formats[i % 6], gbuffer_flags, names[i]);
                 }
