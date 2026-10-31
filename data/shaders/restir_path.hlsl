@@ -10,6 +10,32 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_surface.hlsl"
 #include "restir_bsdf.hlsl"
 
+PathSurface restir_rc_surface(PathSample s)
+{
+    PathSurface surface = (PathSurface)0;
+    surface.hit = true;
+    surface.hit_position = s.rc_pos;
+    surface.hit_normal = s.rc_normal;
+    surface.geometric_normal = unpack_rc_geometric_normal(s.rc_geometric_normal_packed);
+    surface.albedo = s.rc_albedo;
+    surface.roughness = s.rc_roughness;
+    surface.metallic = s.rc_metallic;
+    surface.material_index = s.rc_material_index;
+    surface.front_facing = s.rc_front_facing;
+    MaterialParameters mat = material_parameters[s.rc_material_index];
+    surface.material_alpha = mat.color.a;
+    surface.alpha_blend = mat.alpha_blend;
+    surface.ior = mat.ior;
+    surface.absorption = mat.absorption;
+    surface.thickness = mat.thickness;
+    return surface;
+}
+
+float3 restir_rc_bsdf_evaluate(PathSample s, float3 view, float3 direction, out float pdf)
+{
+    return restir_surface_evaluate(restir_rc_surface(s), view, direction, pdf, 1.0f);
+}
+
 uint3 restir_trace_hit(RayDesc ray, out float hit_distance)
 {
     RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
@@ -71,6 +97,8 @@ bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
     s.rc_albedo = rc.albedo;
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
+    s.rc_material_index = rc.material_index;
+    s.rc_front_facing = rc.front_facing;
     if (terminal) s.rc_L_nee = rc.emission;
     return all(isfinite(s.rc_normal));
 }
@@ -112,6 +140,8 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.rc_albedo = rc.albedo;
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
+    s.rc_material_index = rc.material_index;
+    s.rc_front_facing = rc.front_facing;
     s.rc_outgoing_dir = s.rc_normal;
     float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal);
     float distance_sq = dot(delta, delta);
@@ -413,8 +443,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     rc.geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
     float pdf_out = is_rc_emissive(src) ? RESTIR_RC_EMITTER_PDF : 0.0f;
     if (k < src.path_length)
-        evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed),
-            -direction, src.rc_outgoing_dir, pdf_out, 1.0f);
+        restir_rc_bsdf_evaluate(src, -direction, src.rc_outgoing_dir, pdf_out);
     if (!is_nee_sample(src) && !restir_prefix_connection_allowed(previous, rc, connect_pdf, pdf_out, threshold))
         return result;
     if (!is_sky_sample(src) && !is_dirac_light_sample(src) && dot(src.rc_normal, -direction) <= 0.0f)

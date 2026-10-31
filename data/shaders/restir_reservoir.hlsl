@@ -429,6 +429,9 @@ struct PathSample
     float3 rc_albedo;
     float  rc_roughness;
     float  rc_metallic;
+    // Transient interface data, reconstructed from rc_hit after unpacking.
+    uint   rc_material_index;
+    bool   rc_front_facing;
     uint src_normal_roughness; // Exact G-buffer normal (24 bits) and roughness (8 bits).
     float3 src_pos;
     float3 src_normal;
@@ -484,6 +487,7 @@ bool restir_rc_hit_position(uint3 hit, out float3 position)
 }
 
 bool restir_reconstruct_rc(inout PathSample s, float3 previous_position);
+float3 restir_rc_bsdf_evaluate(PathSample s, float3 view, float3 direction, out float pdf);
 
 // weight_sum is a pass local accumulator, it is never read back after a store because W and
 // target_pdf carry everything the next pass needs, so it stays out of the packed layout
@@ -812,6 +816,8 @@ Reservoir create_empty_reservoir()
     r.sample.rc_albedo       = float3(0, 0, 0);
     r.sample.rc_roughness    = 1.0f;
     r.sample.rc_metallic     = 0.0f;
+    r.sample.rc_material_index = 0u;
+    r.sample.rc_front_facing = false;
     r.sample.src_normal_roughness = gbuffer_pack_normal(float3(0, 1, 0), 0u) | 0xff000000u;
     r.sample.src_pos         = float3(0, 0, 0);
     r.sample.src_normal      = float3(0, 1, 0);
@@ -1524,8 +1530,7 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
     float3 view_at_rc = -dir_primary_to_rc;
     // rc is a suffix vertex so the full brdf is active
     float pdf;
-    float3 f_rc = evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic,
-        src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed), view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
+    float3 f_rc = restir_rc_bsdf_evaluate(src, view_at_rc, src.rc_outgoing_dir, pdf);
     float mis = src.endpoint_pooled && src.path_length == src.rc_length + 1u
         ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light, src.rc_nee_pdf, pdf)
         : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.path_length, src.endpoint_light,
@@ -1723,8 +1728,7 @@ ShiftResult try_reconnection_shift(
         if (!is_rc_emissive(src) && any(src.rc_L_post > 0.0f))
         {
             float pdf_rc;
-            evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed),
-                -dir_dst, src.rc_outgoing_dir, pdf_rc, 1.0f);
+            restir_rc_bsdf_evaluate(src, -dir_dst, src.rc_outgoing_dir, pdf_rc);
             inverse_pdf_cos = pdf_rc * abs(dot(dst_geometric_normal, dir_dst));
         }
         if (!restir_dual_footprint_allowed(dist_dst_sq, forward_pdf_cos, inverse_pdf_cos,
