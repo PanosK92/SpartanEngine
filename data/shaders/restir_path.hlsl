@@ -41,6 +41,7 @@ PathSurface restir_trace_surface(RayDesc ray)
 bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
 {
     restir_refresh_environment_endpoint(s);
+    if (is_area_light_sample(s)) return restir_reconstruct_area_endpoint(s, previous_position);
     if (!is_triangle_reconnection(s)) return true;
     if (is_nee_sample(s) && s.endpoint_light == RESTIR_ENDPOINT_EMTRI)
     {
@@ -272,7 +273,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         }
         leaf.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
         leaf.endpoint_environment = light.light_index == RESTIR_ENDPOINT_SKY;
-        leaf.endpoint_geometry = light.endpoint_dirac ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
+        leaf.endpoint_geometry = light.endpoint_dirac || light.endpoint_area > 0.0f ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
         leaf.rc_nee_pdf = light.endpoint_pdf;
         leaf.path_length = depth + 1u;
         leaf.endpoint_light = light.light_index;
@@ -423,6 +424,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     if (!is_sky_sample(src) && !is_dirac_light_sample(src) && dot(src.rc_normal, -direction) <= 0.0f)
         return result;
     float geometry = is_sky_sample(src) || is_dirac_light_sample(src) ? 1.0f : abs(dot(rc.geometric_normal, -direction)) / dot(delta, delta);
+    geometry *= restir_endpoint_area_measure(src);
     if (geometry <= 0.0f || src.rc_pdf <= 0.0f)
         return result;
     PathSample connection = src;

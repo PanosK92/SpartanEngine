@@ -367,8 +367,9 @@ static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light
 static const uint RESTIR_ENDPOINT_EMTRI = 65533u; // emissive triangle pool
 static const uint RESTIR_ENDPOINT_SKY   = 65534u; // environment nee
 static const uint RESTIR_ENDPOINT_BSDF  = 65535u; // bsdf sampled hit
-// endpoint_emtri_draw tag on a primary point or spot light sample, the field is unused by analytic lights
+// Analytic terminal endpoints reserve this field for their persistent type.
 static const uint RESTIR_ENDPOINT_DIRAC_TAG = 7u;
+static const uint RESTIR_ENDPOINT_AREA_TAG = 6u;
 
 // suffix of a path starting at the primary hit, lin 2022 5 split of the radiance leaving rc
 //   L_at_rc = L_nee + f_rc(in_at_rc, rc_outgoing_dir) * L_post
@@ -386,7 +387,7 @@ struct PathSample
     uint2 endpoint_geometry; // Terminal pooled emitter: instance/primitive or pool index.
     bool endpoint_pooled;
     bool endpoint_environment; // Sky endpoint, distinct from an emissive BSDF hit.
-    float rc_pdf; // Source incoming geometry factor, updated after every reconnection shift.
+    float rc_pdf; // Source incoming geometry factor (times rectangle area for local-UV endpoints).
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
     uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
@@ -526,7 +527,7 @@ void unpack_path_info(uint packed, inout PathSample s)
 
 // Four RGBA32F textures (64 bytes). Primary surface history is shared per pixel;
 // RC material state is reconstructed from retained geometry before a shift.
-// t0: triangle hit / explicit endpoint / stable dirac identity, outgoing direction or terminal geometric normal
+// t0: triangle hit / explicit endpoint / analytic identity + rectangle UV, outgoing direction or terminal geometric normal
 // t1: suffix or terminal radiance, source incoming geometry factor
 // t2: cached RGB integrand paired with W, W
 // t3: initial seed, path descriptor, endpoint NEE PDF, confidence
@@ -579,6 +580,8 @@ float target_scalar(float3 f)
 }
 
 bool is_dirac_light_sample(PathSample s);
+bool is_area_light_sample(PathSample s);
+bool restir_resolve_area_position(inout PathSample s);
 bool restir_resolve_dirac_light(PathSample s, out uint light_index);
 
 float4 restir_primary_surface(float2 uv)
@@ -599,6 +602,7 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
     float3 endpoint = is_triangle_reconnection(r.sample) ? asfloat(r.sample.rc_hit) : r.sample.rc_pos;
     if (is_dirac_light_sample(r.sample)) endpoint = float3(asfloat(r.sample.endpoint_geometry), 0.0f);
+    if (is_area_light_sample(r.sample)) endpoint = asfloat(uint3(r.sample.endpoint_geometry, r.sample.rc_hit.z));
     tex0 = float4(endpoint, asfloat(terminal ? r.sample.rc_geometric_normal_packed : pack_rc_outgoing_direction(r.sample.rc_outgoing_dir)));
     tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post, r.sample.rc_pdf);
     tex2 = float4(r.sample.F, r.W);
@@ -643,6 +647,11 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
         if (terminal && r.sample.endpoint_pooled)
             r.sample.endpoint_geometry = pool_hit ? uint2(r.sample.rc_hit.x, 0u) : r.sample.rc_hit.xy;
     }
+    else if (is_area_light_sample(r.sample))
+    {
+        r.sample.endpoint_geometry = asuint(tex0.xy);
+        if (!restir_resolve_area_position(r.sample)) r.sample.rc_pos = 0.0f;
+    }
     else if (is_dirac_light_sample(r.sample))
     {
         r.sample.endpoint_geometry = asuint(tex0.xy);
@@ -671,11 +680,16 @@ bool is_dirac_light_sample(PathSample s)
         s.endpoint_emtri_draw == RESTIR_ENDPOINT_DIRAC_TAG;
 }
 
+bool is_area_light_sample(PathSample s)
+{
+    return is_nee_sample(s) && !is_sky_sample(s) && s.rc_length == s.path_length && s.endpoint_light < RESTIR_ENDPOINT_EMTRI &&
+        s.endpoint_emtri_draw == RESTIR_ENDPOINT_AREA_TAG;
+}
+
 // Buffer indices can change as lights are culled, added or removed. Resolve
 // the persistent light identity; position is not an identity, even nearby.
-bool restir_resolve_dirac_light(PathSample s, out uint light_index)
+bool restir_resolve_analytic_light(PathSample s, uint type_flags, out uint light_index)
 {
-    const uint dirac_flags = (1u << 1) | (1u << 2);
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
     light_index = s.endpoint_light;
     if (!any(s.endpoint_geometry != 0u))
@@ -683,14 +697,14 @@ bool restir_resolve_dirac_light(PathSample s, out uint light_index)
     if (light_index < light_count)
     {
         LightParameters light = light_parameters[light_index];
-        if ((light.flags & dirac_flags) != 0u &&
+        if ((light.flags & type_flags) != 0u &&
             all(uint2(light.identity_low, light.identity_high) == s.endpoint_geometry))
             return true;
     }
     for (uint i = 0u; i < light_count; ++i)
     {
         LightParameters light = light_parameters[i];
-        if ((light.flags & dirac_flags) != 0u &&
+        if ((light.flags & type_flags) != 0u &&
             all(uint2(light.identity_low, light.identity_high) == s.endpoint_geometry))
         {
             light_index = i;
@@ -698,6 +712,44 @@ bool restir_resolve_dirac_light(PathSample s, out uint light_index)
         }
     }
     return false;
+}
+
+bool restir_resolve_dirac_light(PathSample s, out uint light_index)
+{
+    return restir_resolve_analytic_light(s, (1u << 1) | (1u << 2), light_index);
+}
+
+// Rectangle samples retain the original UNORM16 tile coordinates, not a
+// frozen world-space point. The stable identity survives light-buffer changes.
+bool restir_resolve_area_position(inout PathSample s)
+{
+    uint index;
+    if (!restir_resolve_analytic_light(s, 1u << 6, index)) return false;
+    LightParameters light = light_parameters[index];
+    if (light.area_width <= 0.0f || light.area_height <= 0.0f) return false;
+    float2 position = float2(s.rc_hit.z & 65535u, s.rc_hit.z >> 16u) / 65536.0f - 0.5f;
+    float3 right = normalize(light.direction_right);
+    float3 up = normalize(cross(light.direction, right));
+    s.endpoint_light = index;
+    s.rc_pos = light.position + position.x * light.area_width * right + position.y * light.area_height * up;
+    return all(isfinite(s.rc_pos));
+}
+
+bool restir_reconstruct_area_endpoint(inout PathSample s, float3 origin)
+{
+    if (!restir_resolve_area_position(s)) return false;
+    LightParameters light = light_parameters[s.endpoint_light];
+    s.rc_normal = light.direction;
+    s.rc_geometric_normal_packed = pack_rc_geometric_normal(light.direction);
+    s.rc_L_nee = light.color.rgb * light.intensity * restir_range_window(length(s.rc_pos - origin), light.range);
+    return all(isfinite(s.rc_L_nee));
+}
+
+float restir_endpoint_area_measure(PathSample s)
+{
+    if (!is_area_light_sample(s)) return 1.0f;
+    LightParameters light = light_parameters[s.endpoint_light];
+    return light.area_width * light.area_height;
 }
 
 bool is_reservoir_valid(Reservoir r)
@@ -1609,7 +1661,7 @@ ShiftResult try_reconnection_shift(
             dst_albedo, dst_roughness, dst_metallic, src_view_dir, destination_camera, dst_geometric_normal);
 
     float3 connection_origin = restir_ray_origin(dst_pos, dst_geometric_normal);
-    if (is_triangle_reconnection(src))
+    if (is_triangle_reconnection(src) || is_area_light_sample(src))
     {
         if (!restir_reconstruct_rc(src, connection_origin)) return result;
         result.sample = src;
@@ -1618,8 +1670,8 @@ ShiftResult try_reconnection_shift(
     // Direct reconnections still receive a separate visibility test.
     bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
     // A stationary primary does not imply a stationary/unchanged light.
-    // Dirac endpoints must resolve and re-evaluate current light parameters below.
-    if (is_identity && !is_dirac_light_sample(src) && !is_triangle_reconnection(src))
+    // Analytic endpoints must resolve and re-evaluate current light parameters.
+    if (is_identity && !is_dirac_light_sample(src) && !is_area_light_sample(src) && !is_triangle_reconnection(src))
     {
         // Primary normals and roughness retain their original G-buffer bits.
         // Compare the actual source BSDF, without a second quantization step.
@@ -1696,7 +1748,7 @@ ShiftResult try_reconnection_shift(
     float cos_rc_src = dot(src.rc_normal, -dir_src);
     float cos_rc_dst = dot(src.rc_normal, -dir_dst);
 
-    if ((!is_triangle_reconnection(src) && cos_rc_src <= RESTIR_RC_COS_FRONT) || cos_rc_dst <= RESTIR_RC_COS_FRONT)
+    if ((!is_triangle_reconnection(src) && !is_area_light_sample(src) && cos_rc_src <= RESTIR_RC_COS_FRONT) || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
     float3 rc_geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
@@ -1734,7 +1786,9 @@ ShiftResult try_reconnection_shift(
     // across stores, then replace it with the destination factor for the next
     // shift. Recomputing the denominator from a reconstructed/moving RC loses
     // the geometry of the sample that actually produced the cached integrand.
-    float geometry_dst = geometry_cos_dst / dist_dst_sq;
+    // Rectangle endpoints use fixed local UVs, so their area measure is part
+    // of the Jacobian when the emitter is resized between source and destination.
+    float geometry_dst = geometry_cos_dst / dist_dst_sq * restir_endpoint_area_measure(src);
     if (!(src.rc_pdf > 0.0f) || !(geometry_dst > 0.0f))
         return result;
     float jacobian = geometry_dst / src.rc_pdf;
@@ -1883,6 +1937,8 @@ struct RestirLightSample
     uint emtri_draw;
     uint emitter_triangle;
     uint2 endpoint_identity;
+    float endpoint_area; // zero for non-rectangular lights
+    uint endpoint_area_position; // original packed tile coordinates
     uint3 endpoint_hit; // TLAS or pool triangle identity, followed by packed barycentrics.
     float3 endpoint_position;
     float3 endpoint_normal;
@@ -1912,14 +1968,17 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
     s.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
         (restir_connection_distance_valid(distance_sq) ?
             abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
+    s.rc_pdf *= light.endpoint_area > 0.0f ? light.endpoint_area : 1.0f;
+    if (light.endpoint_area > 0.0f) s.rc_hit.z = light.endpoint_area_position;
     s.endpoint_light = light.light_index;
     s.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
     s.endpoint_environment = light.light_index == RESTIR_ENDPOINT_SKY;
-    s.endpoint_geometry = light.endpoint_dirac ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
+    s.endpoint_geometry = light.endpoint_dirac || light.endpoint_area > 0.0f ? light.endpoint_identity : uint2(light.emitter_triangle, 0u);
     // Analytic endpoints do not need the proposal index. Keeping it would let
     // rectangular-light proposal 7 collide with the persistent dirac tag.
     s.endpoint_emtri_draw = light.light_index < RESTIR_ENDPOINT_EMTRI
-        ? (light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG : 0u) : light.emtri_draw;
+        ? (light.endpoint_dirac ? RESTIR_ENDPOINT_DIRAC_TAG :
+            (light.endpoint_area > 0.0f ? RESTIR_ENDPOINT_AREA_TAG : 0u)) : light.emtri_draw;
     s.rc_nee_pdf = light.endpoint_pdf;
     return s;
 }
@@ -1975,6 +2034,8 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     if (light.area_width <= 0.0f || light.area_height <= 0.0f) continue;
                     float3 right = normalize(light.direction_right);
                     float3 up = normalize(cross(light.direction, right));
+                    candidate.endpoint_area = light.area_width * light.area_height;
+                    candidate.endpoint_area_position = entry.analytic_position;
                     float2 position = restir_analytic_sample_position(entry) - 0.5f;
                     endpoint += position.x * light.area_width * right + position.y * light.area_height * up;
                     candidate.endpoint_normal = light.direction;
