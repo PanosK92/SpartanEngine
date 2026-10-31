@@ -365,7 +365,7 @@ float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 norm
         return 0.0f;
     float distance = sqrt(distance_sq);
     float3 direction = delta / distance;
-    if (dot(normal, direction) <= 0.0f || dot(tri.normal, -direction) <= 1e-4f)
+    if (dot(normal, direction) <= 0.0f || dot(tri.normal, -direction) <= 0.0f)
         return 0.0f;
     float pdf = (tri.weight / total) * restir_light_kind_pmf_at_vertex(RESTIR_LIGHT_KIND_EMISSIVE, vertex) *
         restir_triangle_point_pdf(origin, tri.v0, tri.v1, tri.v2, endpoint);
@@ -2100,7 +2100,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
             float distance_sq = dot(delta, delta);
             if (!restir_connection_distance_valid(distance_sq)) continue;
             candidate.direction = delta * rsqrt(distance_sq);
-            if (dot(tri.normal, -candidate.direction) <= 1e-4f) continue;
+            if (dot(tri.normal, -candidate.direction) <= 0.0f) continue;
             candidate.light_index = RESTIR_ENDPOINT_EMTRI;
             candidate.emitter_triangle = index;
             candidate.endpoint_hit = uint3(index, 0u, entry.lights.w);
