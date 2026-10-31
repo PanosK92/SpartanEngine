@@ -109,7 +109,7 @@ void ray_gen()
         uint   replay_seed = seed;
         float2 xi          = random_float2(seed);
         float  source_pdf;
-        float3 dir         = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, source_pdf, restir_primary_specular_blend(roughness));
+        float3 dir         = sample_reflection_brdf(albedo, roughness, metallic, normal_ws, geometric_normal_ws, view_dir, xi, source_pdf, restir_primary_specular_blend(roughness));
 
         bool dir_valid = restir_pdf_valid(source_pdf) &&
                          (dot(dir, normal_ws) >= MIN_COS_AT_PRIMARY) &&
@@ -139,9 +139,9 @@ void ray_gen()
             }
             // Independent path-tracing estimate: sum the traced light contributions,
             // without selecting a path endpoint or doing spatiotemporal reuse.
-            float3 brdf_all = eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
+            float3 brdf_all = eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal_ws, geometric_normal_ws,
                 view_dir, dir, 1.0f);
-            float3 brdf_diffuse = eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
+            float3 brdf_diffuse = eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal_ws, geometric_normal_ws,
                 view_dir, dir, 0.0f);
             canonical_gi += brdf_all * reference_radiance / source_pdf;
             canonical_specular += max(brdf_all - brdf_diffuse, 0.0f) * reference_radiance / source_pdf;
@@ -207,7 +207,7 @@ void ray_gen()
     if (light.endpoint_valid && restir_pdf_valid(light.endpoint_pdf))
     {
         float bsdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, light.direction, bsdf_pdf, 1.0f);
+        float3 brdf = evaluate_reflection_brdf(albedo, roughness, metallic, normal_ws, geometric_normal_ws, view_dir, light.direction, bsdf_pdf, 1.0f);
         float mis = light_candidate.endpoint_pooled ?
             restir_pooled_endpoint_mis(2u, light.light_index, light.endpoint_pdf, bsdf_pdf) :
             (light_candidate.endpoint_environment ?

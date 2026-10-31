@@ -1310,7 +1310,41 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     return l;
 }
 
-// full brdf*cos at the primary vertex for shift and target pdf evaluation
+// The reference material rejects reflection across the geometric surface.
+// A tilted shading normal alone cannot turn reflection into transmission.
+bool restir_reflection_hemisphere(float3 geometric_normal, float3 view, float3 direction)
+{
+    return (dot(geometric_normal, view) >= 0.0f) == (dot(geometric_normal, direction) >= 0.0f);
+}
+
+float3 evaluate_reflection_brdf(float3 albedo, float roughness, float metallic,
+    float3 normal, float3 geometric_normal, float3 view, float3 direction, out float pdf, float specular_blend)
+{
+    if (!restir_reflection_hemisphere(geometric_normal, view, direction))
+    {
+        pdf = 0.0f;
+        return 0.0f;
+    }
+    return evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, specular_blend);
+}
+
+float3 sample_reflection_brdf(float3 albedo, float roughness, float metallic,
+    float3 normal, float3 geometric_normal, float3 view, float2 xi, out float pdf, float specular_blend)
+{
+    float3 direction = sample_brdf(albedo, roughness, metallic, normal, view, xi, pdf, specular_blend);
+    // Invalid directions remain zero draws; resampling would change the PDF.
+    if (!restir_reflection_hemisphere(geometric_normal, view, direction)) pdf = 0.0f;
+    return direction;
+}
+
+float3 eval_surface_reflection_brdf_cos(float3 albedo, float roughness, float metallic,
+    float3 normal, float3 geometric_normal, float3 view, float3 direction, float specular_blend)
+{
+    float pdf;
+    return evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view, direction, pdf, specular_blend);
+}
+
+// Full BRDF*cos helper retained for the standalone path tracer.
 float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, float3 normal, float3 view_dir, float3 dir, float specular_blend)
 {
     float n_dot_l = dot(normal, dir);
@@ -1341,12 +1375,12 @@ float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal,
     {
         uint seed = s.seed_path;
         float unused_pdf;
-        direction = sample_brdf(albedo, roughness, metallic, normal, view,
+        direction = sample_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view,
             random_float2(seed), unused_pdf, 1.0f);
     }
     float pdf;
-    float3 total = evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, 1.0f);
-    float3 diffuse = evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, 0.0f);
+    float3 total = evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view, direction, pdf, 1.0f);
+    float3 diffuse = evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view, direction, pdf, 0.0f);
     return saturate((total - diffuse) / max(total, 1e-20f));
 }
 
@@ -1426,12 +1460,12 @@ float restir_environment_endpoint_mis(uint path_length, uint endpoint_light,
                                                  : restir_balance_heuristic(bsdf_pdf, nee_density);
 }
 
-float restir_primary_endpoint_mis(PathSample src, float3 origin, float3 normal, float3 view,
+float restir_primary_endpoint_mis(PathSample src, float3 origin, float3 normal, float3 geometric_normal, float3 view,
     float3 albedo, float roughness, float metallic, float3 direction)
 {
     if (src.rc_length != src.path_length || (!src.endpoint_pooled && !src.endpoint_environment)) return 1.0f;
     float bsdf_pdf;
-    evaluate_brdf(albedo, roughness, metallic, normal, view, direction, bsdf_pdf, restir_primary_specular_blend(roughness));
+    evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view, direction, bsdf_pdf, restir_primary_specular_blend(roughness));
     return src.endpoint_pooled ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light,
         restir_terminal_emitter_pdf(src, origin, normal), bsdf_pdf) :
         restir_environment_endpoint_mis(src.path_length, src.endpoint_light, normal, direction, bsdf_pdf);
@@ -1459,8 +1493,8 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
     float3 view_at_rc = -dir_primary_to_rc;
     // rc is a suffix vertex so the full brdf is active
     float pdf;
-    float3 f_rc = evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic,
-        src.rc_normal, view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
+    float3 f_rc = evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic,
+        src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed), view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
     float mis = src.endpoint_pooled && src.path_length == src.rc_length + 1u
         ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light, src.rc_nee_pdf, pdf)
         : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.path_length, src.endpoint_light,
@@ -1528,7 +1562,7 @@ ShiftResult try_reconnection_shift(
         if (!is_nee_sample(src))
         {
             float pdf_dst;
-            evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal,
+            evaluate_reflection_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal,
                 dst_view_dir, dir, pdf_dst, restir_primary_specular_blend(dst_roughness));
             if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
                 return result;
@@ -1536,12 +1570,12 @@ ShiftResult try_reconnection_shift(
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+        float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
         if (all(brdf_cos <= 0.0f))
             return result;
 
         result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir) *
-            restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
+            restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_geometric_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
         result.jacobian = 1.0f;
         result.ok       = true;
         result.sample.F = result.f_dst;
@@ -1574,7 +1608,8 @@ ShiftResult try_reconnection_shift(
         bool same_shading = all(src.src_normal == dst_normal) &&
             all(src.src_albedo == stored_material.rgb) && src.src_metallic == stored_material.a &&
             src.src_roughness == dst_roughness;
-        if (same_shading)
+        if (same_shading && restir_reflection_hemisphere(dst_geometric_normal,
+            dst_view_dir, src.rc_pos - connection_origin))
         {
             result.f_dst = src.F;
             result.sample.F = src.F;
@@ -1605,7 +1640,7 @@ ShiftResult try_reconnection_shift(
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+        float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
         if (all(brdf_cos <= 0.0f))
             return result;
 
@@ -1653,7 +1688,7 @@ ShiftResult try_reconnection_shift(
     if ((!is_identity || is_triangle_reconnection(src)) && !is_nee_sample(src))
     {
         float pdf_dst;
-        evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal,
+        evaluate_reflection_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal,
             dst_view_dir, dir_dst, pdf_dst, restir_primary_specular_blend(dst_roughness));
         if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
             return result;
@@ -1662,7 +1697,7 @@ ShiftResult try_reconnection_shift(
         if (any(src.rc_L_post > 0.0f))
         {
             float pdf_rc;
-            evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
+            evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed),
                 -dir_dst, src.rc_outgoing_dir, pdf_rc, 1.0f);
             inverse_pdf_cos = pdf_rc * abs(dot(dst_geometric_normal, dir_dst));
         }
@@ -1671,7 +1706,7 @@ ShiftResult try_reconnection_shift(
             return result;
     }
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
+    float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -1689,7 +1724,7 @@ ShiftResult try_reconnection_shift(
     // RC outgoing direction is represented in solid angle, so reconnecting
     // preserves that coordinate. Its initial sampling PDF is already in W.
     result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst) *
-        restir_primary_endpoint_mis(src, connection_origin, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
+        restir_primary_endpoint_mis(src, connection_origin, dst_normal, dst_geometric_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir_dst);
     result.jacobian = jacobian;
     result.sample.rc_pdf = geometry_dst;
     result.ok       = true;
@@ -1982,7 +2017,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
         candidate.endpoint_pdf *= restir_light_kind_pmf_at_vertex(kind, vertex) / max(restir_light_kind_pmf(kind), 1e-20f);
         if (dot(shading_normal, candidate.direction) <= 0.0f || !restir_pdf_valid(candidate.endpoint_pdf)) continue;
         float bsdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal,
+        float3 brdf = evaluate_reflection_brdf(albedo, roughness, metallic, shading_normal, geometric_normal,
             view_dir, candidate.direction, bsdf_pdf, specular_blend);
         float mis = candidate.light_index == RESTIR_ENDPOINT_EMTRI ?
             restir_pooled_endpoint_mis(vertex + 1u, candidate.light_index, candidate.endpoint_pdf, bsdf_pdf) :
@@ -2066,6 +2101,7 @@ ShiftResult evaluate_path_integrand(
     PathSample src,
     float3 dst_pos,
     float3 dst_normal,
+    float3 dst_geometric_normal,
     float3 dst_view_dir,
     float3 dst_albedo,
     float dst_roughness,
@@ -2104,13 +2140,13 @@ ShiftResult evaluate_path_integrand(
     if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+    float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
     // dst incoming equals src incoming by construction so f_rc matches the original, no drift
     result.f_dst = brdf_cos * rc_outgoing_radiance(src, dir) *
-        restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
+        restir_primary_endpoint_mis(src, dst_pos, dst_normal, dst_geometric_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic, dir);
     result.ok    = true;
     return result;
 }

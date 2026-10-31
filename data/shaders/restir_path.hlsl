@@ -154,8 +154,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     previous.roughness = primary_roughness;
     previous.metallic = primary_metallic;
     float unused_pdf;
-    float3 throughput = evaluate_brdf(primary_albedo, primary_roughness, primary_metallic,
-        primary_normal, primary_view, dir, unused_pdf, restir_primary_specular_blend(primary_roughness)) / dir_pdf;
+    float3 throughput = evaluate_reflection_brdf(primary_albedo, primary_roughness, primary_metallic,
+        primary_normal, primary_geometric_normal, primary_view, dir, unused_pdf, restir_primary_specular_blend(primary_roughness)) / dir_pdf;
     float3 reference_throughput = 1.0f;
     float3 connection_prefix = 0.0f;
     float3 suffix = 1.0f;
@@ -243,8 +243,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             replay, depth);
         reference_radiance += reference_throughput * light.radiance_sum * roulette_weight;
         float light_bsdf_pdf;
-        float3 light_f = evaluate_brdf(current.albedo, current.roughness, current.metallic,
-            current.hit_normal, -dir, light.direction, light_bsdf_pdf, 1.0f);
+        float3 light_f = evaluate_reflection_brdf(current.albedo, current.roughness, current.metallic,
+            current.hit_normal, current.geometric_normal, -dir, light.direction, light_bsdf_pdf, 1.0f);
         float light_mis = light.light_index == RESTIR_ENDPOINT_EMTRI
             ? restir_pooled_endpoint_mis(depth + 1u, light.light_index, light.endpoint_pdf, light_bsdf_pdf)
             : restir_rc_endpoint_mis(3u, depth + 1u, light.light_index, light.light_index == RESTIR_ENDPOINT_SKY,
@@ -289,12 +289,12 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             if (!replay) roulette_weight /= RESTIR_RR_CONTINUATION;
         }
         float outgoing_pdf;
-        float3 outgoing = sample_brdf(current.albedo, current.roughness, current.metallic,
-            current.hit_normal, -dir, random_float2(seed), outgoing_pdf, 1.0f);
+        float3 outgoing = sample_reflection_brdf(current.albedo, current.roughness, current.metallic,
+            current.hit_normal, current.geometric_normal, -dir, random_float2(seed), outgoing_pdf, 1.0f);
         if (!restir_pdf_valid(outgoing_pdf) || dot(outgoing, current.hit_normal) <= 0.0f || any(!isfinite(outgoing)))
             break;
-        float3 f = evaluate_brdf(current.albedo, current.roughness, current.metallic,
-            current.hit_normal, -dir, outgoing, unused_pdf, 1.0f);
+        float3 f = evaluate_reflection_brdf(current.albedo, current.roughness, current.metallic,
+            current.hit_normal, current.geometric_normal, -dir, outgoing, unused_pdf, 1.0f);
         if (has_reconnection(connection))
             suffix *= f / outgoing_pdf;
         else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold))
@@ -354,14 +354,14 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         }
         float blend = i == 1u ? restir_primary_specular_blend(roughness) : 1.0f;
         float pdf;
-        float3 direction = sample_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
+        float3 direction = sample_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
             incoming, random_float2(seed), pdf, blend);
         if (!restir_pdf_valid(pdf) || dot(v.hit_normal, direction) <= 0.0f || any(!isfinite(direction)))
             return result;
         directions[i] = direction;
         pdfs[i] = pdf;
         float unused_pdf;
-        prefix *= evaluate_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
+        prefix *= evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
             incoming, direction, unused_pdf, blend) / pdf;
         RayDesc ray;
         ray.Origin = restir_ray_origin(v.hit_position, v.geometric_normal);
@@ -394,14 +394,14 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         return result;
     directions[k - 1u] = direction;
     float connect_pdf;
-    float3 connect_f = evaluate_brdf(previous.albedo, previous.roughness, previous.metallic,
-        previous.hit_normal, -directions[k - 2u], direction, connect_pdf, 1.0f);
+    float3 connect_f = evaluate_reflection_brdf(previous.albedo, previous.roughness, previous.metallic,
+        previous.hit_normal, previous.geometric_normal, -directions[k - 2u], direction, connect_pdf, 1.0f);
     float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(pos, primary_geometric_normal, camera_position);
     [loop] for (uint j = 2u; j < k; ++j)
     {
         PathSurface v = vertices[j];
         float pdf_out;
-        evaluate_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal,
+        evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
             -directions[j - 1u], directions[j], pdf_out, 1.0f);
         if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold))
             return result;
@@ -413,7 +413,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     rc.geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
     float pdf_out = 0.0f;
     if (k < src.path_length)
-        evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
+        evaluate_reflection_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal, unpack_rc_geometric_normal(src.rc_geometric_normal_packed),
             -direction, src.rc_outgoing_dir, pdf_out, 1.0f);
     if (!is_nee_sample(src) && !restir_prefix_connection_allowed(previous, rc, connect_pdf, pdf_out, threshold))
         return result;
@@ -461,7 +461,7 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
     result.sample = src;
     uint seed = src.seed_path;
     float pdf_dst;
-    float3 dir = sample_brdf(dst_albedo, roughness, metallic, dst_normal, dst_view,
+    float3 dir = sample_reflection_brdf(dst_albedo, roughness, metallic, dst_normal, dst_geometric_normal, dst_view,
         random_float2(seed), pdf_dst, restir_primary_specular_blend(roughness));
     if (!restir_pdf_valid(pdf_dst) || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
         return result;
