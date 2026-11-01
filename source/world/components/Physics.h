@@ -18,11 +18,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../rhi/RHI_Vertex.h"
 //=================================
 
-namespace sol
-{
-    class state_view;
-}
-
 namespace spartan
 {
     class Entity;
@@ -99,9 +94,6 @@ namespace spartan
         void ApplySettings(const PhysicsSettings& settings);
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
-
-        static void RegisterForScripting(sol::state_view State);
-        sol::reference AsLua(sol::state_view state) override;
 
         // static cleanup (call before physics world shutdown)
         static void Shutdown();

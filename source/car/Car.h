@@ -97,6 +97,8 @@ namespace spartan
         // global lifecycle (tick happens automatically through entity system)
         static void ShutdownAll();
         static std::vector<Car*> GetAll();
+        // the drivable car the player owns, the one under a CarReset entity, otherwise the first drivable one
+        static Car* GetPlayerCar();
 
         // instance lifecycle
         void Destroy();

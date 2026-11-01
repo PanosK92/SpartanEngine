@@ -36,9 +36,6 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
-        static void RegisterForScripting(sol::state_view state);
-        sol::reference AsLua(sol::state_view state) override;
-
         const std::string& GetText() const { return m_text; }
         void SetText(const std::string& text);
 

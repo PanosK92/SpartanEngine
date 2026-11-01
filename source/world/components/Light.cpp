@@ -17,7 +17,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../rhi/RHI_Texture.h"
 #include "../../../data/shaders/shared_lighting.h"
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
@@ -284,127 +283,6 @@ namespace spartan
         settings.volumetric_distance  = node.attribute("distance_volumetric").as_float(settings.volumetric_distance);
         settings.ies_profile = node.attribute("ies_profile").as_string("");
         ApplySettings(settings);
-    }
-
-    void Light::RegisterForScripting(sol::state_view State)
-    {
-        State.new_enum("LightType",
-            "Directional",              LightType::Directional,
-            "Point",                    LightType::Point,
-            "Spot",                     LightType::Spot,
-            "Area",                     LightType::Area,
-            "Max",                      LightType::Max
-        );
-
-        State.new_enum("LightIntensity",
-            "bulb_stadium",             LightIntensity::bulb_stadium,
-            "bulb_500_watt",            LightIntensity::bulb_500_watt,
-            "bulb_150_watt",            LightIntensity::bulb_150_watt,
-            "bulb_100_watt",            LightIntensity::bulb_100_watt,
-            "bulb_60_watt",             LightIntensity::bulb_60_watt,
-            "bulb_25_watt",             LightIntensity::bulb_25_watt,
-            "bulb_flashlight",          LightIntensity::bulb_flashlight,
-            "black_hole",               LightIntensity::black_hole,
-            "custom",                   LightIntensity::custom
-        );
-
-        State.new_enum("LightIntensityUnit",
-            "Lux",                      LightIntensityUnit::Lux,
-            "Lumens",                   LightIntensityUnit::Lumens
-        );
-
-        State.new_enum("LightFlags",
-            "Shadows",                  LightFlags::Shadows,
-            "ShadowsScreenSpace",       LightFlags::ShadowsScreenSpace,
-            "Volumetric",               LightFlags::Volumetric,
-            "DayNightCycle",            LightFlags::DayNightCycle,
-            "RealTimeCycle",            LightFlags::RealTimeCycle
-        );
-
-        State.new_enum("LightPreset",
-            "dawn",                     LightPreset::dawn,
-            "day",                      LightPreset::day,
-            "dusk",                     LightPreset::dusk,
-            "night",                    LightPreset::night,
-            "david_lynch",              LightPreset::david_lynch,
-            "custom",                   LightPreset::custom
-        );
-
-
-        State.new_usertype<Light>("Light",
-            sol::base_classes,              sol::bases<Component>(),
-
-            "SetTemperature",               &Light::SetTemperature,
-            "GetTemperature",               &Light::GetTemperature,
-
-
-            "SetColor",                     &Light::SetColor,
-            "GetColor",                     &Light::GetColor,
-            "GetIntensityPhotometric",      &Light::GetIntensityPhotometric,
-            "GetIntensityLumens",           &Light::GetIntensityLumens,
-            "GetIntensityUnit",             &Light::GetIntensityUnit,
-            "GetIntensityRadiometric",      &Light::GetIntensityRadiometric,
-            "GetIntensityWatt",             &Light::GetIntensityWatt,
-
-            "SetIntensity",                 sol::overload(
-                [](Light& Self, float Lumens) { Self.SetIntensity(Lumens); },
-                [](Light& Self, LightIntensity Intensity) { Self.SetIntensity(Intensity); }),
-
-            "SetAngle",                     &Light::SetAngle,
-            "GetAngle",                     &Light::GetAngle,
-
-            "SetRange",                     &Light::SetRange,
-            "GetRange",                     &Light::GetRange,
-
-            "SetIesProfile",                &Light::SetIesProfile,
-            "GetIesProfile",                &Light::GetIesProfile,
-            "GetIesLumens",                 &Light::GetIesLumens,
-            "GetIesPeakCandela",            &Light::GetIesPeakCandela,
-
-            "SetAreaWidth",                 &Light::SetAreaWidth,
-            "GetAreaWidth",                 &Light::GetAreaWidth,
-            "SetAreaHeight",                &Light::SetAreaHeight,
-            "GetAreaHeight",                &Light::GetAreaHeight,
-            "FitToMesh",                    &Light::FitToMesh,
-
-            "IsInViewFrustrum",             &Light::IsInViewFrustum,
-
-            "SetDrawDistance",              &Light::SetDrawDistance,
-            "GetDrawDistance",              &Light::GetDrawDistance,
-
-            "SetShadowDistance",            &Light::SetShadowDistance,
-            "GetShadowDistance",            &Light::GetShadowDistance,
-            "SetVolumetricDistance",        &Light::SetVolumetricDistance,
-            "GetVolumetricDistance",        &Light::GetVolumetricDistance,
-
-            "GetLightType",                 &Light::GetLightType,
-            "SetLightType",                 &Light::SetLightType,
-
-            "SetFlag",                      [](Light& Self, LightFlags flag, bool enable) { Self.SetFlag(flag, enable); },
-            "GetFlag",                      &Light::GetFlag,
-            "SetPreset",                    &Light::SetPreset,
-            "GetPreset",                    &Light::GetPreset,
-            "SetTimeOfDay",                 [](Light& Self, float time_of_day) { Self.SetTimeOfDay(time_of_day); },
-            "SetCloudCoverage",             &Light::SetCloudCoverage,
-            "GetCloudCoverage",             &Light::GetCloudCoverage,
-            "SetRain",                      &Light::SetRain,
-            "GetRain",                      &Light::GetRain,
-
-            "GetSliceCount",                &Light::GetSliceCount,
-
-            "GetAtlasOffset",               &Light::GetAtlasOffset,
-            "GetAtlasScale",                &Light::GetAtlasScale,
-            "GetBoundingBox",               &Light::GetBoundingBox
-
-        );
-
-
-
-    }
-
-    sol::reference Light::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void Light::SetFlag(const LightFlags flag, const bool enable)

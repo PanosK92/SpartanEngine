@@ -20,7 +20,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../commands/console/ConsoleCommands.h"
 #include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #include <SDL3/SDL_audio.h>
 #define DR_MP3_IMPLEMENTATION
 #include <SDL3/dr_mp3.h>
@@ -271,53 +270,6 @@ namespace spartan
         }
 
         audio_device::release();
-    }
-
-    void AudioSource::RegisterForScripting(sol::state_view State)
-    {
-        State.new_usertype<AudioSource>("AudioSource",
-            sol::base_classes,              sol::bases<Component>(),
-            "SetAudioClip",                 &AudioSource::SetAudioClip,
-            "IsPlaying",                    &AudioSource::IsPlaying,
-            "PlayClip",                     &AudioSource::PlayClip,
-            "StopClip",                     &AudioSource::StopClip,
-            "GetAudioClipName",             &AudioSource::GetAudioClipName,
-
-
-            "GetMute",                      &AudioSource::GetMute,
-            "SetMute",                      &AudioSource::SetMute,
-
-            "IsSynthesisMode",              &AudioSource::IsSynthesisMode,
-            "SetSynthesisMode",             &AudioSource::SetSynthesisMode,
-            "StartSynthesis",               &AudioSource::StartSynthesis,
-            "StopSynthesis",                &AudioSource::StopSynthesis,
-
-            "GetPitch",                     &AudioSource::GetPitch,
-            "SetPitch",                     &AudioSource::SetPitch,
-
-            "GetLoop",                      &AudioSource::GetLoop,
-            "SetLoop",                      &AudioSource::SetLoop,
-            "GetVolume",                    &AudioSource::GetVolume,
-            "SetVolume",                    &AudioSource::SetVolume,
-            "GetPlayOnStart",               &AudioSource::GetPlayOnStart,
-            "SetPlayOnStart",               &AudioSource::SetPlayOnStart,
-            "GetIs3d",                      &AudioSource::GetIs3d,
-            "SetIs3d",                      &AudioSource::SetIs3d,
-            "GetAmbient",                   &AudioSource::GetAmbient,
-            "SetAmbient",                   &AudioSource::SetAmbient,
-            "GetAmbientGain",               &AudioSource::GetAmbientGain,
-            "GetAmbientProfile",            &AudioSource::GetAmbientProfile,
-            "SetAmbientProfile",            &AudioSource::SetAmbientProfile,
-            "GetHabitatGain",               &AudioSource::GetHabitatGain,
-            "GetReverbEnabled",             &AudioSource::GetReverbEnabled,
-            "SetReverbEnabled",             &AudioSource::SetReverbEnabled,
-            "GetReverbRoomSize",            &AudioSource::GetReverbRoomSize,
-            "SetReverbRoomSize",            &AudioSource::SetReverbRoomSize,
-            "GetReverbDecay",               &AudioSource::GetReverbDecay,
-            "SetReverbDecay",               &AudioSource::SetReverbDecay,
-            "GetReverbWet",                 &AudioSource::GetReverbWet,
-            "SetReverbWet",                 &AudioSource::SetReverbWet
-            );
     }
 
     void AudioSource::Initialize()
@@ -961,11 +913,6 @@ namespace spartan
         SetGroup(static_cast<AudioGroup>(node.attribute("group").as_uint(0)));
 
         SetAudioClip(m_file_path);
-    }
-
-    sol::reference AudioSource::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void AudioSource::SetAudioClip(const string& file_path)

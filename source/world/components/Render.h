@@ -104,9 +104,6 @@ namespace spartan
         bool IsSpatiallyDynamic() const { return m_spatial_dynamic; }
         void ClearVisibility() { m_scene->is_visible = false; }
 
-        static void RegisterForScripting(sol::state_view State);
-        sol::reference AsLua(sol::state_view state) override;
-
         // Runtime deposits follow this receiver, independently of material sharing and mesh UVs.
         struct Decal { DecalParameters parameters; Material* source_material = nullptr; };
         void AddDecal(const DecalParameters& world_decal, Material* source_material = nullptr);

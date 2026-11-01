@@ -32,9 +32,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RouteDriver.h"
 #include "CarReset.h"
 #include "CarService.h"
-SP_WARNINGS_OFF
-#include <sol/sol.hpp>
-SP_WARNINGS_ON
 //=========================
 
 //= NAMESPACES =====
@@ -59,11 +56,6 @@ namespace spartan
             destination.setter(source->getter());
         }
         if (m_entity_ptr) m_entity_ptr->RefreshPreTickGate();
-    }
-
-    sol::reference Component::AsLua(sol::state_view state)
-    {
-        return sol::nil;
     }
 
     // auto-generated from SP_COMPONENT_LIST - no manual registration needed

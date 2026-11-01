@@ -14,7 +14,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <sol/forward.hpp>
 
 namespace pugi { class xml_node; }
 
@@ -102,7 +101,6 @@ namespace spartan
         static std::vector<std::string> GetLastResourceCleanupFailures();
 
         // entities
-        static sol::state_view GetLuaState();
         static Entity* CreateEntity();
 
         // drain freshly created entities into the live lists, a caller that must render what it just
@@ -176,7 +174,6 @@ namespace spartan
         friend class PlaySession;
         static void ClearScene();
         static void RestorePlayState(const std::shared_ptr<PlayState>& state);
-        static void InitializeScripting();
         // Async saves serialize on the caller and dispatch only the XML write.
         static bool SaveToFileInternal(std::string file_path, bool asynchronous);
         static void ProcessPendingRemovals();

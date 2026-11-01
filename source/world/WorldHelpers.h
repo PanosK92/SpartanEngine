@@ -9,7 +9,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <functional>
 
 //= INCLUDES ===============
-#include <sol/forward.hpp>
 #include <vector>
 #include <cstdint>
 //==========================
@@ -18,13 +17,10 @@ namespace spartan
 {
     class Entity;
 
-    // terrain prop scatter and the lua helpers world builder scripts use
+    // terrain prop scatter
     class WorldHelpers
     {
     public:
-        // registers material, resource cache, renderer grass and geometry buffer helpers with the lua state
-        static void RegisterForScripting(sol::state_view state);
-
         // spawn biome-masked grass, rocks and trees on an existing terrain
         static void PopulateTerrainBiomeProps(class Terrain* terrain);
         // Main-thread steps; returns true when all camera-first tile batches are published.

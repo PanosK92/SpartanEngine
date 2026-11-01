@@ -14,7 +14,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <string>
 #include <vector>
 #include <functional>
-#include <sol/forward.hpp>
 //====================
 
 struct SDL_AudioStream;
@@ -38,10 +37,6 @@ namespace spartan
         AudioSource(Entity* entity);
         ~AudioSource();
 
-
-        static void RegisterForScripting(sol::state_view State);
-
-
         // component interface
         void Initialize() override;
         void Start() override;
@@ -51,8 +46,6 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
-
-        sol::reference AsLua(sol::state_view state) override;
 
         void SetAudioClip(const std::string& file_path);
         const std::string& GetAudioClipName() const { return m_name; };

@@ -22,5 +22,6 @@ namespace spartan::world_systems
     };
 
     const Config& GetConfig();
+    Config& GetMutableConfig();
     void Initialize();
 }

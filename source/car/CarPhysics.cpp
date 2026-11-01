@@ -37,7 +37,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../core/ProgressTracker.h"
 #include "../core/ThreadPool.h"
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #ifdef DEBUG
     #define _DEBUG 1
     #undef NDEBUG

@@ -41,8 +41,6 @@ namespace spartan
         // accumulated transform baked in, for crowds that animate from bone matrices alone
         Entity* CloneVisualOnly();
 
-        static void RegisterForScripting(sol::state_view State);
-
         // core
         void Start();
         void Stop();

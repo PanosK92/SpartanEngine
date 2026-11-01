@@ -103,9 +103,6 @@ namespace spartan
         void Load(pugi::xml_node& node) override;
         //============================================
 
-        static void RegisterForScripting(sol::state_view State);
-        sol::reference AsLua(sol::state_view state) override;
-
         // flags
         uint32_t GetFlags() const                    { return m_flags; }
         bool GetFlag(const LightFlags flag)          { return flag == LightFlags::Volumetric || (m_flags & flag); }

@@ -98,10 +98,6 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
-        // scripting
-        static void RegisterForScripting(sol::state_view state);
-        sol::reference AsLua(sol::state_view state) override;
-
         // re-derives the matrices after the entity was moved outside the entity tick, e.g. by a timeline after physics
         void RefreshMatrices();
 

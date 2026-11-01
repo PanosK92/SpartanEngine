@@ -39,9 +39,6 @@ namespace spartan
         void Remove() override;
         void Stop() override;
 
-        static void RegisterForScripting(sol::state_view state);
-        sol::reference AsLua(sol::state_view state) override;
-
         bool Play(const std::string& clip_name);
         void Pause();
         void Resume();

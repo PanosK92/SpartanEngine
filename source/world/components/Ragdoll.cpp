@@ -34,7 +34,6 @@ SP_WARNINGS_OFF
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
-#include <sol/sol.hpp>
 SP_WARNINGS_ON
 
 using namespace std;
@@ -2223,23 +2222,5 @@ namespace spartan
             body.actor->clearTorque();
             body.actor->setMaxDepenetrationVelocity(0.5f);
         }
-    }
-
-    void Ragdoll::RegisterForScripting(sol::state_view state)
-    {
-        state.new_usertype<Ragdoll>("Ragdoll",
-            sol::base_classes, sol::bases<Component>(),
-            "IsDead", &Ragdoll::IsDead,
-            "IsFrozen", &Ragdoll::IsFrozen,
-            "Activate", &Ragdoll::Activate,
-            "Wake", &Ragdoll::Wake,
-            "SetHitBodyEnabled", &Ragdoll::SetHitBodyEnabled,
-            "IsHitBodyEnabled", &Ragdoll::IsHitBodyEnabled
-        );
-    }
-
-    sol::reference Ragdoll::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 }

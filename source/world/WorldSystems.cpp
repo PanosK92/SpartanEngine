@@ -22,6 +22,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../car/CarWeather.h"
 #include "../car/CarParticleWake.h"
 #include "../physics/PhysicsCollisionPolicy.h"
+#include "../scripting/Scripting.h"
 #include <sol/sol.hpp>
 #include "BreakableTrees.h"
 #include "../car/CarPhysicsTypes.h"
@@ -97,20 +98,6 @@ namespace spartan::world_systems
             }
         }
 
-        void register_for_scripting(sol::state_view lua)
-        {
-            sol::table table = lua.create_named_table("WorldSystems");
-            table["SetAmbientWildlife"]   = [](bool enabled) { config.ambient_wildlife = enabled; };
-            table["SetAmbientAtmosphere"] = [](bool enabled) { config.ambient_atmosphere = enabled; };
-            table["SetRoadDetails"]       = [](bool enabled) { config.road_details = enabled; };
-            table["SetLayeredRoads"]      = [](const std::string& parent_name, const std::string& material_dir, sol::optional<std::string> material_prefix)
-            {
-                config.layered_roads_parent          = parent_name;
-                config.layered_roads_material_dir    = material_dir;
-                config.layered_roads_material_prefix = material_prefix.value_or("road");
-            };
-        }
-
         bool references_script(const pugi::xml_node& node, const std::string& script_name)
         {
             if (std::string(node.name()) == "script" && FileSystem::GetFileNameFromFilePath(node.attribute("file_path").as_string()) == script_name)
@@ -136,7 +123,7 @@ namespace spartan::world_systems
                 return;
             World::AddDeferredScriptInit(-1, [script_path]()
             {
-                sol::protected_function_result result = World::GetLuaState().safe_script_file(script_path);
+                sol::protected_function_result result = scripting::get_state().safe_script_file(script_path);
                 if (!result.valid())
                 {
                     sol::error error = result;
@@ -154,6 +141,7 @@ namespace spartan::world_systems
     }
 
     const Config& GetConfig() { return config; }
+    Config& GetMutableConfig() { return config; }
 
     void Initialize()
     {
@@ -161,8 +149,6 @@ namespace spartan::world_systems
         road_surface::material_for = layered_road_surface::MaterialFor;
         InitializePhysicsCollisionPolicy();
         CarPhysics::Initialize();
-        CarPhysics::RegisterForScripting(World::GetLuaState());
-        register_for_scripting(World::GetLuaState());
         CameraController::Initialize();
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldTicked, [](const sp_variant&) {
             if (!World::IsLoadingFromFile()) TickCarWeather(static_cast<float>(Timer::GetDeltaTimeSec()));

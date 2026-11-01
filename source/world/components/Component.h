@@ -14,7 +14,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <vector>
 #include <functional>
 #include <string>
-#include <sol/forward.hpp>
 #include "../../core/SpartanObject.h"
 //===================================
 
@@ -78,9 +77,6 @@ namespace spartan
     public:
         Component(Entity* entity);
         virtual ~Component() = default;
-
-        // default returns a nil sol::reference, defined in Component.cpp where sol/sol.hpp is included
-        virtual sol::reference AsLua(sol::state_view state);
 
         // called when the component gets added
         virtual void Initialize() {}

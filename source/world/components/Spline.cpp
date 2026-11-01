@@ -23,7 +23,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../car/RacingLine.h"
 SP_WARNINGS_OFF
 #include "../../io/pugixml.hpp"
-#include <sol/sol.hpp>
 SP_WARNINGS_ON
 //=======================================
 
@@ -641,32 +640,6 @@ namespace spartan
         {
             SpawnInstances();
         }
-    }
-
-    void Spline::RegisterForScripting(sol::state_view state)
-    {
-        state.new_usertype<Spline>("Spline",
-            "GetPoint",             &Spline::GetPoint,
-            "GetTangent",           &Spline::GetTangent,
-            "GetLength",            [](Spline* self) { return self->GetLength(); },
-            "GetTAtDistance",       [](Spline* self, float distance) { return self->GetTAtDistance(distance); },
-            "GetControlPointCount", &Spline::GetControlPointCount,
-            "GetClosedLoop",        &Spline::GetClosedLoop,
-            "GetRoadWidth",         &Spline::GetRoadWidth,
-            "GetCurveAlpha",        &Spline::GetCurveAlpha,
-            "SetCurveAlpha",        &Spline::SetCurveAlpha,
-            "AddControlPoint",      &Spline::AddControlPoint,
-            "RemoveLastControlPoint", &Spline::RemoveLastControlPoint,
-            "ResampleControlPoints", &Spline::ResampleControlPoints,
-            "SimplifyControlPoints", &Spline::SimplifyControlPoints,
-            "GenerateRoadMesh",     &Spline::GenerateRoadMesh,
-            "ClearRoadMesh",        &Spline::ClearRoadMesh
-        );
-    }
-
-    sol::reference Spline::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void Spline::SnapshotState()

@@ -20,7 +20,6 @@ namespace spartan
         static void Initialize();
         static void BeginTireDeformationBatch();
         static void FlushTireDeformationBatch();
-        static void RegisterForScripting(sol::state_view state);
         void* Create() override;
         void Remove() override;
         void Tick(bool playing) override;

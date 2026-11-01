@@ -20,6 +20,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 namespace car
 {
+    // full load crank torque of a preset at an rpm, before boost and friction
+    float engine_torque_curve(const car_preset& spec, float rpm);
+
     // everything setup() needs to build the physx actor and the aero model
     struct setup_params
     {
@@ -58,6 +61,7 @@ namespace car
         config          cfg;
         car_preset      base_spec;
         active_upgrades upgrades;
+        bool            lsd_kit_fitted = false;
         wheel           wheels[wheel_count];
         input_state     input;
         input_state     input_target;
@@ -393,6 +397,18 @@ namespace car
         void clamp_upgrade_stage(int& stage, int max_stage);
         void reapply_upgrades();
         void reset_upgrades();
+
+        // tune shop access by part name (engine, clutch, lsd...), an unknown name reads -1 and a part the car cannot take has max 0
+        int get_upgrade_stage(const std::string& part) const;
+        int get_upgrade_stage_max(const std::string& part) const;
+        bool set_upgrade_stage(const std::string& part, int stage);
+        // brake_bias (front fraction) needs the brake controller, final_drive (scale) the fully adjustable gearbox
+        float get_upgrade_setting(const std::string& setting) const;
+        bool set_upgrade_setting(const std::string& setting, float value);
+        // steady full throttle output, swept from idle to the limiter, of the current spec or of a candidate one
+        void get_peak_output(float& power_kw, float& power_rpm, float& torque_nm, float& torque_rpm, const car_preset* candidate = nullptr) const;
+        // the spec the car would run with one part at another stage, nothing is applied
+        car_preset preview_upgrade_stage(const std::string& part, int stage);
         void set_throttle(float v);
         void set_brake(float v);
         void set_steering(float v);

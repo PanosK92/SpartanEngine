@@ -11,7 +11,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Component.h"
 #include "../../rendering/Color.h"
 #include "../../math/Vector3.h"
-#include <sol/forward.hpp>
 //===================================
 
 namespace spartan
@@ -79,9 +78,6 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
         //============================================
-
-        static void RegisterForScripting(sol::state_view state);
-        sol::reference AsLua(sol::state_view state) override;
 
         // preset
         ParticlePreset GetPreset() const              { return m_preset; }

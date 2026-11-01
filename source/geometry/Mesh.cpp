@@ -18,9 +18,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../resource/import/ModelImporter.h"
 #include "../rendering/GeometryBuffer.h"
 #include "GeometryProcessing.h"
-SP_WARNINGS_OFF
-#include <sol/sol.hpp>
-SP_WARNINGS_ON
 //===========================================
 
 //= NAMESPACES ================
@@ -132,31 +129,6 @@ namespace spartan
     Mesh::~Mesh()
     {
 
-    }
-
-    void Mesh::RegisterForScripting(sol::state_view State)
-    {
-        State.new_enum("MeshFlags",
-            "ImportRemoveRedundantData",       MeshFlags::ImportRemoveRedundantData,
-            "ImportLights",                    MeshFlags::ImportLights,
-            "ImportCombineMeshes",             MeshFlags::ImportCombineMeshes,
-            "ImportGenerateSmoothNormals",     MeshFlags::ImportGenerateSmoothNormals,
-            "PostProcessNormalizeScale",       MeshFlags::PostProcessNormalizeScale,
-            "PostProcessOptimize",             MeshFlags::PostProcessOptimize,
-            "PostProcessGenerateLods",         MeshFlags::PostProcessGenerateLods,
-            "PostProcessPreserveLod0",         MeshFlags::PostProcessPreserveLod0,
-            "PostProcessPreserveTerrainEdges", MeshFlags::PostProcessPreserveTerrainEdges
-        );
-
-        State.new_usertype<Mesh>("Mesh",
-            "SaveToFile",               &Mesh::SaveToFile,
-            "LoadFromFile",             &Mesh::LoadFromFile,
-            "Clear",                    &Mesh::Clear,
-            "GetVertexCount",           &Mesh::GetVertexCount,
-            "GetIndexCount",            &Mesh::GetIndexCount,
-            "GetRootEntity",            &Mesh::GetRootEntity,
-            "GetDefaultFlags",          &Mesh::GetDefaultFlags
-            );
     }
 
     void Mesh::Clear()

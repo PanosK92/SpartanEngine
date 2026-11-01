@@ -23,7 +23,6 @@ Commercial use requires written permission and negotiated payment terms.
 SP_WARNINGS_OFF
 #include <freetype/freetype.h>
 #include <freetype/ftoutln.h>
-#include <sol/sol.hpp>
 #include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
 //=======================================
@@ -370,68 +369,6 @@ namespace spartan
         }
 
         SetDirty();
-    }
-
-    void Text3D::RegisterForScripting(sol::state_view state)
-    {
-        state.new_enum(
-            "Text3DAlignment",
-            "Left",
-            Text3DAlignment::Left,
-            "Center",
-            Text3DAlignment::Center,
-            "Right",
-            Text3DAlignment::Right
-        );
-
-        state.new_usertype<Text3D>(
-            "Text3D",
-            sol::base_classes,
-            sol::bases<Component>(),
-            "GetText",
-            &Text3D::GetText,
-            "SetText",
-            &Text3D::SetText,
-            "GetFontPath",
-            &Text3D::GetFontPath,
-            "SetFontPath",
-            &Text3D::SetFontPath,
-            "GetSize",
-            &Text3D::GetSize,
-            "SetSize",
-            &Text3D::SetSize,
-            "GetDepth",
-            &Text3D::GetDepth,
-            "SetDepth",
-            &Text3D::SetDepth,
-            "GetWeight",
-            &Text3D::GetWeight,
-            "SetWeight",
-            &Text3D::SetWeight,
-            "GetLetterSpacing",
-            &Text3D::GetLetterSpacing,
-            "SetLetterSpacing",
-            &Text3D::SetLetterSpacing,
-            "GetLineSpacing",
-            &Text3D::GetLineSpacing,
-            "SetLineSpacing",
-            &Text3D::SetLineSpacing,
-            "GetResolution",
-            &Text3D::GetResolution,
-            "SetResolution",
-            &Text3D::SetResolution,
-            "GetAlignment",
-            &Text3D::GetAlignment,
-            "SetAlignment",
-            &Text3D::SetAlignment,
-            "GenerateMesh",
-            &Text3D::GenerateMesh
-        );
-    }
-
-    sol::reference Text3D::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void Text3D::SetText(const string& text)

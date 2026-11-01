@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/Entity.h"
 #include "world/World.h"
 #include "Light.h"
+#include "../../scripting/Scripting.h"
 
 using namespace spartan;
 
@@ -96,11 +97,6 @@ Script::Script(Entity* Entity)
         }, true);
 }
 
-sol::reference Script::AsLua(sol::state_view state)
-{
-    return sol::make_reference(state, this);
-}
-
 void Script::LoadScriptFile(std::string_view path)
 {
     if (!FileSystem::Exists(std::string(path)))
@@ -109,7 +105,7 @@ void Script::LoadScriptFile(std::string_view path)
         return;
     }
 
-    sol::protected_function_result Result = World::GetLuaState().safe_script_file(std::string(path.data(), path.size()));
+    sol::protected_function_result Result = scripting::get_state().safe_script_file(std::string(path.data(), path.size()));
     if (!Result.valid())
     {
         sol::error error = Result;
@@ -225,7 +221,7 @@ void Script::LoadInternal(pugi::xml_node& node)
 
     if (script.valid())
     {
-        sol::table saved_data = World::GetLuaState().create_table();
+        sol::table saved_data = scripting::get_state().create_table();
         for (pugi::xml_attribute attr = node.first_attribute(); attr; attr = attr.next_attribute())
         {
             std::string attr_name = attr.name();

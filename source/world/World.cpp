@@ -52,6 +52,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../memory/GpuMemory.h"
 #include "../rhi/RHI_Device.h"
 #include "../geometry/Mesh.h"
+#include "../scripting/Scripting.h"
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -60,7 +61,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <sstream>
 #include <thread>
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //====================================
@@ -663,7 +663,7 @@ namespace spartan
 
     void World::Initialize()
     {
-        InitializeScripting();
+        scripting::initialize();
         Environment::ResetSpatialWeather();
     }
 

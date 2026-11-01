@@ -27,9 +27,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../geometry/GeometryGeneration.h"
 #include "../geometry/GeometryProcessing.h"
 #include "../rhi/RHI_Texture.h"
-SP_WARNINGS_OFF
-#include <sol/sol.hpp>
-SP_WARNINGS_ON
 //==========================================
 
 //= NAMESPACES ===============
@@ -1680,80 +1677,5 @@ namespace spartan
         scatter_layer_materials.clear();
         builder_meshes.clear();
         builder_materials.clear();
-    }
-
-    void WorldHelpers::RegisterForScripting(sol::state_view state)
-    {
-        // material texture types
-        state.new_enum("MaterialTextureType",
-            "Color",     MaterialTextureType::Color,
-            "Roughness", MaterialTextureType::Roughness,
-            "Metalness", MaterialTextureType::Metalness,
-            "Normal",    MaterialTextureType::Normal,
-            "Occlusion", MaterialTextureType::Occlusion,
-            "Emission",  MaterialTextureType::Emission,
-            "Height",    MaterialTextureType::Height,
-            "AlphaMask", MaterialTextureType::AlphaMask,
-            "Packed",    MaterialTextureType::Packed
-        );
-
-        // material properties (subset commonly needed by builders)
-        state.new_enum("MaterialProperty",
-            "WorldSpaceUv",               MaterialProperty::WorldSpaceUv,
-            "Tessellation",               MaterialProperty::Tessellation,
-            "Roughness",                  MaterialProperty::Roughness,
-            "Metalness",                  MaterialProperty::Metalness,
-            "Normal",                     MaterialProperty::Normal,
-            "Height",                     MaterialProperty::Height,
-            "Clearcoat",                  MaterialProperty::Clearcoat,
-            "Clearcoat_Roughness",        MaterialProperty::Clearcoat_Roughness,
-            "SubsurfaceScattering",       MaterialProperty::SubsurfaceScattering,
-            "EmissiveFromAlbedo",         MaterialProperty::EmissiveFromAlbedo,
-            "EmissiveColorR",             MaterialProperty::EmissiveColorR,
-            "EmissiveColorG",             MaterialProperty::EmissiveColorG,
-            "EmissiveColorB",             MaterialProperty::EmissiveColorB,
-            "EmissiveIntensity",          MaterialProperty::EmissiveIntensity,
-            "TextureTilingX",             MaterialProperty::TextureTilingX,
-            "TextureTilingY",             MaterialProperty::TextureTilingY,
-            "IsTerrain",                  MaterialProperty::IsTerrain,
-            "IsGrassBlade",               MaterialProperty::IsGrassBlade,
-            "IsFoliage",                  MaterialProperty::IsFoliage,
-            "IsFlower",                   MaterialProperty::IsFlower,
-            "WindAnimation",              MaterialProperty::WindAnimation,
-            "ColorVariationFromInstance", MaterialProperty::ColorVariationFromInstance,
-            "IsWater",                    MaterialProperty::IsWater,
-            "MotionBlurRadial",           MaterialProperty::MotionBlurRadial,
-            "IsSkidMark",                 MaterialProperty::IsSkidMark,
-            "TerrainBlend",               MaterialProperty::TerrainBlend,
-            "TerrainBlendSharpness",      MaterialProperty::TerrainBlendSharpness,
-            "CullMode",                   MaterialProperty::CullMode
-        );
-
-        state.new_usertype<Material>("Material",
-            "New",             sol::factories([]() { return make_shared<Material>(); }),
-            "SetProperty",     &Material::SetProperty,
-            "GetProperty",     &Material::GetProperty,
-            "SetColor",        [](Material& self, float r, float g, float b, float a) { self.SetColor(Color(r, g, b, a)); },
-            "SetTexture",      [](Material& self, MaterialTextureType type, const string& path, sol::optional<int> slot)
-            {
-                self.SetTexture(type, path, static_cast<uint8_t>(slot.value_or(0)));
-            },
-            "SetResourceName", &Material::SetResourceName
-        );
-
-        // resource cache helpers
-        sol::table resource_cache = state.create_named_table("ResourceCache");
-        resource_cache["LoadMesh"] = sol::overload(
-            [](const string& path) -> Mesh*
-            {
-                shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(path);
-                return mesh ? mesh.get() : nullptr;
-            },
-            [](const string& path, uint32_t flags) -> Mesh*
-            {
-                shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(path, flags);
-                return mesh ? mesh.get() : nullptr;
-            }
-        );
     }
 }

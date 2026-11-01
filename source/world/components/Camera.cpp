@@ -17,7 +17,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../xr/Xr.h"
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
-#include <sol/sol.hpp>
 SP_WARNINGS_ON
 //===================================
 
@@ -65,43 +64,6 @@ namespace spartan
     {
         Component::Initialize();
         ComputeMatrices();
-    }
-
-    void Camera::RegisterForScripting(sol::state_view state)
-    {
-        state.new_enum("CameraExposureMode",
-            "manual",    CameraExposureMode::manual,
-            "automatic", CameraExposureMode::automatic
-        );
-
-        state.new_enum("CameraFlags",
-            "CanBeControlled",       CameraFlags::CanBeControlled,
-            "IsControlled",          CameraFlags::IsControlled,
-            "WantsCursorHidden",     CameraFlags::WantsCursorHidden,
-            "IsDirty",               CameraFlags::IsDirty,
-            "PhysicalBodyAnimation", CameraFlags::PhysicalBodyAnimation,
-            "Flashlight",            CameraFlags::Flashlight
-        );
-
-        state.new_usertype<Camera>("Camera",
-            "GetFovHorizontalDeg",             &Camera::GetFovHorizontalDeg,
-            "SetFovHorizontalDeg",             &Camera::SetFovHorizontalDeg,
-            "GetNearPlane",                    &Camera::GetNearPlane,
-            "GetFarPlane",                     &Camera::GetFarPlane,
-            "GetExposureMode",                 &Camera::GetExposureMode,
-            "SetExposureMode",                 &Camera::SetExposureMode,
-            "GetAutoExposureAdaptationSpeed",  &Camera::GetAutoExposureAdaptationSpeed,
-            "SetAutoExposureAdaptationSpeed",  &Camera::SetAutoExposureAdaptationSpeed,
-            "GetAutoExposureCompensation",     &Camera::GetAutoExposureCompensation,
-            "SetAutoExposureCompensation",     &Camera::SetAutoExposureCompensation,
-            "GetFlag",                         &Camera::GetFlag,
-            "SetFlag",                         &Camera::SetFlag
-        );
-    }
-
-    sol::reference Camera::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void Camera::Tick()

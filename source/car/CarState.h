@@ -228,6 +228,24 @@ namespace car
         int exhaust = 0;
         int intake = 0;
         int turbo = 0;
+        // tune shop parts, their stage counts are fixed rather than authored per car
+        int ecu = 0;
+        int port_polish = 0;
+        int engine_balance = 0;
+        int displacement = 0;
+        int intercooler = 0;
+        int exhaust_manifold = 0;
+        int clutch = 0;
+        int flywheel = 0;
+        int driveshaft = 0;
+        int transmission = 0;
+        int lsd = 0;
+        int yaw_control = 0;
+        int brake_controller = 0;
+        int rigidity = 0;
+        // settings the parts unlock, zero brake bias keeps the car's own
+        float brake_bias_front = 0.0f;
+        float final_drive_scale = 1.0f;
     };
 
     // cooldown prevents automatic shift hunting

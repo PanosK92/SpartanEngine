@@ -21,8 +21,6 @@ namespace spartan
 
         Script(Entity* Entity);
 
-        sol::reference AsLua(sol::state_view state) override;
-
         void LoadScriptFile(std::string_view path);
         void Initialize() override;
         void Start() override;

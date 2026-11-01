@@ -27,9 +27,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../geometry/Mesh.h"
 #include "../../physics/PhysicsWorld.h"
 #include "../../rendering/GeometryBuffer.h"
-SP_WARNINGS_OFF
-#include <sol/sol.hpp>
-SP_WARNINGS_ON
 //=======================================
 
 //= NAMESPACES ===============
@@ -1872,36 +1869,5 @@ namespace spartan
         }
 
         return m_foot_ik_ground_offset;
-    }
-
-    void Animator::RegisterForScripting(sol::state_view state)
-    {
-        state.new_usertype<Animator>("Animator",
-            sol::base_classes, sol::bases<Component>(),
-            "Play",               &Animator::Play,
-            "Stop",               &Animator::Stop,
-            "Pause",              &Animator::Pause,
-            "Resume",             &Animator::Resume,
-            "IsPlaying",          &Animator::IsPlaying,
-            "GetSpeed",           &Animator::GetSpeed,
-            "SetSpeed",           &Animator::SetSpeed,
-            "GetLoop",            &Animator::GetLoop,
-            "SetLoop",            &Animator::SetLoop,
-            "GetBlendDuration",   &Animator::GetBlendDuration,
-            "SetBlendDuration",   &Animator::SetBlendDuration,
-            "GetCurrentClip",     &Animator::GetCurrentClip,
-            "GetFootIkEnabled",   &Animator::GetFootIkEnabled,
-            "SetFootIkEnabled",   &Animator::SetFootIkEnabled,
-            "GetFootIkWeight",    &Animator::GetFootIkWeight,
-            "SetFootIkWeight",    &Animator::SetFootIkWeight,
-            "GetFootIkGroundOffset", &Animator::GetFootIkGroundOffset,
-            "HasFootIkSupportGround", &Animator::HasFootIkSupportGround,
-            "GetFootIkSupportGroundY", &Animator::GetFootIkSupportGroundY
-        );
-    }
-
-    sol::reference Animator::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 }

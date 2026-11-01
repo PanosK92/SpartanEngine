@@ -13,7 +13,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../resource/ResourceCache.h"
 #include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
@@ -1121,100 +1120,5 @@ namespace spartan
     void ParticleSystem::MarkCustom()
     {
         m_preset = ParticlePreset::Custom;
-    }
-
-    void ParticleSystem::RegisterForScripting(sol::state_view state)
-    {
-        state.new_usertype<ParticleSystem>("ParticleSystem",
-            sol::base_classes,        sol::bases<Component>(),
-
-            "GetEmissionRate",        &ParticleSystem::GetEmissionRate,
-            "SetEmissionRate",        &ParticleSystem::SetEmissionRate,
-            "GetMaxParticles",        &ParticleSystem::GetMaxParticles,
-            "SetMaxParticles",        &ParticleSystem::SetMaxParticles,
-            "GetLifetime",            &ParticleSystem::GetLifetime,
-            "SetLifetime",            &ParticleSystem::SetLifetime,
-            "GetStartSpeed",          &ParticleSystem::GetStartSpeed,
-            "SetStartSpeed",          &ParticleSystem::SetStartSpeed,
-            "GetStartSize",           &ParticleSystem::GetStartSize,
-            "SetStartSize",           &ParticleSystem::SetStartSize,
-            "GetEndSize",             &ParticleSystem::GetEndSize,
-            "SetEndSize",             &ParticleSystem::SetEndSize,
-            "GetGravityModifier",     &ParticleSystem::GetGravityModifier,
-            "SetGravityModifier",     &ParticleSystem::SetGravityModifier,
-            "GetEmissionRadius",      &ParticleSystem::GetEmissionRadius,
-            "SetEmissionRadius",      &ParticleSystem::SetEmissionRadius,
-            "SetEmissionDirection",   [](ParticleSystem& self, float x, float y, float z) { self.SetEmissionDirection(Vector3(x, y, z)); },
-            "GetEmissionConeAngle",   &ParticleSystem::GetEmissionConeAngle,
-            "SetEmissionConeAngle",   &ParticleSystem::SetEmissionConeAngle,
-            "GetDirectionalBlend",    &ParticleSystem::GetDirectionalBlend,
-            "SetDirectionalBlend",    &ParticleSystem::SetDirectionalBlend,
-            "GetBlendMode",           [](ParticleSystem& self) { return static_cast<uint32_t>(self.GetBlendMode()); },
-            "SetBlendMode",           [](ParticleSystem& self, uint32_t mode) { self.SetBlendMode(static_cast<ParticleBlendMode>(mode)); },
-            "GetLightingMode",        [](ParticleSystem& self) { return static_cast<uint32_t>(self.GetLightingMode()); },
-            "SetLightingMode",        [](ParticleSystem& self, uint32_t mode) { self.SetLightingMode(static_cast<ParticleLightingMode>(mode)); },
-            "GetRenderMode",          [](ParticleSystem& self) { return static_cast<uint32_t>(self.GetRenderMode()); },
-            "SetRenderMode",          [](ParticleSystem& self, uint32_t mode) { self.SetRenderMode(static_cast<ParticleRenderMode>(mode)); },
-            "GetEmissiveStrength",    &ParticleSystem::GetEmissiveStrength,
-            "SetEmissiveStrength",    &ParticleSystem::SetEmissiveStrength,
-            "GetSoftDepthScale",      &ParticleSystem::GetSoftDepthScale,
-            "SetSoftDepthScale",      &ParticleSystem::SetSoftDepthScale,
-            "GetVolumeDensity",       &ParticleSystem::GetVolumeDensity,
-            "SetVolumeDensity",       &ParticleSystem::SetVolumeDensity,
-            "GetVolumeAnisotropy",    &ParticleSystem::GetVolumeAnisotropy,
-            "SetVolumeAnisotropy",    &ParticleSystem::SetVolumeAnisotropy,
-            "GetVolumeShadowing",     &ParticleSystem::GetVolumeShadowing,
-            "SetVolumeShadowing",     &ParticleSystem::SetVolumeShadowing,
-            "GetDrag",                &ParticleSystem::GetDrag,
-            "SetDrag",                &ParticleSystem::SetDrag,
-            "GetTurbulenceStrength",  &ParticleSystem::GetTurbulenceStrength,
-            "SetTurbulenceStrength",  &ParticleSystem::SetTurbulenceStrength,
-            "GetWindInfluence",       &ParticleSystem::GetWindInfluence,
-            "SetWindInfluence",       &ParticleSystem::SetWindInfluence,
-            "GetVelocityInheritance", &ParticleSystem::GetVelocityInheritance,
-            "SetVelocityInheritance", &ParticleSystem::SetVelocityInheritance,
-            "GetVelocityStretch",     &ParticleSystem::GetVelocityStretch,
-            "SetVelocityStretch",     &ParticleSystem::SetVelocityStretch,
-            "SetVortexCenter",        [](ParticleSystem& self, float x, float y, float z) { self.SetVortexCenter(Vector3(x, y, z)); },
-            "SetVortexAxis",          [](ParticleSystem& self, float x, float y, float z) { self.SetVortexAxis(Vector3(x, y, z)); },
-            "GetVortexStrength",      &ParticleSystem::GetVortexStrength,
-            "SetVortexStrength",      &ParticleSystem::SetVortexStrength,
-            "GetVortexRadius",        &ParticleSystem::GetVortexRadius,
-            "SetVortexRadius",        &ParticleSystem::SetVortexRadius,
-            "GetThermalStrength",     &ParticleSystem::GetThermalStrength,
-            "SetThermalStrength",     &ParticleSystem::SetThermalStrength,
-            "GetThermalDecay",        &ParticleSystem::GetThermalDecay,
-            "SetThermalDecay",        &ParticleSystem::SetThermalDecay,
-            "GetRollupStrength",      &ParticleSystem::GetRollupStrength,
-            "SetRollupStrength",      &ParticleSystem::SetRollupStrength,
-            "GetWakeStrength",        &ParticleSystem::GetWakeStrength,
-            "SetWakeStrength",        &ParticleSystem::SetWakeStrength,
-            "GetChurnStrength",       &ParticleSystem::GetChurnStrength,
-            "SetChurnStrength",       &ParticleSystem::SetChurnStrength,
-            "GetCollisionClearance",  &ParticleSystem::GetCollisionClearance,
-            "SetCollisionClearance",  &ParticleSystem::SetCollisionClearance,
-            "GetSpawnBurst",          &ParticleSystem::GetSpawnBurst,
-            "SetSpawnBurst",          &ParticleSystem::SetSpawnBurst,
-            "TriggerBurst",           &ParticleSystem::TriggerBurst,
-            "GetFlipbookRows",        &ParticleSystem::GetFlipbookRows,
-            "SetFlipbookRows",        &ParticleSystem::SetFlipbookRows,
-            "GetFlipbookColumns",     &ParticleSystem::GetFlipbookColumns,
-            "SetFlipbookColumns",     &ParticleSystem::SetFlipbookColumns,
-            "GetFlipbookFps",         &ParticleSystem::GetFlipbookFps,
-            "SetFlipbookFps",         &ParticleSystem::SetFlipbookFps,
-            "GetEffectPath",          &ParticleSystem::GetEffectPath,
-            "LoadEffect",             &ParticleSystem::LoadEffect,
-            "SaveEffect",             &ParticleSystem::SaveEffect,
-            "SetStartColor",          [](ParticleSystem& self, float r, float g, float b, float a) { self.SetStartColor(Color(r, g, b, a)); },
-            "SetEndColor",            [](ParticleSystem& self, float r, float g, float b, float a) { self.SetEndColor(Color(r, g, b, a)); },
-            "SetTexture",             sol::overload(
-                [](ParticleSystem& self, const string& file_path) { self.SetTexture(file_path); },
-                [](ParticleSystem& self) { self.SetTexture(""); })
-            );
-    }
-
-    sol::reference ParticleSystem::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 }

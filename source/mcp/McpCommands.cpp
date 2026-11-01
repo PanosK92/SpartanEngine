@@ -45,6 +45,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/Prefab.h"
 #include "../world/GameReady.h"
 #include "../world/WorldHelpers.h"
+#include "../scripting/Scripting.h"
 #include "../io/pugixml.hpp"
 #include "../world/components/RaceDriver.h"
 #include "../resource/ResourceCache.h"
@@ -7286,7 +7287,7 @@ namespace spartan
                 return json_error("missing code");
             }
 
-            sol::state_view lua = World::GetLuaState();
+            sol::state_view lua = scripting::get_state();
             sol::protected_function_result result = lua.safe_script(*code, sol::script_pass_on_error);
             if (!result.valid())
             {

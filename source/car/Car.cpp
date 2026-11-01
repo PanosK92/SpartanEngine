@@ -1280,7 +1280,7 @@ namespace spartan
         m_chase_camera = {};
     }
 
-    void Car::SummonPlayerCar()
+    Car* Car::GetPlayerCar()
     {
         Car* player_car = nullptr;
         for (Car* car : GetAll())
@@ -1294,16 +1294,19 @@ namespace spartan
             Entity* owner = root ? root->GetParent() : nullptr;
             if (owner && owner->GetComponent<CarReset>())
             {
-                player_car = car;
-                break;
+                return car;
             }
             if (!player_car)
             {
                 player_car = car;
             }
         }
+        return player_car;
+    }
 
-        if (player_car)
+    void Car::SummonPlayerCar()
+    {
+        if (Car* player_car = GetPlayerCar())
         {
             player_car->SummonToPlayer();
         }

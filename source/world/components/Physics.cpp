@@ -39,7 +39,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../core/ProgressTracker.h"
 #include "../../core/ThreadPool.h"
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //============================================
@@ -1155,11 +1154,6 @@ namespace spartan
         settings.cloth_pin_direction.z = node.attribute("cloth_pin_direction_z").as_float(0.0f);
 
         ApplySettings(settings);
-    }
-
-    sol::reference Physics::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void Physics::SetMass(float mass)

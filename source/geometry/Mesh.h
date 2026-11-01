@@ -21,11 +21,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../animation/SkeletalMeshBinding.h"
 //================================
 
-namespace sol
-{
-    class state_view;
-}
-
 namespace spartan
 {
     class Entity;
@@ -128,8 +123,6 @@ namespace spartan
     public:
         Mesh();
         ~Mesh();
-
-        static void RegisterForScripting(sol::state_view State);
 
         // iresource
         void SaveToFile(const std::string& file_path) override;

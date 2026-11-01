@@ -22,11 +22,6 @@ namespace physx
     class PxJoint;
 }
 
-namespace sol
-{
-    class state_view;
-}
-
 namespace spartan
 {
     class Animator;
@@ -55,9 +50,6 @@ namespace spartan
 
         // after scripts/pedestrians move, snap hit capsule and draw debug
         void LateTick();
-
-        static void RegisterForScripting(sol::state_view state);
-        sol::reference AsLua(sol::state_view state) override;
 
         void Activate(
             const math::Vector3& hit_position,

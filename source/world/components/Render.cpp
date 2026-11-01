@@ -25,7 +25,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../geometry/GeneratedCache.h"
 #include "../../core/ThreadPool.h"
 SP_WARNINGS_OFF
-#include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===========================================
@@ -482,79 +481,6 @@ namespace spartan
 
         m_scene->distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
         m_scene->is_visible       = m_scene->distance_squared <= max_distance_sq;
-    }
-
-    void Render::RegisterForScripting(sol::state_view State)
-    {
-        State.new_enum("MeshType",
-            "Cube",     MeshType::Cube,
-            "Quad",     MeshType::Quad,
-            "Sphere",   MeshType::Sphere,
-            "Cylinder", MeshType::Cylinder,
-            "Cone",     MeshType::Cone,
-            "Max",      MeshType::Max
-        );
-
-        State.new_enum("RenderFlags",
-            "CastsShadows",          RenderFlags::CastsShadows,
-            "ExcludeFromRayTracing", RenderFlags::ExcludeFromRayTracing
-        );
-
-        State.new_usertype<Render>("Render",
-            sol::base_classes,              sol::bases<Component>(),
-            "GetDecalCount",                &Render::GetDecalCount,
-            "ClearDecals",                  &Render::ClearDecals,
-            "AddDecal", [](Render& self, const Vector3& position, const Quaternion& rotation, const Vector3& half_size, const Vector4& color, float roughness, float relief, float seed, Material* source)
-            {
-                if (!position.IsFinite() || !half_size.IsFinite() || half_size.x <= 0 || half_size.y <= 0 || half_size.z <= 0) return;
-                DecalParameters decal;
-                decal.world_to_decal = Matrix(position, rotation, half_size).Inverted();
-                decal.color = Vector4(color.x, color.y, color.z, std::clamp(color.w, 0.0f, 1.0f));
-                decal.surface = Vector4(std::clamp(roughness, 0.0f, 1.0f), std::clamp(relief, 0.0f, 0.01f), seed, 0.0f);
-                self.AddDecal(decal, source);
-            },
-            "GetMaterialName",              &Render::GetMaterialName,
-            "GetBoundingBox",               &Render::GetBoundingBox,
-            "GetMaterial",                  &Render::GetMaterial,
-            "SetMesh", sol::overload(
-                [](Render& self, Mesh* mesh)                          { self.SetMesh(mesh); },
-                [](Render& self, Mesh* mesh, uint32_t sub_mesh_index) { self.SetMesh(mesh, sub_mesh_index); },
-                [](Render& self, MeshType type)                       { self.SetMesh(type); }
-            ),
-            "SetMaterial", sol::overload(
-                [](Render& self, std::shared_ptr<Material> material)
-                {
-                    if (material)
-                    {
-                        self.SetMaterial(material);
-                    }
-                },
-                [](Render& self, Material* material)
-                {
-                    // accepts the raw pointer that GetMaterial returns by resolving the cached shared_ptr
-                    if (material)
-                    {
-                        if (std::shared_ptr<Material> cached = ResourceCache::GetByName<Material>(material->GetObjectName()))
-                        {
-                            self.SetMaterial(cached);
-                        }
-                    }
-                },
-                [](Render& self, const std::string& file_path)
-                {
-                    self.SetMaterial(file_path);
-                }
-            ),
-            "SetDefaultMaterial",           &Render::SetDefaultMaterial,
-            "SetMaxRenderDistance",         &Render::SetMaxRenderDistance,
-            "SetMaxShadowDistance",         &Render::SetMaxShadowDistance,
-            "SetFlag", [](Render& self, RenderFlags flag, bool enable) { self.SetFlag(flag, enable); }
-        );
-    }
-
-    sol::reference Render::AsLua(sol::state_view state)
-    {
-        return sol::make_reference(state, this);
     }
 
     void Render::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)

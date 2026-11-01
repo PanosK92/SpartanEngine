@@ -52,6 +52,18 @@ local jukebox_audio = nil
 local fonts_ready   = false
 local mouse_last_x  = -1
 local mouse_last_y  = -1
+local focus         = "main"
+local dev_selected  = 1
+local dev_anim      = {}
+local submenu       = nil
+
+-- developer quick jump, each entry is a lua menu next to this file that works on the player's car
+-- until the island has a building for it. a menu has Open, Tick (false once it is done) and Close
+local dev_menus =
+{
+    { label = "TUNE SHOP", hint = "Engine, drivetrain, chassis parts for your car", file = "plan_tune_shop.lua" },
+}
+local directory = World.GetFilePath():match("^(.*[/\\])") or ""
 
 local function items()
     local list =
@@ -258,7 +270,7 @@ local function draw_menu(s, x, y, reveal, list, dt)
     local row_h = 84 * s
     local mx, my = Hud.GetMousePosition()
     for i, item in ipairs(list) do
-        select_anim[i] = approach(select_anim[i] or 0, i == selected and 1 or 0, 14, dt)
+        select_anim[i] = approach(select_anim[i] or 0, (i == selected and focus == "main") and 1 or 0, 14, dt)
         local k    = select_anim[i]
         local a    = ease_out((reveal - 0.9 - i * 0.12) / 0.7)
         local ry   = y + (i - 1) * row_h
@@ -272,7 +284,7 @@ local function draw_menu(s, x, y, reveal, list, dt)
 
         local size  = lerp(32, 40, k) * s
         local label = Hud.Text(item.label, rx + 16 * s * k, ry, size, white(lerp(0.55, 1.0, k) * a), "medium", 0, lerp(4, 6, k) * s)
-        Hud.Text(string.format("%02d", i), rx - 62 * s, ry + 13 * s, 17 * s, (i == selected) and amber(a) or white(0.35 * a), "mono", 0, 2 * s)
+        Hud.Text(string.format("%02d", i), rx - 62 * s, ry + 13 * s, 17 * s, (i == selected and focus == "main") and amber(a) or white(0.35 * a), "mono", 0, 2 * s)
 
         if item.id == "music" then
             draw_volume(rx + 16 * s * k + label + 34 * s, ry + 16 * s, s, a, i == selected)
@@ -352,6 +364,35 @@ local function draw_location(w, h, s, alpha)
     end
 end
 
+-- the developer quick jump sits under the clock, tab moves the keyboard between it and the main list
+local function draw_dev(w, h, s, alpha, dt)
+    local x = w - 120 * s
+    local y = h * 0.055 + 230 * s
+    Hud.Rect(x - 300 * s, y, 300 * s, 1 * s, white(0.2 * alpha))
+    Hud.Text("DEVELOPER   \xC2\xB7   QUICK JUMP", x, y + 14 * s, 14 * s, amber(alpha), "mono", 1, 4 * s)
+
+    local row_y = y + 48 * s
+    for i, entry in ipairs(dev_menus) do
+        dev_anim[i] = approach(dev_anim[i] or 0, (focus == "dev" and i == dev_selected) and 1 or 0, 14, dt)
+        local k = dev_anim[i]
+        if k > 0.01 then
+            Hud.RectGradient(x - 380 * s * k, row_y - 6 * s, 380 * s * k + 20 * s, 66 * s, amber(0.0), amber(0.18 * k * alpha), amber(0.18 * k * alpha), amber(0.0))
+            Hud.Rect(x + 16 * s, row_y - 6 * s, 4 * s, 66 * s * k, amber(alpha))
+        end
+        Hud.Text(entry.label, x - 12 * s * k, row_y, lerp(24, 28, k) * s, white(lerp(0.6, 1.0, k) * alpha), "medium", 1, 4 * s)
+        Hud.Text(entry.hint, x - 12 * s * k, row_y + 38 * s, 15 * s, white(lerp(0.4, 0.75, k) * alpha), "light", 1, 0.5 * s)
+        entry.bounds = { x - 400 * s, row_y - 6 * s, 420 * s, 66 * s }
+        row_y = row_y + 78 * s
+    end
+
+    local key_w = Hud.TextWidth("TAB", 14 * s, "mono") + 16 * s
+    Hud.Text("SWITCH", x, row_y + 4 * s, 13 * s, white(0.5 * alpha), "mono", 1, 3 * s)
+    local kx = x - Hud.TextWidth("SWITCH", 13 * s, "mono", 3 * s) - 10 * s - key_w
+    Hud.Rect(kx, row_y, key_w, 26 * s, white(0.08 * alpha), 4 * s)
+    Hud.RectOutline(kx, row_y, key_w, 26 * s, white(0.45 * alpha), 1.2 * s, 4 * s)
+    Hud.Text("TAB", kx + key_w * 0.5, row_y + 5 * s, 14 * s, white(0.85 * alpha), "mono", 0.5)
+end
+
 --------------------------------------------------------------------------------
 -- input
 --------------------------------------------------------------------------------
@@ -379,8 +420,51 @@ local function activate(item)
     end
 end
 
+local function open_submenu(entry)
+    state, state_time = "to_sub", 0
+    submenu = entry
+end
+
 local function handle_input(list, mx, my)
     local count = #list
+    if pressed(KeyCode.Tab, KeyCode.Button_North) then
+        focus = focus == "main" and "dev" or "main"
+    end
+
+    -- the mouse moves the focus to whichever column it is over
+    local dev_hovered = nil
+    for i, entry in ipairs(dev_menus) do
+        local b = entry.bounds
+        if b and mx >= b[1] and mx <= b[1] + b[3] and my >= b[2] and my <= b[2] + b[4] then
+            dev_hovered = i
+        end
+    end
+
+    if focus == "dev" then
+        if pressed(KeyCode.Arrow_Down, KeyCode.S, KeyCode.DPad_Down) then
+            dev_selected = dev_selected % #dev_menus + 1
+        end
+        if pressed(KeyCode.Arrow_Up, KeyCode.W, KeyCode.DPad_Up) then
+            dev_selected = (dev_selected - 2) % #dev_menus + 1
+        end
+        if pressed(KeyCode.Enter, KeyCode.Space, KeyCode.Button_South) then
+            open_submenu(dev_menus[dev_selected])
+            return
+        end
+    end
+    local moved_mouse = math.abs(mx - mouse_last_x) + math.abs(my - mouse_last_y) > 0.5
+    if dev_hovered and moved_mouse then
+        focus, dev_selected = "dev", dev_hovered
+    end
+    if dev_hovered and pressed(KeyCode.Click_Left) then
+        open_submenu(dev_menus[dev_hovered])
+        return
+    end
+    if focus == "dev" then
+        mouse_last_x, mouse_last_y = mx, my
+        return
+    end
+
     if pressed(KeyCode.Arrow_Down, KeyCode.S, KeyCode.DPad_Down) then
         selected = selected % count + 1
     end
@@ -405,7 +489,7 @@ local function handle_input(list, mx, my)
     local moved = math.abs(mx - mouse_last_x) + math.abs(my - mouse_last_y) > 0.5
     mouse_last_x, mouse_last_y = mx, my
     if hovered and moved then
-        selected = hovered
+        selected, focus = hovered, "main"
     end
 
     if pressed(KeyCode.Enter, KeyCode.Space, KeyCode.Button_South) then
@@ -431,12 +515,17 @@ function menu.Start()
     state, state_time, steady = "warmup", 0, 0
     time, shot_index, shot_time = 0, 1, 0
     selected, select_anim = 1, {}
+    focus, dev_selected, dev_anim, submenu = "main", 1, {}, nil
     create_camera()
     start_music()
     tick_camera(0)
 end
 
 function menu.Stop()
+    if submenu and submenu.module then
+        submenu.module.Close()
+    end
+    submenu = nil
     release_camera()
     stop_music()
     if jukebox_audio then
@@ -483,14 +572,42 @@ function menu.Tick()
     local list = items()
     selected   = clamp(selected, 1, #list)
 
-    if state == "intro" or state == "menu" then
+    if state == "to_sub" then
+        -- the menu dips to black, then the sub menu takes the camera
+        tick_camera(dt)
+        tick_music(dt, 0.7)
+        draw_backdrop(w, h, s, 1)
+        Hud.Rect(0, 0, w, h, black(smooth(state_time / 0.35)))
+        if state_time >= 0.35 then
+            release_camera()
+            submenu.module = dofile(directory .. submenu.file)
+            submenu.module.Open()
+            state, state_time = "sub", 0
+        end
+        return
+    elseif state == "sub" then
+        tick_music(dt, 0.7)
+        if not submenu.module.Tick(dt) then
+            submenu.module.Close()
+            submenu = nil
+            create_camera()
+            tick_camera(0)
+            state, state_time = "from_sub", 0
+        end
+        return
+    end
+
+    if state == "intro" or state == "menu" or state == "from_sub" then
         if state == "intro" and state_time > 2.0 then
+            state = "menu"
+        end
+        if state == "from_sub" and state_time > 0.5 then
             state = "menu"
         end
         tick_camera(dt)
         tick_music(dt, 1.0)
 
-        local reveal = state_time + (state == "menu" and 10 or 0)
+        local reveal = state_time + (state ~= "intro" and 10 or 0)
         local ui     = smooth((time - 0.6) / 1.4)
         draw_backdrop(w, h, s, ui)
         Hud.Rect(0, 0, w, h, black(cut_fade() * 0.9))
@@ -502,8 +619,11 @@ function menu.Tick()
         draw_now_playing(w, h, s, ui)
         draw_hints(w, h, s, ui)
         draw_location(w, h, s, ui)
+        draw_dev(w, h, s, ui, dt)
 
-        if state == "menu" or time > 1.5 then
+        if state == "from_sub" then
+            Hud.Rect(0, 0, w, h, black(1 - smooth(state_time / 0.5)))
+        elseif state == "menu" or time > 1.5 then
             handle_input(list, mx, my)
         end
     elseif state == "leaving" or state == "quitting" then

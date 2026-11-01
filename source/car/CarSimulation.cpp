@@ -3459,6 +3459,10 @@ namespace car
 
 
     float Simulation::get_engine_torque(float rpm)
+    { return engine_torque_curve(spec, rpm); }
+
+
+    float engine_torque_curve(const car_preset& spec, float rpm)
     {
             if (spec.engine_map_count >= 2)
             {
@@ -5150,6 +5154,7 @@ namespace car
             car_preset previous_spec = spec;
             config previous_config = cfg;
             upgrades = active_upgrades{};
+            lsd_kit_fitted = false;
             apply_car_spec(new_spec, true);
 
             if (!rebuild_vehicle_geometry())
@@ -5172,6 +5177,196 @@ namespace car
                 new_spec.name ? new_spec.name : "?",
                 cfg.mass, cfg.wheelbase, cfg.track_front, cfg.track_rear,
                 new_spec.drivetrain_type == 0 ? "rwd" : new_spec.drivetrain_type == 1 ? "fwd" : "awd");
+    }
+
+
+    namespace
+    {
+        enum class upgrade_requirement
+        {
+            none,
+            combustion,
+            boost,
+            propshaft,
+            awd,
+            gearbox,
+            open_diff
+        };
+
+        struct upgrade_part
+        {
+            const char* name;
+            int active_upgrades::* stage;
+            int car_preset::* authored_max; // nullptr when the shop fixes the stage count
+            int fixed_max;
+            upgrade_requirement requirement;
+        };
+
+        const upgrade_part upgrade_parts[] =
+        {
+            { "engine",           &active_upgrades::engine,           &car_preset::engine_stage_max,     0, upgrade_requirement::none },
+            { "suspension",       &active_upgrades::suspension,       &car_preset::suspension_stage_max, 0, upgrade_requirement::none },
+            { "tires",            &active_upgrades::tires,            &car_preset::tires_stage_max,      0, upgrade_requirement::none },
+            { "brakes",           &active_upgrades::brakes,           &car_preset::brakes_stage_max,     0, upgrade_requirement::none },
+            { "aero",             &active_upgrades::aero,             &car_preset::aero_stage_max,       0, upgrade_requirement::none },
+            { "weight",           &active_upgrades::weight,           &car_preset::weight_stage_max,     0, upgrade_requirement::none },
+            { "exhaust",          &active_upgrades::exhaust,          &car_preset::exhaust_stage_max,    0, upgrade_requirement::none },
+            { "intake",           &active_upgrades::intake,           &car_preset::intake_stage_max,     0, upgrade_requirement::none },
+            { "turbo",            &active_upgrades::turbo,            &car_preset::turbo_stage_max,      0, upgrade_requirement::none },
+            { "ecu",              &active_upgrades::ecu,              nullptr,                           1, upgrade_requirement::combustion },
+            { "port_polish",      &active_upgrades::port_polish,      nullptr,                           1, upgrade_requirement::combustion },
+            { "engine_balance",   &active_upgrades::engine_balance,   nullptr,                           1, upgrade_requirement::combustion },
+            { "displacement",     &active_upgrades::displacement,     nullptr,                           1, upgrade_requirement::combustion },
+            { "intercooler",      &active_upgrades::intercooler,      nullptr,                           2, upgrade_requirement::boost },
+            { "exhaust_manifold", &active_upgrades::exhaust_manifold, nullptr,                           1, upgrade_requirement::combustion },
+            { "clutch",           &active_upgrades::clutch,           nullptr,                           3, upgrade_requirement::combustion },
+            { "flywheel",         &active_upgrades::flywheel,         nullptr,                           3, upgrade_requirement::combustion },
+            { "driveshaft",       &active_upgrades::driveshaft,       nullptr,                           1, upgrade_requirement::propshaft },
+            { "transmission",     &active_upgrades::transmission,     nullptr,                           3, upgrade_requirement::gearbox },
+            { "lsd",              &active_upgrades::lsd,              nullptr,                           3, upgrade_requirement::open_diff },
+            { "yaw_control",      &active_upgrades::yaw_control,      nullptr,                           1, upgrade_requirement::awd },
+            { "brake_controller", &active_upgrades::brake_controller, nullptr,                           1, upgrade_requirement::none },
+            { "rigidity",         &active_upgrades::rigidity,         nullptr,                           1, upgrade_requirement::none },
+        };
+
+        const upgrade_part* find_upgrade_part(const std::string& name)
+        {
+            for (const upgrade_part& part : upgrade_parts)
+            {
+                if (name == part.name)
+                {
+                    return &part;
+                }
+            }
+            return nullptr;
+        }
+    }
+
+
+    int Simulation::get_upgrade_stage(const std::string& part) const
+    {
+            const upgrade_part* entry = find_upgrade_part(part);
+            return entry ? upgrades.*(entry->stage) : -1;
+    }
+
+
+    int Simulation::get_upgrade_stage_max(const std::string& part) const
+    {
+            const upgrade_part* entry = find_upgrade_part(part);
+            if (!entry)
+            {
+                return 0;
+            }
+
+            const car_preset& base = base_spec;
+            bool available = true;
+            switch (entry->requirement)
+            {
+                case upgrade_requirement::combustion: available = base.engine_peak_torque > 0.0f; break;
+                case upgrade_requirement::boost:      available = (base.turbo_enabled && base.boost_max_pressure > 0.0f) || base.turbo_stage_max > 0; break;
+                case upgrade_requirement::propshaft:  available = base.drivetrain_type != 1; break;
+                case upgrade_requirement::awd:        available = base.drivetrain_type == 2; break;
+                case upgrade_requirement::gearbox:    available = base.gear_count > 3; break;
+                case upgrade_requirement::open_diff:  available = base.diff_type != 1; break;
+                default: break;
+            }
+            if (!available)
+            {
+                return 0;
+            }
+            return PxMax(entry->authored_max ? base.*(entry->authored_max) : entry->fixed_max, 0);
+    }
+
+
+    bool Simulation::set_upgrade_stage(const std::string& part, int stage)
+    {
+            const upgrade_part* entry = find_upgrade_part(part);
+            if (!entry)
+            {
+                return false;
+            }
+            stage = PxClamp(stage, 0, get_upgrade_stage_max(part));
+            if (upgrades.*(entry->stage) != stage)
+            {
+                upgrades.*(entry->stage) = stage;
+                reapply_upgrades();
+            }
+            return true;
+    }
+
+
+    float Simulation::get_upgrade_setting(const std::string& setting) const
+    {
+            if (setting == "brake_bias")
+            {
+                return spec.brake_bias_front;
+            }
+            if (setting == "final_drive")
+            {
+                return upgrades.final_drive_scale;
+            }
+            return 0.0f;
+    }
+
+
+    bool Simulation::set_upgrade_setting(const std::string& setting, float value)
+    {
+            if (setting == "brake_bias" && upgrades.brake_controller > 0)
+            {
+                upgrades.brake_bias_front = PxClamp(value, 0.4f, 0.8f);
+            }
+            else if (setting == "final_drive" && upgrades.transmission >= 3)
+            {
+                upgrades.final_drive_scale = PxClamp(value, 0.8f, 1.25f);
+            }
+            else
+            {
+                return false;
+            }
+            reapply_upgrades();
+            return true;
+    }
+
+
+    car_preset Simulation::preview_upgrade_stage(const std::string& part, int stage)
+    {
+            active_upgrades candidate = upgrades;
+            if (const upgrade_part* entry = find_upgrade_part(part))
+            {
+                candidate.*(entry->stage) = PxClamp(stage, 0, get_upgrade_stage_max(part));
+            }
+            return make_upgraded_spec(base_spec, candidate);
+    }
+
+
+    void Simulation::get_peak_output(float& power_kw, float& power_rpm, float& torque_nm, float& torque_rpm, const car_preset* candidate) const
+    {
+            const car_preset& engine = candidate ? *candidate : spec;
+            power_kw = power_rpm = torque_nm = torque_rpm = 0.0f;
+            const float top = PxMax(engine.engine_redline_rpm, engine.engine_idle_rpm + 100.0f);
+            for (float rpm = PxMax(engine.engine_idle_rpm, 500.0f); rpm <= top; rpm += 50.0f)
+            {
+                // the same full load path the powertrain integrates, at steady boost
+                const float omega    = rpm * PxTwoPi / 60.0f;
+                const float friction = engine.engine_friction * omega;
+                float gross          = engine_torque_curve(engine, rpm);
+                if (engine.engine_torque_is_net)
+                {
+                    gross = (gross + friction) / (1.0f + get_boost_target(1.0f, rpm, &base_spec) * base_spec.boost_torque_mult);
+                }
+                const float net = gross * (1.0f + get_boost_target(1.0f, rpm, &engine) * engine.boost_torque_mult) - friction;
+                if (net > torque_nm)
+                {
+                    torque_nm  = net;
+                    torque_rpm = rpm;
+                }
+                const float kw = net * omega / 1000.0f;
+                if (kw > power_kw)
+                {
+                    power_kw  = kw;
+                    power_rpm = rpm;
+                }
+            }
     }
 
 
@@ -5250,6 +5445,132 @@ namespace car
                 p.boost_spool_rate *= 1.0f + 0.10f * ups.turbo;
             }
 
+            // engine internals
+            if (ups.ecu > 0)
+            {
+                p.engine_peak_torque *= 1.03f;
+                p.engine_redline_rpm += 200.0f;
+                p.engine_max_rpm += 200.0f;
+            }
+            if (ups.port_polish > 0)
+            {
+                p.engine_peak_torque *= 1.025f;
+            }
+            if (ups.engine_balance > 0)
+            {
+                p.engine_inertia *= 0.9f;
+                p.engine_friction *= 0.92f;
+                p.engine_redline_rpm += 150.0f;
+                p.engine_max_rpm += 150.0f;
+            }
+            if (ups.displacement > 0)
+            {
+                p.engine_peak_torque *= 1.06f;
+                p.engine_displacement_l *= 1.06f;
+                p.engine_stroke_mm *= 1.06f;
+            }
+            if (ups.exhaust_manifold > 0)
+            {
+                p.engine_peak_torque *= 1.02f;
+            }
+            // a cooler charge only matters when something is compressing it
+            if (ups.intercooler > 0 && p.turbo_enabled && p.boost_max_pressure > 0.0f)
+            {
+                p.boost_torque_mult *= 1.0f + 0.06f * ups.intercooler;
+                if (ups.intercooler >= 2)
+                {
+                    p.boost_max_pressure *= 1.05f;
+                }
+            }
+
+            // drivetrain
+            if (ups.clutch > 0)
+            {
+                p.clutch_max_torque *= 1.0f + 0.35f * ups.clutch;
+                p.clutch_engagement_rate *= 1.0f + 0.20f * ups.clutch;
+                p.driveline_inertia *= 1.0f - 0.05f * ups.clutch;
+            }
+            if (ups.flywheel > 0)
+            {
+                p.engine_inertia *= 1.0f - 0.12f * ups.flywheel;
+            }
+            if (ups.driveshaft > 0)
+            {
+                p.driveline_inertia *= 0.85f;
+                p.driveshaft_mass *= 0.5f;
+                p.driveshaft_stiffness *= 1.4f;
+            }
+            if (ups.transmission > 0 && base.gear_count > 3)
+            {
+                // close ratios pull every forward gear toward the top one, the third stage also frees the final drive
+                static const float closeness[] = { 1.0f, 0.88f, 0.78f, 0.78f };
+                const int stage   = PxMin(ups.transmission, 3);
+                const int top     = base.gear_count - 1;
+                const float top_r = fabsf(base.gear_ratios[top]);
+                for (int g = 2; g < base.gear_count && top_r > 0.01f; g++)
+                {
+                    const float r = base.gear_ratios[g];
+                    if (fabsf(r) > 0.01f)
+                    {
+                        p.gear_ratios[g] = (r < 0.0f ? -1.0f : 1.0f) * top_r * powf(fabsf(r) / top_r, closeness[stage]);
+                    }
+                }
+                if (stage >= 3)
+                {
+                    p.final_drive = base.final_drive * PxClamp(ups.final_drive_scale, 0.8f, 1.25f);
+                }
+                p.shift_time *= 1.0f - 0.1f * stage;
+
+                // the automatic shifts on road speed, move each threshold so it still lands on the same rpm
+                auto overall = [](const car_preset& c, int g) { return fabsf(c.gear_ratios[g]) * c.final_drive; };
+                for (int g = 2; g < base.gear_count; g++)
+                {
+                    const float up_new = overall(p, g);
+                    if (up_new > 0.01f)
+                    {
+                        const float k = overall(base, g) / up_new;
+                        p.upshift_speed_base[g]  *= k;
+                        p.upshift_speed_sport[g] *= k;
+                    }
+                    const int below      = g > 2 ? g - 1 : g;
+                    const float down_new = overall(p, below);
+                    if (down_new > 0.01f)
+                    {
+                        p.downshift_speeds[g] *= overall(base, below) / down_new;
+                    }
+                }
+            }
+            if (ups.lsd > 0)
+            {
+                // one way locks on power only, one and a half way locks half as hard off power, two way locks both ways
+                static const float accel[]   = { 0.0f, 0.40f, 0.45f, 0.50f };
+                static const float decel[]   = { 0.0f, 0.00f, 0.22f, 0.50f };
+                static const float preload[] = { 0.0f, 60.0f, 90.0f, 120.0f };
+                const int stage = PxMin(ups.lsd, 3);
+                p.diff_type            = 2;
+                p.lsd_lock_ratio_accel = accel[stage];
+                p.lsd_lock_ratio_decel = decel[stage];
+                p.lsd_preload          = PxMax(base.lsd_preload, preload[stage]);
+            }
+            if (ups.yaw_control > 0)
+            {
+                p.yaw_control_enabled = true;
+            }
+
+            // chassis
+            if (ups.brake_controller > 0 && ups.brake_bias_front > 0.0f)
+            {
+                p.brake_bias_front = PxClamp(ups.brake_bias_front, 0.4f, 0.8f);
+            }
+            if (ups.rigidity > 0)
+            {
+                p.bushing_stiffness_radial *= 1.5f;
+                p.bushing_stiffness_axial  *= 1.5f;
+                p.bushing_max_deflection   *= 0.7f;
+                p.front_arb_stiffness      *= 1.05f;
+                p.rear_arb_stiffness       *= 1.05f;
+            }
+
             p.mass = PxMax(p.mass, 200.0f);
             p.engine_peak_torque = PxMax(p.engine_peak_torque, 10.0f);
             p.engine_redline_rpm = PxMax(p.engine_redline_rpm, p.engine_idle_rpm + 100.0f);
@@ -5276,15 +5597,10 @@ namespace car
     {
             car_preset previous_spec = spec;
             config previous_config = cfg;
-            clamp_upgrade_stage(upgrades.engine, base_spec.engine_stage_max);
-            clamp_upgrade_stage(upgrades.suspension, base_spec.suspension_stage_max);
-            clamp_upgrade_stage(upgrades.tires, base_spec.tires_stage_max);
-            clamp_upgrade_stage(upgrades.brakes, base_spec.brakes_stage_max);
-            clamp_upgrade_stage(upgrades.aero, base_spec.aero_stage_max);
-            clamp_upgrade_stage(upgrades.weight, base_spec.weight_stage_max);
-            clamp_upgrade_stage(upgrades.exhaust, base_spec.exhaust_stage_max);
-            clamp_upgrade_stage(upgrades.intake, base_spec.intake_stage_max);
-            clamp_upgrade_stage(upgrades.turbo, base_spec.turbo_stage_max);
+            for (const upgrade_part& part : upgrade_parts)
+            {
+                clamp_upgrade_stage(upgrades.*(part.stage), get_upgrade_stage_max(part.name));
+            }
 
             bool save_abs = spec.abs_enabled;
             bool save_tc = spec.tc_enabled;
@@ -5314,7 +5630,16 @@ namespace car
             spec.tc_enabled = save_tc;
             spec.turbo_enabled = save_turbo;
             spec.drs_enabled = save_drs;
-            spec.diff_type = save_diff;
+            // a fitted limited slip owns the differential, taking it out returns the car's own
+            if (upgrades.lsd > 0)
+            {
+                spec.diff_type = eff.diff_type;
+            }
+            else
+            {
+                spec.diff_type = lsd_kit_fitted ? base_spec.diff_type : save_diff;
+            }
+            lsd_kit_fitted = upgrades.lsd > 0;
             spec.assists = save_assists;
 
             spec.abs_slip_threshold = save_abs_th;
