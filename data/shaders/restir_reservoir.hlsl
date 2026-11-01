@@ -1199,11 +1199,14 @@ float restir_f_schlick_scalar(float f0, float f90, float v_dot_h)
     return f0 + (f90 - f0) * restir_pow5(1.0f - v_dot_h);
 }
 
-float restir_v_smithggx(float n_dot_v, float n_dot_l, float a2)
+float restir_v_smithggx_cos(float n_dot_v, float n_dot_l, float a2)
 {
     float ggxv = n_dot_l * sqrt(n_dot_v * n_dot_v * (1.0f - a2) + a2);
     float ggxl = n_dot_v * sqrt(n_dot_l * n_dot_l * (1.0f - a2) + a2);
-    return 0.5f / max(ggxv + ggxl, 1e-6f);
+    // Smith height-correlated G / (4 * N.V), including the outgoing cosine.
+    // Both cosines are positive at the call site. A denominator floor changes
+    // the BSDF at grazing angles; including N.L here keeps the limit bounded.
+    return 0.5f * n_dot_l / (ggxv + ggxl);
 }
 
 float restir_d_ggx(float n_dot_h, float a2)
@@ -1286,9 +1289,8 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float  a       = restir_d_ggx_alpha(roughness);
     float  a2      = a * a;
     float  d_term  = restir_d_ggx(n_dot_h, a2);
-    float  v_term  = restir_v_smithggx(n_dot_v, n_dot_l, a2);
-    float3 fr      = d_term * v_term * f_term;
-    float3 specular_cos = fr * n_dot_l;
+    float  v_cos   = restir_v_smithggx_cos(n_dot_v, n_dot_l, a2);
+    float3 specular_cos = d_term * v_cos * f_term;
 
     // vndf pdf, heitz 2018 eq 17, the effective spec pick fades with specular_blend
     float diffuse_pdf = n_dot_l / PI;
