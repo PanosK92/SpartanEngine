@@ -209,7 +209,7 @@ jobs:
       SPARTAN_BUILD_STAMP: ${{ needs.stamp.outputs.stamp }}
       # apple only serves the metal shader converter behind a developer sign in, so the installer is mirrored as a release asset
       METAL_SHADER_CONVERTER_URL: https://github.com/${{ github.repository }}/releases/download/dependencies/metal_shader_converter_macos.pkg
-      METAL_SHADER_CONVERTER_SHA256: ''
+      METAL_SHADER_CONVERTER_SHA256: 449833211e4ef0d46bfaa94848e801acff49e226d3c348bba0673f13716be622
     steps:
       - uses: actions/checkout@v4
 
@@ -224,9 +224,7 @@ jobs:
       - name: Install Metal Shader Converter
         run: |
           curl -fsSL -o metal_shader_converter.pkg "$METAL_SHADER_CONVERTER_URL"
-          if [ -n "$METAL_SHADER_CONVERTER_SHA256" ]; then
-            echo "$METAL_SHADER_CONVERTER_SHA256  metal_shader_converter.pkg" | shasum -a 256 -c -
-          fi
+          echo "$METAL_SHADER_CONVERTER_SHA256  metal_shader_converter.pkg" | shasum -a 256 -c -
           sudo installer -pkg metal_shader_converter.pkg -target /
           test -f /usr/local/lib/libmetalirconverter.dylib
 
@@ -364,11 +362,12 @@ jobs:
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              per_page: 1
+              per_page: 10
             });
 
             let commits = [];
-            const lastRelease = releases[0];
+            // the dependencies release only mirrors build inputs, it is not an engine build
+            const lastRelease = releases.find((release) => release.tag_name !== 'dependencies');
             if (lastRelease && lastRelease.tag_name) {
               const { data: compareData } = await github.rest.repos.compareCommits({
                 owner: context.repo.owner,
