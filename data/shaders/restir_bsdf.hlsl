@@ -34,7 +34,10 @@ float restir_path_sample_pdf(RestirSurfaceSample sample)
 
 float restir_path_sample_joint_pdf(RestirSurfaceSample sample)
 {
-    return sample.delta ? 1e20f : sample.joint_pdf;
+    // ReSTIRPT::ProcessScatterData keeps lastScatterPdf at one for a delta
+    // event. Its discrete probability is already included in sample.weight;
+    // the large footprint/MIS sentinel is not a solid-angle density.
+    return sample.delta ? 1.0f : sample.joint_pdf;
 }
 
 // Match StandardBSDF's EnableDeltaBSDF roughness classification before both
