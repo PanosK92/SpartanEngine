@@ -5,7 +5,13 @@
 <h2 align="center">Path traced. GPU driven. Started before AI and developed alongside me while in the game industry</h2>
 
 <p align="center">
-  <sub>12 YEARS &nbsp;·&nbsp; 1 ENGINEER &nbsp;·&nbsp; WINDOWS, LINUX AND MACOS &nbsp;·&nbsp; DIRECTX 12, VULKAN AND METAL</sub>
+  <sub>12 YEARS &nbsp;·&nbsp; 1 ENGINEER &nbsp;·&nbsp;
+  <img src=".github/images/platforms/windows.svg" height="14" alt=""/> WINDOWS &nbsp;
+  <img src=".github/images/platforms/linux.svg" height="14" alt=""/> LINUX &nbsp;
+  <img src=".github/images/platforms/apple.svg" height="14" alt=""/> MACOS &nbsp;·&nbsp;
+  <img src=".github/images/platforms/directx.svg" height="14" alt=""/> DIRECTX 12 &nbsp;
+  <img src=".github/images/platforms/vulkan.svg" height="14" alt=""/> VULKAN &nbsp;
+  <img src=".github/images/platforms/metal.svg" height="14" alt=""/> METAL</sub>
 </p>
 
 <p align="center">
