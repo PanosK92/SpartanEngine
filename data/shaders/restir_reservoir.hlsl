@@ -1151,8 +1151,7 @@ float compute_spec_probability(float3 albedo, float roughness, float metallic, f
     return clamp(spec_prob, 0.05f, 0.95f);
 }
 
-// brdf helpers ported from brdf.hlsl so restir matches the engine shading exactly
-// inline copies, not includes, since brdf.hlsl needs structs unavailable in compute and raytrace passes
+// Shared path-tracing BRDF helpers for initial sampling, replay and reconnection.
 float restir_pow5(float x)
 {
     float x2 = x * x;
@@ -1203,12 +1202,15 @@ float restir_vndf_reflection_pdf(float d, float n_dot_v, float a2)
     return d / (2.0f * (n_dot_v + sqrt(a2 + (1.0f - a2) * n_dot_v * n_dot_v)));
 }
 
-float3 restir_diffuse_burley(float3 diffuse_color, float roughness, float n_dot_v, float n_dot_l, float v_dot_h)
+// Reference StandardBSDF uses Frostbite diffuse with roughness-dependent grazing
+// bias and energy normalization.
+float3 restir_diffuse_frostbite(float3 diffuse_color, float roughness, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-    float f90           = 0.5f + 2.0f * v_dot_h * v_dot_h * roughness;
+    float f90           = roughness * (0.5f + 2.0f * v_dot_h * v_dot_h);
+    float energy_factor = lerp(1.0f, 1.0f / 1.51f, roughness);
     float light_scatter = restir_f_schlick_scalar(1.0f, f90, n_dot_l);
     float view_scatter  = restir_f_schlick_scalar(1.0f, f90, n_dot_v);
-    return diffuse_color * (light_scatter * view_scatter * (1.0f / PI));
+    return diffuse_color * (light_scatter * view_scatter * energy_factor * (1.0f / PI));
 }
 
 float3 restir_compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
@@ -1218,7 +1220,7 @@ float3 restir_compute_multiscatter_energy(float3 f0, float n_dot_v, float roughn
     return 1.0f + f0 * energy_loss / max(1.0f - energy_loss, 1e-6f);
 }
 
-// full ggx+burley brdf returning f_r * cos and the matching mixture pdf, matches brdf.hlsl
+// GGX + Frostbite diffuse BRDF returning f_r * cos and the matching mixture PDF.
 // specular_blend [0,1] fades the specular lobe, 0 is pure diffuse, 1 is the full mixture
 float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, float specular_blend)
 {
@@ -1256,7 +1258,7 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float3 f_term = restir_f_schlick(f0, f90, v_dot_h);
 
     float3 diffuse_color = albedo * (1.0f - metallic);
-    float3 diffuse       = restir_diffuse_burley(diffuse_color, roughness, n_dot_v, n_dot_l, v_dot_h);
+    float3 diffuse       = restir_diffuse_frostbite(diffuse_color, roughness, n_dot_v, n_dot_l, v_dot_h);
     float3 diffuse_cos   = diffuse * (1.0f - f_term) * n_dot_l;
 
     if (specular_blend <= 0.0f)
