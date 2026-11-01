@@ -329,7 +329,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         if (!scatter.valid)
             break;
         float3 outgoing = scatter.direction;
-        float outgoing_pdf = scatter.pdf;
+        float outgoing_pdf = restir_path_sample_pdf(scatter);
         if (has_reconnection(connection))
             suffix *= scatter.weight;
         else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold))
@@ -363,6 +363,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     PathSurface vertices[RESTIR_MAX_PATH_LENGTH + 1u];
     float3 directions[RESTIR_MAX_PATH_LENGTH + 1u];
     float pdfs[RESTIR_MAX_PATH_LENGTH + 1u];
+    uint delta_events = 0u;
     PathSurface primary = (PathSurface)0;
     primary.hit = true;
     primary.hit_position = pos;
@@ -393,7 +394,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
             return result;
         float3 direction = scatter.direction;
         directions[i] = direction;
-        pdfs[i] = scatter.pdf;
+        pdfs[i] = restir_path_sample_pdf(scatter);
+        if (scatter.delta) delta_events |= 1u << i;
         prefix *= scatter.weight;
         RayDesc ray;
         ray.Origin = restir_ray_origin(v.hit_position, v.geometric_normal);
@@ -433,8 +435,13 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     {
         PathSurface v = vertices[j];
         float pdf_out;
-        evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
-            -directions[j - 1u], directions[j], pdf_out, 1.0f);
+        // Re-evaluating a sampled delta event yields zero continuous density,
+        // which would incorrectly admit an earlier reconnection during replay.
+        if ((delta_events & (1u << j)) != 0u)
+            pdf_out = pdfs[j];
+        else
+            evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
+                -directions[j - 1u], directions[j], pdf_out, 1.0f);
         if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold))
             return result;
     }

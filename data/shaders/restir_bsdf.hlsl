@@ -22,6 +22,14 @@ struct RestirSurfaceSample
     bool valid;
 };
 
+// The BSDF reports zero solid-angle density for a delta event. The reference
+// path state uses a finite sentinel instead for MIS and reconnection eligibility;
+// throughput still comes from sample.weight, never from dividing by this value.
+float restir_path_sample_pdf(RestirSurfaceSample sample)
+{
+    return sample.delta ? 1e20f : sample.pdf;
+}
+
 // Match StandardBSDF's EnableDeltaBSDF roughness classification before both
 // evaluation and sampling. The low-level GGX functions accept alpha directly.
 float restir_dielectric_alpha(float roughness)
