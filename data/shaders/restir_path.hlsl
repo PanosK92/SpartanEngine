@@ -106,13 +106,13 @@ bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
 
 // A common criterion for initial selection and both directions of a hybrid shift.
 bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, float incoming_pdf,
-    float outgoing_pdf, float threshold)
+    float outgoing_pdf, float threshold, bool incoming_transmission = false)
 {
     if (incoming_pdf * incoming_pdf * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
         return false;
     if (!rc.hit)
         return true;
-    float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal);
+    float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal, incoming_transmission);
     float d2 = dot(delta, delta);
     if (!restir_connection_distance_valid(d2))
         return false;
@@ -126,12 +126,13 @@ bool restir_prefix_connection_allowed(PathSurface previous, PathSurface rc, floa
 
 // Initialize a descriptor at a surface or infinite environment endpoint.
 PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, float3 direction,
-    uint vertex, uint replay_seed)
+    uint vertex, uint replay_seed, bool incoming_transmission = false)
 {
     PathSample s = (PathSample)0;
     s.seed_path = replay_seed;
     s.rc_length = vertex;
     s.flags = PATH_FLAG_HAS_RC | (rc.hit ? 0u : PATH_FLAG_SKY);
+    if (incoming_transmission) s.flags |= PATH_FLAG_TRANSMISSION_BEFORE_RC;
     s.rc_hit = uint3(rc.geometry, rc.hit_barycentrics);
     s.rc_pos = rc.hit ? rc.hit_position : direction;
     s.rc_normal = rc.hit ? rc.hit_normal : -direction;
@@ -144,7 +145,7 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.rc_material_index = rc.material_index;
     s.rc_front_facing = rc.front_facing;
     s.rc_outgoing_dir = s.rc_normal;
-    float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal);
+    float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal, incoming_transmission);
     float distance_sq = dot(delta, delta);
     s.rc_pdf = rc.hit ? abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 1.0f;
     return s;
@@ -194,6 +195,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     float3 suffix = 1.0f;
     float connection_density = 1.0f;
     float incoming_pdf = dir_pdf;
+    bool incoming_transmission = false; // primary sampling is currently reflection-only
     float roulette_weight = 1.0f;
     float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_geometric_normal, camera_position);
     float first_hit_distance = 0.0f;
@@ -201,7 +203,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     [loop] for (uint depth = 2u; depth <= RESTIR_MAX_PATH_LENGTH; ++depth)
     {
         RayDesc ray;
-        ray.Origin = restir_ray_origin(previous.hit_position, previous.geometric_normal);
+        ray.Origin = restir_ray_origin(previous.hit_position, previous.geometric_normal, incoming_transmission);
         ray.Direction = dir;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
@@ -237,9 +239,9 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf.rc_L_post = suffix * emitted * (depth == connection.rc_length + 1u ? 1.0f : endpoint_mis);
         }
-        else if (restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, RESTIR_RC_EMITTER_PDF, threshold))
+        else if (restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, RESTIR_RC_EMITTER_PDF, threshold, incoming_transmission))
         {
-            leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed);
+            leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed, incoming_transmission);
             leaf.flags |= PATH_FLAG_RC_EMIT;
             leaf.rc_L_nee = emitted;
             leaf.F = throughput * incoming_pdf * emitted * endpoint_mis;
@@ -288,9 +290,9 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf.rc_L_post = suffix * light_f * light.incident * light_mis;
         }
-        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, light_bsdf_pdf, threshold))
+        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, light_bsdf_pdf, threshold, incoming_transmission))
         {
-            leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
+            leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed, incoming_transmission);
             leaf.rc_outgoing_dir = light.direction;
             if (light.transmission) leaf.flags |= PATH_FLAG_TRANSMISSION_AFTER_RC;
             leaf.rc_L_post = light.incident;
@@ -332,10 +334,11 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         float outgoing_pdf = restir_path_sample_pdf(scatter);
         if (has_reconnection(connection))
             suffix *= scatter.weight;
-        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold))
+        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold, incoming_transmission))
         {
-            connection = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
+            connection = restir_connection_descriptor(previous, current, dir, depth, replay_seed, incoming_transmission);
             connection.rc_outgoing_dir = outgoing;
+            if (scatter.transmission) connection.flags |= PATH_FLAG_TRANSMISSION_AFTER_RC;
             connection.src_normal = -dir; // transient incoming direction, stamped with the G-buffer before storing
             connection_prefix = throughput * incoming_pdf;
             connection_density = dir_pdf / (incoming_pdf * outgoing_pdf);
@@ -346,6 +349,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         previous = current;
         dir = outgoing;
         incoming_pdf = outgoing_pdf;
+        incoming_transmission = scatter.transmission;
     }
     selected.first_hit_distance = first_hit_distance;
     float target = target_scalar(selected.F);
@@ -364,6 +368,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     float3 directions[RESTIR_MAX_PATH_LENGTH + 1u];
     float pdfs[RESTIR_MAX_PATH_LENGTH + 1u];
     uint delta_events = 0u;
+    uint transmission_events = 0u;
     PathSurface primary = (PathSurface)0;
     primary.hit = true;
     primary.hit_position = pos;
@@ -396,9 +401,10 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         directions[i] = direction;
         pdfs[i] = restir_path_sample_pdf(scatter);
         if (scatter.delta) delta_events |= 1u << i;
+        if (scatter.transmission) transmission_events |= 1u << i;
         prefix *= scatter.weight;
         RayDesc ray;
-        ray.Origin = restir_ray_origin(v.hit_position, v.geometric_normal);
+        ray.Origin = restir_ray_origin(v.hit_position, v.geometric_normal, scatter.transmission);
         ray.Direction = direction;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
@@ -424,7 +430,9 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     if (!is_sky_sample(src) && !restir_connection_distance_valid(dot(delta, delta)))
         return result;
     float3 direction = is_sky_sample(src) ? src.rc_pos : normalize(delta);
-    if (dot(previous.hit_normal, direction) <= 0.0f)
+    bool connection_transmission = (src.flags & PATH_FLAG_TRANSMISSION_BEFORE_RC) != 0u;
+    float connection_cos = dot(previous.hit_normal, direction);
+    if (connection_transmission ? connection_cos >= 0.0f : connection_cos <= 0.0f)
         return result;
     directions[k - 1u] = direction;
     float connect_pdf;
@@ -442,7 +450,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         else
             evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
                 -directions[j - 1u], directions[j], pdf_out, 1.0f);
-        if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold))
+        if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold,
+            (transmission_events & (1u << (j - 1u))) != 0u))
             return result;
     }
     PathSurface rc = (PathSurface)0;
@@ -453,7 +462,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     float pdf_out = is_rc_emissive(src) ? RESTIR_RC_EMITTER_PDF : 0.0f;
     if (k < src.path_length)
         restir_rc_bsdf_evaluate(src, -direction, src.rc_outgoing_dir, pdf_out);
-    if (!is_nee_sample(src) && !restir_prefix_connection_allowed(previous, rc, connect_pdf, pdf_out, threshold))
+    if (!is_nee_sample(src) && !restir_prefix_connection_allowed(previous, rc, connect_pdf, pdf_out, threshold, connection_transmission))
         return result;
     if (!is_sky_sample(src) && !is_dirac_light_sample(src) && dot(src.rc_normal, -direction) <= 0.0f)
         return result;

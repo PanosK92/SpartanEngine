@@ -1114,8 +1114,9 @@ float restir_offset_ray_component(float position, float normal)
     float displaced = asfloat(asint(position) + (position < 0.0f ? -offset : offset));
     return abs(position) < (1.0f / 16.0f) ? position + normal * (3.0f / 65536.0f) : displaced;
 }
-float3 restir_ray_origin(float3 position, float3 geometric_normal)
+float3 restir_ray_origin(float3 position, float3 geometric_normal, bool transmission = false)
 {
+    geometric_normal = transmission ? -geometric_normal : geometric_normal;
     return float3(restir_offset_ray_component(position.x, geometric_normal.x),
         restir_offset_ray_component(position.y, geometric_normal.y),
         restir_offset_ray_component(position.z, geometric_normal.z));
@@ -1126,7 +1127,7 @@ float3 restir_reconnection_ray_origin(PathSample sample, float3 position, float3
     // Reference Shift::shiftPathReconnection offsets using the retained event,
     // not a newly inferred direction. Reuse must keep the same interface side.
     bool transmission = (sample.flags & PATH_FLAG_TRANSMISSION_BEFORE_RC) != 0u;
-    return restir_ray_origin(position, transmission ? -geometric_normal : geometric_normal);
+    return restir_ray_origin(position, geometric_normal, transmission);
 }
 
 // diffuse vs specular selection probability for the importance sampled brdf, from lobe energy
@@ -1912,14 +1913,14 @@ struct RestirLightSample
 
 float3 restir_light_sample_origin(RestirLightSample light, float3 position, float3 geometric_normal)
 {
-    return restir_ray_origin(position, light.transmission ? -geometric_normal : geometric_normal);
+    return restir_ray_origin(position, geometric_normal, light.transmission);
 }
 
 float3 restir_light_proposal_origin(float3 position, float3 geometric_normal, float3 view,
     float3 direction, bool dielectric)
 {
     bool transmission = dielectric && !restir_reflection_hemisphere(geometric_normal, view, direction);
-    return restir_ray_origin(position, transmission ? -geometric_normal : geometric_normal);
+    return restir_ray_origin(position, geometric_normal, transmission);
 }
 
 PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 origin, uint vertex, uint seed)
