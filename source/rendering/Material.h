@@ -122,6 +122,8 @@ namespace spartan
         IsRoadPaint,                // worn mineral road paint
         RoadHalfWidth,              // half the asphalt width in metres, lets the road shader find the edges
     
+        ThinWalled,                  // transmission through a pane that does not enclose a medium
+
         // sentinel
         Max                         // total number of properties
     };

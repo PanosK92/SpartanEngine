@@ -77,6 +77,7 @@ namespace spartan
                 case MaterialProperty::Ior:                        return "ior";
                 case MaterialProperty::Absorption:                 return "absorption";
                 case MaterialProperty::Thickness:                  return "thickness";
+                case MaterialProperty::ThinWalled:                 return "thin_walled";
                 case MaterialProperty::PaintPreset:                return "paint_preset";
                 case MaterialProperty::SurfacePreset:              return "surface_preset";
                 case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
@@ -736,6 +737,7 @@ namespace spartan
         SetProperty(MaterialProperty::CoatTintB,      1.0f);
         SetProperty(MaterialProperty::IridescenceThickness, 400.0f);
         SetProperty(MaterialProperty::Ior,            EnumToIor(MaterialIor::Glass));
+        SetProperty(MaterialProperty::ThinWalled,     1.0f);
         // a black emissive color leaves the emission map untinted, so older files keep their look
         SetProperty(MaterialProperty::EmissiveIntensity, 1.0f);
         SetProperty(MaterialProperty::AlphaCutoff,    0.6f);
@@ -872,6 +874,7 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.02f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
                 SetPropertyInternal(MaterialProperty::Absorption,          0.15f, false);
                 SetPropertyInternal(MaterialProperty::Thickness,           0.006f, false);
                 break;
@@ -883,6 +886,7 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.04f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
                 SetPropertyInternal(MaterialProperty::Absorption,          1.2f,  false);
                 SetPropertyInternal(MaterialProperty::Thickness,           0.006f, false);
                 break;
@@ -894,6 +898,7 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.06f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
                 SetPropertyInternal(MaterialProperty::Absorption,          0.35f, false);
                 SetPropertyInternal(MaterialProperty::Thickness,           0.012f, false);
                 break;
@@ -905,6 +910,7 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::Clearcoat,           0.8f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.12f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
                 SetPropertyInternal(MaterialProperty::Absorption,          2.5f,  false);
                 SetPropertyInternal(MaterialProperty::Thickness,           0.01f, false);
                 break;
@@ -1050,6 +1056,14 @@ namespace spartan
                 m_properties[i] = property_node.text().as_float();
             }
         }
+        // Preserve the former thin/thick convention only for files without an explicit classification.
+        // Thickness alone cannot distinguish a thin pane from a small closed dielectric volume.
+        if (!node_material.child("thin_walled"))
+        {
+            m_properties[static_cast<uint32_t>(MaterialProperty::ThinWalled)] =
+                GetProperty(MaterialProperty::Thickness) < 0.05f ? 1.0f : 0.0f;
+        }
+
         // Upgrade older vegetation materials loaded directly from a world, which
         // never pass through the model importer or terrain scatter. A saved flag
         // (including an explicit zero) takes precedence over the naming convention.
@@ -1674,6 +1688,7 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::Ior,                  EnumToIor(MaterialIor::Glass), false);
         SetPropertyInternal(MaterialProperty::Absorption,           0.0f, false);
         SetPropertyInternal(MaterialProperty::Thickness,            0.0f, false);
+        SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
         SetPropertyInternal(MaterialProperty::PaintPreset,          0.0f, false);
         SetPropertyInternal(MaterialProperty::SurfacePreset,        0.0f, false);
         SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo,   0.0f, false);

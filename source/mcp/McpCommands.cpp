@@ -629,6 +629,8 @@ namespace spartan
                 return "absorption";
             case MaterialProperty::Thickness:
                 return "thickness";
+            case MaterialProperty::ThinWalled:
+                return "thin_walled";
             case MaterialProperty::PaintPreset:
                 return "paint_preset";
             case MaterialProperty::SurfacePreset:

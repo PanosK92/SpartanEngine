@@ -1065,6 +1065,7 @@ namespace spartan
                 const bool has_attenuation = has_volume && isfinite(attenuation_distance) && attenuation_distance > 0.0f;
                 const float shell          = has_volume ? thickness : thin_shell;
                 material->SetProperty(MaterialProperty::Thickness, shell);
+                material->SetProperty(MaterialProperty::ThinWalled, has_volume ? 0.0f : 1.0f);
                 if (has_attenuation)
                 {
                     color.r *= attenuation_color.r;
