@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "World.h"
 #include "TerrainSystem.h"
 #include "CameraController.h"
+#include "components/Camera.h"
 #include "AmbientWildlife.h"
 #include "AmbientAtmosphere.h"
 #include "RoadDetails.h"
@@ -33,6 +34,68 @@ namespace spartan::world_systems
     {
         Config config;
         bool landscape_prepared = false;
+
+        // the table a companion script returns, its optional Start, Tick(dt) and Stop run like a script component's
+        sol::table companion;
+        bool companion_started = false;
+
+        void companion_call(const char* callback, sol::optional<float> dt = sol::nullopt)
+        {
+            if (!companion.valid())
+            {
+                return;
+            }
+            sol::protected_function function = companion[callback];
+            if (!function.valid())
+            {
+                return;
+            }
+            sol::protected_function_result result = dt ? function(companion, *dt) : function(companion);
+            if (!result.valid())
+            {
+                sol::error error = result;
+                SP_LOG_ERROR("world script %s failed: %s", callback, error.what());
+            }
+        }
+
+        void companion_stop()
+        {
+            if (companion_started)
+            {
+                companion_started = false;
+                companion_call("Stop");
+            }
+        }
+
+        void companion_clear()
+        {
+            companion_stop();
+            companion = sol::lua_nil;
+        }
+
+        void companion_tick(float dt)
+        {
+            if (!companion.valid() || World::IsLoadingFromFile())
+            {
+                return;
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                companion_stop();
+                return;
+            }
+            if (!companion_started)
+            {
+                companion_started = true;
+                companion_call("Start");
+            }
+            companion_call("Tick", dt);
+            // the camera may have been moved after the world refreshed it this frame
+            if (Camera* camera = World::GetCamera())
+            {
+                camera->RefreshMatrices();
+            }
+        }
 
         void register_for_scripting(sol::state_view lua)
         {
@@ -80,6 +143,11 @@ namespace spartan::world_systems
                     SP_LOG_ERROR("world script %s failed: %s", script_path.c_str(), error.what());
                     return;
                 }
+                sol::object returned = result;
+                if (returned.is<sol::table>())
+                {
+                    companion = returned.as<sol::table>();
+                }
                 SP_LOG_INFO("world script %s configured the world", script_path.c_str());
             });
         }
@@ -101,12 +169,15 @@ namespace spartan::world_systems
             SubmitCarRendering();
             // reads the bodies the submission above just gathered
             breakable_trees::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+            // after the world ticked and before rendering, and also during the play boot frames, so a script that
+            // takes the camera on Start owns the very first frame of play
+            companion_tick(static_cast<float>(Timer::GetDeltaTimeSec()));
         });
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldUnloading, [](const sp_variant&) {
             ClearCarWeather();
         });
         WorldCallbacks callbacks;
-        callbacks.before_load = [] { config = {}; landscape_prepared = false; Car::RegisterPrefabs(); };
+        callbacks.before_load = [] { companion_clear(); config = {}; landscape_prepared = false; Car::RegisterPrefabs(); };
         callbacks.prepare = [](const std::vector<Entity*>& entities, const ProgressTask& progress) {
             if (!landscape_prepared)
             {
@@ -116,7 +187,7 @@ namespace spartan::world_systems
             progress.SetDetail("Roadside details and guardrails");
             return road_details::PrepareWorld();
         };
-        callbacks.before_entities_destroyed = [] { Car::ShutdownAll(); };
+        callbacks.before_entities_destroyed = [] { companion_clear(); Car::ShutdownAll(); };
         callbacks.after_entities_destroyed = [] {
             vehicle_particle_wake::Clear();
             ambient_wildlife::Clear(false);
@@ -128,6 +199,7 @@ namespace spartan::world_systems
             landscape_prepared = false;
         };
         callbacks.stop_play = [] {
+            companion_stop();
             breakable_trees::RestoreAll();
             vegetation_interaction::Clear();
             vehicle_particle_wake::Clear();

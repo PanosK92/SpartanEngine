@@ -2544,18 +2544,22 @@ namespace spartan
 
         lock_guard<mutex> lock(entity_access_mutex);
 
-        // keep track of the local camera pointer so we don't have a dangling pointer
-        if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
-        {
-            camera = nullptr;
-        }
-
         // remove the entity and all of its children
         {
             // get the root entity and its descendants
             vector<Entity*> entities_to_remove;
             entities_to_remove.push_back(entity_to_remove); // add the root entity
             entity_to_remove->GetDescendants(&entities_to_remove); // get descendants
+
+            // keep track of the local camera pointer so we don't have a dangling pointer
+            if (find(entities_to_remove.begin(), entities_to_remove.end(), camera) != entities_to_remove.end())
+            {
+                camera = nullptr;
+            }
+            if (find(entities_to_remove.begin(), entities_to_remove.end(), camera_override) != entities_to_remove.end())
+            {
+                camera_override = nullptr;
+            }
 
             // create a set containing the object ids of entities to remove
             set<uint64_t> ids_to_remove;

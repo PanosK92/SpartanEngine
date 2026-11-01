@@ -22,6 +22,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../geometry/Mesh.h"
 #include "../input/Input.h"
 #include "../physics/PhysicsWorld.h"
+#include "../core/Window.h"
+#include "../ui/Hud.h"
 #include <sol/sol.hpp>
 using namespace std;
 using namespace spartan::math;
@@ -110,6 +112,7 @@ namespace spartan
         Ragdoll         ::RegisterForScripting(state_view);
         Camera          ::RegisterForScripting(state_view);
         WorldHelpers    ::RegisterForScripting(state_view);
+        hud             ::register_for_scripting(state_view);
 
         lua_state.new_enum("ComponentType",
             "AudioSource",              ComponentType::AudioSource,
@@ -169,6 +172,14 @@ namespace spartan
         InputTable["GetKeyDown"]     = &Input::GetKeyDown;
         InputTable["GetKeyUp"]       = &Input::GetKeyUp;
         InputTable["GetMouseDelta"]  = &Input::GetMouseDelta;
+        InputTable["GetMouseWheelDelta"] = &Input::GetMouseWheelDelta;
+        InputTable["GetGamepadThumbStickLeft"] = &Input::GetGamepadThumbStickLeft;
+
+        sol::table EngineTable = lua_state.create_named_table("Engine");
+        EngineTable["IsEditorVisible"] = []() { return Engine::IsFlagSet(EngineMode::EditorVisible); };
+        EngineTable["IsPlaying"]       = []() { return Engine::IsFlagSet(EngineMode::Playing); };
+        EngineTable["IsPaused"]        = []() { return Engine::IsFlagSet(EngineMode::Paused); };
+        EngineTable["Quit"]            = []() { Window::Close(); };
 
         sol::table ConsoleTable = lua_state.create_named_table("Console");
         ConsoleTable["Set"] = [](const std::string& name, const std::string& value) -> bool
@@ -254,6 +265,12 @@ namespace spartan
             Camera* camera = World::GetCamera();
             return camera ? camera->GetEntity() : nullptr;
         };
+        // an entity with a camera component takes over the view until SetActiveCamera(nil)
+        WorldTable["SetActiveCamera"] = [](sol::optional<Entity*> entity)
+        {
+            World::SetActiveCamera(entity.value_or(nullptr));
+        };
+        WorldTable["GetActiveCameraOverride"] = &World::GetActiveCameraOverride;
         WorldTable["GetEntityByName"] = [](const std::string& name) -> Entity*
         {
             for (Entity* entity : World::GetEntities())
