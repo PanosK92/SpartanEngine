@@ -97,7 +97,8 @@ namespace
         const Renderer_AntiAliasing_Upsampling method = upscaler();
         return method == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau ||
                method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
-               method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss;
+               method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
+               method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
     }
 
     const char* upscaler_short_name()
@@ -108,6 +109,7 @@ namespace
             case Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau:   return "TAAU";
             case Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess:   return "XeSS";
             case Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss:   return "DLSS";
+            case Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr:     return "FSR";
             default:                                                       return "Bilinear";
         }
     }
@@ -609,16 +611,14 @@ namespace
                 row_note(note, style::color_text_faint);
             }
 
-            vector<string> upscalers = { "None (bilinear)", "FXAA (bilinear)", "TAAU", "Intel XeSS 3" };
-            if (RHI_Device::IsSupportedDlss())
-            {
-                upscalers.emplace_back("NVIDIA DLSS 4.5");
-            }
-            cvar_combo("Upscaler", "r.antialiasing_upsampling", upscalers, "Anti-aliasing and upscaling from render to output resolution. TAAU, XeSS and DLSS reconstruct detail over time, the others stretch the image.");
+            // Keep indices stable on every GPU (the cvar callback rejects unsupported DLSS).
+            vector<string> upscalers = { "None (bilinear)", "FXAA (bilinear)", "TAAU", "Intel XeSS 3",
+                "NVIDIA DLSS 4.5", "AMD FSR 4 (3.1 fallback)" };
+            cvar_combo("Upscaler", "r.antialiasing_upsampling", upscalers, "Anti-aliasing and upscaling from render to output resolution. TAAU, XeSS, DLSS and FSR reconstruct detail over time, the others stretch the image.");
 
             if (!filter.IsActive() && !upscaler_is_temporal() && percent < 99.5f)
             {
-                row_note("Stretched without reconstruction, expect a soft image. TAAU, XeSS or DLSS rebuild the missing detail.", style::color_warning);
+                row_note("Stretched without reconstruction, expect a soft image. TAAU, XeSS, DLSS or FSR rebuild the missing detail.", style::color_warning);
             }
 
             if (upscaler_is_temporal())

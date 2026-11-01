@@ -36,6 +36,14 @@ namespace spartan
         static void Tick(Cb_Frame* cb_frame, const math::Vector2& resolution_render, const math::Vector2& resolution_output, const float resolution_scale);
         static void ResetHistory();
 
+        // FSR SDK selects FSR 4 on supported hardware and FSR 3.1 otherwise.
+        static bool FSR_IsAvailable();
+        static void FSR_Shutdown();
+        static void FSR_ResetHistory();
+        static void FSR_GenerateJitterSample(float* x, float* y);
+        static bool FSR_Dispatch(RHI_Texture* color, RHI_Texture* depth, RHI_Texture* velocity,
+                                 RHI_Texture* output, RHI_Texture* reactive);
+
         // xess
         // smallest resolution scale the upscaler accepts for this render and output size, 0 when it is not known yet
         static float XeSS_GetResolutionScaleMin(const math::Vector2& resolution_render, const math::Vector2& resolution_output);

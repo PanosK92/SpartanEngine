@@ -502,12 +502,30 @@ namespace spartan
             // vendor upscalers keep one global temporal context, cannot run twice per frame for two eyes
             if (is_stereo &&
                 (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
-                 method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss))
+                 method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
+                 method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr))
             {
                 method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
             }
 
-            if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            bool fsr_dispatched = false;
+            if (method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            {
+                fsr_dispatched = RHI_VendorTechnology::FSR_Dispatch(tex_in, tex_depth, tex_velocity, tex_out,
+                    GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
+                if (!fsr_dispatched)
+                {
+                    method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+                    cvar_antialiasing_upsampling.SetValue(static_cast<float>(method));
+                    m_taau_reset_history = true;
+                }
+            }
+
+            if (fsr_dispatched)
+            {
+                // FSR already wrote the output above.
+            }
+            else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
                     tex_in,

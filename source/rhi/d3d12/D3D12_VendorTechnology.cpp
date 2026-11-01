@@ -735,6 +735,7 @@ namespace spartan
 
     void RHI_VendorTechnology::Shutdown()
     {
+        FSR_Shutdown();
     #ifdef _WIN32
         intel::context_destroy();
         dlss::sdk_shutdown();
@@ -787,6 +788,7 @@ namespace spartan
 
     void RHI_VendorTechnology::ResetHistory()
     {
+        FSR_ResetHistory();
     #ifdef _WIN32
         common::reset_history = true;
         nvidia::request_history_reset();

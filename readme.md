@@ -93,11 +93,12 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 </details>
 
 <details>
-<summary><b>Performance, camera and post-processing</b> &nbsp;·&nbsp; DLSS 4.5, XeSS, FSR 3.1 frame generation, TAAU, VRS, GT7 tonemapping, HDR10</summary>
+<summary><b>Performance, camera and post-processing</b> &nbsp;·&nbsp; DLSS 4.5, XeSS, FSR 4 upscaling, FSR 3.1 frame generation, TAAU, VRS, GT7 tonemapping, HDR10</summary>
 
 <br/>
 
 - **NVIDIA DLSS 4.5** Super Resolution (SDK 310.9.1) and **Intel XeSS** 2.0.2 (SDK 3.0.2)
+- **AMD FSR upscaling** (FSR SDK 2.4.0) on Windows with Vulkan and D3D12. Select AMD FSR in Renderer Options (or `r.antialiasing_upsampling 5`). The SDK selects FSR 4.1.2 on supported Radeon GPUs and FSR 3.1 on other supported GPUs. Run dependency setup to fetch the signed loader and upscaler DLLs. Frame generation retains its existing, separate SDK.
 - **AMD FSR 3.1 frame generation** (FidelityFX SDK 1.1.4) on Vulkan and D3D12, works on any vendor's GPU, with frame-generation-aware fps, latency and frame rate limiting
 - **TAAU**: temporal anti-aliasing with built-in upsampling, Halton jitter and variance-clipped history
 - **Variable rate shading** and **dynamic resolution scaling**

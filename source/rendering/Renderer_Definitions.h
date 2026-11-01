@@ -186,7 +186,8 @@ namespace spartan
         AA_Fxaa_Upscale_Linear,
         AA_Taau_Upscale_Taau,
         AA_Xess_Upscale_Xess,
-        AA_Dlss_Upscale_Dlss
+        AA_Dlss_Upscale_Dlss,
+        AA_Fsr_Upscale_Fsr
     };
 
     // fonts are drawn in this order, so later fonts land on top of earlier ones

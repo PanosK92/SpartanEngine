@@ -600,7 +600,8 @@ namespace spartan
             const Renderer_AntiAliasing_Upsampling mode =
                 cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
             if (mode != Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss &&
-                mode != Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+                mode != Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess &&
+                mode != Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {
                 return;
             }
@@ -2104,6 +2105,11 @@ namespace spartan
 
             Renderer::view().frame.projection *= Matrix::CreateTranslation(Vector3(Renderer::view().jitter_offset.x, Renderer::view().jitter_offset.y, 0.0f));
         }
+        else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+        {
+            RHI_VendorTechnology::FSR_GenerateJitterSample(&Renderer::view().jitter_offset.x, &Renderer::view().jitter_offset.y);
+            Renderer::view().frame.projection *= Matrix::CreateTranslation(Vector3(Renderer::view().jitter_offset.x, Renderer::view().jitter_offset.y, 0.0f));
+        }
         else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
         {
             RHI_VendorTechnology::XeSS_GenerateJitterSample(&Renderer::view().jitter_offset.x, &Renderer::view().jitter_offset.y);
@@ -2595,6 +2601,7 @@ namespace spartan
         camera_cut_pending    = camera_cut_pending && secondary_render_root_active;
         if (camera_cut)
         {
+            RHI_VendorTechnology::FSR_ResetHistory();
             m_taau_reset_history = true;
             m_pass_state.ResetCameraHistory();
         }

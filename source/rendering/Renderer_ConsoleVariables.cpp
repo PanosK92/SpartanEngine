@@ -163,7 +163,8 @@ namespace spartan
 
             if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau) ||
                 v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) ||
-                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss))
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) ||
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr))
             {
                 RHI_VendorTechnology::ResetHistory();
                 Renderer::ResetTaauHistory();

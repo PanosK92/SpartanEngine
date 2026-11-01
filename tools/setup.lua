@@ -15,7 +15,7 @@ local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/byrj4cytjj9krvm49pto6/libraries.7z?rlkey=w7axjqiqdooded5tpovg80nn2&dl=1"
-local LIBRARY_HASH     = "c9344221cde19efd97416c37a8d3517a84fd296a4f25aa25ed54bafd2fb2c229"
+local LIBRARY_HASH     = "f7b452e04879967408109f95c7dfba1dbd86ea8358b2a805edb825e7bcdfcbf4"
 
 local LINUX_LIBRARIES_DIR     = path.join(LIBRARIES_DIR, "linux")
 local LINUX_RUNTIME_LIBRARIES = { "libdxcompiler.so", "libdxil.so" }
@@ -26,6 +26,10 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
     path.join(LIBRARIES_DIR, "amd_fidelityfx_dx12.dll"),
     path.join(LIBRARIES_DIR, "amd_fidelityfx_vk.dll"),
+    path.join(LIBRARIES_DIR, "amd_fidelityfx_loader_dx12.dll"),
+    path.join(LIBRARIES_DIR, "amd_fidelityfx_loader_vk.dll"),
+    path.join(LIBRARIES_DIR, "amd_fidelityfx_upscaler_dx12.dll"),
+    path.join(LIBRARIES_DIR, "amd_fidelityfx_upscaler_vk.dll"),
 }
 
 -- FidelityFX SDK 1.1.4 signed runtime, fsr 3.1 frame generation; ffx api headers are vendored in third_party/fidelityfx.
@@ -34,6 +38,16 @@ local FIDELITYFX_URL = "https://raw.githubusercontent.com/GPUOpen-LibrariesAndSD
 local FIDELITYFX_FILES = {
     { name = "amd_fidelityfx_dx12.dll", sha256 = "12a5081257ec95b0b53ad51b4a87fb3c03f97fe0bbb59f9496968f8d50ef93a6" },
     { name = "amd_fidelityfx_vk.dll",   sha256 = "a1624cc4238fef046f30c4d80ce3f47be63fc5f5373f49e3ee9edb9960f54c78" },
+}
+
+-- FSR SDK 2.4.0 upscaling only; retain the existing cross-vendor frame generation runtime.
+local FSR_UPSCALING_VERSION = "2.4.0"
+local FSR_UPSCALING_URL = "https://raw.githubusercontent.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/v" .. FSR_UPSCALING_VERSION .. "/Kits/FidelityFX/signedbin/"
+local FSR_UPSCALING_FILES = {
+    { name = "amd_fidelityfx_loader_dx12.dll", sha256 = "e2191d3c0828be45eb8affd4e3ec0378f2293adc345b772a7170edcf3b021ecb" },
+    { name = "amd_fidelityfx_loader_vk.dll", sha256 = "38a56a01fb3565c0757d9f5c1e4e69de4b65e5f2e5769b323b200dc1f142bab9" },
+    { name = "amd_fidelityfx_upscaler_dx12.dll", sha256 = "aad4fccccb29084a655f9a4f9f613bd22c8c03fb4a0f8840148cc6543b4ccace" },
+    { name = "amd_fidelityfx_upscaler_vk.dll", sha256 = "4a7e895af6e0b615d40a84d59eb8c2b1054ad91cdd0c739567940270d51bdab7" },
 }
 
 -- DLSS 4.5 Super Resolution; headers are vendored in third_party/dlss.
@@ -495,21 +509,25 @@ local function ensure_fidelityfx_sdk()
         return
     end
 
-    for _, entry in ipairs(FIDELITYFX_FILES) do
-        local destination = path.join(LIBRARIES_DIR, entry.name)
-        if compute_sha256(destination) ~= entry.sha256 then
-            local temporary = destination .. ".tmp"
-            print("downloading fidelityfx " .. FIDELITYFX_VERSION .. ": " .. entry.name)
-            local result, code = download_with_progress(FIDELITYFX_URL .. entry.name, temporary)
-            if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
+    local function ensure_runtime(version, url, files)
+        for _, entry in ipairs(files) do
+            local destination = path.join(LIBRARIES_DIR, entry.name)
+            if compute_sha256(destination) ~= entry.sha256 then
+                local temporary = destination .. ".tmp"
+                print("downloading fidelityfx " .. version .. ": " .. entry.name)
+                local result, code = download_with_progress(url .. entry.name, temporary)
+                if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
+                    os.remove(temporary)
+                    error(string.format("fidelityfx download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
+                end
+                copy_file(temporary, destination)
                 os.remove(temporary)
-                error(string.format("fidelityfx download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
             end
-            copy_file(temporary, destination)
-            os.remove(temporary)
         end
+        print("fidelityfx sdk " .. version .. " verified")
     end
-    print("fidelityfx sdk " .. FIDELITYFX_VERSION .. " verified")
+    ensure_runtime(FIDELITYFX_VERSION, FIDELITYFX_URL, FIDELITYFX_FILES)
+    ensure_runtime(FSR_UPSCALING_VERSION, FSR_UPSCALING_URL, FSR_UPSCALING_FILES)
 end
 
 local function ensure_steamworks()

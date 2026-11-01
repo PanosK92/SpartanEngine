@@ -329,6 +329,7 @@ license.)";
                 std::vector<third_party_lib> v;
 
                 // single header drop, version is not exposed as a macro
+                v.push_back({ "AMD FSR Upscaling", "2.4.0", "https://gpuopen.com/amd-fsr-sdk/" });
                 v.push_back({ "AMD FidelityFX CAS/SPD", "1.1.4", "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK" });
 
 #if defined(API_GRAPHICS_VULKAN)
