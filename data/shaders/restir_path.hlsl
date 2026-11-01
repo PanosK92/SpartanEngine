@@ -84,14 +84,27 @@ float3 restir_rc_bsdf_evaluate(PathSample s, float3 view, float3 direction, out 
         restir_surface_is_dielectric(surface), restir_surface_eta(surface, (RestirMediumState)0), restir_surface_transmission_tint(surface));
 }
 
-uint3 restir_trace_hit(RayDesc ray, out float hit_distance)
+uint3 restir_trace_hit(RayDesc ray, out float hit_distance, bool opaque_primary = false)
 {
     RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    // The retained primary must describe the opaque G-buffer surface. Instance
+    // masks cannot express this: non-shadow-casting glass shares bit 3 with
+    // opaque objects, so inspect its material even when the instance marks it opaque.
+    query.TraceRayInline(tlas, opaque_primary ? RAY_FLAG_FORCE_NON_OPAQUE : RAY_FLAG_NONE, 0xFF, ray);
     while (query.Proceed())
     {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
-            rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
+        if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE) continue;
+        if (opaque_primary)
+        {
+            MaterialParameters material = material_parameters[geometry_infos[query.CandidateInstanceIndex()].material_index];
+            if (material.color.a < 1.0f) continue; // Match Material::IsTransparent().
+            if (!material.is_alpha_tested())
+            {
+                query.CommitNonOpaqueTriangleHit();
+                continue;
+            }
+        }
+        if (rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
                 query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
             query.CommitNonOpaqueTriangleHit();
     }

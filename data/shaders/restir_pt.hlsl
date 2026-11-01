@@ -82,7 +82,7 @@ void ray_gen()
     float match_tolerance = max(0.001f, primary_distance * 0.0001f);
     primary_ray.TMax = primary_distance + match_tolerance;
     float primary_hit_distance;
-    uint3 primary_hit = restir_trace_hit(primary_ray, primary_hit_distance);
+    uint3 primary_hit = restir_trace_hit(primary_ray, primary_hit_distance, true);
     // Raster-only/deformed surfaces can differ from the RT scene. Never label
     // such a surface with a nearby triangle from a different representation.
     if (primary_hit_distance > 0.0f && abs(primary_hit_distance - primary_distance) <= match_tolerance)
