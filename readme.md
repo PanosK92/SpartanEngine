@@ -29,7 +29,9 @@
   <a href="https://panoskarabelas.com/"><b>Website</b></a>
 </p>
 
-Spartan is a real-time C++ engine with path-traced global illumination, hardware ray tracing, a bindless GPU-driven renderer and a racing-grade vehicle simulation. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord. The source is open, but the engine is not a product: no tutorials, no support queue, no compatibility promise. The code is the documentation, and it moves fast.
+Spartan is a complete C++ game engine. Path-traced global illumination, hardware ray tracing, a bindless GPU-driven renderer and a racing-grade vehicle simulation sit alongside what a shipped game needs: an editor, Lua gameplay scripting, a standalone runtime, a game builder that packages a world into a distributable game, and Steam integration with achievements, stats and rich presence. The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors and a car showroom. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
+
+**Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki), a [Lua scripting guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
 
 <table>
   <tr>
@@ -228,6 +230,10 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 - **Origin**: a portfolio piece at the [University of Thessaly](https://en.wikipedia.org/wiki/University_of_Thessaly) under Professor [Fotis Kokkoras](https://ds.uth.gr/en/staff-en/faculty-en/kokkoras/)
 
 Projects built on Spartan code can be featured here. **[Get in touch](https://x.com/panoskarabelas)**.
+
+## Ready for games?
+
+Yes. Older coverage, like *"The BEST Game Engine You SHOULDN'T Use"*, describes an engine that no longer exists. Back then Spartan was a renderer. Today it has the scripting, runtime, packaging and Steam support to ship, and graphically it goes further than any other open-source engine. The one thing that hasn't changed is support: if you need hand-holding, pick something else. If you don't, Spartan is ready.
 
 ## Community
 
