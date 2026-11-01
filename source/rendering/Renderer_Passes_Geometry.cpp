@@ -210,6 +210,17 @@ namespace spartan
 
         bool gpu_scatter_cards(const Renderer::PassState::GpuScatterSlot& slot)
         {
+            // TODO: off on metal, the population is correct (plan.world, a 150 m ring is ~13k cards) but almost every card
+            // fragment discards, so almost none write depth and cards stacked towards the horizon never occlude each other,
+            // apple gpus can't remove hidden fragments that may discard, every layer gets shaded and the g-buffer command
+            // buffer runs past the os gpu time limit, which cancels it, cheap discards and cutouts without discard are fine,
+            // so a fix is fewer overlapping cards or a cutout that lets most of a card write depth
+            // it also costs performance, with the cards off the blade rings are no longer pulled in to the card start
+            // (gpu_scatter_ring_radius), so blades are drawn all the way out to 500 m, on plan.world g_buffer_grass
+            // takes ~48 ms instead of ~22 ms with the card layout (cards not drawn)
+            if (Renderer::GetRhiApiType() == RHI_Api_Type::Metal)
+                return false;
+
             return cvar_grass_impostor_distance.GetValue() > 0.0f &&
                    cvar_grass_specialized.GetValue()              &&
                    !Xr::IsSessionRunning()                        &&
@@ -1602,7 +1613,7 @@ namespace spartan
                     {
                         bind_mesh_shader_geometry();
                         push_mesh_draw_constants(m_pcb_pass_cpu);
-                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), slot_opaque * dispatch_stride);
+                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + slot_opaque) * dispatch_stride);
                     }
                     else
                     {
@@ -1633,7 +1644,7 @@ namespace spartan
                         bind_mesh_shader_geometry();
                         push_mesh_draw_constants(m_pcb_pass_cpu);
                         // Alpha work is compacted separately, with the original capacity for each category.
-                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), slot_alpha * dispatch_stride);
+                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + slot_alpha) * dispatch_stride);
                     }
                     else
                     {
@@ -1805,7 +1816,7 @@ namespace spartan
             {
                 bind_mesh_shader_geometry();
                 push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
+                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), MESH_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
             }
             else
             {
@@ -1838,7 +1849,7 @@ namespace spartan
             {
                 bind_mesh_shader_geometry();
                 push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), sizeof(Sb_IndirectDispatchArgs));
+                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
             }
             else
             {

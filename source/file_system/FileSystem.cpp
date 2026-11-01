@@ -187,7 +187,8 @@ namespace spartan
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
-            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+            // not a background process, redirected stdio already keeps it windowless and on apple sdl loses
+            // the pid of a background process, so the wait below would never return
 
             SDL_Process* process = SDL_CreateProcessWithProperties(props);
             SDL_DestroyProperties(props);

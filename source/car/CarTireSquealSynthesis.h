@@ -13,7 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <atomic>
 #include <cstdint>
 #include <mutex>
-#include <xmmintrin.h>
+#include "../math/Intrinsics.h"
 //==========================================
 
 // Procedural tire friction: scrub grows into narrow-band squeal as adhesion breaks.

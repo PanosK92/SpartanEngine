@@ -169,3 +169,39 @@ inline int _strnicmp(const char* a, const char* b, size_t count)
 }
 
 #endif
+
+//= INCLUDES ===
+#include <atomic>
+#include <memory>
+#include <mutex>
+//==============
+
+namespace spartan
+{
+    // libc++ has no std::atomic<std::shared_ptr>, a lock behind the same load/store interface stands in there
+    #if defined(__cpp_lib_atomic_shared_ptr)
+    template<typename T>
+    using atomic_shared_ptr = std::atomic<std::shared_ptr<T>>;
+    #else
+    template<typename T>
+    class atomic_shared_ptr
+    {
+    public:
+        std::shared_ptr<T> load(std::memory_order = std::memory_order_seq_cst) const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_value;
+        }
+
+        void store(std::shared_ptr<T> value, std::memory_order = std::memory_order_seq_cst)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_value = std::move(value);
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::shared_ptr<T> m_value;
+    };
+    #endif
+}

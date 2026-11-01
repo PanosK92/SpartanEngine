@@ -15,7 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <mutex>
 #include <string>
 #include <vector>
-#include <xmmintrin.h>
+#include "../math/Intrinsics.h"
 
 namespace engine_sound
 {

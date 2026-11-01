@@ -4,6 +4,9 @@
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+*.xcodeproj/
+*.xcworkspace/
+.DS_Store
 /Makefile
 /*.make
 .vs/
@@ -19,6 +22,9 @@
 *.log
 *.tmp
 *.bak
+
+# downloaded by tools/macos_dependencies.sh
+/tools/premake5
 
 # downloaded by tools/setup.lua
 /third_party/libraries/

@@ -283,7 +283,7 @@ namespace spartan
         std::vector<Entity*> m_children; // the children of this entity
         std::atomic<uint32_t> m_children_count{0};
         std::atomic<uint64_t> m_hierarchy_revision{1};
-        mutable std::atomic<std::shared_ptr<const HierarchyTraversal>> m_hierarchy_traversal;
+        mutable atomic_shared_ptr<const HierarchyTraversal> m_hierarchy_traversal;
         // Only entities queried for inverse/composed rotation pay for this storage.
         mutable std::atomic<TransformCache*> m_transform_cache{nullptr};
 

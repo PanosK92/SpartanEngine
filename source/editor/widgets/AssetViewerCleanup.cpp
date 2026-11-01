@@ -79,7 +79,7 @@ vector<string> AssetViewer::CleanupFileSignatures() const
                 time_error
                     ? "missing"
                     : to_string(
-                        write_time.time_since_epoch().count()
+                        static_cast<int64_t>(write_time.time_since_epoch().count())
                     )
             )
         );

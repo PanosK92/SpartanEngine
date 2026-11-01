@@ -608,7 +608,7 @@ namespace spartan::scripting
     {
         if (!component)
         {
-            return sol::nil;
+            return sol::lua_nil;
         }
 
         switch (component->GetType())
@@ -624,7 +624,7 @@ namespace spartan::scripting
             case ComponentType::Script:         return sol::make_object(state, static_cast<Script*>(component));
             case ComponentType::Spline:         return sol::make_object(state, static_cast<Spline*>(component));
             case ComponentType::Text3D:         return sol::make_object(state, static_cast<Text3D*>(component));
-            default:                            return sol::nil;
+            default:                            return sol::lua_nil;
         }
     }
 }

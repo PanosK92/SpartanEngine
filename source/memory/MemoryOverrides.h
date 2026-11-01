@@ -7,7 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 
-#ifdef __linux__
+#ifndef _WIN32
 #include <cstddef>
 #include <new>
 #endif

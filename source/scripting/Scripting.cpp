@@ -173,7 +173,7 @@ namespace spartan::scripting
             optional<string> value = ConsoleRegistry::Get().GetValueAsString(name);
             if (!value)
             {
-                return sol::nil;
+                return sol::lua_nil;
             }
             return sol::make_object(lua_state, *value);
         };

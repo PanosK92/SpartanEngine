@@ -1137,20 +1137,15 @@ float compute_ray_offset(float3 pos_ws)
     return max(max(p_mag * 1e-5f, dist * 1e-4f), 2e-4f);
 }
 
-// Falcor GeometryHelpers::computeRayOrigin: component-wise floating-point
-// offset. The same origin must define tracing, connection PDFs and shifts.
-float restir_offset_ray_component(float position, float normal)
-{
-    int offset = int(normal * (3.0f * 256.0f));
-    float displaced = asfloat(asint(position) + (position < 0.0f ? -offset : offset));
-    return abs(position) < (1.0f / 16.0f) ? position + normal * (3.0f / 65536.0f) : displaced;
-}
+// Falcor GeometryHelpers::computeRayOrigin scale, 768 ulps, but of the largest coordinate instead of each one,
+// a position's error follows the whole vector, so a surface at height 0 got a tiny offset and shadowed itself
+// The same origin must define tracing, connection PDFs and shifts.
 float3 restir_ray_origin(float3 position, float3 geometric_normal, bool transmission = false)
 {
     geometric_normal = transmission ? -geometric_normal : geometric_normal;
-    return float3(restir_offset_ray_component(position.x, geometric_normal.x),
-        restir_offset_ray_component(position.y, geometric_normal.y),
-        restir_offset_ray_component(position.z, geometric_normal.z));
+    float magnitude  = max(abs(position.x), max(abs(position.y), abs(position.z)));
+    float offset     = max(3.0f / 65536.0f, magnitude * (3.0f * 256.0f / 8388608.0f));
+    return position + geometric_normal * offset;
 }
 
 float3 restir_reconnection_ray_origin(PathSample sample, float3 position, float3 geometric_normal)

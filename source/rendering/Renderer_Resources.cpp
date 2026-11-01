@@ -171,10 +171,11 @@ namespace spartan
             (string("visible_triangles_") + to_string(i)).c_str()
         );
 
-        // slot 0 for vs triangle cull, slots 0 and 1 for mesh path (opaque, alpha), slots 2 and 3 their late ranges
+        // slot 0 for vs triangle cull, slots 0 and 1 for mesh path (opaque, alpha), slots 2 and 3 their late ranges,
+        // slots 4 to 7 the grids mesh draws read, see MESH_GRID_ARGS_SLOT
         fr.triangle_dispatch_args = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
-            4, nullptr, true,
+            MESH_GRID_ARGS_SLOT + 4, nullptr, true,
             (string("triangle_dispatch_args_") + to_string(i)).c_str()
         );
 

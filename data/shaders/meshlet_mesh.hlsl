@@ -53,7 +53,10 @@ void main_ms(
     // Each material category dispatches only its compacted half of the list.
     uint meshlet_capacity, meshlet_stride;
     meshlet_instances.GetDimensions(meshlet_capacity, meshlet_stride);
-    const uint mi_idx = group_id.x + (want_alpha ? meshlet_capacity / 2u : 0u);
+    // the grid rounds up to whole rows, groups past the meshlet count emit nothing
+    const uint mesh_group = group_id.x + group_id.y * MESH_GRID_WIDTH;
+    const uint mesh_count = cull_phase[CULL_PHASE_MESHLET_COUNT + (want_alpha ? 1u : 0u)];
+    const uint mi_idx     = mesh_group + (want_alpha ? meshlet_capacity / 2u : 0u);
 
     if (tid == 0)
     {
@@ -64,6 +67,7 @@ void main_ms(
         gs_first_micro    = 0u;
         gs_skip_backface  = false;
 
+        if (mesh_group < mesh_count)
         {
             gs_mi   = meshlet_instances[mi_idx];
             gs_draw = indirect_draw_data[meshlet_instance_draw_index(gs_mi)];

@@ -252,7 +252,7 @@ namespace spartan::scripting
             ::car::Simulation* simulation = resolve_simulation(entity);
             if (!simulation)
             {
-                return sol::nil;
+                return sol::lua_nil;
             }
             return make_stats(sol::state_view(s), *simulation, simulation->get_spec());
         };
@@ -263,7 +263,7 @@ namespace spartan::scripting
             ::car::Simulation* simulation = resolve_simulation(entity);
             if (!simulation)
             {
-                return sol::nil;
+                return sol::lua_nil;
             }
             const ::car::car_preset spec = simulation->preview_upgrade_stage(part, stage);
             return make_stats(sol::state_view(s), *simulation, spec);

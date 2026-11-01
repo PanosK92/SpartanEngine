@@ -38,7 +38,7 @@ namespace spartan::scripting
                     return to_lua(get_state(), comp);
                 }
 
-                return sol::nil;
+                return sol::lua_nil;
             },
             "AddComponent", [](Entity* Self, ComponentType Type) -> sol::object
             {
@@ -47,7 +47,7 @@ namespace spartan::scripting
                     return to_lua(get_state(), comp);
                 }
 
-                return sol::nil;
+                return sol::lua_nil;
             },
             "RemoveComponent", [](Entity* Self, ComponentType Type)
             {
@@ -316,7 +316,7 @@ namespace spartan::scripting
                 result["position"] = hit_position;
                 return result;
             }
-            return sol::nil;
+            return sol::lua_nil;
         };
     }
 
