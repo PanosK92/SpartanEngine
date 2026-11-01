@@ -32,6 +32,7 @@ namespace Contributors
     const vector<Contributor> contributors =
     {
         { "Hippeus", "Bryan Casagrande",    "United States",  "X",          "https://x.com/mrdrelliot",                                 "Lua scripting, console variables",                             "BeamNG.drive" },
+        { "Hippeus", "Kiriakos Gavras",     "Finland",        "X",          "https://x.com/Kiiiri7",                                    "Metal 4 backend and macOS support",                            "BeamNG.drive" },
         { "Spartan", "Dimitris Kalyvas",    "Greece",         "X",          "https://x.com/punctuator_",                                "UX improvements, helping with plan.world",                     "BeamNG.drive" },
         { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",   "https://www.linkedin.com/in/iker-galardi/",                "Linux compilation - Part 1",                                   "N/A" },
         { "Spartan", "Jose Jiménez López ", "Spain",          "X",          "https://x.com/kerbehee",                                   "Animation, and smoke tests proof of concept",                  "BeamNG.drive" },
