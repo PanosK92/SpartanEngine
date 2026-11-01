@@ -15,6 +15,6 @@
     "@connectrpc/connect-node": "2.2.0",
     "@cursor/sdk": "1.0.19",
     "@modelcontextprotocol/sdk": "1.32.0",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   }
 }
