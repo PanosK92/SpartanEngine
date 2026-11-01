@@ -1139,16 +1139,16 @@ float3 restir_reconnection_ray_origin(PathSample sample, float3 position, float3
 // diffuse vs specular selection probability for the importance sampled brdf, from lobe energy
 float compute_spec_probability(float3 albedo, float roughness, float metallic, float n_dot_v)
 {
-    float albedo_lum = max(luminance(albedo), 1e-3f);
-    float f0_scalar  = lerp(0.04f, albedo_lum, metallic);
-    float fresnel    = f0_scalar + (1.0f - f0_scalar) * pow(1.0f - n_dot_v, 5.0f);
-    // smooth surfaces favor specular sampling, rough surfaces favor diffuse
-    float gloss_bias = lerp(0.85f, 1.15f, 1.0f - roughness);
-    float spec_w     = fresnel * gloss_bias;
-    float diff_w     = albedo_lum * (1.0f - metallic) * (1.0f - fresnel);
+    // StandardMaterial supplies diffuse = albedo * (1 - metallic), then
+    // StandardBSDF applies its dielectric blend weight to the sampling weight.
+    float3 diffuse = albedo * (1.0f - metallic);
+    float3 f0 = lerp(0.04f, albedo, metallic);
+    float3 fresnel = f0 + (1.0f - f0) * pow(1.0f - n_dot_v, 5.0f);
+    // Do not use the engine luminance floor: absent lobes must retain zero weight.
+    float spec_w = dot(fresnel, srgb_color_space_coefficient);
+    float diff_w = dot(diffuse, srgb_color_space_coefficient) * (1.0f - metallic);
     float total      = spec_w + diff_w;
-    float spec_prob  = total > 0.0f ? spec_w / total : 0.5f;
-    return clamp(spec_prob, 0.05f, 0.95f);
+    return total > 0.0f ? spec_w / total : 0.0f;
 }
 
 // Shared path-tracing BRDF helpers for initial sampling, replay and reconnection.
@@ -1312,14 +1312,14 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     float3 l;
     if (xi.x < prob_diffuse)
     {
-        xi.x = xi.x / max(prob_diffuse, 1e-6f);
+        xi.x = xi.x / prob_diffuse;
         float pdf_diffuse;
         float3 local_dir = sample_cosine_hemisphere(xi, pdf_diffuse);
         l = local_to_world(local_dir, n);
     }
     else
     {
-        xi.x = (xi.x - prob_diffuse) / max(1.0f - prob_diffuse, 1e-6f);
+        xi.x = (xi.x - prob_diffuse) / spec_prob;
         float3 v_local = world_to_local(v, n);
         v_local.z      = max(v_local.z, 0.0f);
         float3 h_local = sample_ggx_vndf(v_local, xi, restir_d_ggx_alpha(roughness));
