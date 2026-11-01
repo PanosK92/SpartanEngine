@@ -200,11 +200,142 @@ jobs:
           name: spartan_vulkan_linux_release
           path: spartan_vulkan_linux_release.tar.gz
 
+  build_macos:
+    name: macos metal release
+    needs: stamp
+    # metal 4 needs macos 26 and xcode 26
+    runs-on: macos-26
+    env:
+      SPARTAN_BUILD_STAMP: ${{ needs.stamp.outputs.stamp }}
+      # apple only serves the metal shader converter behind a developer sign in, so the installer is mirrored as a release asset
+      METAL_SHADER_CONVERTER_URL: https://github.com/${{ github.repository }}/releases/download/dependencies/metal_shader_converter_macos.pkg
+      METAL_SHADER_CONVERTER_SHA256: ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: Install packages
+        run: brew install cmake ninja freeimage
+
+      - name: Install Metal Shader Converter
+        run: |
+          curl -fsSL -o metal_shader_converter.pkg "$METAL_SHADER_CONVERTER_URL"
+          if [ -n "$METAL_SHADER_CONVERTER_SHA256" ]; then
+            echo "$METAL_SHADER_CONVERTER_SHA256  metal_shader_converter.pkg" | shasum -a 256 -c -
+          fi
+          sudo installer -pkg metal_shader_converter.pkg -target /
+          test -f /usr/local/lib/libmetalirconverter.dylib
+
+      # the script skips finished libraries, so partial progress is saved even when a later library fails
+      - name: Restore libraries
+        uses: actions/cache/restore@v4
+        with:
+          path: third_party/libraries/macos
+          key: libraries-macos-${{ hashFiles('tools/macos_dependencies.sh') }}-${{ github.run_id }}
+          restore-keys: |
+            libraries-macos-${{ hashFiles('tools/macos_dependencies.sh') }}-
+            libraries-macos-
+
+      # each finished library leaves a .done_<name> marker, the cache is only saved when a new one appears
+      - name: Build libraries
+        id: libraries
+        run: |
+          count_done() { ls third_party/libraries/macos/.done_* 2>/dev/null | wc -l; }
+          before=$(count_done)
+          set +e
+          bash tools/macos_dependencies.sh 2>&1 | tee dependencies.log
+          status=${PIPESTATUS[0]}
+          if [ "$(count_done)" -gt "$before" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+          exit $status
+
+      - name: Save libraries
+        if: always() && steps.libraries.outputs.changed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: third_party/libraries/macos
+          key: libraries-macos-${{ hashFiles('tools/macos_dependencies.sh') }}-${{ github.run_id }}
+
+      - name: Generate project files
+        run: bash generate_project_files.sh xcode4 metal
+
+      - name: Build
+        run: |
+          set -o pipefail
+          configuration=$(xcodebuild -list -json -project spartan.xcodeproj | python3 -c "import json, sys; print(next(c for c in json.load(sys.stdin)['project']['configurations'] if c.lower().startswith('release')))")
+          xcodebuild -project spartan.xcodeproj -configuration "$configuration" -arch arm64 CODE_SIGN_IDENTITY=- build 2>&1 | tee build.log
+          test -x binaries/spartan_metal
+
+      # job logs need a signed in user, annotations are public, so surface the errors there
+      - name: Report errors
+        if: failure()
+        run: |
+          cat dependencies.log build.log 2>/dev/null | sed "s|$GITHUB_WORKSPACE/||g" | cut -c1-300 > report.log || true
+          {
+            grep -E "error:|Error [0-9]+|Undefined symbols|CMake Error|No such file|not found|BUILD FAILED" report.log | cut -c1-220 | awk '!seen[$0]++' | head -150 || true
+            echo "---- log tail"
+            tail -20 report.log
+          } > summary.log
+          # annotations are cut at roughly 4 KB each
+          split -b 3500 -d summary.log chunk_
+          for chunk in $(ls chunk_* | head -9); do
+            echo "::error title=macos build $chunk::$(sed -e ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$chunk")"
+          done
+
+      - name: Startup smoke test (no GPU)
+        id: smoke
+        timeout-minutes: 3
+        run: python3 tools/ci_smoke_test.py binaries/spartan_metal
+
+      - name: Upload startup failure diagnostics
+        if: ${{ failure() && steps.smoke.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-macos-metal
+          path: |
+            binaries/log.txt
+            binaries/smoke_test_*.txt
+          retention-days: 14
+
+      # freeimage comes from homebrew and the shader converter from /usr/local, they ship next to the executable instead
+      - name: Bundle runtime libraries
+        run: |
+          cd binaries
+          for library in $(otool -L spartan_metal | awk 'NR > 1 && $1 ~ "^/(opt|usr/local)/" { print $1 }'); do
+            name=$(basename "$library")
+            [ -f "$name" ] || cp -L "$library" "$name"
+            chmod u+w "$name"
+            install_name_tool -id "@rpath/$name" "$name"
+            install_name_tool -change "$library" "@rpath/$name" spartan_metal
+          done
+          for binary in spartan_metal *.dylib; do
+            codesign --force --sign - "$binary"
+          done
+          # anything outside the system or next to the executable would be missing on a user's machine
+          if otool -L spartan_metal *.dylib | grep -E '^\s+/(opt|usr/local)/'; then
+            echo "::error title=macos bundle::non system libraries are still referenced by absolute path"
+            exit 1
+          fi
+
+      - name: Create artifact
+        run: tar -czf spartan_metal_macos_release.tar.gz -C binaries spartan_metal $(cd binaries && ls *.dylib) data
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spartan_metal_macos_release
+          path: spartan_metal_macos_release.tar.gz
+
   release:
     # every platform must build and pass startup before any release is published
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.build.result == 'success' && needs.build_linux.result == 'success' }}
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.build.result == 'success' && needs.build_linux.result == 'success' && needs.build_macos.result == 'success' }}
     runs-on: ubuntu-latest
-    needs: [stamp, build, build_linux]
+    needs: [stamp, build, build_linux, build_macos]
     permissions:
       contents: write
     env:
@@ -222,9 +353,8 @@ jobs:
         run: |
           mv spartan_vulkan_release.zip spartan_vulkan_release_$TAG.zip
           mv spartan_d3d12_release.zip spartan_d3d12_release_$TAG.zip
-          if [ -f spartan_vulkan_linux_release.tar.gz ]; then
-            mv spartan_vulkan_linux_release.tar.gz spartan_vulkan_linux_release_$TAG.tar.gz
-          fi
+          mv spartan_vulkan_linux_release.tar.gz spartan_vulkan_linux_release_$TAG.tar.gz
+          mv spartan_metal_macos_release.tar.gz spartan_metal_macos_release_$TAG.tar.gz
 
       - name: Generate release notes
         id: generate_release_notes
@@ -257,13 +387,14 @@ jobs:
             }
 
             const groupOrder = [
-              'rhi', 'vulkan', 'd3d12', 'rendering', 'editor',
+              'rhi', 'vulkan', 'd3d12', 'metal', 'rendering', 'editor',
               'world', 'terrain', 'animation', 'physics', 'other'
             ];
             const groupTitle = {
               rhi: 'RHI',
               vulkan: 'Vulkan',
               d3d12: 'Direct3D 12',
+              metal: 'Metal',
               rendering: 'Rendering',
               editor: 'Editor',
               world: 'World',
@@ -306,12 +437,14 @@ jobs:
 
             const notes = [
               'Editor builds. On Windows unzip and run `spartan_vulkan.exe` or `spartan_d3d12.exe`, on Linux extract and run `./spartan_vulkan` (needs `libfreeimage3` and a Vulkan driver).',
+              'On macOS 26+ (Apple silicon) extract, run `xattr -dr com.apple.quarantine .` in the extracted folder since the build is not notarized, then run `./spartan_metal`.',
               '',
               '| Platform | Backend | Artifact |',
               '| --- | --- | --- |',
               '| Windows | Vulkan | `spartan_vulkan_release_*.zip` |',
               '| Windows | Direct3D 12 | `spartan_d3d12_release_*.zip` |',
               '| Linux | Vulkan | `spartan_vulkan_linux_release_*.tar.gz` |',
+              '| macOS | Metal | `spartan_metal_macos_release_*.tar.gz` |',
               '',
               '## Changelog',
               '',
@@ -333,3 +466,4 @@ jobs:
             spartan_vulkan_release_${{ env.TAG }}.zip
             spartan_d3d12_release_${{ env.TAG }}.zip
             spartan_vulkan_linux_release_${{ env.TAG }}.tar.gz
+            spartan_metal_macos_release_${{ env.TAG }}.tar.gz
