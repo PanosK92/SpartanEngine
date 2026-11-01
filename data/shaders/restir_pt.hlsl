@@ -12,7 +12,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_ray_hit.hlsl"
 #include "restir_reservoir.hlsl"
 #include "restir_surface.hlsl"
-#include "nrd/NRD.hlsli"
 //==============================
 
 // upper bounds on the per pixel ris pool sizes, live counts come from the get_restir_* helpers
@@ -90,13 +89,6 @@ void ray_gen()
 
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);
-    float diffuse_hit_dist = 0.0f;
-    uint diffuse_hit_count = 0u;
-    // NRD reflection tracking needs an in-lobe first hit, independent of RIS.
-    float specular_hit_dist = NRD_FrontEnd_SpecHitDistAveraging_Begin();
-    float specular_probability = saturate(compute_spec_probability(albedo, roughness, metallic,
-        dot(normal_ws, view_dir)) * restir_primary_specular_blend(roughness));
-
     // One BSDF path tree and one primary NEE leaf share the initial RIS.
     const uint n_brdf_count = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
     const float n_brdf = float(n_brdf_count);
@@ -122,20 +114,6 @@ void ray_gen()
             float3 reference_radiance;
             candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0,
                 view_dir, albedo, roughness, metallic, get_camera_position(), geometric_normal_ws);
-            // Each denoising guide must follow its own primary lobe, not the
-            // endpoint selected by RIS or a ray drawn from the other lobe.
-            if (xi.x < 1.0f - specular_probability)
-            {
-                diffuse_hit_dist += candidate.first_hit_distance;
-                diffuse_hit_count++;
-            }
-            // Reuse only primary rays drawn from the specular component, before
-            // light/path resampling can select an unrelated diffuse endpoint.
-            if (xi.x >= 1.0f - specular_probability)
-            {
-                float distance = candidate.first_hit_distance;
-                NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist, distance);
-            }
             // Independent path-tracing estimate: sum the traced light contributions,
             // without selecting a path endpoint or doing spatiotemporal reuse.
             float3 brdf_all = eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal_ws, geometric_normal_ws,
@@ -153,47 +131,6 @@ void ray_gen()
 
         update_reservoir(reservoir, candidate, weight, random_float(seed));
     }
-
-    // A glossy-only draw set still needs a diffuse guide. This independent
-    // cosine ray measures geometry only and never contributes radiance to RIS.
-    if (diffuse_hit_count == 0u && metallic < 1.0f && any(albedo > 0.0f))
-    {
-        uint guide_seed = create_seed_for_pass(launch_id, buffer_frame.frame, 5);
-        float unused_pdf;
-        float3 direction = local_to_world(sample_cosine_hemisphere(random_float2(guide_seed), unused_pdf), normal_ws);
-        RayDesc guide_ray;
-        guide_ray.Origin = restir_ray_origin(pos_ws, geometric_normal_ws);
-        guide_ray.Direction = direction;
-        guide_ray.TMin = RESTIR_RAY_T_MIN;
-        guide_ray.TMax = RESTIR_RAY_T_MAX;
-        PathSurface guide = restir_trace_surface(guide_ray);
-        diffuse_hit_dist = guide.hit ? length(guide.hit_position - pos_ws) : RESTIR_MISS_HIT_DISTANCE;
-        diffuse_hit_count = 1u;
-    }
-
-    // A diffuse-only draw set still needs a reflection guide. Trace one VNDF
-    // first hit only in that case; it does not contribute radiance or alter RIS.
-    if (specular_hit_dist == NRD_FrontEnd_SpecHitDistAveraging_Begin())
-    {
-        uint guide_seed = create_seed_for_pass(launch_id, buffer_frame.frame, 4);
-        float3 local_view = world_to_local(view_dir, normal_ws);
-        local_view.z = max(local_view.z, 0.0f);
-        float3 half_vector = local_to_world(sample_ggx_vndf(local_view,
-            random_float2(guide_seed), restir_d_ggx_alpha(roughness)), normal_ws);
-        float3 direction = reflect(-view_dir, half_vector);
-        if (dot(normal_ws, direction) > 0.0f)
-        {
-            RayDesc guide_ray;
-            guide_ray.Origin = restir_ray_origin(pos_ws, geometric_normal_ws);
-            guide_ray.Direction = direction;
-            guide_ray.TMin = RESTIR_RAY_T_MIN;
-            guide_ray.TMax = RESTIR_RAY_T_MAX;
-            PathSurface guide = restir_trace_surface(guide_ray);
-            NRD_FrontEnd_SpecHitDistAveraging_Add(specular_hit_dist,
-                guide.hit ? length(guide.hit_position - pos_ws) : RESTIR_MISS_HIT_DISTANCE);
-        }
-    }
-    NRD_FrontEnd_SpecHitDistAveraging_End(specular_hit_dist);
 
     // Section 6.1: all light kinds compete in the same 32-proposal RIS.
     RestirLightSample light = sample_direct_lighting_at_vertex(pos_ws, normal_ws, geometric_normal_ws,
@@ -251,9 +188,9 @@ void ray_gen()
     canonical_gi /= n_brdf;
     canonical_gi /= restir_gi_demodulator(albedo);
 
-    // Keep the primary hit guide independent of the selected light endpoint.
-    float hit_dist = diffuse_hit_count > 0u ? diffuse_hit_dist / float(diffuse_hit_count) : 0.0f;
+    float hit_dist = restir_denoiser_hit_distance(reservoir, pos_ws, normal_ws, geometric_normal_ws,
+        view_dir, albedo, roughness, metallic);
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
-    restir_specular_output[launch_id] = float4(canonical_gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic), specular_hit_dist);
+    restir_specular_output[launch_id] = float4(canonical_gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic), hit_dist);
 }

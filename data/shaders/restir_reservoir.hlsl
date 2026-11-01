@@ -1405,8 +1405,6 @@ float restir_primary_specular_blend(float roughness)
     return 1.0f;
 }
 
-// Split each RGB resampling contribution before summing it (section 6.3).
-// Splitting only the winning path would throw away the color-noise reduction.
 // primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale,
 // r_pri^2 = |x0 - x1|^2 / (cos / 4pi) following muller 2021, the paper's c = 0.02 is tuned
 // against this normalization, scaling by the pixel cone instead left the threshold four orders

@@ -123,6 +123,40 @@ PathSurface restir_trace_surface(RayDesc ray)
     return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray, 0.0f);
 }
 
+// FetchDenoiserData / TraceDenoiserReplayPath: the guide belongs to the selected
+// reservoir path after reuse. Non-specular primary events supply zero distance.
+float restir_denoiser_hit_distance(Reservoir reservoir, float3 position, float3 normal,
+    float3 geometric_normal, float3 view, float3 albedo, float roughness, float metallic)
+{
+    if (!(reservoir.W > 0.0f)) return 0.0f;
+    float linear_roughness = sqrt(ggx_alpha_from_roughness(roughness));
+    // Reference PathTracerParams::specularRoughnessThreshold defaults to 0.25.
+    // Its direct-reconnection branch accepts any sampled lobe on a smooth surface.
+    if (reservoir.sample.rc_length == 2u)
+    {
+        if (linear_roughness >= 0.25f) return 0.0f;
+        return is_sky_sample(reservoir.sample) ? FLT_MAX_16U : length(reservoir.sample.rc_pos - position);
+    }
+    if (linear_roughness > 0.25f) return 0.0f;
+    uint seed = reservoir.sample.seed_path;
+    float2 xi = random_float2(seed);
+    float specular_probability = saturate(compute_spec_probability(albedo, roughness, metallic,
+        dot(normal, view)) * restir_primary_specular_blend(roughness));
+    if (xi.x < 1.0f - specular_probability) return 0.0f;
+    float pdf;
+    float3 direction = sample_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal,
+        view, xi, pdf, restir_primary_specular_blend(roughness));
+    if (!restir_pdf_valid(pdf) || dot(normal, direction) <= 0.0f || !all(isfinite(direction))) return 0.0f;
+    RayDesc ray;
+    ray.Origin = restir_ray_origin(position, geometric_normal);
+    ray.Direction = direction;
+    ray.TMin = RESTIR_RAY_T_MIN;
+    ray.TMax = RESTIR_RAY_T_MAX;
+    float distance;
+    restir_trace_hit(ray, distance);
+    return distance >= 0.0f ? distance : FLT_MAX_16U;
+}
+
 // Match the reference's explicit-LOD reconstruction from retained hit identity.
 // The connection supplies the view direction; material lookup must not change
 // its LOD merely because a different primary reconnects to the same vertex.

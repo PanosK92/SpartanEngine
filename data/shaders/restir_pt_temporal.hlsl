@@ -372,8 +372,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise
     // that a luminance only target cannot importance sample, both integrands are already evaluated
-    // Preserve the initial in-lobe distance; the RIS winner is not a reflection guide.
-    float specular_hit_dist = restir_specular_output[pixel].a;
     float3 gi = float3(0, 0, 0);
     ShiftResult canonical = self_shift_evaluate(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     gi = m_cur * canonical.f_dst * max(current.W, 0.0f);
@@ -394,8 +392,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         gi = float3(0, 0, 0);
     }
 
-    // Reuse changes radiance, not the current primary's first-hit guide.
-    float hit_dist = tex_uav[pixel].a;
+    float hit_dist = restir_denoiser_hit_distance(combined, pos_ws, normal_ws, geometric_normal_ws,
+        view_dir, albedo, roughness, metallic);
 
     // fall back to the trace pass estimate only when the reservoir is genuinely empty, keying
     // this on a small gi value instead swaps in a different estimator exactly on the pixels
@@ -409,6 +407,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     tex_uav[pixel] = float4(gi, hit_dist);
-    restir_specular_output[pixel] = float4(clamp(specular, 0.0f, gi), specular_hit_dist);
+    restir_specular_output[pixel] = float4(clamp(specular, 0.0f, gi), hit_dist);
 
 }
