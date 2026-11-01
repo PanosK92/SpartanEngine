@@ -268,7 +268,9 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             first_hit_distance = current.hit ? length(current.hit_position - primary_pos) : RESTIR_MISS_HIT_DISTANCE;
             first_hit_position = current.hit ? current.hit_position : dir;
         }
-        float3 emitted = current.hit ? current.emission : sample_sky(dir);
+        // Match the reference's default useLightsInDielectricVolumes=false.
+        // This affects surface emission, not environment misses or NEE leaves.
+        float3 emitted = current.hit ? (medium.slots.x == 0u ? current.emission : 0.0f) : sample_sky(dir);
         float endpoint_nee_pdf = 0.0f;
         if (current.pooled_emitter)
         {
