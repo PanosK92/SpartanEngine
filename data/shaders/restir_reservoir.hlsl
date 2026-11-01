@@ -419,6 +419,8 @@ struct PathSample
     bool rc_nee_reflection_disabled; // RC was inside a volume; only transmission-side NEE has support.
     bool rc_before_specular;
     bool rc_after_specular;
+    bool rc_before_delta;
+    bool rc_after_delta;
     float rc_pdf; // Source incoming geometry factor (times rectangle area for local-UV endpoints).
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
@@ -575,9 +577,9 @@ void unpack_path_info(uint packed, inout PathSample s)
 // Four RGBA32F textures (64 bytes). Primary surface history is shared per pixel;
 // RC material state is reconstructed from retained geometry before a shift.
 // t0: triangle hit / explicit endpoint / analytic identity + rectangle UV, outgoing direction or terminal geometric normal
-// t1: suffix or terminal radiance, source incoming geometry factor
+// t1: suffix or terminal radiance, source incoming geometry factor (sign stores delta-before)
 // t2: cached RGB integrand paired with W, W
-// t3: initial seed, path descriptor, endpoint NEE PDF, confidence
+// t3: initial seed, path descriptor, endpoint NEE PDF (sign stores delta-after), confidence
 // The reference's compressed PathReservoir::reconnectionWi uses octahedral SNORM16x2.
 // Half-float coordinates waste precision near the octahedron's edges, where
 // direction errors can change a narrow glossy lobe on every reuse.
@@ -651,11 +653,15 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     if (is_dirac_light_sample(r.sample)) endpoint = float3(asfloat(r.sample.endpoint_geometry), 0.0f);
     if (is_area_light_sample(r.sample)) endpoint = asfloat(uint3(r.sample.endpoint_geometry, r.sample.rc_hit.z));
     tex0 = float4(endpoint, asfloat(terminal ? pack_rc_geometric_normal(r.sample.rc_geometric_normal) : pack_rc_outgoing_direction(r.sample.rc_outgoing_dir)));
-    tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post, r.sample.rc_pdf);
+    // These densities are nonnegative. Their unused sign bits retain the
+    // reference's delta-event flags without quantizing either magnitude.
+    tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post,
+        asfloat((asuint(r.sample.rc_pdf) & 0x7fffffffu) | (uint(r.sample.rc_before_delta) << 31u)));
     tex2 = float4(r.sample.F, r.W);
     // Reference PathReservoir::M is floating point. Duplication-driven caps
     // produce fractional confidence; retain it through every reuse pass.
-    tex3 = float4(asfloat(r.sample.seed_path), asfloat(pack_path_info(r.sample)), r.sample.rc_nee_pdf, r.M);
+    tex3 = float4(asfloat(r.sample.seed_path), asfloat(pack_path_info(r.sample)),
+        asfloat((asuint(r.sample.rc_nee_pdf) & 0x7fffffffu) | (uint(r.sample.rc_after_delta) << 31u)), r.M);
 }
 
 Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
@@ -664,8 +670,10 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
     Reservoir r = (Reservoir)0;
     r.sample.F = tex2.rgb;
     r.W = tex2.a;
-    r.sample.rc_pdf = tex1.w;
-    r.sample.rc_nee_pdf = tex3.z;
+    r.sample.rc_before_delta = (asuint(tex1.w) >> 31u) != 0u;
+    r.sample.rc_after_delta = (asuint(tex3.z) >> 31u) != 0u;
+    r.sample.rc_pdf = asfloat(asuint(tex1.w) & 0x7fffffffu);
+    r.sample.rc_nee_pdf = asfloat(asuint(tex3.z) & 0x7fffffffu);
     r.sample.seed_path = asuint(tex3.x);
     r.sample.initial_weight = 1.0f;
     unpack_path_info(asuint(tex3.y), r.sample);
@@ -1599,6 +1607,10 @@ ShiftResult try_reconnection_shift(
     result.ok       = false;
 
     float3 destination_camera = destination_previous_frame ? buffer_frame.camera_position_previous : get_camera_position();
+    // Shift::shiftPathReconnection rejects either adjacent delta event. The
+    // cached source contribution remains valid; it is not a continuous BSDF.
+    if (has_reconnection(src) && (src.rc_before_delta || src.rc_after_delta))
+        return result;
     if (has_reconnection(src) && src.rc_length > 2u)
     {
         // Even an unchanged primary can have moving occluders along its prefix.
