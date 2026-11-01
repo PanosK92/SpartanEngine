@@ -47,7 +47,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (!primary.valid || !restir_pdf_valid(pdf) || dot(normal, direction) <= 0.0f || !all(isfinite(direction)))
             continue;
         float3 incident;
-        trace_path_from_primary(position, normal, direction, pdf, primary.weight, replay_seed, seed, incident, false, (PathSample)0,
+        trace_path_from_primary(position, normal, direction, pdf, primary.weight, restir_path_sample_joint_pdf(primary), primary.component, replay_seed, seed, incident, false, (PathSample)0,
             view, albedo, roughness, metallic, get_camera_position(), geometric_normal);
         radiance += primary.weight * incident;
     }

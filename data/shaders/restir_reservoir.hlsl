@@ -168,9 +168,8 @@ static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
 // Reference getDiffusePseudoPdf: a BSDF-hit emitter has a diffuse inverse
 // footprint even though no outgoing scattering event is sampled there.
 static const float RESTIR_RC_EMITTER_PDF     = 1.0f / (2.0f * PI);
-// Supplemental section 4: reciprocal squared PDF replaces lobe roughness for
-// a black-box mixture BSDF. Rough glossy mixtures are not diffuse lobes.
-static const float RESTIR_RC_MIN_PDF_ROUGHNESS = 0.2f;
+// Lobe-specific connectability; marginal PDFs still drive both footprints.
+static const float RESTIR_RC_MIN_ROUGHNESS = 0.2f;
 // A probability density has no scene-independent positive lower bound.
 // Reject undefined techniques, not valid low-probability paths.
 bool restir_pdf_valid(float pdf)
@@ -418,6 +417,8 @@ struct PathSample
     bool endpoint_pooled;
     bool endpoint_environment; // Sky endpoint, distinct from an emissive BSDF hit.
     bool rc_nee_reflection_disabled; // RC was inside a volume; only transmission-side NEE has support.
+    bool rc_before_specular;
+    bool rc_after_specular;
     float rc_pdf; // Source incoming geometry factor (times rectangle area for local-UV endpoints).
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
@@ -528,13 +529,14 @@ float3 octahedral_decode(float2 e)
 
 uint pack_path_info(PathSample s)
 {
-    // BSDF leaves do not use the NEE draw field. Retain their endpoint kind
-    // there so suffix MIS distinguishes sky misses from unpooled emitters.
+    // Only endpoint type/volume flags survive RIS; the proposal's draw index
+    // has no downstream consumer. Reserve the upper two tag bits for RC lobes.
     uint endpoint_tag = s.endpoint_light == RESTIR_ENDPOINT_BSDF ? (uint(s.endpoint_environment) | (uint(s.rc_nee_reflection_disabled) << 1u)) : s.endpoint_emtri_draw;
     uint stored_flags = (s.flags & (PATH_FLAG_SKY | PATH_FLAG_HAS_RC)) |
         ((s.flags & (PATH_FLAG_TRANSMISSION_BEFORE_RC | PATH_FLAG_TRANSMISSION_AFTER_RC)) >> 2u);
     return (s.rc_length & 7u) | (stored_flags << 3u) | ((s.path_length & 7u) << 7u)
-        | ((s.endpoint_light & 65535u) << 10u) | ((endpoint_tag & 31u) << 26u) | (uint(s.endpoint_pooled) << 31u);
+        | ((s.endpoint_light & 65535u) << 10u) | ((endpoint_tag & 7u) << 26u)
+        | (uint(s.rc_before_specular) << 29u) | (uint(s.rc_after_specular) << 30u) | (uint(s.endpoint_pooled) << 31u);
 }
 
 uint pack_rc_geometric_normal(float3 normal)
@@ -556,7 +558,9 @@ void unpack_path_info(uint packed, inout PathSample s)
     s.flags = (stored_flags & 3u) | ((stored_flags & 12u) << 2u);
     s.path_length = (packed >> 7u) & 7u;
     s.endpoint_light = (packed >> 10u) & 65535u;
-    s.endpoint_emtri_draw = (packed >> 26u) & 31u;
+    s.endpoint_emtri_draw = (packed >> 26u) & 7u;
+    s.rc_before_specular = ((packed >> 29u) & 1u) != 0u;
+    s.rc_after_specular = ((packed >> 30u) & 1u) != 0u;
     s.endpoint_environment = s.endpoint_light == RESTIR_ENDPOINT_SKY ||
         (s.endpoint_light == RESTIR_ENDPOINT_BSDF && (s.endpoint_emtri_draw & 1u) != 0u);
     s.rc_nee_reflection_disabled = s.endpoint_light == RESTIR_ENDPOINT_BSDF && (s.endpoint_emtri_draw & 2u) != 0u;
@@ -715,6 +719,15 @@ bool is_sky_sample(PathSample s)     { return (s.flags & PATH_FLAG_SKY)     != 0
 bool has_reconnection(PathSample s)  { return (s.flags & PATH_FLAG_HAS_RC)  != 0; }
 bool is_rc_emissive(PathSample s)    { return (s.flags & PATH_FLAG_RC_EMIT) != 0; }
 bool is_nee_sample(PathSample s)     { return (s.flags & PATH_FLAG_NEE)     != 0; }
+// NEE evaluates all lobes; BSDF continuations retain the sampled component.
+// Opaque materials have diffuse (1) and specular (2) components. The dielectric
+// adapter has one reflection/transmission BSDF, with its event side stored separately.
+uint restir_component_before_rc(PathSample s) { return is_nee_sample(s) ? 0u : (s.rc_before_specular ? 2u : 1u); }
+uint restir_component_after_rc(PathSample s)
+{
+    return s.endpoint_light != RESTIR_ENDPOINT_BSDF && s.path_length == s.rc_length + 1u
+        ? 0u : (s.rc_after_specular ? 2u : 1u);
+}
 bool is_dirac_light_sample(PathSample s)
 {
     return is_nee_sample(s) && !is_sky_sample(s) && s.rc_length == s.path_length && s.endpoint_light < RESTIR_ENDPOINT_EMTRI &&
@@ -837,6 +850,8 @@ Reservoir create_empty_reservoir()
     r.sample.endpoint_pooled = false;
     r.sample.endpoint_environment = false;
     r.sample.rc_nee_reflection_disabled = false;
+    r.sample.rc_before_specular = false;
+    r.sample.rc_after_specular = false;
     r.sample.initial_weight  = 1.0f;
     r.sample.first_hit_distance = 0.0f;
     r.sample.endpoint_light  = 65535u;
@@ -1210,7 +1225,7 @@ float3 restir_diffuse_frostbite(float3 diffuse_color, float roughness, float n_d
 
 // GGX + Frostbite diffuse BRDF returning f_r * cos and the matching mixture PDF.
 // specular_blend [0,1] fades the specular lobe, 0 is pure diffuse, 1 is the full mixture
-float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, float specular_blend)
+float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, float specular_blend, uint component = 0u)
 {
     float3 h_unnorm = v + l;
     float h_len_sq  = dot(h_unnorm, h_unnorm);
@@ -1254,7 +1269,7 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     {
         // diffuse only, pdf is the cosine hemisphere pdf to match sample_brdf
         pdf = n_dot_l / PI;
-        return diffuse_cos;
+        return component == 2u ? 0.0f : diffuse_cos;
     }
 
     // ggx specular, the same alpha feeds the d term, the pdf and the vndf sampler so densities match
@@ -1271,7 +1286,8 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float spec_prob_eff  = saturate(spec_prob_full * specular_blend);
     pdf = (1.0f - spec_prob_eff) * diffuse_pdf + spec_prob_eff * spec_pdf;
 
-    return diffuse_cos + specular_cos * specular_blend;
+    return component == 1u ? diffuse_cos :
+        (component == 2u ? specular_cos * specular_blend : diffuse_cos + specular_cos * specular_blend);
 }
 
 // samples a direction from the diffuse + blend*specular mixture, returns direction and mixture pdf
@@ -1351,14 +1367,30 @@ bool restir_reflection_hemisphere(float3 geometric_normal, float3 view, float3 d
 }
 
 float3 evaluate_reflection_brdf(float3 albedo, float roughness, float metallic,
-    float3 normal, float3 geometric_normal, float3 view, float3 direction, out float pdf, float specular_blend)
+    float3 normal, float3 geometric_normal, float3 view, float3 direction, out float pdf, float specular_blend, uint component = 0u)
 {
     if (!restir_reflection_hemisphere(geometric_normal, view, direction))
     {
         pdf = 0.0f;
         return 0.0f;
     }
-    return evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, specular_blend);
+    return evaluate_brdf(albedo, roughness, metallic, normal, view, direction, pdf, specular_blend, component);
+}
+
+float restir_component_pdf(float3 albedo, float roughness, float metallic, float3 normal,
+    float3 view, float3 direction, uint component, float specular_blend)
+{
+    float nv = dot(normal, view), nl = dot(normal, direction);
+    if (nv <= 0.0f || nl <= 0.0f) return 0.0f;
+    float p = saturate(compute_spec_probability(albedo, roughness, metallic, nv) * specular_blend);
+    if (component == 1u) return (1.0f - p) * nl / PI;
+    float3 h = view + direction;
+    float h_length_sq = dot(h, h);
+    if (h_length_sq < 1e-6f) return 0.0f;
+    h *= rsqrt(h_length_sq);
+    float alpha = restir_d_ggx_alpha(roughness);
+    float d = restir_d_ggx(max(dot(normal, h), 0.0f), alpha * alpha);
+    return p * restir_vndf_reflection_pdf(d, nv, alpha * alpha);
 }
 
 float3 sample_reflection_brdf(float3 albedo, float roughness, float metallic,
@@ -1501,7 +1533,7 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
     }
 
     float3 view_at_rc = -dir_primary_to_rc;
-    // rc is a suffix vertex so the full brdf is active
+    // Preserve the sampled RC lobe; a terminal NEE edge evaluates all lobes.
     float pdf;
     float3 f_rc = restir_rc_bsdf_evaluate(src, view_at_rc, src.rc_outgoing_dir, pdf);
     float mis = src.endpoint_pooled && src.path_length == src.rc_length + 1u
@@ -1512,6 +1544,19 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
         src.rc_nee_reflection_disabled && (src.flags & PATH_FLAG_TRANSMISSION_AFTER_RC) == 0u)
         mis = 1.0f;
     return src.rc_L_nee + f_rc * src.rc_L_post * mis;
+}
+
+bool restir_opaque_component_is_rough(float roughness, uint component)
+{
+    return component != 2u || sqrt(restir_d_ggx_alpha(roughness)) > RESTIR_RC_MIN_ROUGHNESS;
+}
+
+float3 restir_primary_connection_f(PathSample s, float3 albedo, float roughness, float metallic,
+    float3 normal, float3 geometric_normal, float3 view, float3 direction, float blend)
+{
+    float unused_pdf;
+    return evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal,
+        view, direction, unused_pdf, blend, restir_component_before_rc(s));
 }
 
 float3 sample_sky(float3 dir);
@@ -1573,16 +1618,13 @@ ShiftResult try_reconnection_shift(
         float3 dir = src.rc_pos;
         if (!is_nee_sample(src))
         {
-            float pdf_dst;
-            evaluate_reflection_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal,
-                dst_view_dir, dir, pdf_dst, restir_primary_specular_blend(dst_roughness));
-            if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
+            if (!restir_opaque_component_is_rough(dst_roughness, restir_component_before_rc(src)))
                 return result;
         }
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+        float3 brdf_cos = restir_primary_connection_f(src, dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
         if (all(brdf_cos <= 0.0f))
             return result;
 
@@ -1653,7 +1695,7 @@ ShiftResult try_reconnection_shift(
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+        float3 brdf_cos = restir_primary_connection_f(src, dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
         if (all(brdf_cos <= 0.0f))
             return result;
 
@@ -1689,14 +1731,13 @@ ShiftResult try_reconnection_shift(
     float geometry_cos_dst = abs(dot(rc_geometric_normal, -dir_dst));
 
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
-    // Use the actual mixture PDF on both sides; the supplemental black-box
-    // criterion also rejects a sharply peaked preceding scattering event.
+    // Marginal PDFs determine both footprints; retained lobes determine roughness.
     if ((!is_identity || is_triangle_reconnection(src)) && !is_nee_sample(src))
     {
         float pdf_dst;
         evaluate_reflection_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal,
             dst_view_dir, dir_dst, pdf_dst, restir_primary_specular_blend(dst_roughness));
-        if (pdf_dst * pdf_dst * RESTIR_RC_MIN_PDF_ROUGHNESS > 1.0f)
+        if (!restir_opaque_component_is_rough(dst_roughness, restir_component_before_rc(src)))
             return result;
         float forward_pdf_cos = pdf_dst * geometry_cos_dst;
         float inverse_pdf_cos = is_rc_emissive(src)
@@ -1712,7 +1753,7 @@ ShiftResult try_reconnection_shift(
             return result;
     }
 
-    float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
+    float3 brdf_cos = restir_primary_connection_f(src, dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -2197,7 +2238,7 @@ ShiftResult evaluate_path_integrand(
     if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 brdf_cos = eval_surface_reflection_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+    float3 brdf_cos = restir_primary_connection_f(src, dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_geometric_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 

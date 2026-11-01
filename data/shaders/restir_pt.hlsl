@@ -114,7 +114,7 @@ void ray_gen()
         if (dir_valid)
         {
             float3 reference_radiance;
-            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, primary.weight, replay_seed, seed, reference_radiance, false, (PathSample)0,
+            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, primary.weight, restir_path_sample_joint_pdf(primary), primary.component, replay_seed, seed, reference_radiance, false, (PathSample)0,
                 view_dir, albedo, roughness, metallic, get_camera_position(), geometric_normal_ws);
             // Independent path-tracing estimate: sum the traced light contributions,
             // without selecting a path endpoint or doing spatiotemporal reuse.
@@ -125,7 +125,7 @@ void ray_gen()
             if (target_pdf > 0.0f)
             {
                 // Endpoint MIS is already in F; the path-tree RIS weight stays separate.
-                weight = target_pdf * candidate.initial_weight / (source_pdf * n_brdf);
+                weight = target_pdf * candidate.initial_weight / (restir_path_sample_joint_pdf(primary) * n_brdf);
             }
         }
 

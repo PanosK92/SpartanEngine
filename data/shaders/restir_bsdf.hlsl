@@ -17,6 +17,8 @@ struct RestirSurfaceSample
     float3 direction;
     float3 weight;
     float pdf;
+    float joint_pdf; // Direction and selected component; pdf remains marginal for MIS/footprints.
+    uint component;
     bool transmission;
     bool delta;
     bool valid;
@@ -30,6 +32,11 @@ float restir_path_sample_pdf(RestirSurfaceSample sample)
     return sample.delta ? 1e20f : sample.pdf;
 }
 
+float restir_path_sample_joint_pdf(RestirSurfaceSample sample)
+{
+    return sample.delta ? 1e20f : sample.joint_pdf;
+}
+
 // Match StandardBSDF's EnableDeltaBSDF roughness classification before both
 // evaluation and sampling. The low-level GGX functions accept alpha directly.
 float restir_dielectric_alpha(float roughness)
@@ -39,11 +46,11 @@ float restir_dielectric_alpha(float roughness)
 }
 
 float3 restir_surface_evaluate(PathSurface surface, float3 view, float3 direction,
-    out float pdf, float specular_blend, bool dielectric = false, float eta = 1.0f, float3 transmission_tint = 1.0f)
+    out float pdf, float specular_blend, bool dielectric = false, float eta = 1.0f, float3 transmission_tint = 1.0f, uint component = 0u)
 {
     if (!dielectric)
         return evaluate_reflection_brdf(surface.albedo, surface.roughness, surface.metallic,
-            surface.hit_normal, surface.geometric_normal, view, direction, pdf, specular_blend);
+            surface.hit_normal, surface.geometric_normal, view, direction, pdf, specular_blend, component);
 
     pdf = 0.0f;
     bool transmission = dot(surface.hit_normal, direction) < 0.0f;
@@ -54,7 +61,10 @@ float3 restir_surface_evaluate(PathSurface surface, float3 view, float3 directio
     float3 wi = float3(dot(view, tangent), dot(view, bitangent), dot(view, surface.hit_normal));
     float3 wo = float3(dot(direction, tangent), dot(direction, bitangent), dot(direction, surface.hit_normal));
     // Volume absorption is applied along segments, not as an extra interface tint.
-    return restir_dielectric_evaluate(wi, wo, restir_dielectric_alpha(surface.roughness), eta, transmission_tint, pdf);
+    float3 f = restir_dielectric_evaluate(wi, wo, restir_dielectric_alpha(surface.roughness), eta, transmission_tint, pdf);
+    // The dielectric adapter has no diffuse component. Keep the marginal PDF
+    // for MIS, but never turn a retained diffuse lobe into a specular interface.
+    return component == 1u ? 0.0f : f;
 }
 
 RestirSurfaceSample restir_surface_sample(PathSurface surface, float3 view, float3 xi,
@@ -63,12 +73,19 @@ RestirSurfaceSample restir_surface_sample(PathSurface surface, float3 view, floa
     RestirSurfaceSample result = (RestirSurfaceSample)0;
     if (!dielectric)
     {
+        float p = saturate(compute_spec_probability(surface.albedo, surface.roughness, surface.metallic,
+            dot(surface.hit_normal, view)) * specular_blend);
+        result.component = xi.x < 1.0f - p ? 1u : 2u;
         result.direction = sample_reflection_brdf(surface.albedo, surface.roughness, surface.metallic,
             surface.hit_normal, surface.geometric_normal, view, xi.xy, result.pdf, specular_blend);
         if (!restir_pdf_valid(result.pdf) || dot(result.direction, surface.hit_normal) <= 0.0f ||
             any(!isfinite(result.direction))) return result;
         float unused_pdf;
-        result.weight = restir_surface_evaluate(surface, view, result.direction, unused_pdf, specular_blend) / result.pdf;
+        result.joint_pdf = restir_component_pdf(surface.albedo, surface.roughness, surface.metallic,
+            surface.hit_normal, view, result.direction, result.component, specular_blend);
+        if (!restir_pdf_valid(result.joint_pdf)) return result;
+        result.weight = restir_surface_evaluate(surface, view, result.direction, unused_pdf,
+            specular_blend, false, 1.0f, 1.0f, result.component) / result.joint_pdf;
     }
     else
     {
@@ -80,6 +97,8 @@ RestirSurfaceSample restir_surface_sample(PathSurface surface, float3 view, floa
         result.direction = tangent * local.direction.x + bitangent * local.direction.y + surface.hit_normal * local.direction.z;
         result.weight = local.weight;
         result.pdf = local.pdf;
+        result.joint_pdf = local.pdf;
+        result.component = 2u;
         result.transmission = local.transmission;
         result.delta = local.delta;
         if (restir_reflection_hemisphere(surface.geometric_normal, view, result.direction) == result.transmission)
