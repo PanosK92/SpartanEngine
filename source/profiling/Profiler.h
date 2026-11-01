@@ -142,6 +142,7 @@ namespace spartan
         }
 
         static void DrawPerformanceMetrics();
+        static void DrawCompilationProgress();
         static TimeBlock* GetLastIncompleteTimeBlock(
             TimeBlockType type,
             RHI_CommandList* cmd_list = nullptr,

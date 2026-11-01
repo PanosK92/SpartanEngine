@@ -21,10 +21,10 @@ namespace spartan
 {
     namespace
     {
-        // created on first compile and kept for the lifetime of the process
-        IDxcUtils* dxc_utils        = nullptr;
-        IDxcCompiler3* compiler = nullptr;
-        once_flag initialization;
+        // dxc compiler instances are not thread safe, each shader compiler worker creates its own on first compile
+        thread_local IDxcUtils* dxc_utils    = nullptr;
+        thread_local IDxcCompiler3* compiler = nullptr;
+        once_flag version_initialization;
         string compiler_version;
 
         // forwards whatever dxc has to say to the log and returns the compile status
@@ -71,15 +71,19 @@ namespace spartan
 
     IDxcBlob* DirectXShaderCompiler::Compile(const string& source, vector<string>& arguments, const string& name)
     {
-        call_once(initialization, []
+        if (!compiler || !dxc_utils)
         {
             if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler))) ||
                 FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxc_utils))))
             {
                 SP_LOG_ERROR("Failed to create DirectXShaderCompiler interfaces");
-                return;
+                return nullptr;
             }
+        }
 
+        // the version is part of every cache key, so all workers must agree on it before their first lookup
+        call_once(version_initialization, []
+        {
             IDxcVersionInfo2* version = nullptr;
             if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&version))))
             {
@@ -105,7 +109,6 @@ namespace spartan
                 custom_version->Release();
             }
         });
-        if (!compiler || !dxc_utils) return nullptr;
 
         // Source already contains every include. Arguments include backend, stage,
         // entry point, defines and optimization flags, so edits cannot reuse stale code.
@@ -156,7 +159,6 @@ namespace spartan
             if (arguments[i] == "-T" || arguments[i] == "-E" || arguments[i] == "-D")
                 variant += (variant.empty() ? "" : ", ") + arguments[i + 1];
         }
-        SP_LOG_INFO("Compiling shader '%s' (%s)", name.c_str(), variant.c_str());
         const Stopwatch compile_timer;
         IDxcResult* dxc_result = nullptr;
         HRESULT hr             = compiler->Compile(
@@ -183,7 +185,8 @@ namespace spartan
         IDxcBlob* shader = nullptr;
         dxc_result->GetResult(&shader);
         dxc_result->Release();
-        if (shader)
+        // progress is on screen, only the outliers worth optimizing are logged
+        if (shader && compile_timer.GetElapsedTimeMs() >= 1000.0f)
             SP_LOG_INFO("Compiled shader '%s' (%s) in %.2f ms", name.c_str(), variant.c_str(), compile_timer.GetElapsedTimeMs());
         if (shader && !cache_path.empty())
         {

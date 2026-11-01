@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Implementation.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../rhi/RHI_FrameGeneration.h"
+#include "../rhi/RHI_Compiler.h"
 #include "../core/ThreadPool.h"
 #include "../core/Timer.h"
 #include "../core/Window.h"
@@ -1793,6 +1794,11 @@ namespace spartan
         }
 
         // nobody watches a headless frame, the overlay would only cover agent screenshots, profiler_snapshot has the numbers
+        if (!Engine::IsHeadless())
+        {
+            DrawCompilationProgress();
+        }
+
         if (cvar_performance_metrics.GetValueAs<bool>() && !Engine::IsHeadless())
         {
             DrawPerformanceMetrics();
@@ -2764,6 +2770,93 @@ namespace spartan
         for (const OverlayRect& shape : rects)
         {
             font_shapes->AddRect(Vector2(shape.x0, shape.y0), Vector2(shape.x1, shape.y1), shape.color);
+        }
+    }
+
+    void Profiler::DrawCompilationProgress()
+    {
+        using math::Vector2;
+        namespace col = overlay_color;
+
+        struct Row
+        {
+            const char* label;
+            RHI_Compiler::Progress progress;
+        };
+        array<Row, 2> rows;
+        uint32_t row_count = 0;
+        if (!RHI_Compiler::Shaders().IsIdle())
+        {
+            rows[row_count++] = { "COMPILING SHADERS", RHI_Compiler::Shaders().GetProgress() };
+        }
+        if (!RHI_Compiler::Pipelines().IsIdle())
+        {
+            rows[row_count++] = { "COMPILING PIPELINES", RHI_Compiler::Pipelines().GetProgress() };
+        }
+
+        // cache hits and single shader reloads finish within a few frames, only sustained work earns a panel
+        static double busy_sec = 0.0;
+        busy_sec = row_count > 0 ? busy_sec + Timer::GetDeltaTimeRealSec() : 0.0;
+        if (busy_sec < 0.25)
+        {
+            return;
+        }
+
+        Font* font_shapes = Renderer::GetFont(Renderer_Font::Standard).get();
+        Font* font_small  = Renderer::GetFont(Renderer_Font::OverlaySmall).get();
+        Font* font_body   = Renderer::GetFont(Renderer_Font::Overlay).get();
+        if (!font_shapes || !font_small || !font_body)
+        {
+            return;
+        }
+
+        const float dpi = Window::GetDpiScale();
+        auto px = [dpi](const float value)
+        {
+            return floor(value * dpi + 0.5f);
+        };
+
+        // bottom center, clear of the performance panel and the editor toolbars
+        const RHI_Viewport& viewport = Renderer::GetViewport();
+        const float padding          = px(12.0f);
+        const float bar_height       = px(4.0f);
+        const float row_height       = font_body->GetLineHeight() + px(5.0f) + bar_height;
+        const float row_gap          = px(10.0f);
+        const float panel_width      = px(280.0f);
+        const float panel_height     = padding * 2.0f + row_height * row_count + row_gap * (row_count - 1);
+        const float panel_x0         = floor((viewport.width - panel_width) * 0.5f);
+        const float panel_x1         = panel_x0 + panel_width;
+        const float panel_y1         = viewport.height - px(28.0f);
+        const float panel_y0         = panel_y1 - panel_height;
+        const float left             = panel_x0 + padding;
+        const float right            = panel_x1 - padding;
+        const float hairline         = max(1.0f, floor(dpi));
+
+        font_shapes->AddBackdropBlur(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1));
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1), col::panel);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y1 - hairline), Vector2(panel_x1, panel_y1), col::border);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x0 + px(2.0f), panel_y1), Color(col::accent.r, col::accent.g, col::accent.b, 0.55f));
+
+        char buffer[32];
+        float y = panel_y0 + padding;
+        for (uint32_t i = 0; i < row_count; i++)
+        {
+            const Row& row = rows[i];
+            snprintf(buffer, sizeof(buffer), "%u / %u", row.progress.completed, row.progress.submitted);
+            const float text_y = y + (font_body->GetLineHeight() - font_small->GetLineHeight()) * 0.5f;
+            font_small->AddText(row.label, Vector2(left, text_y), col::muted);
+            font_body->AddText(buffer, Vector2(right - font_body->GetTextWidth(buffer), y), col::text);
+
+            const float bar_y0   = y + font_body->GetLineHeight() + px(5.0f);
+            const float fraction = row.progress.submitted > 0 ? static_cast<float>(row.progress.completed) / static_cast<float>(row.progress.submitted) : 0.0f;
+            font_shapes->AddRect(Vector2(left, bar_y0), Vector2(right, bar_y0 + bar_height), col::track);
+            if (fraction > 0.0f)
+            {
+                font_shapes->AddRect(Vector2(left, bar_y0), Vector2(left + (right - left) * fraction, bar_y0 + bar_height), col::accent);
+            }
+
+            y += row_height + row_gap;
         }
     }
 }

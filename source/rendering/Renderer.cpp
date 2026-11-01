@@ -6890,6 +6890,15 @@ namespace spartan
                     {
                         RHI_Device::Submit(RHI_Frame_List::ComputeB, nullptr, false);
                     }
+
+                    // the compilation progress overlay is the only thing worth showing while the scene can't render
+                    if (!secondary_render_root_active)
+                    {
+                        RHI_Texture* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+                        RHI_Device::Bind(RHI_Frame_List::Graphics);
+                        RHI_CommandList::ClearTexture(frame_output, Color::standard_black);
+                        Pass_Text(frame_output, true);
+                    }
                     return;
                 }
             }

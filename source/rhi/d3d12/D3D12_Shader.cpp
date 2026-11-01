@@ -269,8 +269,8 @@ namespace spartan
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
 
-        // cached because creation is expensive and the interface is reentrant
-        static IDxcUtils* dxc_utils = nullptr;
+        // cached per shader compiler worker because creation is expensive
+        thread_local IDxcUtils* dxc_utils = nullptr;
         if (!dxc_utils)
         {
             if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxc_utils))))

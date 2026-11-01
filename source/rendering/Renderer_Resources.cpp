@@ -1386,8 +1386,9 @@ namespace spartan
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },
             { Renderer_Shader::taau_c,                                RHI_Shader_Type::Compute, "taau.hlsl"                                                                  },
             { Renderer_Shader::dlss_reactivity_c,                      RHI_Shader_Type::Compute, "dlss_reactivity.hlsl"                                                     },
-            { Renderer_Shader::font_v,                                RHI_Shader_Type::Vertex,  "font.hlsl",                                  RHI_Vertex_Type::Pos2dUvCol8   },
-            { Renderer_Shader::font_p,                                RHI_Shader_Type::Pixel,   "font.hlsl"                                                                  },
+            // synchronous so the shader compilation progress can be drawn while everything else compiles
+            { Renderer_Shader::font_v,                                RHI_Shader_Type::Vertex,  "font.hlsl",                                  RHI_Vertex_Type::Pos2dUvCol8, nullptr, false },
+            { Renderer_Shader::font_p,                                RHI_Shader_Type::Pixel,   "font.hlsl",                                  RHI_Vertex_Type::Max,         nullptr, false },
             { Renderer_Shader::film_grain_c,                          RHI_Shader_Type::Compute, "film_grain.hlsl"                                                            },
             { Renderer_Shader::chromatic_aberration_c,                RHI_Shader_Type::Compute, "chromatic_aberration.hlsl"                                                  },
             { Renderer_Shader::vhs_c,                                 RHI_Shader_Type::Compute, "vhs.hlsl"                                                                   },
