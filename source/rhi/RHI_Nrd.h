@@ -233,8 +233,9 @@ namespace spartan
             settings.lobeAngleFraction                 = 0.15f;
             settings.fireflySuppressorMinRelativeScale = 2.0f;
             settings.enableAntiFirefly                 = true;
-            // taau already stabilizes the frame, the extra 4k pass is not worth it
-            settings.maxStabilizedFrameNum             = 0;
+            // Stabilize radiance before composition: the upscaler cannot reliably
+            // distinguish noisy bright reflections from changing scene detail.
+            settings.maxStabilizedFrameNum             = settings.maxAccumulatedFrameNum;
         }
 
         // directional rt shadows, sigma penumbra reconstruction

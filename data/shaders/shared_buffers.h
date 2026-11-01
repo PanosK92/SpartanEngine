@@ -638,6 +638,11 @@ namespace pass_blur
 {
     static const SHARED_UINT radius   = 0; // float
     static const SHARED_UINT vertical = 1; // bool
+    // composite, pixel rectangle of the target the blurred backdrop is copied into
+    static const SHARED_UINT rect_x0  = 2; // float
+    static const SHARED_UINT rect_y0  = 3; // float
+    static const SHARED_UINT rect_x1  = 4; // float
+    static const SHARED_UINT rect_y1  = 5; // float
 }
 
 namespace pass_particles

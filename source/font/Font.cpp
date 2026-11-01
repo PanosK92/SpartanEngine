@@ -222,6 +222,23 @@ namespace spartan
         add_quad(min_pixels.x, min_pixels.y, max_pixels.x, max_pixels.y, uv_solid, uv_solid, uv_solid, uv_solid, pack_color(color));
     }
 
+    void Font::AddBackdropBlur(const Vector2& min_pixels, const Vector2& max_pixels)
+    {
+        if (max_pixels.x <= min_pixels.x || max_pixels.y <= min_pixels.y)
+        {
+            return;
+        }
+
+        m_backdrop_blurs.emplace_back(min_pixels.x, min_pixels.y, max_pixels.x - min_pixels.x, max_pixels.y - min_pixels.y);
+    }
+
+    const vector<math::Rectangle>& Font::GetBackdropBlurs() const
+    {
+        // same lifetime as the uploaded text, the screenshot and the output pass of one frame see the same rectangles
+        static const vector<math::Rectangle> empty;
+        return m_upload_frame == Renderer::GetFrameNumber() ? m_backdrop_blurs_uploaded : empty;
+    }
+
     bool Font::HasText() const
     {
         // the screenshot and the output both draw text in the same frame, the second one reuses the upload
@@ -286,9 +303,11 @@ namespace spartan
         RHI_CommandList::UpdateBuffer(m_buffers_index[m_buffer_index].get(), 0, index_data_size, m_indices.data());
 
         m_index_count[m_buffer_index] = static_cast<uint32_t>(m_indices.size());
+        m_backdrop_blurs_uploaded.swap(m_backdrop_blurs);
 
         m_vertices.clear();
         m_indices.clear();
+        m_backdrop_blurs.clear();
     }
 
     uint32_t Font::GetIndexCount()

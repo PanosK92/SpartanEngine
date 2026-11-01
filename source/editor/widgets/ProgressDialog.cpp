@@ -59,7 +59,6 @@ void ProgressDialog::OnPreBegin()
     }
     ImGui::SetNextWindowPos(ImVec2(center.x, bottom - 28.0f), ImGuiCond_Always, ImVec2(0.5f, 1.0f));
     ImGui::SetNextWindowSize(ImVec2(std::max(220.0f, std::min(460.0f, available_width - 40.0f)), 0.0f), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.97f);
     PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 16.0f));
     PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
     PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);

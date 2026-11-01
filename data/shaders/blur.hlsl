@@ -53,6 +53,26 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
     return color / (weights + FLT_MIN);
 }
 
+#if PASS_BLUR_COMPOSITE
+// copies a blurred low resolution backdrop into a rectangle of the target, the frosted glass behind overlay panels
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    const float2 rect_min = float2(pass_float(pass_blur::rect_x0), pass_float(pass_blur::rect_y0));
+    const float2 rect_max = float2(pass_float(pass_blur::rect_x1), pass_float(pass_blur::rect_y1));
+
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+
+    const uint2 pos = uint2(rect_min) + thread_id.xy;
+    if (any(float2(pos) >= rect_max) || any(float2(pos) >= resolution_out))
+        return;
+
+    const float2 uv       = (pos + 0.5f) / resolution_out;
+    const float3 backdrop = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+    tex_uav[pos]          = float4(backdrop, tex_uav[pos].a);
+}
+#else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -81,3 +101,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     color.rgb             = gaussian_blur(thread_id.xy, resolution_in, resolution_out, uv, radius, sigma * sigma, direction);
     tex_uav[thread_id.xy] = color;
 }
+#endif

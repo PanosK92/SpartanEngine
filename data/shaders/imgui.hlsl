@@ -99,6 +99,7 @@ float4 main_ps(vertex input) : SV_Target
     uint is_visualized    = (flags & (1 << 9))  != 0 ? 1 : 0;
     uint is_frame_texture = (flags & (1 << 10)) != 0 ? 1 : 0;
     uint is_sdr_capture   = (flags & (1 << 11)) != 0 ? 1 : 0;
+    uint is_glass         = (flags & (1 << 12)) != 0 ? 1 : 0;
 
     float4 channels = float4(channel_r, channel_g, channel_b, channel_a);
 
@@ -150,6 +151,14 @@ float4 main_ps(vertex input) : SV_Target
             ? color.rgb * (80.0f / ui_nits)
             : hdr10_to_linear(color.rgb, ui_nits);
         color.rgb = linear_to_srgb(saturate(frame_linear));
+    }
+
+    // frosted glass backdrop, the ui alpha channel it was copied from is meaningless, and a faint grain makes it read as rough glass
+    if (is_glass != 0)
+    {
+        float grain = frac(sin(dot(floor(input.position.xy), float2(12.9898f, 78.233f))) * 43758.5453f) - 0.5f;
+        color.rgb  += grain * 0.03f;
+        color.a     = input.color.a;
     }
 
     return color;

@@ -549,6 +549,66 @@ namespace spartan
             return;
         }
 
+        // upload first, the backdrop rectangles are published together with the text
+        for (uint32_t i = font_first; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
+        {
+            const shared_ptr<Font>& font = GetFont(static_cast<Renderer_Font>(i));
+            if (font && font->HasText())
+            {
+                font->UpdateVertexAndIndexBuffers();
+            }
+        }
+
+        // frosted glass behind overlay panels, the frame is blurred once at quarter resolution and copied under every panel
+        RHI_Texture* tex_backdrop     = GetRenderTarget(Renderer_RenderTarget::overlay_backdrop);
+        RHI_Texture* tex_blur         = GetRenderTarget(Renderer_RenderTarget::blur);
+        RHI_Shader* shader_composite  = GetShader(Renderer_Shader::blur_composite_c);
+        const bool backdrop_supported =
+            !cinematic_only && tex_backdrop && tex_blur && shader_composite && shader_composite->IsCompiled() &&
+            tex_blur->GetWidth() >= tex_backdrop->GetWidth() && tex_blur->GetHeight() >= tex_backdrop->GetHeight();
+        if (backdrop_supported)
+        {
+            const float scale_x = static_cast<float>(tex_out->GetWidth()) / max(GetViewport().width, 1.0f);
+            const float scale_y = static_cast<float>(tex_out->GetHeight()) / max(GetViewport().height, 1.0f);
+            bool captured       = false;
+            for (uint32_t i = font_first; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
+            {
+                const shared_ptr<Font>& font = GetFont(static_cast<Renderer_Font>(i));
+                if (!font)
+                {
+                    continue;
+                }
+
+                for (const math::Rectangle& rect : font->GetBackdropBlurs())
+                {
+                    if (!captured)
+                    {
+                        RHI_CommandList::Blit(tex_out, tex_backdrop, false);
+                        Pass_Blur(tex_backdrop, false, 10.0f);
+                        Pass_Blur(tex_backdrop, false, 10.0f);
+                        captured = true;
+                    }
+
+                    const float x0 = floor(rect.x * scale_x);
+                    const float y0 = floor(rect.y * scale_y);
+                    const float x1 = ceil((rect.x + rect.width) * scale_x);
+                    const float y1 = ceil((rect.y + rect.height) * scale_y);
+
+                    RHI_CommandList::BeginPass("text_backdrop", false);
+                    RHI_CommandList::SetShader(shader_composite);
+                    m_pcb_pass_cpu.set(pass_blur::rect_x0, x0);
+                    m_pcb_pass_cpu.set(pass_blur::rect_y0, y0);
+                    m_pcb_pass_cpu.set(pass_blur::rect_x1, x1);
+                    m_pcb_pass_cpu.set(pass_blur::rect_y1, y1);
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_backdrop);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+                    RHI_CommandList::Dispatch((static_cast<uint32_t>(x1 - x0) + 7) / 8, (static_cast<uint32_t>(y1 - y0) + 7) / 8);
+                    RHI_CommandList::EndPass();
+                }
+            }
+        }
+
         RHI_CommandList::BeginPass("text");
         {
             RHI_CommandList::SetShaders(shader_v, shader_p);
@@ -565,7 +625,6 @@ namespace spartan
                     continue;
                 }
 
-                font->UpdateVertexAndIndexBuffers();
                 RHI_CommandList::SetBufferVertex(font->GetVertexBuffer());
                 RHI_CommandList::SetBufferIndex(font->GetIndexBuffer());
 

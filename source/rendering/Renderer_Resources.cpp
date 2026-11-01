@@ -1008,6 +1008,8 @@ namespace spartan
             uint32_t mip_count = compute_mip_count(width_output, height_output, 16);
             at(view_targets(), Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "frame_output");
             at(view_targets(), Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
+            // quarter resolution, what the text overlay panels blur behind them
+            at(view_targets(), Renderer_RenderTarget::overlay_backdrop) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, max(width_output / 4, 1u), max(height_output / 4, 1u), 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "overlay_backdrop");
             // stereo needs one history layer per eye, frame_render and frame_output stay 2d and are reused per eye
             if (xr_stereo)
             {
@@ -1349,6 +1351,7 @@ namespace spartan
             // blur
             { Renderer_Shader::blur_gaussian_c,                       RHI_Shader_Type::Compute, "blur.hlsl"                                                                  },
             { Renderer_Shader::blur_gaussian_bilateral_c,             RHI_Shader_Type::Compute, "blur.hlsl",                                  RHI_Vertex_Type::Max, "PASS_BLUR_GAUSSIAN_BILATERAL" },
+            { Renderer_Shader::blur_composite_c,                      RHI_Shader_Type::Compute, "blur.hlsl",                                  RHI_Vertex_Type::Max, "PASS_BLUR_COMPOSITE" },
 
             // bloom
             { Renderer_Shader::bloom_prefilter_c,                     RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "PREFILTER"           },

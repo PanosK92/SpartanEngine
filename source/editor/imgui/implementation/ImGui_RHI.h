@@ -106,6 +106,155 @@ namespace ImGui::RHI
         // deferred so the os window is revealed only after the first successful present
         void (*g_platform_show_window)(ImGuiViewport*) = nullptr;
 
+        // frosted glass, floating windows show a blurred copy of whatever was drawn under them
+        TConsoleVar<bool> cvar_editor_glass("editor.glass", true, "frosted glass behind floating editor windows, popups, menus and tooltips");
+        TConsoleVar<float> cvar_editor_glass_opacity("editor.glass_opacity", 0.6f, "how much of a glass window's background color covers the blurred backdrop, 0 to 1");
+        TConsoleVar<float> cvar_editor_glass_blur("editor.glass_blur", 10.0f, "glass blur radius in quarter resolution pixels, 1 to 32");
+
+        // the main window ui is drawn into glass_target when a glass window is up, so what lies under a window can be read back
+        shared_ptr<RHI_Texture> g_glass_target;
+        array<shared_ptr<RHI_Texture>, 2> g_glass_backdrop;
+        ImDrawList* g_glass_draw_list = nullptr;
+        Pcb_Pass g_glass_push_constants;
+        const uint32_t glass_flag = 1u << 12;
+
+        struct GlassDraw
+        {
+            uint32_t index_offset = 0;
+            uint32_t index_count  = 0;
+        };
+
+        // root windows that float over something, docked panels and the dockspace host sit on nothing but the editor background
+        bool is_glass_window(const ImGuiWindow* window, const ImGuiViewport* viewport)
+        {
+            if (!window->Active || window->Hidden || window->Collapsed || window->Viewport != viewport)
+            {
+                return false;
+            }
+
+            // sub-menus are child windows too, but like popups and tooltips they float over whatever is behind them
+            const bool is_floating_child = (window->Flags & (ImGuiWindowFlags_Popup | ImGuiWindowFlags_Tooltip)) != 0;
+            if ((window->Flags & ImGuiWindowFlags_ChildWindow) && !is_floating_child)
+            {
+                return false;
+            }
+
+            const ImGuiWindowFlags excluded = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus;
+            return (window->Flags & excluded) == 0 && !window->DockIsActive;
+        }
+
+        // imgui opens a window's draw list with its background, title bar and menu bar fills, thinning them lets the backdrop through
+        void thin_window_background(ImDrawVert* vertices, const int count, const float opacity)
+        {
+            const ImU32 fills[] =
+            {
+                GetColorU32(ImGuiCol_TitleBg),
+                GetColorU32(ImGuiCol_TitleBgActive),
+                GetColorU32(ImGuiCol_TitleBgCollapsed),
+                GetColorU32(ImGuiCol_MenuBarBg)
+            };
+
+            ImU32 background = 0;
+            for (int i = 0; i < count; i++)
+            {
+                ImU32& color      = vertices[i].col;
+                const ImU32 alpha = (color & IM_COL32_A_MASK) >> IM_COL32_A_SHIFT;
+                if (alpha == 0)
+                {
+                    continue; // anti-aliased fringe
+                }
+
+                if (background == 0)
+                {
+                    background = color;
+                }
+
+                bool is_fill = color == background;
+                for (const ImU32 fill : fills)
+                {
+                    is_fill |= color == fill;
+                }
+
+                if (!is_fill)
+                {
+                    break;
+                }
+
+                const ImU32 alpha_thin = static_cast<ImU32>(static_cast<float>(alpha) * opacity + 0.5f);
+                color = (color & ~IM_COL32_A_MASK) | (alpha_thin << IM_COL32_A_SHIFT);
+            }
+        }
+
+        RHI_Texture* glass_get_target(RHI_SwapChain* swapchain)
+        {
+            const uint32_t width  = swapchain->GetWidth();
+            const uint32_t height = swapchain->GetHeight();
+            const RHI_Format format = swapchain->GetFormat();
+            if (width == 0 || height == 0)
+            {
+                return nullptr;
+            }
+
+            if (!g_glass_target || g_glass_target->GetWidth() != width || g_glass_target->GetHeight() != height || g_glass_target->GetFormat() != format)
+            {
+                g_glass_target = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, format, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "imgui_glass_target");
+            }
+
+            // a quarter resolution backdrop, the blur hides the downsample and stays cheap at any window size
+            const uint32_t backdrop_width  = std::max(width / 4, 1u);
+            const uint32_t backdrop_height = std::max(height / 4, 1u);
+            for (shared_ptr<RHI_Texture>& backdrop : g_glass_backdrop)
+            {
+                if (!backdrop || backdrop->GetWidth() != backdrop_width || backdrop->GetHeight() != backdrop_height)
+                {
+                    backdrop = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, backdrop_width, backdrop_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "imgui_glass_backdrop");
+                }
+            }
+
+            const bool ready = g_glass_target->GetRhiResource() && g_glass_backdrop[0]->GetRhiResource() && g_glass_backdrop[1]->GetRhiResource();
+            return ready ? g_glass_target.get() : nullptr;
+        }
+
+        // copies what has been drawn into the target so far and blurs it, the result lands in g_glass_backdrop[0]
+        void glass_capture_backdrop(RHI_Texture* target)
+        {
+            RHI_Texture* backdrop = g_glass_backdrop[0].get();
+            RHI_Texture* scratch  = g_glass_backdrop[1].get();
+            RHI_CommandList::Blit(target, backdrop, false);
+
+            RHI_Shader* shader = Renderer::GetShader(Renderer_Shader::blur_gaussian_c);
+            if (!shader || !shader->IsCompiled())
+            {
+                return;
+            }
+
+            const float radius           = std::clamp(cvar_editor_glass_blur.GetValue(), 1.0f, 32.0f);
+            const uint32_t group_count_x = (backdrop->GetWidth() + 7) / 8;
+            const uint32_t group_count_y = (backdrop->GetHeight() + 7) / 8;
+
+            RHI_CommandList::BeginPass("imgui_glass_blur", false);
+            RHI_CommandList::SetShader(shader);
+
+            // two separable passes, a single wide gaussian at quarter resolution still shows the downsample blocks
+            for (uint32_t i = 0; i < 2; i++)
+            {
+                g_glass_push_constants.set(pass_blur::radius, radius);
+                g_glass_push_constants.set(pass_blur::vertical, false);
+                RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, backdrop);
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, scratch);
+                RHI_CommandList::Dispatch(group_count_x, group_count_y);
+
+                g_glass_push_constants.set(pass_blur::vertical, true);
+                RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, scratch);
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, backdrop);
+                RHI_CommandList::Dispatch(group_count_x, group_count_y);
+            }
+
+            RHI_CommandList::EndPass();
+        }
+
         void reset_render_state(const ImDrawList*, const ImDrawCmd*)
         {
         }
@@ -190,6 +339,8 @@ namespace ImGui::RHI
         g_blend_state         = nullptr;
         g_shader_vertex       = nullptr;
         g_shader_pixel        = nullptr;
+        g_glass_target        = nullptr;
+        g_glass_backdrop.fill(nullptr);
 
         for (auto& ptr : g_viewport_data.index_buffers)
         {
@@ -327,6 +478,12 @@ namespace ImGui::RHI
         GetPlatformIO().DrawCallback_ResetRenderState = nullptr;
         destroy_imgui_textures();
         DestroyPlatformWindows();
+
+        if (g_glass_draw_list)
+        {
+            IM_DELETE(g_glass_draw_list);
+            g_glass_draw_list = nullptr;
+        }
     }
 
     void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
@@ -392,13 +549,74 @@ namespace ImGui::RHI
             }
         }
 
+        // find the glass windows and build the blurred backdrop quad each one is laid on
+        static vector<GlassDraw> glass_draws;
+        static vector<ImGuiWindow*> glass_windows;
+        glass_draws.assign(draw_data->CmdListsCount, GlassDraw());
+        glass_windows.assign(draw_data->CmdListsCount, nullptr);
+        RHI_Texture* glass_target = nullptr;
+        if (is_main_window && cvar_editor_glass.GetValue())
+        {
+            bool any_glass = false;
+            for (int i = 0; i < draw_data->CmdListsCount; i++)
+            {
+                for (ImGuiWindow* window : GImGui->Windows)
+                {
+                    if (window->DrawList == draw_data->CmdLists[i])
+                    {
+                        if (is_glass_window(window, draw_data->OwnerViewport))
+                        {
+                            glass_windows[i] = window;
+                            any_glass        = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            glass_target = any_glass ? glass_get_target(swapchain) : nullptr;
+        }
+
+        if (glass_target)
+        {
+            if (!g_glass_draw_list)
+            {
+                g_glass_draw_list = IM_NEW(ImDrawList)(GetDrawListSharedData());
+            }
+            g_glass_draw_list->_ResetForNewFrame();
+            g_glass_draw_list->PushClipRectFullScreen();
+
+            const ImTextureRef backdrop_ref(reinterpret_cast<ImTextureID>(g_glass_backdrop[0].get()));
+            const float display_width  = draw_data->DisplaySize.x;
+            const float display_height = draw_data->DisplaySize.y;
+            for (int i = 0; i < draw_data->CmdListsCount; i++)
+            {
+                if (const ImGuiWindow* window = glass_windows[i])
+                {
+                    const ImVec2 p_min  = window->Pos;
+                    const ImVec2 p_max  = ImVec2(window->Pos.x + window->Size.x, window->Pos.y + window->Size.y);
+                    const ImVec2 uv_min = ImVec2((p_min.x - draw_data->DisplayPos.x) / display_width, (p_min.y - draw_data->DisplayPos.y) / display_height);
+                    const ImVec2 uv_max = ImVec2((p_max.x - draw_data->DisplayPos.x) / display_width, (p_max.y - draw_data->DisplayPos.y) / display_height);
+
+                    const uint32_t index_offset = static_cast<uint32_t>(g_glass_draw_list->IdxBuffer.Size);
+                    g_glass_draw_list->AddImageRounded(backdrop_ref, p_min, p_max, uv_min, uv_max, IM_COL32_WHITE, window->WindowRounding, ImDrawFlags_RoundCornersAll);
+                    glass_draws[i].index_offset = index_offset;
+                    glass_draws[i].index_count  = static_cast<uint32_t>(g_glass_draw_list->IdxBuffer.Size) - index_offset;
+                }
+            }
+        }
+        const uint32_t glass_vertex_count = glass_target ? static_cast<uint32_t>(g_glass_draw_list->VtxBuffer.Size) : 0;
+        const uint32_t glass_index_count  = glass_target ? static_cast<uint32_t>(g_glass_draw_list->IdxBuffer.Size) : 0;
+        const uint32_t vertex_count       = static_cast<uint32_t>(draw_data->TotalVtxCount) + glass_vertex_count;
+        const uint32_t index_count        = static_cast<uint32_t>(draw_data->TotalIdxCount) + glass_index_count;
+
         // update vertex and index buffers
         {
             // grow vertex buffer as needed
-            if (vertex_buffer->GetElementCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
+            if (vertex_buffer->GetElementCount() < vertex_count)
             {
                 const uint32_t count                        = vertex_buffer->GetElementCount();
-                const uint32_t count_new                    = draw_data->TotalVtxCount + 15000;
+                const uint32_t count_new                    = vertex_count + 15000;
                 rhi_resources->vertex_buffers[buffer_index] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(ImDrawVert), count_new, nullptr, true, vertex_buffer->GetObjectName().c_str());
                 vertex_buffer                               = rhi_resources->vertex_buffers[buffer_index].get();
 
@@ -409,10 +627,10 @@ namespace ImGui::RHI
             }
 
             // grow index buffer as needed
-            if (index_buffer->GetElementCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
+            if (index_buffer->GetElementCount() < index_count)
             {
                 const uint32_t count                       = index_buffer->GetElementCount();
-                const uint32_t count_new                   = draw_data->TotalIdxCount + 30000;
+                const uint32_t count_new                   = index_count + 30000;
                 rhi_resources->index_buffers[buffer_index] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index, sizeof(ImDrawIdx), count_new, nullptr, true, index_buffer->GetObjectName().c_str());
                 index_buffer                               = rhi_resources->index_buffers[buffer_index].get();
 
@@ -434,8 +652,20 @@ namespace ImGui::RHI
                     memcpy(vtx_dst, imgui_cmd_list->VtxBuffer.Data, imgui_cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
                     memcpy(idx_dst, imgui_cmd_list->IdxBuffer.Data, imgui_cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
 
+                    if (glass_target && glass_draws[i].index_count > 0)
+                    {
+                        thin_window_background(vtx_dst, imgui_cmd_list->VtxBuffer.Size, std::clamp(cvar_editor_glass_opacity.GetValue(), 0.0f, 1.0f));
+                    }
+
                     vtx_dst += imgui_cmd_list->VtxBuffer.Size;
                     idx_dst += imgui_cmd_list->IdxBuffer.Size;
+                }
+
+                // the glass quads go after every imgui list
+                if (glass_target)
+                {
+                    memcpy(vtx_dst, g_glass_draw_list->VtxBuffer.Data, glass_vertex_count * sizeof(ImDrawVert));
+                    memcpy(idx_dst, g_glass_draw_list->IdxBuffer.Data, glass_index_count * sizeof(ImDrawIdx));
                 }
             }
         }
@@ -474,7 +704,8 @@ namespace ImGui::RHI
 
         // a replay into the ui screenshot target must not run user callbacks, they record external passes
         // frame_only replays just the 3d view draws, the frame generation hudless image
-        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture, const bool frame_only)
+        // glass is the texture the pass draws into, null when glass windows are drawn without a backdrop
+        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture, const bool frame_only, RHI_Texture* glass)
         {
             RHI_CommandList::BeginPass(name, gpu_timing);
             setup_render_state();
@@ -504,6 +735,32 @@ namespace ImGui::RHI
             for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
             {
                 ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
+
+                // everything drawn so far is what the window floats over, blur it and lay it down before the window draws
+                if (glass && glass_draws[i].index_count > 0 && draw_index != numeric_limits<uint32_t>::max())
+                {
+                    RHI_CommandList::EndPass();
+                    glass_capture_backdrop(glass);
+                    RHI_CommandList::BeginPass(name, gpu_timing);
+                    pso.clear_color[0] = rhi_color_load;
+                    RHI_CommandList::RestoreAfterExternalPass();
+                    setup_render_state();
+
+                    math::Rectangle rectangle;
+                    rectangle.width  = draw_data->DisplaySize.x;
+                    rectangle.height = draw_data->DisplaySize.y;
+                    RHI_CommandList::SetScissorRectangle(rectangle);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, g_glass_backdrop[0].get());
+
+                    // the backdrop already holds display encoded values, the screenshot replay holds sdr ones
+                    const uint32_t flags = glass_flag | (sdr_capture ? 0u : (1u << 10));
+                    rhi_resources->push_constant_buffer_pass.set(pass_imgui::flags, flags);
+                    rhi_resources->push_constant_buffer_pass.set(pass_imgui::mip_level, 0.0f);
+                    rhi_resources->push_constant_buffer_pass.set(pass_imgui::array_level, 0.0f);
+                    RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
+                    RHI_CommandList::DrawIndexed(glass_draws[i].index_count, draw_data->TotalIdxCount + glass_draws[i].index_offset, draw_data->TotalVtxCount);
+                    state_valid = false;
+                }
 
                 for (uint32_t cmd_i = 0; cmd_i < static_cast<uint32_t>(cmd_list_imgui->CmdBuffer.Size); cmd_i++)
                 {
@@ -647,7 +904,23 @@ namespace ImGui::RHI
             RHI_CommandList::EndPass();
         };
 
-        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false);
+        // with a glass window up the ui goes through a texture so the backdrop can be read back, then lands in the swapchain
+        if (glass_target)
+        {
+            RHI_CommandList::ClearTexture(glass_target, Color::standard_black);
+            pso.render_target_swapchain         = nullptr;
+            pso.render_target_color_textures[0] = glass_target;
+            pso.clear_color[0]                  = rhi_color_load;
+        }
+
+        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false, glass_target);
+
+        if (glass_target)
+        {
+            RHI_CommandList::Blit(glass_target, swapchain);
+            pso.render_target_color_textures[0] = nullptr;
+            pso.render_target_swapchain         = swapchain;
+        }
 
         if (is_main_window)
         {
@@ -668,7 +941,7 @@ namespace ImGui::RHI
                 pso.render_target_swapchain         = nullptr;
                 pso.render_target_color_textures[0] = hudless;
                 pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_frame_generation_hudless", false, false, false, true);
+                draw_pass("imgui_frame_generation_hudless", false, false, false, true, nullptr);
                 pso.render_target_color_textures[0] = nullptr;
                 pso.render_target_swapchain         = swapchain;
                 RHI_FrameGeneration::SetHudlessRecorded();
@@ -681,7 +954,7 @@ namespace ImGui::RHI
                 pso.render_target_swapchain         = nullptr;
                 pso.render_target_color_textures[0] = capture;
                 pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_screenshot", false, false, true, false);
+                draw_pass("imgui_screenshot", false, false, true, false, glass_target ? capture : nullptr);
                 pso.render_target_color_textures[0] = nullptr;
                 Renderer::SetUiScreenshotRecorded();
             }

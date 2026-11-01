@@ -2101,7 +2101,7 @@ namespace spartan
         {
             // a quieter take on color_accent_1 and the panel tones of the editor's default theme
             const Color accent  = Color(0.36f, 0.70f, 0.84f, 1.0f);
-            const Color panel   = Color(0.071f, 0.075f, 0.086f, 0.78f);
+            const Color panel   = Color(0.071f, 0.075f, 0.086f, 0.6f);
             const Color border  = Color(1.0f, 1.0f, 1.0f, 0.05f);
             const Color divider = Color(1.0f, 1.0f, 1.0f, 0.06f);
             const Color track   = Color(1.0f, 1.0f, 1.0f, 0.06f);
@@ -2750,8 +2750,9 @@ namespace spartan
             }
         }
 
-        // panel, the leading edge carries the engine accent
+        // panel, frosted glass over the frame, the leading edge carries the engine accent
         const float panel_y1 = y + padding - px(4.0f);
+        font_shapes->AddBackdropBlur(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1));
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1), col::panel);
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);
         font_shapes->AddRect(Vector2(panel_x0, panel_y1 - hairline), Vector2(panel_x1, panel_y1), col::border);

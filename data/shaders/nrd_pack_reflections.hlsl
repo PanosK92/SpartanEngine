@@ -44,10 +44,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 reflection = tex[thread_id.xy];
 
     float3 normal_ws = get_normal(uv);
-    // guide with the roughness of the lobe the tracer carried, base roughness alone
-    // over blurs car paint and kills the sharp tube reflections the coat lobe traced
+    // NRD assumes alpha = roughness squared. Convert our specular remap so its
+    // filtering and virtual-image reprojection follow the lobe actually traced.
     float coat;
-    float roughness = max(get_rt_reflection_roughness(uv, coat), 0.04f);
+    float roughness = sqrt(ggx_alpha_from_roughness(get_rt_reflection_roughness(uv, coat)));
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
     float2 mv = velocity_ndc * float2(-0.5f, 0.5f);
 

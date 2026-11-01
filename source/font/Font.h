@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Color.h"
 #include "../resource/IResource.h"
 #include "../rhi/RHI_Vertex.h"
+#include "../math/Rectangle.h"
 //================================
 
 namespace spartan
@@ -68,6 +69,10 @@ namespace spartan
 
         // solid quad in pixel space, drawn in submission order with the text of this font
         void AddRect(const math::Vector2& min_pixels, const math::Vector2& max_pixels, const Color& color);
+
+        // frosted glass, the frame under this pixel rectangle is blurred before any text of this frame is drawn
+        void AddBackdropBlur(const math::Vector2& min_pixels, const math::Vector2& max_pixels);
+        const std::vector<math::Rectangle>& GetBackdropBlurs() const;
 
         bool HasText() const;
 
@@ -127,6 +132,8 @@ namespace spartan
         std::shared_ptr<RHI_Texture> m_atlas_outline;
         std::vector<RHI_Vertex_Pos2dTexCol8> m_vertices;
         std::vector<uint32_t> m_indices;
+        std::vector<math::Rectangle> m_backdrop_blurs;
+        std::vector<math::Rectangle> m_backdrop_blurs_uploaded;
 
         static const uint32_t buffer_count               = 8;
         uint32_t m_buffer_index                          = 0;

@@ -15,7 +15,6 @@
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=TMZ0epSVwCk"><b>Trailer</b></a> &nbsp;·&nbsp;
   <a href="https://github.com/PanosK92/SpartanEngine/releases"><b>Download</b></a> &nbsp;·&nbsp;
   <a href="https://github.com/PanosK92/SpartanEngine/blob/master/plan.md"><b>The Plan</b></a> &nbsp;·&nbsp;
   <a href="https://github.com/PanosK92/SpartanEngine/wiki"><b>Wiki</b></a> &nbsp;·&nbsp;
@@ -27,9 +26,6 @@
 Spartan is a real-time C++ engine with path-traced global illumination, hardware ray tracing, a bindless GPU-driven renderer and a racing-grade vehicle simulation. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord. The source is open, but the engine is not a product: no tutorials, no support queue, no compatibility promise. The code is the documentation, and it moves fast.
 
 <table>
-  <tr>
-    <td colspan="3"><a href="https://www.youtube.com/watch?v=TMZ0epSVwCk"><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/video_promo.png" alt="Watch the Spartan Engine trailer"/></a></td>
-  </tr>
   <tr>
     <td width="33%"><img src=".github/images/showcase_island_town.jpg" alt="Zakynthos: an open island some 30 km across, with towns, an airport, more than 200 spline roads, instanced forests and an FFT ocean"/></td>
     <td width="33%"><img src=".github/images/showcase_island_coast.jpg" alt="Island coast: dynamic time of day, atmospheric scattering and shallow-water caustics"/></td>

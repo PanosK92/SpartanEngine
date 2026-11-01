@@ -54,11 +54,11 @@ void ray_gen()
     // capping the spread and handing them back to an unoccluded sky probe.
     float alpha = ggx_alpha_from_roughness(roughness);
 
-    // per pixel per frame low discrepancy sample, r2 frame rotation for the denoiser to accumulate
-    float  frame_index = (float)buffer_frame.frame;
-    float2 xi;
-    xi.x = frac(hash(float2(launch_id))         + frame_index * 0.7548776662f);
-    xi.y = frac(hash(float2(launch_id) + 31.7f) + frame_index * 0.5698402909f);
+    // Accumulate the R2 rotation modulo one in fixed point. Adding pixel noise
+    // to a growing float frame index quantizes the ray directions in long sessions.
+    uint2 rotation = buffer_frame.frame * uint2(3242174889u, 2447445414u);
+    float2 temporal = float2(rotation >> 8u) * (1.0f / 16777216.0f);
+    float2 xi = frac(float2(hash(float2(launch_id)), hash(float2(launch_id) + 31.7f)) + temporal);
 
     // sample a microfacet normal and reflect about it to turn the mirror ray into a glossy lobe
     float3 tangent   = normalize(cross(abs(normal_ws.y) < 0.999f ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f), normal_ws));
