@@ -42,6 +42,7 @@ struct Surface
     float  ior;
     float  absorption;
     float  thickness;
+    bool   thin_walled;
     float  occlusion;
     float3 emissive;
     float3 F0;
@@ -131,6 +132,7 @@ struct Surface
         ior                   = material.ior;
         absorption            = material.absorption;
         thickness             = material.thickness;
+        thin_walled           = material.is_thin_walled();
         diffuse_energy        = 1.0f;
 
         // roughness is authored as perceptual roughness, as is convention

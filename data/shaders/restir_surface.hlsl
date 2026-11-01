@@ -33,6 +33,7 @@ struct PathSurface
     float  ior;
     float  absorption;
     float  thickness;
+    bool   thin_walled;
     bool   hit;
 };
 
@@ -58,6 +59,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     payload.ior = mat.ior;
     payload.absorption = mat.absorption;
     payload.thickness = mat.thickness;
+    payload.thin_walled = mat.is_thin_walled();
     payload.pooled_emitter = mat.is_pooled_emitter() && is_emtri_pool_active();
 
     uint index_base      = geo.index_offset + primitive_index * 3;

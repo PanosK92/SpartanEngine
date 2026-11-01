@@ -28,6 +28,7 @@ PathSurface restir_rc_surface(PathSample s)
     surface.ior = mat.ior;
     surface.absorption = mat.absorption;
     surface.thickness = mat.thickness;
+    surface.thin_walled = mat.is_thin_walled();
     return surface;
 }
 

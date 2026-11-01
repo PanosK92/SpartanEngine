@@ -3728,6 +3728,11 @@ namespace spartan
                 properties[count].terrain_coating = material->GetProperty(MaterialProperty::TerrainCoating);
                 properties[count].terrain_coating_scale = material->GetProperty(MaterialProperty::TerrainCoatingScale);
 
+                // Water encloses a medium even when a generic material defaults to a thin pane.
+                properties[count].dielectric_flags =
+                    material->GetProperty(MaterialProperty::ThinWalled) != 0.0f &&
+                    material->GetProperty(MaterialProperty::IsWater) == 0.0f ? 1u : 0u;
+
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
                 properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)             ? (1U << 1)  : 0;
