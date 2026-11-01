@@ -14,6 +14,25 @@ Texture2D<uint2> tex_normal_previous : register(t87);
 Texture2D<float4> restir_primary_hit_previous : register(t94);
 Texture2D<float4> restir_primary_surface_previous : register(t95);
 
+// Nearest reprojection must use the positions at which paths were traced.
+// Snapping reduced-resolution samples to G-buffer centers shifts their grid
+// (and makes it nonuniform at noninteger ratios).
+int2 restir_history_pixel(float2 uv, uint2 sample_size)
+{
+    uint2 guide_size;
+    tex_depth.GetDimensions(guide_size.x, guide_size.y);
+    float2 position = uv * float2(guide_size);
+    int2 lower = int2(floor(uv * float2(sample_size) - 0.5f));
+    float2 lower_center = restir_guide_center(lower, sample_size, guide_size);
+    lower -= int2(position.x < lower_center.x ? 1 : 0,
+                  position.y < lower_center.y ? 1 : 0);
+    lower_center = restir_guide_center(lower, sample_size, guide_size);
+    float2 upper_center = restir_guide_center(lower + 1, sample_size, guide_size);
+    float2 midpoint = 0.5f * (lower_center + upper_center);
+    return lower + int2(position.x >= midpoint.x ? 1 : 0,
+                        position.y >= midpoint.y ? 1 : 0);
+}
+
 float2 reproject_to_previous_frame(float2 current_uv, bool reverse_motion = false)
 {
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
@@ -41,7 +60,9 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
     float2 previous_scale = get_render_uv_scale_previous();
     if (!all(isfinite(previous_uv)) || any(previous_uv < 0.0f) || any(previous_uv >= previous_scale))
         return false;
-    uint2 previous_pixel = uint2(previous_uv * size);
+    int2 previous_pixel = restir_history_pixel(previous_uv, uint2(width, height));
+    if (any(previous_pixel < 0) || any(previous_pixel >= int2(floor(size * previous_scale))))
+        return false;
     float4 stored_hit = restir_primary_hit_previous[previous_pixel];
     if (asuint(stored_hit.x) == 0u)
         return false;
@@ -174,17 +195,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // rgb integrand of the shifted temporal sample, kept for vector shading weights, lin 2026 6.3
     float3 f_temp               = float3(0, 0, 0);
 
-    if (have_history)
+    if (have_history && all(history_uv >= 0.0f) && all(history_uv < uv_scale))
     {
-        float2 prev_pixel_f      = history_uv * resolution;
-        float2 resolution_active = floor(resolution * get_render_uv_scale_previous());
-        // Reservoir history uses a single integer load, not a bilinear footprint.
-        // Every coordinate in [0, active_size) maps to a valid texel, including
-        // the last row/column and the outer half of each edge texel.
-        bool in_bounds = all(prev_pixel_f >= 0.0f) && all(prev_pixel_f < resolution_active);
+        int2 prev_pixel = restir_history_pixel(history_uv, uint2(resolution));
+        int2 resolution_active = int2(floor(resolution * get_render_uv_scale_previous()));
+        bool in_bounds = all(prev_pixel >= 0) && all(prev_pixel < resolution_active);
         if (in_bounds)
         {
-            int2 prev_pixel = int2(prev_pixel_f);
+            // Duplication confidence belongs to the selected reservoir too.
+            history_uv = (float2(prev_pixel) + 0.5f) / resolution;
 
             temporal = unpack_reservoir(
                 tex_reservoir_prev0[prev_pixel],
