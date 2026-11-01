@@ -202,7 +202,7 @@ void ray_gen()
     // Section 6.1: all light kinds compete in the same 32-proposal RIS.
     RestirLightSample light = sample_direct_lighting_at_vertex(pos_ws, normal_ws, geometric_normal_ws,
         view_dir, albedo, roughness, metallic, 1.0f, seed, false, 1u);
-    PathSample light_candidate = restir_light_endpoint_descriptor(light, restir_ray_origin(pos_ws, geometric_normal_ws), 1u, seed);
+    PathSample light_candidate = restir_light_endpoint_descriptor(light, restir_light_sample_origin(light, pos_ws, geometric_normal_ws), 1u, seed);
     float light_weight = 0.0f;
     if (light.endpoint_valid && restir_pdf_valid(light.endpoint_pdf))
     {

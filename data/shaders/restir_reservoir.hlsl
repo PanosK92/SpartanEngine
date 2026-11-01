@@ -1882,6 +1882,8 @@ float compute_total_light_weight()
     return total;
 }
 
+#include "restir_bsdf.hlsl"
+
 // The selected NEE endpoint retains physical radiance and its full source PDF.
 struct RestirLightSample
 {
@@ -1905,7 +1907,20 @@ struct RestirLightSample
     bool endpoint_valid;
     bool endpoint_sky;
     bool endpoint_dirac;
+    bool transmission;
 };
+
+float3 restir_light_sample_origin(RestirLightSample light, float3 position, float3 geometric_normal)
+{
+    return restir_ray_origin(position, light.transmission ? -geometric_normal : geometric_normal);
+}
+
+float3 restir_light_proposal_origin(float3 position, float3 geometric_normal, float3 view,
+    float3 direction, bool dielectric)
+{
+    bool transmission = dielectric && !restir_reflection_hemisphere(geometric_normal, view, direction);
+    return restir_ray_origin(position, transmission ? -geometric_normal : geometric_normal);
+}
 
 PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 origin, uint vertex, uint seed)
 {
@@ -1915,6 +1930,7 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
     s.rc_length = vertex + 1u;
     s.path_length = vertex + 1u;
     s.flags = PATH_FLAG_HAS_RC | PATH_FLAG_NEE | (light.endpoint_sky ? PATH_FLAG_SKY : 0u);
+    if (light.transmission) s.flags |= PATH_FLAG_TRANSMISSION_BEFORE_RC;
     s.rc_hit = light.endpoint_hit;
     s.rc_pos = light.endpoint_position;
     s.rc_normal = light.endpoint_normal;
@@ -1946,7 +1962,7 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
 RestirLightSample sample_direct_lighting_at_vertex(
     float3 shading_pos, float3 shading_normal, float3 geometric_normal,
     float3 view_dir, float3 albedo, float roughness, float metallic,
-    float specular_blend, inout uint seed, bool replay, uint vertex)
+    float specular_blend, inout uint seed, bool replay, uint vertex, bool dielectric = false, float eta = 1.0f)
 {
     RestirLightSample result = (RestirLightSample)0;
     float offset_xi = random_float(seed);
@@ -1954,6 +1970,12 @@ RestirLightSample sample_direct_lighting_at_vertex(
     if (replay) return result; // NEE leaves always reconnect; full replay is BSDF-only.
     float3 surface_pos = shading_pos;
     shading_pos = restir_ray_origin(surface_pos, geometric_normal);
+    PathSurface surface = (PathSurface)0;
+    surface.hit_normal = shading_normal;
+    surface.geometric_normal = geometric_normal;
+    surface.albedo = albedo;
+    surface.roughness = roughness;
+    surface.metallic = metallic;
     uint candidate_count = restir_nee_candidate_count(vertex);
     uint tile_offset = 0u;
     [loop] for (uint proposal = 0u; proposal < candidate_count; ++proposal)
@@ -1999,6 +2021,8 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     candidate.endpoint_normal = light.direction;
                 }
                 else if (!punctual) continue;
+                shading_pos = restir_light_proposal_origin(surface_pos, geometric_normal, view_dir,
+                    endpoint - surface_pos, dielectric);
                 float3 delta = endpoint - shading_pos;
                 float distance_sq = dot(delta, delta);
                 if (!restir_connection_distance_valid(distance_sq)) continue;
@@ -2031,6 +2055,8 @@ RestirLightSample sample_direct_lighting_at_vertex(
             EmissiveTriangle tri = emissive_triangles[index];
             float3 bary = unpack_hit_barycentrics(entry.lights.w);
             float3 endpoint = tri.v0 * bary.x + tri.v1 * bary.y + tri.v2 * bary.z;
+            shading_pos = restir_light_proposal_origin(surface_pos, geometric_normal, view_dir,
+                endpoint - surface_pos, dielectric);
             float3 delta = endpoint - shading_pos;
             float distance_sq = dot(delta, delta);
             if (!restir_connection_distance_valid(distance_sq)) continue;
@@ -2057,10 +2083,16 @@ RestirLightSample sample_direct_lighting_at_vertex(
         uint kind = candidate.light_index == RESTIR_ENDPOINT_SKY ? RESTIR_LIGHT_KIND_ENVIRONMENT :
             (candidate.light_index == RESTIR_ENDPOINT_EMTRI ? RESTIR_LIGHT_KIND_EMISSIVE : RESTIR_LIGHT_KIND_ANALYTIC);
         candidate.endpoint_pdf *= restir_light_kind_pmf_at_vertex(kind, vertex) / max(restir_light_kind_pmf(kind), 1e-20f);
-        if (dot(shading_normal, candidate.direction) <= 0.0f || !restir_pdf_valid(candidate.endpoint_pdf)) continue;
+        candidate.transmission = dielectric && !restir_reflection_hemisphere(geometric_normal, view_dir, candidate.direction);
+        if ((!dielectric && dot(shading_normal, candidate.direction) <= 0.0f) || !restir_pdf_valid(candidate.endpoint_pdf)) continue;
+        // An endpoint within the offset band can appear on the opposite side
+        // after offsetting. Keep the proposal's geometry/PDF and visibility on
+        // the same side; such a proposal is a zero draw, not a resample.
+        if (dielectric && !candidate.endpoint_sky &&
+            any(shading_pos != restir_light_sample_origin(candidate, surface_pos, geometric_normal))) continue;
         float bsdf_pdf;
-        float3 brdf = evaluate_reflection_brdf(albedo, roughness, metallic, shading_normal, geometric_normal,
-            view_dir, candidate.direction, bsdf_pdf, specular_blend);
+        float3 brdf = restir_surface_evaluate(surface, view_dir, candidate.direction, bsdf_pdf,
+            specular_blend, dielectric, eta);
         float mis = candidate.light_index == RESTIR_ENDPOINT_EMTRI ?
             restir_pooled_endpoint_mis(vertex + 1u, candidate.light_index, candidate.endpoint_pdf, bsdf_pdf) :
             (candidate.light_index == RESTIR_ENDPOINT_SKY ?
@@ -2082,6 +2114,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
     if (!result.endpoint_valid) return result;
     // Trace only the RIS winner, using the same segment and alpha handling as
     // reconnection. An occluded winner remains a zero draw, never a replacement.
+    shading_pos = restir_light_sample_origin(result, surface_pos, geometric_normal);
     PathSample endpoint = restir_light_endpoint_descriptor(result, shading_pos, 1u, seed);
     if (!trace_shift_visibility(endpoint, surface_pos, geometric_normal)) return (RestirLightSample)0;
     float inverse_density = result.weight_sum / (float(candidate_count) * result.selected_target);

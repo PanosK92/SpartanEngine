@@ -291,6 +291,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed);
             leaf.rc_outgoing_dir = light.direction;
+            if (light.transmission) leaf.flags |= PATH_FLAG_TRANSMISSION_AFTER_RC;
             leaf.rc_L_post = light.incident;
             leaf.F = throughput * incoming_pdf * light_f * light.incident * light_mis;
             inverse_density = dir_pdf / incoming_pdf;
@@ -298,7 +299,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         else
         {
             // Section 6.2.3: force connection to the sampled NEE endpoint.
-            leaf = restir_light_endpoint_descriptor(light, restir_ray_origin(current.hit_position, current.geometric_normal), depth, replay_seed);
+            leaf = restir_light_endpoint_descriptor(light, restir_light_sample_origin(light, current.hit_position, current.geometric_normal), depth, replay_seed);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_pdf / light.endpoint_pdf : 0.0f;
         }
