@@ -90,4 +90,16 @@ RestirSurfaceSample restir_surface_sample(PathSurface surface, float3 view, floa
     return result;
 }
 
+RestirSurfaceSample restir_primary_sample(float3 albedo, float roughness, float metallic,
+    float3 normal, float3 geometric_normal, float3 view, float2 xi, float specular_blend)
+{
+    PathSurface surface = (PathSurface)0;
+    surface.albedo = albedo;
+    surface.roughness = roughness;
+    surface.metallic = metallic;
+    surface.hit_normal = normal;
+    surface.geometric_normal = geometric_normal;
+    return restir_surface_sample(surface, view, float3(xi, 0.0f), specular_blend);
+}
+
 #endif

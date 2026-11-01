@@ -99,10 +99,12 @@ void ray_gen()
         // Sample the complete primary diffuse/glossy mixture.
         uint   replay_seed = seed;
         float2 xi          = random_float2(seed);
-        float  source_pdf;
-        float3 dir         = sample_reflection_brdf(albedo, roughness, metallic, normal_ws, geometric_normal_ws, view_dir, xi, source_pdf, restir_primary_specular_blend(roughness));
+        RestirSurfaceSample primary = restir_primary_sample(albedo, roughness, metallic,
+            normal_ws, geometric_normal_ws, view_dir, xi, restir_primary_specular_blend(roughness));
+        float source_pdf = restir_path_sample_pdf(primary);
+        float3 dir = primary.direction;
 
-        bool dir_valid = restir_pdf_valid(source_pdf) &&
+        bool dir_valid = primary.valid && restir_pdf_valid(source_pdf) &&
                          (dot(dir, normal_ws) >= MIN_COS_AT_PRIMARY) &&
                          !any(isnan(dir));
 
@@ -112,13 +114,11 @@ void ray_gen()
         if (dir_valid)
         {
             float3 reference_radiance;
-            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0,
+            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, primary.weight, replay_seed, seed, reference_radiance, false, (PathSample)0,
                 view_dir, albedo, roughness, metallic, get_camera_position(), geometric_normal_ws);
             // Independent path-tracing estimate: sum the traced light contributions,
             // without selecting a path endpoint or doing spatiotemporal reuse.
-            float3 brdf_all = eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal_ws, geometric_normal_ws,
-                view_dir, dir, 1.0f);
-            canonical_gi += brdf_all * reference_radiance / source_pdf;
+            canonical_gi += primary.weight * reference_radiance;
             // The path walk evaluates F in its selected hybrid measure. A
             // primary-to-RC evaluation would discard a postponed glossy prefix.
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);

@@ -264,7 +264,7 @@ void restir_stream_leaf(inout PathSample selected, inout float weight_sum, PathS
 // The prefix uses random-number measure; only the connection and RC outgoing
 // edges use solid angle. initial_weight includes the corresponding PDF factors.
 PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, float3 dir,
-    float dir_pdf, uint replay_seed, inout uint seed, out float3 reference_radiance,
+    float dir_pdf, float3 primary_weight, uint replay_seed, inout uint seed, out float3 reference_radiance,
     bool replay, PathSample requested, float3 primary_view, float3 primary_albedo,
     float primary_roughness, float primary_metallic, float3 camera_position, float3 primary_geometric_normal)
 {
@@ -281,9 +281,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     previous.albedo = primary_albedo;
     previous.roughness = primary_roughness;
     previous.metallic = primary_metallic;
-    float unused_pdf;
-    float3 throughput = evaluate_reflection_brdf(primary_albedo, primary_roughness, primary_metallic,
-        primary_normal, primary_geometric_normal, primary_view, dir, unused_pdf, restir_primary_specular_blend(primary_roughness)) / dir_pdf;
+    // Sampled throughput is independent of continuous density for delta events.
+    float3 throughput = primary_weight;
     float3 reference_throughput = 1.0f;
     float3 connection_prefix = 0.0f;
     float3 suffix = 1.0f;
@@ -637,13 +636,14 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
     ShiftResult result = (ShiftResult)0;
     result.sample = src;
     uint seed = src.seed_path;
-    float pdf_dst;
-    float3 dir = sample_reflection_brdf(dst_albedo, roughness, metallic, dst_normal, dst_geometric_normal, dst_view,
-        random_float2(seed), pdf_dst, restir_primary_specular_blend(roughness));
-    if (!restir_pdf_valid(pdf_dst) || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
+    RestirSurfaceSample primary = restir_primary_sample(dst_albedo, roughness, metallic,
+        dst_normal, dst_geometric_normal, dst_view, random_float2(seed), restir_primary_specular_blend(roughness));
+    float pdf_dst = restir_path_sample_pdf(primary);
+    float3 dir = primary.direction;
+    if (!primary.valid || !restir_pdf_valid(pdf_dst) || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
         return result;
     float3 unused_reference;
-    PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, src.seed_path, seed, unused_reference, true, src,
+    PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, primary.weight, src.seed_path, seed, unused_reference, true, src,
         dst_view, dst_albedo, roughness, metallic, camera_position, dst_geometric_normal);
     if (has_reconnection(replayed) || replayed.path_length != src.path_length || replayed.endpoint_light != src.endpoint_light)
         return result;

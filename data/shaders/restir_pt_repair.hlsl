@@ -40,16 +40,16 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     for (uint i = 0u; i < count; ++i)
     {
         uint replay_seed = seed;
-        float pdf;
-        float3 direction = sample_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal,
-            view, random_float2(seed), pdf, restir_primary_specular_blend(roughness));
-        if (!restir_pdf_valid(pdf) || dot(normal, direction) <= 0.0f || !all(isfinite(direction)))
+        RestirSurfaceSample primary = restir_primary_sample(albedo, roughness, metallic, normal, geometric_normal,
+            view, random_float2(seed), restir_primary_specular_blend(roughness));
+        float pdf = restir_path_sample_pdf(primary);
+        float3 direction = primary.direction;
+        if (!primary.valid || !restir_pdf_valid(pdf) || dot(normal, direction) <= 0.0f || !all(isfinite(direction)))
             continue;
         float3 incident;
-        trace_path_from_primary(position, normal, direction, pdf, replay_seed, seed, incident, false, (PathSample)0,
+        trace_path_from_primary(position, normal, direction, pdf, primary.weight, replay_seed, seed, incident, false, (PathSample)0,
             view, albedo, roughness, metallic, get_camera_position(), geometric_normal);
-        radiance += eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal, geometric_normal,
-            view, direction, 1.0f) * incident / pdf;
+        radiance += primary.weight * incident;
     }
     radiance /= float(count);
     RestirLightSample light = sample_direct_lighting_at_vertex(position, normal, geometric_normal,
