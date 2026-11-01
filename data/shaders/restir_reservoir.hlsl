@@ -1243,7 +1243,9 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float3 h_unnorm = v + l;
     float h_len_sq  = dot(h_unnorm, h_unnorm);
 
-    if (h_len_sq < 1e-6f)
+    // Near-opposite grazing directions still have a valid half vector. The
+    // reference normalizes their sum; reject only a genuinely degenerate sum.
+    if (!(h_len_sq > 0.0f))
     {
         pdf = 0.0f;
         return float3(0, 0, 0);
@@ -1353,7 +1355,7 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     float3 h_unnorm = v + l;
     float h_len_sq  = dot(h_unnorm, h_unnorm);
 
-    if (h_len_sq < 1e-6f)
+    if (!(h_len_sq > 0.0f))
     {
         pdf = diffuse_pdf * prob_diffuse;
         return l;
@@ -1398,7 +1400,7 @@ float restir_component_pdf(float3 albedo, float roughness, float metallic, float
     if (component == 1u) return (1.0f - p) * nl / PI;
     float3 h = view + direction;
     float h_length_sq = dot(h, h);
-    if (h_length_sq < 1e-6f) return 0.0f;
+    if (!(h_length_sq > 0.0f)) return 0.0f;
     h *= rsqrt(h_length_sq);
     float alpha = restir_d_ggx_alpha(roughness);
     float d = restir_d_ggx(max(dot(normal, h), 0.0f), alpha * alpha);
