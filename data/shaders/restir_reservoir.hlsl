@@ -1164,11 +1164,6 @@ float restir_d_ggx_alpha(float roughness)
     return sqrt(2.0f / (1.0f + pow(2.0f, 18.0f * gloss)));
 }
 
-float3 restir_compute_f90(float3 f0)
-{
-    return saturate(50.0f * dot(f0, 1.0f / 3.0f));
-}
-
 float3 restir_f_schlick(float3 f0, float3 f90, float v_dot_h)
 {
     return f0 + (f90 - f0) * restir_pow5(1.0f - v_dot_h);
@@ -1213,13 +1208,6 @@ float3 restir_diffuse_frostbite(float3 diffuse_color, float roughness, float n_d
     return diffuse_color * (light_scatter * view_scatter * energy_factor * (1.0f / PI));
 }
 
-float3 restir_compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
-{
-    float  dhr        = lerp(1.0f - roughness * 0.7f, 1.0f, restir_pow5(1.0f - n_dot_v));
-    float3 energy_loss = (1.0f - dhr) * (1.0f - f0);
-    return 1.0f + f0 * energy_loss / max(1.0f - energy_loss, 1e-6f);
-}
-
 // GGX + Frostbite diffuse BRDF returning f_r * cos and the matching mixture PDF.
 // specular_blend [0,1] fades the specular lobe, 0 is pure diffuse, 1 is the full mixture
 float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, float specular_blend)
@@ -1254,14 +1242,15 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     }
 
     float3 f0     = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
-    float3 f90    = restir_compute_f90(f0);
-    float3 f_term = restir_f_schlick(f0, f90, v_dot_h);
+    float3 f_term = restir_f_schlick(f0, 1.0f, v_dot_h);
 
     float3 diffuse_color = albedo * (1.0f - metallic);
     float3 diffuse       = restir_diffuse_frostbite(diffuse_color, roughness, n_dot_v, n_dot_l, v_dot_h);
-    float3 diffuse_cos   = diffuse * (1.0f - f_term) * n_dot_l;
+    // StandardBSDF adds the material lobes without an extra Fresnel layer.
+    float3 diffuse_cos   = diffuse * n_dot_l;
 
-    if (specular_blend <= 0.0f)
+    float spec_prob_full = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
+    if (specular_blend <= 0.0f || spec_prob_full <= 0.0f)
     {
         // diffuse only, pdf is the cosine hemisphere pdf to match sample_brdf
         pdf = n_dot_l / PI;
@@ -1274,13 +1263,11 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float  d_term  = restir_d_ggx(n_dot_h, a2);
     float  v_term  = restir_v_smithggx(n_dot_v, n_dot_l, a2);
     float3 fr      = d_term * v_term * f_term;
-    fr            *= restir_compute_multiscatter_energy(f0, n_dot_v, roughness);
     float3 specular_cos = fr * n_dot_l;
 
     // vndf pdf, heitz 2018 eq 17, the effective spec pick fades with specular_blend
     float diffuse_pdf = n_dot_l / PI;
     float spec_pdf    = restir_vndf_reflection_pdf(d_term, n_dot_v, a2);
-    float spec_prob_full = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
     float spec_prob_eff  = saturate(spec_prob_full * specular_blend);
     pdf = (1.0f - spec_prob_eff) * diffuse_pdf + spec_prob_eff * spec_pdf;
 
