@@ -372,7 +372,9 @@ float restir_emitter_source_pdf(EmissiveTriangle tri, float3 origin, float3 norm
         return 0.0f;
     float distance = sqrt(distance_sq);
     float3 direction = delta / distance;
-    if (dot(normal, direction) <= 0.0f || dot(tri.normal, -direction) <= 0.0f)
+    // Light tiles sample the full sphere. Receiver-side support belongs to the
+    // BSDF; a dielectric can transmit toward a light below its shading normal.
+    if (dot(tri.normal, -direction) <= 0.0f)
         return 0.0f;
     float pdf = (tri.weight / total) * restir_light_kind_pmf_at_vertex(RESTIR_LIGHT_KIND_EMISSIVE, vertex) *
         restir_triangle_point_pdf(origin, tri.v0, tri.v1, tri.v2, endpoint);
@@ -414,6 +416,7 @@ struct PathSample
     uint2 endpoint_geometry; // Terminal pooled emitter: instance/primitive or pool index.
     bool endpoint_pooled;
     bool endpoint_environment; // Sky endpoint, distinct from an emissive BSDF hit.
+    bool rc_nee_reflection_disabled; // RC was inside a volume; only transmission-side NEE has support.
     float rc_pdf; // Source incoming geometry factor (times rectangle area for local-UV endpoints).
     float first_hit_distance; // Transient denoiser guide, never the postponed RC distance.
     float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
@@ -526,7 +529,7 @@ uint pack_path_info(PathSample s)
 {
     // BSDF leaves do not use the NEE draw field. Retain their endpoint kind
     // there so suffix MIS distinguishes sky misses from unpooled emitters.
-    uint endpoint_tag = s.endpoint_light == RESTIR_ENDPOINT_BSDF ? uint(s.endpoint_environment) : s.endpoint_emtri_draw;
+    uint endpoint_tag = s.endpoint_light == RESTIR_ENDPOINT_BSDF ? (uint(s.endpoint_environment) | (uint(s.rc_nee_reflection_disabled) << 1u)) : s.endpoint_emtri_draw;
     uint stored_flags = (s.flags & (PATH_FLAG_SKY | PATH_FLAG_HAS_RC)) |
         ((s.flags & (PATH_FLAG_TRANSMISSION_BEFORE_RC | PATH_FLAG_TRANSMISSION_AFTER_RC)) >> 2u);
     return (s.rc_length & 7u) | (stored_flags << 3u) | ((s.path_length & 7u) << 7u)
@@ -555,6 +558,7 @@ void unpack_path_info(uint packed, inout PathSample s)
     s.endpoint_emtri_draw = (packed >> 26u) & 31u;
     s.endpoint_environment = s.endpoint_light == RESTIR_ENDPOINT_SKY ||
         (s.endpoint_light == RESTIR_ENDPOINT_BSDF && (s.endpoint_emtri_draw & 1u) != 0u);
+    s.rc_nee_reflection_disabled = s.endpoint_light == RESTIR_ENDPOINT_BSDF && (s.endpoint_emtri_draw & 2u) != 0u;
     if (s.endpoint_light == RESTIR_ENDPOINT_BSDF) s.endpoint_emtri_draw = 0u;
     s.endpoint_pooled = (packed >> 31u) != 0u;
     if ((s.flags & PATH_FLAG_HAS_RC) != 0u && s.rc_length == s.path_length)
@@ -831,6 +835,7 @@ Reservoir create_empty_reservoir()
     r.sample.endpoint_geometry = 0u;
     r.sample.endpoint_pooled = false;
     r.sample.endpoint_environment = false;
+    r.sample.rc_nee_reflection_disabled = false;
     r.sample.initial_weight  = 1.0f;
     r.sample.first_hit_distance = 0.0f;
     r.sample.endpoint_light  = 65535u;
@@ -1536,6 +1541,9 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
         ? restir_pooled_endpoint_mis(src.path_length, src.endpoint_light, src.rc_nee_pdf, pdf)
         : restir_rc_endpoint_mis(src.path_length - src.rc_length + 2u, src.path_length, src.endpoint_light,
             src.endpoint_environment, src.rc_normal, src.rc_outgoing_dir, pdf);
+    if (src.endpoint_light == RESTIR_ENDPOINT_BSDF && src.path_length == src.rc_length + 1u &&
+        src.rc_nee_reflection_disabled && (src.flags & PATH_FLAG_TRANSMISSION_AFTER_RC) == 0u)
+        mis = 1.0f;
     return src.rc_L_nee + f_rc * src.rc_L_post * mis;
 }
 
@@ -1963,7 +1971,7 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
 RestirLightSample sample_direct_lighting_at_vertex(
     float3 shading_pos, float3 shading_normal, float3 geometric_normal,
     float3 view_dir, float3 albedo, float roughness, float metallic,
-    float specular_blend, inout uint seed, bool replay, uint vertex, bool dielectric = false, float eta = 1.0f)
+    float specular_blend, inout uint seed, bool replay, uint vertex, bool dielectric = false, float eta = 1.0f, bool allow_reflection = true, float3 transmission_tint = 1.0f)
 {
     RestirLightSample result = (RestirLightSample)0;
     float offset_xi = random_float(seed);
@@ -2086,6 +2094,9 @@ RestirLightSample sample_direct_lighting_at_vertex(
         candidate.endpoint_pdf *= restir_light_kind_pmf_at_vertex(kind, vertex) / max(restir_light_kind_pmf(kind), 1e-20f);
         candidate.transmission = dielectric && !restir_reflection_hemisphere(geometric_normal, view_dir, candidate.direction);
         if ((!dielectric && dot(shading_normal, candidate.direction) <= 0.0f) || !restir_pdf_valid(candidate.endpoint_pdf)) continue;
+        // Match the reference default: upper-hemisphere NEE is disabled while
+        // inside a dielectric volume. Rejected proposals remain zero draws.
+        if (!allow_reflection && !candidate.transmission) continue;
         // An endpoint within the offset band can appear on the opposite side
         // after offsetting. Keep the proposal's geometry/PDF and visibility on
         // the same side; such a proposal is a zero draw, not a resample.
@@ -2093,7 +2104,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
             any(shading_pos != restir_light_sample_origin(candidate, surface_pos, geometric_normal))) continue;
         float bsdf_pdf;
         float3 brdf = restir_surface_evaluate(surface, view_dir, candidate.direction, bsdf_pdf,
-            specular_blend, dielectric, eta);
+            specular_blend, dielectric, eta, transmission_tint);
         float mis = candidate.light_index == RESTIR_ENDPOINT_EMTRI ?
             restir_pooled_endpoint_mis(vertex + 1u, candidate.light_index, candidate.endpoint_pdf, bsdf_pdf) :
             (candidate.light_index == RESTIR_ENDPOINT_SKY ?

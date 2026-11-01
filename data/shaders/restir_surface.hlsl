@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 struct PathSurface
 {
     float3 hit_position;
+    float hit_distance;
     float3 hit_normal;
     float3 geometric_normal;
     float3 albedo;
@@ -44,6 +45,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
 {
     PathSurface payload = (PathSurface)0;
     payload.hit = ray_t >= 0.0f;
+    payload.hit_distance = ray_t;
     if (!payload.hit)
         return payload;
 

@@ -9,6 +9,42 @@ Commercial use requires written permission and negotiated payment terms.
 #define SPARTAN_RESTIR_PATH
 #include "restir_surface.hlsl"
 #include "restir_bsdf.hlsl"
+#include "restir_medium.hlsl"
+
+bool restir_surface_is_dielectric(PathSurface surface)
+{
+    return surface.material_alpha > 0.0f && surface.material_alpha < 1.0f && surface.alpha_blend <= 0.0f;
+}
+
+float3 restir_surface_transmission_tint(PathSurface surface)
+{
+    // A thin pane applies its authored shell tint once, without entering a volume.
+    float exponent = max(surface.absorption, 0.0f) * max(surface.thickness, 0.0f) * 50.0f;
+    return surface.thin_walled && exponent > 0.0f ? pow(saturate(surface.albedo), exponent) : 1.0f;
+}
+
+float restir_surface_eta(PathSurface surface, RestirMediumState medium)
+{
+    uint outside = restir_medium_outside_material(medium, surface.material_index, surface.front_facing);
+    float outside_ior = outside == RESTIR_NO_MEDIUM ? 1.0f : material_parameters[outside].ior;
+    return surface.front_facing ? outside_ior / surface.ior : surface.ior / outside_ior;
+}
+
+float3 restir_medium_transmittance(RestirMediumState medium, float distance)
+{
+    uint material = restir_medium_material(medium.slots.x);
+    if (material == RESTIR_NO_MEDIUM || distance <= 0.0f) return 1.0f;
+    MaterialParameters mat = material_parameters[material];
+    // The engine authors Beer-Lambert density in units of 1/50 metre.
+    float exponent = max(mat.absorption, 0.0f) * distance * 50.0f;
+    return exponent > 0.0f ? pow(saturate(mat.color.rgb), exponent) : 1.0f;
+}
+
+void restir_surface_cross_medium(inout RestirMediumState medium, PathSurface surface, RestirSurfaceSample scatter)
+{
+    if (scatter.transmission && !surface.thin_walled)
+        restir_medium_cross(medium, surface.material_index, 0u, surface.front_facing);
+}
 
 PathSurface restir_rc_surface(PathSample s)
 {
@@ -34,7 +70,18 @@ PathSurface restir_rc_surface(PathSample s)
 
 float3 restir_rc_bsdf_evaluate(PathSample s, float3 view, float3 direction, out float pdf)
 {
-    return restir_surface_evaluate(restir_rc_surface(s), view, direction, pdf, 1.0f);
+    PathSurface surface = restir_rc_surface(s);
+    bool transmission = (s.flags & PATH_FLAG_TRANSMISSION_AFTER_RC) != 0u;
+    float outgoing_cos = dot(surface.hit_normal, direction);
+    if (transmission ? outgoing_cos >= 0.0f : outgoing_cos <= 0.0f)
+    {
+        pdf = 0.0f;
+        return 0.0f;
+    }
+    // The reference reconstructs the RC material with vacuum outside; medium
+    // state is replayed along the prefix, not serialized with the cached suffix.
+    return restir_surface_evaluate(surface, view, direction, pdf, 1.0f,
+        restir_surface_is_dielectric(surface), restir_surface_eta(surface, (RestirMediumState)0), restir_surface_transmission_tint(surface));
 }
 
 uint3 restir_trace_hit(RayDesc ray, out float hit_distance)
@@ -196,6 +243,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     float connection_density = 1.0f;
     float incoming_pdf = dir_pdf;
     bool incoming_transmission = false; // primary sampling is currently reflection-only
+    RestirMediumState medium = (RestirMediumState)0;
+    bool incoming_nee_supported = true;
     float roulette_weight = 1.0f;
     float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_geometric_normal, camera_position);
     float first_hit_distance = 0.0f;
@@ -208,6 +257,12 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
         PathSurface current = restir_trace_surface(ray);
+        float3 transmittance = current.hit ? restir_medium_transmittance(medium, current.hit_distance) : 1.0f;
+        throughput *= transmittance;
+        reference_throughput *= transmittance;
+        if (has_reconnection(connection)) suffix *= transmittance;
+        bool dielectric = restir_surface_is_dielectric(current);
+        float eta = dielectric ? restir_surface_eta(current, medium) : 1.0f;
         if (depth == 2u)
         {
             first_hit_distance = current.hit ? length(current.hit_position - primary_pos) : RESTIR_MISS_HIT_DISTANCE;
@@ -226,6 +281,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         float endpoint_mis = current.pooled_emitter
             ? restir_pooled_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, endpoint_nee_pdf, incoming_pdf)
             : (current.hit ? 1.0f : restir_environment_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, previous.hit_normal, dir, incoming_pdf));
+        if (!incoming_nee_supported) endpoint_mis = 1.0f;
         reference_radiance += reference_throughput * emitted * endpoint_mis * roulette_weight;
         PathSample leaf = connection;
         float inverse_density = connection_density;
@@ -275,11 +331,10 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
 
         RestirLightSample light = sample_direct_lighting_at_vertex(current.hit_position, current.hit_normal,
             current.geometric_normal, -dir, current.albedo, current.roughness, current.metallic, 1.0f, seed,
-            replay, depth);
+            replay, depth, dielectric, eta, medium.slots.x == 0u, restir_surface_transmission_tint(current));
         reference_radiance += reference_throughput * light.radiance_sum * roulette_weight;
         float light_bsdf_pdf;
-        float3 light_f = evaluate_reflection_brdf(current.albedo, current.roughness, current.metallic,
-            current.hit_normal, current.geometric_normal, -dir, light.direction, light_bsdf_pdf, 1.0f);
+        float3 light_f = restir_surface_evaluate(current, -dir, light.direction, light_bsdf_pdf, 1.0f, dielectric, eta, restir_surface_transmission_tint(current));
         float light_mis = light.light_index == RESTIR_ENDPOINT_EMTRI
             ? restir_pooled_endpoint_mis(depth + 1u, light.light_index, light.endpoint_pdf, light_bsdf_pdf)
             : restir_rc_endpoint_mis(3u, depth + 1u, light.light_index, light.light_index == RESTIR_ENDPOINT_SKY,
@@ -327,7 +382,9 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             if (!replay && rr >= RESTIR_RR_CONTINUATION) break;
             if (!replay) roulette_weight /= RESTIR_RR_CONTINUATION;
         }
-        RestirSurfaceSample scatter = restir_surface_sample(current, -dir, float3(random_float2(seed), 0.0f), 1.0f);
+        float2 scatter_xi = random_float2(seed);
+        float scatter_lobe = dielectric ? random_float(seed) : 0.0f;
+        RestirSurfaceSample scatter = restir_surface_sample(current, -dir, float3(scatter_xi, scatter_lobe), 1.0f, dielectric, eta, restir_surface_transmission_tint(current));
         if (!scatter.valid)
             break;
         float3 outgoing = scatter.direction;
@@ -337,6 +394,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold, incoming_transmission))
         {
             connection = restir_connection_descriptor(previous, current, dir, depth, replay_seed, incoming_transmission);
+            connection.rc_nee_reflection_disabled = medium.slots.x != 0u;
             connection.rc_outgoing_dir = outgoing;
             if (scatter.transmission) connection.flags |= PATH_FLAG_TRANSMISSION_AFTER_RC;
             connection.src_normal = -dir; // transient incoming direction, stamped with the G-buffer before storing
@@ -346,6 +404,8 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         }
         throughput *= scatter.weight;
         reference_throughput *= scatter.weight;
+        incoming_nee_supported = medium.slots.x == 0u || scatter.transmission;
+        restir_surface_cross_medium(medium, current, scatter);
         previous = current;
         dir = outgoing;
         incoming_pdf = outgoing_pdf;
@@ -369,6 +429,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     float pdfs[RESTIR_MAX_PATH_LENGTH + 1u];
     uint delta_events = 0u;
     uint transmission_events = 0u;
+    float vertex_eta[RESTIR_MAX_PATH_LENGTH + 1u];
+    RestirMediumState medium = (RestirMediumState)0;
     PathSurface primary = (PathSurface)0;
     primary.hit = true;
     primary.hit_position = pos;
@@ -384,17 +446,22 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     {
         PathSurface v = vertices[i];
         float3 incoming = i == 1u ? view : -directions[i - 1u];
+        bool dielectric = i > 1u && restir_surface_is_dielectric(v);
+        float eta = dielectric ? restir_surface_eta(v, medium) : 1.0f;
+        vertex_eta[i] = eta;
         if (i > 1u)
         {
             // Advance exactly the initial tree's NEE dimensions. A fixed BSDF
             // leaf skips all light evaluation and visibility work.
             sample_direct_lighting_at_vertex(v.hit_position, v.hit_normal, v.geometric_normal,
-                incoming, v.albedo, v.roughness, v.metallic, 1.0f, seed, true, i);
+                incoming, v.albedo, v.roughness, v.metallic, 1.0f, seed, true, i, dielectric, eta, medium.slots.x == 0u, restir_surface_transmission_tint(v));
             if (i + 1u > 3u + RESTIR_RR_START)
                 random_float(seed); // no roulette termination during replay
         }
         float blend = i == 1u ? restir_primary_specular_blend(roughness) : 1.0f;
-        RestirSurfaceSample scatter = restir_surface_sample(v, incoming, float3(random_float2(seed), 0.0f), blend);
+        float2 scatter_xi = random_float2(seed);
+        float scatter_lobe = dielectric ? random_float(seed) : 0.0f;
+        RestirSurfaceSample scatter = restir_surface_sample(v, incoming, float3(scatter_xi, scatter_lobe), blend, dielectric, eta, restir_surface_transmission_tint(v));
         if (!scatter.valid)
             return result;
         float3 direction = scatter.direction;
@@ -408,12 +475,16 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         ray.Direction = direction;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
+        restir_surface_cross_medium(medium, v, scatter);
         vertices[i + 1u] = restir_trace_surface(ray);
         if (!vertices[i + 1u].hit)
             return result;
+        prefix *= restir_medium_transmittance(medium, vertices[i + 1u].hit_distance);
     }
     uint k = src.rc_length;
     PathSurface previous = vertices[k - 1u];
+    bool previous_dielectric = restir_surface_is_dielectric(previous);
+    vertex_eta[k - 1u] = previous_dielectric ? restir_surface_eta(previous, medium) : 1.0f;
     float3 connection_origin = restir_reconnection_ray_origin(src, previous.hit_position, previous.geometric_normal);
     if (!restir_reconstruct_rc(src, connection_origin)) return result;
     result.sample = src;
@@ -434,10 +505,16 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     float connection_cos = dot(previous.hit_normal, direction);
     if (connection_transmission ? connection_cos >= 0.0f : connection_cos <= 0.0f)
         return result;
+    bool connection_nee_supported = medium.slots.x == 0u || connection_transmission;
+    RestirSurfaceSample connection_event = (RestirSurfaceSample)0;
+    connection_event.transmission = connection_transmission;
+    restir_surface_cross_medium(medium, previous, connection_event);
+    src.rc_nee_reflection_disabled = medium.slots.x != 0u;
+    result.sample.rc_nee_reflection_disabled = src.rc_nee_reflection_disabled;
     directions[k - 1u] = direction;
     float connect_pdf;
-    float3 connect_f = evaluate_reflection_brdf(previous.albedo, previous.roughness, previous.metallic,
-        previous.hit_normal, previous.geometric_normal, -directions[k - 2u], direction, connect_pdf, 1.0f);
+    float3 connect_f = restir_surface_evaluate(previous, -directions[k - 2u], direction, connect_pdf, 1.0f,
+        previous_dielectric, vertex_eta[k - 1u], restir_surface_transmission_tint(previous));
     float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(pos, primary_geometric_normal, camera_position);
     [loop] for (uint j = 2u; j < k; ++j)
     {
@@ -448,8 +525,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         if ((delta_events & (1u << j)) != 0u)
             pdf_out = pdfs[j];
         else
-            evaluate_reflection_brdf(v.albedo, v.roughness, v.metallic, v.hit_normal, v.geometric_normal,
-                -directions[j - 1u], directions[j], pdf_out, 1.0f);
+            restir_surface_evaluate(v, -directions[j - 1u], directions[j], pdf_out, 1.0f,
+                restir_surface_is_dielectric(v), vertex_eta[j], restir_surface_transmission_tint(v));
         if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold,
             (transmission_events & (1u << (j - 1u))) != 0u))
             return result;
@@ -481,6 +558,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
                 restir_terminal_emitter_pdf(src, connection_origin, previous.hit_normal), connect_pdf)
             : restir_rc_endpoint_mis(3u, src.path_length, src.endpoint_light, src.endpoint_environment,
                 previous.hit_normal, direction, connect_pdf);
+    if (k == src.path_length && !connection_nee_supported) mis = 1.0f;
     float3 radiance = rc_outgoing_radiance(src, direction);
     if (is_dirac_light_sample(src))
     {
@@ -489,7 +567,9 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
             return result;
         result.sample.rc_L_nee = radiance;
     }
-    result.f_dst = prefix * connect_f * radiance * mis;
+    // The reference applies medium absorption at traced surface hits, not to NEE visibility segments.
+    float3 connection_transmittance = is_sky_sample(src) || is_nee_sample(src) ? 1.0f : restir_medium_transmittance(medium, length(delta));
+    result.f_dst = prefix * connect_f * radiance * mis * connection_transmittance;
     result.jacobian = geometry / src.rc_pdf;
     result.sample.rc_pdf = geometry;
     result.sample.F = result.f_dst;
