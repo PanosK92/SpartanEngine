@@ -427,7 +427,7 @@ struct PathSample
     uint3 rc_hit; // TLAS instance/primitive or pool index/zero, then UNORM16 barycentrics.
     float3 rc_pos;
     float3 rc_normal;
-    uint rc_geometric_normal_packed; // Surface RC: two 12-bit octahedral components.
+    float3 rc_geometric_normal; // Reconstructed from geometry; only terminal fallback normals are packed.
     float3 rc_outgoing_dir;
     float3 rc_L_post;
     float3 rc_L_nee;
@@ -541,6 +541,8 @@ uint pack_path_info(PathSample s)
 
 uint pack_rc_geometric_normal(float3 normal)
 {
+    // Environment endpoints have no geometric normal.
+    if (all(normal == 0.0f)) return 0u;
     float2 oct = octahedral_encode(normal);
     uint2 encoded = uint2(saturate(oct * 0.5f + 0.5f) * 4095.0f + 0.5f);
     return encoded.x | (encoded.y << 12u);
@@ -648,7 +650,7 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     float3 endpoint = is_triangle_reconnection(r.sample) ? asfloat(r.sample.rc_hit) : r.sample.rc_pos;
     if (is_dirac_light_sample(r.sample)) endpoint = float3(asfloat(r.sample.endpoint_geometry), 0.0f);
     if (is_area_light_sample(r.sample)) endpoint = asfloat(uint3(r.sample.endpoint_geometry, r.sample.rc_hit.z));
-    tex0 = float4(endpoint, asfloat(terminal ? r.sample.rc_geometric_normal_packed : pack_rc_outgoing_direction(r.sample.rc_outgoing_dir)));
+    tex0 = float4(endpoint, asfloat(terminal ? pack_rc_geometric_normal(r.sample.rc_geometric_normal) : pack_rc_outgoing_direction(r.sample.rc_outgoing_dir)));
     tex1 = float4(terminal ? r.sample.rc_L_nee : r.sample.rc_L_post, r.sample.rc_pdf);
     tex2 = float4(r.sample.F, r.W);
     // Reference PathReservoir::M is floating point. Duplication-driven caps
@@ -675,8 +677,8 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3,
     if (terminal)
     {
         r.sample.rc_L_nee = tex1.rgb;
-        r.sample.rc_geometric_normal_packed = asuint(tex0.w);
-        r.sample.rc_normal = unpack_rc_geometric_normal(r.sample.rc_geometric_normal_packed);
+        r.sample.rc_geometric_normal = unpack_rc_geometric_normal(asuint(tex0.w));
+        r.sample.rc_normal = r.sample.rc_geometric_normal;
         r.sample.rc_outgoing_dir = r.sample.rc_normal;
     }
     else
@@ -794,7 +796,7 @@ bool restir_reconstruct_area_endpoint(inout PathSample s, float3 origin)
     if (!restir_resolve_area_position(s)) return false;
     LightParameters light = light_parameters[s.endpoint_light];
     s.rc_normal = light.direction;
-    s.rc_geometric_normal_packed = pack_rc_geometric_normal(light.direction);
+    s.rc_geometric_normal = light.direction;
     s.rc_L_nee = light.color.rgb * light.intensity * restir_range_window(length(s.rc_pos - origin), light.range);
     return all(isfinite(s.rc_L_nee));
 }
@@ -827,7 +829,7 @@ Reservoir create_empty_reservoir()
     r.sample.rc_hit          = 0u;
     r.sample.rc_pos          = float3(0, 0, 0);
     r.sample.rc_normal       = float3(0, 1, 0);
-    r.sample.rc_geometric_normal_packed = 0u;
+    r.sample.rc_geometric_normal = 0.0f;
     r.sample.rc_outgoing_dir = float3(0, 1, 0);
     r.sample.rc_L_post       = float3(0, 0, 0);
     r.sample.rc_L_nee        = float3(0, 0, 0);
@@ -1727,7 +1729,7 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 rc_geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
+    float3 rc_geometric_normal = src.rc_geometric_normal;
     float geometry_cos_dst = abs(dot(rc_geometric_normal, -dir_dst));
 
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
@@ -1953,12 +1955,12 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
     s.rc_normal = light.endpoint_normal;
     s.rc_outgoing_dir = light.endpoint_normal;
     s.rc_L_nee = light.endpoint_radiance;
-    s.rc_geometric_normal_packed = pack_rc_geometric_normal(light.endpoint_normal);
+    s.rc_geometric_normal = light.endpoint_normal;
     float3 delta = light.endpoint_position - origin;
     float distance_sq = dot(delta, delta);
     s.rc_pdf = light.endpoint_sky || light.endpoint_dirac ? 1.0f :
         (restir_connection_distance_valid(distance_sq) ?
-            abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
+            abs(dot(s.rc_geometric_normal, delta * rsqrt(distance_sq))) / distance_sq : 0.0f);
     s.rc_pdf *= light.endpoint_area > 0.0f ? light.endpoint_area : 1.0f;
     if (light.endpoint_area > 0.0f) s.rc_hit.z = light.endpoint_area_position;
     s.endpoint_light = light.light_index;

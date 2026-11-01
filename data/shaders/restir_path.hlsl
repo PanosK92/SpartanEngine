@@ -52,7 +52,7 @@ PathSurface restir_rc_surface(PathSample s)
     surface.hit = true;
     surface.hit_position = s.rc_pos;
     surface.hit_normal = s.rc_normal;
-    surface.geometric_normal = unpack_rc_geometric_normal(s.rc_geometric_normal_packed);
+    surface.geometric_normal = s.rc_geometric_normal;
     surface.albedo = s.rc_albedo;
     surface.roughness = s.rc_roughness;
     surface.metallic = s.rc_metallic;
@@ -178,7 +178,7 @@ bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
         if (!restir_pool_hit_position(s.rc_hit, s.rc_pos)) return false;
         EmissiveTriangle tri = emissive_triangles[s.rc_hit.x];
         s.rc_normal = tri.normal;
-        s.rc_geometric_normal_packed = pack_rc_geometric_normal(tri.normal);
+        s.rc_geometric_normal = tri.normal;
         s.rc_L_nee = tri.emission;
         return true;
     }
@@ -196,7 +196,7 @@ bool restir_reconstruct_rc(inout PathSample s, float3 previous_position)
     s.rc_pos = rc.hit_position;
     bool terminal = is_rc_emissive(s) || is_nee_sample(s);
     s.rc_normal = terminal ? rc.geometric_normal : rc.hit_normal;
-    s.rc_geometric_normal_packed = pack_rc_geometric_normal(rc.geometric_normal);
+    s.rc_geometric_normal = rc.geometric_normal;
     s.rc_albedo = rc.albedo;
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
@@ -239,9 +239,10 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.rc_hit = uint3(rc.geometry, rc.hit_barycentrics);
     s.rc_pos = rc.hit ? rc.hit_position : direction;
     s.rc_normal = rc.hit ? rc.hit_normal : -direction;
-    // Cache density using the same geometric normal that survives storage;
-    // otherwise an identity shift could accumulate quantization drift.
-    s.rc_geometric_normal_packed = rc.hit ? pack_rc_geometric_normal(rc.geometric_normal) : 0u;
+    // The reference uses the reconstructed face normal for the geometry term.
+    // Triangle normals are recovered from geometry after storage, so rounding
+    // this transient value only changes the BSDF and footprint tests.
+    s.rc_geometric_normal = rc.hit ? rc.geometric_normal : 0.0f;
     s.rc_albedo = rc.albedo;
     s.rc_roughness = max(rc.roughness, 0.04f);
     s.rc_metallic = rc.metallic;
@@ -250,7 +251,7 @@ PathSample restir_connection_descriptor(PathSurface previous, PathSurface rc, fl
     s.rc_outgoing_dir = s.rc_normal;
     float3 delta = rc.hit_position - restir_ray_origin(previous.hit_position, previous.geometric_normal, incoming_transmission);
     float distance_sq = dot(delta, delta);
-    s.rc_pdf = rc.hit ? abs(dot(unpack_rc_geometric_normal(s.rc_geometric_normal_packed), delta * rsqrt(distance_sq))) / distance_sq : 1.0f;
+    s.rc_pdf = rc.hit ? abs(dot(s.rc_geometric_normal, delta * rsqrt(distance_sq))) / distance_sq : 1.0f;
     return s;
 }
 
@@ -600,7 +601,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     rc.hit = !is_sky_sample(src);
     rc.hit_position = src.rc_pos;
     rc.hit_normal = src.rc_normal;
-    rc.geometric_normal = unpack_rc_geometric_normal(src.rc_geometric_normal_packed);
+    rc.geometric_normal = src.rc_geometric_normal;
     float pdf_out = is_rc_emissive(src) ? RESTIR_RC_EMITTER_PDF : 0.0f;
     if (k < src.path_length)
         restir_rc_bsdf_evaluate(src, -direction, src.rc_outgoing_dir, pdf_out);
