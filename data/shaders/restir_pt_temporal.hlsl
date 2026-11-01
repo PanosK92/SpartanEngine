@@ -377,16 +377,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 gi = float3(0, 0, 0);
     ShiftResult canonical = self_shift_evaluate(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     gi = m_cur * canonical.f_dst * max(current.W, 0.0f);
-    float3 specular = gi * restir_primary_specular_fraction(current.sample, pos_ws, normal_ws, geometric_normal_ws,
-        view_dir, albedo, roughness, metallic);
 
     if (have_temporal)
     {
         float3 contribution = m_temp * f_temp * max(temporal.W, 0.0f) * jacobian_temp;
         gi += contribution;
-        specular += contribution * restir_primary_specular_fraction(temporal_shifted_sample, pos_ws, normal_ws, geometric_normal_ws,
-            view_dir, albedo, roughness, metallic);
     }
+
+    float3 specular = gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic);
 
     // Demodulate once; composition restores the primary albedo.
     gi = gi / restir_gi_demodulator(albedo);

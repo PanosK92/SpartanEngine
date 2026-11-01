@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_ray_hit.hlsl"
 #include "rt_visibility.hlsl"
 #include "restir_environment.hlsl"
+#include "restir_material_factors.hlsl"
 
 [[vk::image_format("unknown")]] RWTexture2D<float4> restir_specular_output : register(u68);
 
@@ -1406,27 +1407,6 @@ float restir_primary_specular_blend(float roughness)
 
 // Split each RGB resampling contribution before summing it (section 6.3).
 // Splitting only the winning path would throw away the color-noise reduction.
-float3 restir_primary_specular_fraction(PathSample s, float3 pos, float3 normal, float3 geometric_normal,
-    float3 view, float3 albedo, float roughness, float metallic)
-{
-    float3 direction;
-    if (is_sky_sample(s) && s.rc_length == 2u)
-        direction = s.rc_pos;
-    else if (s.rc_length == 2u && (has_reconnection(s) || is_nee_sample(s)))
-        direction = normalize(s.rc_pos - restir_reconnection_ray_origin(s, pos, geometric_normal));
-    else
-    {
-        uint seed = s.seed_path;
-        float unused_pdf;
-        direction = sample_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view,
-            random_float2(seed), unused_pdf, 1.0f);
-    }
-    float pdf;
-    float3 total = evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view, direction, pdf, 1.0f);
-    float3 diffuse = evaluate_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal, view, direction, pdf, 0.0f);
-    return saturate((total - diffuse) / max(total, 1e-20f));
-}
-
 // primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale,
 // r_pri^2 = |x0 - x1|^2 / (cos / 4pi) following muller 2021, the paper's c = 0.02 is tuned
 // against this normalization, scaling by the pixel cone instead left the threshold four orders

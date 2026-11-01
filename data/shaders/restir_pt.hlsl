@@ -90,7 +90,6 @@ void ray_gen()
 
     Reservoir reservoir = create_empty_reservoir();
     float3 canonical_gi = float3(0, 0, 0);
-    float3 canonical_specular = 0.0f;
     float diffuse_hit_dist = 0.0f;
     uint diffuse_hit_count = 0u;
     // NRD reflection tracking needs an in-lobe first hit, independent of RIS.
@@ -141,10 +140,7 @@ void ray_gen()
             // without selecting a path endpoint or doing spatiotemporal reuse.
             float3 brdf_all = eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal_ws, geometric_normal_ws,
                 view_dir, dir, 1.0f);
-            float3 brdf_diffuse = eval_surface_reflection_brdf_cos(albedo, roughness, metallic, normal_ws, geometric_normal_ws,
-                view_dir, dir, 0.0f);
             canonical_gi += brdf_all * reference_radiance / source_pdf;
-            canonical_specular += max(brdf_all - brdf_diffuse, 0.0f) * reference_radiance / source_pdf;
             // The path walk evaluates F in its selected hybrid measure. A
             // primary-to-RC evaluation would discard a postponed glossy prefix.
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
@@ -216,8 +212,6 @@ void ray_gen()
         float W = light.initial_weight / light.endpoint_pdf;
         light_weight = target_scalar(light_candidate.F) * W;
         canonical_gi += light.radiance_sum * n_brdf;
-        canonical_specular += light.radiance_sum * n_brdf *
-            restir_primary_specular_fraction(light_candidate, pos_ws, normal_ws, geometric_normal_ws, view_dir, albedo, roughness, metallic);
     }
     update_reservoir(reservoir, light_candidate, light_weight, random_float(seed));
 
@@ -261,5 +255,5 @@ void ray_gen()
     float hit_dist = diffuse_hit_count > 0u ? diffuse_hit_dist / float(diffuse_hit_count) : 0.0f;
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
-    restir_specular_output[launch_id] = float4(canonical_specular / n_brdf, specular_hit_dist);
+    restir_specular_output[launch_id] = float4(canonical_gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic), specular_hit_dist);
 }

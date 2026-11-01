@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ====================
 #include "common.hlsl"
 #include "nrd/NRD.hlsli"
+#include "restir_material_factors.hlsl"
 //===============================
 
 // combines remodulated nrd diffuse/specular output into restir_denoised
@@ -183,8 +184,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Match packing's GGX-to-NRD conversion using the original material guide,
     // not NRD's filtered roughness. Restore shading detail at render resolution.
     float3 diffuse_factor, specular_factor;
-    NRD_MaterialFactors(normal, view_dir, albedo * (1.0f - metallic),
-        lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
+    restir_nrd_material_factors(albedo, metallic, roughness * roughness,
+        saturate(dot(normal, view_dir)), diffuse_factor, specular_factor);
     float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
     // NRD already accumulates reprojected radiance. Averaging its output again
     // retains NRD's transient history after lighting changes, even when the

@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ====================
 #include "common.hlsl"
 #include "nrd/NRD.hlsli"
+#include "restir_material_factors.hlsl"
 [[vk::image_format("unknown")]] RWTexture2D<float4> restir_specular_input : register(u68);
 //===============================
 
@@ -96,7 +97,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
          (unjittered_uv - grid_offset) / grid_scale;
 
     float3 total_radiance = max(tex[thread_id.xy].rgb, 0.0f);
-    float3 spec_radiance = clamp(tex2[thread_id.xy].rgb, 0.0f, total_radiance);
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
     float metallic = get_material(uv).g;
     // Remove the view/roughness-dependent environment BRDF as well as colour.
@@ -111,10 +111,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float depth_motion = previous_view_z - view_z;
     float3 view_dir = normalize(get_camera_position() - position_ws);
     float3 diffuse_factor, specular_factor;
-    NRD_MaterialFactors(normal_ws, view_dir, albedo * (1.0f - metallic),
-        lerp(0.04f, albedo, metallic), roughness, diffuse_factor, specular_factor);
-    float3 diff_radiance = (total_radiance - spec_radiance) / diffuse_factor;
-    spec_radiance /= specular_factor;
+    restir_nrd_material_factors(albedo, metallic, roughness * roughness,
+        saturate(dot(normal_ws, view_dir)), diffuse_factor, specular_factor);
+    // Split and demodulate algebraically, avoiding cancellation when the diffuse
+    // share is tiny. Both channels carry the same illumination where supported.
+    float3 spec_radiance = total_radiance / (diffuse_factor + specular_factor);
+    float3 diff_radiance = float3(diffuse_factor.x > 0.0f ? spec_radiance.x : 0.0f,
+        diffuse_factor.y > 0.0f ? spec_radiance.y : 0.0f, diffuse_factor.z > 0.0f ? spec_radiance.z : 0.0f);
     // First-hit distance preserved through reuse lets ReBLUR size kernels at contacts.
     float hit_dist = max(tex[thread_id.xy].a, 0.0f);
     float3 hit_dist_params = float3(restir_hit_distance_a, restir_hit_distance_b, restir_hit_distance_c);
