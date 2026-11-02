@@ -61,6 +61,10 @@ namespace car
         config          cfg;
         car_preset      base_spec;
         active_upgrades upgrades;
+        vehicle_condition condition;
+        double oil_wear_pending = 0.0, chassis_wear_pending = 0.0;
+        bool nitrous_requested = false;
+        float nitrous_delivery = 0.0f;
         bool            lsd_kit_fitted = false;
         wheel           wheels[wheel_count];
         input_state     input;
@@ -395,7 +399,23 @@ namespace car
         void load_car(const car_preset& new_spec);
         car_preset make_upgraded_spec(const car_preset& base, const active_upgrades& ups);
         void clamp_upgrade_stage(int& stage, int max_stage);
-        void reapply_upgrades();
+        bool reapply_upgrades();
+        struct setting_info
+        {
+            std::string key, label, part;
+            float minimum, maximum, step, value;
+            int min_stage;
+        };
+        std::vector<setting_info> get_upgrade_settings() const;
+        const vehicle_condition& get_condition() const { return condition; }
+        bool set_condition(const vehicle_condition& value);
+        bool service_vehicle(const std::string& service);
+        void set_nitrous(bool active) { nitrous_requested = active; }
+        float get_nitrous_delivery() const { return nitrous_delivery; }
+        void update_vehicle_condition(float dt);
+        float engine_oil_loss(float speed, const car_preset& engine) const;
+        bool save_tuning(const std::string& path) const;
+        bool load_tuning(const std::string& path);
         void reset_upgrades();
 
         // tune shop access by part name (engine, clutch, lsd...), an unknown name reads -1 and a part the car cannot take has max 0

@@ -2,65 +2,121 @@
   <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp" alt="Spartan Engine" width="100%"/>
 </p>
 
-<h2 align="center">Path traced. GPU driven. Started before AI and developed alongside me while in the game industry</h2>
+<h3 align="center">Path traced. GPU driven.</h3>
+<p align="center"><i>Started before AI and developed alongside me while in the game industry.</i></p>
 
 <p align="center">
-  <sub>12 YEARS &nbsp;·&nbsp; 1 ENGINEER &nbsp;·&nbsp;
-  <img src=".github/images/platforms/windows.svg" height="14" alt=""/> WINDOWS &nbsp;
-  <img src=".github/images/platforms/linux.svg" height="14" alt=""/> LINUX &nbsp;
-  <img src=".github/images/platforms/apple.svg" height="14" alt=""/> MACOS &nbsp;·&nbsp;
-  <img src=".github/images/platforms/directx.svg" height="14" alt=""/> DIRECTX 12 &nbsp;
-  <img src=".github/images/platforms/vulkan.svg" height="14" alt=""/> VULKAN &nbsp;
-  <img src=".github/images/platforms/metal.svg" height="14" alt=""/> METAL</sub>
+  <a href="https://github.com/PanosK92/SpartanEngine/actions"><img src="https://img.shields.io/github/actions/workflow/status/PanosK92/SpartanEngine/workflow.yml?branch=master&style=for-the-badge&label=build&labelColor=161b22" alt="Build Status"></a>
+  <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/discord/677302405263785986?style=for-the-badge&logo=discord&logoColor=white&label=discord&color=5865F2&labelColor=161b22" alt="Discord"></a>
+  <a href="https://github.com/PanosK92/SpartanEngine/stargazers"><img src="https://img.shields.io/github/stars/PanosK92/SpartanEngine?style=for-the-badge&logo=github&color=e3b341&labelColor=161b22" alt="Stars"></a>
+  <a href="https://github.com/PanosK92/SpartanEngine/blob/master/license.md"><img src="https://img.shields.io/badge/license-Spartan_Engine-2f81f7?style=for-the-badge&labelColor=161b22" alt="License"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/PanosK92/SpartanEngine/actions"><img src="https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg" alt="Build Status"></a>
-  <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/discord/677302405263785986?logo=discord&label=Discord&color=5865F2&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/PanosK92/SpartanEngine/blob/master/license.md"><img src="https://img.shields.io/badge/license-Spartan_Engine-blue.svg" alt="License"></a>
+  <a href="https://github.com/PanosK92/SpartanEngine/releases"><img src="https://img.shields.io/badge/Download-2f81f7?style=for-the-badge&logo=github&logoColor=white" height="34" alt="Download"></a>&nbsp;
+  <a href="https://github.com/PanosK92/SpartanEngine/blob/master/plan.md"><img src="https://img.shields.io/badge/The_Plan-21262d?style=for-the-badge" height="34" alt="The Plan"></a>&nbsp;
+  <a href="https://github.com/PanosK92/SpartanEngine/wiki"><img src="https://img.shields.io/badge/Wiki-21262d?style=for-the-badge" height="34" alt="Wiki"></a>&nbsp;
+  <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/badge/Discord-21262d?style=for-the-badge&logo=discord&logoColor=white" height="34" alt="Discord"></a>&nbsp;
+  <a href="https://x.com/panoskarabelas"><img src="https://img.shields.io/badge/X-21262d?style=for-the-badge&logo=x&logoColor=white" height="34" alt="X"></a>&nbsp;
+  <a href="https://panoskarabelas.com/"><img src="https://img.shields.io/badge/Website-21262d?style=for-the-badge" height="34" alt="Website"></a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/PanosK92/SpartanEngine/releases"><b>Download</b></a> &nbsp;·&nbsp;
-  <a href="https://github.com/PanosK92/SpartanEngine/blob/master/plan.md"><b>The Plan</b></a> &nbsp;·&nbsp;
-  <a href="https://github.com/PanosK92/SpartanEngine/wiki"><b>Wiki</b></a> &nbsp;·&nbsp;
-  <a href="https://discord.gg/TG5r2BS"><b>Discord</b></a> &nbsp;·&nbsp;
-  <a href="https://x.com/panoskarabelas"><b>X</b></a> &nbsp;·&nbsp;
-  <a href="https://panoskarabelas.com/"><b>Website</b></a>
-</p>
+<br/>
 
-Spartan is a complete C++ game engine. Path-traced global illumination, hardware ray tracing, a bindless GPU-driven renderer and a racing-grade vehicle simulation sit alongside what a shipped game needs: an editor, Lua gameplay scripting, a standalone runtime, a game builder that packages a world into a distributable game, and Steam integration with achievements, stats and rich presence. The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors and a car showroom. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
+<table align="center">
+  <tr>
+    <td align="center" width="160"><h2>12</h2><sub>YEARS IN DEVELOPMENT</sub></td>
+    <td align="center" width="160"><h2>1</h2><sub>ENGINEER</sub></td>
+    <td align="center" width="160"><h2>600+</h2><sub>ENGINEERS ON DISCORD</sub></td>
+    <td align="center" width="160"><h2>200 Hz</h2><sub>VEHICLE SIMULATION</sub></td>
+  </tr>
+</table>
 
-**Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki), a [Lua scripting guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
+<table align="center">
+  <tr>
+    <td align="center" colspan="3"><sub><b>PLATFORMS</b></sub></td>
+    <td align="center" colspan="3"><sub><b>GRAPHICS APIS</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="105"><img src=".github/images/platforms/windows.svg" height="30" alt=""/><br/><sub>Windows</sub></td>
+    <td align="center" width="105"><img src=".github/images/platforms/linux.svg" height="30" alt=""/><br/><sub>Linux</sub></td>
+    <td align="center" width="105"><img src=".github/images/platforms/apple.svg" height="30" alt=""/><br/><sub>macOS</sub></td>
+    <td align="center" width="105"><img src=".github/images/platforms/directx.svg" height="30" alt=""/><br/><sub>DirectX 12</sub></td>
+    <td align="center" width="105"><img src=".github/images/platforms/vulkan.svg" height="30" alt=""/><br/><sub>Vulkan</sub></td>
+    <td align="center" width="105"><img src=".github/images/platforms/metal.svg" height="30" alt=""/><br/><sub>Metal</sub></td>
+  </tr>
+</table>
+
+<br/>
+
+## Overview
+
+Spartan is a **complete C++ game engine**. Path-traced global illumination, hardware ray tracing, a bindless GPU-driven renderer and a racing-grade vehicle simulation sit alongside what a shipped game needs:
 
 <table>
   <tr>
-    <td width="33%"><img src=".github/images/showcase_island_town.jpg" alt="Zakynthos: an open island some 30 km across, with towns, an airport, more than 200 spline roads, instanced forests and an FFT ocean"/></td>
-    <td width="33%"><img src=".github/images/showcase_island_coast.jpg" alt="Island coast: dynamic time of day, atmospheric scattering and shallow-water caustics"/></td>
-    <td width="33%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a turntable, lit by three emissive tubes through volumetric fog"/></td>
+    <td align="center" width="20%" valign="top"><b>Editor</b></td>
+    <td align="center" width="20%" valign="top"><b>Lua scripting</b><br/><sub>for gameplay</sub></td>
+    <td align="center" width="20%" valign="top"><b>Standalone runtime</b></td>
+    <td align="center" width="20%" valign="top"><b>Game builder</b><br/><sub>packages a world into a distributable game</sub></td>
+    <td align="center" width="20%" valign="top"><b>Steam</b><br/><sub>achievements, stats and rich presence</sub></td>
+  </tr>
+</table>
+
+The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors and a car showroom. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
+
+> [!IMPORTANT]
+> **Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki), a [Lua scripting guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
+
+## Showcase
+
+<table>
+  <tr>
+    <td colspan="2"><img src=".github/images/showcase_island_town.jpg" alt="Zakynthos: an open island some 30 km across, with towns, an airport, more than 200 spline roads, instanced forests and an FFT ocean"/></td>
   </tr>
   <tr>
-    <td><img src=".github/images/showcase_sponza.jpg" alt="Sponza: ReSTIR path tracing, no light probes, no bake"/></td>
-    <td><img src=".github/images/showcase_liminal.jpg" alt="Liminal space: procedural and streamed, lit by path-traced global illumination"/></td>
+    <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; an island some 30 km across with towns, an airport, 200+ spline roads, instanced forests and an FFT ocean</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/images/showcase_island_coast.jpg" alt="Island coast: dynamic time of day, atmospheric scattering and shallow-water caustics"/></td>
+    <td width="50%"><img src=".github/images/showcase_sponza.jpg" alt="Sponza: ReSTIR path tracing, no light probes, no bake"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>ISLAND COAST</b> &nbsp;·&nbsp; dynamic time of day, atmospheric scattering, shallow-water caustics</sub></td>
+    <td align="center"><sub><b>SPONZA</b> &nbsp;·&nbsp; ReSTIR path tracing, no light probes, no bake</sub></td>
+  </tr>
+  <tr>
+    <td><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a turntable, lit by three emissive tubes through volumetric fog"/></td>
     <td><img src=".github/images/showcase_ferrari_close.jpg" alt="Showroom: layered car paint with clearcoat and ray-traced reflections"/></td>
   </tr>
   <tr>
-    <td colspan="3" align="center"><sub>Real-time captures. Zakynthos: an island some 30 km across with towns, an airport and 200+ spline roads &nbsp;·&nbsp; Sponza and the liminal office: path traced, no bake &nbsp;·&nbsp; Showroom: layered clearcoat paint and ray-traced reflections. Every world is fully simulated: walkable, interactive and drivable.</sub></td>
+    <td align="center"><sub><b>SHOWROOM</b> &nbsp;·&nbsp; LaFerrari lit by three emissive tubes through volumetric fog</sub></td>
+    <td align="center"><sub><b>CAR PAINT</b> &nbsp;·&nbsp; layered clearcoat and ray-traced reflections</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src=".github/images/showcase_liminal.jpg" alt="Liminal space: procedural and streamed, lit by path-traced global illumination"/></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>LIMINAL OFFICE</b> &nbsp;·&nbsp; procedural and streamed, path traced, no bake</sub></td>
   </tr>
 </table>
+
+<p align="center"><sub>All real-time captures. Every world is fully simulated: walkable, interactive and drivable.</sub></p>
 
 ## Features
 
 <table>
   <tr>
-    <td width="33%" valign="top"><b>No bake.</b><br/><sub>ReSTIR path-traced global illumination every frame. No probes, no lightmaps.</sub></td>
-    <td width="33%" valign="top"><b>One draw per pass.</b><br/><sub>The GPU owns the data. Bindless buffers, GPU culling, a single indirect draw.</sub></td>
-    <td width="33%" valign="top"><b>200 Hz.</b><br/><sub>Racing-sim vehicle dynamics inside a general-purpose engine.</sub></td>
+    <td width="33%" valign="top" align="center"><h3>No bake</h3><sub>ReSTIR path-traced global illumination every frame. No probes, no lightmaps.</sub></td>
+    <td width="33%" valign="top" align="center"><h3>One draw per pass</h3><sub>The GPU owns the data. Bindless buffers, GPU culling, a single indirect draw.</sub></td>
+    <td width="33%" valign="top" align="center"><h3>200 Hz</h3><sub>Racing-sim vehicle dynamics inside a general-purpose engine.</sub></td>
   </tr>
 </table>
 
+<p align="center"><sub>Expand a section for the full breakdown.</sub></p>
+
 <details>
-<summary><b>Lighting and global illumination</b> &nbsp;·&nbsp; ReSTIR, ray tracing, IES profiles, clouds, fog, FFT ocean</summary>
+<summary><b>Lighting and global illumination</b> &nbsp;·&nbsp; <sub>ReSTIR, ray tracing, IES profiles, clouds, fog, FFT ocean</sub></summary>
 
 <br/>
 
@@ -78,7 +134,7 @@ Spartan is a complete C++ game engine. Path-traced global illumination, hardware
 </details>
 
 <details>
-<summary><b>Rendering architecture</b> &nbsp;·&nbsp; bindless, GPU-driven, meshlets, universal HLSL</summary>
+<summary><b>Rendering architecture</b> &nbsp;·&nbsp; <sub>bindless, GPU-driven, meshlets, universal HLSL</sub></summary>
 
 <br/>
 
@@ -97,7 +153,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 </details>
 
 <details>
-<summary><b>Performance, camera and post-processing</b> &nbsp;·&nbsp; DLSS 4.5, XeSS, FSR 4 upscaling, FSR 3.1 frame generation, TAAU, VRS, GT7 tonemapping, HDR10</summary>
+<summary><b>Performance, camera and post-processing</b> &nbsp;·&nbsp; <sub>DLSS 4.5, XeSS, FSR 4 upscaling, FSR 3.1 frame generation, TAAU, VRS, GT7 tonemapping, HDR10</sub></summary>
 
 <br/>
 
@@ -116,7 +172,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 </details>
 
 <details>
-<summary><b>Vehicle dynamics at 200 Hz</b> &nbsp;·&nbsp; Pacejka tires, thermal brakes, LSD, aero, force feedback</summary>
+<summary><b>Vehicle dynamics at 200 Hz</b> &nbsp;·&nbsp; <sub>Pacejka tires, thermal brakes, LSD, aero, force feedback</sub></summary>
 
 <br/>
 
@@ -139,7 +195,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 </details>
 
 <details>
-<summary><b>Engine systems</b> &nbsp;·&nbsp; physics, animation, particles, weather, roads, Lua, audio, editor, profiler, VR</summary>
+<summary><b>Engine systems</b> &nbsp;·&nbsp; <sub>physics, animation, particles, weather, roads, Lua, audio, editor, profiler, VR</sub></summary>
 
 <br/>
 
@@ -163,27 +219,39 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 </details>
 
-## Build
+## Quick start
 
-Prebuilt binaries ship with every **[release](https://github.com/PanosK92/SpartanEngine/releases)**. From source, see the **[Building Guide](https://github.com/PanosK92/SpartanEngine/wiki/Building)**.
+> [!TIP]
+> **Just want to try it?** Prebuilt binaries ship with every **[release](https://github.com/PanosK92/SpartanEngine/releases)**. Building from source? The **[Building Guide](https://github.com/PanosK92/SpartanEngine/wiki/Building)** has the details.
+
+#### <img src=".github/images/platforms/windows.svg" height="16" alt=""/>&nbsp; Windows
 
 ```powershell
-# Windows: then open spartan.slnx (use d3d12 for DirectX 12, or no arguments for a menu)
+# then open spartan.slnx (use d3d12 for DirectX 12, or no arguments for a menu)
 generate_project_files.bat vs2026 vulkan
 ```
 
+#### <img src=".github/images/platforms/linux.svg" height="16" alt=""/>&nbsp; Linux
+
 ```bash
-# Linux
 tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make config=release_x64
 ```
 
+#### <img src=".github/images/platforms/apple.svg" height="16" alt=""/>&nbsp; macOS 26.0+ &nbsp;<sub>Apple silicon, Metal 4</sub>
+
 ```bash
-# macOS 26.0+ (Apple silicon, Metal 4): needs Xcode 26, Homebrew (brew install cmake ninja) and the
-# Metal Shader Converter from developer.apple.com/metal/shader-converter, then open spartan.xcworkspace
+# needs Xcode 26, Homebrew (brew install cmake ninja) and the Metal Shader Converter
+# from developer.apple.com/metal/shader-converter, then open spartan.xcworkspace
 tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 ```
 
-Worlds live in `worlds/` as XML; their assets live in `binaries/project/`, excluded from Git and downloaded during setup. Start reading at **[Engine.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp)**, the entry point, and the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting)** for gameplay code.
+<table>
+  <tr>
+    <td width="33%" valign="top"><b>Worlds</b><br/><sub>Live in <code>worlds/</code> as XML. Their assets live in <code>binaries/project/</code>, excluded from Git and downloaded during setup.</sub></td>
+    <td width="33%" valign="top"><b>Start reading</b><br/><sub><b><a href="https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp">Engine.cpp</a></b>, the entry point.</sub></td>
+    <td width="33%" valign="top"><b>Gameplay code</b><br/><sub>The <b><a href="https://github.com/PanosK92/SpartanEngine/wiki/Scripting">Lua Scripting Guide</a></b>.</sub></td>
+  </tr>
+</table>
 
 <details>
 <summary><b>Build targets and architecture notes</b></summary>
@@ -222,26 +290,50 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 
 </details>
 
-## In the Wild
+## In the wild
 
-- **Godot Engine** integrates Spartan's TAA ([source](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2))
-- **S.T.A.L.K.E.R. Anomaly** ships a rendering addon built on Spartan's source ([ModDB](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders))
-- **Jesse Guerrero's [beginner programming book](https://www.amazon.com/dp/B0CXG1CMNK)** features Spartan's code and community
-- **Origin**: a portfolio piece at the [University of Thessaly](https://en.wikipedia.org/wiki/University_of_Thessaly) under Professor [Fotis Kokkoras](https://ds.uth.gr/en/staff-en/faculty-en/kokkoras/)
+<table>
+  <tr>
+    <td width="25%" valign="top"><b>Godot Engine</b><br/><sub>Integrates Spartan's TAA</sub><br/><sub><a href="https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2">Source →</a></sub></td>
+    <td width="25%" valign="top"><b>S.T.A.L.K.E.R. Anomaly</b><br/><sub>Ships a rendering addon built on Spartan's source</sub><br/><sub><a href="https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders">ModDB →</a></sub></td>
+    <td width="25%" valign="top"><b>Published book</b><br/><sub>Jesse Guerrero's beginner programming book features Spartan's code and community</sub><br/><sub><a href="https://www.amazon.com/dp/B0CXG1CMNK">Amazon →</a></sub></td>
+    <td width="25%" valign="top"><b>Origin</b><br/><sub>A portfolio piece at the <a href="https://en.wikipedia.org/wiki/University_of_Thessaly">University of Thessaly</a> under Professor <a href="https://ds.uth.gr/en/staff-en/faculty-en/kokkoras/">Fotis Kokkoras</a></sub></td>
+  </tr>
+</table>
 
-Projects built on Spartan code can be featured here. **[Get in touch](https://x.com/panoskarabelas)**.
+<p align="center"><sub>Projects built on Spartan code can be featured here. <b><a href="https://x.com/panoskarabelas">Get in touch →</a></b></sub></p>
 
 ## Ready for games?
 
-Yes. Older coverage, like *"The BEST Game Engine You SHOULDN'T Use"*, describes an engine that no longer exists. Back then Spartan was a renderer. Today it has the scripting, runtime, packaging and Steam support to ship, and graphically it goes further than any other open-source engine. The one thing that hasn't changed is support: if you need hand-holding, pick something else. If you don't, Spartan is ready.
+> **Yes.** Older coverage, like *"The BEST Game Engine You SHOULDN'T Use"*, describes an engine that no longer exists. Back then Spartan was a renderer. Today it has the scripting, runtime, packaging and Steam support to ship, and graphically it goes further than any other open-source engine.
+>
+> The one thing that hasn't changed is support: if you need hand-holding, pick something else. If you don't, **Spartan is ready.**
 
 ## Community
 
-**[Discord](https://discord.gg/TG5r2BS)**: rendering deep dives and work in progress, 600+ engineers &nbsp;·&nbsp; **[Contribute](https://github.com/PanosK92/SpartanEngine/wiki/Contributing)**: contributors get [exclusive perks](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor) designed to accelerate learning &nbsp;·&nbsp; **[Sponsor](https://github.com/sponsors/PanosK92)**: funds the hosting behind the one-click setup &nbsp;·&nbsp; **Podcast**: *Exploring the tech world and beyond*, conversations across cutting-edge industries, on [YouTube](https://youtu.be/OZRwCZhglsQ) and [Spotify](https://open.spotify.com/show/5F27nWKn9TZdClc5db9efY)
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <b><a href="https://discord.gg/TG5r2BS">Discord</a></b><br/>
+      <sub>Rendering deep dives and work in progress, with 600+ engineers.</sub>
+      <br/><br/>
+      <b><a href="https://github.com/PanosK92/SpartanEngine/wiki/Contributing">Contribute</a></b><br/>
+      <sub>Contributors get <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">exclusive perks</a> designed to accelerate learning.</sub>
+      <br/><br/>
+      <b><a href="https://github.com/sponsors/PanosK92">Sponsor</a></b><br/>
+      <sub>Funds the hosting behind the one-click setup.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="https://youtu.be/OZRwCZhglsQ"><img src=".github/images/podcast.png" alt="Panos Karabelas podcast"/></a><br/>
+      <b>Podcast</b> &nbsp;·&nbsp; <sub><i>Exploring the tech world and beyond</i>, conversations across cutting-edge industries, on <a href="https://youtu.be/OZRwCZhglsQ">YouTube</a> and <a href="https://open.spotify.com/show/5F27nWKn9TZdClc5db9efY">Spotify</a></sub>
+    </td>
+  </tr>
+</table>
 
 ## License
 
-Free for noncommercial use under the **[Spartan Engine License 1.0](license.md)**. **Commercial use requires prior written permission and negotiated payment terms.**
+> [!NOTE]
+> Free for noncommercial use under the **[Spartan Engine License 1.0](license.md)**. **Commercial use requires prior written permission and negotiated payment terms.**
 
 <details>
 <summary>License summary</summary>
@@ -255,3 +347,7 @@ Commercial fees, royalties, or a combination are agreed case by case, with no au
 Third-party components retain their own licenses. Copies and versions previously released under MIT retain their existing permissions. See [license.md](license.md) for the complete terms.
 
 </details>
+
+<br/>
+
+<p align="center"><sub>Built by <a href="https://panoskarabelas.com/">Panos Karabelas</a> &nbsp;·&nbsp; 12 years and counting</sub></p>

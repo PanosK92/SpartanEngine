@@ -14,6 +14,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../car/CarPresets.h"
 #include "../car/CarSimulation.h"
 #include "../world/Entity.h"
+#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_stdinc.h>
+#include "../physics/PhysicsWorld.h"
 //==============================
 
 namespace spartan::scripting
@@ -56,6 +59,26 @@ namespace spartan::scripting
             return physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
         }
 
+        const std::string& garage_directory()
+        {
+            static const std::string directory = []
+            {
+                char* path = SDL_GetPrefPath("Spartan", "Plan");
+                std::string result = path ? path : "";
+                SDL_free(path);
+                return result;
+            }();
+            return directory;
+        }
+
+        std::string garage_path(const ::car::Simulation& simulation)
+        {
+            std::string name = simulation.get_base_spec().name ? simulation.get_base_spec().name : "car";
+            for (char& c : name)
+                if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))) c = '_';
+            return garage_directory().empty() ? std::string() : garage_directory() + "garage_" + name + ".xml";
+        }
+
         sol::table make_stats(sol::state_view lua, const ::car::Simulation& simulation, const ::car::car_preset& spec)
         {
             float power_kw, power_rpm, torque_nm, torque_rpm;
@@ -89,6 +112,16 @@ namespace spartan::scripting
             stats["drag"]              = spec.drag_coeff;
             stats["yaw_control"]       = spec.yaw_control_enabled;
             stats["electric"]          = spec.electric_enabled;
+            const auto& condition = simulation.get_condition();
+            stats["oil_quality"] = condition.oil_quality;
+            stats["oil_temperature"] = condition.oil_temperature;
+            stats["chassis_quality"] = condition.chassis_quality;
+            stats["distance_km"] = condition.distance_km;
+            stats["oil_distance_km"] = condition.oil_distance_km;
+            stats["nitrous_kg"] = condition.nitrous_kg;
+            stats["nitrous_active"] = simulation.get_nitrous_delivery() > 0.0f;
+            stats["tire_optimal_temp"] = spec.tire_optimal_temp;
+            stats["tire_wear_rate"] = spec.tire_wear_rate;
             return stats;
         }
     }
@@ -187,6 +220,8 @@ namespace spartan::scripting
     {
         sol::table tuning = state.create_named_table("CarTuning");
 
+        tuning["GetSaveDirectory"] = []() { return garage_directory(); };
+
         tuning["GetPlayerCar"] = []() -> Entity*
         {
             Car* car = Car::GetPlayerCar();
@@ -208,12 +243,14 @@ namespace spartan::scripting
         // -1 for an unknown part or a car without a simulation
         tuning["GetStage"] = [](sol::optional<Entity*> entity, const std::string& part)
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             return simulation ? simulation->get_upgrade_stage(part) : -1;
         };
 
         tuning["GetStageMax"] = [](sol::optional<Entity*> entity, const std::string& part)
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             return simulation ? simulation->get_upgrade_stage_max(part) : 0;
         };
@@ -221,24 +258,75 @@ namespace spartan::scripting
         // rebuilds the vehicle model with the part fitted, stage 0 takes it off
         tuning["SetStage"] = [](sol::optional<Entity*> entity, const std::string& part, int stage)
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             return simulation && simulation->set_upgrade_stage(part, stage);
         };
 
         tuning["GetSetting"] = [](sol::optional<Entity*> entity, const std::string& setting)
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             return simulation ? simulation->get_upgrade_setting(setting) : 0.0f;
         };
 
         tuning["SetSetting"] = [](sol::optional<Entity*> entity, const std::string& setting, float value)
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             return simulation && simulation->set_upgrade_setting(setting, value);
         };
 
+        tuning["GetSettings"] = [](sol::this_state s, sol::optional<Entity*> entity)
+        {
+            sol::state_view lua(s);
+            sol::table result = lua.create_table();
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            if (auto* simulation = resolve_simulation(entity))
+            {
+                int index = 1;
+                for (const auto& setting : simulation->get_upgrade_settings())
+                {
+                    sol::table entry = lua.create_table();
+                    entry["key"] = setting.key;
+                    entry["label"] = setting.label;
+                    entry["part"] = setting.part;
+                    entry["min"] = setting.minimum;
+                    entry["max"] = setting.maximum;
+                    entry["step"] = setting.step;
+                    entry["min_stage"] = setting.min_stage;
+                    result[index++] = entry;
+                }
+            }
+            return result;
+        };
+        tuning["Service"] = [](sol::optional<Entity*> entity, const std::string& service)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            auto* simulation = resolve_simulation(entity);
+            return simulation && simulation->service_vehicle(service);
+        };
+        tuning["SetNitrous"] = [](sol::optional<Entity*> entity, bool active)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            if (auto* simulation = resolve_simulation(entity)) simulation->set_nitrous(active);
+        };
+        tuning["Save"] = [](sol::optional<Entity*> entity)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            auto* simulation = resolve_simulation(entity);
+            return simulation && simulation->save_tuning(garage_path(*simulation));
+        };
+        tuning["Load"] = [](sol::optional<Entity*> entity)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            auto* simulation = resolve_simulation(entity);
+            return simulation && simulation->load_tuning(garage_path(*simulation));
+        };
+
         tuning["ResetAll"] = [](sol::optional<Entity*> entity)
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             if (simulation)
             {
@@ -249,6 +337,7 @@ namespace spartan::scripting
 
         tuning["GetStats"] = [](sol::this_state s, sol::optional<Entity*> entity) -> sol::object
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             if (!simulation)
             {
@@ -260,6 +349,7 @@ namespace spartan::scripting
         // the stats the car would have with one part at another stage, nothing is fitted
         tuning["PreviewStats"] = [](sol::this_state s, sol::optional<Entity*> entity, const std::string& part, int stage) -> sol::object
         {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
             ::car::Simulation* simulation = resolve_simulation(entity);
             if (!simulation)
             {

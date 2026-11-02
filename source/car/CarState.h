@@ -243,9 +243,25 @@ namespace car
         int yaw_control = 0;
         int brake_controller = 0;
         int rigidity = 0;
+        int supercharger = 0;
+        int nitrous = 0;
+        int torque_controller = 0;
+        // Named settings use the registry in CarSimulation.cpp; unset values retain the kit's calibration.
+        float tuning_values[32] = {};
+        uint64_t tuning_mask = 0;
         // settings the parts unlock, zero brake bias keeps the car's own
         float brake_bias_front = 0.0f;
         float final_drive_scale = 1.0f;
+    };
+
+    struct vehicle_condition
+    {
+        float oil_quality = 1.0f;
+        float oil_temperature = 20.0f;
+        float chassis_quality = 1.0f;
+        double distance_km = 0.0;
+        double oil_distance_km = 0.0;
+        float nitrous_kg = 0.0f;
     };
 
     // cooldown prevents automatic shift hunting

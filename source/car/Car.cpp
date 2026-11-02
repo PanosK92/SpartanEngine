@@ -2851,6 +2851,11 @@ namespace spartan
             CarPhysics::Get(*physics).ShiftUp();
         }
 
+        if (auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
+        {
+            if (driving) simulation->set_nitrous(!Input::IsBlockedByUi() && Input::GetKey(KeyCode::N));
+            else if (!m_externally_controlled) simulation->set_nitrous(false);
+        }
         TickControllerFeedback(physics, dt);
     }
 

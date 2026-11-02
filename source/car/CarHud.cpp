@@ -677,6 +677,22 @@ namespace spartan::car_hud
                 tach.manual      = CarPhysics::Get(*physics).GetManualTransmission();
                 draw_tachometer(dl, font, dial_center, dial_radius, dial_scale, tach, io.DeltaTime);
 
+                if (simulation)
+                {
+                    const auto& condition = simulation->get_condition();
+                    char service_text[96];
+                    snprintf(service_text, sizeof(service_text), "OIL %.0f%%  %.0f C   CHASSIS %.0f%%",
+                        condition.oil_quality * 100.0f, condition.oil_temperature, condition.chassis_quality * 100.0f);
+                    draw_text(service_text, 11.0f, ImVec2(origin.x + margin, panel_tl.y - 38.0f * scale),
+                        condition.oil_quality < 0.25f ? red : cyan);
+                    if (simulation->get_upgrade_stage("nitrous") > 0)
+                    {
+                        snprintf(service_text, sizeof(service_text), "N  NITROUS %.2f KG%s", condition.nitrous_kg,
+                            simulation->get_nitrous_delivery() > 0.0f ? "  INJECTING" : "");
+                        draw_text(service_text, 11.0f, ImVec2(origin.x + margin, panel_tl.y - 20.0f * scale), cyan);
+                    }
+                }
+
                 // boost readout tops the tell tale column
                 if (turbo_enabled)
                 {

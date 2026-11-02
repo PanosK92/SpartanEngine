@@ -120,6 +120,8 @@ namespace car
             halfshaft_mass       = 3.5f;
             driveshaft_mass      = 8.0f;
             differential_mass    = 16.0f;
+            front_bump_scale = rear_bump_scale = 1.0f;
+            front_rebound_scale = rear_rebound_scale = 1.0f;
             damping_bump_high_speed_ratio = 0.4f;
             damping_rebound_high_speed_ratio = 0.7f;
             damper_knee_velocity = 0.25f;
@@ -216,6 +218,7 @@ namespace car
         float track_front;           // m, distance between front wheel centers
         float track_rear;            // m, distance between rear wheel centers
         float suspension_height;     // m, ride height of chassis bottom above wheel center
+        float ride_offset_front, ride_offset_rear; // m, positive raises the body above the axle
         float suspension_travel;     // m, available compression travel per wheel
         float front_wheel_radius;
         float rear_wheel_radius;
@@ -439,6 +442,7 @@ namespace car
         float rear_spring_freq;
         float front_damping_ratio;
         float rear_damping_ratio;
+        float front_bump_scale, rear_bump_scale, front_rebound_scale, rear_rebound_scale;
         float damping_bump_ratio;
         float damping_rebound_ratio;
         float damping_bump_high_speed_ratio;

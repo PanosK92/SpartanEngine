@@ -40,6 +40,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <filesystem>
 //===========================================
 
 namespace spartan
@@ -268,6 +269,134 @@ namespace spartan
                 valid &= check(true, true);
                 if (!valid) { error = std::string("Vehicle mode invariant failed: ") + path; return false; }
             }
+            return true;
+        });
+        RunTest("Physics.TuningAndMaintenance", [](std::string& error)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            const auto* definition = car::load_car_file("project/cars/ferrari_laferrari.car");
+            if (!definition) { error = "Missing tuning test car"; return false; }
+            car::Simulation simulation;
+            simulation.load_car(definition->performance);
+            car::setup_params params;
+            params.physics = static_cast<physx::PxPhysics*>(PhysicsWorld::GetPhysics());
+            params.scene = static_cast<physx::PxScene*>(PhysicsWorld::GetScene());
+            if (!simulation.setup(params)) { error = "Tuning test setup failed"; return false; }
+            auto check = [&](bool valid, const char* message)
+            {
+                if (!valid) error = message;
+                return valid;
+            };
+            if (!check(!simulation.set_upgrade_setting("spring_front", 2.0f), "Stock suspension accepted locked setting")) return false;
+            if (!check(simulation.set_upgrade_stage("suspension", 3), "Racing suspension failed")) return false;
+            simulation.set_upgrade_setting("spring_front", 1.2f);
+            const float soft = simulation.get_multibody_state().corners[0].shock_stiffness;
+            simulation.set_upgrade_setting("spring_front", 2.4f);
+            const float stiff = simulation.get_multibody_state().corners[0].shock_stiffness;
+            if (!check(soft > 0 && stiff > soft * 3.8f && stiff < soft * 4.2f, "Spring setting did not change physical coilover stiffness")) return false;
+            const float damper_before = simulation.compute_damper_force(-0.1f, 1000.0f);
+            simulation.set_upgrade_setting("bump", 1.8f);
+            if (!check(fabsf(simulation.compute_damper_force(-0.1f, 1000.0f) - damper_before) > 1.0f, "Bump adjustment did not affect damper force")) return false;
+            simulation.set_upgrade_setting("ride_front", 0.03f);
+            simulation.set_upgrade_setting("camber_front", -0.05f);
+            if (!check(fabsf(simulation.get_spec().ride_offset_front - 0.03f) < 0.0001f &&
+                fabsf(simulation.get_spec().front_camber + 0.05f) < 0.0001f, "Alignment/ride settings not applied")) return false;
+            simulation.set_upgrade_stage("lsd", 4);
+            simulation.set_upgrade_setting("lsd_accel", 0.8f);
+            simulation.set_upgrade_setting("lsd_decel", 0.1f);
+            if (!check(simulation.get_spec().lsd_lock_ratio_accel == 0.8f && simulation.get_spec().lsd_lock_ratio_decel == 0.1f, "LSD settings not applied")) return false;
+            simulation.set_upgrade_stage("transmission", 3);
+            const float old_gear = simulation.get_spec().gear_ratios[2];
+            if (!check(simulation.set_upgrade_setting("gear_1", old_gear + 0.1f) &&
+                simulation.get_spec().gear_ratios[2] > old_gear, "Individual gearing not applied")) return false;
+            if (!check(!simulation.set_upgrade_setting("gear_2", 6.0f) &&
+                !simulation.set_upgrade_setting("spring_front", std::numeric_limits<float>::quiet_NaN()), "Invalid tuning accepted")) return false;
+            simulation.set_upgrade_stage("tires", 11);
+            const float slick_dirt = simulation.get_surface_friction(car::surface_dirt) * simulation.get_spec().tire_friction;
+            const float slick_ice = simulation.get_surface_friction(car::surface_ice) * simulation.get_spec().tire_friction;
+            const float slick_wear = simulation.get_spec().tire_wear_rate;
+            simulation.set_upgrade_stage("tires", 12);
+            if (!check(simulation.get_surface_friction(car::surface_dirt) * simulation.get_spec().tire_friction > slick_dirt, "Dirt tires provide no loose-surface advantage")) return false;
+            simulation.set_upgrade_stage("tires", 13);
+            if (!check(simulation.get_surface_friction(car::surface_ice) * simulation.get_spec().tire_friction > slick_ice, "Snow tires provide no ice advantage")) return false;
+            simulation.set_upgrade_stage("tires", 7);
+            if (!check(simulation.get_spec().tire_wear_rate < slick_wear, "Hard racing tire does not last longer")) return false;
+            simulation.set_upgrade_stage("supercharger", 1);
+            const float charged = simulation.get_boost_target(1.0f, 3000.0f);
+            simulation.set_upgrade_stage("supercharger", 0);
+            if (!check(charged > 0.3f && simulation.get_boost_target(1.0f, 3000.0f) == 0.0f, "Supercharger fitting/removal left incorrect boost")) return false;
+            simulation.reset_upgrades();
+            for (int i = 0; i < 20000; ++i) simulation.update_vehicle_condition(0.001f);
+            if (!check(simulation.get_condition().oil_quality < 0.99999f, "Oil ageing lost to timestep rounding")) return false;
+            simulation.service_vehicle("oil");
+            simulation.get_body()->setLinearVelocity(physx::PxVec3(0, 0, 30));
+            for (int i = 0; i < 40000; ++i) simulation.update_vehicle_condition(0.001f);
+            if (!check(simulation.get_condition().chassis_quality < 1.0f, "Chassis fatigue lost to timestep rounding")) return false;
+            simulation.get_body()->setLinearVelocity(physx::PxVec3(0));
+            simulation.service_vehicle("oil");
+            simulation.set_upgrade_stage("nitrous", 1);
+            simulation.service_vehicle("nitrous_refill");
+            simulation.mount_dyno(true);
+            simulation.dyno.start_rpm = 4500;
+            simulation.dyno.end_rpm = 5000;
+            simulation.dyno.sweep = false;
+            simulation.dyno.sweep_seconds = 120;
+            simulation.dyno.throttle = 1;
+            auto run = [&](bool inject)
+            {
+                simulation.dyno.running = false; // No CSV export from this in-memory regression.
+                if (!simulation.start_dyno()) return -1.0f;
+                simulation.set_nitrous(inject);
+                for (int i = 0; i < 250; ++i) simulation.tick_dyno(0.01f);
+                simulation.dyno.running = false;
+                return simulation.dyno.samples.empty() ? -1.0f : simulation.dyno.samples.back().engine_net_nm;
+            };
+            const float fresh = run(false);
+            auto condition = simulation.get_condition();
+            condition.oil_quality = 0;
+            simulation.set_condition(condition);
+            const float old = run(false);
+            if (!check(fresh > 0 && old < fresh - 5, "Old oil has no measured shaft-torque penalty")) return false;
+            simulation.service_vehicle("oil");
+            const float restored = run(false);
+            if (!check(restored > old + 5, "Oil service failed to restore shaft torque")) return false;
+            const float gas_before = simulation.get_condition().nitrous_kg;
+            const float injected = run(true);
+            if (!check(injected > restored + 20 && simulation.get_condition().nitrous_kg < gas_before, "Nitrous must increase measured torque and consume gas")) return false;
+            condition = simulation.get_condition();
+            condition.nitrous_kg = 0;
+            condition.chassis_quality = 0.3f;
+            simulation.set_condition(condition);
+            const float empty = run(true);
+            if (!check(empty < injected - 20 && simulation.get_nitrous_delivery() == 0, "Empty bottle still adds torque")) return false;
+            simulation.update_multibody(0.01f);
+            const float tired_force = simulation.get_multibody_state().corners[0].forces.elastic;
+            simulation.service_vehicle("chassis");
+            simulation.update_multibody(0.01f);
+            const float restored_force = simulation.get_multibody_state().corners[0].forces.elastic;
+            if (!check(tired_force > 0 && restored_force > tired_force, "Chassis restoration does not change actual suspension forces")) return false;
+            SP_LOG_INFO("Tuning regression: spring %.0f -> %.0f N/m; crank fresh %.1f, old oil %.1f, serviced %.1f, nitrous %.1f, empty %.1f Nm",
+                soft, stiff, fresh, old, restored, injected, empty);
+            if (!check(simulation.get_condition().chassis_quality == 1.0f, "Chassis restoration failed")) return false;
+            simulation.dyno.running = false;
+            simulation.mount_dyno(false);
+            const auto save = std::filesystem::temp_directory_path() / "spartan_tuning_regression.xml";
+            const bool saved = simulation.save_tuning(save.string());
+            const auto saved_condition = simulation.get_condition();
+            simulation.reset_upgrades();
+            const bool loaded = simulation.load_tuning(save.string());
+            std::error_code remove_error;
+            std::filesystem::remove(save, remove_error);
+            std::filesystem::remove(save.string() + ".tmp", remove_error);
+            if (!check(saved && loaded && simulation.get_upgrade_stage("nitrous") == 1 &&
+                simulation.get_condition().oil_quality == saved_condition.oil_quality, "Garage save/load did not preserve parts and condition")) return false;
+            car::Simulation awd;
+            auto preset = definition->performance;
+            preset.drivetrain_type = 2;
+            awd.load_car(preset);
+            awd.set_upgrade_stage("torque_controller", 1);
+            awd.set_upgrade_setting("torque_split", 0.7f);
+            if (!check(awd.get_spec().torque_split_front == 0.7f, "AWD torque split setting not applied")) return false;
             return true;
         });
         RunTest("World.ComponentCopy", Test_ComponentCopy);

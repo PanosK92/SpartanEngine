@@ -9,6 +9,12 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "CarSimulation.h"
 #include <physx/cooking/PxCooking.h>
+#include "../io/pugixml.hpp"
+#include <filesystem>
+#include <cmath>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 //=======================
 
 namespace car
@@ -732,7 +738,13 @@ namespace car
                 tuning::surface_friction_ice,
                 tuning::surface_friction_dirt
             };
-            return (surface >= 0 && surface < surface_count) ? friction[surface] : 1.0f;
+            float compound = 1.0f;
+            const bool loose = surface == surface_gravel || surface == surface_dirt || surface == surface_grass;
+            if (upgrades.tires == 12) compound = loose ? 1.65f : (surface == surface_ice ? 1.15f : 1.0f);
+            else if (upgrades.tires == 13) compound = surface == surface_ice ? 3.0f : (loose ? 1.25f : 1.0f);
+            else if (upgrades.tires >= 7 && upgrades.tires <= 11)
+                compound = surface == surface_ice ? 0.55f : (loose ? 0.60f : (surface == surface_wet_asphalt ? 0.70f : 1.0f));
+            return ((surface >= 0 && surface < surface_count) ? friction[surface] : 1.0f) * compound;
     }
 
 
@@ -2928,7 +2940,10 @@ namespace car
                 float compression = PxMax(corner.shock_rest_length - length, 0.0f);
                 // the spring works from its free length, but travel is used from ride height
                 float travel_compression = corner.shock_design_length - length;
-                float damper = compute_damper_force(relative_speed, corner.shock_damping);
+                const float axle_damping = relative_speed < 0.0f
+                    ? (is_front(i) ? spec.front_bump_scale : spec.rear_bump_scale)
+                    : (is_front(i) ? spec.front_rebound_scale : spec.rear_rebound_scale);
+                float damper = compute_damper_force(relative_speed, corner.shock_damping) * axle_damping;
                 float bump_extra = 0.0f;
                 float packer_force = 0.0f;
                 float shock_travel = cfg.suspension_travel * corner.design_motion_ratio;
@@ -2947,9 +2962,10 @@ namespace car
                     bump_extra += packer_force;
                 }
 
-                float force_magnitude = PxMax(corner.shock_stiffness * compression, 0.0f) - damper + bump_extra;
+                const float chassis_stiffness = 0.88f + 0.12f * condition.chassis_quality;
+                float force_magnitude = PxMax(corner.shock_stiffness * chassis_stiffness * compression, 0.0f) - damper + bump_extra;
                 corner.forces.applied = true;
-                corner.forces.elastic = PxMax(corner.shock_stiffness * compression, 0.0f);
+                corner.forces.elastic = PxMax(corner.shock_stiffness * chassis_stiffness * compression, 0.0f);
                 corner.forces.damper = -damper;
                 corner.forces.bump_stop = bump_extra - packer_force;
                 corner.forces.packer = packer_force;
@@ -2973,6 +2989,7 @@ namespace car
             // physical arb bars carry mass only, roll stiffness and bush damping live in the force couple
             auto apply_anti_roll = [&](int left, int right, float stiffness)
             {
+                stiffness *= 0.8f + 0.2f * condition.chassis_quality;
                 if (stiffness <= 0.0f)
                 {
                     return;
@@ -3435,7 +3452,8 @@ namespace car
 
             float target = get_boost_target(throttle, rpm);
 
-            float rate = (target > boost_pressure) ? spec.boost_spool_rate : spec.boost_spool_rate * 2.0f;
+            float rate = spec.forced_induction > 0 ? 30.0f :
+                ((target > boost_pressure) ? spec.boost_spool_rate : spec.boost_spool_rate * 2.0f);
             boost_pressure = lerp(boost_pressure, target, exp_decay(rate, dt));
     }
 
@@ -3443,6 +3461,12 @@ namespace car
     {
             const car_preset& engine = calibration ? *calibration : spec;
             if (!engine.turbo_enabled) return 0.0f;
+            if (engine.forced_induction > 0)
+            {
+                const float speed = PxClamp(rpm / PxMax(engine.engine_redline_rpm, 1000.0f), 0.0f, 1.0f);
+                const float delivery = engine.forced_induction == 3 ? speed * speed : PxClamp(0.65f + speed, 0.0f, 1.0f);
+                return engine.boost_max_pressure * delivery * PxClamp((throttle - 0.15f) / 0.85f, 0.0f, 1.0f);
+            }
             float target = 0.0f;
             if (throttle > 0.3f && rpm > engine.boost_min_rpm)
             {
@@ -3894,7 +3918,9 @@ namespace car
             float combustion = engine_running && !rev_limiter_active ? full_load * (1.0f + boost_pressure * spec.boost_torque_mult) * demand * assisted_actuators.engine_torque_scale : 0;
             float idle_torque = engine_running ? PxClamp((idle - engine_speed) * ie * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f) : 0;
             float starter = starting && rpm < spec.engine_idle_rpm ? spec.starter_torque : 0;
-            float losses = friction + (1 - demand) * PxMax(engine_speed - idle, 0.0f) * spec.engine_peak_torque * 0.0004f;
+            if (engine_running && !rev_limiter_active && demand > 0.85f && rpm > 2500.0f)
+                combustion += nitrous_delivery * 1500000.0f / PxMax(engine_speed, 100.0f);
+            float losses = friction + engine_oil_loss(engine_speed, spec) + (1 - demand) * PxMax(engine_speed - idle, 0.0f) * spec.engine_peak_torque * 0.0004f;
             net_sum += combustion + idle_torque - losses;
             engine_speed = PxMax(0.0f, engine_speed + h * (combustion + idle_torque + starter - losses) / ie);
             combustion_sum += combustion + idle_torque;
@@ -4784,10 +4810,10 @@ namespace car
             float half_tr = tr_safe * 0.5f;
             float y       = -cfg.suspension_height;
 
-            wheel_offsets[front_left]  = PxVec3(-half_tf, y, front_z);
-            wheel_offsets[front_right] = PxVec3( half_tf, y, front_z);
-            wheel_offsets[rear_left]   = PxVec3(-half_tr, y, rear_z);
-            wheel_offsets[rear_right]  = PxVec3( half_tr, y, rear_z);
+            wheel_offsets[front_left]  = PxVec3(-half_tf, y - spec.ride_offset_front, front_z);
+            wheel_offsets[front_right] = PxVec3( half_tf, y - spec.ride_offset_front, front_z);
+            wheel_offsets[rear_left]   = PxVec3(-half_tr, y - spec.ride_offset_rear, rear_z);
+            wheel_offsets[rear_right]  = PxVec3( half_tr, y - spec.ride_offset_rear, rear_z);
 
             refresh_geometry_cache();
 
@@ -5092,6 +5118,8 @@ namespace car
             last_shift_direction = 0;
             previous_automatic_throttle = 0.0f;
             boost_pressure = 0.0f;
+            nitrous_requested = false;
+            nitrous_delivery = 0.0f;
             motor_torque = 0.0f;
             engine_output_torque = 0.0f;
             engine_net_output_torque = 0.0f;
@@ -5169,6 +5197,8 @@ namespace car
                 update_mass_properties();
                 return;
             }
+            condition = vehicle_condition{};
+            oil_wear_pending = chassis_wear_pending = 0.0;
             reset_drivetrain_transients();
             prev_velocity = body ? body->getLinearVelocity() : PxVec3(0.0f);
             reset_wheel_thermals();
@@ -5177,6 +5207,90 @@ namespace car
                 new_spec.name ? new_spec.name : "?",
                 cfg.mass, cfg.wheelbase, cfg.track_front, cfg.track_rear,
                 new_spec.drivetrain_type == 0 ? "rwd" : new_spec.drivetrain_type == 1 ? "fwd" : "awd");
+    }
+
+
+    float Simulation::engine_oil_loss(float speed, const car_preset& engine) const
+    {
+        // Additional shaft losses, never folded back into the published net torque curve.
+        const float hot = PxMax(condition.oil_temperature - 120.0f, 0.0f) / 80.0f;
+        const float oil = (1.0f - condition.oil_quality) * 0.06f + hot * 0.015f;
+        const float belt = engine.turbo_enabled && engine.forced_induction > 0 &&
+            (!base_spec.turbo_enabled || base_spec.forced_induction == 0) ? 0.04f : 0.0f;
+        return engine.engine_peak_torque * (oil + belt) *
+            PxClamp(speed / PxMax(engine.engine_redline_rpm * PxTwoPi / 60.0f, 1.0f), 0.0f, 1.5f);
+    }
+
+    bool Simulation::set_condition(const vehicle_condition& value)
+    {
+        if (!std::isfinite(value.oil_quality) || !std::isfinite(value.oil_temperature) ||
+            !std::isfinite(value.chassis_quality) || !std::isfinite(value.distance_km) ||
+            !std::isfinite(value.oil_distance_km) || !std::isfinite(value.nitrous_kg)) return false;
+        condition = value;
+        oil_wear_pending = chassis_wear_pending = 0.0;
+        condition.oil_quality = PxClamp(value.oil_quality, 0.0f, 1.0f);
+        condition.chassis_quality = PxClamp(value.chassis_quality, 0.0f, 1.0f);
+        condition.oil_temperature = PxClamp(value.oil_temperature, -40.0f, 200.0f);
+        condition.distance_km = PxClamp(value.distance_km, 0.0, 10000000.0);
+        condition.oil_distance_km = PxClamp(value.oil_distance_km, 0.0, condition.distance_km);
+        condition.nitrous_kg = PxClamp(value.nitrous_kg, 0.0f, 5.0f);
+        return true;
+    }
+
+    bool Simulation::service_vehicle(const std::string& service)
+    {
+        if (body && body->getLinearVelocity().magnitude() > 0.5f) return false;
+        if (service == "oil" && base_spec.engine_peak_torque > 0.0f)
+        {
+            condition.oil_quality = 1.0f;
+            oil_wear_pending = 0.0;
+            condition.oil_distance_km = 0.0f;
+        }
+        else if (service == "chassis") { condition.chassis_quality = 1.0f; chassis_wear_pending = 0.0; }
+        else if (service == "nitrous_refill" && upgrades.nitrous > 0) condition.nitrous_kg = 5.0f;
+        else return false;
+        return true;
+    }
+
+    void Simulation::update_vehicle_condition(float dt)
+    {
+        if (!(dt > 0.0f) || !std::isfinite(dt)) return;
+        const float speed = body ? body->getLinearVelocity().magnitude() : 0.0f;
+        const float km = speed * dt / 1000.0f;
+        condition.distance_km += km;
+        if (engine_running && spec.engine_peak_torque > 0)
+        {
+            const float rpm_load = PxClamp(engine_rpm / PxMax(spec.engine_redline_rpm, 1000.0f), 0.0f, 1.2f);
+            const float target = ambient_temperature + 65.0f + input.throttle * rpm_load * 55.0f;
+            condition.oil_temperature += (target - condition.oil_temperature) * (1.0f - expf(-dt / 180.0f));
+            const float stress = 1.0f + input.throttle * rpm_load * 2.0f +
+                PxMax(condition.oil_temperature - 120.0f, 0.0f) * 0.08f;
+            oil_wear_pending += stress * (static_cast<double>(km) / 10000.0 + dt / 360000.0);
+            if (oil_wear_pending >= 0.00001)
+            {
+                condition.oil_quality = PxMax(0.0f, condition.oil_quality - static_cast<float>(oil_wear_pending));
+                oil_wear_pending = 0.0;
+            }
+            condition.oil_distance_km += km;
+        }
+        else
+            condition.oil_temperature += (ambient_temperature - condition.oil_temperature) * (1.0f - expf(-dt / 600.0f));
+        float roughness = 0.0f;
+        for (const auto& wheel : wheels) roughness += fabsf(wheel.compression_velocity);
+        chassis_wear_pending += static_cast<double>(km) * (1.0 + PxMin(roughness, 30.0f)) / 100000.0;
+        if (chassis_wear_pending >= 0.00001)
+        {
+            condition.chassis_quality = PxMax(0.0f, condition.chassis_quality - static_cast<float>(chassis_wear_pending));
+            chassis_wear_pending = 0.0;
+        }
+        nitrous_delivery = 0.0f;
+        if (upgrades.nitrous > 0 && nitrous_requested && engine_running && current_gear >= 2 &&
+            !is_shifting && !rev_limiter_active && engine_rpm > 2500.0f && input.throttle > 0.85f)
+        {
+            const float flow = get_upgrade_setting("nitrous_flow");
+            nitrous_delivery = PxMin(flow, condition.nitrous_kg / dt);
+            condition.nitrous_kg = PxMax(0.0f, condition.nitrous_kg - nitrous_delivery * dt);
+        }
     }
 
 
@@ -5205,8 +5319,8 @@ namespace car
         const upgrade_part upgrade_parts[] =
         {
             { "engine",           &active_upgrades::engine,           &car_preset::engine_stage_max,     0, upgrade_requirement::none },
-            { "suspension",       &active_upgrades::suspension,       &car_preset::suspension_stage_max, 0, upgrade_requirement::none },
-            { "tires",            &active_upgrades::tires,            &car_preset::tires_stage_max,      0, upgrade_requirement::none },
+            { "suspension",       &active_upgrades::suspension,       nullptr,                           3, upgrade_requirement::none },
+            { "tires",            &active_upgrades::tires,            nullptr,                          13, upgrade_requirement::none },
             { "brakes",           &active_upgrades::brakes,           &car_preset::brakes_stage_max,     0, upgrade_requirement::none },
             { "aero",             &active_upgrades::aero,             &car_preset::aero_stage_max,       0, upgrade_requirement::none },
             { "weight",           &active_upgrades::weight,           &car_preset::weight_stage_max,     0, upgrade_requirement::none },
@@ -5223,10 +5337,60 @@ namespace car
             { "flywheel",         &active_upgrades::flywheel,         nullptr,                           3, upgrade_requirement::combustion },
             { "driveshaft",       &active_upgrades::driveshaft,       nullptr,                           1, upgrade_requirement::propshaft },
             { "transmission",     &active_upgrades::transmission,     nullptr,                           3, upgrade_requirement::gearbox },
-            { "lsd",              &active_upgrades::lsd,              nullptr,                           3, upgrade_requirement::open_diff },
+            { "lsd",              &active_upgrades::lsd,              nullptr,                           4, upgrade_requirement::open_diff },
             { "yaw_control",      &active_upgrades::yaw_control,      nullptr,                           1, upgrade_requirement::awd },
             { "brake_controller", &active_upgrades::brake_controller, nullptr,                           1, upgrade_requirement::none },
+            { "supercharger",     &active_upgrades::supercharger,     nullptr, 1, upgrade_requirement::combustion },
+            { "nitrous",          &active_upgrades::nitrous,          nullptr, 1, upgrade_requirement::combustion },
+            { "torque_controller",&active_upgrades::torque_controller,nullptr, 1, upgrade_requirement::awd },
             { "rigidity",         &active_upgrades::rigidity,         nullptr,                           1, upgrade_requirement::none },
+        };
+
+        struct tuning_setting
+        {
+            const char* key;
+            const char* label;
+            const char* part;
+            int stage;
+            float minimum, maximum, step;
+            float car_preset::* field;
+            int gear;
+        };
+
+        const tuning_setting tuning_settings[] =
+        {
+            { "spring_front", "FRONT SPRING (Hz)", "suspension", 3, 0.8f, 4.5f, 0.05f, &car_preset::front_spring_freq, -1 },
+            { "spring_rear", "REAR SPRING (Hz)", "suspension", 3, 0.8f, 4.5f, 0.05f, &car_preset::rear_spring_freq, -1 },
+            { "damper_front", "FRONT DAMPING RATIO", "suspension", 2, 0.15f, 1.5f, 0.05f, &car_preset::front_damping_ratio, -1 },
+            { "damper_rear", "REAR DAMPING RATIO", "suspension", 2, 0.15f, 1.5f, 0.05f, &car_preset::rear_damping_ratio, -1 },
+            { "bump", "BUMP DAMPING SCALE", "suspension", 3, 0.2f, 2.0f, 0.05f, &car_preset::damping_bump_ratio, -1 },
+            { "rebound", "REBOUND DAMPING SCALE", "suspension", 3, 0.2f, 2.5f, 0.05f, &car_preset::damping_rebound_ratio, -1 },
+            { "ride_front", "FRONT RIDE OFFSET (m)", "suspension", 1, -0.05f, 0.05f, 0.005f, &car_preset::ride_offset_front, -1 },
+            { "ride_rear", "REAR RIDE OFFSET (m)", "suspension", 1, -0.05f, 0.05f, 0.005f, &car_preset::ride_offset_rear, -1 },
+            { "arb_front", "FRONT ANTI-ROLL (N/m)", "suspension", 3, 0.0f, 100000.0f, 1000.0f, &car_preset::front_arb_stiffness, -1 },
+            { "arb_rear", "REAR ANTI-ROLL (N/m)", "suspension", 3, 0.0f, 100000.0f, 1000.0f, &car_preset::rear_arb_stiffness, -1 },
+            { "camber_front", "FRONT CAMBER (rad)", "suspension", 3, -0.105f, 0.035f, 0.005f, &car_preset::front_camber, -1 },
+            { "camber_rear", "REAR CAMBER (rad)", "suspension", 3, -0.105f, 0.035f, 0.005f, &car_preset::rear_camber, -1 },
+            { "toe_front", "FRONT TOE (rad)", "suspension", 3, -0.018f, 0.018f, 0.001f, &car_preset::front_toe, -1 },
+            { "toe_rear", "REAR TOE (rad)", "suspension", 3, -0.018f, 0.018f, 0.001f, &car_preset::rear_toe, -1 },
+            { "lsd_accel", "LSD POWER LOCK", "lsd", 4, 0.0f, 1.0f, 0.02f, &car_preset::lsd_lock_ratio_accel, -1 },
+            { "lsd_decel", "LSD COAST LOCK", "lsd", 4, 0.0f, 1.0f, 0.02f, &car_preset::lsd_lock_ratio_decel, -1 },
+            { "lsd_preload", "LSD PRELOAD (Nm)", "lsd", 4, 0.0f, 300.0f, 5.0f, &car_preset::lsd_preload, -1 },
+            { "torque_split", "FRONT TORQUE FRACTION", "torque_controller", 1, 0.0f, 1.0f, 0.02f, &car_preset::torque_split_front, -1 },
+            { "nitrous_flow", "NITROUS FLOW (kg/s)", "nitrous", 1, 0.01f, 0.06f, 0.005f, nullptr, -1 },
+            { "gear_1", "GEAR 1 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 2 },
+            { "gear_2", "GEAR 2 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 3 },
+            { "gear_3", "GEAR 3 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 4 },
+            { "gear_4", "GEAR 4 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 5 },
+            { "gear_5", "GEAR 5 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 6 },
+            { "gear_6", "GEAR 6 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 7 },
+            { "gear_7", "GEAR 7 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 8 },
+            { "gear_8", "GEAR 8 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 9 },
+            { "gear_9", "GEAR 9 RATIO", "transmission", 3, 0.4f, 6.0f, 0.02f, nullptr, 10 },
+            { "bump_front", "FRONT BUMP SCALE", "suspension", 3, 0.25f, 2.0f, 0.05f, &car_preset::front_bump_scale, -1 },
+            { "bump_rear", "REAR BUMP SCALE", "suspension", 3, 0.25f, 2.0f, 0.05f, &car_preset::rear_bump_scale, -1 },
+            { "rebound_front", "FRONT REBOUND SCALE", "suspension", 3, 0.25f, 2.0f, 0.05f, &car_preset::front_rebound_scale, -1 },
+            { "rebound_rear", "REAR REBOUND SCALE", "suspension", 3, 0.25f, 2.0f, 0.05f, &car_preset::rear_rebound_scale, -1 },
         };
 
         const upgrade_part* find_upgrade_part(const std::string& name)
@@ -5263,7 +5427,7 @@ namespace car
             switch (entry->requirement)
             {
                 case upgrade_requirement::combustion: available = base.engine_peak_torque > 0.0f; break;
-                case upgrade_requirement::boost:      available = (base.turbo_enabled && base.boost_max_pressure > 0.0f) || base.turbo_stage_max > 0; break;
+                case upgrade_requirement::boost:      available = base.engine_peak_torque > 0.0f; break;
                 case upgrade_requirement::propshaft:  available = base.drivetrain_type != 1; break;
                 case upgrade_requirement::awd:        available = base.drivetrain_type == 2; break;
                 case upgrade_requirement::gearbox:    available = base.gear_count > 3; break;
@@ -5285,46 +5449,196 @@ namespace car
             {
                 return false;
             }
-            stage = PxClamp(stage, 0, get_upgrade_stage_max(part));
+            if (stage < 0 || stage > get_upgrade_stage_max(part) ||
+                (body && body->getLinearVelocity().magnitude() > 0.5f)) return false;
+            const active_upgrades previous = upgrades;
             if (upgrades.*(entry->stage) != stage)
             {
                 upgrades.*(entry->stage) = stage;
-                reapply_upgrades();
+                if (stage > 0 && part == "supercharger") upgrades.turbo = 0;
+                if (stage > 0 && part == "turbo") upgrades.supercharger = 0;
+                if (!reapply_upgrades())
+                {
+                    upgrades = previous;
+                    return false;
+                }
+                if (part == "tires")
+                {
+                    for (auto& wheel : wheels) { wheel.wear = 0.0f; wheel.damage = 0.0f; }
+                }
             }
             return true;
     }
 
+
+    std::vector<Simulation::setting_info> Simulation::get_upgrade_settings() const
+    {
+        std::vector<setting_info> result;
+        for (const auto& setting : tuning_settings)
+        {
+            if (setting.gear >= spec.gear_count) continue;
+            result.push_back({setting.key, setting.label, setting.part, setting.minimum, setting.maximum,
+                setting.step, get_upgrade_setting(setting.key), setting.stage});
+        }
+        result.push_back({"brake_bias", "FRONT BRAKE FRACTION", "brake_controller", 0.4f, 0.8f, 0.01f, spec.brake_bias_front, 1});
+        result.push_back({"final_drive", "FINAL DRIVE SCALE", "transmission", 0.8f, 1.25f, 0.01f, upgrades.final_drive_scale, 3});
+        return result;
+    }
 
     float Simulation::get_upgrade_setting(const std::string& setting) const
     {
-            if (setting == "brake_bias")
-            {
-                return spec.brake_bias_front;
-            }
-            if (setting == "final_drive")
-            {
-                return upgrades.final_drive_scale;
-            }
-            return 0.0f;
+        if (setting == "brake_bias") return spec.brake_bias_front;
+        if (setting == "final_drive") return upgrades.final_drive_scale;
+        for (size_t i = 0; i < std::size(tuning_settings); ++i)
+        {
+            const auto& entry = tuning_settings[i];
+            if (setting != entry.key) continue;
+            if (entry.field) return spec.*(entry.field);
+            if (entry.gear >= 2 && entry.gear < spec.gear_count) return spec.gear_ratios[entry.gear];
+            return (upgrades.tuning_mask & (1ull << i)) ? upgrades.tuning_values[i] : 0.03f;
+        }
+        return 0.0f;
     }
-
 
     bool Simulation::set_upgrade_setting(const std::string& setting, float value)
     {
-            if (setting == "brake_bias" && upgrades.brake_controller > 0)
+        if (!std::isfinite(value) || (body && body->getLinearVelocity().magnitude() > 0.5f)) return false;
+        const active_upgrades previous = upgrades;
+        bool found = false;
+        if (setting == "brake_bias" && upgrades.brake_controller > 0)
+        {
+            upgrades.brake_bias_front = PxClamp(value, 0.4f, 0.8f);
+            found = true;
+        }
+        else if (setting == "final_drive" && upgrades.transmission >= 3)
+        {
+            upgrades.final_drive_scale = PxClamp(value, 0.8f, 1.25f);
+            found = true;
+        }
+        for (size_t i = 0; i < std::size(tuning_settings); ++i)
+        {
+            const auto& entry = tuning_settings[i];
+            if (setting != entry.key || get_upgrade_stage(entry.part) < entry.stage || entry.gear >= spec.gear_count) continue;
+            value = PxClamp(value, entry.minimum, entry.maximum);
+            // Keep forward gears ordered; otherwise the automatic can hunt or over-rev on a downshift.
+            if (entry.gear >= 2)
             {
-                upgrades.brake_bias_front = PxClamp(value, 0.4f, 0.8f);
+                if (entry.gear > 2 && value >= spec.gear_ratios[entry.gear - 1]) return false;
+                if (entry.gear + 1 < spec.gear_count && value <= spec.gear_ratios[entry.gear + 1]) return false;
             }
-            else if (setting == "final_drive" && upgrades.transmission >= 3)
+            upgrades.tuning_values[i] = value;
+            upgrades.tuning_mask |= 1ull << i;
+            found = true;
+        }
+        if (!found) return false;
+        if (reapply_upgrades()) return true;
+        upgrades = previous;
+        return false;
+    }
+
+
+    bool Simulation::save_tuning(const std::string& path) const
+    {
+        if (path.empty()) return false;
+        pugi::xml_document doc;
+        auto root = doc.append_child("garage");
+        root.append_attribute("version") = 1;
+        root.append_attribute("car") = base_spec.name ? base_spec.name : "";
+        for (const auto& part : upgrade_parts)
+        {
+            auto node = root.append_child("part");
+            node.append_attribute("key") = part.name;
+            node.append_attribute("stage") = upgrades.*(part.stage);
+        }
+        for (const auto& setting : get_upgrade_settings())
+        {
+            if (get_upgrade_stage(setting.part) < setting.min_stage) continue;
+            auto node = root.append_child("setting");
+            node.append_attribute("key") = setting.key.c_str();
+            node.append_attribute("value") = setting.value;
+        }
+        auto state = root.append_child("condition");
+        state.append_attribute("oil") = condition.oil_quality;
+        state.append_attribute("temperature") = condition.oil_temperature;
+        state.append_attribute("chassis") = condition.chassis_quality;
+        state.append_attribute("km") = condition.distance_km;
+        state.append_attribute("oil_km") = condition.oil_distance_km;
+        state.append_attribute("nitrous") = condition.nitrous_kg;
+        const std::string temporary = path + ".tmp";
+        if (!doc.save_file(temporary.c_str())) return false;
+        // Replace atomically so a crash cannot truncate the last good garage.
+#ifdef _WIN32
+        const bool renamed = MoveFileExA(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+        std::error_code rename_error;
+        std::filesystem::rename(temporary, path, rename_error);
+        const bool renamed = !rename_error;
+#endif
+        if (!renamed)
+        {
+            std::error_code error;
+            std::filesystem::remove(temporary, error);
+            return false;
+        }
+        return true;
+    }
+
+    bool Simulation::load_tuning(const std::string& path)
+    {
+        if (body && body->getLinearVelocity().magnitude() > 0.5f) return false;
+        pugi::xml_document doc;
+        if (!doc.load_file(path.c_str())) return false;
+        auto root = doc.child("garage");
+        if (root.attribute("version").as_int() != 1 ||
+            std::string(root.attribute("car").as_string()) != (base_spec.name ? base_spec.name : "")) return false;
+        const auto previous = upgrades;
+        const auto previous_condition = condition;
+        active_upgrades loaded;
+        for (auto node : root.children("part"))
+        {
+            if (const auto* part = find_upgrade_part(node.attribute("key").as_string()))
+                loaded.*(part->stage) = PxClamp(node.attribute("stage").as_int(), 0, get_upgrade_stage_max(part->name));
+        }
+        if (loaded.supercharger > 0) loaded.turbo = 0;
+        for (auto node : root.children("setting"))
+        {
+            const std::string key = node.attribute("key").as_string();
+            const float value = node.attribute("value").as_float();
+            if (!std::isfinite(value)) return false;
+            if (key == "brake_bias") loaded.brake_bias_front = PxClamp(value, 0.4f, 0.8f);
+            if (key == "final_drive") loaded.final_drive_scale = PxClamp(value, 0.8f, 1.25f);
+            for (size_t i = 0; i < std::size(tuning_settings); ++i)
             {
-                upgrades.final_drive_scale = PxClamp(value, 0.8f, 1.25f);
+                const auto& setting = tuning_settings[i];
+                if (key != setting.key) continue;
+                loaded.tuning_values[i] = PxClamp(value, setting.minimum, setting.maximum);
+                loaded.tuning_mask |= 1ull << i;
             }
-            else
+        }
+        vehicle_condition restored;
+        auto state = root.child("condition");
+        restored.oil_quality = state.attribute("oil").as_float(1.0f);
+        restored.oil_temperature = state.attribute("temperature").as_float(20.0f);
+        restored.chassis_quality = state.attribute("chassis").as_float(1.0f);
+        restored.distance_km = state.attribute("km").as_double();
+        restored.oil_distance_km = state.attribute("oil_km").as_double();
+        restored.nitrous_kg = state.attribute("nitrous").as_float();
+        if (!set_condition(restored)) return false;
+        upgrades = loaded;
+        const auto candidate = make_upgraded_spec(base_spec, loaded);
+        for (int g = 3; g < candidate.gear_count; ++g)
+        {
+            if (candidate.gear_ratios[g] >= candidate.gear_ratios[g - 1])
             {
+                upgrades = previous;
+                condition = previous_condition;
                 return false;
             }
-            reapply_upgrades();
-            return true;
+        }
+        if (reapply_upgrades()) return true;
+        upgrades = previous;
+        condition = previous_condition;
+        return false;
     }
 
 
@@ -5334,6 +5648,8 @@ namespace car
             if (const upgrade_part* entry = find_upgrade_part(part))
             {
                 candidate.*(entry->stage) = PxClamp(stage, 0, get_upgrade_stage_max(part));
+                if (stage > 0 && part == "supercharger") candidate.turbo = 0;
+                if (stage > 0 && part == "turbo") candidate.supercharger = 0;
             }
             return make_upgraded_spec(base_spec, candidate);
     }
@@ -5354,7 +5670,7 @@ namespace car
                 {
                     gross = (gross + friction) / (1.0f + get_boost_target(1.0f, rpm, &base_spec) * base_spec.boost_torque_mult);
                 }
-                const float net = gross * (1.0f + get_boost_target(1.0f, rpm, &engine) * engine.boost_torque_mult) - friction;
+                const float net = gross * (1.0f + get_boost_target(1.0f, rpm, &engine) * engine.boost_torque_mult) - friction - engine_oil_loss(omega, engine);
                 if (net > torque_nm)
                 {
                     torque_nm  = net;
@@ -5386,7 +5702,7 @@ namespace car
                     p.engine_max_rpm += 300.0f;
                 }
             }
-            if (ups.suspension > 0 && base.suspension_stage_max > 0)
+            if (ups.suspension > 0)
             {
                 float s = 1.0f + 0.08f * ups.suspension;
                 p.front_spring_freq *= s;
@@ -5394,11 +5710,19 @@ namespace car
                 p.front_arb_stiffness *= s;
                 p.rear_arb_stiffness *= s;
             }
-            if (ups.tires > 0 && base.tires_stage_max > 0)
+            if (ups.tires > 0)
             {
-                p.tire_friction += 0.05f * ups.tires;
-                p.tire_optimal_temp += 5.0f * ups.tires;
-                p.tire_vertical_stiffness *= (1.0f + 0.05f * ups.tires);
+                // N1..N3, S1..S3, R1..R5, dirt, snow: choices, not a monotonically better ladder.
+                static const float grip[] = {0, 0.78f, 0.86f, 0.94f, 1.00f, 1.08f, 1.16f, 1.20f, 1.28f, 1.36f, 1.44f, 1.52f, 0.88f, 0.72f};
+                static const float heat[] = {0, 35, 40, 45, 55, 65, 75, 75, 80, 85, 90, 95, 40, 15};
+                const int compound = PxClamp(ups.tires, 1, 13);
+                p.tire_friction = grip[compound];
+                p.tire_optimal_temp = heat[compound];
+                p.tire_temp_range = compound >= 7 && compound <= 11 ? 30.0f : 55.0f;
+                p.tire_wear_rate = PxMax(base.tire_wear_rate, 0.000001f) *
+                    (compound >= 7 && compound <= 11 ? 0.8f + 0.5f * (compound - 7) : 0.5f + 0.1f * compound);
+                p.tire_vertical_stiffness *= compound >= 7 && compound <= 11 ? 1.15f : (compound >= 12 ? 0.85f : 1.0f);
+                p.tire_hydroplaning_speed = compound >= 7 && compound <= 11 ? 18.0f : (compound >= 12 ? 32.0f : 28.0f);
             }
             if (ups.brakes > 0 && base.brakes_stage_max > 0)
             {
@@ -5440,9 +5764,21 @@ namespace car
                     p.boost_torque_mult = 0.25f;
                     p.boost_min_rpm = base.engine_idle_rpm + 1500.0f;
                 }
+                p.forced_induction = 0;
                 float bm = 1.0f + 0.15f * ups.turbo;
                 p.boost_max_pressure *= bm;
                 p.boost_spool_rate *= 1.0f + 0.10f * ups.turbo;
+            }
+
+            if (ups.supercharger > 0)
+            {
+                p.turbo_enabled = true;
+                p.forced_induction = 1; // belt-driven positive displacement, immediate low-rpm boost
+                p.boost_max_pressure = 0.55f;
+                p.boost_min_rpm = p.engine_idle_rpm;
+                p.boost_wastegate_rpm = p.engine_max_rpm;
+                p.boost_spool_rate = 20.0f;
+                p.boost_torque_mult = 0.7f;
             }
 
             // engine internals
@@ -5519,6 +5855,15 @@ namespace car
                 {
                     p.final_drive = base.final_drive * PxClamp(ups.final_drive_scale, 0.8f, 1.25f);
                 }
+                if (stage >= 3)
+                {
+                    for (size_t i = 0; i < std::size(tuning_settings); ++i)
+                    {
+                        const int gear = tuning_settings[i].gear;
+                        if (gear >= 2 && gear < p.gear_count && (ups.tuning_mask & (1ull << i)))
+                            p.gear_ratios[gear] = ups.tuning_values[i];
+                    }
+                }
                 p.shift_time *= 1.0f - 0.1f * stage;
 
                 // the automatic shifts on road speed, move each threshold so it still lands on the same rpm
@@ -5551,6 +5896,13 @@ namespace car
                 p.lsd_lock_ratio_accel = accel[stage];
                 p.lsd_lock_ratio_decel = decel[stage];
                 p.lsd_preload          = PxMax(base.lsd_preload, preload[stage]);
+            }
+            for (size_t i = 0; i < std::size(tuning_settings); ++i)
+            {
+                const auto& entry = tuning_settings[i];
+                const auto* part = find_upgrade_part(entry.part);
+                if (!(ups.tuning_mask & (1ull << i)) || !part || ups.*(part->stage) < entry.stage) continue;
+                if (entry.field) p.*(entry.field) = PxClamp(ups.tuning_values[i], entry.minimum, entry.maximum);
             }
             if (ups.yaw_control > 0)
             {
@@ -5593,10 +5945,11 @@ namespace car
     }
 
 
-    void Simulation::reapply_upgrades()
+    bool Simulation::reapply_upgrades()
     {
             car_preset previous_spec = spec;
             config previous_config = cfg;
+            const bool previous_lsd_kit = lsd_kit_fitted;
             for (const upgrade_part& part : upgrade_parts)
             {
                 clamp_upgrade_stage(upgrades.*(part.stage), get_upgrade_stage_max(part.name));
@@ -5604,7 +5957,6 @@ namespace car
 
             bool save_abs = spec.abs_enabled;
             bool save_tc = spec.tc_enabled;
-            bool save_turbo = spec.turbo_enabled;
             bool save_drs = spec.drs_enabled;
             int save_diff = spec.diff_type;
             assist_settings save_assists = spec.assists;
@@ -5617,18 +5969,11 @@ namespace car
             float save_tc_pwr = spec.tc_power_reduction;
             float save_tc_rate = spec.tc_response_rate;
 
-            float save_bst_max = spec.boost_max_pressure;
-            float save_bst_spool = spec.boost_spool_rate;
-            float save_bst_waste = spec.boost_wastegate_rpm;
-            float save_bst_torq = spec.boost_torque_mult;
-            float save_bst_min = spec.boost_min_rpm;
-
             car_preset eff = make_upgraded_spec(base_spec, upgrades);
             apply_car_spec(eff, false);
 
             spec.abs_enabled = save_abs;
             spec.tc_enabled = save_tc;
-            spec.turbo_enabled = save_turbo;
             spec.drs_enabled = save_drs;
             // a fitted limited slip owns the differential, taking it out returns the car's own
             if (upgrades.lsd > 0)
@@ -5650,29 +5995,18 @@ namespace car
             spec.tc_power_reduction = save_tc_pwr;
             spec.tc_response_rate = save_tc_rate;
 
-            // a fitted turbo kit owns the boost setup, otherwise runtime hud edits survive the rebuild
-            bool turbo_kit = upgrades.turbo > 0 && base_spec.turbo_stage_max > 0;
-            if (turbo_kit)
-            {
-                spec.turbo_enabled = true;
-            }
-            else
-            {
-                spec.boost_max_pressure = save_bst_max;
-                spec.boost_spool_rate = save_bst_spool;
-                spec.boost_wastegate_rpm = save_bst_waste;
-                spec.boost_torque_mult = save_bst_torq;
-                spec.boost_min_rpm = save_bst_min;
-            }
-            if (!rebuild_vehicle_geometry())
+            if (body && !rebuild_vehicle_geometry())
             {
                 spec = previous_spec;
                 cfg = previous_config;
                 compute_constants();
                 update_fallback_chassis();
                 update_mass_properties();
+                lsd_kit_fitted = previous_lsd_kit;
                 SP_LOG_ERROR("failed to rebuild vehicle upgrades");
+                return false;
             }
+            return true;
     }
 
 
@@ -5880,6 +6214,7 @@ namespace car
                     actor->setGlobalPose(pose);
                 }
             }
+            update_vehicle_condition(h);
             update_boost(input.throttle, engine_rpm, h);
             integrate_powertrain(h);
             engine_rotation = fmodf(engine_rotation + engine_rpm * PxTwoPi / 60 * h, PxTwoPi);
@@ -6059,6 +6394,7 @@ namespace car
             // a held brake only holds the car, so it may sleep on the pedal.
             bool brake_drives = input.brake > spec.input_deadzone && (is_brake_reverse_throttle() || (!manual_shifting && input.brake > 0.8f));
             bool motion_requested = input.throttle > spec.input_deadzone || brake_drives || steering_adjusting || starter_requested;
+            update_vehicle_condition(dt);
             if (vehicle_sleeping)
             {
                 // Tire actors use queries, not rigid collision contacts. PhysX
