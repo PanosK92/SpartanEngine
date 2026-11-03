@@ -256,6 +256,9 @@ tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 <details>
 <summary><b>Build targets and architecture notes</b></summary>
 
+The `binaries/` folder keeps executables at the top level. Windows vendor DLLs live in `third_party/` (Direct3D Agility components in `third_party/d3d12/`), compiler intermediates and Windows symbols in `build/`, preferences in `settings/`, diagnostics in `logs/`, and engine-wide generated data in `cache/`. Existing preferences, logs, and engine caches migrate on first launch without replacing files already at the new locations. World-specific bake caches remain alongside their world resources. `data/`, `project/`, and `crashes/` retain their existing roles. `steam_appid.txt` stays beside the executable for local Steam development. Ship the vendor folder with the executable; game exports and Windows release archives preserve its structure. Python bytecode caches are excluded from game exports.
+
+
 <br/>
 
 Project generation creates these targets, all using the selected graphics backend:

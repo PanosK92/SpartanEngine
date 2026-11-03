@@ -260,7 +260,8 @@ void ShaderEditor::ShowShaderSource(const float width, const float height)
             ImGui::TextColored(compilation_state_color(state), "%s", state_text);
             ImGui::Dummy(ImVec2(0.0f, ImGui::EditorUi::scaled(2.0f)));
 
-            if (ImGui::BeginTabBar(
+            // a first compile fills in the sources on a worker thread
+            if (state != RHI_ShaderCompilationState::Compiling && ImGui::BeginTabBar(
                 "##shader_editor_tab_bar",
                 ImGuiTabBarFlags_FittingPolicyScroll
             ))

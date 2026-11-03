@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../core/Timer.h"
 #include "../core/Window.h"
 #include "../world/Environment.h"
+#include "../world/RoadVerticalProfile.h"
 #include "../io/pugixml.hpp"
 #include "../logging/Log.h"
 #include "../rendering/Renderer.h"
@@ -224,6 +225,92 @@ namespace spartan
             if (!valid) error = "Pixel validation accepted invalid output or rejected green";
             return valid;
         });
+        RunTest("Road.VerticalProfile", [](std::string& error)
+        {
+            using namespace road_vertical_profile;
+            // Tight cut budgets used to reintroduce the unsmoothed peak after filtering.
+            // Exercise both signs, uneven sampling, a seam crest and long flat approaches.
+            for (bool closed : {false, true})
+            for (float sign : {-1.0f, 1.0f})
+            {
+                std::vector<float> spans, heights, floor;
+                double distance = 0.0;
+                for (size_t i = 0; i < 1201; ++i)
+                {
+                    if (i) { spans.push_back(i % 2 ? 0.75f : 1.25f); distance += spans.back(); }
+                    const double d = closed ? std::min(distance, 1200.0 - distance) : std::abs(distance - 600.0);
+                    const float height = static_cast<float>(sign * std::max(0.0, 12.0 - d * 0.12));
+                    heights.push_back(height);
+                    floor.push_back(height - 0.05f);
+                }
+                RoundAboveFloor(heights, floor, spans, 160.0, closed);
+                double previous_grade = 0.0;
+                for (size_t i = 0; i < heights.size(); ++i)
+                {
+                    if (!std::isfinite(heights[i]) || heights[i] < floor[i] - 0.0001f)
+                    { error = "Rounded road violated terrain clearance"; return false; }
+                    if (!i) continue;
+                    const double grade = (heights[i] - heights[i - 1]) / spans[i - 1];
+                    if (std::abs(grade) > 0.1201)
+                    { error = "Rounded road exceeded the grade limit"; return false; }
+                    if (i > 1 && std::abs(grade - previous_grade) / ((spans[i - 1] + spans[i - 2]) * 0.5) > max_curvature + 0.00002)
+                    { error = "Rounded road has an abrupt vertical bend"; return false; }
+                    previous_grade = grade;
+                }
+                if (closed)
+                {
+                    const double first = (heights[1] - heights[0]) / spans.front();
+                    const double last = (heights.back() - heights[heights.size() - 2]) / spans.back();
+                    if (heights.front() != heights.back() || std::abs(first - last) / ((spans.front() + spans.back()) * 0.5) > max_curvature + 0.00002)
+                    { error = "Closed road has a height or grade seam"; return false; }
+                }
+                else if (std::abs(heights.front()) > 0.0001f || std::abs(heights.back()) > 0.0001f)
+                { error = "Local crest lifted distant flat road"; return false; }
+            }
+            // Expanded flat decks must survive the final filter exactly: road and junction
+            // collision surfaces meet at the same height, with a horizontal approach.
+            std::vector<float> spans(600, 1.0f), heights(601);
+            for (size_t i = 0; i < heights.size(); ++i)
+                heights[i] = 200.0f + std::clamp((static_cast<float>(i) - 200.0f) * 0.1f, 0.0f, 20.0f);
+            Round(heights, spans, 100.0, false);
+            if (std::abs(heights[100] - 200.0f) > 0.0001f || std::abs(heights[500] - 220.0f) > 0.0001f ||
+                std::abs(heights[101] - heights[100]) > 0.0001f || std::abs(heights[500] - heights[499]) > 0.0001f)
+            { error = "Junction smoothing moved the deck or retained a grade kink"; return false; }
+            // Filtering a flat short loop with a wider kernel must stay finite and flat.
+            spans.assign(4, 1.0f); heights.assign(5, 1500.0f);
+            Round(heights, spans, 160.0, true);
+            for (float h : heights)
+                if (h != 1500.0f) { error = "Short periodic road changed elevation"; return false; }
+            return true;
+        });
+        RunTest("Material.CarFinishes", [](std::string& error)
+        {
+            Material material;
+            material.SetProperty(MaterialProperty::TextureTilingX, 3.0f);
+            material.SetProperty(MaterialProperty::TextureTilingY, 2.0f);
+            material.ApplyPaintPreset(MaterialPaintPreset::Metallic, Color(0.42f, 0.012f, 0.008f, 1.0f), false);
+            if (material.GetProperty(MaterialProperty::FlakeStrength) <= 0 ||
+                material.GetProperty(MaterialProperty::Clearcoat) <= 0 ||
+                material.GetProperty(MaterialProperty::TextureTilingX) != 3.0f ||
+                material.GetProperty(MaterialProperty::TextureTilingY) != 2.0f)
+            {
+                error = "Metallic paint lost its layers or authored UV tiling";
+                return false;
+            }
+            for (auto preset : {MaterialSurfacePreset::GlassClear, MaterialSurfacePreset::GlassTinted,
+                MaterialSurfacePreset::HeadlightLens, MaterialSurfacePreset::TaillightLens})
+            {
+                material.SetProperty(MaterialProperty::AlphaBlend, 1.0f);
+                material.ApplySurfacePreset(preset, false);
+                if (material.GetProperty(MaterialProperty::AlphaBlend) != 0 ||
+                    material.GetProperty(MaterialProperty::Clearcoat) != 0)
+                {
+                    error = "Glass retained alpha blending or a duplicate dielectric coat";
+                    return false;
+                }
+            }
+            return true;
+        });
         RunTest("World.EnvironmentWeather", Test_EnvironmentWeather);
         RunTest("Physics.VehicleModeTransitions", [](std::string& error)
         {
@@ -369,6 +456,7 @@ namespace spartan
             simulation.set_condition(condition);
             const float empty = run(true);
             if (!check(empty < injected - 20 && simulation.get_nitrous_delivery() == 0, "Empty bottle still adds torque")) return false;
+            simulation.mount_dyno(false); // The stand disables actor simulation; force tests need active bodies.
             simulation.update_multibody(0.01f);
             const float tired_force = simulation.get_multibody_state().corners[0].forces.elastic;
             simulation.service_vehicle("chassis");
@@ -414,7 +502,7 @@ namespace spartan
     void SmokeTest::RunDelayedTests()
     {
         double elapsed_ms = Timer::GetTimeMs() - m_start_time_ms;
-        std::ofstream file("ci_test.txt");
+        std::ofstream file("logs/ci_test.txt");
         if (file.is_open())
         {
             if (m_all_tests_passed)

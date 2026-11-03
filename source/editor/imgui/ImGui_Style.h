@@ -82,22 +82,23 @@ namespace ImGui::Style
         style.IndentSpacing        = 16.0f;
         style.ColumnsMinSpacing    = 8.0f;
         style.ScrollbarSize        = 8.0f;
-        style.GrabMinSize          = 8.0f;
-        // no strokes, structure comes from value alone: black gutters, a darker tab strip, panels, darker wells inside them
+        style.GrabMinSize          = 10.0f;
+        // panes are sheets of frosted glass, the renderer cuts their lit rims, so windows carry no strokes of their own
+        // fields and buttons are smaller sheets laid on them, a hairline catches the light on each edge
         style.WindowBorderSize     = 0.0f;
         style.ChildBorderSize      = 0.0f;
         style.PopupBorderSize      = 0.0f;
-        style.FrameBorderSize      = 0.0f;
+        style.FrameBorderSize      = 1.0f;
         style.TabBorderSize        = 0.0f;
         style.TabBarBorderSize     = 0.0f;
         style.TabBarOverlineSize   = 2.0f;
-        style.WindowRounding       = 4.0f;
-        style.ChildRounding        = 4.0f;
-        style.FrameRounding        = 3.0f;
-        style.PopupRounding        = 5.0f;
-        style.ScrollbarRounding    = 4.0f;
-        style.GrabRounding         = 3.0f;
-        style.TabRounding          = 4.0f;
+        style.WindowRounding       = 10.0f;
+        style.ChildRounding        = 8.0f;
+        style.FrameRounding        = 6.0f;
+        style.PopupRounding        = 10.0f;
+        style.ScrollbarRounding    = 8.0f;
+        style.GrabRounding         = 5.0f;
+        style.TabRounding          = 6.0f;
         style.TabMinWidthBase      = 88.0f;
         style.TabMinWidthShrink    = 48.0f;
         style.WindowMinSize        = ImVec2(32.0f, 32.0f);
@@ -111,8 +112,8 @@ namespace ImGui::Style
         style.TreeLinesSize        = 1.0f;
         style.SeparatorTextBorderSize = 0.0f;
         style.SeparatorTextPadding = ImVec2(0.0f, 6.0f);
-        // a thin black gutter between docked panels is the only separation between them
-        style.DockingSeparatorSize = 2.0f;
+        // a gutter of dimmed scene between docked panels, wide enough that each panel reads as its own pane
+        style.DockingSeparatorSize = 4.0f;
     }
 
     inline void StyleSpartan()
@@ -169,13 +170,14 @@ namespace ImGui::Style
     inline void UpdateSemanticColors()
     {
         // lines are the text color at low opacity, so every preset keeps hairlines that sit in its own temperature
+        // the canvas is the pane itself and the renderer thins it into glass, everything laid on it is a tinted sheet the backdrop shows through
         color_canvas         = bg_color_1;
-        color_canvas_deep    = lerp(bg_color_1, {0, 0, 0, 1}, 0.40f);
+        color_canvas_deep    = with_alpha(lerp(bg_color_1, {0, 0, 0, 1}, 0.55f), 0.55f);
         color_void           = lerp(bg_color_1, {0, 0, 0, 1}, 0.90f);
-        color_panel          = lerp(bg_color_1, bg_color_2, 0.45f);
-        color_surface        = bg_color_2;
-        color_surface_hover  = lerp(bg_color_2, h_color_1, 0.07f);
-        color_surface_active = lerp(bg_color_2, color_accent_2, 0.35f);
+        color_panel          = with_alpha(lerp(bg_color_1, bg_color_2, 0.60f), 0.60f);
+        color_surface        = with_alpha(lerp(bg_color_2, h_color_1, 0.08f), 0.55f);
+        color_surface_hover  = with_alpha(lerp(bg_color_2, h_color_1, 0.16f), 0.62f);
+        color_surface_active = with_alpha(lerp(bg_color_2, color_accent_2, 0.45f), 0.70f);
         color_border         = lerp(bg_color_1, h_color_1, 0.075f);
         color_border_strong  = lerp(bg_color_1, h_color_1, 0.16f);
         color_text           = h_color_1;
@@ -212,26 +214,28 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_PopupBg]  = with_alpha(lerp(color_canvas, color_surface, 0.35f), 0.97f);
 
         // the tab strip is darker than the panel, the selected tab is the panel itself rising into it
-        style.Colors[ImGuiCol_TitleBg]          = color_canvas_deep;
-        style.Colors[ImGuiCol_TitleBgActive]    = color_canvas_deep;
-        style.Colors[ImGuiCol_TitleBgCollapsed] = color_canvas_deep;
-        style.Colors[ImGuiCol_MenuBarBg]        = lerp(color_canvas_deep, color_canvas, 0.55f);
+        // these stay opaque, the renderer recognizes them by color and thins them into the pane's glass
+        const ImVec4 strip = with_alpha(color_canvas_deep, 1.0f);
+        style.Colors[ImGuiCol_TitleBg]          = strip;
+        style.Colors[ImGuiCol_TitleBgActive]    = strip;
+        style.Colors[ImGuiCol_TitleBgCollapsed] = strip;
+        style.Colors[ImGuiCol_MenuBarBg]        = lerp(strip, color_canvas, 0.55f);
 
         style.Colors[ImGuiCol_Tab]                       = {0, 0, 0, 0};
         style.Colors[ImGuiCol_TabDimmed]                 = {0, 0, 0, 0};
-        style.Colors[ImGuiCol_TabHovered]                = lerp(color_canvas_deep, color_canvas, 0.6f);
+        style.Colors[ImGuiCol_TabHovered]                = with_alpha(color_text, 0.06f);
         style.Colors[ImGuiCol_TabSelected]               = color_canvas;
         style.Colors[ImGuiCol_TabDimmedSelected]         = color_canvas;
         style.Colors[ImGuiCol_TabSelectedOverline]       = color_accent_1;
         style.Colors[ImGuiCol_TabDimmedSelectedOverline] = {0, 0, 0, 0};
 
-        // wells sit below the panel, buttons sit above it
-        style.Colors[ImGuiCol_FrameBg]        = color_canvas_deep;
-        style.Colors[ImGuiCol_FrameBgHovered] = lerp(color_canvas_deep, color_surface, 0.35f);
-        style.Colors[ImGuiCol_FrameBgActive]  = lerp(color_canvas_deep, color_accent_2, 0.25f);
+        // wells are smoked glass sunk into the pane, buttons are clear glass raised off it, both let the backdrop through
+        style.Colors[ImGuiCol_FrameBg]        = with_alpha(color_void, 0.34f);
+        style.Colors[ImGuiCol_FrameBgHovered] = with_alpha(lerp(color_void, color_text, 0.10f), 0.40f);
+        style.Colors[ImGuiCol_FrameBgActive]  = with_alpha(lerp(color_void, color_accent_2, 0.35f), 0.50f);
 
-        style.Colors[ImGuiCol_Button]        = color_surface;
-        style.Colors[ImGuiCol_ButtonHovered] = color_surface_hover;
+        style.Colors[ImGuiCol_Button]        = with_alpha(color_text, 0.075f);
+        style.Colors[ImGuiCol_ButtonHovered] = with_alpha(color_text, 0.13f);
         style.Colors[ImGuiCol_ButtonActive]  = with_alpha(color_accent_1, 0.30f);
 
         style.Colors[ImGuiCol_ScrollbarBg]          = {0, 0, 0, 0};
@@ -252,8 +256,9 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_Separator]        = with_alpha(color_text, 0.035f);
         style.Colors[ImGuiCol_SeparatorHovered] = color_accent_line;
         style.Colors[ImGuiCol_SeparatorActive]  = color_accent_1;
-        style.Colors[ImGuiCol_Border]           = with_alpha(color_text, 0.06f);
-        style.Colors[ImGuiCol_BorderShadow]     = {0, 0, 0, 0};
+        // the frame hairline is the light catching a sheet's edge, the shadow one pixel down and right lifts it off the pane
+        style.Colors[ImGuiCol_Border]           = with_alpha(color_text, 0.09f);
+        style.Colors[ImGuiCol_BorderShadow]     = {0, 0, 0, 0.16f};
 
         style.Colors[ImGuiCol_ResizeGrip]        = {0, 0, 0, 0};
         style.Colors[ImGuiCol_ResizeGripHovered] = color_accent_line;
@@ -283,7 +288,7 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_PlotLinesHovered]     = color_accent_1;
         style.Colors[ImGuiCol_PlotHistogram]        = color_accent_2;
         style.Colors[ImGuiCol_PlotHistogramHovered] = color_accent_1;
-        style.Colors[ImGuiCol_NavWindowingDimBg]    = with_alpha(color_void, 0.72f);
-        style.Colors[ImGuiCol_ModalWindowDimBg]     = with_alpha(color_void, 0.72f);
+        style.Colors[ImGuiCol_NavWindowingDimBg]    = with_alpha(color_void, 0.55f);
+        style.Colors[ImGuiCol_ModalWindowDimBg]     = with_alpha(color_void, 0.55f);
     }
 }

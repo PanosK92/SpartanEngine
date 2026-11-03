@@ -1195,6 +1195,18 @@ float3 restir_gi_demodulator(float3 albedo)
 // denoising range so the last stretch fades back to the raster terms instead of going black
 float restir_coverage(float2 uv)
 {
+    // ReSTIR's current BSDF only represents an isotropic base lobe. Replacing
+    // layered materials with that signal erases their coat, flakes and sheen,
+    // and also disables their dedicated traced reflections. Keep all three
+    // composition sites on the full material path until those lobes are sampled.
+    uint2 texel = gbuffer_texel(uv);
+    uint index = gbuffer_unpack_material_index(tex_normal[texel], tex_material[texel]);
+    MaterialParameters material = material_parameters[index];
+    if (material.clearcoat > 0.0f || material.flake_strength > 0.0f ||
+        abs(material.anisotropic) > 0.0f || material.sheen > 0.0f ||
+        material.pearl_strength > 0.0f || material.iridescence > 0.0f)
+        return 0.0f;
+
     float view_z          = abs(get_position_view_space(uv).z);
     float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
     float fade_start      = denoising_range * 0.9f;

@@ -25,8 +25,8 @@ namespace spartan
     {
         vector<LogCmd> logs;
         deque<LogCmd> history;
-        string log_file_name          = "log.txt";
-        string log_file_name_previous = "log_previous.txt";
+        string log_file_name          = "logs/log.txt";
+        string log_file_name_previous = "logs/log_previous.txt";
         ILogger* logger      = nullptr;
         bool log_to_file     = true;
         mutex log_output_mutex;
@@ -76,8 +76,8 @@ namespace spartan
         // headless instances run next to the user's editor in the same folder and must not truncate its log
         if (Engine::IsHeadless() && !Engine::IsStartupSmokeTest())
         {
-            log_file_name          = "log_headless.txt";
-            log_file_name_previous = "log_headless_previous.txt";
+            log_file_name          = "logs/log_headless.txt";
+            log_file_name_previous = "logs/log_headless_previous.txt";
         }
     }
 

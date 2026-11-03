@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../profiling/Profiler.h"
 #include "Spline.h"
 #include "SplineMeshGeometry.h"
+#include "../RoadVerticalProfile.h"
 #include "Physics.h"
 #include "Render.h"
 #include "Terrain.h"
@@ -447,25 +448,12 @@ namespace spartan
             deck_heights[i] = max(fill_profile[i], cut_profile[i]);
         }
 
-        if (blend > 0.0f && smoothing_length > 0.0f)
-        {
-            // Cut/grade constraints can put sharp crests back into the averaged profile.
-            // Round those transitions last. Averaging a slope-limited curve preserves its
-            // slope bound, including with flat endpoint extension and periodic wrapping.
-            vector<float> rounded = deck_heights;
-            smooth_profile_by_length(rounded, spans, smoothing_length, closed);
-            smooth_profile_by_length(rounded, spans, smoothing_length, closed);
+        // Never blend the sharp constrained profile back into the final surface.
+        // Even zero artistic smoothing must retain a safe vertical transition.
+        const double radius = max(static_cast<double>(smoothing_length) * blend,
+            2.0 * slope / road_vertical_profile::max_curvature);
+        road_vertical_profile::RoundAboveFloor(deck_heights, fill_profile, spans, radius, closed);
 
-            // Restore the cut budget only where the rounding broke it, using the slope limited fill
-            // profile so the correction ramps in and out at the grade limit. A uniform lift of the
-            // whole road would let one deep cut anywhere on a long road raise every other kilometre
-            // off the ground, and any terrain edit along it would move the deck everywhere.
-            for (size_t i = 0; i < count; i++)
-            {
-                deck_heights[i] += (rounded[i] - deck_heights[i]) * blend;
-                deck_heights[i]  = max(deck_heights[i], fill_profile[i]);
-            }
-        }
     }
 
     static float snapped_control_point_y(
@@ -1669,7 +1657,7 @@ namespace spartan
 
     void Spline::JunctionSolve::HashNetwork()
     {
-        network_hash.Add(uint32_t(3)); // per-connected-network junction solver and border generator version
+        network_hash.Add(uint32_t(5)); // per-connected-network junction solver and border generator version
         cache_network = !roads.empty();
         for (const Road& road : roads)
         {
@@ -1977,15 +1965,40 @@ namespace spartan
         struct Constraint { size_t a; size_t b; float rise; };
         vector<Constraint> constraints;
         vector<vector<pair<size_t, Cut>>> cuts_by_road(roads.size());
+        auto curve_parameters = [](Spline* spline, float run, bool between_decks)
+        {
+            const float slope = tanf(clamp(spline->m_max_grade_degrees, 0.5f, 80.0f) * deg_to_rad);
+            float radius = max(spline->m_smoothing_length, static_cast<float>(2.0 * slope / road_vertical_profile::max_curvature));
+            if (between_decks) radius = min(radius, run * 0.25f);
+            radius = max(radius, 1.0f);
+            return pair<float, float>{radius, min(slope, static_cast<float>(road_vertical_profile::max_curvature * radius * 0.5))};
+        };
         for (size_t j = 0; j < junctions.size(); j++)
             for (const Cut& cut : junctions[j].cuts) cuts_by_road[cut.road].push_back({j, cut});
         for (size_t r = 0; r < roads.size(); r++)
         {
             auto& cuts = cuts_by_road[r];
             sort(cuts.begin(), cuts.end(), [](const auto& a, const auto& b) { return a.second.lo < b.second.lo; });
-            const float slope = tanf(clamp(roads[r].spline->m_max_grade_degrees, 0.5f, 80.0f) * deg_to_rad);
-            for (size_t i = 1; i < cuts.size(); i++)
-                constraints.push_back({cuts[i - 1].first, cuts[i].first, slope * max(0.0f, roads[r].distance[cuts[i].second.lo] - roads[r].distance[cuts[i - 1].second.hi])});
+            const Road& road = roads[r];
+            float largest_span = 0.001f;
+            for (size_t i = 1; i < road.distance.size(); ++i)
+                largest_span = max(largest_span, road.distance[i] - road.distance[i - 1]);
+            auto gap_between = [&](size_t previous, size_t next)
+            {
+                float gap = road.distance[cuts[next].second.lo] - road.distance[cuts[previous].second.hi];
+                if (next == 0) gap += road.distance.back();
+                return max(gap, 0.0f);
+            };
+            auto constrain = [&](size_t previous, size_t next)
+            {
+                const float gap = gap_between(previous, next);
+                const auto [radius, slope] = curve_parameters(road.spline, gap, true);
+                const float run = max(0.0f, gap - 2.0f * (radius + largest_span));
+                constraints.push_back({cuts[previous].first, cuts[next].first, slope * run});
+            };
+            for (size_t i = 1; i < cuts.size(); ++i) constrain(i - 1, i);
+            if (road.spline->m_closed_loop && cuts.size() > 1) constrain(cuts.size() - 1, 0);
+
         }
         for (uint32_t pass = 0; pass < 512; pass++)
         {
@@ -2008,8 +2021,6 @@ namespace spartan
             Road& road = roads[r];
             Spline* spline = road.spline;
             const size_t count = road.frames.size();
-            vector<float> lower(count, -numeric_limits<float>::max());
-            vector<float> upper(count, numeric_limits<float>::max());
             vector<float> heights(count);
             vector<float> spans(count - 1);
             for (size_t i = 0; i < count; i++)
@@ -2020,7 +2031,7 @@ namespace spartan
             for (const auto& [j, cut] : cuts_by_road[r])
             {
                 const Junction& junction = junctions[j];
-                for (size_t i = cut.lo; i <= cut.hi; i++) lower[i] = upper[i] = junction.center.y;
+                for (size_t i = cut.lo; i <= cut.hi; ++i) heights[i] = junction.center.y;
                 // which sides other roads join from, so a through road keeps its paint on the closed side
                 uint8_t flags = 1;
                 if (cut.lo == 0 || cut.hi + 1 >= count)
@@ -2057,13 +2068,63 @@ namespace spartan
                     heights[i] += (junction.center.y - heights[i]) * weight;
                 }
             }
-            if (!cuts_by_road[r].empty())
+            // Design each approach separately: a short urban block must not
+            // reduce the allowable grade along every kilometre of the same spline.
+            auto round_approach = [&](size_t first, size_t last, bool pin_first, bool pin_last, bool wrap)
             {
-                const float slope = tanf(clamp(spline->m_max_grade_degrees, 0.5f, 80.0f) * deg_to_rad);
-                grade_limit_from_below(lower, spans, slope, false);
-                grade_limit_from_above(upper, spans, slope, false);
-                for (size_t i = 0; i < count; i++) heights[i] = max(lower[i], min(upper[i], heights[i]));
-                grade_limit_from_below(heights, spans, slope, false);
+                const size_t period = count - 1;
+                if (wrap) last += period;
+                if (last <= first) return;
+                vector<size_t> indices;
+                vector<float> profile, run;
+                for (size_t i = first; i <= last; ++i)
+                {
+                    const size_t index = wrap && i >= period ? i - period : i;
+                    indices.push_back(index);
+                    profile.push_back(heights[index]);
+                    if (i > first)
+                    {
+                        const size_t previous = indices[indices.size() - 2];
+                        float span = road.distance[index] - road.distance[previous];
+                        if (span < 0.0f) span += road.distance.back();
+                        run.push_back(max(span, 0.001f));
+                    }
+                }
+                const auto distance = road_vertical_profile::Distances(run);
+                const auto [radius, slope] = curve_parameters(spline, static_cast<float>(distance.back()), pin_first && pin_last);
+                const double padding = radius + *max_element(run.begin(), run.end());
+                vector<float> lower(profile.size(), -numeric_limits<float>::max());
+                vector<float> upper(profile.size(), numeric_limits<float>::max());
+                for (size_t i = 0; i < profile.size(); ++i)
+                {
+                    if (pin_first && distance[i] <= padding) lower[i] = upper[i] = profile.front();
+                    if (pin_last && distance.back() - distance[i] <= padding) lower[i] = upper[i] = profile.back();
+                }
+                grade_limit_from_below(lower, run, slope, false);
+                grade_limit_from_above(upper, run, slope, false);
+                for (size_t i = 0; i < profile.size(); ++i) profile[i] = max(lower[i], min(upper[i], profile[i]));
+                grade_limit_from_below(profile, run, slope, false);
+                road_vertical_profile::Round(profile, run, radius, false);
+                for (size_t i = 0; i < profile.size(); ++i) heights[indices[i]] = profile[i];
+            };
+            const auto& cuts = cuts_by_road[r];
+            if (!cuts.empty())
+            {
+                // Restore the exact shared decks after all overlapping blend regions.
+                for (const auto& [j, cut] : cuts)
+                    for (size_t i = cut.lo; i <= cut.hi; ++i) heights[i] = junctions[j].center.y;
+                for (size_t i = 1; i < cuts.size(); ++i)
+                    round_approach(cuts[i - 1].second.hi, cuts[i].second.lo, true, true, false);
+                if (spline->m_closed_loop)
+                {
+                    round_approach(cuts.back().second.hi, cuts.front().second.lo, true, true, true);
+                    heights.back() = heights.front();
+                }
+                else
+                {
+                    round_approach(0, cuts.front().second.lo, false, true, false);
+                    round_approach(cuts.back().second.hi, count - 1, true, false, false);
+                }
             }
             const Matrix inverse = spline->m_entity_ptr->GetMatrix().Inverted();
             float distance = 0.0f;
@@ -2080,7 +2141,9 @@ namespace spartan
             for (size_t i = 0; i < count; i++)
             {
                 SplineFrame& frame = road.frames[i];
-                frame.tangent = (road.frames[min(i + 1, count - 1)].position - road.frames[i == 0 ? 0 : i - 1].position).Normalized();
+                const size_t previous = i == 0 ? (spline->m_closed_loop ? count - 2 : 0) : i - 1;
+                const size_t next = i + 1 == count ? (spline->m_closed_loop ? 1 : i) : i + 1;
+                frame.tangent = (road.frames[next].position - road.frames[previous].position).Normalized();
                 frame.up = frame.right.Cross(frame.tangent).Normalized();
             }
             spline->CacheCarveSamples(road.frames);
@@ -2331,7 +2394,7 @@ namespace spartan
         // Cache standalone terrain roads against their authored inputs and the actual terrain surface.
         // Attached paths still evaluate their source live, since their source can be edited independently.
         generated_cache::Hash frame_hash;
-        frame_hash.Add(uint32_t(4)); // sampling/grade solver version
+        frame_hash.Add(uint32_t(5)); // sampling/grade solver version
         frame_hash.Add(m_pending_surface_hash);
         frame_hash.Add(GetControlPointsLocal());
         frame_hash.Add(m_entity_ptr->GetMatrix());
@@ -3162,6 +3225,38 @@ namespace spartan
             });
         }
 
+        if (m_conform_to_terrain && m_grade_limit_enabled)
+        {
+            // Include quarter points: a curve can double back with a short endpoint chord.
+            for (uint32_t pass = 0; pass < 16; ++pass)
+            {
+                vector<float> refined;
+                bool inserted = false;
+                for (size_t i = 0; i + 1 < sample_ts.size(); ++i)
+                {
+                    const float a = sample_ts[i], b = sample_ts[i + 1];
+                    refined.push_back(a);
+                    Vector3 previous = world_matrix * EvaluatePoint(spline_points, a);
+                    float length = 0.0f;
+                    for (uint32_t j = 1; j <= 4; ++j)
+                    {
+                        const Vector3 current = world_matrix * EvaluatePoint(spline_points, a + (b - a) * j * 0.25f);
+                        const Vector3 delta = current - previous;
+                        length += sqrtf(delta.x * delta.x + delta.z * delta.z);
+                        previous = current;
+                    }
+                    if (length > road_vertical_profile::max_sample_spacing)
+                    {
+                        refined.push_back((a + b) * 0.5f);
+                        inserted = true;
+                    }
+                }
+                refined.push_back(sample_ts.back());
+                sample_ts = move(refined);
+                if (!inserted) break;
+            }
+        }
+
         // half of the widest part of the cross section, the edges have to clear the ground too
         const float half_extent = spline_half_extent(this);
 
@@ -3293,8 +3388,8 @@ namespace spartan
 
         for (size_t i = 0; i < sample_count; i++)
         {
-            const size_t i_prev = (i == 0) ? 0 : i - 1;
-            const size_t i_next = (i + 1 < sample_count) ? i + 1 : i;
+            const size_t i_prev = (i == 0) ? (m_closed_loop ? sample_count - 2 : 0) : i - 1;
+            const size_t i_next = (i + 1 < sample_count) ? i + 1 : (m_closed_loop ? 1 : i);
 
             Vector3 tangent = positions[i_next] - positions[i_prev];
             if (tangent.LengthSquared() < 1e-12f)

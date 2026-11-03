@@ -120,17 +120,20 @@ namespace spartan
             m_input_layout = make_shared<RHI_InputLayout>();
         }
 
-        // load
-        LoadFromDrive(file_path);
-
         // compile
         {
             m_compilation_state = RHI_ShaderCompilationState::Compiling;
+            m_object_name       = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+            m_file_path         = file_path;
 
-            auto compile = [this, shader_type, async]()
+            // resolving the includes is part of the job, done serially it dominated startup
+            auto compile = [this, shader_type, async, file_path]()
             {
                 // time compilation
                 const Stopwatch timer;
+
+                // load
+                LoadFromDrive(file_path);
 
                 // compile
                 m_compilation_state = RHI_ShaderCompilationState::Compiling;

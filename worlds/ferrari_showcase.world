@@ -150,7 +150,7 @@
    </Entity>
   </Entity>
   <Entity name="player_car" id="2411005043703651744" active="true" position="0 1 0" rotation="0 0 0 1" scale="1 1 1" tags="focal_point,player_car,current_car">
-   <prefab type="car" file="project/cars/ferrari_laferrari.car" drivable="true" telemetry="true" paint_color_a="1" camera_follows="false" paint_picker="true" paint_preset="gloss_solid" paint_color_r="0.42" paint_color_b="0.008" paint_color_g="0.012" />
+   <prefab file="data/prefabs/ferrari_laferrari.prefab" telemetry="true" camera_follows="false" paint_picker="true" />
    <car_reset spawn_point_entity_id="2411005043703651745" />
    <prefab_override path="vehicle">
     <script file_path="project/scripts/tire_smoke.lua" Tick="" physics="" wheels="" />

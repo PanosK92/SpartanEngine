@@ -869,9 +869,10 @@ namespace spartan
         {
             case MaterialSurfacePreset::GlassClear:
             {
+                SetPropertyInternal(MaterialProperty::AlphaBlend, 0.0f, false);
                 SetColorInternal(Color(0.85f, 0.95f, 1.0f, 0.12f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.02f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.02f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
                 SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
@@ -881,9 +882,10 @@ namespace spartan
             }
             case MaterialSurfacePreset::GlassTinted:
             {
+                SetPropertyInternal(MaterialProperty::AlphaBlend, 0.0f, false);
                 SetColorInternal(Color(0.08f, 0.1f, 0.12f, 0.35f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.04f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.04f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
                 SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
@@ -893,9 +895,10 @@ namespace spartan
             }
             case MaterialSurfacePreset::HeadlightLens:
             {
+                SetPropertyInternal(MaterialProperty::AlphaBlend, 0.0f, false);
                 SetColorInternal(Color(1.0f, 0.96f, 0.82f, 0.25f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.06f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.06f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
                 SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
@@ -905,9 +908,10 @@ namespace spartan
             }
             case MaterialSurfacePreset::TaillightLens:
             {
+                SetPropertyInternal(MaterialProperty::AlphaBlend, 0.0f, false);
                 SetColorInternal(Color(1.0f, 0.04f, 0.02f, 0.4f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.1f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           0.8f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.12f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
                 SetPropertyInternal(MaterialProperty::ThinWalled,           1.0f, false);
@@ -1674,7 +1678,7 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::SheenRoughness,       0.0f, false);
         SetPropertyInternal(MaterialProperty::SubsurfaceScattering, 0.0f, false);
         SetPropertyInternal(MaterialProperty::FlakeStrength,        0.0f, false);
-        SetPropertyInternal(MaterialProperty::FlakeScale,           120.0f, false);
+        SetPropertyInternal(MaterialProperty::FlakeScale,           12000.0f, false);
         SetPropertyInternal(MaterialProperty::PearlStrength,        0.0f, false);
         SetPropertyInternal(MaterialProperty::PearlColorR,          1.0f, false);
         SetPropertyInternal(MaterialProperty::PearlColorG,          1.0f, false);
@@ -1692,8 +1696,6 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::PaintPreset,          0.0f, false);
         SetPropertyInternal(MaterialProperty::SurfacePreset,        0.0f, false);
         SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo,   0.0f, false);
-        SetPropertyInternal(MaterialProperty::TextureTilingX,       1.0f, false);
-        SetPropertyInternal(MaterialProperty::TextureTilingY,       1.0f, false);
 
         if (save)
         {

@@ -102,15 +102,16 @@ float4 main_ps(vertex input) : SV_Target
     uint is_glass         = (flags & (1 << 12)) != 0 ? 1 : 0;
 
     float4 channels = float4(channel_r, channel_g, channel_b, channel_a);
+    float2 uv       = input.uv;
 
     // sample texture
     float4 color_texture;
     float mip_level             = pass_float(pass_imgui::mip_level);
     float array_level           = pass_float(pass_imgui::array_level);
     float is_array              = array_level > 0.0f ? 1.0f : 0.0f; // not needed anymore
-    float3 uv_array             = float3(input.uv, array_level);
-    float4 sample_point_wrap    = tex.SampleLevel(samplers[sampler_point_clamp], input.uv, mip_level);
-    float4 sample_bilinear_wrap = tex.SampleLevel(samplers[sampler_bilinear_clamp], input.uv, mip_level);
+    float3 uv_array             = float3(uv, array_level);
+    float4 sample_point_wrap    = tex.SampleLevel(samplers[sampler_point_clamp], uv, mip_level);
+    float4 sample_bilinear_wrap = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, mip_level);
     color_texture               = lerp(sample_bilinear_wrap, sample_point_wrap, float(point_sampling));
 
     // visualization
@@ -154,10 +155,13 @@ float4 main_ps(vertex input) : SV_Target
     }
 
     // frosted glass backdrop, the ui alpha channel it was copied from is meaningless, and a faint grain makes it read as rough glass
+    // blurring washes colors toward grey, so they are pushed back out, glass lit by what is behind it rather than fogged by it
     if (is_glass != 0)
     {
+        float luma  = dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));
+        color.rgb   = max(lerp(luma.xxx, color.rgb, 1.35f), 0.0f);
         float grain = frac(sin(dot(floor(input.position.xy), float2(12.9898f, 78.233f))) * 43758.5453f) - 0.5f;
-        color.rgb  += grain * 0.03f;
+        color.rgb  += grain * 0.025f;
         color.a     = input.color.a;
     }
 

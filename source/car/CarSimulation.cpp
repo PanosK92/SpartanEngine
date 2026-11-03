@@ -3893,6 +3893,7 @@ namespace car
         starter_engaged = starting && !engine_running;
         const int steps = PxMax(1, static_cast<int>(ceilf(dt / 0.0005f)));
         const float h = dt / steps;
+        const float nitrous_flow = upgrades.nitrous > 0 && nitrous_requested ? get_upgrade_setting("nitrous_flow") : 0.0f;
         float shaft_sum = 0, combustion_sum = 0, net_sum = 0;
         float initial_engine_speed = engine_speed, initial_gearbox_speed = gearbox_input_angular_velocity;
         for (int j = 0; j < steps; ++j)
@@ -3918,8 +3919,14 @@ namespace car
             float combustion = engine_running && !rev_limiter_active ? full_load * (1.0f + boost_pressure * spec.boost_torque_mult) * demand * assisted_actuators.engine_torque_scale : 0;
             float idle_torque = engine_running ? PxClamp((idle - engine_speed) * ie * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f) : 0;
             float starter = starting && rpm < spec.engine_idle_rpm ? spec.starter_torque : 0;
-            if (engine_running && !rev_limiter_active && demand > 0.85f && rpm > 2500.0f)
+            nitrous_delivery = 0.0f;
+            if (engine_running && !rev_limiter_active && !is_shifting && current_gear >= 2 && demand > 0.85f && rpm > 2500.0f)
+            {
+                // Meter gas on the same substep as combustion; limiter and traction cuts also stop injection.
+                nitrous_delivery = PxMin(nitrous_flow * PxClamp(assisted_actuators.engine_torque_scale, 0.0f, 1.0f), condition.nitrous_kg / h);
+                condition.nitrous_kg = PxMax(0.0f, condition.nitrous_kg - nitrous_delivery * h);
                 combustion += nitrous_delivery * 1500000.0f / PxMax(engine_speed, 100.0f);
+            }
             float losses = friction + engine_oil_loss(engine_speed, spec) + (1 - demand) * PxMax(engine_speed - idle, 0.0f) * spec.engine_peak_torque * 0.0004f;
             net_sum += combustion + idle_torque - losses;
             engine_speed = PxMax(0.0f, engine_speed + h * (combustion + idle_torque + starter - losses) / ie);
@@ -5284,13 +5291,6 @@ namespace car
             chassis_wear_pending = 0.0;
         }
         nitrous_delivery = 0.0f;
-        if (upgrades.nitrous > 0 && nitrous_requested && engine_running && current_gear >= 2 &&
-            !is_shifting && !rev_limiter_active && engine_rpm > 2500.0f && input.throttle > 0.85f)
-        {
-            const float flow = get_upgrade_setting("nitrous_flow");
-            nitrous_delivery = PxMin(flow, condition.nitrous_kg / dt);
-            condition.nitrous_kg = PxMax(0.0f, condition.nitrous_kg - nitrous_delivery * dt);
-        }
     }
 
 
@@ -5924,7 +5924,7 @@ namespace car
             }
 
             p.mass = PxMax(p.mass, 200.0f);
-            p.engine_peak_torque = PxMax(p.engine_peak_torque, 10.0f);
+            p.engine_peak_torque = PxMax(p.engine_peak_torque, 0.0f);
             p.engine_redline_rpm = PxMax(p.engine_redline_rpm, p.engine_idle_rpm + 100.0f);
             p.tire_friction = PxMax(p.tire_friction, 0.1f);
 

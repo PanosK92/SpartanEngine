@@ -117,7 +117,7 @@ export async function wait_for_bridge(host, port, child, timeout_ms)
     {
       if (child.exitCode !== null || child.spawn_error)
       {
-        return { ok: false, error: child.spawn_error ?? `engine exited with code ${child.exitCode} before its bridge answered, see binaries/log_headless.txt` };
+        return { ok: false, error: child.spawn_error ?? `engine exited with code ${child.exitCode} before its bridge answered, see binaries/logs/log_headless.txt` };
       }
 
       const result = await probe.command("engine_status", {}, 2000);
@@ -140,7 +140,7 @@ export async function read_log_lines(binaries_directory, pattern, limit = 60)
 {
   try
   {
-    const text = await fs.readFile(path.join(binaries_directory, "log_headless.txt"), "utf8");
+    const text = await fs.readFile(path.join(binaries_directory, "logs/log_headless.txt"), "utf8");
     return text.split(/\r?\n/).filter((line) => pattern.test(line)).slice(-limit);
   }
   catch

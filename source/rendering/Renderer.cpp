@@ -691,6 +691,7 @@ namespace spartan
             RenderDoc::OnPreDeviceCreation();
         }
         RHI_Device::Initialize();
+        Engine::LogStartupStep("renderer: device");
         RHI_Device::SetPipelineBoundCallback([](RHI_CommandList* cmd_list)
         {
             RHI_Device::Bind(cmd_list);
@@ -720,22 +721,18 @@ namespace spartan
 
         // must init before swapchain so breadcrumbs are available for the swapchain command lists
         RHI_VendorTechnology::Initialize();
+        Engine::LogStartupStep("renderer: vendor sdks");
 
-        RHI_Device::CreateSwapChain(
-            Window::GetHandleSDL(),
-            Window::GetWidthInPixels(),
-            Window::GetHeightInPixels(),
-            cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
-            swap_chain_buffer_count,
-            Display::GetHdr(),
-            "renderer"
-        );
-        ConsoleRegistry::Get().SetValueFromString("r.hdr", RHI_Device::GetSwapChain()->IsHdr() ? "1" : "0");
-        if (cvar_frame_generation.GetValueAs<bool>())
+        // the driver spends a few hundred milliseconds creating the swapchain, the render targets below don't need it so they overlap
+        void* window_sdl                = Window::GetHandleSDL();
+        const uint32_t window_width     = Window::GetWidthInPixels();
+        const uint32_t window_height    = Window::GetHeightInPixels();
+        const RHI_Present_Mode present  = cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate;
+        const bool hdr                  = Display::GetHdr();
+        future<void> swapchain_future   = async(launch::async, [=]()
         {
-            RHI_Device::GetSwapChain()->SetFrameGeneration(true);
-            ConsoleRegistry::Get().SetValueFromString("r.frame_generation", RHI_Device::GetSwapChain()->GetFrameGeneration() ? "1" : "0");
-        }
+            RHI_Device::CreateSwapChain(window_sdl, window_width, window_height, present, swap_chain_buffer_count, hdr, "renderer");
+        });
 
         ThreadPool::AddTask([]()
         {
@@ -753,6 +750,7 @@ namespace spartan
             CreateFonts();
             CreateShaders();
             m_initialized_resources = true;
+            Engine::LogStartupStep("renderer: resources (async)");
         });
 
         CreateBuffers();
@@ -762,6 +760,21 @@ namespace spartan
         CreateBlendStates();
         CreateRenderTargets(true, true, true);
         CreateSamplers();
+        Engine::LogStartupStep("renderer: targets and states");
+
+        // the driver may send messages to the window, which only get handled while this thread pumps them
+        while (swapchain_future.wait_for(chrono::milliseconds(1)) != future_status::ready)
+        {
+            Window::PumpEvents();
+        }
+        swapchain_future.get();
+        ConsoleRegistry::Get().SetValueFromString("r.hdr", RHI_Device::GetSwapChain()->IsHdr() ? "1" : "0");
+        if (cvar_frame_generation.GetValueAs<bool>())
+        {
+            RHI_Device::GetSwapChain()->SetFrameGeneration(true);
+            ConsoleRegistry::Get().SetValueFromString("r.frame_generation", RHI_Device::GetSwapChain()->GetFrameGeneration() ? "1" : "0");
+        }
+        Engine::LogStartupStep("renderer: swapchain");
 
         // pre-size to fit typical large worlds without a mid-load rebuild
         GeometryBuffer::Reserve(
@@ -1119,6 +1132,7 @@ namespace spartan
             m_frame_num++;
             if (m_frame_num == 1)
             {
+                Engine::LogStartupStep("first frame");
                 SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
             }
 

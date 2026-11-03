@@ -32,6 +32,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Settings.h"
 #include "GameManifest.h"
 #include <future>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 //===========================================
 
 //= NAMESPACES ===============
@@ -45,6 +48,31 @@ namespace spartan
     {
         vector<string> arguments;
         uint32_t flags = 0;
+
+        // milliseconds since the process was created, so time spent before main counts too
+        double get_process_uptime_ms()
+        {
+        #ifdef _WIN32
+            FILETIME creation = {}, exit = {}, kernel = {}, user = {}, now = {};
+            if (GetProcessTimes(GetCurrentProcess(), &creation, &exit, &kernel, &user))
+            {
+                GetSystemTimePreciseAsFileTime(&now);
+                const uint64_t created_100ns = (static_cast<uint64_t>(creation.dwHighDateTime) << 32) | creation.dwLowDateTime;
+                const uint64_t now_100ns     = (static_cast<uint64_t>(now.dwHighDateTime) << 32) | now.dwLowDateTime;
+                return static_cast<double>(now_100ns - created_100ns) / 10000.0;
+            }
+        #endif
+            static const auto first_call = chrono::steady_clock::now();
+            return chrono::duration<double, milli>(chrono::steady_clock::now() - first_call).count();
+        }
+    }
+
+    void Engine::LogStartupStep(const char* step)
+    {
+        static double last_ms = 0.0;
+        const double now_ms   = get_process_uptime_ms();
+        SP_LOG_INFO("Startup: %-28s %7.0f ms (at %6.0f ms)", step, now_ms - last_ms, now_ms);
+        last_ms = now_ms;
     }
 
     void Engine::Initialize(const vector<string>& args)
@@ -78,16 +106,20 @@ namespace spartan
                 SP_LOG_INFO("Startup smoke test: engine initialized");
                 return;
             }
+            LogStartupStep("process to main");
             Settings::LoadPreInitSettings();
             FontImporter::Initialize();
             ImageImporter::Initialize();
+            LogStartupStep("importers");
             Window::Initialize();
+            LogStartupStep("window");
             Display::Initialize();
             Timer::Initialize();
             Input::Initialize();
             ThreadPool::Initialize();
             ResourceCache::Initialize();
             Profiler::Initialize();
+            LogStartupStep("core systems");
 
             // overlap independent cpu work with the heavy renderer path
             future<void> physics_future = ThreadPool::AddTask([]()
@@ -100,10 +132,12 @@ namespace spartan
             });
 
             Renderer::Initialize();
+            LogStartupStep("renderer");
             Window::PumpEvents();
             World::Initialize();
             Settings::Initialize();
             SmokeTest::Initialize();
+            LogStartupStep("world and settings");
 #ifndef SP_RUNTIME
             if (!GameManifest::IsPackaged())
             {
@@ -115,9 +149,11 @@ namespace spartan
             {
                 Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
             }
+            LogStartupStep("mcp and steam");
 
             physics_future.get();
             icon_decode_future.get();
+            LogStartupStep("physics and icons");
 
             // xr is intentionally not auto initialized here, ctrl+0 brings it up on demand
             // so the openxr runtime (e.g. steamvr) is never spawned without explicit intent
@@ -145,6 +181,7 @@ namespace spartan
             Window::PumpEvents();
             ResourceCache::LoadDefaultResources();
             Window::PumpEvents();
+            LogStartupStep("default resources");
         }
 
         SP_LOG_INFO("%s has been initialized. Duration %.1f sec", version::c_str(), timer_initialize.GetElapsedTimeSec());

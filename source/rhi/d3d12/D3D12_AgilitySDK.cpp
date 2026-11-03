@@ -19,7 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 extern "C"
 {
     __declspec(dllexport) extern const unsigned int D3D12SDKVersion = SP_D3D12_AGILITY_SDK_VERSION;
-    __declspec(dllexport) extern const char*        D3D12SDKPath    = ".\\";
+    __declspec(dllexport) extern const char*        D3D12SDKPath    = ".\\third_party\\d3d12\\";
 }
 
 namespace spartan::d3d12_agility

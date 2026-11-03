@@ -988,7 +988,7 @@ namespace editor_ui
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::EditorUi::alpha(amber, 0.85f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, amber);
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::EditorUi::alpha(amber, 0.70f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_canvas_deep);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::EditorUi::alpha(ImGui::Style::color_canvas_deep, 1.0f));
         const bool pressed = ImGuiSp::button(label, size);
         ImGui::PopStyleColor(4);
         return pressed;

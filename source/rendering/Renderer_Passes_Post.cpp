@@ -508,6 +508,12 @@ namespace spartan
                 method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
             }
 
+            // the first frames after launch show while dlss is still loading in the background
+            if (method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss && !RHI_VendorTechnology::DLSS_IsReady())
+            {
+                method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+            }
+
             bool fsr_dispatched = false;
             if (method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {

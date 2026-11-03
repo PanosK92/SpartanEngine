@@ -7,6 +7,7 @@ local setup = {}
 
 local PROJECT_ROOT     = path.getabsolute(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, ".."))
 local BINARIES_DIR     = path.join(PROJECT_ROOT, "binaries")
+local RUNTIME_DIR      = path.join(BINARIES_DIR, "third_party")
 local DATA_DIR         = path.join(PROJECT_ROOT, "data")
 local LIBRARIES_DIR    = path.join(PROJECT_ROOT, "third_party", "libraries")
 local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
@@ -83,7 +84,7 @@ local AGILITY_STAMP       = path.join(AGILITY_DIR, "version.txt")
 local AGILITY_URL         = "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/" .. AGILITY_VERSION
 local AGILITY_NUPKG       = path.join(PROJECT_ROOT, "third_party", "d3d12_agility.nupkg")
 
--- d3d12core.dll sits next to the exe, matching the exported D3D12SDKPath (".\\")
+-- agility components live in third_party/d3d12, matching the exported D3D12SDKPath
 local AGILITY_RUNTIME_DLLS = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
 
 -- steamworks sdk, downloaded on demand into third_party/steamworks
@@ -397,13 +398,13 @@ local function stage_agility_runtime()
     for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
         local source = path.join(AGILITY_BIN_DIR, dll)
         if file_exists(source) then
-            copy_file(source, path.join(BINARIES_DIR, dll))
+            copy_file(source, path.join(RUNTIME_DIR, "d3d12", dll))
             staged = staged + 1
         end
     end
 
     if staged > 0 then
-        print(string.format("  staged %d agility dll(s) into binaries/", staged))
+        print(string.format("  staged %d agility dll(s) into binaries/third_party/d3d12/", staged))
     else
         print("  agility sdk not found, skipping agility staging")
     end
@@ -634,10 +635,10 @@ function setup.run()
     print("\n[6/7] ensuring steamworks sdk...")
     ensure_steamworks()
 
-    print("\n[7/7] copying runtime dlls into binaries...")
+    print("\n[7/7] copying runtime dlls into binaries/third_party...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         if file_exists(dll) then
-            copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
+            copy_file(dll, path.join(RUNTIME_DIR, path.getname(dll)))
         else
             print("  missing runtime dll: " .. path.getname(dll))
         end
@@ -646,7 +647,7 @@ function setup.run()
     stage_agility_runtime()
 
     if file_exists(STEAM_DLL) then
-        copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
+        copy_file(STEAM_DLL, path.join(RUNTIME_DIR, path.getname(STEAM_DLL)))
 
         local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
         if not file_exists(appid_path) then

@@ -37,6 +37,7 @@ SP_WARNINGS_ON
 #include "../../world/components/Camera.h"
 #include <cmath>
 #include <filesystem>
+#include <future>
 //========================================
 
 //= NAMESPACES ===============
@@ -297,6 +298,7 @@ namespace spartan
         NVSDK_NGX_Handle* handle              = nullptr;
         Vector2 jitter                        = Vector2::Zero;
         wstring data_path;
+        wstring library_path;
         const wchar_t* dll_dir                = nullptr;
         NVSDK_NGX_PerfQuality_Value quality   = NVSDK_NGX_PerfQuality_Value_Balanced;
 
@@ -346,8 +348,20 @@ namespace spartan
             logged_dispatch_error  = false;
         }
 
+        // ngx init takes seconds (it loads and verifies the dlss dll), so it runs beside the rest of startup
+        future<void> sdk_init_task;
+
+        void sdk_wait()
+        {
+            if (sdk_init_task.valid())
+            {
+                sdk_init_task.get();
+            }
+        }
+
         void sdk_shutdown()
         {
+            sdk_wait();
             feature_destroy();
             if (parameters)
             {
@@ -368,8 +382,9 @@ namespace spartan
                 return;
             }
 
-            data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
-            dll_dir   = data_path.c_str();
+            data_path    = (filesystem::path(FileSystem::GetExecutableDirectory()) / "cache").wstring();
+            library_path = (filesystem::path(FileSystem::GetExecutableDirectory()) / "third_party").wstring();
+            dll_dir      = library_path.c_str();
 
             NVSDK_NGX_FeatureCommonInfo info = {};
             info.PathListInfo.Path           = &dll_dir;
@@ -463,6 +478,7 @@ namespace spartan
 
         void query_mode_ranges(uint32_t output_width, uint32_t output_height)
         {
+            sdk_wait();
             if (sdk_ready && parameters && mode_ranges_output_width == output_width && mode_ranges_output_height == output_height)
             {
                 return;
@@ -563,6 +579,7 @@ namespace spartan
 
         void feature_create(VkCommandBuffer cmd)
         {
+            sdk_wait();
             if (!sdk_ready || handle || create_failed || !cmd || common::resolution_render_max_width == 0)
             {
                 return;
@@ -787,7 +804,7 @@ namespace spartan
     void RHI_VendorTechnology::Initialize()
     {
     #ifdef _WIN32
-        dlss::sdk_init();
+        dlss::sdk_init_task = async(launch::async, dlss::sdk_init);
     #endif
     }
 
@@ -867,9 +884,23 @@ namespace spartan
     #endif
     }
 
+    bool RHI_VendorTechnology::DLSS_IsReady()
+    {
+    #ifdef _WIN32
+        return !dlss::sdk_init_task.valid() || dlss::sdk_init_task.wait_for(chrono::seconds(0)) == future_status::ready;
+    #else
+        return true;
+    #endif
+    }
+
     float RHI_VendorTechnology::DLSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _WIN32
+        if (!DLSS_IsReady())
+        {
+            return 0.0f;
+        }
+
         return dlss::get_resolution_scale_min(
             static_cast<uint32_t>(resolution_render.x),
             static_cast<uint32_t>(resolution_render.y),
@@ -1067,6 +1098,7 @@ namespace spartan
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
+        dlss::sdk_wait();
         if (!dlss::sdk_ready || !cmd_list)
         {
             return;

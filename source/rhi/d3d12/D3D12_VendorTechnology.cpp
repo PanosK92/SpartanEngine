@@ -283,6 +283,7 @@ namespace spartan
         NVSDK_NGX_Handle* handle              = nullptr;
         Vector2 jitter                        = Vector2::Zero;
         wstring data_path;
+        wstring library_path;
         const wchar_t* dll_dir                = nullptr;
         NVSDK_NGX_PerfQuality_Value quality   = NVSDK_NGX_PerfQuality_Value_Balanced;
 
@@ -320,8 +321,9 @@ namespace spartan
                 return;
             }
 
-            data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
-            dll_dir   = data_path.c_str();
+            data_path    = (filesystem::path(FileSystem::GetExecutableDirectory()) / "cache").wstring();
+            library_path = (filesystem::path(FileSystem::GetExecutableDirectory()) / "third_party").wstring();
+            dll_dir      = library_path.c_str();
 
             NVSDK_NGX_FeatureCommonInfo info = {};
             info.PathListInfo.Path           = &dll_dir;
@@ -805,6 +807,11 @@ namespace spartan
     #else
         return 0.0f;
     #endif
+    }
+
+    bool RHI_VendorTechnology::DLSS_IsReady()
+    {
+        return true;
     }
 
     float RHI_VendorTechnology::DLSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)

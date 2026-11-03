@@ -32,6 +32,50 @@ static void set_working_directory_to_executable()
     }
 }
 
+// Keep writable state separate from shipped files. Never overwrite newer settings during migration.
+static bool initialize_runtime_directories()
+{
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    for (const char* directory : { "settings", "logs", "cache" })
+    {
+        fs::create_directories(directory, ec);
+        if (ec) return false;
+    }
+    const std::pair<const char*, const char*> migrations[] = {
+        { "spartan.xml", "settings/spartan.xml" },
+        { "editor.ini", "settings/editor.ini" },
+        { "imgui_style_user.bin", "settings/imgui_style_user.bin" },
+        { "spartan_worlds.xml", "settings/spartan_worlds.xml" },
+        { "spartan_update.txt", "settings/spartan_update.txt" },
+        { "game_build.xml", "settings/game_build.xml" },
+        { "log.txt", "logs/log.txt" },
+        { "log_previous.txt", "logs/log_previous.txt" },
+        { "log_headless.txt", "logs/log_headless.txt" },
+        { "log_headless_previous.txt", "logs/log_headless_previous.txt" },
+        { "pipeline_cache.bin", "cache/pipeline_cache.bin" },
+        { "pipeline_cache_d3d12.bin", "cache/pipeline_cache_d3d12.bin" },
+        { "pipeline_cache_d3d12_v2.bin", "cache/pipeline_cache_d3d12_v2.bin" },
+        { "generated_cache", "cache/generated_cache" }
+    };
+    for (const auto& [source, destination] : migrations)
+    {
+        if (fs::exists(source, ec) && !fs::exists(destination, ec))
+        {
+            fs::rename(source, destination, ec);
+            if (ec) return false;
+        }
+    }
+#ifdef _WIN32
+    // The import libraries use /DELAYLOAD so this runs before any vendor DLL is needed.
+    // Exclude the working directory and PATH from dependency searches.
+    const fs::path libraries = fs::path(spartan::FileSystem::GetExecutableDirectory()) / "third_party";
+    if (!SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) || !AddDllDirectory(libraries.c_str()))
+        return false;
+#endif
+    return true;
+}
+
 #ifdef _WIN32 // windows
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -40,6 +84,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return reporter_result;
     spartan::CrashHandler::Initialize();
     set_working_directory_to_executable();
+    if (!initialize_runtime_directories())
+    {
+        std::fprintf(stderr, "Unable to initialize Spartan runtime directories.\n");
+        return 1;
+    }
 
     // convert command line to argv-like format
     int argc;
@@ -59,6 +108,11 @@ int main(int argc, char** argv)
 {
     spartan::CrashHandler::Initialize();
     set_working_directory_to_executable();
+    if (!initialize_runtime_directories())
+    {
+        std::fprintf(stderr, "Unable to initialize Spartan runtime directories.\n");
+        return 1;
+    }
 
     std::vector<std::string> args(argv, argv + argc);
 #endif

@@ -123,7 +123,7 @@ namespace spartan
         hash.Add(source);
         for (const string& argument : arguments) hash.Add(argument);
         const auto cache_path = compiler_version.empty() ? filesystem::path{} :
-            generated_cache::Path(FileSystem::GetExecutableDirectory(), "shaders", hash.value);
+            generated_cache::Path(FileSystem::GetExecutableDirectory() + "/cache", "shaders", hash.value);
         vector<uint8_t> bytecode;
         if (generated_cache::Load(cache_path, hash.value, bytecode) && !bytecode.empty())
         {

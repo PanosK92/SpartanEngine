@@ -815,7 +815,7 @@ license.)";
     {
         constexpr const char* api_url      = "https://api.github.com/repos/PanosK92/SpartanEngine/releases?per_page=1";
         constexpr const char* releases_url = "https://github.com/PanosK92/SpartanEngine/releases";
-        constexpr const char* skip_file    = "spartan_update.txt";
+        constexpr const char* skip_file    = "settings/spartan_update.txt";
 
         atomic<bool> visible{false};
         string remote_tag;

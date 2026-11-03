@@ -14,13 +14,9 @@
 
 local shop = {}
 
-local font_display = "data/fonts/OpenSans/OpenSans-ExtraBoldItalic.ttf"
-local font_light   = "data/fonts/OpenSans/OpenSans-Light.ttf"
-local font_medium  = "data/fonts/OpenSans/OpenSans-SemiBold.ttf"
-
-local accent = { 1.0, 0.58, 0.20 }
-local good   = { 0.45, 0.90, 0.55 }
-local bad    = { 1.00, 0.42, 0.36 }
+local directory = World.GetFilePath():match("^(.*[/\\])") or ""
+local ui        = _G.plan_ui or dofile(directory .. "plan_ui.lua")
+local owns_ui   = false
 
 local starting_credits = 500000
 local fit_time         = 0.75
@@ -46,7 +42,7 @@ local stat_rows =
     shift        = { label = "SHIFT TIME",     better = -1, get = function(st) return st.shift_time end, fmt = function(v) return string.format("%d MS", math.floor(v * 1000 + 0.5)) end },
     final_drive  = { label = "FINAL DRIVE",    better = 0,  get = function(st) return st.final_drive end, fmt = function(v) return string.format("%.2f : 1", v) end },
     diff         = { label = "DIFFERENTIAL",   better = 0,  get = function(st) return st.diff_type end, fmt = function(v) return ({ [0] = "OPEN", [1] = "LOCKED", [2] = "LIMITED SLIP" })[v] or "?" end },
-    grip         = { label = "PEAK GRIP",      better = 1,  get = function(st) return st.tire_friction end, fmt = function(v) return string.format("%.2f \xC2\xB5", v) end },
+    grip         = { label = "ASPHALT GRIP",      better = 1,  get = function(st) return st.tire_friction end, fmt = function(v) return string.format("%.2f \xC2\xB5", v) end },
     brake_force  = { label = "BRAKE FORCE",    better = 1,  get = function(st) return st.brake_force end, fmt = "relative" },
     brake_bias   = { label = "BRAKE BALANCE",  better = 0,  get = function(st) return st.brake_bias_front end, fmt = function(v) return string.format("%d%% FRONT", math.floor(v * 100 + 0.5)) end },
     springs      = { label = "SPRING RATE",    better = 1,  get = function(st) return st.spring_front_hz end, fmt = function(v) return string.format("%.2f HZ", v) end },
@@ -309,7 +305,6 @@ local unavailable_reason =
 local car           = nil
 local car_name      = ""
 local camera_entity = nil
-local fonts_ready   = false
 local time          = 0.0
 local open_time     = 0.0
 local closing       = false
@@ -318,8 +313,10 @@ local department    = 1
 local part_index    = 1
 local cursor        = 0
 local setting_index = 1
-local dept_anim     = {}
 local part_anim     = {}
+local stage_anim    = {}
+local tab_x         = nil
+local tab_w         = 0
 local toast_text    = nil
 local toast_time    = 0.0
 local toast_good    = true
@@ -329,6 +326,9 @@ local stats_cache   = {}
 local mouse_last_x  = -1
 local mouse_last_y  = -1
 local hit           = {}
+
+local clamp, lerp, smooth, ease_out, approach = ui.clamp, ui.lerp, ui.smooth, ui.ease_out, ui.approach
+local white, ink, black, accent = ui.white, ui.ink, ui.black, ui.accent
 
 local function wallet()
     if not _G.plan_garage then
@@ -341,28 +341,7 @@ end
 -- helpers
 --------------------------------------------------------------------------------
 
-local function clamp(x, a, b) return math.max(a, math.min(b, x)) end
-local function lerp(a, b, t) return a + (b - a) * t end
-local function smooth(t) t = clamp(t, 0, 1) return t * t * (3 - 2 * t) end
-local function ease_out(t) t = clamp(t, 0, 1) return 1 - (1 - t) ^ 3 end
-local function approach(current, target, rate, dt) return current + (target - current) * (1 - math.exp(-rate * dt)) end
-
-local function white(a) return Vector4(1, 1, 1, a) end
-local function black(a) return Vector4(0, 0, 0, a) end
-local function amber(a) return Vector4(accent[1], accent[2], accent[3], a) end
-local function tint(c, a) return Vector4(c[1], c[2], c[3], a) end
-
-local function credits_text(value)
-    local text = tostring(math.floor(value))
-    while true do
-        local replaced, count = text:gsub("^(%d+)(%d%d%d)", "%1,%2")
-        text = replaced
-        if count == 0 then
-            break
-        end
-    end
-    return text .. " CR"
-end
+local credits_text = ui.credits
 
 local function inside(b, x, y)
     return b and x >= b[1] and x <= b[1] + b[3] and y >= b[2] and y <= b[2] + b[4]
@@ -447,6 +426,9 @@ end
 
 local function toast(text, ok)
     toast_text, toast_time, toast_good = text, 0, ok
+    if not ok then
+        ui.sound("error")
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -513,6 +495,7 @@ local function fit(part, stage)
     end
     if stage == stage_of(part) then
         toast(stage == 0 and "ALREADY STOCK" or "ALREADY FITTED", true)
+        ui.sound("tick", 0.7, 0.8)
         return
     end
     local garage = wallet()
@@ -524,6 +507,7 @@ local function fit(part, stage)
         end
     end
     fitting = { part = part, stage = stage, time = 0, price = is_owned(part, stage) and 0 or (part.prices[stage] or 0) }
+    ui.sound("fitting")
 end
 
 local function finish_fit()
@@ -541,6 +525,7 @@ local function finish_fit()
         end
         stats_cache = {}
         if _G.plan_save_garage then _G.plan_save_garage() end
+        ui.sound(price > 0 and "purchase" or "confirm")
         if part.service then
             toast("SERVICE COMPLETE", true)
         elseif stage == 0 then
@@ -562,10 +547,15 @@ local function adjust_setting(part, direction)
     if setting.key == "final_drive" and value <= 0 then
         value = 1
     end
-    value = clamp(value + direction * setting.step, setting.min, setting.max)
-    if CarTuning.SetSetting(car, setting.key, value) then
+    local target = clamp(value + direction * setting.step, setting.min, setting.max)
+    if math.abs(target - value) < 1e-6 then
+        ui.sound("error", 0.4)
+        return
+    end
+    if CarTuning.SetSetting(car, setting.key, target) then
         stats_cache = {}
         if _G.plan_save_garage then _G.plan_save_garage() end
+        ui.sound("tick", 0.9, 0.75 + 0.6 * clamp((target - setting.min) / (setting.max - setting.min), 0, 1))
     else
         toast("SETTING REJECTED: PARK THE CAR / KEEP GEARS IN ORDER", false)
     end
@@ -575,62 +565,37 @@ end
 -- drawing
 --------------------------------------------------------------------------------
 
-local function load_fonts()
-    if fonts_ready then
-        return
-    end
-    Hud.LoadFont("display", font_display)
-    Hud.LoadFont("light", font_light)
-    Hud.LoadFont("medium", font_medium)
-    fonts_ready = true
-end
-
-local function draw_keycap(text, x, y, s, alpha)
-    local tw = Hud.TextWidth(text, 15 * s, "mono")
-    local cw = math.max(tw + 16 * s, 30 * s)
-    Hud.Rect(x, y, cw, 28 * s, white(0.08 * alpha), 4 * s)
-    Hud.RectOutline(x, y, cw, 28 * s, white(0.5 * alpha), 1.2 * s, 4 * s)
-    Hud.Text(text, x + cw * 0.5, y + 5 * s, 15 * s, white(0.9 * alpha), "mono", 0.5)
-    return cw
+local function list_top(s)
+    return ui.header_height * s + 112 * s
 end
 
 local function draw_backdrop(w, h, s, a)
-    -- the car sits in the clear middle, both columns get a deep wash behind them
-    Hud.RectGradient(0, 0, w * 0.50, h, black(0.88 * a), black(0.0), black(0.0), black(0.88 * a))
-    Hud.Rect(0, 0, 820 * s, h, black(0.35 * a))
-    Hud.RectGradient(w * 0.55, 0, w * 0.45, h, black(0.0), black(0.85 * a), black(0.85 * a), black(0.0))
-    Hud.RectGradient(0, 0, w, 170 * s, black(0.7 * a), black(0.7 * a), black(0.0), black(0.0))
-    Hud.RectGradient(0, h - 190 * s, w, 190 * s, black(0.0), black(0.0), black(0.85 * a), black(0.85 * a))
+    -- the car sits in the clear middle, the list and the work order each get their own glass
+    Hud.RectGradient(0, 0, w * 0.45, h, ink(0.78 * a), ink(0.0), ink(0.0), ink(0.78 * a))
+    Hud.RectGradient(0, 0, 640 * s, h, ink(0.3 * a), ink(0.0), ink(0.0), ink(0.3 * a))
+    Hud.RectGradient(0, h - 260 * s, w, 260 * s, ink(0.0), ink(0.0), ink(0.7 * a), ink(0.7 * a))
 end
 
 local function draw_header(w, h, s, a)
-    local x = 80 * s
-    Hud.Text("KARABELAS MOTORWORKS   \xC2\xB7   PERFORMANCE PARTS", x + 4 * s, 46 * s, 16 * s, amber(a), "mono", 0, 5 * s)
-    Hud.Text("TUNE SHOP", x, 62 * s, 74 * s, white(a), "display", 0, 1 * s)
-
-    local rx = w - 80 * s
-    Hud.Text(string.upper(car_name), rx, 54 * s, 30 * s, white(0.95 * a), "medium", 1, 1 * s)
-    Hud.Text("BALANCE", rx - Hud.TextWidth(credits_text(wallet().credits), 26 * s, "light", 1 * s) - 16 * s, 102 * s, 14 * s, white(0.5 * a), "mono", 1, 4 * s)
-    Hud.Text(credits_text(wallet().credits), rx, 94 * s, 26 * s, amber(a), "light", 1, 1 * s)
+    ui.header(w, s, a, { "ZAKYNTHOS", "HOME", "TUNE SHOP" }, { { "VEHICLE", string.upper(car_name), "plan_regular" }, { "CREDITS", credits_text(wallet().credits) } }, 1 - a)
 end
 
-local function draw_departments(s, a, dt)
-    local x, y = 80 * s, 220 * s
-    local row_h = 54 * s
+-- departments run along the top like the tabs of a settings screen, a blue rule slides under the current one
+local function draw_tabs(w, s, a, dt)
+    local y = ui.header_height * s
+    local bar_h = 56 * s
+    Hud.Rect(0, y, w, bar_h, ink(0.62 * a))
+    Hud.Rect(0, y + bar_h - 1 * s, w, 1 * s, white(0.08 * a))
     hit.departments = {}
-    Hud.Text("DEPARTMENT", x, y - 34 * s, 13 * s, white(0.45 * a), "mono", 0, 4 * s)
-    for i, dept in ipairs(departments) do
-        dept_anim[i] = approach(dept_anim[i] or 0, i == department and 1 or 0, 14, dt)
-        local k  = dept_anim[i]
-        local ry = y + (i - 1) * row_h
-        local ra = ease_out((open_time - 0.1 - i * 0.04) / 0.5) * a
-        if k > 0.01 then
-            Hud.Rect(x - 16 * s, ry - 6 * s, 4 * s, (row_h - 12 * s) * k, amber(ra))
-            Hud.RectGradient(x - 16 * s, ry - 6 * s, 220 * s * k, row_h - 12 * s, amber(0.16 * k * ra), amber(0.0), amber(0.0), amber(0.16 * k * ra))
-        end
-        Hud.Text(dept.label, x + 8 * s * k, ry + 4 * s, 19 * s, (i == department) and white(ra) or white(0.5 * ra), "medium", 0, 3 * s)
 
-        -- a tick for every part in the department that has something fitted
+    local x = ui.margin * s
+    x = x + ui.key_pill("Q", x, y + bar_h * 0.5 - 12 * s, s, a * 0.9) + 26 * s
+    local size = 13 * s
+    for i, dept in ipairs(departments) do
+        local lw = ui.label_width(dept.label, size)
+        local current = i == department
+        ui.label(dept.label, x, y + bar_h * 0.5 - 8 * s, size, current and white(a) or white(0.48 * a))
+
         local fitted = 0
         for _, part in ipairs(dept.parts) do
             if stage_of(part) > 0 then
@@ -638,71 +603,81 @@ local function draw_departments(s, a, dt)
             end
         end
         if fitted > 0 then
-            Hud.Text(tostring(fitted), x + 196 * s, ry + 7 * s, 15 * s, amber(ra), "mono", 1)
+            Hud.Text(tostring(fitted), x + lw + 5 * s, y + bar_h * 0.5 - 15 * s, 10 * s, accent(a), "plan_strong")
         end
-        hit.departments[i] = { x - 16 * s, ry - 6 * s, 220 * s, row_h - 12 * s }
+        if current then
+            tab_x = tab_x and approach(tab_x, x, 18, dt) or x
+            tab_w = tab_w > 0 and approach(tab_w, lw, 18, dt) or lw
+        end
+        hit.departments[i] = { x - 12 * s, y, lw + 24 * s, bar_h }
+        x = x + lw + 34 * s
+    end
+    ui.key_pill("E", x - 8 * s, y + bar_h * 0.5 - 12 * s, s, a * 0.9)
+    if tab_x then
+        Hud.Rect(tab_x, y + bar_h - 3 * s, tab_w, 3 * s, accent(a))
     end
 end
 
-local function draw_pips(part, x, y, s, a, current, max)
+-- a thin meter of stages, filled blue up to the fitted stage, owned stages lit white
+local function draw_meter(part, x, y, s, k, a, current, max)
     for i = 1, #part.stages do
-        local available = i <= max
         local col
         if i <= current then
-            col = amber(a)
-        elseif available and is_owned(part, i) then
-            col = white(0.55 * a)
-        elseif available then
-            col = white(0.16 * a)
+            col = accent(a)
+        elseif i <= max and is_owned(part, i) then
+            col = ui.on_bar(k, 0.7 * a, 0.9)
+        elseif i <= max then
+            col = ui.on_bar(k, 0.3 * a, 0.9)
         else
-            col = white(0.05 * a)
+            col = ui.on_bar(k, 0.08 * a, 0.9)
         end
-        Hud.Rect(x + (i - 1) * 16 * s, y, 11 * s, 11 * s, col, 2 * s)
+        Hud.Rect(x + (i - 1) * 16 * s, y, 12 * s, 4 * s, col)
     end
 end
 
 local function draw_parts(s, a, dt)
-    local dept = departments[department]
-    local x, y = 330 * s, 220 * s
-    local width = 450 * s
-    local row_h = 76 * s
+    local dept  = departments[department]
+    local x, y  = ui.margin * s, list_top(s)
+    local width = 480 * s
+    local bar_h = 62 * s
     hit.parts = {}
-    Hud.Text(dept.label .. "   \xC2\xB7   " .. #dept.parts .. " PARTS", x, y - 34 * s, 13 * s, white(0.45 * a), "mono", 0, 4 * s)
+    ui.label(dept.label, x, y - 30 * s, 12 * s, white(0.9 * a))
+    ui.label(#dept.parts .. " PARTS", x + ui.label_width(dept.label, 12 * s) + 16 * s, y - 30 * s, 12 * s, white(0.4 * a))
     for i, part in ipairs(dept.parts) do
-        part_anim[i] = approach(part_anim[i] or 0, i == part_index and 1 or 0, 14, dt)
+        part_anim[i] = approach(part_anim[i] or 0, i == part_index and 1 or 0, 16, dt)
         local k   = part_anim[i]
-        local ry  = y + (i - 1) * row_h
+        local ry  = y + (i - 1) * (bar_h + 6 * s)
         local max = stage_max(part)
         local cur = stage_of(part)
-        local ra  = a * (max > 0 and 1.0 or 0.45)
+        local ra  = ease_out((open_time - 0.15 - i * 0.04) / 0.45) * a * (max > 0 and 1.0 or 0.5)
+        local rx  = x + (1 - ease_out((open_time - 0.15 - i * 0.04) / 0.45)) * -18 * s
 
-        Hud.Rect(x - 14 * s, ry - 8 * s, width, row_h - 10 * s, white((0.035 + 0.05 * k) * a), 4 * s)
-        if k > 0.01 then
-            Hud.RectOutline(x - 14 * s, ry - 8 * s, width, row_h - 10 * s, amber(0.75 * k * a), 1.5 * s, 4 * s)
-        end
-        Hud.Text(part.name, x, ry, 24 * s, white(lerp(0.75, 1.0, k) * ra), "medium", 0, 0.5 * s)
+        ui.list_bar(rx, ry, width, bar_h, s, k, ra)
+        Hud.Text(part.name, rx + 24 * s, ry + 11 * s, 18 * s, ui.on_bar(k, ra, 0.85), "plan_strong")
 
         local status
         if part.service and max > 0 then
             local st = CarTuning.GetStats(car)
-            if part.key == "oil" then status = string.format("OIL %.1f%% / %.0f KM", st.oil_quality * 100, st.oil_distance_km)
+            if part.key == "oil" then status = string.format("OIL %.1f%%   %.0f KM", st.oil_quality * 100, st.oil_distance_km)
             elseif part.key == "chassis" then status = string.format("RIGIDITY %.1f%%", st.chassis_quality * 100)
             else status = string.format("BOTTLE %.2f / 5 KG", st.nitrous_kg) end
         elseif max <= 0 then
-            status = "NOT AVAILABLE FOR THIS CAR"
+            status = "NOT AVAILABLE"
         elseif cur > 0 then
-            status = "FITTED   \xC2\xB7   " .. stage_name(part, cur)
+            status = stage_name(part, cur)
         else
             status = "STOCK"
         end
-        Hud.Text(status, x, ry + 36 * s, 13 * s, (cur > 0) and amber(0.9 * ra) or white(0.5 * ra), "mono", 0, 3 * s)
-        if max > 0 then
-            draw_pips(part, x + width - 40 * s - #part.stages * 16 * s, ry + 10 * s, s, ra, cur, max)
+        local status_color = (cur > 0) and accent(ra) or ui.on_bar(k, 0.8 * ra, 0.6)
+        ui.label(status, rx + 24 * s, ry + 38 * s, 10 * s, status_color)
+        if max > 0 and not part.service then
+            draw_meter(part, rx + width - 24 * s - #part.stages * 16 * s + 4 * s, ry + bar_h * 0.5 - 2 * s, s, k, ra, cur, max)
         end
-        hit.parts[i] = { x - 14 * s, ry - 8 * s, width, row_h - 10 * s }
+        hit.parts[i] = { rx, ry, width, bar_h }
     end
 end
 
+-- before and after for every stat the part touches, with a gauge that shows the gain in green and the loss in red
 local function draw_compare(part, x, y, width, s, a)
     local now  = preview(part, stage_of(part))
     local next = preview(part, cursor)
@@ -710,32 +685,47 @@ local function draw_compare(part, x, y, width, s, a)
     if not now or not next then
         return y
     end
-    Hud.Text("WHAT CHANGES", x, y, 13 * s, white(0.45 * a), "mono", 0, 4 * s)
-    y = y + 28 * s
+    ui.label("PERFORMANCE", x, y, 11 * s, white(0.45 * a))
+    y = y + 26 * s
     for _, id in ipairs(part.rows) do
         local row = stat_rows[id]
         local v_now, v_next = row.get(now), row.get(next)
         local fmt = row.fmt
         if fmt == "relative" then
-            local reference = math.max(row.get(base), 0.0001)
+            local reference = math.max(row.get(base), 1e-12)
             fmt = function(v) return string.format("%d%%", math.floor(v / reference * 100 + 0.5)) end
         end
-        Hud.Text(row.label, x, y + 3 * s, 14 * s, white(0.6 * a), "mono", 0, 2 * s)
-        local delta = v_next - v_now
-        local changed = math.abs(delta) > math.max(math.abs(v_now) * 0.0005, 0.00001)
-        local col = white(0.9 * a)
+        local delta   = v_next - v_now
+        local changed = math.abs(delta) > math.max(math.abs(v_now) * 0.0005, 1e-12)
+        local col     = white(0.9 * a)
         if changed and row.better ~= 0 then
-            col = (delta * row.better > 0) and tint(good, a) or tint(bad, a)
+            col = (delta * row.better > 0) and ui.good(a) or ui.bad(a)
         elseif changed then
-            col = amber(a)
+            col = accent(a)
         end
-        local text = fmt(v_now)
+
+        ui.label(row.label, x, y + 3 * s, 10 * s, white(0.6 * a))
+        local vx = x + width
         if changed then
-            text = fmt(v_now) .. "   \xE2\x86\x92   " .. fmt(v_next)
+            vx = vx - Hud.Text(fmt(v_next), vx, y - 2 * s, 17 * s, col, "plan_regular", 1) - 10 * s
+            vx = vx - Hud.Text("\xE2\x80\xBA", vx, y - 4 * s, 18 * s, white(0.4 * a), "plan_regular", 1) - 10 * s
+            Hud.Text(fmt(v_now), vx, y - 2 * s, 17 * s, white(0.5 * a), "plan_regular", 1)
+        else
+            Hud.Text(fmt(v_now), vx, y - 2 * s, 17 * s, white(0.85 * a), "plan_regular", 1)
         end
-        Hud.Text(text, x + width, y, 18 * s, changed and col or white(0.85 * a), "medium", 1, 0.5 * s)
-        Hud.Rect(x, y + 30 * s, width, 1 * s, white(0.08 * a))
-        y = y + 40 * s
+
+        -- the gauge, only for plain quantities where bigger and smaller mean something
+        local gy = y + 24 * s
+        Hud.Rect(x, gy, width, 2 * s, white(0.08 * a))
+        if v_now > 0 and v_next > 0 and row.better ~= 0 then
+            local scale = 0.82 / math.max(v_now, v_next)
+            local low, high = math.min(v_now, v_next) * scale, math.max(v_now, v_next) * scale
+            Hud.Rect(x, gy, width * low, 2 * s, white(0.55 * a))
+            if changed then
+                Hud.Rect(x + width * low, gy - 1 * s, width * (high - low), 4 * s, col)
+            end
+        end
+        y = y + 44 * s
     end
     return y
 end
@@ -755,76 +745,90 @@ local function draw_setting(part, x, y, width, s, a)
     if setting.key == "final_drive" and value <= 0 then
         value = 1
     end
-    Hud.Text(setting.label .. "  [" .. setting_index .. "/" .. #(part.settings or {setting}) .. "]", x, y, 13 * s, white(0.45 * a), "mono", 0, 4 * s)
-    if not unlocked then
-        Hud.Text("FIT " .. stage_name(part, setting.min_stage) .. " TO ADJUST", x + width, y - 1 * s, 13 * s, white(0.35 * a), "mono", 1, 2 * s)
+    local count = #(part.settings or { setting })
+    ui.label("SETTINGS", x, y, 11 * s, white(0.45 * a))
+    if count > 1 then
+        ui.label(string.format("%d / %d", setting_index, count), x + ui.label_width("SETTINGS", 11 * s) + 14 * s, y, 11 * s, accent(0.8 * a))
     end
+    if not unlocked then
+        ui.label("FIT " .. stage_name(part, setting.min_stage) .. " TO ADJUST", x + width, y, 10 * s, white(0.35 * a), 1)
+    end
+    y = y + 24 * s
+    local bar_a = unlocked and a or 0.35 * a
+    ui.label(setting.label, x, y, 10 * s, white(0.8 * bar_a))
+    Hud.Text(setting.fmt(value), x + width, y - 4 * s, 16 * s, white(0.9 * bar_a), "plan_regular", 1)
     y = y + 26 * s
     local t = clamp((value - setting.min) / (setting.max - setting.min), 0, 1)
-    local bar_a = unlocked and a or 0.3 * a
-    Hud.Rect(x, y + 9 * s, width, 4 * s, white(0.15 * bar_a), 2 * s)
-    Hud.Rect(x, y + 9 * s, width * t, 4 * s, amber(bar_a), 2 * s)
-    Hud.Circle(x + width * t, y + 11 * s, 8 * s, unlocked and white(a) or white(0.3 * a))
-    Hud.Text(setting.fmt(value), x, y + 24 * s, 16 * s, white(0.85 * bar_a), "mono", 0, 2 * s)
-    hit.setting_minus = unlocked and { x, y - 6 * s, width * 0.5, 34 * s } or nil
-    hit.setting_plus  = unlocked and { x + width * 0.5, y - 6 * s, width * 0.5, 34 * s } or nil
-    Hud.Text("Z / C  SELECT SETTING    SHIFT + LEFT / RIGHT  ADJUST", x, y + 48 * s, 11 * s, amber(a), "mono")
-    hit.setting_next = { x, y - 32 * s, width, 28 * s }
-    return y + 76 * s
+    Hud.Rect(x, y, width, 2 * s, white(0.14 * bar_a))
+    Hud.Rect(x, y, width * t, 2 * s, accent(bar_a))
+    for i = 0, 10 do
+        Hud.Rect(x + width * i / 10, y + 6 * s, 1 * s, (i % 5 == 0) and 6 * s or 3 * s, white(0.22 * bar_a))
+    end
+    Hud.Rect(x + width * t - 5 * s, y - 7 * s, 10 * s, 16 * s, unlocked and white(a) or white(0.3 * a))
+    hit.setting_minus = unlocked and { x, y - 16 * s, width * 0.5, 32 * s } or nil
+    hit.setting_plus  = unlocked and { x + width * 0.5, y - 16 * s, width * 0.5, 32 * s } or nil
+    hit.setting_next  = { x, y - 50 * s, width, 24 * s }
+    return y + 26 * s
 end
 
-local function draw_detail(w, h, s, a)
+local function draw_detail(w, h, s, a, dt)
     local part  = current_part()
-    local width = 560 * s
-    local x     = w - 80 * s - width
-    local y     = 150 * s
+    local width = 600 * s
+    local x     = w - ui.margin * s - width + (1 - a) * 30 * s
+    local y     = ui.header_height * s + 82 * s
     local pad   = 30 * s
     local inner = width - pad * 2
     local max   = stage_max(part)
     local cur   = stage_of(part)
+    local bottom = h - ui.footer_height * s - 26 * s
     hit.stages, hit.fit = {}, nil
 
-    Hud.Rect(x, y, width, h - y - 170 * s, black(0.55 * a), 6 * s)
-    Hud.Rect(x, y, width, 4 * s, amber(a), 2 * s)
+    ui.panel(x, y, width, bottom - y, s, a, 0.9)
+    Hud.Rect(x, y, 64 * s, 2 * s, accent(a))
 
-    local cy = y + 28 * s
-    Hud.Text("WORK ORDER   \xC2\xB7   " .. departments[department].label, x + pad, cy, 13 * s, amber(a), "mono", 0, 4 * s)
-    cy = cy + 22 * s
-    Hud.Text(part.name, x + pad, cy, 40 * s, white(a), "display", 0, 0.5 * s)
-    cy = cy + 52 * s
+    local cy = y + 26 * s
+    ui.label("WORK ORDER", x + pad, cy, 11 * s, accent(a))
+    ui.label(departments[department].label, x + pad + ui.label_width("WORK ORDER", 11 * s) + 14 * s, cy, 11 * s, white(0.45 * a))
+    cy = cy + 20 * s
+    Hud.Text(part.name, x + pad - 2 * s, cy, 38 * s, white(a), "plan_thin", 0, 0.5 * s)
+    cy = cy + 58 * s
 
-    -- the description of what the part is and does
-    for _, line in ipairs(wrap(part.key, part.text, inner, 16 * s, "light")) do
-        Hud.Text(line, x + pad, cy, 16 * s, white(0.82 * a), "light")
+    for _, line in ipairs(wrap(part.key, part.text, inner, 15 * s, "plan_regular")) do
+        Hud.Text(line, x + pad, cy, 15 * s, white(0.72 * a), "plan_regular")
         cy = cy + 22 * s
     end
-    cy = cy + 12 * s
+    cy = cy + 14 * s
+    ui.hairline(x + pad, cy, inner, s, a)
+    cy = cy + 20 * s
 
     if max <= 0 then
-        Hud.Rect(x + pad, cy, inner, 54 * s, tint(bad, 0.12 * a), 4 * s)
-        Hud.Text("NOT AVAILABLE FOR THIS CAR", x + pad + 16 * s, cy + 8 * s, 15 * s, tint(bad, a), "mono", 0, 3 * s)
-        Hud.Text(unavailable_reason[part.key] or "The workshop has no kit for this model", x + pad + 16 * s, cy + 28 * s, 15 * s, white(0.7 * a), "light")
+        Hud.Rect(x + pad, cy, 3 * s, 46 * s, ui.bad(a))
+        ui.label("NOT AVAILABLE FOR THIS CAR", x + pad + 16 * s, cy + 4 * s, 11 * s, ui.bad(a))
+        Hud.Text(unavailable_reason[part.key] or "The workshop has no kit for this model", x + pad + 16 * s, cy + 24 * s, 15 * s, white(0.7 * a), "plan_regular")
         return
     end
 
-    -- stages, stock first
-    Hud.Text(part.service and "SERVICE" or (max > 4 and "STAGES  /  LEFT-RIGHT TO SCROLL" or "STAGES"), x + pad, cy, 13 * s, white(0.45 * a), "mono", 0, 4 * s)
-    cy = cy + 26 * s
+    -- stages, stock first, a window of five rows that scrolls with the cursor
+    ui.label(part.service and "SERVICE" or "STAGE", x + pad, cy, 11 * s, white(0.45 * a))
+    if max > 4 then
+        ui.label(string.format("%d / %d", cursor, max), x + pad + inner, cy, 11 * s, white(0.35 * a), 1)
+    end
+    cy = cy + 24 * s
     local first_stage = math.max(part.service and 1 or 0, math.min(cursor - 2, max - 4))
-    local last_stage = math.min(max, first_stage + 4)
+    local last_stage  = math.min(max, first_stage + 4)
+    local row_h       = 38 * s
     for stage = first_stage, last_stage do
-        local selected  = stage == cursor
+        stage_anim[stage] = approach(stage_anim[stage] or 0, stage == cursor and 1 or 0, 18, dt)
+        local k         = stage_anim[stage]
         local installed = stage == cur
-        local row_y     = cy
-        if selected then
-            Hud.Rect(x + pad - 10 * s, row_y - 6 * s, inner + 20 * s, 36 * s, amber(0.16 * a), 4 * s)
-            Hud.Rect(x + pad - 10 * s, row_y - 6 * s, 3 * s, 36 * s, amber(a))
-        end
-        Hud.RectOutline(x + pad, row_y + 4 * s, 14 * s, 14 * s, installed and amber(a) or white(0.4 * a), 1.5 * s, 3 * s)
+        ui.list_bar(x + pad, cy, inner, row_h, s, k, a)
+
+        local box = cy + row_h * 0.5 - 6 * s
+        Hud.RectOutline(x + pad + 16 * s, box, 12 * s, 12 * s, installed and accent(a) or ui.on_bar(k, 0.5 * a, 0.9), 1.2 * s)
         if installed then
-            Hud.Rect(x + pad + 3 * s, row_y + 7 * s, 8 * s, 8 * s, amber(a), 2 * s)
+            Hud.Rect(x + pad + 19 * s, box + 3 * s, 6 * s, 6 * s, accent(a))
         end
-        Hud.Text(stage_name(part, stage), x + pad + 28 * s, row_y, 19 * s, selected and white(a) or white(0.7 * a), "medium", 0, 1.5 * s)
+        ui.label(stage_name(part, stage), x + pad + 42 * s, cy + row_h * 0.5 - 7 * s, 12 * s, ui.on_bar(k, a, 0.72))
 
         local status
         if installed then
@@ -835,19 +839,20 @@ local function draw_detail(w, h, s, a)
             status = credits_text(part.prices[stage] or 0)
         end
         local affordable = installed or is_owned(part, stage) or wallet().credits >= (part.prices[stage] or 0)
-        Hud.Text(status, x + pad + inner, row_y + 3 * s, 15 * s, installed and amber(a) or (affordable and white(0.75 * a) or tint(bad, 0.85 * a)), "mono", 1, 2 * s)
-        hit.stages[stage] = { x + pad - 10 * s, row_y - 6 * s, inner + 20 * s, 36 * s }
-        cy = cy + 40 * s
+        local status_color = installed and accent(a) or (affordable and ui.on_bar(k, a, 0.75) or ui.bad(a))
+        Hud.Text(status, x + pad + inner - 16 * s, cy + row_h * 0.5 - 9 * s, 15 * s, status_color, "plan_regular", 1)
+        hit.stages[stage] = { x + pad, cy, inner, row_h }
+        cy = cy + row_h + 4 * s
     end
     cy = cy + 20 * s
 
     cy = draw_compare(part, x + pad, cy, inner, s, a)
-    cy = cy + 14 * s
+    cy = cy + 6 * s
     cy = draw_setting(part, x + pad, cy, inner, s, a)
 
     -- the button at the foot of the work order
-    local by = h - 170 * s - 86 * s
-    local bh = 58 * s
+    local bh = 54 * s
+    local by = bottom - pad - bh
     local label, price_text
     if fitting then
         label = part.service and "SERVICING" or "FITTING"
@@ -857,17 +862,27 @@ local function draw_detail(w, h, s, a)
         label = cursor == 0 and "REFIT STOCK" or "FIT"
         price_text = "OWNED"
     else
-        label = part.service and "SERVICE" or "BUY & FIT"
+        label = part.service and "SERVICE" or "PURCHASE & FIT"
         price_text = credits_text(part.prices[cursor] or 0)
     end
     local active = not fitting and cursor ~= cur
-    Hud.Rect(x + pad, by, inner, bh, active and amber(0.95 * a) or white(0.08 * a), 4 * s)
     if fitting then
-        Hud.Rect(x + pad, by, inner * smooth(fitting.time / fit_time), bh, amber(0.85 * a), 4 * s)
-    end
-    Hud.Text(label, x + pad + 22 * s, by + 14 * s, 24 * s, active and black(0.9 * a) or white(0.6 * a), "medium", 0, 3 * s)
-    if price_text then
-        Hud.Text(price_text, x + pad + inner - 22 * s, by + 18 * s, 18 * s, black(0.8 * a), "mono", 1, 2 * s)
+        local p = smooth(fitting.time / fit_time)
+        Hud.Rect(x + pad, by, inner, bh, accent(0.35 * a))
+        Hud.Rect(x + pad, by, inner * p, bh, white(0.94 * a))
+        ui.label(label, x + pad + 24 * s, by + bh * 0.5 - 8 * s, 14 * s, p > 0.15 and ink(a) or white(a))
+    elseif active then
+        local pulse = 0.5 + 0.5 * math.sin(time * 3.0)
+        Hud.Rect(x + pad, by, inner, bh, accent(a))
+        Hud.Rect(x + pad, by, inner, 1 * s, white((0.35 + 0.25 * pulse) * a))
+        ui.label(label, x + pad + 24 * s, by + bh * 0.5 - 8 * s, 14 * s, white(a))
+        if price_text then
+            Hud.Text(price_text, x + pad + inner - 24 * s, by + bh * 0.5 - 11 * s, 19 * s, white(a), "plan_regular", 1)
+        end
+    else
+        Hud.Rect(x + pad, by, inner, bh, ink(0.5 * a))
+        Hud.RectOutline(x + pad, by, inner, bh, white(0.12 * a), 1 * s)
+        ui.label(label, x + pad + 24 * s, by + bh * 0.5 - 8 * s, 14 * s, white(0.45 * a))
     end
     hit.fit = active and { x + pad, by, inner, bh } or nil
 end
@@ -876,53 +891,51 @@ local function drivetrain_text(st)
     return ({ [0] = "RWD", [1] = "FWD", [2] = "AWD" })[st.drivetrain] or "?"
 end
 
+-- the spec sheet of the car as it stands, along the foot of the screen
 local function draw_summary(w, h, s, a)
     local st = CarTuning.GetStats(car)
     if not st then
         return
     end
-    local x = 80 * s
-    local y = h - 128 * s
+    local x = ui.margin * s
+    local y = h - ui.footer_height * s - 108 * s
     local hp = st.power_kw * 1.341
     local cells =
     {
-        { "MAX POWER",  string.format("%d HP", math.floor(hp + 0.5)),               string.format("@ %d RPM", math.floor(st.power_rpm + 0.5)) },
-        { "MAX TORQUE", string.format("%d NM", math.floor(st.torque_nm + 0.5)),     string.format("@ %d RPM", math.floor(st.torque_rpm + 0.5)) },
-        { "WEIGHT",     string.format("%d KG", math.floor(st.mass_kg + 0.5)),       string.format("%.2f KG/HP", st.mass_kg / math.max(hp, 1)) },
-        { "LAYOUT",     drivetrain_text(st),                                         string.format("%d SPEED", st.gears) },
-        { "ENGINE",     string.format("%.1f L", st.displacement_l),                  st.boost_bar > 0 and string.format("%.2f BAR BOOST", st.boost_bar) or "NATURALLY ASPIRATED" },
+        { "MAX POWER",  string.format("%d", math.floor(hp + 0.5)), "HP",               string.format("%d RPM", math.floor(st.power_rpm + 0.5)) },
+        { "MAX TORQUE", string.format("%d", math.floor(st.torque_nm + 0.5)), "NM",     string.format("%d RPM", math.floor(st.torque_rpm + 0.5)) },
+        { "WEIGHT",     string.format("%d", math.floor(st.mass_kg + 0.5)), "KG",       string.format("%.2f KG / HP", st.mass_kg / math.max(hp, 1)) },
+        { "LAYOUT",     drivetrain_text(st), "",                                         string.format("%d SPEED", st.gears) },
+        { "ENGINE",     string.format("%.1f", st.displacement_l), "L",                   st.boost_bar > 0 and string.format("%.2f BAR BOOST", st.boost_bar) or "NATURALLY ASPIRATED" },
     }
+    ui.hairline(x, y - 16 * s, 5 * 190 * s - 30 * s, s, a)
     for i, cell in ipairs(cells) do
-        local cx = x + (i - 1) * 205 * s
-        Hud.Text(cell[1], cx, y, 13 * s, white(0.45 * a), "mono", 0, 4 * s)
-        Hud.Text(cell[2], cx, y + 18 * s, 32 * s, white(0.95 * a), "light", 0, 0.5 * s)
-        Hud.Text(cell[3], cx, y + 60 * s, 13 * s, amber(0.85 * a), "mono", 0, 2 * s)
-        if i > 1 then
-            Hud.Rect(cx - 18 * s, y + 4 * s, 1 * s, 70 * s, white(0.12 * a))
+        local cx = x + (i - 1) * 190 * s
+        ui.label(cell[1], cx, y, 10 * s, white(0.45 * a))
+        local vw = Hud.Text(cell[2], cx - 2 * s, y + 14 * s, 36 * s, white(0.95 * a), "plan_thin")
+        if cell[3] ~= "" then
+            ui.label(cell[3], cx + vw + 6 * s, y + 36 * s, 11 * s, white(0.6 * a))
         end
+        ui.label(cell[4], cx, y + 64 * s, 10 * s, accent(0.9 * a))
     end
 end
 
-local function draw_hints(w, h, s, a)
-    local y = h - 62 * s
-    local x = w - 80 * s
-    local entries =
+local function draw_footer(w, h, s, a)
+    local prompts =
     {
-        { "ESC", "BACK" }, { "X", "STOCK" }, { "ENTER", "FIT" }, { "\xE2\x86\x90 \xE2\x86\x92", "STAGE" }, { "\xE2\x86\x91 \xE2\x86\x93", "PART" }, { "Q E", "DEPARTMENT" },
+        { "Q  E", "DEPARTMENT" }, { "\xE2\x86\x91 \xE2\x86\x93", "PART" }, { "\xE2\x86\x90 \xE2\x86\x92", "STAGE" },
     }
     local part = current_part()
     if part.setting and stage_of(part) >= part.setting.min_stage then
-        table.insert(entries, 2, { "SHIFT \xE2\x86\x90 \xE2\x86\x92", "ADJUST" })
+        table.insert(prompts, { "SHIFT \xE2\x86\x90 \xE2\x86\x92", "ADJUST" })
+        if part.settings and #part.settings > 1 then
+            table.insert(prompts, { "Z  C", "SETTING" })
+        end
     end
-    for _, entry in ipairs(entries) do
-        local lw = Hud.TextWidth(entry[2], 14 * s, "mono", 3 * s)
-        x = x - lw
-        Hud.Text(entry[2], x, y + 6 * s, 14 * s, white(0.65 * a), "mono", 0, 3 * s)
-        local kw = Hud.TextWidth(entry[1], 15 * s, "mono")
-        x = x - math.max(kw + 16 * s, 30 * s) - 10 * s
-        draw_keycap(entry[1], x, y, s, a)
-        x = x - 32 * s
-    end
+    table.insert(prompts, { "X", "STOCK" })
+    table.insert(prompts, { "ENTER", "FIT" })
+    table.insert(prompts, { "ESC", "BACK" })
+    ui.footer(w, h, s, a, prompts, nil, 1 - a)
 end
 
 local function draw_toast(w, h, s, a)
@@ -936,13 +949,7 @@ local function draw_toast(w, h, s, a)
         return
     end
     local k = smooth(t / 0.2) * (1 - smooth((t - life + 0.4) / 0.4))
-    local tw = Hud.TextWidth(toast_text, 16 * s, "mono", 3 * s)
-    local bw = tw + 60 * s
-    local x  = w * 0.5 - bw * 0.5
-    local y  = h - 230 * s + (1 - k) * 16 * s
-    Hud.Rect(x, y, bw, 48 * s, black(0.8 * k * a), 6 * s)
-    Hud.Rect(x, y, 4 * s, 48 * s, toast_good and amber(k * a) or tint(bad, k * a))
-    Hud.Text(toast_text, w * 0.5, y + 14 * s, 16 * s, white(k * a), "mono", 0.5, 3 * s)
+    ui.toast(w, h, s, a, toast_text, toast_good, k)
 end
 
 --------------------------------------------------------------------------------
@@ -958,21 +965,44 @@ local function pressed(...)
     return false
 end
 
-local function select_department(index)
+local function select_department(index, quiet)
     department = (index - 1) % #departments + 1
     part_index = 1
     setting_index = 1
-    part_anim  = {}
+    part_anim, stage_anim = {}, {}
     cursor     = clamp(stage_of(current_part()) + 1, 0, stage_max(current_part()))
+    if not quiet then
+        ui.sound("tab")
+    end
 end
 
 local function select_part(index)
     local count = #departments[department].parts
-    part_index  = (index - 1) % count + 1
+    local next  = (index - 1) % count + 1
+    if next == part_index then
+        return
+    end
+    part_index    = next
     setting_index = 1
-    local part  = current_part()
+    stage_anim    = {}
+    local part    = current_part()
     -- the cursor rests on the next stage up, the one a customer would ask about
     cursor = clamp(stage_of(part) + 1, 0, stage_max(part))
+    ui.sound("move")
+end
+
+local function move_cursor(stage, max)
+    stage = clamp(stage, 0, max)
+    if stage ~= cursor then
+        cursor = stage
+        ui.sound("tick", 0.9, 0.9 + cursor * 0.05)
+    end
+end
+
+local function next_setting(part, direction)
+    setting_index = (setting_index - 1 + direction) % #part.settings + 1
+    part.setting  = part.settings[setting_index]
+    ui.sound("move", 0.8)
 end
 
 local function handle_input(mx, my)
@@ -981,6 +1011,7 @@ local function handle_input(mx, my)
 
     if pressed(KeyCode.Esc, KeyCode.Backspace, KeyCode.Button_East) then
         closing, close_time = true, 0
+        ui.sound("back")
         return
     end
     if pressed(KeyCode.E, KeyCode.Tab, KeyCode.Right_Shoulder, KeyCode.Page_Down) then
@@ -997,8 +1028,8 @@ local function handle_input(mx, my)
     end
     part = current_part()
     if part.settings and #part.settings > 0 then
-        if pressed(KeyCode.C) then setting_index = setting_index % #part.settings + 1 end
-        if pressed(KeyCode.Z) then setting_index = (setting_index - 2) % #part.settings + 1 end
+        if pressed(KeyCode.C) then next_setting(part, 1) end
+        if pressed(KeyCode.Z) then next_setting(part, -1) end
         part.setting = part.settings[(setting_index - 1) % #part.settings + 1]
     end
     local max = stage_max(part)
@@ -1006,8 +1037,8 @@ local function handle_input(mx, my)
         if pressed(KeyCode.Arrow_Right, KeyCode.D) then adjust_setting(part, 1) end
         if pressed(KeyCode.Arrow_Left, KeyCode.A) then adjust_setting(part, -1) end
     else
-        if pressed(KeyCode.Arrow_Right, KeyCode.D, KeyCode.DPad_Right) then cursor = clamp(cursor + 1, 0, max) end
-        if pressed(KeyCode.Arrow_Left, KeyCode.A, KeyCode.DPad_Left) then cursor = clamp(cursor - 1, 0, max) end
+        if pressed(KeyCode.Arrow_Right, KeyCode.D, KeyCode.DPad_Right) then move_cursor(cursor + 1, max) end
+        if pressed(KeyCode.Arrow_Left, KeyCode.A, KeyCode.DPad_Left) then move_cursor(cursor - 1, max) end
     end
     if pressed(KeyCode.Enter, KeyCode.Space, KeyCode.Button_South) then
         fit(part, cursor)
@@ -1027,22 +1058,21 @@ local function handle_input(mx, my)
         end
     end
     for i, b in pairs(hit.parts or {}) do
-        if inside(b, mx, my) and ((moved and i ~= part_index) or (click and i ~= part_index)) then
+        if inside(b, mx, my) and (moved or click) and i ~= part_index then
             select_part(i)
             return
         end
     end
     for stage, b in pairs(hit.stages or {}) do
         if inside(b, mx, my) and (moved or click) then
-            cursor = stage
+            move_cursor(stage, max)
         end
     end
     if click and inside(hit.fit, mx, my) then
         fit(part, cursor)
     end
     if click and inside(hit.setting_next, mx, my) and part.settings and #part.settings > 0 then
-        setting_index = setting_index % #part.settings + 1
-        part.setting = part.settings[setting_index]
+        next_setting(part, 1)
     end
     if click and inside(hit.setting_minus, mx, my) then
         adjust_setting(part, -1)
@@ -1065,8 +1095,13 @@ function shop.Open()
     close_time = 0
     fitting    = nil
     toast_text = nil
+    tab_x, tab_w = nil, 0
     stats_cache, wrap_cache, hit = {}, {}, {}
-    dept_anim, part_anim = {}, {}
+    part_anim, stage_anim = {}, {}
+    if not ui.ready then
+        ui.init()
+        owns_ui = true
+    end
     wallet()
     if car then
         local settings = CarTuning.GetSettings(car)
@@ -1094,8 +1129,8 @@ function shop.Open()
             end
         end
     end
-    select_department(department)
     if car then
+        select_department(department, true)
         create_camera()
         tick_camera()
     end
@@ -1104,6 +1139,10 @@ end
 function shop.Close()
     if _G.plan_save_garage then _G.plan_save_garage() end
     release_camera()
+    if owns_ui then
+        ui.release()
+        owns_ui = false
+    end
     car = nil
 end
 
@@ -1112,7 +1151,7 @@ function shop.Tick(dt)
     time       = time + dt
     open_time  = open_time + dt
     toast_time = toast_time + dt
-    load_fonts()
+    ui.load_fonts()
 
     local w, h = Hud.GetSize()
     if w <= 0 or h <= 0 then
@@ -1121,11 +1160,13 @@ function shop.Tick(dt)
     local s = clamp(math.min(h / 1080, w / 1920), 0.5, 2.0)
 
     if not car then
-        Hud.Rect(0, 0, w, h, black(0.85))
-        Hud.Text("TUNE SHOP", w * 0.5, h * 0.42, 64 * s, white(1), "display", 0.5)
-        Hud.Text("THERE IS NO DRIVABLE CAR IN THE WORLD TO WORK ON", w * 0.5, h * 0.42 + 90 * s, 16 * s, amber(1), "mono", 0.5, 4 * s)
-        Hud.Text("ESC  BACK", w * 0.5, h * 0.42 + 130 * s, 14 * s, white(0.6), "mono", 0.5, 4 * s)
+        Hud.Rect(0, 0, w, h, ink(0.92))
+        ui.header(w, s, 1, { "ZAKYNTHOS", "HOME", "TUNE SHOP" }, {})
+        Hud.Text("NO VEHICLE", w * 0.5, h * 0.42, 64 * s, white(1), "plan_thin", 0.5, 12 * s)
+        ui.label("THERE IS NO DRIVABLE CAR IN THE WORLD TO WORK ON", w * 0.5, h * 0.42 + 96 * s, 12 * s, accent(1), 0.5)
+        ui.footer(w, h, s, 1, { { "ESC", "BACK" } })
         if pressed(KeyCode.Esc, KeyCode.Backspace, KeyCode.Button_East, KeyCode.Enter) then
+            ui.sound("back")
             return false
         end
         return true
@@ -1139,23 +1180,24 @@ function shop.Tick(dt)
         end
     end
 
-    local a = smooth(open_time / 0.6)
+    local a = smooth(open_time / 0.5)
     if closing then
         close_time = close_time + dt
-        a = a * (1 - smooth(close_time / 0.4))
+        a = a * (1 - smooth(close_time / 0.35))
     end
+    local adt = math.min(dt, 0.1)
 
     draw_backdrop(w, h, s, a)
-    draw_header(w, h, s, a)
-    draw_departments(s, a, math.min(dt, 0.1))
-    draw_parts(s, a, math.min(dt, 0.1))
-    draw_detail(w, h, s, a)
+    draw_tabs(w, s, a, adt)
+    draw_parts(s, a, adt)
+    draw_detail(w, h, s, a, adt)
     draw_summary(w, h, s, a)
-    draw_hints(w, h, s, a)
+    draw_header(w, h, s, a)
+    draw_footer(w, h, s, a)
     draw_toast(w, h, s, a)
 
     if closing then
-        Hud.Rect(0, 0, w, h, black(smooth(close_time / 0.45)))
+        Hud.Rect(0, 0, w, h, ink(smooth(close_time / 0.45)))
         return close_time < 0.45
     end
     if open_time > 0.3 then

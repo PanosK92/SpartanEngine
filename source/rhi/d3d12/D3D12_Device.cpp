@@ -316,7 +316,7 @@ namespace spartan
         std::vector<uint8_t>   cache_bytes;
         std::once_flag         init_flag;
         bool                   has_disk_cache = false;
-        const char*            cache_path = "pipeline_cache_d3d12_v2.bin";
+        const char*            cache_path = "cache/pipeline_cache_d3d12_v2.bin";
 
         void save()
         {

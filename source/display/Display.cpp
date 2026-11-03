@@ -18,6 +18,7 @@ SP_WARNINGS_OFF
 #include <wrl.h>
 #endif
 #include <SDL3/SDL_video.h>
+#include <future>
 SP_WARNINGS_ON
 //==========================
 
@@ -30,6 +31,7 @@ namespace spartan
     namespace
     {
         vector<DisplayMode> display_modes;
+        bool display_modes_enumerated = false;
         bool luminance_max_valid = false;
         bool sdr_white_nits_valid = false;
         float luminance_max = 350.0f;
@@ -46,6 +48,101 @@ namespace spartan
         {
             sdr_white_nits = value;
             sdr_white_nits_valid = true;
+            return value;
+        }
+
+        // creating a dxgi factory and walking its outputs is slow, so startup runs it beside the device creation
+        future<float> luminance_max_task;
+
+        float query_luminance_max()
+        {
+            float value = 350.0f;
+
+            #if defined(_WIN32)
+            #pragma comment(lib, "dxgi.lib")
+
+            // create dxgi factory
+            Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+            if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
+            {
+                SP_LOG_ERROR("Failed to create DXGI factory");
+                return value;
+            }
+
+            // enumerate and get the primary adapter (gpu)
+            Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+            for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
+            {
+                DXGI_ADAPTER_DESC1 desc;
+                adapter->GetDesc1(&desc);
+                if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                {
+                    continue;
+                }
+
+                break;
+            }
+
+            if (!adapter)
+            {
+                SP_LOG_ERROR("No DXGI adapter found");
+                return value;
+            }
+
+            // find primary display by detecting which display is being intersected the most by the engine window
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
+            {
+                UINT i = 0;
+                Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
+                float best_intersection_area = -1;
+                RECT window_rect;
+                GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
+                while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
+                {
+                    // get the rectangle bounds of the app window
+                    int ax1 = window_rect.left;
+                    int ay1 = window_rect.top;
+                    int ax2 = window_rect.right;
+                    int ay2 = window_rect.bottom;
+
+                    // get the rectangle bounds of current output
+                    DXGI_OUTPUT_DESC desc;
+                    if (FAILED(output_current->GetDesc(&desc)))
+                    {
+                        SP_LOG_ERROR("Failed to get output description");
+                        return value;
+                    }
+
+                    RECT r  = desc.DesktopCoordinates;
+                    int bx1 = r.left;
+                    int by1 = r.top;
+                    int bx2 = r.right;
+                    int by2 = r.bottom;
+
+                    // compute the intersection
+                    int intersect_area = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
+                    if (intersect_area > best_intersection_area)
+                    {
+                        output_primary = output_current;
+                        best_intersection_area = static_cast<float>(intersect_area);
+                    }
+
+                    i++;
+                }
+            }
+
+            // get display capabilities
+            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+            if (SUCCEEDED(output_primary.As(&output6)))
+            {
+                DXGI_OUTPUT_DESC1 desc;
+                if (SUCCEEDED(output6->GetDesc1(&desc)))
+                {
+                    value = desc.MaxLuminance;
+                }
+            }
+            #endif
+
             return value;
         }
     }
@@ -82,39 +179,38 @@ namespace spartan
     {
         InvalidateProperties();
         display_modes.clear();
+        display_modes_enumerated = false;
+        luminance_max_task       = async(launch::async, query_luminance_max);
 
-        uint32_t display_id = GetId();
-
-        // get display mode count
-        int display_mode_count;
-        SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(display_id, &display_mode_count);
-        if (!modes || display_mode_count <= 0)
-        {
-            SP_LOG_ERROR("Failed to get display modes: %s", SDL_GetError());
-            return;
-        }
-
-        // register display modes
-        for (int i = 0; i < display_mode_count; i++)
-        {
-            const SDL_DisplayMode* mode = modes[i];
-            RegisterDisplayMode(
-                mode->w,
-                mode->h,
-                mode->refresh_rate,
-                display_id
-            );
-        }
-
-        // free modes array when done
-        SDL_free(modes);
-   
-        // log display info
-        SP_LOG_INFO("name: %s, hz: %.1f, gamma: %.1f, hdr: %s, max luminance: %.0f nits", GetName(), GetRefreshRate(), GetGamma(), GetHdr() ? "true" : "false", GetLuminanceMax());
+        // log display info, the max luminance is still being queried in the background
+        SP_LOG_INFO("name: %s, hz: %.1f, gamma: %.1f, hdr: %s", GetName(), GetRefreshRate(), GetGamma(), GetHdr() ? "true" : "false");
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
     {
+        // enumerating the modes takes the os a while and only the resolution list needs them, so it happens on first use
+        if (!display_modes_enumerated)
+        {
+            display_modes_enumerated = true;
+
+            const uint32_t display_id = GetId();
+            int display_mode_count    = 0;
+            SDL_DisplayMode** modes   = SDL_GetFullscreenDisplayModes(display_id, &display_mode_count);
+            if (!modes || display_mode_count <= 0)
+            {
+                SP_LOG_ERROR("Failed to get display modes: %s", SDL_GetError());
+            }
+            else
+            {
+                for (int i = 0; i < display_mode_count; i++)
+                {
+                    const SDL_DisplayMode* mode = modes[i];
+                    RegisterDisplayMode(mode->w, mode->h, mode->refresh_rate, display_id);
+                }
+            }
+            SDL_free(modes);
+        }
+
         return display_modes;
     }
     
@@ -161,94 +257,12 @@ namespace spartan
             return luminance_max;
         }
 
-        float value = 350.0f;
+        if (luminance_max_task.valid())
+        {
+            return cache_luminance_max(luminance_max_task.get());
+        }
 
-        #if defined(_WIN32)
-        #pragma comment(lib, "dxgi.lib")
-
-        // create dxgi factory
-        Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
-        if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
-        {
-            SP_LOG_ERROR("Failed to create DXGI factory");
-            return cache_luminance_max(value);
-        }
-        
-        // enumerate and get the primary adapter (gpu)
-        Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-        for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
-        {
-            DXGI_ADAPTER_DESC1 desc;
-            adapter->GetDesc1(&desc);
-            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-            {
-                continue;
-            }
-        
-            break;
-        }
-        
-        if (!adapter)
-        {
-            SP_LOG_ERROR("No DXGI adapter found");
-            return cache_luminance_max(value);
-        }
-        
-        // find primary display by detecting which display is being intersected the most by the engine window
-        Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
-        {
-            UINT i = 0;
-            Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
-            float best_intersection_area = -1;
-            RECT window_rect;
-            GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
-            while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
-            {
-                // get the rectangle bounds of the app window
-                int ax1 = window_rect.left;
-                int ay1 = window_rect.top;
-                int ax2 = window_rect.right;
-                int ay2 = window_rect.bottom;
-        
-                // get the rectangle bounds of current output
-                DXGI_OUTPUT_DESC desc;
-                if (FAILED(output_current->GetDesc(&desc)))
-                {
-                    SP_LOG_ERROR("Failed to get output description");
-                    return cache_luminance_max(value);
-                }
-        
-                RECT r  = desc.DesktopCoordinates;
-                int bx1 = r.left;
-                int by1 = r.top;
-                int bx2 = r.right;
-                int by2 = r.bottom;
-        
-                // compute the intersection
-                int intersect_area = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
-                if (intersect_area > best_intersection_area)
-                {
-                    output_primary = output_current;
-                    best_intersection_area = static_cast<float>(intersect_area);
-                }
-        
-                i++;
-            }
-        }
-        
-        // get display capabilities
-        Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-        if (SUCCEEDED(output_primary.As(&output6)))
-        {
-            DXGI_OUTPUT_DESC1 desc;
-            if (SUCCEEDED(output6->GetDesc1(&desc)))
-            {
-                value = desc.MaxLuminance;
-            }
-        }
-        #endif
-
-        return cache_luminance_max(value);
+        return cache_luminance_max(query_luminance_max());
     }
 
     float Display::GetSdrWhiteNits()

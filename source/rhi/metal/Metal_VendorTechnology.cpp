@@ -39,6 +39,11 @@ namespace spartan
         return 0.0f;
     }
 
+    bool RHI_VendorTechnology::DLSS_IsReady()
+    {
+        return true;
+    }
+
     float RHI_VendorTechnology::DLSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
     {
         return 0.0f;

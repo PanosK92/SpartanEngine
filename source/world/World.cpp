@@ -2992,6 +2992,43 @@ namespace spartan
 
     bool World::ReadMetadata(const string& world_file_path, WorldMetadata& metadata)
     {
+        // the name and description sit on the root tag, so only its opening tag is parsed, a whole world can be megabytes
+        {
+            ifstream file(world_file_path, ios::binary);
+            string head(64 * 1024, '\0');
+            file.read(head.data(), static_cast<streamsize>(head.size()));
+            head.resize(static_cast<size_t>(file.gcount()));
+
+            size_t tag_begin = head.find("<World");
+            while (tag_begin != string::npos && tag_begin + 6 < head.size() && !isspace(static_cast<unsigned char>(head[tag_begin + 6])) && head[tag_begin + 6] != '>' && head[tag_begin + 6] != '/')
+            {
+                tag_begin = head.find("<World", tag_begin + 6);
+            }
+
+            const size_t tag_end = tag_begin == string::npos ? string::npos : head.find('>', tag_begin);
+            if (tag_end != string::npos)
+            {
+                // a '>' inside an attribute value cuts the tag short, the parse below then fails and the full load runs instead
+                string root = head.substr(tag_begin, tag_end - tag_begin + 1);
+                if (root[root.size() - 2] != '/')
+                {
+                    root.insert(root.size() - 1, "/");
+                }
+
+                pugi::xml_document doc;
+                if (doc.load_string(root.c_str()))
+                {
+                    if (pugi::xml_node world_node = doc.child("World"))
+                    {
+                        metadata.file_path   = world_file_path;
+                        metadata.name        = world_node.attribute("name").as_string();
+                        metadata.description = world_node.attribute("description").as_string();
+                        return true;
+                    }
+                }
+            }
+        }
+
         // load xml document
         pugi::xml_document doc;
         pugi::xml_parse_result result = doc.load_file(world_file_path.c_str());

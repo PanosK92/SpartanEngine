@@ -659,7 +659,7 @@ namespace spartan
                     // file prefab - load entity hierarchy from .prefab file
                     else if (!prefab_file.empty())
                     {
-                        Prefab::LoadFromFile(prefab_file, this);
+                        Prefab::LoadFromFile(prefab_file, this, &component_node);
                     }
 
                     // snapshot the base so later additions are detected as overrides

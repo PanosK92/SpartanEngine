@@ -23,7 +23,7 @@ using namespace ImGui::Style;
 namespace
 {
     constexpr uint32_t style_magic   = 0x53505448;
-    constexpr uint32_t style_version = 7;
+    constexpr uint32_t style_version = 8;
 }
 
 Style::Style(Editor* editor) : Widget(editor)
@@ -37,15 +37,15 @@ Style::Style(Editor* editor) : Widget(editor)
     ImGui::Style::SetupImGuiBase();
 
     const bool loaded =
-        spartan::FileSystem::Exists("imgui_style_user.bin") &&
-        LoadStyleColors("imgui_style_user.bin");
+        spartan::FileSystem::Exists("settings/imgui_style_user.bin") &&
+        LoadStyleColors("settings/imgui_style_user.bin");
 
     if (!loaded)
     {
         ImGui::Style::StyleSpartan();
         ImGui::Style::SetupImGuiColors();
         if (!Engine::IsStartupSmokeTest())
-            SaveStyleColors("imgui_style_user.bin");
+            SaveStyleColors("settings/imgui_style_user.bin");
     }
     else
     {
@@ -233,7 +233,7 @@ void Style::OnTickVisible()
     if (ImGui::Button("Save as User Theme"))
     {
         m_unsaved_changes = false;
-        SaveStyleColors("imgui_style_user.bin");
+        SaveStyleColors("settings/imgui_style_user.bin");
     }
 
     if (ImGui::Button("Reset User Theme"))
@@ -243,7 +243,7 @@ void Style::OnTickVisible()
         ImGui::GetStyle().ScaleAllSizes(spartan::Window::GetDpiScale());
         m_style_preset_id = 0;
         m_unsaved_changes = false;
-        SaveStyleColors("imgui_style_user.bin");
+        SaveStyleColors("settings/imgui_style_user.bin");
     }
 
     ImGui::Text("Fine tune colors with the imgui style editor below.");

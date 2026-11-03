@@ -61,6 +61,8 @@ namespace spartan
         static constexpr const char* dlss_engine_version = "1.0";
 
         // dlss
+        // false while the sdk is still initializing in the background, callers fall back instead of waiting
+        static bool DLSS_IsReady();
         static float DLSS_GetResolutionScaleMin(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
         static void DLSS_GenerateJitterSample(float* x, float* y);
         static void DLSS_Dispatch(

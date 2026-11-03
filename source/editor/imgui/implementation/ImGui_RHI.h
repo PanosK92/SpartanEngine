@@ -106,9 +106,11 @@ namespace ImGui::RHI
         // deferred so the os window is revealed only after the first successful present
         void (*g_platform_show_window)(ImGuiViewport*) = nullptr;
 
-        // frosted glass, floating windows show a blurred copy of whatever was drawn under them
-        TConsoleVar<bool> cvar_editor_glass("editor.glass", true, "frosted glass behind floating editor windows, popups, menus and tooltips");
-        TConsoleVar<float> cvar_editor_glass_opacity("editor.glass_opacity", 0.6f, "how much of a glass window's background color covers the blurred backdrop, 0 to 1");
+        // frosted glass, every pane shows a blurred copy of whatever was drawn under it
+        TConsoleVar<bool> cvar_editor_glass("editor.glass", true, "frosted glass behind editor panels, floating windows, popups, menus and tooltips");
+        TConsoleVar<bool> cvar_editor_glass_panels("editor.glass_panels", true, "docked panels are frosted glass over a blurred copy of the scene");
+        TConsoleVar<float> cvar_editor_glass_opacity("editor.glass_opacity", 0.6f, "how much of a floating glass window's background color covers the blurred backdrop, 0 to 1");
+        TConsoleVar<float> cvar_editor_glass_panel_opacity("editor.glass_panel_opacity", 0.5f, "how much of a docked panel's background color covers the blurred scene behind it, 0 to 1");
         TConsoleVar<float> cvar_editor_glass_blur("editor.glass_blur", 10.0f, "glass blur radius in quarter resolution pixels, 1 to 32");
 
         // the main window ui is drawn into glass_target when a glass window is up, so what lies under a window can be read back
@@ -118,10 +120,38 @@ namespace ImGui::RHI
         Pcb_Pass g_glass_push_constants;
         const uint32_t glass_flag = 1u << 12;
 
-        struct GlassDraw
+        enum class GlassStep : uint8_t
         {
+            Ambient,  // the 3d frame stretched across the editor, what the docked panels are frosted over
+            Capture,  // copy and blur everything drawn so far, skipped while nothing under the panes changed
+            Plain,    // shadows, veils, sheens and rims
+            Backdrop  // the blurred copy laid under a pane
+        };
+
+        struct GlassSegment
+        {
+            GlassStep step        = GlassStep::Plain;
+            bool after_list       = false;
+            uint32_t list         = 0;
             uint32_t index_offset = 0;
             uint32_t index_count  = 0;
+            ImRect bounds;
+        };
+
+        enum class GlassThin : uint8_t
+        {
+            None,
+            Leading, // the fills a window opens its draw list with
+            Host     // every panel and tab strip fill a dock host lays out for its docked windows
+        };
+
+        struct GlassList
+        {
+            GlassThin thin    = GlassThin::None;
+            float opacity     = 1.0f;
+            ImU32 background  = 0;
+            uint32_t fill_begin = 0;
+            uint32_t fill_end   = 0;
         };
 
         // root windows that float over something, docked panels and the dockspace host sit on nothing but the editor background
@@ -143,23 +173,26 @@ namespace ImGui::RHI
             return (window->Flags & excluded) == 0 && !window->DockIsActive;
         }
 
-        // imgui opens a window's draw list with its background, title bar and menu bar fills, thinning them lets the backdrop through
-        void thin_window_background(ImDrawVert* vertices, const int count, const float opacity)
+        void thin_vertex(ImU32& color, const float opacity)
         {
-            const ImU32 fills[] =
-            {
-                GetColorU32(ImGuiCol_TitleBg),
-                GetColorU32(ImGuiCol_TitleBgActive),
-                GetColorU32(ImGuiCol_TitleBgCollapsed),
-                GetColorU32(ImGuiCol_MenuBarBg)
-            };
+            const ImU32 alpha      = (color & IM_COL32_A_MASK) >> IM_COL32_A_SHIFT;
+            const ImU32 alpha_thin = static_cast<ImU32>(static_cast<float>(alpha) * opacity + 0.5f);
+            color = (color & ~IM_COL32_A_MASK) | (alpha_thin << IM_COL32_A_SHIFT);
+        }
 
-            ImU32 background = 0;
+        bool is_frame_fill(const ImU32 color)
+        {
+            return color == GetColorU32(ImGuiCol_TitleBg) || color == GetColorU32(ImGuiCol_TitleBgActive) || color == GetColorU32(ImGuiCol_TitleBgCollapsed) || color == GetColorU32(ImGuiCol_MenuBarBg);
+        }
+
+        // imgui opens a window's draw list with its background, title bar and menu bar fills, thinning them lets the backdrop through
+        // a background of 0 takes the first fill as the window background
+        void thin_window_background(ImDrawVert* vertices, const int count, const float opacity, ImU32 background)
+        {
             for (int i = 0; i < count; i++)
             {
-                ImU32& color      = vertices[i].col;
-                const ImU32 alpha = (color & IM_COL32_A_MASK) >> IM_COL32_A_SHIFT;
-                if (alpha == 0)
+                ImU32& color = vertices[i].col;
+                if ((color & IM_COL32_A_MASK) == 0)
                 {
                     continue; // anti-aliased fringe
                 }
@@ -169,20 +202,183 @@ namespace ImGui::RHI
                     background = color;
                 }
 
-                bool is_fill = color == background;
-                for (const ImU32 fill : fills)
-                {
-                    is_fill |= color == fill;
-                }
-
-                if (!is_fill)
+                if (color != background && !is_frame_fill(color))
                 {
                     break;
                 }
 
-                const ImU32 alpha_thin = static_cast<ImU32>(static_cast<float>(alpha) * opacity + 0.5f);
-                color = (color & ~IM_COL32_A_MASK) | (alpha_thin << IM_COL32_A_SHIFT);
+                thin_vertex(color, opacity);
             }
+        }
+
+        // a dock host draws the backgrounds and tab strips of all its docked windows, interleaved with tabs and buttons
+        // empty nodes fill with the editor void, cleared so they show the same dimmed scene as the gutters
+        void thin_dock_host(ImDrawVert* vertices, const int count, const float opacity, const ImU32* fills, const uint32_t fill_count)
+        {
+            const ImU32 void_color = GetColorU32(ImGuiCol_DockingEmptyBg);
+            for (int i = 0; i < count; i++)
+            {
+                ImU32& color = vertices[i].col;
+                if ((color & IM_COL32_A_MASK) == 0)
+                {
+                    continue;
+                }
+
+                if (color == void_color)
+                {
+                    color &= ~IM_COL32_A_MASK;
+                    continue;
+                }
+
+                bool is_fill = is_frame_fill(color);
+                for (uint32_t f = 0; f < fill_count && !is_fill; f++)
+                {
+                    is_fill = color == fills[f];
+                }
+
+                if (is_fill)
+                {
+                    thin_vertex(color, opacity);
+                }
+            }
+        }
+
+        ImVec4 lerp_color(const ImVec4& a, const ImVec4& b, const float t)
+        {
+            return ImVec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
+        }
+
+        // recolors the vertices added since vtx_start with a vertical gradient, anti-aliased fringes keep their fade
+        void glass_shade_vertical(ImDrawList* draw_list, const int vtx_start, const float y0, const float y1, const ImVec4& top, const ImVec4& bottom)
+        {
+            const float height = ImMax(y1 - y0, 1.0f);
+            for (int i = vtx_start; i < draw_list->VtxBuffer.Size; i++)
+            {
+                ImDrawVert& vertex = draw_list->VtxBuffer[i];
+                ImVec4 value       = lerp_color(top, bottom, ImSaturate((vertex.pos.y - y0) / height));
+                value.w           *= static_cast<float>((vertex.col >> IM_COL32_A_SHIFT) & 0xFF) / 255.0f;
+                vertex.col         = ColorConvertFloat4ToU32(value);
+            }
+        }
+
+        // a soft penumbra under a floating pane, rings fading outward and dropped a little so the light reads as coming from above
+        void glass_add_shadow(ImDrawList* draw_list, const ImRect& rect, const float rounding, const float scale)
+        {
+            constexpr int rings  = 8;
+            const float spread   = 18.0f * scale;
+            const float drop     = 5.0f * scale;
+            const float step     = spread / static_cast<float>(rings);
+            for (int i = 0; i < rings; i++)
+            {
+                const float t      = (static_cast<float>(i) + 0.5f) / static_cast<float>(rings);
+                const float expand = step * (static_cast<float>(i) + 0.5f);
+                const float alpha  = 0.16f * (1.0f - t) * (1.0f - t);
+                draw_list->AddRect(ImVec2(rect.Min.x - expand, rect.Min.y - expand + drop), ImVec2(rect.Max.x + expand, rect.Max.y + expand + drop), ColorConvertFloat4ToU32(ImVec4(0.0f, 0.0f, 0.0f, alpha)), rounding + expand, step + 0.5f);
+            }
+        }
+
+        // light skimming the top of the pane, gone before it reaches the middle
+        void glass_add_sheen(ImDrawList* draw_list, const ImRect& rect, const float rounding, const float strength)
+        {
+            const int vtx_start = draw_list->VtxBuffer.Size;
+            draw_list->AddRectFilled(rect.Min, rect.Max, IM_COL32_WHITE, rounding);
+            glass_shade_vertical(draw_list, vtx_start, rect.Min.y, rect.Min.y + rect.GetHeight() * 0.42f, ImVec4(1.0f, 1.0f, 1.0f, strength), ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
+        }
+
+        // the cut edge of the glass: lit along the top, dim along the bottom, with a dark hairline outside to hold it against bright backdrops
+        void glass_add_rim(ImDrawList* draw_list, const ImRect& rect, const float rounding, const float scale, const float top, const float bottom, const bool outline)
+        {
+            const float thickness = ImMax(1.0f, IM_ROUND(scale));
+            if (outline)
+            {
+                draw_list->AddRect(ImVec2(rect.Min.x - 0.5f, rect.Min.y - 0.5f), ImVec2(rect.Max.x + 0.5f, rect.Max.y + 0.5f), IM_COL32(0, 0, 0, 90), rounding + 0.5f, thickness);
+            }
+
+            const int vtx_start = draw_list->VtxBuffer.Size;
+            draw_list->AddRect(ImVec2(rect.Min.x + 0.5f, rect.Min.y + 0.5f), ImVec2(rect.Max.x - 0.5f, rect.Max.y - 0.5f), IM_COL32_WHITE, rounding, thickness);
+            glass_shade_vertical(draw_list, vtx_start, rect.Min.y, rect.Max.y, ImVec4(1.0f, 1.0f, 1.0f, top), ImVec4(1.0f, 1.0f, 1.0f, bottom));
+        }
+
+        // closes the run of geometry added since index_start into a segment, merging it into the previous one when they draw the same way
+        void glass_push_segment(vector<GlassSegment>& segments, const uint32_t list, const bool after_list, const GlassStep step, const uint32_t index_start, const ImRect& bounds)
+        {
+            const uint32_t index_end = static_cast<uint32_t>(g_glass_draw_list->IdxBuffer.Size);
+            if (step != GlassStep::Capture && index_end == index_start)
+            {
+                return;
+            }
+
+            if (!segments.empty() && step != GlassStep::Capture)
+            {
+                GlassSegment& last = segments.back();
+                if (last.list == list && last.after_list == after_list && last.step == step && last.index_offset + last.index_count == index_start)
+                {
+                    last.index_count = index_end - last.index_offset;
+                    last.bounds.Add(bounds);
+                    return;
+                }
+            }
+
+            GlassSegment segment;
+            segment.step         = step;
+            segment.after_list   = after_list;
+            segment.list         = list;
+            segment.index_offset = index_start;
+            segment.index_count  = index_end - index_start;
+            segment.bounds       = bounds;
+            segments.push_back(segment);
+        }
+
+        ImRect node_rect(const ImGuiDockNode* node)
+        {
+            return ImRect(node->Pos.x, node->Pos.y, node->Pos.x + node->Size.x, node->Pos.y + node->Size.y);
+        }
+
+        // where the viewport shows the 3d frame, and which part of the frame it shows
+        bool glass_find_frame(const ImDrawData* draw_data, const uint64_t frame_id, ImRect& rect, ImRect& uv)
+        {
+            for (int i = 0; i < draw_data->CmdListsCount; i++)
+            {
+                const ImDrawList* cmd_list = draw_data->CmdLists[i];
+                for (const ImDrawCmd& cmd : cmd_list->CmdBuffer)
+                {
+                    RHI_Texture* texture = cmd.UserCallback == nullptr ? reinterpret_cast<RHI_Texture*>(cmd.GetTexID()) : nullptr;
+                    if (!texture || texture->GetObjectId() != frame_id || cmd.ElemCount == 0)
+                    {
+                        continue;
+                    }
+
+                    rect = ImRect(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
+                    for (uint32_t k = 0; k < cmd.ElemCount; k++)
+                    {
+                        const ImDrawVert& vertex = cmd_list->VtxBuffer[cmd_list->IdxBuffer[cmd.IdxOffset + k] + cmd.VtxOffset];
+                        if (vertex.pos.x < rect.Min.x)
+                        {
+                            rect.Min.x = vertex.pos.x;
+                            uv.Min.x   = vertex.uv.x;
+                        }
+                        if (vertex.pos.y < rect.Min.y)
+                        {
+                            rect.Min.y = vertex.pos.y;
+                            uv.Min.y   = vertex.uv.y;
+                        }
+                        if (vertex.pos.x > rect.Max.x)
+                        {
+                            rect.Max.x = vertex.pos.x;
+                            uv.Max.x   = vertex.uv.x;
+                        }
+                        if (vertex.pos.y > rect.Max.y)
+                        {
+                            rect.Max.y = vertex.pos.y;
+                            uv.Max.y   = vertex.uv.y;
+                        }
+                    }
+
+                    return rect.GetWidth() > 1.0f && rect.GetHeight() > 1.0f;
+                }
+            }
+
+            return false;
         }
 
         RHI_Texture* glass_get_target(RHI_SwapChain* swapchain)
@@ -550,34 +746,42 @@ namespace ImGui::RHI
             }
         }
 
-        // find the glass windows and build the blurred backdrop quad each one is laid on
-        static vector<GlassDraw> glass_draws;
-        static vector<ImGuiWindow*> glass_windows;
-        glass_draws.assign(draw_data->CmdListsCount, GlassDraw());
-        glass_windows.assign(draw_data->CmdListsCount, nullptr);
+        // find the glass panes: floating windows, and the panels each dock host lays out for its docked windows
+        static vector<GlassList> glass_lists;
+        static vector<ImGuiWindow*> list_windows;
+        static vector<ImGuiDockNode*> glass_nodes;
+        static vector<ImU32> glass_fills;
+        static vector<GlassSegment> glass_segments;
+        glass_lists.assign(draw_data->CmdListsCount, GlassList());
+        list_windows.assign(draw_data->CmdListsCount, nullptr);
+        glass_fills.clear();
+        glass_segments.clear();
         RHI_Texture* glass_target = nullptr;
         if (is_main_window && cvar_editor_glass.GetValue())
         {
-            bool any_glass = false;
             for (int i = 0; i < draw_data->CmdListsCount; i++)
             {
                 for (ImGuiWindow* window : GImGui->Windows)
                 {
                     if (window->DrawList == draw_data->CmdLists[i])
                     {
-                        if (is_glass_window(window, draw_data->OwnerViewport))
-                        {
-                            glass_windows[i] = window;
-                            any_glass        = true;
-                        }
+                        list_windows[i] = window;
                         break;
                     }
                 }
             }
 
+            bool any_glass = false;
+            for (int i = 0; i < draw_data->CmdListsCount && !any_glass; i++)
+            {
+                const ImGuiWindow* window = list_windows[i];
+                any_glass = window && (is_glass_window(window, draw_data->OwnerViewport) || (cvar_editor_glass_panels.GetValue() && window->DockNodeAsHost));
+            }
+
             glass_target = any_glass ? glass_get_target(swapchain) : nullptr;
         }
 
+        RHI_Texture* frame_output = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
         if (glass_target)
         {
             if (!g_glass_draw_list)
@@ -586,24 +790,197 @@ namespace ImGui::RHI
             }
             g_glass_draw_list->_ResetForNewFrame();
             g_glass_draw_list->PushClipRectFullScreen();
+            ImDrawList* draw_list = g_glass_draw_list;
 
             const ImTextureRef backdrop_ref(reinterpret_cast<ImTextureID>(g_glass_backdrop[0].get()));
-            const float display_width  = draw_data->DisplaySize.x;
-            const float display_height = draw_data->DisplaySize.y;
+            const ImRect display(draw_data->DisplayPos.x, draw_data->DisplayPos.y, draw_data->DisplayPos.x + draw_data->DisplaySize.x, draw_data->DisplayPos.y + draw_data->DisplaySize.y);
+            const float scale         = GetStyle()._MainScale > 0.0f ? GetStyle()._MainScale : 1.0f;
+            const float panel_opacity = std::clamp(cvar_editor_glass_panel_opacity.GetValue(), 0.0f, 1.0f);
+            const float float_opacity = std::clamp(cvar_editor_glass_opacity.GetValue(), 0.0f, 1.0f);
+
+            ImRect frame_rect;
+            ImRect frame_uv;
+            const bool frame_found = frame_output && frame_output->GetRhiResource() && glass_find_frame(draw_data, frame_output->GetObjectId(), frame_rect, frame_uv);
+
+            auto backdrop_uv = [&](const ImVec2& position)
+            {
+                return ImVec2((position.x - display.Min.x) / display.GetWidth(), (position.y - display.Min.y) / display.GetHeight());
+            };
+
             for (int i = 0; i < draw_data->CmdListsCount; i++)
             {
-                if (const ImGuiWindow* window = glass_windows[i])
+                ImGuiWindow* window = list_windows[i];
+                if (!window)
                 {
-                    const ImVec2 p_min  = window->Pos;
-                    const ImVec2 p_max  = ImVec2(window->Pos.x + window->Size.x, window->Pos.y + window->Size.y);
-                    const ImVec2 uv_min = ImVec2((p_min.x - draw_data->DisplayPos.x) / display_width, (p_min.y - draw_data->DisplayPos.y) / display_height);
-                    const ImVec2 uv_max = ImVec2((p_max.x - draw_data->DisplayPos.x) / display_width, (p_max.y - draw_data->DisplayPos.y) / display_height);
-
-                    const uint32_t index_offset = static_cast<uint32_t>(g_glass_draw_list->IdxBuffer.Size);
-                    g_glass_draw_list->AddImageRounded(backdrop_ref, p_min, p_max, uv_min, uv_max, IM_COL32_WHITE, window->WindowRounding, ImDrawFlags_RoundCornersAll);
-                    glass_draws[i].index_offset = index_offset;
-                    glass_draws[i].index_count  = static_cast<uint32_t>(g_glass_draw_list->IdxBuffer.Size) - index_offset;
+                    continue;
                 }
+
+                const uint32_t list = static_cast<uint32_t>(i);
+
+                // a docked window keeps its content in its own list, only a menu bar fill may lead it
+                if (window->DockIsActive && window->DockNode && glass_lists[i].thin == GlassThin::None && cvar_editor_glass_panels.GetValue())
+                {
+                    glass_lists[i].thin       = GlassThin::Leading;
+                    glass_lists[i].opacity    = panel_opacity;
+                    glass_lists[i].background = window->DockNode->LastBgColor;
+                }
+
+                // the visible panels this window hosts
+                glass_nodes.clear();
+                if (cvar_editor_glass_panels.GetValue() && window->DockNodeAsHost)
+                {
+                    for (ImGuiWindow* docked : GImGui->Windows)
+                    {
+                        ImGuiDockNode* node = docked->DockNode;
+                        if (!docked->DockIsActive || !node || node->HostWindow != window || !node->IsVisible || node->Size.x <= 0.0f || node->Size.y <= 0.0f)
+                        {
+                            continue;
+                        }
+
+                        if (std::find(glass_nodes.begin(), glass_nodes.end(), node) == glass_nodes.end())
+                        {
+                            glass_nodes.push_back(node);
+                        }
+                    }
+                }
+
+                // a floating dock group is a root window hosting its panels, the editor dockspace is a child window of the editor root
+                const bool is_floating_host = (window->Flags & ImGuiWindowFlags_DockNodeHost) && !(window->Flags & ImGuiWindowFlags_ChildWindow);
+                const bool is_floating      = is_glass_window(window, draw_data->OwnerViewport) || (is_floating_host && !glass_nodes.empty());
+                if (!is_floating && glass_nodes.empty())
+                {
+                    continue;
+                }
+
+                // the editor dockspace: its panes are frosted over the scene, stretched out of the viewport to fill the editor
+                const bool is_dock_root = !is_floating;
+
+                ImRect panes_bounds;
+                panes_bounds.Min = ImVec2(FLT_MAX, FLT_MAX);
+                panes_bounds.Max = ImVec2(-FLT_MAX, -FLT_MAX);
+                if (glass_nodes.empty())
+                {
+                    panes_bounds = window->Rect();
+                }
+                for (const ImGuiDockNode* node : glass_nodes)
+                {
+                    panes_bounds.Add(node_rect(node));
+                }
+
+                uint32_t index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
+                if (is_dock_root && frame_found)
+                {
+                    // a 3x3 grid around the viewport, each side cell shows the strip of the viewport along that edge, same size and the right way round
+                    const ImVec2 uv_per_pixel = ImVec2(frame_uv.GetWidth() / frame_rect.GetWidth(), frame_uv.GetHeight() / frame_rect.GetHeight());
+                    const float xs[4]   = { display.Min.x, ImClamp(frame_rect.Min.x, display.Min.x, display.Max.x), ImClamp(frame_rect.Max.x, display.Min.x, display.Max.x), display.Max.x };
+                    const float ys[4]   = { display.Min.y, ImClamp(frame_rect.Min.y, display.Min.y, display.Max.y), ImClamp(frame_rect.Max.y, display.Min.y, display.Max.y), display.Max.y };
+                    const float us[3][2] =
+                    {
+                        { frame_uv.Min.x, frame_uv.Min.x + (xs[1] - xs[0]) * uv_per_pixel.x },
+                        { frame_uv.Min.x, frame_uv.Max.x },
+                        { frame_uv.Max.x - (xs[3] - xs[2]) * uv_per_pixel.x, frame_uv.Max.x }
+                    };
+                    const float vs[3][2] =
+                    {
+                        { frame_uv.Min.y, frame_uv.Min.y + (ys[1] - ys[0]) * uv_per_pixel.y },
+                        { frame_uv.Min.y, frame_uv.Max.y },
+                        { frame_uv.Max.y - (ys[3] - ys[2]) * uv_per_pixel.y, frame_uv.Max.y }
+                    };
+                    for (int row = 0; row < 3; row++)
+                    {
+                        for (int column = 0; column < 3; column++)
+                        {
+                            if (xs[column + 1] - xs[column] < 1.0f || ys[row + 1] - ys[row] < 1.0f)
+                            {
+                                continue;
+                            }
+
+                            draw_list->PrimReserve(6, 4);
+                            draw_list->PrimRectUV(ImVec2(xs[column], ys[row]), ImVec2(xs[column + 1], ys[row + 1]), ImVec2(us[column][0], vs[row][0]), ImVec2(us[column][1], vs[row][1]), IM_COL32_WHITE);
+                        }
+                    }
+                    glass_push_segment(glass_segments, list, false, GlassStep::Ambient, index_start, display);
+                }
+
+                index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
+                glass_push_segment(glass_segments, list, false, GlassStep::Capture, index_start, panes_bounds);
+
+                // the gutters between panels show the scene dimmed down to near black
+                index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
+                if (is_dock_root)
+                {
+                    ImVec4 veil = GetStyleColorVec4(ImGuiCol_DockingEmptyBg);
+                    veil.w      = 0.86f;
+                    draw_list->AddRectFilled(display.Min, display.Max, ColorConvertFloat4ToU32(veil));
+                }
+                if (is_floating)
+                {
+                    glass_add_shadow(draw_list, window->Rect(), window->WindowRounding, scale);
+                }
+                ImRect shadow_bounds = window->Rect();
+                shadow_bounds.Expand(32.0f * scale);
+                glass_push_segment(glass_segments, list, false, GlassStep::Plain, index_start, is_dock_root ? display : shadow_bounds);
+
+                index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
+                if (glass_nodes.empty())
+                {
+                    draw_list->AddImageRounded(backdrop_ref, window->Rect().Min, window->Rect().Max, backdrop_uv(window->Rect().Min), backdrop_uv(window->Rect().Max), IM_COL32_WHITE, window->WindowRounding, ImDrawFlags_RoundCornersAll);
+                }
+                for (const ImGuiDockNode* node : glass_nodes)
+                {
+                    const ImRect rect = node_rect(node);
+                    draw_list->AddImage(backdrop_ref, rect.Min, rect.Max, backdrop_uv(rect.Min), backdrop_uv(rect.Max));
+                }
+                glass_push_segment(glass_segments, list, false, GlassStep::Backdrop, index_start, panes_bounds);
+
+                index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
+                if (glass_nodes.empty())
+                {
+                    glass_add_sheen(draw_list, window->Rect(), window->WindowRounding, 0.07f);
+                }
+                for (const ImGuiDockNode* node : glass_nodes)
+                {
+                    glass_add_sheen(draw_list, node_rect(node), 0.0f, 0.045f);
+                }
+                glass_push_segment(glass_segments, list, false, GlassStep::Plain, index_start, panes_bounds);
+
+                // rims go over the list so the window fills cannot dim them
+                index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
+                if (glass_nodes.empty())
+                {
+                    glass_add_rim(draw_list, window->Rect(), window->WindowRounding, scale, 0.26f, 0.06f, true);
+                }
+                for (const ImGuiDockNode* node : glass_nodes)
+                {
+                    glass_add_rim(draw_list, node_rect(node), 0.0f, scale, 0.11f, 0.025f, false);
+                }
+                glass_push_segment(glass_segments, list, true, GlassStep::Plain, index_start, panes_bounds);
+
+                GlassList& glass_list = glass_lists[i];
+                if (glass_nodes.empty())
+                {
+                    glass_list.thin       = GlassThin::Leading;
+                    glass_list.opacity    = float_opacity;
+                    glass_list.background = 0;
+                }
+                else
+                {
+                    glass_list.thin       = GlassThin::Host;
+                    glass_list.opacity    = panel_opacity;
+                    glass_list.fill_begin = static_cast<uint32_t>(glass_fills.size());
+                    for (const ImGuiDockNode* node : glass_nodes)
+                    {
+                        glass_fills.push_back(node->LastBgColor);
+                    }
+                    glass_fills.push_back(GetColorU32(ImGuiCol_TabSelected));
+                    glass_fills.push_back(GetColorU32(ImGuiCol_TabDimmedSelected));
+                    glass_list.fill_end = static_cast<uint32_t>(glass_fills.size());
+                }
+            }
+
+            if (glass_segments.empty())
+            {
+                glass_target = nullptr;
             }
         }
         const uint32_t glass_vertex_count = glass_target ? static_cast<uint32_t>(g_glass_draw_list->VtxBuffer.Size) : 0;
@@ -653,9 +1030,17 @@ namespace ImGui::RHI
                     memcpy(vtx_dst, imgui_cmd_list->VtxBuffer.Data, imgui_cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
                     memcpy(idx_dst, imgui_cmd_list->IdxBuffer.Data, imgui_cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
 
-                    if (glass_target && glass_draws[i].index_count > 0)
+                    if (glass_target)
                     {
-                        thin_window_background(vtx_dst, imgui_cmd_list->VtxBuffer.Size, std::clamp(cvar_editor_glass_opacity.GetValue(), 0.0f, 1.0f));
+                        const GlassList& glass_list = glass_lists[i];
+                        if (glass_list.thin == GlassThin::Leading)
+                        {
+                            thin_window_background(vtx_dst, imgui_cmd_list->VtxBuffer.Size, glass_list.opacity, glass_list.background);
+                        }
+                        else if (glass_list.thin == GlassThin::Host)
+                        {
+                            thin_dock_host(vtx_dst, imgui_cmd_list->VtxBuffer.Size, glass_list.opacity, glass_fills.data() + glass_list.fill_begin, glass_list.fill_end - glass_list.fill_begin);
+                        }
                     }
 
                     vtx_dst += imgui_cmd_list->VtxBuffer.Size;
@@ -733,39 +1118,91 @@ namespace ImGui::RHI
             float mip_level_last       = 0.0f;
             float array_level_last     = 0.0f;
             bool state_valid           = false;
-            for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
-            {
-                ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
 
-                // everything drawn so far is what the window floats over, blur it and lay it down before the window draws
-                if (glass && glass_draws[i].index_count > 0 && draw_index != numeric_limits<uint32_t>::max())
+            // what has been drawn since the backdrop was last blurred, panes that do not overlap it can share that blur
+            bool glass_captured = false;
+            ImRect glass_dirty(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
+            const float glass_reach = std::clamp(cvar_editor_glass_blur.GetValue(), 1.0f, 32.0f) * 8.0f;
+            size_t glass_cursor     = 0;
+
+            auto draw_glass = [&](const GlassSegment& segment)
+            {
+                if (segment.step == GlassStep::Capture)
                 {
+                    ImRect reach = segment.bounds;
+                    reach.Expand(glass_reach);
+                    const bool is_dirty = glass_dirty.Min.x <= glass_dirty.Max.x && glass_dirty.Overlaps(reach);
+                    if (glass_captured && !is_dirty)
+                    {
+                        return;
+                    }
+
                     RHI_CommandList::EndPass();
                     glass_capture_backdrop(glass);
                     RHI_CommandList::BeginPass(name, gpu_timing);
                     pso.clear_color[0] = rhi_color_load;
                     RHI_CommandList::RestoreAfterExternalPass();
                     setup_render_state();
+                    glass_captured = true;
+                    glass_dirty    = ImRect(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
+                    state_valid    = false;
+                    return;
+                }
 
-                    math::Rectangle rectangle;
-                    rectangle.width  = draw_data->DisplaySize.x;
-                    rectangle.height = draw_data->DisplaySize.y;
-                    RHI_CommandList::SetScissorRectangle(rectangle);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, g_glass_backdrop[0].get());
+                // the backdrop and the frame already hold display encoded values, the screenshot replay wants sdr
+                RHI_Texture* texture = reinterpret_cast<RHI_Texture*>(GetIO().Fonts->TexRef.GetTexID());
+                uint32_t flags       = sdr_capture ? (1u << 11) : 0u;
+                if (segment.step == GlassStep::Backdrop)
+                {
+                    texture = g_glass_backdrop[0].get();
+                    flags   = glass_flag | (sdr_capture ? (1u << 11) : (1u << 10));
+                }
+                else if (segment.step == GlassStep::Ambient)
+                {
+                    texture = frame_output;
+                    flags   = (1u << 10) | (sdr_capture ? (1u << 11) : 0u);
+                }
+                if (!texture)
+                {
+                    texture = g_font_atlas.get();
+                }
 
-                    // the backdrop already holds display encoded values, the screenshot replay holds sdr ones
-                    const uint32_t flags = glass_flag | (sdr_capture ? 0u : (1u << 10));
-                    rhi_resources->push_constant_buffer_pass.set(pass_imgui::flags, flags);
-                    rhi_resources->push_constant_buffer_pass.set(pass_imgui::mip_level, 0.0f);
-                    rhi_resources->push_constant_buffer_pass.set(pass_imgui::array_level, 0.0f);
-                    RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
-                    RHI_CommandList::DrawIndexed(glass_draws[i].index_count, draw_data->TotalIdxCount + glass_draws[i].index_offset, draw_data->TotalVtxCount);
-                    state_valid = false;
+                math::Rectangle rectangle;
+                rectangle.width  = draw_data->DisplaySize.x;
+                rectangle.height = draw_data->DisplaySize.y;
+                RHI_CommandList::SetScissorRectangle(rectangle);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, texture);
+                rhi_resources->push_constant_buffer_pass.set(pass_imgui::flags, flags);
+                rhi_resources->push_constant_buffer_pass.set(pass_imgui::mip_level, 0.0f);
+                rhi_resources->push_constant_buffer_pass.set(pass_imgui::array_level, 0.0f);
+                RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
+                RHI_CommandList::DrawIndexed(segment.index_count, draw_data->TotalIdxCount + segment.index_offset, draw_data->TotalVtxCount);
+                glass_dirty.Add(segment.bounds);
+                state_valid = false;
+            };
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
+            {
+                ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
+
+                // everything drawn so far is what the pane floats over, blur it and lay it down before the pane draws
+                const bool draw_glass_steps = glass && draw_index != numeric_limits<uint32_t>::max();
+                while (glass_cursor < glass_segments.size() && glass_segments[glass_cursor].list == i && !glass_segments[glass_cursor].after_list)
+                {
+                    if (draw_glass_steps)
+                    {
+                        draw_glass(glass_segments[glass_cursor]);
+                    }
+                    glass_cursor++;
                 }
 
                 for (uint32_t cmd_i = 0; cmd_i < static_cast<uint32_t>(cmd_list_imgui->CmdBuffer.Size); cmd_i++)
                 {
                     const ImDrawCmd* pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+                    if (glass && pcmd->UserCallback == nullptr)
+                    {
+                        glass_dirty.Add(ImRect(pcmd->ClipRect.x, pcmd->ClipRect.y, pcmd->ClipRect.z, pcmd->ClipRect.w));
+                    }
 
                     if (pcmd->UserCallback != nullptr)
                     {
@@ -896,6 +1333,15 @@ namespace ImGui::RHI
 
                         RHI_CommandList::DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
+                }
+
+                while (glass_cursor < glass_segments.size() && glass_segments[glass_cursor].list == i)
+                {
+                    if (draw_glass_steps)
+                    {
+                        draw_glass(glass_segments[glass_cursor]);
+                    }
+                    glass_cursor++;
                 }
 
                 global_idx_offset += static_cast<uint32_t>(cmd_list_imgui->IdxBuffer.Size);

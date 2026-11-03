@@ -25,20 +25,40 @@ namespace spartan
     namespace
     {
         // ids stored in a .prefab file would be shared by every instance, and id based lookups, deletes and clones would then hit all of them
-        void assign_fresh_ids(pugi::xml_node node)
+        void assign_fresh_ids(pugi::xml_node node, unordered_map<uint64_t, uint64_t>& ids)
         {
             static atomic<uint64_t> counter = 0;
-            pugi::xml_attribute id = node.attribute("id");
-            if (!id)
+            if (string(node.name()) == "Entity")
             {
-                id = node.append_attribute("id");
+                pugi::xml_attribute id = node.attribute("id");
+                const uint64_t old_id = id.as_ullong();
+                if (!id)
+                    id = node.append_attribute("id");
+                const uint64_t new_id = SpartanObject().GetObjectId() ^ (++counter * 0x9E3779B97F4A7C15ull);
+                id.set_value(new_id);
+                if (old_id)
+                    ids[old_id] = new_id;
             }
-            id.set_value(SpartanObject().GetObjectId() ^ (++counter * 0x9E3779B97F4A7C15ull));
-            for (pugi::xml_node child = node.child("Entity"); child; child = child.next_sibling("Entity"))
-            {
-                assign_fresh_ids(child);
-            }
+            for (pugi::xml_node child : node.children())
+                assign_fresh_ids(child, ids);
         }
+
+        void remap_entity_references(pugi::xml_node node, const unordered_map<uint64_t, uint64_t>& ids)
+        {
+            for (pugi::xml_attribute attribute : node.attributes())
+            {
+                const string name = attribute.name();
+                if (name == "entity_id" || name.ends_with("_entity_id"))
+                {
+                    auto it = ids.find(attribute.as_ullong());
+                    if (it != ids.end())
+                        attribute.set_value(it->second);
+                }
+            }
+            for (pugi::xml_node child : node.children())
+                remap_entity_references(child, ids);
+        }
+
     }
 
     unordered_map<string, PrefabCreateFn>& Prefab::GetRegistry()
@@ -156,7 +176,7 @@ namespace spartan
         return true;
     }
 
-    bool Prefab::LoadFromFile(const string& file_path, Entity* parent)
+    bool Prefab::LoadFromFile(const string& file_path, Entity* parent, const pugi::xml_node* instance)
     {
         if (!parent)
         {
@@ -185,6 +205,11 @@ namespace spartan
             return false;
         }
 
+        // Remap the complete instance, including attachments inside prefab overrides.
+        unordered_map<uint64_t, uint64_t> ids;
+        assign_fresh_ids(prefab_node, ids);
+        remap_entity_references(prefab_node, ids);
+
         // load components defined on the prefab node directly onto the parent entity
         for (pugi::xml_node component_node = prefab_node.first_child(); component_node; component_node = component_node.next_sibling())
         {
@@ -193,6 +218,27 @@ namespace spartan
             {
                 continue;
             } // children are handled below
+
+            // A file prefab can own a code factory's defaults. Instance attributes
+            // customize behavior without duplicating its model and material setup.
+            if (type_name == "prefab" && IsRegistered(component_node.attribute("type").as_string()))
+            {
+                if (instance)
+                {
+                    for (pugi::xml_attribute attribute : instance->attributes())
+                    {
+                        const string name = attribute.name();
+                        if (name == "type" || name == "file")
+                            continue;
+                        pugi::xml_attribute target = component_node.attribute(attribute.name());
+                        if (!target)
+                            target = component_node.append_attribute(attribute.name());
+                        target.set_value(attribute.value());
+                    }
+                }
+                Create(component_node, parent);
+                continue;
+            }
 
             ComponentType type = Component::StringToType(type_name);
             if (type != ComponentType::Max)
@@ -207,7 +253,6 @@ namespace spartan
         // load child entities
         for (pugi::xml_node child_node = prefab_node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
         {
-            assign_fresh_ids(child_node);
             Entity* child = World::CreateEntity();
             child->Load(child_node);
             child->SetParent(parent);

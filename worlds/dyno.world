@@ -198,7 +198,7 @@
    <light flags="1" light_type="0" color_r="1" color_g="1" color_b="1" temperature="5778" intensity="8" intensity_photometric="15000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="dyno_car" id="9106000000000000054" active="true" position="0 1.05 0" rotation="0 0 0 1" scale="1 1 1" tags="player_car,current_car,focal_point">
-   <prefab type="car" file="project/cars/ferrari_laferrari.car" drivable="true" telemetry="false" paint_color_r="0.39" paint_color_b="0.01" paint_preset="metallic" paint_color_g="0.02" camera_follows="false" dyno="true" />
+   <prefab file="data/prefabs/ferrari_laferrari.prefab" telemetry="false" camera_follows="false" dyno="true" />
   </Entity>
   <Entity name="inspection_camera" id="9106000000000000055" active="true" position="12.6492 1.87101 -1.09308" rotation="-0.0305533 0.542131 -0.019731 -0.839506" scale="1 1 1">
    <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="800" fov_horizontal="1.21999967" aspect_ratio_override="0" near_plane="0.100000001" far_plane="200" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />

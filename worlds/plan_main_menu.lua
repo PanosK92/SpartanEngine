@@ -6,18 +6,21 @@
 -- menu music loops, the player picks free roam and the camera hands back to the
 -- player at their front door.
 --
+-- the look and the sounds come from plan_ui.lua, after gran turismo 4 and forza
+-- motorsport 4: dark glass, thin tracked type, a white selection, glass chimes.
+--
 -- shots are authored in the garage's local space (player_garage_hub), so they
 -- follow the building if it is ever moved or rotated.
 --------------------------------------------------------------------------------
 
 local menu = {}
 
-local music_path   = "project/plan_resources/main_menu/desert_house_take2.wav"
-local font_display = "data/fonts/OpenSans/OpenSans-ExtraBoldItalic.ttf"
-local font_light   = "data/fonts/OpenSans/OpenSans-Light.ttf"
-local font_medium  = "data/fonts/OpenSans/OpenSans-SemiBold.ttf"
+local directory  = World.GetFilePath():match("^(.*[/\\])") or ""
+local ui         = dofile(directory .. "plan_ui.lua")
+local music_path = "project/plan_resources/main_menu/desert_house_take2.wav"
 
-local accent = { 1.0, 0.58, 0.20 }
+local clamp, lerp, smooth, ease_out, approach = ui.clamp, ui.lerp, ui.smooth, ui.ease_out, ui.approach
+local white, ink, black, accent = ui.white, ui.ink, ui.black, ui.accent
 
 -- garage local space: x across the workshop (lounge at +x), y up from the floor, z toward the road
 local shots =
@@ -32,6 +35,7 @@ local shots =
 }
 
 local fade_time = 0.8
+local wipe_time = 0.42
 
 -- state
 local state         = "off"
@@ -49,30 +53,28 @@ local music_entity  = nil
 local music_source  = nil
 local hub           = nil
 local jukebox_audio = nil
-local fonts_ready   = false
 local mouse_last_x  = -1
 local mouse_last_y  = -1
-local focus         = "main"
-local dev_selected  = 1
-local dev_anim      = {}
 local submenu       = nil
 
 -- developer quick jump, each entry is a lua menu next to this file that works on the player's car
 -- until the island has a building for it. a menu has Open, Tick (false once it is done) and Close
 local dev_menus =
 {
-    { label = "TUNE SHOP", hint = "Engine, drivetrain, chassis parts for your car", file = "plan_tune_shop.lua" },
+    { group = "dev", id = "sub", label = "TUNE SHOP", hint = "Engine, drivetrain and chassis parts for your car", file = "plan_tune_shop.lua" },
 }
-local directory = World.GetFilePath():match("^(.*[/\\])") or ""
 
 local function items()
     local list =
     {
-        { id = "play",  label = "FREE ROAM",  hint = "Take the island, starting from your front door" },
-        { id = "music", label = "SOUNDTRACK", hint = "Desert House, take two" },
+        { group = "main", id = "play",  label = "FREE ROAM",  hint = "Take the island, starting from your front door" },
+        { group = "main", id = "music", label = "SOUNDTRACK", hint = "Desert House, take two" },
     }
     if not Engine.IsEditorVisible() then
-        table.insert(list, { id = "quit", label = "QUIT", hint = "Park it for today" })
+        table.insert(list, { group = "main", id = "quit", label = "QUIT", hint = "Park it for today" })
+    end
+    for _, entry in ipairs(dev_menus) do
+        table.insert(list, entry)
     end
     return list
 end
@@ -80,17 +82,6 @@ end
 --------------------------------------------------------------------------------
 -- helpers
 --------------------------------------------------------------------------------
-
-local function clamp(x, a, b) return math.max(a, math.min(b, x)) end
-local function lerp(a, b, t) return a + (b - a) * t end
-local function smooth(t) t = clamp(t, 0, 1) return t * t * (3 - 2 * t) end
-local function ease_out(t) t = clamp(t, 0, 1) return 1 - (1 - t) ^ 3 end
-local function approach(current, target, rate, dt) return current + (target - current) * (1 - math.exp(-rate * dt)) end
-
-local function rgba(r, g, b, a) return Vector4(r, g, b, a) end
-local function white(a) return Vector4(1, 1, 1, a) end
-local function black(a) return Vector4(0, 0, 0, a) end
-local function amber(a) return Vector4(accent[1], accent[2], accent[3], a) end
 
 local function to_world(p)
     if not hub then
@@ -109,6 +100,10 @@ local function format_clock()
     local h = math.floor(hours) % 24
     local m = math.floor((hours - math.floor(hours)) * 60)
     return string.format("%02d:%02d", h, m)
+end
+
+local function credits()
+    return _G.plan_garage and _G.plan_garage.credits or 0
 end
 
 --------------------------------------------------------------------------------
@@ -218,179 +213,150 @@ end
 -- drawing
 --------------------------------------------------------------------------------
 
-local function load_fonts()
-    if fonts_ready then
-        return
-    end
-    Hud.LoadFont("display", font_display)
-    Hud.LoadFont("light", font_light)
-    Hud.LoadFont("medium", font_medium)
-    fonts_ready = true
-end
-
 local function draw_backdrop(w, h, s, alpha)
-    -- legibility: a deep wash from the left edge, a floor under the footer and a soft cinematic top
-    Hud.RectGradient(0, 0, w * 0.62, h, black(0.82 * alpha), black(0.0), black(0.0), black(0.82 * alpha))
-    Hud.RectGradient(0, 0, w * 0.42, h, black(0.45 * alpha), black(0.0), black(0.0), black(0.45 * alpha))
-    Hud.RectGradient(w * 0.55, 0, w * 0.45, h * 0.32, black(0.0), black(0.7 * alpha), black(0.0), black(0.0))
-    Hud.RectGradient(0, h * 0.62, w, h * 0.38, black(0.0), black(0.0), black(0.75 * alpha), black(0.75 * alpha))
-    Hud.RectGradient(0, 0, w, h * 0.18, black(0.55 * alpha), black(0.55 * alpha), black(0.0), black(0.0))
-
-    -- letterbox slides in with the intro
-    local bar = h * 0.055 * alpha
-    Hud.Rect(0, 0, w, bar, black(1.0))
-    Hud.Rect(0, h - bar, w, bar, black(1.0))
+    -- only the left third is shaded for the list, the reel stays open and bright on the right
+    Hud.RectGradient(0, 0, w * 0.58, h, ink(0.72 * alpha), ink(0.0), ink(0.0), ink(0.72 * alpha))
+    Hud.RectGradient(0, 0, w * 0.34, h, ink(0.35 * alpha), ink(0.0), ink(0.0), ink(0.35 * alpha))
+    Hud.RectGradient(0, h * 0.7, w, h * 0.3, ink(0.0), ink(0.0), ink(0.45 * alpha), ink(0.45 * alpha))
 end
 
-local function draw_title(s, x, y, reveal)
-    local a1 = ease_out((reveal - 0.0) / 0.8)
-    local a2 = ease_out((reveal - 0.25) / 0.9)
-    local a3 = ease_out((reveal - 0.55) / 0.9)
+-- the title draws in on a blue rule that sweeps across the screen, its letters closing up as it settles
+local function draw_title(w, s, x, y, reveal)
+    local sweep = ease_out((reveal - 0.1) / 0.9)
+    local hold  = 1 - smooth((reveal - 1.2) / 0.8)
+    if sweep > 0 and hold > 0 then
+        Hud.Rect(0, y + 132 * s, w * sweep, 1 * s, accent(0.9 * hold))
+        Hud.Rect(w * sweep - 120 * s, y + 131 * s, 120 * s, 3 * s, accent(0.6 * hold))
+    end
 
-    Hud.Text("KARABELAS MOTORWORKS   \xC2\xB7   EST. 2002", x + 6 * s + (1 - a1) * -30 * s, y, 19 * s, amber(a1), "mono", 0, 6 * s)
-    Hud.Text("ZAKYNTHOS", x + (1 - a2) * -60 * s, y + 20 * s, 132 * s, white(a2), "display", 0, 1 * s)
-    local line_w = 110 * s * a3
-    Hud.Rect(x + 8 * s, y + 194 * s, line_w, 4 * s, amber(a3))
-    Hud.Text("OPEN ROADS   \xC2\xB7   OPEN WATER   \xC2\xB7   YOUR ISLAND", x + 8 * s, y + 214 * s, 22 * s, white(0.8 * a3), "light", 0, 5 * s)
+    local a1 = ease_out((reveal - 0.3) / 0.8)
+    local a2 = ease_out((reveal - 0.45) / 1.4)
+    local a3 = ease_out((reveal - 0.9) / 0.8)
+    ui.label("KARABELAS MOTORWORKS", x + 4 * s, y, 13 * s, accent(a1))
+    ui.label("EST. 2002", x + 4 * s + ui.label_width("KARABELAS MOTORWORKS", 13 * s) + 22 * s, y, 13 * s, white(0.45 * a1))
+    Hud.Text("ZAKYNTHOS", x - 4 * s, y + 18 * s, 96 * s, white(a2), "plan_thin", 0, lerp(44, 18, a2) * s)
+
+    ui.hairline(x, y + 132 * s, 520 * s * a3, s, a3)
+    Hud.Rect(x, y + 131 * s, 56 * s * a3, 3 * s, accent(a3))
+    ui.label("OPEN ROADS", x, y + 152 * s, 12 * s, white(0.7 * a3))
+    local tx = x + ui.label_width("OPEN ROADS", 12 * s) + 26 * s
+    ui.label("OPEN WATER", tx, y + 152 * s, 12 * s, white(0.7 * a3))
+    tx = tx + ui.label_width("OPEN WATER", 12 * s) + 26 * s
+    ui.label("YOUR ISLAND", tx, y + 152 * s, 12 * s, white(0.7 * a3))
 end
 
-local function draw_volume(x, y, s, alpha, active)
+local function draw_volume(x, y, s, k, a)
     local segments = 10
     local filled   = math.floor(music_volume * segments + 0.5)
     for i = 1, segments do
-        local on = i <= filled
-        local a  = on and (active and 1.0 or 0.6) or 0.18
-        local col = on and (active and amber(a * alpha) or white(a * alpha)) or white(a * alpha)
-        Hud.Rect(x + (i - 1) * 12 * s, y, 8 * s, 20 * s, col, 1 * s)
+        local on  = i <= filled
+        local col = on and ui.on_bar(k, a, 0.8) or ui.on_bar(k, 0.18 * a, 0.9)
+        if on and k > 0.5 then
+            col = accent(a)
+        end
+        Hud.Rect(x + (i - 1) * 9 * s, y, 5 * s, 16 * s, col)
     end
-    Hud.Text(string.format("%d%%", math.floor(music_volume * 100 + 0.5)), x + segments * 12 * s + 12 * s, y - 1 * s, 20 * s, white((active and 0.95 or 0.5) * alpha), "mono")
+    local text = string.format("%d", math.floor(music_volume * 100 + 0.5))
+    Hud.Text(text, x + segments * 9 * s + 10 * s, y - 2 * s, 16 * s, ui.on_bar(k, a, 0.6), "plan_regular")
 end
 
 local function draw_menu(s, x, y, reveal, list, dt)
-    local row_h = 84 * s
-    local mx, my = Hud.GetMousePosition()
+    local bar_w, bar_h, gap = 500 * s, 62 * s, 6 * s
+    local cy = y
     for i, item in ipairs(list) do
-        select_anim[i] = approach(select_anim[i] or 0, (i == selected and focus == "main") and 1 or 0, 14, dt)
-        local k    = select_anim[i]
-        local a    = ease_out((reveal - 0.9 - i * 0.12) / 0.7)
-        local ry   = y + (i - 1) * row_h
-        local rx   = x + (1 - a) * -40 * s
-
-        -- selection: a soft amber wash, a bright bar and the label stepping forward
-        if k > 0.01 then
-            Hud.RectGradient(rx - 24 * s, ry - 8 * s, 560 * s * k, row_h - 6 * s, amber(0.20 * k * a), amber(0.0), amber(0.0), amber(0.20 * k * a))
-            Hud.Rect(rx - 24 * s, ry - 8 * s, 4 * s, (row_h - 6 * s) * k, amber(a))
+        local a = ease_out((reveal - 1.0 - i * 0.07) / 0.6)
+        if item.group == "dev" and (i == 1 or list[i - 1].group ~= "dev") then
+            cy = cy + 30 * s
+            ui.label("DEVELOPER", x, cy, 11 * s, white(0.45 * a))
+            ui.label("QUICK JUMP", x + ui.label_width("DEVELOPER", 11 * s) + 16 * s, cy, 11 * s, accent(0.8 * a))
+            cy = cy + 24 * s
         end
 
-        local size  = lerp(32, 40, k) * s
-        local label = Hud.Text(item.label, rx + 16 * s * k, ry, size, white(lerp(0.55, 1.0, k) * a), "medium", 0, lerp(4, 6, k) * s)
-        Hud.Text(string.format("%02d", i), rx - 62 * s, ry + 13 * s, 17 * s, (i == selected and focus == "main") and amber(a) or white(0.35 * a), "mono", 0, 2 * s)
+        select_anim[i] = approach(select_anim[i] or 0, i == selected and 1 or 0, 16, dt)
+        local k  = select_anim[i]
+        local rx = x + (1 - a) * -24 * s
+        ui.list_bar(rx, cy, bar_w, bar_h, s, k, a)
 
-        if item.id == "music" then
-            draw_volume(rx + 16 * s * k + label + 34 * s, ry + 16 * s, s, a, i == selected)
-        end
+        Hud.Text(string.format("%02d", i), rx + 22 * s, cy + bar_h * 0.5 - 8 * s, 13 * s, k > 0.5 and accent(a) or white(0.35 * a), "plan_regular", 0, 1 * s)
+        local label_y = lerp(cy + bar_h * 0.5 - 11 * s, cy + 10 * s, k)
+        ui.label(item.label, rx + 62 * s, label_y, 18 * s, ui.on_bar(k, a))
         if k > 0.05 then
-            Hud.Text(item.hint, rx + 16 * s * k, ry + 50 * s, 19 * s, white(0.7 * k * a), "light", 0, 0.5 * s)
+            Hud.Text(item.hint, rx + 62 * s, cy + 36 * s, 13 * s, ink(0.6 * k * a), "plan_regular")
+        end
+        if item.id == "music" then
+            draw_volume(rx + bar_w - 150 * s, cy + bar_h * 0.5 - 8 * s, s, k, a)
+        end
+        if item.id == "sub" then
+            Hud.Text("\xE2\x80\xBA", rx + bar_w - 36 * s, cy + bar_h * 0.5 - 17 * s, 28 * s, ui.on_bar(k, a, 0.4), "plan_thin")
         end
 
-        item.bounds = { rx - 24 * s, ry - 8 * s, 620 * s, row_h - 6 * s }
-    end
-    return mx, my
-end
-
-local function draw_now_playing(w, h, s, alpha)
-    local x = 120 * s
-    local y = h - h * 0.055 - 92 * s
-
-    -- equalizer, a few springy bars that never repeat in an obvious way
-    for i = 1, 5 do
-        local v = 0.35 + 0.65 * math.abs(math.sin(time * (2.1 + i * 0.73) + i * 1.7) * math.sin(time * (0.9 + i * 0.31)))
-        local bh = 26 * s * v * music_gain
-        Hud.Rect(x + (i - 1) * 7 * s, y + 30 * s - bh, 4 * s, math.max(bh, 2 * s), amber(alpha))
-    end
-
-    Hud.Text("NOW PLAYING", x + 52 * s, y - 6 * s, 15 * s, amber(alpha), "mono", 0, 5 * s)
-    Hud.Text("Desert House", x + 52 * s, y + 12 * s, 27 * s, white(0.95 * alpha), "medium", 0, 0.5 * s)
-    Hud.Text("TAKE 2   \xC2\xB7   ON REPEAT", x + 54 * s, y + 48 * s, 14 * s, white(0.55 * alpha), "mono", 0, 3 * s)
-end
-
-local function draw_keycap(text, x, y, s, alpha)
-    local tw = Hud.TextWidth(text, 16 * s, "mono")
-    local cw = math.max(tw + 18 * s, 34 * s)
-    Hud.Rect(x, y, cw, 32 * s, white(0.08 * alpha), 5 * s)
-    Hud.RectOutline(x, y, cw, 32 * s, white(0.55 * alpha), 1.3 * s, 5 * s)
-    Hud.Text(text, x + cw * 0.5, y + 6 * s, 16 * s, white(0.9 * alpha), "mono", 0.5)
-    return cw
-end
-
-local function draw_hints(w, h, s, alpha)
-    local y = h - h * 0.055 - 62 * s
-    local x = w - 120 * s
-    local entries = { { "ENTER", "CONFIRM" }, { "\xE2\x86\x90 \xE2\x86\x92", "ADJUST" }, { "\xE2\x86\x91 \xE2\x86\x93", "SELECT" } }
-    for _, entry in ipairs(entries) do
-        local lw = Hud.TextWidth(entry[2], 16 * s, "mono", 3 * s)
-        x = x - lw
-        Hud.Text(entry[2], x, y + 6 * s, 16 * s, white(0.7 * alpha), "mono", 0, 3 * s)
-        local kw = Hud.TextWidth(entry[1], 16 * s, "mono")
-        x = x - math.max(kw + 18 * s, 34 * s) - 12 * s
-        draw_keycap(entry[1], x, y, s, alpha)
-        x = x - 40 * s
+        item.bounds = { rx, cy, bar_w, bar_h }
+        cy = cy + bar_h + gap
     end
 end
 
-local function draw_location(w, h, s, alpha)
-    local x = w - 120 * s
-    local y = h * 0.055 + 46 * s
-    Hud.Text(format_clock(), x, y, 52 * s, white(0.95 * alpha), "light", 1, 2 * s)
-    Hud.Text("PLAYER HOME   \xC2\xB7   ZAKYNTHOS", x, y + 70 * s, 16 * s, amber(alpha), "mono", 1, 4 * s)
+local function draw_now_playing(x, y, fh, alpha)
+    local s = fh / ui.footer_height
+    for i = 1, 4 do
+        local v  = 0.3 + 0.7 * math.abs(math.sin(time * (2.1 + i * 0.73) + i * 1.7) * math.sin(time * (0.9 + i * 0.31)))
+        local bh = 14 * s * v * music_gain
+        Hud.Rect(x + (i - 1) * 5 * s, y + fh * 0.5 + 7 * s - bh, 3 * s, math.max(bh, 1 * s), accent(alpha))
+    end
+    local tx = x + 34 * s
+    tx = tx + ui.label("NOW PLAYING", tx, y + fh * 0.5 - 6 * s, 11 * s, white(0.45 * alpha)) + 16 * s
+    Hud.Text("Desert House", tx, y + fh * 0.5 - 10 * s, 17 * s, white(0.95 * alpha), "plan_regular")
+    tx = tx + Hud.TextWidth("Desert House", 17 * s, "plan_regular") + 12 * s
+    Hud.Text("Take 2", tx, y + fh * 0.5 - 10 * s, 17 * s, white(0.5 * alpha), "plan_regular")
+end
 
-    -- the current shot's name, it fades with each cut
+-- the current shot's name over a segmented reel, bottom right above the prompts
+local function draw_reel(w, h, s, alpha)
+    local x = w - ui.margin * s
+    local y = h - ui.footer_height * s - 60 * s
     local shot = shots[shot_index]
     local a    = (1 - cut_fade()) * alpha
-    Hud.Text(shot.label, x, y + 96 * s, 19 * s, white(0.75 * a), "light", 1, 6 * s)
+    ui.label(shot.label, x, y, 12 * s, white(0.85 * a), 1)
+    ui.label(string.format("%02d / %02d", shot_index, #shots), x - ui.label_width(shot.label, 12 * s) - 18 * s, y, 12 * s, white(0.4 * alpha), 1)
 
-    -- progress through the reel, the current shot's tick fills as it plays
-    local tick_w = 22 * s
-    local gap    = 6 * s
+    local tick_w = 26 * s
+    local gap    = 4 * s
     local left   = x - #shots * (tick_w + gap) + gap
     for i = 1, #shots do
         local dx = left + (i - 1) * (tick_w + gap)
-        Hud.Rect(dx, y + 132 * s, tick_w, 3 * s, white(0.25 * alpha))
+        Hud.Rect(dx, y + 26 * s, tick_w, 2 * s, white(0.2 * alpha))
         if i < shot_index then
-            Hud.Rect(dx, y + 132 * s, tick_w, 3 * s, white(0.6 * alpha))
+            Hud.Rect(dx, y + 26 * s, tick_w, 2 * s, white(0.6 * alpha))
         elseif i == shot_index then
-            Hud.Rect(dx, y + 132 * s, tick_w * clamp(shot_time / shot.duration, 0, 1), 3 * s, amber(alpha))
+            Hud.Rect(dx, y + 26 * s, tick_w * clamp(shot_time / shot.duration, 0, 1), 2 * s, accent(alpha))
         end
     end
 end
 
--- the developer quick jump sits under the clock, tab moves the keyboard between it and the main list
-local function draw_dev(w, h, s, alpha, dt)
-    local x = w - 120 * s
-    local y = h * 0.055 + 230 * s
-    Hud.Rect(x - 300 * s, y, 300 * s, 1 * s, white(0.2 * alpha))
-    Hud.Text("DEVELOPER   \xC2\xB7   QUICK JUMP", x, y + 14 * s, 14 * s, amber(alpha), "mono", 1, 4 * s)
-
-    local row_y = y + 48 * s
-    for i, entry in ipairs(dev_menus) do
-        dev_anim[i] = approach(dev_anim[i] or 0, (focus == "dev" and i == dev_selected) and 1 or 0, 14, dt)
-        local k = dev_anim[i]
-        if k > 0.01 then
-            Hud.RectGradient(x - 380 * s * k, row_y - 6 * s, 380 * s * k + 20 * s, 66 * s, amber(0.0), amber(0.18 * k * alpha), amber(0.18 * k * alpha), amber(0.0))
-            Hud.Rect(x + 16 * s, row_y - 6 * s, 4 * s, 66 * s * k, amber(alpha))
-        end
-        Hud.Text(entry.label, x - 12 * s * k, row_y, lerp(24, 28, k) * s, white(lerp(0.6, 1.0, k) * alpha), "medium", 1, 4 * s)
-        Hud.Text(entry.hint, x - 12 * s * k, row_y + 38 * s, 15 * s, white(lerp(0.4, 0.75, k) * alpha), "light", 1, 0.5 * s)
-        entry.bounds = { x - 400 * s, row_y - 6 * s, 420 * s, 66 * s }
-        row_y = row_y + 78 * s
+local function draw_chrome(w, h, s, alpha, list)
+    local slide = 1 - alpha
+    ui.header(w, s, alpha, { "ZAKYNTHOS", "HOME" }, { { "CREDITS", ui.credits(credits()) }, { "LOCAL TIME", format_clock() } }, slide)
+    local prompts = { { "\xE2\x86\x91 \xE2\x86\x93", "SELECT" } }
+    if list[selected] and list[selected].id == "music" then
+        table.insert(prompts, { "\xE2\x86\x90 \xE2\x86\x92", "VOLUME" })
     end
+    table.insert(prompts, { "TAB", "DEVELOPER" })
+    table.insert(prompts, { "ENTER", "CONFIRM" })
+    ui.footer(w, h, s, alpha, prompts, function(x, y, fh) draw_now_playing(x, y, fh, alpha) end, slide)
+end
 
-    local key_w = Hud.TextWidth("TAB", 14 * s, "mono") + 16 * s
-    Hud.Text("SWITCH", x, row_y + 4 * s, 13 * s, white(0.5 * alpha), "mono", 1, 3 * s)
-    local kx = x - Hud.TextWidth("SWITCH", 13 * s, "mono", 3 * s) - 10 * s - key_w
-    Hud.Rect(kx, row_y, key_w, 26 * s, white(0.08 * alpha), 4 * s)
-    Hud.RectOutline(kx, row_y, key_w, 26 * s, white(0.45 * alpha), 1.2 * s, 4 * s)
-    Hud.Text("TAB", kx + key_w * 0.5, row_y + 5 * s, 14 * s, white(0.85 * alpha), "mono", 0.5)
+-- a sheet of dark glass with a blue leading edge, it covers the screen going into a sub menu and pulls away coming out
+local function draw_wipe(w, h, s, from, to)
+    local left, right = w * from, w * to
+    if right <= left then
+        return
+    end
+    Hud.Rect(left, 0, right - left, h, ink(1.0))
+    if to < 1 then
+        Hud.Rect(right - 2 * s, 0, 2 * s, h, accent(1.0))
+    end
+    if from > 0 then
+        Hud.Rect(left, 0, 2 * s, h, accent(1.0))
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -406,70 +372,64 @@ local function pressed(...)
     return false
 end
 
+local function select_item(index, count)
+    index = (index - 1) % count + 1
+    if index ~= selected then
+        selected = index
+        ui.sound("move")
+    end
+end
+
 local function adjust_volume(direction)
+    local before = music_volume
     music_volume = clamp(music_volume + direction * 0.1, 0, 1)
+    if music_volume ~= before then
+        ui.sound("tick", 0.9, 0.8 + music_volume * 0.5)
+    else
+        ui.sound("error", 0.5)
+    end
 end
 
 local function activate(item)
     if item.id == "play" then
+        ui.sound("confirm")
+        ui.sound("transition", 0.8)
         state, state_time = "leaving", 0
     elseif item.id == "music" then
-        music_volume = music_volume >= 0.999 and 0 or clamp(music_volume + 0.1, 0, 1)
+        adjust_volume(music_volume >= 0.999 and -10 or 1)
     elseif item.id == "quit" then
+        ui.sound("back")
         state, state_time = "quitting", 0
+    elseif item.id == "sub" then
+        ui.sound("confirm")
+        ui.sound("transition", 0.8)
+        state, state_time = "to_sub", 0
+        submenu = item
     end
 end
 
-local function open_submenu(entry)
-    state, state_time = "to_sub", 0
-    submenu = entry
-end
-
-local function handle_input(list, mx, my)
+local function handle_input(list)
     local count = #list
-    if pressed(KeyCode.Tab, KeyCode.Button_North) then
-        focus = focus == "main" and "dev" or "main"
-    end
-
-    -- the mouse moves the focus to whichever column it is over
-    local dev_hovered = nil
-    for i, entry in ipairs(dev_menus) do
-        local b = entry.bounds
-        if b and mx >= b[1] and mx <= b[1] + b[3] and my >= b[2] and my <= b[2] + b[4] then
-            dev_hovered = i
-        end
-    end
-
-    if focus == "dev" then
-        if pressed(KeyCode.Arrow_Down, KeyCode.S, KeyCode.DPad_Down) then
-            dev_selected = dev_selected % #dev_menus + 1
-        end
-        if pressed(KeyCode.Arrow_Up, KeyCode.W, KeyCode.DPad_Up) then
-            dev_selected = (dev_selected - 2) % #dev_menus + 1
-        end
-        if pressed(KeyCode.Enter, KeyCode.Space, KeyCode.Button_South) then
-            open_submenu(dev_menus[dev_selected])
-            return
-        end
-    end
-    local moved_mouse = math.abs(mx - mouse_last_x) + math.abs(my - mouse_last_y) > 0.5
-    if dev_hovered and moved_mouse then
-        focus, dev_selected = "dev", dev_hovered
-    end
-    if dev_hovered and pressed(KeyCode.Click_Left) then
-        open_submenu(dev_menus[dev_hovered])
-        return
-    end
-    if focus == "dev" then
-        mouse_last_x, mouse_last_y = mx, my
-        return
-    end
+    local mx, my = Hud.GetMousePosition()
 
     if pressed(KeyCode.Arrow_Down, KeyCode.S, KeyCode.DPad_Down) then
-        selected = selected % count + 1
+        select_item(selected + 1, count)
     end
     if pressed(KeyCode.Arrow_Up, KeyCode.W, KeyCode.DPad_Up) then
-        selected = (selected - 2) % count + 1
+        select_item(selected - 1, count)
+    end
+
+    -- tab hops between the island and the developer group
+    if pressed(KeyCode.Tab, KeyCode.Button_North) then
+        local group = list[selected].group
+        for offset = 1, count do
+            local index = (selected + offset - 1) % count + 1
+            if list[index].group ~= group then
+                selected = index
+                ui.sound("tab")
+                break
+            end
+        end
     end
 
     local item = list[selected]
@@ -489,7 +449,7 @@ local function handle_input(list, mx, my)
     local moved = math.abs(mx - mouse_last_x) + math.abs(my - mouse_last_y) > 0.5
     mouse_last_x, mouse_last_y = mx, my
     if hovered and moved then
-        selected, focus = hovered, "main"
+        select_item(hovered, count)
     end
 
     if pressed(KeyCode.Enter, KeyCode.Space, KeyCode.Button_South) then
@@ -512,10 +472,11 @@ function menu.Start()
         jukebox_audio:SetMute(true)
     end
 
+    _G.plan_ui = ui
+    ui.init()
     state, state_time, steady = "warmup", 0, 0
     time, shot_index, shot_time = 0, 1, 0
-    selected, select_anim = 1, {}
-    focus, dev_selected, dev_anim, submenu = "main", 1, {}, nil
+    selected, select_anim, submenu = 1, {}, nil
     create_camera()
     start_music()
     tick_camera(0)
@@ -528,6 +489,8 @@ function menu.Stop()
     submenu = nil
     release_camera()
     stop_music()
+    ui.release()
+    _G.plan_ui = nil
     if jukebox_audio then
         jukebox_audio:SetMute(false)
         jukebox_audio = nil
@@ -545,7 +508,7 @@ function menu.Tick()
     local dt_real = Timer.GetDeltaTimeRealSec()
     local dt      = math.min(dt_real, 0.25)
 
-    load_fonts()
+    ui.load_fonts()
 
     -- the first frames of play stream the island and hitch, hold on black (music already rising, exposure settling
     -- on the first shot) until frames run steady, so the intro is never seen stuttering
@@ -558,6 +521,7 @@ function menu.Tick()
         Hud.Rect(0, 0, w, h, black(1))
         if steady > 0.6 or state_time > 8.0 then
             state, state_time, time = "intro", 0, 0
+            ui.sound("intro", 0.8)
         end
         return
     end
@@ -571,14 +535,19 @@ function menu.Tick()
     local s    = clamp(math.min(h / 1080, w / 1920), 0.5, 2.0)
     local list = items()
     selected   = clamp(selected, 1, #list)
+    local left = 120 * s
+    local top  = h * 0.24
 
     if state == "to_sub" then
-        -- the menu dips to black, then the sub menu takes the camera
+        -- the glass sheet sweeps over the menu, then the sub menu takes the camera
         tick_camera(dt)
         tick_music(dt, 0.7)
         draw_backdrop(w, h, s, 1)
-        Hud.Rect(0, 0, w, h, black(smooth(state_time / 0.35)))
-        if state_time >= 0.35 then
+        draw_title(w, s, left, top, 10)
+        draw_menu(s, left, top + 230 * s, 10, list, dt)
+        draw_chrome(w, h, s, 1, list)
+        draw_wipe(w, h, s, 0, ease_out(state_time / wipe_time))
+        if state_time >= wipe_time + 0.05 then
             release_camera()
             submenu.module = dofile(directory .. submenu.file)
             submenu.module.Open()
@@ -587,7 +556,9 @@ function menu.Tick()
         return
     elseif state == "sub" then
         tick_music(dt, 0.7)
-        if not submenu.module.Tick(dt) then
+        local open = submenu.module.Tick(dt)
+        draw_wipe(w, h, s, ease_out(state_time / wipe_time), 1)
+        if not open then
             submenu.module.Close()
             submenu = nil
             create_camera()
@@ -598,33 +569,30 @@ function menu.Tick()
     end
 
     if state == "intro" or state == "menu" or state == "from_sub" then
-        if state == "intro" and state_time > 2.0 then
+        if state == "intro" and state_time > 3.0 then
             state = "menu"
         end
-        if state == "from_sub" and state_time > 0.5 then
+        if state == "from_sub" and state_time > wipe_time then
             state = "menu"
         end
         tick_camera(dt)
         tick_music(dt, 1.0)
 
-        local reveal = state_time + (state ~= "intro" and 10 or 0)
-        local ui     = smooth((time - 0.6) / 1.4)
-        draw_backdrop(w, h, s, ui)
-        Hud.Rect(0, 0, w, h, black(cut_fade() * 0.9))
-        Hud.Rect(0, 0, w, h, black(1 - smooth(time / 2.2)))
+        local reveal = state == "intro" and time or 10
+        local chrome = smooth((reveal - 0.2) / 0.9)
+        draw_backdrop(w, h, s, smooth(reveal / 1.2))
+        Hud.Rect(0, 0, w, h, black(cut_fade() * 0.85))
+        Hud.Rect(0, 0, w, h, black(1 - smooth(reveal / 1.6)))
 
-        local left = 140 * s
-        draw_title(s, left, h * 0.25, time - 0.8)
-        local mx, my = draw_menu(s, left, h * 0.25 + 300 * s, time - 0.8, list, dt)
-        draw_now_playing(w, h, s, ui)
-        draw_hints(w, h, s, ui)
-        draw_location(w, h, s, ui)
-        draw_dev(w, h, s, ui, dt)
+        draw_title(w, s, left, top, reveal)
+        draw_menu(s, left, top + 230 * s, reveal, list, dt)
+        draw_reel(w, h, s, chrome)
+        draw_chrome(w, h, s, chrome, list)
 
         if state == "from_sub" then
-            Hud.Rect(0, 0, w, h, black(1 - smooth(state_time / 0.5)))
+            draw_wipe(w, h, s, 0, 1 - ease_out(state_time / wipe_time))
         elseif state == "menu" or time > 1.5 then
-            handle_input(list, mx, my)
+            handle_input(list)
         end
     elseif state == "leaving" or state == "quitting" then
         -- the menu falls away, the screen goes black and the island takes over from the player's eyes
@@ -632,7 +600,8 @@ function menu.Tick()
         tick_music(dt, 0.0)
         local k = smooth(state_time / 1.0)
         draw_backdrop(w, h, s, 1 - k)
-        Hud.Rect(0, 0, w, h, black(math.max(k, cut_fade() * 0.9)))
+        draw_chrome(w, h, s, 1 - k, list)
+        Hud.Rect(0, 0, w, h, black(math.max(k, cut_fade() * 0.85)))
         if state_time >= 1.2 then
             if state == "quitting" then
                 Engine.Quit()

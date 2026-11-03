@@ -33,5 +33,8 @@ namespace spartan
 
         // --ci-smoke-test: CPU-only editor startup, idle ticks and shutdown; no window or GPU.
         static bool IsStartupSmokeTest();
+
+        // logs how long a startup step took and how far into the process it finished
+        static void LogStartupStep(const char* step);
     };
 }

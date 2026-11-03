@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Prefab name="ferrari_laferrari">
+    <!-- Shared drivable car: scenes override only controls, camera and optional paint color. -->
+    <prefab type="car" file="project/cars/ferrari_laferrari.car" drivable="true" telemetry="false" camera_follows="false" paint_preset="metallic" paint_color_r="0.42" paint_color_g="0.012" paint_color_b="0.008" paint_color_a="1" />
+</Prefab>

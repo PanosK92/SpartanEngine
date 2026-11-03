@@ -63,12 +63,27 @@ namespace spartan
             return path;
         }
 
+        string car_file_from_prefab(pugi::xml_node prefab)
+        {
+            if (string(prefab.attribute("type").as_string()) == "car")
+                return prefab.attribute("file").as_string();
+            pugi::xml_document shared;
+            const string path = resolve_world_path(prefab.attribute("file").as_string());
+            if (!path.empty() && shared.load_file(path.c_str()))
+            {
+                pugi::xml_node factory = shared.child("Prefab").child("prefab");
+                if (string(factory.attribute("type").as_string()) == "car")
+                    return factory.attribute("file").as_string();
+            }
+            return "";
+        }
+
         // the first entity of a .prefab file that is a car prefab
         pugi::xml_node find_car_prefab_entity(const pugi::xml_document& document)
         {
             for (pugi::xml_node entity = document.child("Prefab").child("Entity"); entity; entity = entity.next_sibling("Entity"))
             {
-                if (string(entity.child("prefab").attribute("type").as_string()) == "car")
+                if (!car_file_from_prefab(entity.child("prefab")).empty())
                 {
                     return entity;
                 }
@@ -117,7 +132,7 @@ namespace spartan
             set_attribute(prefab, "drivable", "true");
             set_attribute(prefab, "telemetry", "false");
             set_attribute(prefab, "camera_follows", "false");
-            set_attribute(prefab, "paint_preset", "gloss_solid");
+            prefab.remove_attribute("paint_preset");
             set_attribute(prefab, "paint_color_r", paint.r);
             set_attribute(prefab, "paint_color_g", paint.g);
             set_attribute(prefab, "paint_color_b", paint.b);
@@ -386,7 +401,7 @@ namespace spartan
             const string prefab_path = resolve_world_path(m_car_prefab);
             pugi::xml_document document;
             pugi::xml_node entity    = document.load_file(prefab_path.c_str()) ? find_car_prefab_entity(document) : pugi::xml_node();
-            const string prefab_car  = entity ? entity.child("prefab").attribute("file").as_string() : "";
+            const string prefab_car  = entity ? car_file_from_prefab(entity.child("prefab")) : "";
             if (!prefab_car.empty())
             {
                 m_car_prefab_path = prefab_path;
@@ -455,7 +470,7 @@ namespace spartan
             config.drivable            = true;
             config.vehicle_sim_mode    = VehicleSimMode::Full;
             config.customize_materials = true;
-            config.paint_preset        = MaterialPaintPreset::GlossSolid;
+            config.paint_preset        = MaterialPaintPreset::Metallic;
             config.paint_color         = race_car_paint(GetEntity());
             car                        = Car::Create(config);
             if (car && car->GetRootEntity())

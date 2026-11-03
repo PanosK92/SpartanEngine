@@ -712,6 +712,13 @@ namespace spartan::mcp_diagnostics
                     continue;
                 }
 
+                // a first compile is still filling in the include list on a worker
+                if (shader->GetCompilationState() == RHI_ShaderCompilationState::Compiling)
+                {
+                    compiling_count++;
+                    continue;
+                }
+
                 const std::vector<std::string>& file_paths = shader->GetFilePaths();
                 if (!filter.empty())
                 {

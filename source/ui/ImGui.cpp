@@ -50,7 +50,8 @@ void spartan::gui::initialize(bool editor)
     }
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigWindowsResizeFromEdges = true;
-    io.IniFilename = editor ? "editor.ini" : nullptr;
+    io.IniFilename = editor ? "settings/editor.ini" : nullptr;
+    io.LogFilename = "logs/imgui_log.txt";
 
     ImFontConfig config;
     config.GlyphOffset.y = -1.0f;

@@ -204,7 +204,18 @@ namespace spartan
         }
 
 
-        void sdl_initialize_subystems()
+        void sdl_initialize_video()
+        {
+            if (!SDL_WasInit(SDL_INIT_VIDEO))
+            {
+                if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+                {
+                    SP_LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                }
+            }
+        }
+
+        void sdl_initialize_audio()
         {
             if (!SDL_WasInit(SDL_INIT_AUDIO))
             {
@@ -213,15 +224,11 @@ namespace spartan
                     SP_LOG_ERROR("Failed to initialise SDL audio subsystem: %s.", SDL_GetError());
                 }
             }
+        }
 
-            if (!SDL_WasInit(SDL_INIT_VIDEO))
-            {
-                if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
-                {
-                    SP_LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
-                }
-            }
-
+        // hid enumeration is slow, so it waits until the editor is on screen, connected pads then arrive as added events
+        void sdl_initialize_gamepads()
+        {
             // a headless instance must not pick up the desk's gamepads, stick drift would steer its camera
             if (!SDL_WasInit(SDL_INIT_GAMEPAD) && !Engine::IsHeadless())
             {
@@ -253,7 +260,7 @@ namespace spartan
 
         // keep the desktop compositor active for the editor and splash window on X11
         SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
-        sdl_initialize_subystems();
+        sdl_initialize_video();
 
         const bool headless  = Engine::IsHeadless();
         m_show_splash_screen = !headless;
@@ -262,6 +269,9 @@ namespace spartan
         {
             CreateAndShowSplashScreen();
         }
+        Engine::LogStartupStep("splash screen");
+
+        sdl_initialize_audio();
 
         // a packaged game has no editor title bar to drag, so it gets a regular os window with its own name
         const bool packaged          = GameManifest::IsPackaged();
@@ -723,6 +733,8 @@ namespace spartan
         // hide and destroy splash screen window
         SDL_DestroyWindow(m_splash_screen_window);
         m_splash_screen_window = nullptr;
+
+        sdl_initialize_gamepads();
     }
 
     void Window::SetSplashScreenVisible(bool visible)

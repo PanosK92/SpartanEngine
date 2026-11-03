@@ -42,7 +42,7 @@ namespace spartan
         static bool SaveToFile(Entity* entity, const std::string& file_path);
 
         // load a .prefab file, creating children/components under the given parent entity
-        static bool LoadFromFile(const std::string& file_path, Entity* parent);
+        static bool LoadFromFile(const std::string& file_path, Entity* parent, const pugi::xml_node* instance = nullptr);
 
         // get all registered code prefab type names
         static std::vector<std::string> GetRegisteredTypes();

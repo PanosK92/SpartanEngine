@@ -71,3 +71,35 @@ The island uses zero extra mist; the showroom uses one. These values belong to
 each world and are saved with it, rather than inherited from the previous world.
 Old `r.fog` settings load as mist density with their original values. The legacy
 per-light Volumetric flag is ignored; shadows control occlusion, not scattering.
+
+
+## Plan garage and maintenance
+
+Open the tune shop from the main menu's developer quick jump (Tab, Enter).
+Q/E selects a department, up/down selects a part, left/right selects a stage,
+and Enter fits it. Long tire lists scroll with the selected stage. Z/C selects
+a tuning control; Shift+left/right adjusts it. Parts unlock controls at the
+stages shown in the work order, and changes require a stationary car.
+
+Suspension controls change the physical coilovers, alignment and anti-roll
+forces. Transmission ratios also update the automatic shift-speed thresholds.
+Adjustable LSD settings control power/coast locking and preload; the AWD
+controller changes the actual axle torque split. Road, sport, racing, dirt and
+snow tires differ in surface grip, working temperature and wear.
+
+Hold N while driving to inject nitrous above 2,500 RPM at full throttle in a
+forward gear. The metered flow adds crankshaft power and consumes the bottle;
+installing the kit does not include gas. SERVICE refills it, changes oil or
+restores chassis rigidity. Oil ages with distance, running time and heat,
+increasing engine losses. Chassis fatigue reduces effective suspension and
+anti-roll stiffness. These are bounded gameplay models, not measured oil or
+chassis-life calibrations.
+
+Plan saves installed parts, setup, oil/chassis condition, mileage and remaining
+nitrous automatically, plus credits and owned parts. Saves are kept outside
+the project assets in SDL's per-user Spartan/Plan directory (on Windows,
+%APPDATA%/Spartan/Plan). The shop saves after successful changes, and Plan
+autosaves every 30 simulation seconds and when play stops. Do not package
+these personal saves with the project.
+
+The LaFerrari in the showcase, dyno, playground and game uses `data/prefabs/ferrari_laferrari.prefab`. This owns the drivable car definition and metallic paint defaults. Scene instances override camera/HUD/dyno behavior and optional paint colors; material assignments stay in the shared car factory. `data/prefabs/player_car.prefab` adds the playground spawn point and effects and is also used by its AI racers. Run setup after editing source data to refresh `binaries/data`.

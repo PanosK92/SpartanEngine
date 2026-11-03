@@ -8,7 +8,7 @@ SOLUTION_NAME    = "spartan"
 EXECUTABLE_NAME  = "spartan"
 SOURCE_DIR       = "../source"
 LIBRARY_DIR      = "../third_party/libraries"
-OBJ_DIR          = "../binaries/obj"
+OBJ_DIR          = "../binaries/build/obj"
 TARGET_DIR       = "../binaries"
 API_CPP_DEFINE   = ""
 ARG_API_GRAPHICS = _ARGS[1]
@@ -76,7 +76,8 @@ end
 
 local function link_windows_libraries(configs, suffix)
     filter { "system:windows", "configurations:" .. configs }
-        links { "dxcompiler", "libxess", "dxguid", "steam_api64" }
+        links { "dxcompiler", "libxess", "dxguid", "steam_api64", "delayimp" }
+        linkoptions { "/DELAYLOAD:dxcompiler.dll", "/DELAYLOAD:libxess.dll", "/DELAYLOAD:steam_api64.dll" }
         links { suffix == "" and "nvsdk_ngx_s" or "nvsdk_ngx_s_dbg" }
         links(suffixed(LIBS_COMMON, suffix))
         links(suffixed({ "Recast", "Detour", "DetourCrowd" }, suffix))
@@ -285,6 +286,8 @@ function spartan_project_configuration()
             }
             links { "Ws2_32", "oleaut32", "ole32", "d3d12", "dxgi" }
             buildoptions { "/bigobj" }
+            symbolspath(TARGET_DIR .. "/build/%{cfg.buildtarget.basename}.pdb")
+            linkoptions { "/IMPLIB:binaries/build/%{cfg.buildtarget.basename}.lib" }
 
             if ARG_API_GRAPHICS == "vulkan" then
                 includedirs { "../third_party/spirv_cross", "../third_party/vulkan", "../third_party/vulkan_memory_allocator" }

@@ -384,7 +384,7 @@ namespace spartan
         float m_max_grade_degrees  = 8.0f;
         float m_max_cut            = 20.0f;
         float m_grade_smoothing    = 1.0f;
-        // arc length the elevation profile is averaged over, this is what stops the rollercoaster
+        // Optional broad smoothing in metres; a minimum vertical-curve radius is always enforced when grade limiting.
         float m_smoothing_length   = 160.0f;
 
         // terrain carving

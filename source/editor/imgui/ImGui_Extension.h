@@ -720,28 +720,56 @@ namespace ImGuiSp
 
         const float t     = ImGui::EditorUi::animate(id, *v ? 1.0f : 0.0f, 14.0f);
         const float hover = ImGui::EditorUi::animate(id ^ 0x4a11c0deu, hovered ? 1.0f : 0.0f, 16.0f);
+        const float press = ImGui::EditorUi::animate(id ^ 0x1e45e5edu, held ? 1.0f : 0.0f, 18.0f);
         const ImVec4 accent = ImGui::Style::color_accent_1;
+        const ImVec4 white  = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        const float hairline = ImMax(1.0f, ImGui::EditorUi::scaled(1.0f));
 
-        // off, the track is sunk into the panel, on, it is lit with the signal and glows
+        // off, the track is smoked glass sunk into the pane, on, it fills with the signal and glows through the glass around it
         ImDrawList* draw_list = window->DrawList;
         if (t > 0.01f)
         {
-            ImGui::EditorUi::draw_glow(draw_list, switch_bb.Min, switch_bb.Max, accent, radius, ImGui::EditorUi::scaled(7.0f), (0.55f + 0.35f * hover) * t);
+            ImGui::EditorUi::draw_glow(draw_list, switch_bb.Min, switch_bb.Max, accent, radius, ImGui::EditorUi::scaled(7.0f), (0.50f + 0.35f * hover) * t);
         }
-        const ImVec4 track_off = ImGui::Style::lerp(ImGui::Style::color_canvas_deep, ImGui::Style::color_surface, 0.25f * hover);
-        const ImVec4 track_on  = ImGui::Style::lerp(ImGui::Style::lerp(ImGui::Style::color_accent_2, accent, 0.80f), accent, hover);
-        draw_list->AddRectFilled(switch_bb.Min, switch_bb.Max, ImGui::EditorUi::color(ImGui::Style::lerp(track_off, track_on, t)), radius);
-        draw_list->AddRect(switch_bb.Min, switch_bb.Max, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.08f * (1.0f - t))), radius, ImMax(1.0f, ImGui::EditorUi::scaled(1.0f)));
+        const ImVec4 track_off_top    = ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.55f - 0.10f * hover);
+        const ImVec4 track_off_bottom = ImGui::EditorUi::alpha(ImGui::Style::lerp(ImGui::Style::color_void, white, 0.10f + 0.06f * hover), 0.40f);
+        const ImVec4 track_on_top     = ImGui::EditorUi::alpha(ImGui::Style::lerp(ImGui::Style::color_accent_2, accent, 0.65f + 0.35f * hover), 0.90f);
+        const ImVec4 track_on_bottom  = ImGui::EditorUi::alpha(ImGui::Style::lerp(accent, white, 0.22f), 0.80f);
+        const int track_vtx = draw_list->VtxBuffer.Size;
+        draw_list->AddRectFilled(switch_bb.Min, switch_bb.Max, IM_COL32_WHITE, radius);
+        ImGui::EditorUi::shade_vertical(draw_list, track_vtx, switch_bb.Min.y, switch_bb.Max.y, ImGui::Style::lerp(track_off_top, track_on_top, t), ImGui::Style::lerp(track_off_bottom, track_on_bottom, t));
 
-        // the knob casts a soft shadow onto the track and gives slightly under the pointer while pressed
-        const float knob_x_off = switch_bb.Min.x + radius;
-        const float knob_x_on  = switch_bb.Max.x - radius;
+        // an inset rim: shadowed along the top where the glass is cut into, catching light along the bottom
+        const int rim_vtx = draw_list->VtxBuffer.Size;
+        draw_list->AddRect(ImVec2(switch_bb.Min.x + 0.5f, switch_bb.Min.y + 0.5f), ImVec2(switch_bb.Max.x - 0.5f, switch_bb.Max.y - 0.5f), IM_COL32_WHITE, radius, hairline);
+        ImGui::EditorUi::shade_vertical(draw_list, rim_vtx, switch_bb.Min.y, switch_bb.Max.y, ImVec4(0.0f, 0.0f, 0.0f, 0.35f * (1.0f - t)), ImGui::EditorUi::alpha(white, 0.14f + 0.16f * t));
+
+        // the knob is a glass bead, while held it stretches into a clear lens the track shows through
+        const float stretch    = knob_radius * 0.55f * press;
+        const float knob_x_off = switch_bb.Min.x + radius + stretch;
+        const float knob_x_on  = switch_bb.Max.x - radius - stretch;
         const float knob_x     = knob_x_off + (knob_x_on - knob_x_off) * t;
         const float knob_y     = switch_bb.Min.y + radius;
-        const float press      = held ? 0.9f : 1.0f;
-        draw_list->AddCircleFilled(ImVec2(knob_x, knob_y + ImGui::EditorUi::scaled(1.0f)), knob_radius * press + 1.0f, IM_COL32(0, 0, 0, 90), 32);
-        const ImVec4 knob = ImGui::Style::lerp(ImGui::Style::color_text_muted, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), t);
-        draw_list->AddCircleFilled(ImVec2(knob_x, knob_y), knob_radius * press, ImGui::EditorUi::color(knob), 32);
+        const float knob_r     = knob_radius * (1.0f + 0.12f * press);
+        const ImVec2 knob_min  = ImVec2(knob_x - knob_r - stretch, knob_y - knob_r);
+        const ImVec2 knob_max  = ImVec2(knob_x + knob_r + stretch, knob_y + knob_r);
+        const float drop       = ImGui::EditorUi::scaled(1.5f);
+        draw_list->AddRectFilled(ImVec2(knob_min.x - 0.5f, knob_min.y + drop), ImVec2(knob_max.x + 0.5f, knob_max.y + drop + 0.5f), IM_COL32(0, 0, 0, static_cast<int>(70.0f * (1.0f - 0.6f * press))), knob_r + 0.5f);
+
+        const float body   = 1.0f - 0.78f * press;
+        const ImVec4 tint  = ImGui::Style::lerp(ImGui::Style::lerp(ImGui::Style::color_text_muted, white, 0.55f), white, t);
+        const int knob_vtx = draw_list->VtxBuffer.Size;
+        draw_list->AddRectFilled(knob_min, knob_max, IM_COL32_WHITE, knob_r);
+        ImGui::EditorUi::shade_vertical(draw_list, knob_vtx, knob_min.y, knob_max.y, ImGui::EditorUi::alpha(tint, body), ImGui::EditorUi::alpha(ImGui::Style::lerp(tint, ImGui::Style::color_text_muted, 0.30f), body));
+
+        // a specular glint near the top and a bright rim that takes over as the bead turns into a lens
+        const float glint_inset = knob_r * 0.35f;
+        const int glint_vtx     = draw_list->VtxBuffer.Size;
+        draw_list->AddRectFilled(ImVec2(knob_min.x + glint_inset, knob_min.y + knob_r * 0.18f), ImVec2(knob_max.x - glint_inset, knob_y - knob_r * 0.05f), IM_COL32_WHITE, knob_r);
+        ImGui::EditorUi::shade_vertical(draw_list, glint_vtx, knob_min.y, knob_y, ImGui::EditorUi::alpha(white, 0.75f * (1.0f - 0.5f * press)), ImGui::EditorUi::alpha(white, 0.0f));
+        const int lens_vtx = draw_list->VtxBuffer.Size;
+        draw_list->AddRect(knob_min, knob_max, IM_COL32_WHITE, knob_r, hairline);
+        ImGui::EditorUi::shade_vertical(draw_list, lens_vtx, knob_min.y, knob_max.y, ImGui::EditorUi::alpha(white, 0.35f + 0.55f * press), ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.25f * (1.0f - press)));
 
         // draw label
         if (label_size.x > 0.0f)
@@ -821,10 +849,11 @@ namespace ImGuiSp
             ImGui::EditorUi::draw_glow(draw_list, bb.Min, bb.Max, signal, rounding, ImGui::EditorUi::scaled(10.0f), (primary ? 0.75f : 0.35f) * hover);
         }
 
-        // the well darkens under the finger and lifts toward the signal under the pointer
-        const float lift        = (primary ? 0.10f : 0.05f) + (primary ? 0.10f : 0.06f) * hover - 0.06f * press;
-        const ImVec4 well_top   = ImGui::Style::lerp(ImGui::Style::color_surface, signal, lift);
-        const ImVec4 well_base  = ImGui::Style::lerp(ImGui::Style::color_canvas_deep, signal, lift * 0.5f);
+        // a key of tinted glass: brighter where the light enters at the top, it clears under the pointer and smokes under the finger
+        const float lift        = (primary ? 0.20f : 0.09f) + (primary ? 0.10f : 0.06f) * hover - 0.07f * press;
+        const ImVec4 glass_tint = primary ? signal : ImGui::Style::color_text;
+        const ImVec4 well_top   = ImGui::EditorUi::alpha(ImGui::Style::lerp(glass_tint, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.20f), lift);
+        const ImVec4 well_base  = ImGui::EditorUi::alpha(glass_tint, lift * 0.35f);
         const int vtx_start     = draw_list->VtxBuffer.Size;
         draw_list->AddRectFilled(bb.Min, bb.Max, IM_COL32_WHITE, rounding);
         ImGui::EditorUi::shade_vertical(draw_list, vtx_start, bb.Min.y, bb.Max.y, well_top, well_base);

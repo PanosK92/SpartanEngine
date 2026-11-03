@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "core/ProgressTracker.h"
 #include <cctype>
 #include <filesystem>
+#include <future>
 #include <unordered_set>
 SP_WARNINGS_OFF
 #include "io/pugixml.hpp"
@@ -100,7 +101,7 @@ namespace
 
     unordered_map<string, int64_t> world_last_opened;
 
-    const char* world_recency_file = "spartan_worlds.xml";
+    const char* world_recency_file = "settings/spartan_worlds.xml";
 
     const char* assets_url          = "https://www.dropbox.com/scl/fi/pkh7ix0qm6rd747ym21pn/project.7z?rlkey=wdqf3qzmemjzirrvrk78043vp&dl=1";
     const char* assets_destination  = "project/project.7z";
@@ -408,7 +409,7 @@ namespace
         return nullptr;
     }
 
-    void scan_directory_recursive(const string& directory, unordered_set<string>& visited)
+    void scan_directory_recursive(const string& directory, unordered_set<string>& visited, vector<spartan::WorldMetadata>& found)
     {
         if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
         {
@@ -432,7 +433,7 @@ namespace
                 spartan::WorldMetadata metadata;
                 if (spartan::World::ReadMetadata(normalized_path, metadata))
                 {
-                    world_files.push_back(metadata);
+                    found.push_back(metadata);
                 }
             }
         }
@@ -440,11 +441,36 @@ namespace
         vector<string> subdirectories = spartan::FileSystem::GetDirectoriesInDirectory(directory);
         for (const string& subdir : subdirectories)
         {
-            scan_directory_recursive(subdir, visited);
+            scan_directory_recursive(subdir, visited, found);
         }
     }
 
-    void scan_for_world_files()
+    // touches no selector state, so the first scan can run on a worker while the editor starts
+    vector<spartan::WorldMetadata> collect_world_files()
+    {
+        vector<spartan::WorldMetadata> found;
+        unordered_set<string> visited;
+
+        string project_dir = spartan::ResourceCache::GetProjectDirectory();
+        scan_directory_recursive(project_dir, visited, found);
+
+        vector<string> worlds_dirs = { "worlds", "../worlds" };
+        for (const string& worlds_dir : worlds_dirs)
+        {
+            if (spartan::FileSystem::Exists(worlds_dir))
+            {
+                scan_directory_recursive(worlds_dir, visited, found);
+                break;
+            }
+        }
+
+        return found;
+    }
+
+    // walking the project tree takes hundreds of milliseconds, too long to hold the first frame
+    future<vector<spartan::WorldMetadata>> initial_scan;
+
+    void apply_world_files(vector<spartan::WorldMetadata>&& found)
     {
         string selected_path;
         if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
@@ -452,23 +478,7 @@ namespace
             selected_path = world_files[selected_index].file_path;
         }
 
-        world_files.clear();
-
-        unordered_set<string> visited;
-
-        string project_dir = spartan::ResourceCache::GetProjectDirectory();
-        scan_directory_recursive(project_dir, visited);
-
-        vector<string> worlds_dirs = { "worlds", "../worlds" };
-        for (const string& worlds_dir : worlds_dirs)
-        {
-            if (spartan::FileSystem::Exists(worlds_dir))
-            {
-                scan_directory_recursive(worlds_dir, visited);
-                break;
-            }
-        }
-
+        world_files = move(found);
         sort_world_files();
 
         if (!selected_path.empty())
@@ -479,6 +489,25 @@ namespace
         if (selected_index < 0 || selected_index >= static_cast<int>(world_files.size()))
         {
             selected_index = world_files.empty() ? -1 : 0;
+        }
+    }
+
+    void scan_for_world_files()
+    {
+        // a fresh scan supersedes the startup one
+        if (initial_scan.valid())
+        {
+            initial_scan.get();
+        }
+
+        apply_world_files(collect_world_files());
+    }
+
+    void apply_initial_scan_if_ready()
+    {
+        if (initial_scan.valid() && initial_scan.wait_for(chrono::seconds(0)) == future_status::ready)
+        {
+            apply_world_files(initial_scan.get());
         }
     }
 
@@ -1435,7 +1464,7 @@ namespace
             ImVec2 center = ImVec2(pos.x + region.x * 0.5f, pos.y + region.y * 0.42f);
             ImDrawList* draw = ImGui::GetWindowDrawList();
 
-            const char* message = search_filter.IsActive() ? "No worlds match your search" : "No worlds found on disk";
+            const char* message = initial_scan.valid() ? "Looking for worlds..." : search_filter.IsActive() ? "No worlds match your search" : "No worlds found on disk";
             ImVec2 message_size = ImGui::CalcTextSize(message);
             float marker_half   = scaled(38.0f);
             draw->AddRectFilled(ImVec2(center.x - marker_half, center.y - marker_half), ImVec2(center.x + marker_half, center.y + marker_half), colors.preview_bg, scaled(8.0f));
@@ -1799,12 +1828,14 @@ void WorldSelector::Initialize(Editor* editor_in)
 
     if (downloaded_and_extracted)
     {
-        scan_for_world_files();
+        initial_scan = async(launch::async, collect_world_files);
     }
 }
 
 void WorldSelector::Tick()
 {
+    apply_initial_scan_if_ready();
+
     if (const int result = download_result.exchange(0); result != 0)
     {
         download_in_progress = false;
@@ -1858,7 +1889,11 @@ void WorldSelector::SetVisible(bool visibility)
     }
 
     visible_world_list = true;
-    scan_for_world_files();
+    // while the startup scan is still running its result is fresh enough, rescanning would block the frame
+    if (!initial_scan.valid())
+    {
+        scan_for_world_files();
+    }
     selected_index         = world_files.empty() ? -1 : 0;
     selected_visible_index = 0;
     last_click_index       = -1;

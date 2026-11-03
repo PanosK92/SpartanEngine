@@ -82,8 +82,8 @@ jobs:
         with:
           name: smoke-test-windows-${{ matrix.api }}
           path: |
-            binaries/log.txt
-            binaries/smoke_test_*.txt
+            binaries/logs/log.txt
+            binaries/logs/smoke_test_*.txt
           retention-days: 14
 
       - name: Create artifact
@@ -92,9 +92,9 @@ jobs:
           set ZIP=spartan_${{ matrix.api }}_release.zip
           set EXE=spartan_${{ matrix.api }}.exe
           if exist binaries\steam_appid.txt (
-            tar -a -c -f %ZIP% binaries\*.dll binaries\steam_appid.txt binaries\data binaries\%EXE%
+            tar -a -c -f %ZIP% binaries\third_party binaries\steam_appid.txt binaries\data binaries\%EXE%
           ) else (
-            tar -a -c -f %ZIP% binaries\*.dll binaries\data binaries\%EXE%
+            tar -a -c -f %ZIP% binaries\third_party binaries\data binaries\%EXE%
           )
 
       - name: Upload artifact
@@ -187,8 +187,8 @@ jobs:
         with:
           name: smoke-test-linux-vulkan
           path: |
-            binaries/log.txt
-            binaries/smoke_test_*.txt
+            binaries/logs/log.txt
+            binaries/logs/smoke_test_*.txt
           retention-days: 14
 
       - name: Create artifact
@@ -296,8 +296,8 @@ jobs:
         with:
           name: smoke-test-macos-metal
           path: |
-            binaries/log.txt
-            binaries/smoke_test_*.txt
+            binaries/logs/log.txt
+            binaries/logs/smoke_test_*.txt
           retention-days: 14
 
       # freeimage comes from homebrew and the shader converter from /usr/local, they ship next to the executable instead

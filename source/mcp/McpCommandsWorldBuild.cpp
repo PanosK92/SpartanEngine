@@ -125,6 +125,34 @@ namespace spartan::mcp_world_build
         json += ",\"length\":" + std::to_string(length);
         json += ",\"closed_loop\":" + json_bool(spline->GetClosedLoop());
 
+        // Audit the generated surface, not the authoring spline above the terrain.
+        const auto& road_frames = spline->GetRoadFrames();
+        double max_span = 0.0, max_grade = 0.0, max_grade_step = 0.0, max_curvature = 0.0;
+        double previous_grade = 0.0, previous_span = 0.0;
+        for (size_t i = 1; i < road_frames.size(); ++i)
+        {
+            const auto a = entity->GetMatrix() * road_frames[i - 1].position;
+            const auto b = entity->GetMatrix() * road_frames[i].position;
+            const double dx = b.x - a.x, dz = b.z - a.z;
+            const double span = std::sqrt(dx * dx + dz * dz);
+            if (span < 0.001) continue;
+            const double grade = (b.y - a.y) / span;
+            max_span = std::max(max_span, span);
+            max_grade = std::max(max_grade, std::abs(grade));
+            if (previous_span > 0.0)
+            {
+                max_grade_step = std::max(max_grade_step, std::abs(std::atan(grade) - std::atan(previous_grade)) * 180.0 / 3.141592653589793);
+                max_curvature = std::max(max_curvature, std::abs(grade - previous_grade) / ((span + previous_span) * 0.5));
+            }
+            previous_grade = grade;
+            previous_span = span;
+        }
+        json += ",\"road_surface\":{\"frame_count\":" + std::to_string(road_frames.size());
+        json += ",\"max_segment_metres\":" + std::to_string(max_span);
+        json += ",\"max_grade\":" + std::to_string(max_grade);
+        json += ",\"max_grade_change_degrees\":" + std::to_string(max_grade_step);
+        json += ",\"max_vertical_curvature\":" + std::to_string(max_curvature) + "}";
+
         const std::vector<math::Vector3> control_points = spline->GetControlPoints();
         json += ",\"control_points\":[";
         for (size_t i = 0; i < control_points.size(); i++)

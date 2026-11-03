@@ -36,7 +36,7 @@ namespace game_build
 {
     namespace
     {
-        const char* options_file_name = "game_build.xml";
+        const char* options_file_name = "settings/game_build.xml";
 
         // text formats that name other assets, binary formats (meshes, textures, audio) never do
         const char* scannable_extensions[] = { ".world", ".xml", ".lua", ".car", ".json", ".prefab", ".particle", ".txt" };
@@ -261,7 +261,7 @@ namespace game_build
                 // entries for every asset any world ever loaded, so it only ships when asked for
                 if (it->is_directory(ec))
                 {
-                    if (!plan.include_cache && it->path().filename() == "generated_cache")
+                    if (it->path().filename() == "__pycache__" || (!plan.include_cache && it->path().filename() == "generated_cache"))
                     {
                         it.disable_recursion_pending();
                     }
@@ -520,13 +520,23 @@ namespace game_build
                 }
             }
 
+            const fs::path runtime_directory = plan.engine_directory / "third_party";
+            if (fs::is_directory(runtime_directory, ec))
+            {
+                for (const fs::directory_entry& entry : fs::recursive_directory_iterator(runtime_directory))
+                {
+                    if (entry.is_regular_file() && is_runtime_library(entry.path(), options.include_symbols))
+                        plan.files[entry.path().lexically_relative(plan.engine_directory).generic_string()] = entry.path();
+                }
+            }
+
             if (options.include_symbols)
             {
-                fs::path symbols = binary;
+                fs::path symbols = plan.engine_directory / "build" / binary.filename();
                 symbols.replace_extension(".pdb");
                 if (fs::exists(symbols, ec))
                 {
-                    plan.files[symbols.filename().string()] = symbols;
+                    plan.files["build/" + symbols.filename().string()] = symbols;
                 }
             }
 

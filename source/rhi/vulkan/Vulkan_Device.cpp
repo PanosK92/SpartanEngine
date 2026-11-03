@@ -25,6 +25,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_VendorTechnology.h"
 #include "../RHI_AccelerationStructure.h"
 #include "../../memory/GpuMemory.h"
+#include "../../geometry/GeneratedCache.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_vulkan.h>
 #define VMA_IMPLEMENTATION
@@ -504,8 +505,52 @@ namespace spartan
             append_names(extensions::extensions_instance, instance_ext_store, props, count);
         }
 
+        // the ngx discovery below loads the dlss dll and takes seconds, but its answer only changes with the gpu, driver or dll
+        filesystem::path device_extensions_cache_path(uint64_t& key)
+        {
+            VkPhysicalDeviceProperties properties = {};
+            vkGetPhysicalDeviceProperties(RHI_Context::device_physical, &properties);
+
+            generated_cache::Hash hash;
+            hash.Add(string("ngx_device_extensions_v1"));
+            hash.Add(properties.vendorID);
+            hash.Add(properties.deviceID);
+            hash.Add(properties.driverVersion);
+            hash.Add(string(RHI_VendorTechnology::dlss_engine_version));
+            const string executable_directory = FileSystem::GetExecutableDirectory();
+            for (const filesystem::path& dll : { filesystem::path(executable_directory) / "nvngx_dlss.dll", filesystem::path(executable_directory) / "third_party" / "nvngx_dlss.dll" })
+            {
+                error_code error;
+                const uintmax_t size = filesystem::file_size(dll, error);
+                hash.Add(static_cast<uint64_t>(error ? 0 : size));
+                const auto write_time = filesystem::last_write_time(dll, error);
+                hash.Add(static_cast<int64_t>(error ? 0 : write_time.time_since_epoch().count()));
+            }
+
+            key = hash.value;
+            return generated_cache::Path(executable_directory + "/cache", "ngx", key);
+        }
+
         void append_device_extensions()
         {
+            uint64_t cache_key            = 0;
+            const filesystem::path cache  = device_extensions_cache_path(cache_key);
+            vector<char> cached_names;
+            if (generated_cache::Load(cache, cache_key, cached_names))
+            {
+                vector<VkExtensionProperties> props;
+                for (size_t start = 0; start < cached_names.size();)
+                {
+                    const size_t end = find(cached_names.begin() + start, cached_names.end(), '\0') - cached_names.begin();
+                    VkExtensionProperties property = {};
+                    strncpy_s(property.extensionName, cached_names.data() + start, end - start);
+                    props.push_back(property);
+                    start = end + 1;
+                }
+                append_names(extensions::extensions_device, device_ext_store, props.data(), static_cast<uint32_t>(props.size()));
+                return;
+            }
+
             NVSDK_NGX_FeatureDiscoveryInfo info = make_discovery();
             uint32_t count = 0;
             VkExtensionProperties* props = nullptr;
@@ -525,6 +570,13 @@ namespace spartan
             {
                 append_names(extensions::extensions_device, device_ext_store, props, count);
             }
+
+            vector<char> names;
+            for (uint32_t i = 0; props && i < count; i++)
+            {
+                names.insert(names.end(), props[i].extensionName, props[i].extensionName + strlen(props[i].extensionName) + 1);
+            }
+            generated_cache::Save(cache, cache_key, names);
 
             NVSDK_NGX_FeatureRequirement requirement = {};
             result = NVSDK_NGX_VULKAN_GetFeatureRequirements(
@@ -1103,7 +1155,7 @@ namespace spartan
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
         atomic<uint64_t> current_frame = 0;
 
-        const string pipeline_cache_path = "pipeline_cache.bin";
+        const string pipeline_cache_path = "cache/pipeline_cache.bin";
 
         void create_pipeline_cache()
         {

@@ -24,10 +24,12 @@ def main():
 
     executable = args.executable.resolve()
     directory = executable.parent
-    log = directory / "log.txt"
-    report = directory / "smoke_test_report.txt"
-    stdout = directory / "smoke_test_stdout.txt"
-    stderr = directory / "smoke_test_stderr.txt"
+    diagnostics = directory / "logs"
+    diagnostics.mkdir(exist_ok=True)
+    log = diagnostics / "log.txt"
+    report = diagnostics / "smoke_test_report.txt"
+    stdout = diagnostics / "smoke_test_stdout.txt"
+    stderr = diagnostics / "smoke_test_stderr.txt"
     result = "FAIL: startup smoke test did not complete"
     passed = False
     try:

@@ -69,7 +69,7 @@ namespace
     constexpr chrono::milliseconds settle_timeout(6000);
     constexpr chrono::milliseconds capture_timeout(3000);
     constexpr chrono::milliseconds write_timeout(4000);
-    const char* cache_directory_name = "generated_cache/thumbnails/";
+    const char* cache_directory_name = "cache/generated_cache/thumbnails/";
 
     enum class asset_kind
     {

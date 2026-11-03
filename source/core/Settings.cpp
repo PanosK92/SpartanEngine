@@ -56,7 +56,7 @@ namespace spartan
     namespace
     {
         bool m_has_loaded_user_settings = false;
-        string file_path                = "spartan.xml";
+        string file_path                = "settings/spartan.xml";
 
         void resolve_file_path()
         {
@@ -72,25 +72,25 @@ namespace spartan
 
             // prefer the xml next to the exe, cwd differs between vs and a double click
             const string exe_dir = FileSystem::GetExecutableDirectory();
-            const string exe_xml = exe_dir + "/spartan.xml";
+            const string exe_xml = exe_dir + "/settings/spartan.xml";
             if (FileSystem::Exists(exe_xml))
             {
                 file_path = exe_xml;
                 return;
             }
 
-            const string cwd_xml = FileSystem::GetWorkingDirectory() + "/spartan.xml";
+            const string cwd_xml = FileSystem::GetWorkingDirectory() + "/settings/spartan.xml";
             if (FileSystem::Exists(cwd_xml))
             {
                 file_path = cwd_xml;
                 return;
             }
 
-            // walk up from the exe looking for binaries/spartan.xml
+            // walk up from the exe looking for binaries/settings/spartan.xml
             string current = exe_dir;
             for (uint32_t level = 0; level < 16; level++)
             {
-                const string candidate = current + "/binaries/spartan.xml";
+                const string candidate = current + "/binaries/settings/spartan.xml";
                 if (FileSystem::Exists(candidate))
                 {
                     file_path = candidate;

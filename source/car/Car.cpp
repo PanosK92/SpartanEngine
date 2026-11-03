@@ -211,6 +211,7 @@ namespace spartan
         CarMaterialSlot resolve_car_material_slot(Entity* entity, Render* render)
         {
             const std::string context = get_material_context(entity, render);
+            const std::string part = to_lower_copy(entity->GetObjectName());
 
             if (contains(context, "car_paint") || contains(context, "body"))
             {
@@ -222,13 +223,13 @@ namespace spartan
                 return CarMaterialSlot::CarbonTrim;
             }
 
-            if (contains(context, "object_129") || contains(context, "object_144") || contains(context, "object_159") || contains(context, "object_174"))
+            if ((part == "object_129") || (part == "object_144") || (part == "object_159") || (part == "object_174"))
             {
                 return CarMaterialSlot::BrakeDisc;
             }
 
             // the body has its own "rim" mesh, the piping along the seat edges, only the wheel rims are chrome
-            if (contains(context, "object_180") || contains(context, "object_150") || (contains(context, "rim") && contains(context, "tire")))
+            if ((part == "object_180") || (part == "object_150") || (contains(context, "rim") && contains(context, "tire")))
             {
                 return CarMaterialSlot::RimMetal;
             }
@@ -280,22 +281,27 @@ namespace spartan
                 return CarMaterialSlot::MainGlass;
             }
 
-            if (contains(context, "object_58"))
+            if ((part == "object_58"))
             {
                 return CarMaterialSlot::MainGlass;
             }
 
-            if (contains(context, "object_98"))
+            if ((part == "object_98") || contains(context, "int_mirror") || contains(context, "int mirror"))
             {
                 return CarMaterialSlot::MirrorGlass;
             }
 
-            if (contains(context, "object_14") || contains(context, "engine") || contains(context, "disk"))
+            if (contains(context, "chrome") || contains(context, "chrom") || contains(context, "seats_nuts"))
+            {
+                return CarMaterialSlot::RimMetal;
+            }
+
+            if ((part == "object_14") || contains(context, "engine") || contains(context, "disk"))
             {
                 return CarMaterialSlot::EngineMetal;
             }
 
-            if (contains(context, "object_90") || contains(context, "leather") || contains(context, "interior"))
+            if ((part == "object_90") || contains(context, "leather") || contains(context, "interior"))
             {
                 return CarMaterialSlot::InteriorLeather;
             }
@@ -973,6 +979,11 @@ namespace spartan
 
         m_is_occupied = false;
         m_externally_controlled = false;
+        if (m_vehicle_entity)
+        {
+            if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+                if (auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation()) simulation->set_nitrous(false);
+        }
         m_chase_camera = {};
         // the synth is shared, the next car to be entered has to push its own spec
         m_engine_sound_configured = false;

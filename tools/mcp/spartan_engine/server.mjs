@@ -1723,7 +1723,7 @@ function headless_summary()
     exit_code: headless.child.exitCode,
     target_port: engine.port,
     default_port: engine_port,
-    log: path.join(binaries_directory, "log_headless.txt"),
+    log: path.join(binaries_directory, "logs/log_headless.txt"),
   };
 }
 
@@ -1781,7 +1781,7 @@ process.on("exit", () =>
 
 register_local_tool("headless_start", {
   title: "Headless Start",
-  description: "Start a private headless Spartan instance (hidden window, no editor ui, no steam, no gamepads, real mouse and keyboard ignored, user settings and log.txt untouched) on a free port and point every engine tool of this MCP server at it until headless_stop. Use it to run something quickly without the user's editor: load a world, set cvars, screenshot_take, input_inject, profiler_snapshot. world is an optional absolute .world path loaded before returning. The newest spartan executable in binaries/ is used unless executable is given. Only one per server; its log is binaries/log_headless.txt.",
+  description: "Start a private headless Spartan instance (hidden window, no editor ui, no steam, no gamepads, real mouse and keyboard ignored, user settings and log.txt untouched) on a free port and point every engine tool of this MCP server at it until headless_stop. Use it to run something quickly without the user's editor: load a world, set cvars, screenshot_take, input_inject, profiler_snapshot. world is an optional absolute .world path loaded before returning. The newest spartan executable in binaries/ is used unless executable is given. Only one per server; its log is binaries/logs/log_headless.txt.",
   inputSchema: {
     world: z.string().min(1).optional(),
     port: z.number().int().min(1024).max(65535).optional(),
@@ -1865,7 +1865,7 @@ register_local_tool("headless_status", {
 
 register_local_tool("headless_smoke_test", {
   title: "Headless Smoke Test",
-  description: "Run the engine smoke test (-ci_test) in a separate headless instance that exits when done: RHI, shaders, pipeline states, threading, a rendered emissive cube read back from the gpu, play mode restore. Returns passed, the failures from binaries/ci_test.txt and the result lines from log_headless.txt. Does not touch the instance the tools target. Needs a gpu, so it is for local and self-hosted runs.",
+  description: "Run the engine smoke test (-ci_test) in a separate headless instance that exits when done: RHI, shaders, pipeline states, threading, a rendered emissive cube read back from the gpu, play mode restore. Returns passed, the failures from binaries/logs/ci_test.txt and the result lines from log_headless.txt. Does not touch the instance the tools target. Needs a gpu, so it is for local and self-hosted runs.",
   inputSchema: {
     executable: z.string().min(1).optional(),
     timeout_s: z.number().min(10).max(900).optional(),
@@ -1883,7 +1883,7 @@ register_local_tool("headless_smoke_test", {
     return tool_result(structured_error(error.message, { code: "smoke_test_failed" }));
   }
 
-  const result_path = path.join(binaries_directory, "ci_test.txt");
+  const result_path = path.join(binaries_directory, "logs/ci_test.txt");
   await fs.rm(result_path, { force: true });
   const started = Date.now();
   const child = spawn_engine(resolved_executable, binaries_directory, ["--headless", "-ci_test", "--ci-exit", "--no-steam"]);
