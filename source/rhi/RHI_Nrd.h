@@ -220,9 +220,11 @@ namespace spartan
         }
 
         // rt reflections, roughness guided specular reblur
-        inline void fill_preset_reflections(nrd::ReblurSettings& settings, float delta_time)
+        inline void fill_preset_reflections(nrd::ReblurSettings& settings, float delta_time, bool checkerboard)
         {
             settings                                   = {};
+            // the shaders trace the pixel where (x ^ y ^ frame) is even, nrd's black cells, frameIndex is the engine frame
+            settings.checkerboardMode                  = checkerboard ? nrd::CheckerboardMode::BLACK : nrd::CheckerboardMode::OFF;
             settings.diffusePrepassBlurRadius          = 0.0f;
             settings.specularPrepassBlurRadius         = 30.0f;
             settings.maxBlurRadius                     = 30.0f;

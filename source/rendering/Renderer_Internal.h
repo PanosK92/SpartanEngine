@@ -178,6 +178,8 @@ namespace spartan
             bool cleared_rt_reflections  = false;
             bool cleared_rt_shadows      = false;
             bool skip_rt_trace           = false;
+            // set by the reflections trace, shade and denoise must agree with the layout it wrote
+            bool reflections_checkerboard = false;
             bool depth_history_cleared = false;
             // gbuffer_depth_hiz holds a complete depth pyramid from the previous frame the early cull can test against
             bool hiz_history_valid = false;

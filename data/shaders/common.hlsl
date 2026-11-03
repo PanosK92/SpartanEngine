@@ -1429,6 +1429,13 @@ void paint_iridescence(float weight, float thickness_nm, float clearcoat, float 
     flake_color       = lerp(flake_color, thin_film_reflectance(outside_ior, n_dot_v, thickness_nm, flake_color), weight);
 }
 
+// screen pixel of a packed checkerboard column, the pixel where (x ^ y ^ frame) is even, nrd's black cell
+// nrd's frameIndex is the engine frame, so the cell alternates in step with its reconstruction
+uint2 reflections_checkerboard_pixel(uint2 packed)
+{
+    return uint2(packed.x * 2u + ((packed.y + buffer_frame.frame) & 1u), packed.y);
+}
+
 // roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
 float get_rt_reflection_roughness(float2 uv, out float coat)
 {

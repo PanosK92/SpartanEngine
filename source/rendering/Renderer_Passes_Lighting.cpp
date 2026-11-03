@@ -38,6 +38,9 @@ namespace spartan
         TConsoleVar<bool> cvar_rt_light_culling("r.rt_light_culling", true,
             "Skip zero-contribution lights in reflections and back-facing local shadow rays");
 
+        TConsoleVar<bool> cvar_ray_traced_reflections_checkerboard("r.ray_traced_reflections_checkerboard", true,
+            "Trace and shade half the reflection pixels in a checkerboard, nrd reconstructs the rest");
+
         const Renderer_BindingsUav restir_reservoir_uav[] =
         {
             Renderer_BindingsUav::reservoir0,
@@ -186,9 +189,23 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_reflections_albedo);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
 
+            // nrd fills in the untraced pixels, so checkerboard is only safe when the denoiser shaders are ready
+            RHI_Shader* shader_pack   = GetShader(Renderer_Shader::nrd_pack_reflections_c);
+            RHI_Shader* shader_unpack = GetShader(Renderer_Shader::nrd_unpack_reflections_c);
+            m_pass_state.reflections_checkerboard =
+                cvar_ray_traced_reflections_checkerboard.GetValueAs<bool>() &&
+                shader_pack && shader_pack->IsCompiled() &&
+                shader_unpack && shader_unpack->IsCompiled() &&
+                GetRenderTarget(Renderer_RenderTarget::nrd_screen_mv) &&
+                GetRenderTarget(Renderer_RenderTarget::nrd_screen_normal_roughness) &&
+                GetRenderTarget(Renderer_RenderTarget::nrd_screen_viewz) &&
+                GetRenderTarget(Renderer_RenderTarget::nrd_in_spec_radiance) &&
+                GetRenderTarget(Renderer_RenderTarget::nrd_out_spec_radiance);
+
+            // the ray generation shader detects checkerboard from a launch narrower than its targets
             uint32_t width  = tex_reflections_position->GetWidth();
             uint32_t height = tex_reflections_position->GetHeight();
-            RHI_CommandList::TraceRays(width, height);
+            RHI_CommandList::TraceRays(m_pass_state.reflections_checkerboard ? (width + 1) / 2 : width, height);
         }
         RHI_CommandList::EndPass();
     }
@@ -249,7 +266,17 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_reflections_shade::light_count, m_count_active_lights);
             m_pcb_pass_cpu.set(pass_reflections_shade::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));
             m_pcb_pass_cpu.set(pass_reflections_shade::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
-            RHI_CommandList::Dispatch(tex_reflections);
+            m_pcb_pass_cpu.set(pass_reflections_shade::checkerboard, m_pass_state.reflections_checkerboard);
+            if (m_pass_state.reflections_checkerboard)
+            {
+                const uint32_t thread_group_size = 8;
+                const uint32_t packed_width      = (tex_reflections->GetWidth() + 1) / 2;
+                RHI_CommandList::Dispatch((packed_width + thread_group_size - 1) / thread_group_size, (tex_reflections->GetHeight() + thread_group_size - 1) / thread_group_size);
+            }
+            else
+            {
+                RHI_CommandList::Dispatch(tex_reflections);
+            }
         }
         RHI_CommandList::EndPass();
     }
@@ -289,6 +316,7 @@ namespace spartan
             return;
         }
 
+        const bool checkerboard = m_pass_state.reflections_checkerboard;
         RHI_CommandList::BeginPass("reflections_denoise");
         {
             RHI_CommandList::BeginMarker("nrd_pack");
@@ -300,30 +328,32 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_normal);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
+                m_pcb_pass_cpu.set(pass_nrd_reflections::checkerboard, checkerboard);
                 RHI_CommandList::Dispatch(tex_reflections);
             }
             RHI_CommandList::EndMarker();
 
+            bool denoised = false;
             RHI_CommandList::BeginMarker("nrd_dispatch");
             {
                 const uint32_t eye = eye_layer == rhi_all_mips ? 0 : eye_layer;
-                if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Reflections, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, nullptr, 0, eye))
-                {
-                    RHI_CommandList::EndMarker();
-                    RHI_CommandList::EndPass();
-                    return;
-                }
+                denoised = RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Reflections, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, nullptr, 0, eye, nullptr, nullptr, checkerboard);
             }
             RHI_CommandList::EndMarker();
 
-            RHI_CommandList::BeginMarker("nrd_unpack");
+            // without nrd the raw signal stays as shaded, except that a checkerboard one still has to be spread to every pixel
+            if (denoised || checkerboard)
             {
-                RHI_CommandList::SetShader(shader_unpack, "nrd_unpack_reflections");
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_out);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_reflections);
-                RHI_CommandList::Dispatch(tex_reflections);
+                RHI_CommandList::BeginMarker("nrd_unpack");
+                {
+                    RHI_CommandList::SetShader(shader_unpack, "nrd_unpack_reflections");
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, denoised ? tex_out : tex_in);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_reflections);
+                    m_pcb_pass_cpu.set(pass_nrd_reflections::checkerboard, !denoised);
+                    RHI_CommandList::Dispatch(tex_reflections);
+                }
+                RHI_CommandList::EndMarker();
             }
-            RHI_CommandList::EndMarker();
         }
         RHI_CommandList::EndPass();
     }

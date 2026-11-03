@@ -126,13 +126,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
 
-    if (thread_id.x >= resolution_out.x || thread_id.y >= resolution_out.y)
+    // the trace targets and the output share the packed layout, only screen lookups use the unpacked pixel
+    bool  checkerboard = pass_bool(pass_reflections_shade::checkerboard);
+    uint2 pixel        = checkerboard ? reflections_checkerboard_pixel(thread_id.xy) : thread_id.xy;
+    if (pixel.x >= resolution_out.x || pixel.y >= resolution_out.y)
         return;
 
     float4 gbuffer_position = tex[thread_id.xy];
     float  hit_distance     = gbuffer_position.w;
 
-    float2 uv_source = (thread_id.xy + 0.5f) / resolution_out;
+    float2 uv_source = (pixel + 0.5f) / resolution_out;
     MaterialParameters primary_material = material_parameters[get_material_index(uv_source)];
     if (is_restir_pt_enabled() &&
         tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0).a >= 1.0f &&
@@ -148,7 +151,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 source_pos       = get_position(uv_source);
     float  mip_count        = pass_float(pass_reflections_shade::mip_count);
     uint   light_count      = pass_uint(pass_reflections_shade::light_count);
-    uint   seed             = (thread_id.x * 1973u + thread_id.y * 9277u + buffer_frame.frame * 26699u) | 1u;
+    uint   seed             = (pixel.x * 1973u + pixel.y * 9277u + buffer_frame.frame * 26699u) | 1u;
 
     // miss returns sky color, prefiltered by source surface roughness so smooth metals get sharp sky
     if (hit_distance == 0.0f)
@@ -301,7 +304,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
         else if (is_directional)
         {
-            out_direct += candidate.radiance * ray_trace_shadow(light_p, position, normal, float2(thread_id.xy));
+            out_direct += candidate.radiance * ray_trace_shadow(light_p, position, normal, float2(pixel));
         }
         else if (candidate.weight > top1.weight)
         {
@@ -324,15 +327,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     if (top0.weight > 0.0f)
     {
-        out_direct += top0.radiance * ray_trace_shadow(light_parameters[top0.index], position, normal, float2(thread_id.xy));
+        out_direct += top0.radiance * ray_trace_shadow(light_parameters[top0.index], position, normal, float2(pixel));
     }
     if (top1.weight > 0.0f)
     {
-        out_direct += top1.radiance * ray_trace_shadow(light_parameters[top1.index], position, normal, float2(thread_id.xy));
+        out_direct += top1.radiance * ray_trace_shadow(light_parameters[top1.index], position, normal, float2(pixel));
     }
     if (sampled_total > 0.0f)
     {
-        out_direct += sampled.radiance * (sampled_total / sampled.weight) * ray_trace_shadow(light_parameters[sampled.index], position, normal, float2(thread_id.xy));
+        out_direct += sampled.radiance * (sampled_total / sampled.weight) * ray_trace_shadow(light_parameters[sampled.index], position, normal, float2(pixel));
     }
 
     // diffuse bounce from the radiance cache, the dim sky fallback gated by one visibility ray covers
@@ -354,7 +357,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // feed the cache, one cosine distributed bounce from the hit, its far end shaded with the sun, one
     // local light and whatever the cache already knows there, so bounces compound over frames
-    uint update_slot = ((thread_id.x & 1u) + (thread_id.y & 1u) * 2u + buffer_frame.frame) % k_cache_update_divisor;
+    // whole thread groups take the slot, scattered pixels would make every wave pay for the bounce
+    uint2 group      = thread_id.xy / uint2(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y);
+    uint update_slot = ((group.x & 3u) + (group.y & 3u) * 4u + buffer_frame.frame) % k_cache_update_divisor;
     if (update_slot == 0u)
     {
         float2 xi = float2(reflections_random(seed), reflections_random(seed));
@@ -371,7 +376,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         ray.TMax      = k_cache_bounce_distance;
         RaySurface far_end = ray_surface_trace(ray, float2(0.0f, 0.5f));
         float3 incoming    = far_end.hit
-            ? ray_surface_shade_secondary(far_end, -bounce, tex4, mip_count, float2(thread_id.xy), light_count)
+            ? ray_surface_shade_secondary(far_end, -bounce, tex4, mip_count, float2(pixel), light_count)
             : tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(bounce), mip_count * 0.5f).rgb;
         float3 update_jitter = float3(reflections_random(seed), reflections_random(seed), reflections_random(seed)) - 0.5f;
         radiance_cache_update(position, normal, update_jitter, incoming);
@@ -395,7 +400,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float2 cone        = float2((length(source_pos - get_camera_position()) + view_dist) * pixel_angle, pixel_angle + source_alpha + ggx_alpha_from_roughness(roughness));
         RaySurface second  = ray_surface_trace(ray, cone);
         bounce_light       = second.hit
-            ? ray_surface_shade_secondary(second, -reflect_dir, tex4, mip_count, float2(thread_id.xy), light_count)
+            ? ray_surface_shade_secondary(second, -reflect_dir, tex4, mip_count, float2(pixel), light_count)
             : tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(reflect_dir), env_roughness * env_roughness * (mip_count - 1.0f)).rgb;
     }
 

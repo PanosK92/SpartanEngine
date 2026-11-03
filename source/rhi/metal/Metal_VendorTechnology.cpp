@@ -71,8 +71,12 @@ namespace spartan
 
     bool RHI_VendorTechnology::NRD_Dispatch(
         Nrd_Preset preset, RHI_Texture* tex_mv, RHI_Texture* tex_normal_roughness, RHI_Texture* tex_view_z, RHI_Texture* tex_signal_in, RHI_Texture* tex_signal_out,
-        const Vector3* light_direction, uint32_t shadow_denoiser_index, uint32_t eye, RHI_Texture* tex_specular_in, RHI_Texture* tex_specular_out)
+        const Vector3* light_direction, uint32_t shadow_denoiser_index, uint32_t eye, RHI_Texture* tex_specular_in, RHI_Texture* tex_specular_out, bool checkerboard)
     {
+        // a copied checkerboard signal stays packed, the renderer expands it itself when this fails
+        if (checkerboard)
+            return false;
+
         // nrd has no metal backend, reblur signals go through unfiltered, pack and unpack are exact inverses so the
         // renderer's unpack still remodulates them and averages a still camera into a converged image
         // sigma shadows use another encoding, they take the renderer's own fallback

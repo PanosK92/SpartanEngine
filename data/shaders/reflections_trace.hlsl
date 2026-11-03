@@ -17,9 +17,19 @@ Commercial use requires written permission and negotiated payment terms.
 [shader("raygeneration")]
 void ray_gen()
 {
-    uint2 launch_id   = DispatchRaysIndex().xy;
-    uint2 launch_size = DispatchRaysDimensions().xy;
-    float2 uv         = (launch_id + 0.5f) / launch_size;
+    uint2 launch_id = DispatchRaysIndex().xy;
+    uint2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
+
+    // a launch narrower than the targets is checkerboarded, each launch column traces one pixel of a horizontal pair
+    bool checkerboard = DispatchRaysDimensions().x < resolution.x;
+    uint2 pixel       = checkerboard ? reflections_checkerboard_pixel(launch_id) : launch_id;
+    if (pixel.x >= resolution.x)
+    {
+        tex_uav[launch_id] = 0.0f;
+        return;
+    }
+    float2 uv = (pixel + 0.5f) / resolution;
 
     // early out for sky
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
@@ -58,7 +68,7 @@ void ray_gen()
     // to a growing float frame index quantizes the ray directions in long sessions.
     uint2 rotation = buffer_frame.frame * uint2(3242174889u, 2447445414u);
     float2 temporal = float2(rotation >> 8u) * (1.0f / 16777216.0f);
-    float2 xi = frac(float2(hash(float2(launch_id)), hash(float2(launch_id) + 31.7f)) + temporal);
+    float2 xi = frac(float2(hash(float2(pixel)), hash(float2(pixel) + 31.7f)) + temporal);
 
     // sample a microfacet normal and reflect about it to turn the mirror ray into a glossy lobe
     float3 tangent   = normalize(cross(abs(normal_ws.y) < 0.999f ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f), normal_ws));

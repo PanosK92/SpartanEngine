@@ -432,6 +432,12 @@ namespace pass_reflections_shade
     static const SHARED_UINT light_count   = 0; // uint
     static const SHARED_UINT mip_count     = 1; // float, skysphere mips
     static const SHARED_UINT light_culling = 2; // bool
+    static const SHARED_UINT checkerboard  = 3; // bool, thread x is a packed column
+}
+
+namespace pass_nrd_reflections
+{
+    static const SHARED_UINT checkerboard = 0; // bool, the radiance holds one pixel of each horizontal pair, packed to the left half
 }
 
 namespace pass_reflections_apply

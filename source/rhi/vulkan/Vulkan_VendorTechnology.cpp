@@ -1223,7 +1223,8 @@ namespace spartan
         uint32_t shadow_denoiser_index,
         uint32_t eye,
         RHI_Texture* tex_specular_in,
-        RHI_Texture* tex_specular_out
+        RHI_Texture* tex_specular_out,
+        bool checkerboard
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -1340,7 +1341,7 @@ namespace spartan
         {
             denoiser_id = nrd_common::id_reflections;
             nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_reflections(reblur, common::cb_frame->delta_time_real);
+            nrd_common::fill_preset_reflections(reblur, common::cb_frame->delta_time_real, checkerboard);
             if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
             {
                 return false;
