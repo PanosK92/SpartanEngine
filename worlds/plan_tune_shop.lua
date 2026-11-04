@@ -8,7 +8,7 @@
 -- between owned stages is free.
 --
 -- the menu opens when the player drives into zante tuning, the shop south of the
--- car wash (plan_tune_shop_entrance.lua), with the car held on the turntable. it
+-- service shop (plan_tune_shop_entrance.lua), with the car held on the turntable. it
 -- reads and fits parts through CarTuning, the simulation rebuilds the car with
 -- every fitted part.
 --------------------------------------------------------------------------------
@@ -251,7 +251,7 @@ local departments =
 -- The native registry supplies limits and unlocks; menus never invent simulation values.
 table.insert(departments[1].parts, {
     key = "nitrous", name = "Nitrous Injection", stages = { "METERED SYSTEM" }, prices = { 12000 },
-    text = "Adds oxygen and fuel under full throttle above 2,500 RPM. Hold N while driving. Higher flow delivers more power but empties the 5 kg bottle sooner. Buy a refill in SERVICE after installation.",
+    text = "Adds oxygen and fuel under full throttle above 2,500 RPM. Hold N while driving. Higher flow delivers more power but empties the 5 kg bottle sooner. Refills are sold at Zante Auto, the service shop next door.",
     rows = { "power", "torque" },
 })
 table.insert(departments[2].parts, {
@@ -266,32 +266,9 @@ table.insert(departments[4].parts, {
 })
 departments[7].parts[1].rows = { "grip", "tire_heat", "tire_wear" }
 departments[7].parts[1].text = "Road, sport and racing compounds trade grip for heat requirements and wear. Softer slicks grip harder when warm but wear faster and struggle in rain or loose ground. Dirt and snow tires gain grip on those surfaces at the expense of asphalt performance."
-table.insert(departments, { id = "service", label = "SERVICE", parts = {
-    { key = "oil", service = true, name = "Oil & Filter Change", stages = { "FRESH OIL" }, prices = { 250 },
-      text = "Oil ages with engine hours, distance, high RPM and heat. Degraded oil increases shaft friction and reduces delivered power. Fresh oil restores lubrication; it does not instantly cool a hot engine.",
-      rows = { "oil_quality", "oil_temperature" } },
-    { key = "chassis", service = true, name = "Chassis Restoration", stages = { "RESTORE" }, prices = { 50000 },
-      text = "Distance and rough suspension travel fatigue the chassis. Lost rigidity softens the effective spring and anti-roll response. Restoration returns the original compliance without removing installed parts.",
-      rows = { "chassis_quality", "distance_km" } },
-    { key = "nitrous_refill", service = true, name = "Nitrous Refill", stages = { "5 KG BOTTLE" }, prices = { 1200 },
-      text = "Refills the installed system to 5 kg. Gas is consumed only while injecting, under full throttle above 2,500 RPM in a forward gear. Higher flow means more power and less bottle life. Hold N to inject.",
-      rows = { "nitrous_kg" } },
-} })
-for _, key in ipairs({ "oil_quality", "chassis_quality", "oil_temperature", "distance_km", "nitrous_kg" }) do
-    local id = key
-    stat_rows[id] = { label = string.upper(id:gsub("_", " ")), better = 0,
-        get = function(st) return st[id] end,
-        fmt = function(v)
-            if id == "oil_quality" or id == "chassis_quality" then return string.format("%.1f%%", v * 100) end
-            if id == "oil_temperature" then return string.format("%.1f C", v) end
-            return string.format("%.2f", v)
-        end }
-end
-
 local unavailable_reason =
 {
     intercooler  = "Needs a combustion engine; cooling only helps with a compressor fitted",
-    nitrous_refill = "Fit the nitrous injection system first",
     torque_controller = "Only for all wheel drive cars",
     driveshaft   = "Front wheel drive cars have no propeller shaft",
     yaw_control  = "Only for all wheel drive cars",
@@ -379,7 +356,6 @@ local function owned_table()
 end
 
 local function is_owned(part, stage)
-    if part.service then return false end
     if stage == 0 then
         return true
     end
@@ -388,16 +364,10 @@ local function is_owned(part, stage)
 end
 
 local function stage_of(part)
-    if part.service then return 0 end
     return math.max(CarTuning.GetStage(car, part.key), 0)
 end
 
 local function stage_max(part)
-    if part.service then
-        if part.key == "nitrous_refill" and CarTuning.GetStage(car, "nitrous") < 1 then return 0 end
-        if part.key == "oil" and CarTuning.GetStageMax(car, "nitrous") < 1 then return 0 end
-        return 1
-    end
     return math.min(CarTuning.GetStageMax(car, part.key), #part.stages)
 end
 
@@ -411,15 +381,6 @@ end
 
 -- preview stats are cached per part and stage, fitting anything clears them
 local function preview(part, stage)
-    if part.service then
-        local st = CarTuning.GetStats(car)
-        if st and stage > 0 then
-            if part.key == "oil" then st.oil_quality = 1 end
-            if part.key == "chassis" then st.chassis_quality = 1 end
-            if part.key == "nitrous_refill" then st.nitrous_kg = 5 end
-        end
-        return st
-    end
     local key = part.key .. ":" .. stage
     if not stats_cache[key] then
         stats_cache[key] = CarTuning.PreviewStats(car, part.key, stage)
@@ -490,7 +451,6 @@ local function fit(part, stage)
     if fitting or not car then
         return
     end
-    if part.service and stage == 0 then return end
     local max = stage_max(part)
     if max <= 0 then
         toast(string.upper(unavailable_reason[part.key] or "Not available for this car"), false)
@@ -516,22 +476,15 @@ end
 local function finish_fit()
     local part, stage, price = fitting.part, fitting.stage, fitting.price
     fitting = nil
-    local success
-    if part.service then success = CarTuning.Service(car, part.key)
-    else success = CarTuning.SetStage(car, part.key, stage) end
-    if success then
+    if CarTuning.SetStage(car, part.key, stage) then
         wallet().credits = wallet().credits - price
-        if not part.service then
-            local owned = owned_table()
-            owned[part.key] = owned[part.key] or {}
-            owned[part.key][stage] = true
-        end
+        local owned = owned_table()
+        owned[part.key] = owned[part.key] or {}
+        owned[part.key][stage] = true
         stats_cache = {}
         if _G.plan_save_garage then _G.plan_save_garage() end
         ui.sound(price > 0 and "purchase" or "confirm")
-        if part.service then
-            toast("SERVICE COMPLETE", true)
-        elseif stage == 0 then
+        if stage == 0 then
             toast("REFITTED STOCK " .. string.upper(part.name), true)
         else
             toast("FITTED   \xC2\xB7   " .. stage_name(part, stage) .. " " .. string.upper(part.name), true)
@@ -659,12 +612,7 @@ local function draw_parts(s, a, dt)
         Hud.Text(part.name, rx + 24 * s, ry + 11 * s, 18 * s, ui.on_bar(k, ra, 0.85), "plan_strong")
 
         local status
-        if part.service and max > 0 then
-            local st = CarTuning.GetStats(car)
-            if part.key == "oil" then status = string.format("OIL %.1f%%   %.0f KM", st.oil_quality * 100, st.oil_distance_km)
-            elseif part.key == "chassis" then status = string.format("RIGIDITY %.1f%%", st.chassis_quality * 100)
-            else status = string.format("BOTTLE %.2f / 5 KG", st.nitrous_kg) end
-        elseif max <= 0 then
+        if max <= 0 then
             status = "NOT AVAILABLE"
         elseif cur > 0 then
             status = stage_name(part, cur)
@@ -673,7 +621,7 @@ local function draw_parts(s, a, dt)
         end
         local status_color = (cur > 0) and accent(ra) or ui.on_bar(k, 0.8 * ra, 0.6)
         ui.label(status, rx + 24 * s, ry + 38 * s, 10 * s, status_color)
-        if max > 0 and not part.service then
+        if max > 0 then
             draw_meter(part, rx + width - 24 * s - #part.stages * 16 * s + 4 * s, ry + bar_h * 0.5 - 2 * s, s, k, ra, cur, max)
         end
         hit.parts[i] = { rx, ry, width, bar_h }
@@ -812,12 +760,12 @@ local function draw_detail(w, h, s, a, dt)
     end
 
     -- stages, stock first, a window of five rows that scrolls with the cursor
-    ui.label(part.service and "SERVICE" or "STAGE", x + pad, cy, 11 * s, white(0.45 * a))
+    ui.label("STAGE", x + pad, cy, 11 * s, white(0.45 * a))
     if max > 4 then
         ui.label(string.format("%d / %d", cursor, max), x + pad + inner, cy, 11 * s, white(0.35 * a), 1)
     end
     cy = cy + 24 * s
-    local first_stage = math.max(part.service and 1 or 0, math.min(cursor - 2, max - 4))
+    local first_stage = math.max(0, math.min(cursor - 2, max - 4))
     local last_stage  = math.min(max, first_stage + 4)
     local row_h       = 38 * s
     for stage = first_stage, last_stage do
@@ -858,14 +806,14 @@ local function draw_detail(w, h, s, a, dt)
     local by = bottom - pad - bh
     local label, price_text
     if fitting then
-        label = part.service and "SERVICING" or "FITTING"
+        label = "FITTING"
     elseif cursor == cur then
         label = cursor == 0 and "STOCK FITTED" or "FITTED"
     elseif is_owned(part, cursor) then
         label = cursor == 0 and "REFIT STOCK" or "FIT"
         price_text = "OWNED"
     else
-        label = part.service and "SERVICE" or "PURCHASE & FIT"
+        label = "PURCHASE & FIT"
         price_text = credits_text(part.prices[cursor] or 0)
     end
     local active = not fitting and cursor ~= cur

@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- plan tune shop entrance
 --
--- the way into zante tuning, the shop south of the car wash. roll the car up to
+-- the way into zante tuning, the shop south of zante auto. roll the car up to
 -- bay 01 and a prompt offers the shop; taking it dips to black, rolls the car onto
 -- the turntable inside, holds it there and opens the tune shop menu
 -- (plan_tune_shop.lua). backing out of the menu lifts the hold and leaves the car

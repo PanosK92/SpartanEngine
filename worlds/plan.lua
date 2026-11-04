@@ -10,7 +10,8 @@
 -- before preparation, so road details and the layered roads are built with it.
 -- the table it returns gets Start, Tick and Stop while play runs: the island opens
 -- on its main menu (plan_main_menu.lua), and once the player is out on the island
--- the tune shop south of the car wash can be driven into (plan_tune_shop_entrance.lua).
+-- the tune shop (plan_tune_shop_entrance.lua) and the service shop next to it
+-- (plan_gt_auto_entrance.lua) can be driven into.
 --------------------------------------------------------------------------------
 
 WorldSystems.SetAmbientWildlife(true)
@@ -23,6 +24,7 @@ WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "island
 local directory = World.GetFilePath():match("^(.*[/\\])") or ""
 local main_menu = nil
 local tune_shop_entrance = nil
+local gt_auto_entrance = nil
 local garage_car = nil
 local garage_timer = 0
 local wallet_path = CarTuning.GetSaveDirectory() .. "plan_wallet.txt"
@@ -76,6 +78,8 @@ function plan:Start()
     main_menu.Start()
     tune_shop_entrance = dofile(directory .. "plan_tune_shop_entrance.lua")
     tune_shop_entrance.Start()
+    gt_auto_entrance = dofile(directory .. "plan_gt_auto_entrance.lua")
+    gt_auto_entrance.Start()
 end
 
 function plan:Tick(dt)
@@ -93,13 +97,22 @@ function plan:Tick(dt)
     if main_menu then
         main_menu.Tick(dt)
     end
-    if tune_shop_entrance and not (main_menu and main_menu.IsActive()) then
-        tune_shop_entrance.Tick()
+    if not (main_menu and main_menu.IsActive()) then
+        -- one shop at a time, a fade in one never lets the other's prompt draw over it
+        if tune_shop_entrance and not (gt_auto_entrance and gt_auto_entrance.IsBusy()) then
+            tune_shop_entrance.Tick()
+        end
+        if gt_auto_entrance and not (tune_shop_entrance and tune_shop_entrance.IsBusy()) then
+            gt_auto_entrance.Tick()
+        end
     end
 end
 
 function plan:Stop()
     _G.plan_save_garage()
+    if gt_auto_entrance then
+        gt_auto_entrance.Stop()
+    end
     if tune_shop_entrance then
         tune_shop_entrance.Stop()
     end

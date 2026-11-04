@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <sol/sol.hpp>
 #include "ScriptingInternal.h"
 #include "../car/Car.h"
+#include "../car/CarDirt.h"
 #include "../car/CarPhysics.h"
 #include "../car/CarPresets.h"
 #include "../car/CarSimulation.h"
@@ -335,6 +336,54 @@ namespace spartan::scripting
             auto* simulation = resolve_simulation(entity);
             return simulation && simulation->service_vehicle(service);
         };
+        // dirt is tracked for the driven car only, 0 clean to 1 caked
+        tuning["GetDirt"] = []()
+        {
+            return CarDirt::IsActive() ? CarDirt::GetCoverage() : 0.0f;
+        };
+        tuning["Wash"] = []()
+        {
+            if (!CarDirt::IsActive())
+            {
+                return false;
+            }
+            CarDirt::Wash();
+            return true;
+        };
+
+        // mean wear over the four tyres, 0 new to 1 destroyed, -1 without a car
+        tuning["GetTireWear"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+            if (!physics)
+            {
+                return -1.0f;
+            }
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            const CarPhysics& vehicle = CarPhysics::Get(*physics);
+            float wear = 0.0f;
+            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+            {
+                wear += vehicle.GetWheelWear(static_cast<WheelIndex>(i));
+            }
+            return wear / static_cast<float>(WheelIndex::Count);
+        };
+        tuning["ReplaceTires"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+            if (!physics)
+            {
+                return false;
+            }
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            CarPhysics::Get(*physics).ResetTireWear();
+            return true;
+        };
+
         tuning["SetNitrous"] = [](sol::optional<Entity*> entity, bool active)
         {
             std::lock_guard lock(PhysicsWorld::GetMutex());
