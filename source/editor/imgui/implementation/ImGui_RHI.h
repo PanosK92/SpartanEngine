@@ -875,7 +875,22 @@ namespace ImGui::RHI
 
                 // a floating dock group is a root window hosting its panels, the editor dockspace is a child window of the editor root
                 const bool is_floating_host = (window->Flags & ImGuiWindowFlags_DockNodeHost) && !(window->Flags & ImGuiWindowFlags_ChildWindow);
-                const bool is_floating      = is_glass_window(window, draw_data->OwnerViewport) || (is_floating_host && !glass_nodes.empty());
+                const bool is_glass         = is_glass_window(window, draw_data->OwnerViewport);
+
+                // a window without a background frosts only the panes it registered, like a hud made of separate widgets
+                window_panes.clear();
+                if (!is_glass && glass_nodes.empty())
+                {
+                    for (const GlassPane& pane : g_glass_panes)
+                    {
+                        if (pane.window == window)
+                        {
+                            window_panes.push_back(pane);
+                        }
+                    }
+                }
+
+                const bool is_floating = is_glass || (is_floating_host && !glass_nodes.empty()) || !window_panes.empty();
                 if (!is_floating && glass_nodes.empty())
                 {
                     continue;
@@ -883,17 +898,22 @@ namespace ImGui::RHI
 
                 // the editor dockspace: its panes are frosted over the scene, stretched out of the viewport to fill the editor
                 const bool is_dock_root = !is_floating;
+                const bool is_window    = glass_nodes.empty() && window_panes.empty();
 
                 ImRect panes_bounds;
                 panes_bounds.Min = ImVec2(FLT_MAX, FLT_MAX);
                 panes_bounds.Max = ImVec2(-FLT_MAX, -FLT_MAX);
-                if (glass_nodes.empty())
+                if (is_window)
                 {
                     panes_bounds = window->Rect();
                 }
                 for (const ImGuiDockNode* node : glass_nodes)
                 {
                     panes_bounds.Add(node_rect(node));
+                }
+                for (const GlassPane& pane : window_panes)
+                {
+                    panes_bounds.Add(pane.rect);
                 }
 
                 uint32_t index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
@@ -942,7 +962,8 @@ namespace ImGui::RHI
                     veil.w      = 0.86f;
                     draw_list->AddRectFilled(display.Min, display.Max, ColorConvertFloat4ToU32(veil));
                 }
-                if (is_floating)
+                // registered panes draw their own shadows, borders and fills
+                if (is_floating && window_panes.empty())
                 {
                     glass_add_shadow(draw_list, window->Rect(), window->WindowRounding, scale);
                 }
@@ -951,7 +972,7 @@ namespace ImGui::RHI
                 glass_push_segment(glass_segments, list, false, GlassStep::Plain, index_start, is_dock_root ? display : shadow_bounds);
 
                 index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
-                if (glass_nodes.empty())
+                if (is_window)
                 {
                     draw_list->AddImageRounded(backdrop_ref, window->Rect().Min, window->Rect().Max, backdrop_uv(window->Rect().Min), backdrop_uv(window->Rect().Max), IM_COL32_WHITE, window->WindowRounding, ImDrawFlags_RoundCornersAll);
                 }
@@ -960,10 +981,14 @@ namespace ImGui::RHI
                     const ImRect rect = node_rect(node);
                     draw_list->AddImage(backdrop_ref, rect.Min, rect.Max, backdrop_uv(rect.Min), backdrop_uv(rect.Max));
                 }
+                for (const GlassPane& pane : window_panes)
+                {
+                    draw_list->AddImageRounded(backdrop_ref, pane.rect.Min, pane.rect.Max, backdrop_uv(pane.rect.Min), backdrop_uv(pane.rect.Max), IM_COL32_WHITE, pane.rounding, ImDrawFlags_RoundCornersAll);
+                }
                 glass_push_segment(glass_segments, list, false, GlassStep::Backdrop, index_start, panes_bounds);
 
                 index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
-                if (glass_nodes.empty())
+                if (is_window)
                 {
                     glass_add_sheen(draw_list, window->Rect(), window->WindowRounding, 0.07f);
                 }
@@ -971,11 +996,15 @@ namespace ImGui::RHI
                 {
                     glass_add_sheen(draw_list, node_rect(node), 0.0f, 0.045f);
                 }
+                for (const GlassPane& pane : window_panes)
+                {
+                    glass_add_sheen(draw_list, pane.rect, pane.rounding, 0.07f);
+                }
                 glass_push_segment(glass_segments, list, false, GlassStep::Plain, index_start, panes_bounds);
 
                 // rims go over the list so the window fills cannot dim them
                 index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
-                if (glass_nodes.empty())
+                if (is_window)
                 {
                     glass_add_rim(draw_list, window->Rect(), window->WindowRounding, scale, 0.26f, 0.06f, true);
                 }
@@ -986,6 +1015,11 @@ namespace ImGui::RHI
                 glass_push_segment(glass_segments, list, true, GlassStep::Plain, index_start, panes_bounds);
 
                 GlassList& glass_list = glass_lists[i];
+                if (!window_panes.empty())
+                {
+                    continue;
+                }
+
                 if (glass_nodes.empty())
                 {
                     glass_list.thin       = GlassThin::Leading;
@@ -1433,6 +1467,17 @@ namespace ImGui::RHI
                 draw_pass("imgui_screenshot", false, false, true, false, glass_target ? capture : nullptr);
                 pso.render_target_color_textures[0] = nullptr;
                 Renderer::SetUiScreenshotRecorded();
+            }
+            else if (RHI_Texture* capture = frame_rect.width > 0.0f && frame_rect.height > 0.0f ? Renderer::GetViewportUiScreenshotTarget(swapchain->GetWidth(), swapchain->GetHeight()) : nullptr)
+            {
+                // the whole ui is replayed and the save crops it to the viewport, so windows and overlays over the viewport show
+                RHI_CommandList::ClearTexture(capture, Color::standard_black);
+                pso.render_target_swapchain         = nullptr;
+                pso.render_target_color_textures[0] = capture;
+                pso.clear_color[0]                  = rhi_color_load;
+                draw_pass("imgui_screenshot_viewport", false, false, true, false, glass_target ? capture : nullptr);
+                pso.render_target_color_textures[0] = nullptr;
+                Renderer::SetViewportUiScreenshotRecorded(frame_rect);
             }
         }
 

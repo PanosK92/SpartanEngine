@@ -106,6 +106,12 @@ namespace spartan
             bool ready    = false;
             bool secondary_view = false;
             bool ui = false;
+            // the editor replayed its ui over the viewport into the ui target, saved cropped to the viewport
+            bool viewport_ui = false;
+            uint32_t crop_x      = 0;
+            uint32_t crop_y      = 0;
+            uint32_t crop_width  = 0;
+            uint32_t crop_height = 0;
             uint64_t secondary_generation = 0;
         };
 
@@ -448,13 +454,17 @@ namespace spartan
             uint32_t width,
             uint32_t height,
             uint32_t channel_count,
-            uint32_t bits_per_channel
+            uint32_t bits_per_channel,
+            uint32_t exr_width,
+            uint32_t exr_height,
+            uint32_t exr_channel_count,
+            uint32_t exr_bits_per_channel
         )
         {
             SP_ASSERT_MSG(sdr_staging && sdr_staging->GetMappedData(), "Staging buffer not mappable");
 
             screenshot_saves_in_flight++;
-            ThreadPool::AddTask([request, sdr_staging, width, height, channel_count, bits_per_channel]()
+            ThreadPool::AddTask([request, sdr_staging, width, height, channel_count, bits_per_channel]() mutable
             {
                 struct in_flight_guard
                 {
@@ -464,7 +474,7 @@ namespace spartan
                 void* sdr_data = sdr_staging->GetMappedData();
 
                 // imgui blending leaves destination alpha at zero under chrome, a window capture is always opaque
-                if (request.ui && channel_count == 4 && bits_per_channel == 8)
+                if ((request.ui || request.viewport_ui) && channel_count == 4 && bits_per_channel == 8)
                 {
                     uint8_t* pixels = static_cast<uint8_t*>(sdr_data);
                     const size_t count = static_cast<size_t>(width) * height;
@@ -472,6 +482,21 @@ namespace spartan
                     {
                         pixels[i * 4 + 3] = 255;
                     }
+                }
+
+                // rows are packed in place towards the start of the buffer, each destination row sits at or before its source
+                if (request.viewport_ui && request.crop_width > 0 && request.crop_height > 0)
+                {
+                    const size_t pixel_size = static_cast<size_t>(channel_count) * (bits_per_channel / 8);
+                    uint8_t* pixels         = static_cast<uint8_t*>(sdr_data);
+                    for (uint32_t y = 0; y < request.crop_height; y++)
+                    {
+                        const size_t src = (static_cast<size_t>(request.crop_y + y) * width + request.crop_x) * pixel_size;
+                        const size_t dst = static_cast<size_t>(y) * request.crop_width * pixel_size;
+                        memmove(pixels + dst, pixels + src, request.crop_width * pixel_size);
+                    }
+                    width  = request.crop_width;
+                    height = request.crop_height;
                 }
 
                 if (!request.file_path.empty())
@@ -508,12 +533,12 @@ namespace spartan
 
             if (request.save_exr && exr_staging && exr_staging->GetMappedData())
             {
-                ThreadPool::AddTask([request, exr_staging, width, height, channel_count, bits_per_channel]()
+                ThreadPool::AddTask([request, exr_staging, exr_width, exr_height, exr_channel_count, exr_bits_per_channel]()
                 {
                     void* exr_data = exr_staging->GetMappedData();
 
                     SP_LOG_INFO("Saving HDR screenshot to '%s'...", request.exr_path.c_str());
-                    ImageImporter::Save(request.exr_path, width, height, channel_count, bits_per_channel, exr_data, request.exr_color_space);
+                    ImageImporter::Save(request.exr_path, exr_width, exr_height, exr_channel_count, exr_bits_per_channel, exr_data, request.exr_color_space);
                     SP_LOG_INFO("HDR screenshot saved as '%s'", request.exr_path.c_str());
                 });
             }
@@ -5962,6 +5987,61 @@ namespace spartan
         }
     }
 
+    RHI_Texture* Renderer::GetViewportUiScreenshotTarget(uint32_t width, uint32_t height)
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (
+            !screenshot.ready ||
+            screenshot.ui ||
+            screenshot.viewport_ui ||
+            screenshot.secondary_view ||
+            screenshot.restir_radiance ||
+            clean_capture ||
+            Xr::IsSessionRunning() ||
+            width == 0 ||
+            height == 0
+        )
+        {
+            return nullptr;
+        }
+
+        if (!screenshot_ui_target || screenshot_ui_target->GetWidth() != width || screenshot_ui_target->GetHeight() != height)
+        {
+            screenshot_ui_target = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D, width, height, 1, 1,
+                RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_ui"
+            );
+        }
+
+        return screenshot_ui_target->GetRhiResource() ? screenshot_ui_target.get() : nullptr;
+    }
+
+    void Renderer::SetViewportUiScreenshotRecorded(const math::Rectangle& rect)
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (!screenshot.ready || screenshot.ui || !screenshot_ui_target)
+        {
+            return;
+        }
+
+        const float target_width  = static_cast<float>(screenshot_ui_target->GetWidth());
+        const float target_height = static_cast<float>(screenshot_ui_target->GetHeight());
+        const float x0            = clamp(round(rect.x), 0.0f, target_width);
+        const float y0            = clamp(round(rect.y), 0.0f, target_height);
+        const float x1            = clamp(round(rect.x + rect.width), 0.0f, target_width);
+        const float y1            = clamp(round(rect.y + rect.height), 0.0f, target_height);
+        if (x1 - x0 < 1.0f || y1 - y0 < 1.0f)
+        {
+            return;
+        }
+
+        screenshot.viewport_ui = true;
+        screenshot.crop_x      = static_cast<uint32_t>(x0);
+        screenshot.crop_y      = static_cast<uint32_t>(y0);
+        screenshot.crop_width  = static_cast<uint32_t>(x1 - x0);
+        screenshot.crop_height = static_cast<uint32_t>(y1 - y0);
+    }
+
     void Renderer::Pass_Screenshot(RHI_Texture* tex_pre_tonemap)
     {
         {
@@ -6179,7 +6259,7 @@ namespace spartan
                 continue;
             }
             RHI_Texture* tex_sdr =
-                request.ui
+                request.ui || request.viewport_ui
                     ? screenshot_ui_target.get()
                     : request.secondary_view
                         ? secondary_view_output.get()
@@ -6193,9 +6273,10 @@ namespace spartan
 
             shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
             shared_ptr<RHI_Buffer> exr_staging;
+            RHI_Texture* tex_exr = GetRenderTarget(Renderer_RenderTarget::frame_output);
             if (request.save_exr && !request.secondary_view && !request.ui && !Xr::IsSessionRunning())
             {
-                exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
+                exr_staging = copy_texture_to_staging(tex_exr);
             }
 
             save_screenshot_async(
@@ -6205,7 +6286,11 @@ namespace spartan
                 tex_sdr->GetWidth(),
                 tex_sdr->GetHeight(),
                 tex_sdr->GetChannelCount(),
-                tex_sdr->GetBitsPerChannel()
+                tex_sdr->GetBitsPerChannel(),
+                tex_exr ? tex_exr->GetWidth() : 0,
+                tex_exr ? tex_exr->GetHeight() : 0,
+                tex_exr ? tex_exr->GetChannelCount() : 0,
+                tex_exr ? tex_exr->GetBitsPerChannel() : 0
             );
         }
     }

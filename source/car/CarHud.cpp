@@ -962,9 +962,10 @@ namespace spartan::car_hud
 
         // read only panels ring the car and let every click through to the viewport
         // NoBringToFrontOnFocus would create this window behind the editor dockspace, NoInputs already keeps it from taking focus
+        // the window spans the whole view, NoBackground keeps it from being one big glass pane so only the cards frost what is behind them
         ImGui::SetNextWindowPos(region_pos, ImGuiCond_Always);
         ImGui::SetNextWindowSize(region_size, ImGuiCond_Always);
-        if (ImGui::Begin("##telemetry_hud_panels", nullptr, base_flags | ImGuiWindowFlags_NoInputs))
+        if (ImGui::Begin("##telemetry_hud_panels", nullptr, base_flags | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground))
         {
             const telemetry::painter hud{ImGui::GetWindowDrawList(), region_pos, scale, panel_fill};
             if (s.full_simulation)

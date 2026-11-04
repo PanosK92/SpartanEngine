@@ -290,6 +290,11 @@ namespace spartan
         // with r.screenshot_ui set, the editor records its final ui frame into this target, null when no such capture is pending
         RHI_Texture* GetUiScreenshotTarget(uint32_t width, uint32_t height);
         void SetUiScreenshotRecorded();
+        // a viewport screenshot rendered this frame, the editor replays its ui into this target so anything drawn over the
+        // viewport is captured, null when the plain render capture has to stand (clean capture, xr, preview captures)
+        RHI_Texture* GetViewportUiScreenshotTarget(uint32_t width, uint32_t height);
+        // rect is the viewport area of the target in pixels, the saved image is cropped to it
+        void SetViewportUiScreenshotRecorded(const math::Rectangle& rect);
 
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
         // is_ui grants access to reserved entries so scene/outline draws cannot starve presentation

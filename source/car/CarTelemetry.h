@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 #pragma once
 
 #include "imgui/source/imgui.h"
+#include "../ui/ImGui.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -165,6 +166,7 @@ namespace spartan::car_hud::telemetry
         {
             // soft drop shadow lifts the card off the 3d scene behind it
             dl->AddRectFilled(point(x + 2, y + 4), point(x + w + 2, y + h + 4), IM_COL32(0, 0, 0, 70), 9 * scale);
+            gui::glass_pane(point(x, y), point(x + w, y + h), 9 * scale);
             rect(x, y, w, h, fill, 9);
             dl->AddRect(point(x, y), point(x + w, y + h), IM_COL32(53, 73, 90, 180), 9 * scale);
             text(x + 16, y + 13, 13, muted, title);
