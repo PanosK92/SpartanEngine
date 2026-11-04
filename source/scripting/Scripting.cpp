@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include <sol/sol.hpp>
 #include "Scripting.h"
 #include "ScriptingInternal.h"
+#include "ScriptingHooks.h"
+#include "../world/Entity.h"
 #include "../world/components/Component.h"
 #include "../input/Input.h"
 #include "../core/Window.h"
@@ -25,6 +27,12 @@ namespace spartan::scripting
     namespace
     {
         sol::state lua_state;
+        SequencerHooks sequencer_hooks;
+    }
+
+    SequencerHooks& get_sequencer_hooks()
+    {
+        return sequencer_hooks;
     }
 
     void initialize()
@@ -162,6 +170,27 @@ namespace spartan::scripting
         EngineTable["IsPlaying"]       = []() { return Engine::IsFlagSet(EngineMode::Playing); };
         EngineTable["IsPaused"]        = []() { return Engine::IsFlagSet(EngineMode::Paused); };
         EngineTable["Quit"]            = []() { Window::Close(); };
+
+        sol::table SequencerTable = lua_state.create_named_table("Sequencer");
+        SequencerTable["IsAvailable"] = []() { return static_cast<bool>(sequencer_hooks.play); };
+        SequencerTable["Play"] = [](const std::string& name, sol::optional<Entity*> car) -> bool
+        {
+            if (!sequencer_hooks.play)
+            {
+                return false;
+            }
+            return sequencer_hooks.play(name, car && car.value() ? car.value()->GetObjectId() : 0);
+        };
+        SequencerTable["Stop"] = []()
+        {
+            if (sequencer_hooks.stop)
+            {
+                sequencer_hooks.stop();
+            }
+        };
+        SequencerTable["IsPlaying"]   = []() { return sequencer_hooks.is_playing ? sequencer_hooks.is_playing() : false; };
+        SequencerTable["GetTime"]     = []() { return sequencer_hooks.get_time ? sequencer_hooks.get_time() : 0.0f; };
+        SequencerTable["GetDuration"] = []() { return sequencer_hooks.get_duration ? sequencer_hooks.get_duration() : 0.0f; };
 
         sol::table ConsoleTable = lua_state.create_named_table("Console");
         ConsoleTable["Set"] = [](const std::string& name, const std::string& value) -> bool

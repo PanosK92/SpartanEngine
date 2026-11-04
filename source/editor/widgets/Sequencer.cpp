@@ -32,6 +32,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/ImGui_Style.h"
 #include "file_system/FileSystem.h"
 #include "resource/ResourceCache.h"
+#include "scripting/ScriptingHooks.h"
 SP_WARNINGS_OFF
 #include "io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -724,12 +725,83 @@ Sequencer::Sequencer(Editor* editor) : Widget(editor)
 
     m_world_loaded_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoaded, SP_EVENT_HANDLER(OnWorldLoaded));
     m_world_ticked_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldTicked, SP_EVENT_HANDLER(OnWorldTicked));
+
+    scripting::SequencerHooks& hooks = scripting::get_sequencer_hooks();
+    hooks.play         = [this](const string& name, uint64_t car_entity_id) { return PlayCutscene(name, car_entity_id); };
+    hooks.stop         = [this]() { StopCutscene(); };
+    hooks.is_playing   = [this]() { return IsCutscenePlaying(); };
+    hooks.get_time     = [this]() { return m_cutscene ? m_time : 0.0f; };
+    hooks.get_duration = [this]() { return m_cutscene ? m_duration : 0.0f; };
 }
 
 Sequencer::~Sequencer()
 {
+    scripting::get_sequencer_hooks() = scripting::SequencerHooks();
     SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoaded, m_world_loaded_handle);
     SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldTicked, m_world_ticked_handle);
+}
+
+bool Sequencer::PlayCutscene(const string& name, uint64_t car_entity_id)
+{
+    if (!Engine::IsFlagSet(EngineMode::Playing) || m_render_status.active)
+    {
+        return false;
+    }
+
+    const string file_path = string(ResourceCache::GetProjectDirectory()) + "sequencer_" + name + ".xml";
+    if (!FileSystem::Exists(file_path))
+    {
+        SP_LOG_WARNING("sequencer: no cutscene at '%s'", file_path.c_str());
+        return false;
+    }
+
+    if (!m_cutscene)
+    {
+        m_cutscene_return_path = GetFilePath();
+    }
+    m_cutscene = true;
+    LoadSequence(file_path);
+
+    Entity* car = World::GetEntityById(car_entity_id);
+    if (car && FindCar(car) && !m_drive_events.empty())
+    {
+        const uint64_t authored = m_drive_events.front().car_entity_id;
+        const uint64_t playing  = GetPersistentEntity(car)->GetObjectId();
+        auto swap = [authored, playing](uint64_t& id)
+        {
+            if (id == authored)
+            {
+                id = playing;
+            }
+        };
+        for (DriveEvent& event : m_drive_events)
+        {
+            swap(event.car_entity_id);
+        }
+        for (CameraEvent& event : m_events)
+        {
+            swap(event.target_entity_id);
+            swap(event.anchor_entity_id);
+        }
+    }
+
+    m_loop    = false;
+    m_preview = true;
+    SetPlayback(Playback::Play);
+    return true;
+}
+
+void Sequencer::StopCutscene()
+{
+    if (!m_cutscene)
+    {
+        return;
+    }
+
+    SetPlayback(Playback::Stop);
+    m_cutscene = false;
+    LoadSequence(m_cutscene_return_path);
+    m_cutscene_return_path.clear();
 }
 
 Car* Sequencer::FindCar(Entity* entity)
@@ -5012,7 +5084,7 @@ namespace
 void Sequencer::Save() const
 {
     const string file_path = GetFilePath();
-    if (file_path.empty())
+    if (file_path.empty() || m_cutscene)
     {
         return;
     }
@@ -5111,6 +5183,8 @@ void Sequencer::Save() const
 
 void Sequencer::OnWorldLoaded()
 {
+    m_cutscene = false;
+    m_cutscene_return_path.clear();
     m_file_path.clear();
     Load();
 }

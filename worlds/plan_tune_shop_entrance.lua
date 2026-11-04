@@ -2,9 +2,10 @@
 -- plan tune shop entrance
 --
 -- the way into zante tuning, the shop south of zante auto. roll the car up to
--- bay 01 and a prompt offers the shop; taking it dips to black, rolls the car onto
--- the turntable inside, holds it there and opens the tune shop menu
--- (plan_tune_shop.lua). backing out of the menu lifts the hold and leaves the car
+-- bay 01 and a prompt offers the shop; taking it dips to black and plays the drive
+-- in (plan_drive_in.lua, sequencer_tune_shop_enter.xml): the car drives itself
+-- through the door and stops on the turntable, where it is held while the tune
+-- shop menu (plan_tune_shop.lua) is open. the drive in can be skipped. backing out of the menu lifts the hold and leaves the car
 -- on the turntable, nose to the open door.
 --
 -- the bay is authored in the shop's local space (tune_shop_hub, built by
@@ -15,6 +16,7 @@ local entrance = {}
 
 local directory = World.GetFilePath():match("^(.*[/\\])") or ""
 local ui        = _G.plan_ui or dofile(directory .. "plan_ui.lua")
+local drive_in  = dofile(directory .. "plan_drive_in.lua")
 
 local clamp, smooth, approach = ui.clamp, ui.smooth, ui.approach
 local white, ink, black, accent = ui.white, ui.ink, ui.black, ui.accent
@@ -37,6 +39,8 @@ local hint        = 0.0
 local speed       = 0.0
 local last_pos    = nil
 local car         = nil
+local trip        = nil
+local shop_black  = 1.0
 
 --------------------------------------------------------------------------------
 -- helpers
@@ -115,13 +119,18 @@ end
 -- the trip in and out
 --------------------------------------------------------------------------------
 
-local function enter_shop()
-    local forward = hub:GetForward()
+-- the drive in arrives nose first, the trip out leaves nose to the door, both settled under a cut or a fade
+local function park(nose_out)
+    local forward = nose_out and hub:GetForward() or hub:GetForward() * -1
     CarTuning.PlaceAt(car, to_world(turntable), Quaternion.FromLookRotation(forward, Vector3(0, 1, 0)))
+end
+
+local function enter_shop()
+    park(false)
     CarTuning.SetHeld(car, true)
     shop = dofile(directory .. "plan_tune_shop.lua")
     -- the orbit swings out over the dyno side, where the bay has the most room
-    shop.Open({ orbit_angle = -38 })
+    shop.Open({ orbit_angle = -38, facing = hub:GetForward() })
 end
 
 local function leave_shop()
@@ -130,6 +139,7 @@ local function leave_shop()
         shop = nil
     end
     if car then
+        park(true)
         CarTuning.SetHeld(car, false)
     end
 end
@@ -141,6 +151,7 @@ end
 function entrance.Start()
     hub = World.GetEntityByName("tune_shop_hub")
     state, state_time, prompt, hint, speed, last_pos = "idle", 0, 0, 0, 0, nil
+    trip, shop_black = nil, 1
     if not ui.ready then
         ui.init()
         owns_ui = true
@@ -148,6 +159,10 @@ function entrance.Start()
 end
 
 function entrance.Stop()
+    if trip then
+        trip:Finish(true)
+        trip = nil
+    end
     leave_shop()
     if owns_ui then
         ui.release()
@@ -177,13 +192,29 @@ function entrance.Tick()
         Hud.Rect(0, 0, w, h, black(smooth(state_time / fade_in)))
         if state_time >= fade_in + 0.05 then
             ui.sound("transition", 0.8)
+            trip = drive_in.start(ui, "tune_shop_enter", car)
+            if trip then
+                state, state_time = "driving", 0
+            else
+                enter_shop()
+                state, state_time, shop_black = "shop", 0, 1
+            end
+        end
+        return
+    elseif state == "driving" then
+        if not trip:Tick(dt, w, h, s) then
+            shop_black = trip.skipped and 1 or 0
+            trip = nil
             enter_shop()
             state, state_time = "shop", 0
+            if shop_black > 0 then
+                Hud.Rect(0, 0, w, h, black(1))
+            end
         end
         return
     elseif state == "shop" then
         local open = shop.Tick(dt)
-        Hud.Rect(0, 0, w, h, black(1 - smooth(state_time / 0.5)))
+        Hud.Rect(0, 0, w, h, black(shop_black * (1 - smooth(state_time / 0.5))))
         if not open then
             leave_shop()
             state, state_time = "leaving", 0

@@ -285,6 +285,7 @@ local car           = nil
 local car_name      = ""
 local camera_entity = nil
 local orbit_angle   = 38
+local facing        = nil
 local time          = 0.0
 local open_time     = 0.0
 local closing       = false
@@ -426,8 +427,8 @@ local function tick_camera()
         return
     end
     local center  = car:GetPosition()
-    local forward = car:GetForward()
-    local right   = car:GetRight()
+    local forward = facing or car:GetForward()
+    local right   = Vector3(forward.z, 0, -forward.x):Normalized()
     local up      = Vector3(0, 1, 0)
 
     -- a three quarter front view that drifts around the nose and back
@@ -1037,9 +1038,11 @@ end
 -- lifecycle
 --------------------------------------------------------------------------------
 
--- options.orbit_angle sets where the camera's sweep is centred, in degrees off the car's nose toward its right
+-- options.orbit_angle sets where the camera's sweep is centred, in degrees off the car's nose toward its right.
+-- options.facing stands in for the car's nose, so the sweep keeps to the open side of the bay whichever way the car is parked
 function shop.Open(options)
     orbit_angle = options and options.orbit_angle or 38
+    facing      = options and options.facing or nil
     car        = CarTuning.GetPlayerCar()
     car_name   = car and CarTuning.GetName(car):gsub("%s*/.*$", ""):gsub("%s*%b()", "") or ""
     time       = 0

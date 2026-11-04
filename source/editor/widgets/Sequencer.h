@@ -308,6 +308,13 @@ public:
     void LoadSequence(const std::string& file_path);
     std::vector<std::string> GetSequenceFiles() const;
 
+    // gameplay cutscenes, project/sequencer_<name>.xml played over the world's own sequence and handed back on stop.
+    // the car the drive events were authored with stands in for car_entity_id, in the drives and in the shots that
+    // target or ride it. once the timeline ends the last shot holds until StopCutscene
+    bool PlayCutscene(const std::string& name, uint64_t car_entity_id);
+    void StopCutscene();
+    bool IsCutscenePlaying() const { return m_cutscene && m_playing; }
+
     // offline frame sequence capture
     struct RenderRequest
     {
@@ -668,6 +675,8 @@ private:
     std::string m_file_path;              // empty means the world's own sequence
     char m_sequence_name[64]     = {};
     bool m_sequence_copy         = false; // the name popup saves a copy instead of starting an empty sequence
+    bool m_cutscene              = false; // a gameplay cutscene is loaded, its car swap must never be saved
+    std::string m_cutscene_return_path;   // the sequence that was open before the cutscene
 
     uint64_t m_world_loaded_handle = 0;
     uint64_t m_world_ticked_handle = 0;

@@ -289,9 +289,10 @@ local function tick_camera()
         target = to_world(wash_look)
     else
         -- the pit bay is only seven metres wide, so the sweep stays in front of the car between the columns
+        -- framed off the open door rather than the car's nose, the drive in parks it facing the back wall
         local center  = car:GetPosition()
-        local forward = car:GetForward()
-        local right   = car:GetRight()
+        local forward = hub:GetForward()
+        local right   = hub:GetRight()
         local angle   = math.rad(math.sin(time * 0.11) * 24)
         local radius  = 7.2
         eye    = center + forward * (math.cos(angle) * radius) + right * (math.sin(angle) * radius) + up * (1.9 + math.sin(time * 0.17) * 0.1)

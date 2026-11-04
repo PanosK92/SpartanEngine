@@ -2383,8 +2383,8 @@
       <platform entity_id="9046000000000000391" min_x="-10428.5615" min_z="904.832275" max_x="-10413.7256" max_z="919.66864" center_x="-10421.1436" center_z="912.250488" half_x="5.5" half_z="5.5" yaw="-3.62155819" height="334.359985" margin="16.7500305" anchor_x="-10435.2002" anchor_y="338.600006" anchor_z="1065" anchor_qx="0" anchor_qy="0.237685978" anchor_qz="0" anchor_qw="0.971342087" />
       <platform entity_id="9057000000000000013" min_x="6192.6543" min_z="-2878.09546" max_x="6230.20898" max_z="-2835.29517" center_x="6211.43164" center_z="-2856.69531" half_x="18.500061" half_z="15" yaw="1.34390247" height="12.2399988" margin="12.089365" anchor_x="6213.38037" anchor_y="12.7999992" anchor_z="-2857.14502" anchor_qx="0" anchor_qy="-0.622514188" anchor_qz="0" anchor_qw="0.782608509" />
       <platform entity_id="9057000000000000014" min_x="6204.23486" min_z="-2871.68677" max_x="6225.07373" max_z="-2849.34937" center_x="6214.6543" center_z="-2860.51807" half_x="9.5" half_z="8.5" yaw="1.34390247" height="12.7349997" margin="9.70092583" anchor_x="6213.38037" anchor_y="12.7999992" anchor_z="-2857.14502" anchor_qx="0" anchor_qy="-0.622514188" anchor_qz="0" anchor_qw="0.782608509" />
-      <platform entity_id="9061000000000000003" min_x="6176.094402976045" max_x="6209.382285529498" min_z="-2961.6970376667105" max_z="-2926.056792344755" center_x="6192.738344252772" center_z="-2943.876915005733" half_x="15.6" half_z="14.15" yaw="1.3962634015954636" height="11.600000000000001" margin="3" />
       <platform entity_id="9062000000000000003" min_x="6182.77816208771" max_x="6220.258356821325" min_z="-2924.1293727871052" max_z="-2875.53629187126" center_x="6201.518259454518" center_z="-2899.8328323291826" half_x="22.0" half_z="15.15" yaw="1.3962634015954636" height="10.2" margin="3" />
+      <platform entity_id="9061000000000000003" min_x="6176.094402976045" max_x="6209.382285529498" min_z="-2961.6970376667105" max_z="-2926.056792344755" center_x="6192.738344252772" center_z="-2943.876915005733" half_x="15.6" half_z="14.15" yaw="1.3962634015954636" height="11.600000000000001" margin="3" />
      </platforms>
     </terrain>
    </Entity>
@@ -76905,6 +76905,14 @@
      <text_3d text="CAR CARE" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
     </Entity>
    </Entity>
+   <Entity name="gt_auto_drive_in_path" id="9062000000000000291" active="true" position="-4.6 0 16.6" rotation="0 0 0 1" scale="1 1 1">
+    <spline closed_loop="false" resolution="20" road_width="2.5" curve_alpha="0.5" mesh_enabled="false" has_road_mesh="false" conform_to_terrain="false" grade_limit_enabled="false" carve_terrain="false" embankment_enabled="false" />
+    <Entity name="spline_point_0" id="9062000000000000292" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="9062000000000000293" active="true" position="-0.9 0 -5.1" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="9062000000000000294" active="true" position="-1.1 0 -9.6" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_3" id="9062000000000000295" active="true" position="-1.1 0 -17.8" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_4" id="9062000000000000296" active="true" position="-1.1 0 -27.8" rotation="0 0 0 1" scale="1 1 1" />
+   </Entity>
   </Entity>
   <Entity name="tune_shop_hub" id="9061000000000000001" active="true" position="6196.58 12.3 -2943.13" rotation="0 -0.642788 0 0.766044" scale="1 1 1" tags="location_tune_shop,landmark,tune_shop,car_service">
    <Entity name="Site" id="9061000000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
@@ -77718,6 +77726,14 @@
      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="zante_white" material_path="./project/plan_resources/zante_white.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <text_3d text="TUNE SHOP" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
     </Entity>
+   </Entity>
+   <Entity name="tune_shop_drive_in_path" id="9061000000000000236" active="true" position="1.6 0 15.6" rotation="0 0 0 1" scale="1 1 1">
+    <spline closed_loop="false" resolution="20" road_width="2.5" curve_alpha="0.5" mesh_enabled="false" has_road_mesh="false" conform_to_terrain="false" grade_limit_enabled="false" carve_terrain="false" embankment_enabled="false" />
+    <Entity name="spline_point_0" id="9061000000000000237" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="9061000000000000238" active="true" position="-0.9 0 -5.1" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="9061000000000000239" active="true" position="-1.1 0 -9.6" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_3" id="9061000000000000240" active="true" position="-1.1 0 -16.2" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_4" id="9061000000000000241" active="true" position="-1.1 0 -26.2" rotation="0 0 0 1" scale="1 1 1" />
    </Entity>
   </Entity>
  </Entities>
