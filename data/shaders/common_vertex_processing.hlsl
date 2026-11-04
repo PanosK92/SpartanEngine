@@ -1005,6 +1005,43 @@ void impostor_frame_basis(float3 direction, out float3 right, out float3 up)
     up               = cross(direction, right);
 }
 
+// a whole island of trees would otherwise reach the 2 px contribution cull as millions of specks, so
+// cards shorter than impostor_thin_pixels survive with the inverse square of how far they fall short
+// and the survivors widen by the same factor (capped) to hold the forest's screen coverage, the count
+// then grows with the log of the view distance instead of its square, same scheme as the grass cards
+static const float impostor_thin_pixels    = 16.0f;
+static const float impostor_thin_max_scale = 2.0f;
+
+// how many times shorter than impostor_thin_pixels the card is on screen, 1 when it is taller
+float impostor_thin_factor(float3 center_world, float radius_world)
+{
+    float distance = max(length(center_world - buffer_frame.camera_position), 1e-3f);
+    float pixels   = radius_world * get_render_resolution_active().x / (distance * tan(buffer_frame.camera_fov * 0.5f));
+    return max(1.0f, impostor_thin_pixels / max(pixels, 1e-3f));
+}
+
+float impostor_thin_scale(float thin_factor)
+{
+    return min(thin_factor, impostor_thin_max_scale);
+}
+
+// keyed by the instance's world position so the kept subset is stable across frames, views and both cull phases
+bool impostor_thin_keep(float3 root_world, float thin_factor)
+{
+    if (thin_factor <= 1.0f)
+    {
+        return true;
+    }
+
+    uint h = asuint(root_world.x) * 0x9e3779b1u ^ asuint(root_world.z) * 0x85ebca77u ^ asuint(root_world.y) * 0xc2b2ae3du;
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
+    return float(h) * (1.0f / 4294967296.0f) * thin_factor * thin_factor <= 1.0f;
+}
+
 // nearest baked frame for a mesh local view direction, views from below reuse the horizon ring
 uint2 impostor_nearest_frame(float3 view_local, uint frames)
 {
@@ -1213,7 +1250,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         float3 up;
         impostor_frame_basis(direction, right, up);
 
-        float2 offset       = (input_uv * 2.0f - 1.0f) * _draw.impostor_radius;
+        float card_radius   = _draw.impostor_radius * impostor_thin_scale(impostor_thin_factor(center_world, _draw.impostor_radius * sqrt(max(axis_scale.x, max(axis_scale.y, axis_scale.z)))));
+        float2 offset       = (input_uv * 2.0f - 1.0f) * card_radius;
         float3 card_local   = _draw.impostor_center + right * offset.x + up * offset.y;
         position            = mul(float4(card_local, 1.0f), transform).xyz;
         position_previous   = mul(float4(card_local, 1.0f), transform_previous).xyz;

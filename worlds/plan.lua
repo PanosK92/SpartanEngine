@@ -9,7 +9,8 @@
 -- the engine runs it as plan.world's companion script every time the world loads,
 -- before preparation, so road details and the layered roads are built with it.
 -- the table it returns gets Start, Tick and Stop while play runs: the island opens
--- on its main menu (plan_main_menu.lua).
+-- on its main menu (plan_main_menu.lua), and once the player is out on the island
+-- the tune shop south of the car wash can be driven into (plan_tune_shop_entrance.lua).
 --------------------------------------------------------------------------------
 
 WorldSystems.SetAmbientWildlife(true)
@@ -21,6 +22,7 @@ WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "island
 
 local directory = World.GetFilePath():match("^(.*[/\\])") or ""
 local main_menu = nil
+local tune_shop_entrance = nil
 local garage_car = nil
 local garage_timer = 0
 local wallet_path = CarTuning.GetSaveDirectory() .. "plan_wallet.txt"
@@ -72,6 +74,8 @@ function plan:Start()
     load_wallet()
     main_menu = dofile(directory .. "plan_main_menu.lua")
     main_menu.Start()
+    tune_shop_entrance = dofile(directory .. "plan_tune_shop_entrance.lua")
+    tune_shop_entrance.Start()
 end
 
 function plan:Tick(dt)
@@ -89,10 +93,16 @@ function plan:Tick(dt)
     if main_menu then
         main_menu.Tick(dt)
     end
+    if tune_shop_entrance and not (main_menu and main_menu.IsActive()) then
+        tune_shop_entrance.Tick()
+    end
 end
 
 function plan:Stop()
     _G.plan_save_garage()
+    if tune_shop_entrance then
+        tune_shop_entrance.Stop()
+    end
     if main_menu then
         main_menu.Stop()
     end

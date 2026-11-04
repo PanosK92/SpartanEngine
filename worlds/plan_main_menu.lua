@@ -35,7 +35,6 @@ local shots =
 }
 
 local fade_time = 0.8
-local wipe_time = 0.42
 
 -- state
 local state         = "off"
@@ -55,14 +54,6 @@ local hub           = nil
 local jukebox_audio = nil
 local mouse_last_x  = -1
 local mouse_last_y  = -1
-local submenu       = nil
-
--- developer quick jump, each entry is a lua menu next to this file that works on the player's car
--- until the island has a building for it. a menu has Open, Tick (false once it is done) and Close
-local dev_menus =
-{
-    { group = "dev", id = "sub", label = "TUNE SHOP", hint = "Engine, drivetrain and chassis parts for your car", file = "plan_tune_shop.lua" },
-}
 
 local function items()
     local list =
@@ -72,9 +63,6 @@ local function items()
     }
     if not Engine.IsEditorVisible() then
         table.insert(list, { group = "main", id = "quit", label = "QUIT", hint = "Park it for today" })
-    end
-    for _, entry in ipairs(dev_menus) do
-        table.insert(list, entry)
     end
     return list
 end
@@ -265,13 +253,6 @@ local function draw_menu(s, x, y, reveal, list, dt)
     local cy = y
     for i, item in ipairs(list) do
         local a = ease_out((reveal - 1.0 - i * 0.07) / 0.6)
-        if item.group == "dev" and (i == 1 or list[i - 1].group ~= "dev") then
-            cy = cy + 30 * s
-            ui.label("DEVELOPER", x, cy, 11 * s, white(0.45 * a))
-            ui.label("QUICK JUMP", x + ui.label_width("DEVELOPER", 11 * s) + 16 * s, cy, 11 * s, accent(0.8 * a))
-            cy = cy + 24 * s
-        end
-
         select_anim[i] = approach(select_anim[i] or 0, i == selected and 1 or 0, 16, dt)
         local k  = select_anim[i]
         local rx = x + (1 - a) * -24 * s
@@ -285,9 +266,6 @@ local function draw_menu(s, x, y, reveal, list, dt)
         end
         if item.id == "music" then
             draw_volume(rx + bar_w - 150 * s, cy + bar_h * 0.5 - 8 * s, s, k, a)
-        end
-        if item.id == "sub" then
-            Hud.Text("\xE2\x80\xBA", rx + bar_w - 36 * s, cy + bar_h * 0.5 - 17 * s, 28 * s, ui.on_bar(k, a, 0.4), "plan_thin")
         end
 
         item.bounds = { rx, cy, bar_w, bar_h }
@@ -339,24 +317,8 @@ local function draw_chrome(w, h, s, alpha, list)
     if list[selected] and list[selected].id == "music" then
         table.insert(prompts, { "\xE2\x86\x90 \xE2\x86\x92", "VOLUME" })
     end
-    table.insert(prompts, { "TAB", "DEVELOPER" })
     table.insert(prompts, { "ENTER", "CONFIRM" })
     ui.footer(w, h, s, alpha, prompts, function(x, y, fh) draw_now_playing(x, y, fh, alpha) end, slide)
-end
-
--- a sheet of dark glass with a blue leading edge, it covers the screen going into a sub menu and pulls away coming out
-local function draw_wipe(w, h, s, from, to)
-    local left, right = w * from, w * to
-    if right <= left then
-        return
-    end
-    Hud.Rect(left, 0, right - left, h, ink(1.0))
-    if to < 1 then
-        Hud.Rect(right - 2 * s, 0, 2 * s, h, accent(1.0))
-    end
-    if from > 0 then
-        Hud.Rect(left, 0, 2 * s, h, accent(1.0))
-    end
 end
 
 --------------------------------------------------------------------------------
@@ -400,11 +362,6 @@ local function activate(item)
     elseif item.id == "quit" then
         ui.sound("back")
         state, state_time = "quitting", 0
-    elseif item.id == "sub" then
-        ui.sound("confirm")
-        ui.sound("transition", 0.8)
-        state, state_time = "to_sub", 0
-        submenu = item
     end
 end
 
@@ -417,19 +374,6 @@ local function handle_input(list)
     end
     if pressed(KeyCode.Arrow_Up, KeyCode.W, KeyCode.DPad_Up) then
         select_item(selected - 1, count)
-    end
-
-    -- tab hops between the island and the developer group
-    if pressed(KeyCode.Tab, KeyCode.Button_North) then
-        local group = list[selected].group
-        for offset = 1, count do
-            local index = (selected + offset - 1) % count + 1
-            if list[index].group ~= group then
-                selected = index
-                ui.sound("tab")
-                break
-            end
-        end
     end
 
     local item = list[selected]
@@ -476,17 +420,13 @@ function menu.Start()
     ui.init()
     state, state_time, steady = "warmup", 0, 0
     time, shot_index, shot_time = 0, 1, 0
-    selected, select_anim, submenu = 1, {}, nil
+    selected, select_anim = 1, {}
     create_camera()
     start_music()
     tick_camera(0)
 end
 
 function menu.Stop()
-    if submenu and submenu.module then
-        submenu.module.Close()
-    end
-    submenu = nil
     release_camera()
     stop_music()
     ui.release()
@@ -497,6 +437,11 @@ function menu.Stop()
     end
     hub   = nil
     state = "off"
+end
+
+-- true until the player has been handed back their view
+function menu.IsActive()
+    return state ~= "off" and state ~= "done"
 end
 
 function menu.Tick()
@@ -538,41 +483,8 @@ function menu.Tick()
     local left = 120 * s
     local top  = h * 0.24
 
-    if state == "to_sub" then
-        -- the glass sheet sweeps over the menu, then the sub menu takes the camera
-        tick_camera(dt)
-        tick_music(dt, 0.7)
-        draw_backdrop(w, h, s, 1)
-        draw_title(w, s, left, top, 10)
-        draw_menu(s, left, top + 230 * s, 10, list, dt)
-        draw_chrome(w, h, s, 1, list)
-        draw_wipe(w, h, s, 0, ease_out(state_time / wipe_time))
-        if state_time >= wipe_time + 0.05 then
-            release_camera()
-            submenu.module = dofile(directory .. submenu.file)
-            submenu.module.Open()
-            state, state_time = "sub", 0
-        end
-        return
-    elseif state == "sub" then
-        tick_music(dt, 0.7)
-        local open = submenu.module.Tick(dt)
-        draw_wipe(w, h, s, ease_out(state_time / wipe_time), 1)
-        if not open then
-            submenu.module.Close()
-            submenu = nil
-            create_camera()
-            tick_camera(0)
-            state, state_time = "from_sub", 0
-        end
-        return
-    end
-
-    if state == "intro" or state == "menu" or state == "from_sub" then
+    if state == "intro" or state == "menu" then
         if state == "intro" and state_time > 3.0 then
-            state = "menu"
-        end
-        if state == "from_sub" and state_time > wipe_time then
             state = "menu"
         end
         tick_camera(dt)
@@ -589,9 +501,7 @@ function menu.Tick()
         draw_reel(w, h, s, chrome)
         draw_chrome(w, h, s, chrome, list)
 
-        if state == "from_sub" then
-            draw_wipe(w, h, s, 0, 1 - ease_out(state_time / wipe_time))
-        elseif state == "menu" or time > 1.5 then
+        if state == "menu" or time > 1.5 then
             handle_input(list)
         end
     elseif state == "leaving" or state == "quitting" then

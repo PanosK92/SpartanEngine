@@ -116,6 +116,14 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             uint lod_count = (draw.flags >> 11u) & 7u;
             uint wanted_lod = has_impostor ? sphere_lod_index_impostor(center_world, lod_radius, lod_count) : sphere_lod_index(center_world, lod_radius, lod_count);
             task.draw_index += (task.lod_draw_offsets >> (wanted_lod * 3u)) & 7u;
+
+            // distant cards thin out and the survivors widen, the hi-z test below needs the widened card
+            if (has_impostor && wanted_lod == lod_count - 1u)
+            {
+                float thin_factor = impostor_thin_factor(center_world, lod_radius);
+                survives          = impostor_thin_keep(world_xform[3].xyz, thin_factor);
+                radius_world     *= impostor_thin_scale(thin_factor);
+            }
         }
 
         // a non-instanced draw is a single thread, so it can rewrite its own draw to the lod its coverage wants

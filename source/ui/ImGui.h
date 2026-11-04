@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 struct ImFont;
+struct ImVec2;
 namespace spartan::gui
 {
     inline ImFont* font_normal = nullptr;
@@ -17,4 +18,7 @@ namespace spartan::gui
     void shutdown();
     void begin_frame();
     void render();
+
+    // frosts a screen rectangle of the current window, for windows without a background that draw their own panels
+    void glass_pane(const ImVec2& min, const ImVec2& max, float rounding);
 }

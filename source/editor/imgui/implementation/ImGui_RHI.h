@@ -154,6 +154,20 @@ namespace ImGui::RHI
             uint32_t fill_end   = 0;
         };
 
+        // rectangles a window without a background asked to be frosted, gathered during layout and consumed by render
+        struct GlassPane
+        {
+            const ImGuiWindow* window = nullptr;
+            ImRect rect;
+            float rounding = 0.0f;
+        };
+        vector<GlassPane> g_glass_panes;
+
+        bool has_glass_panes(const ImGuiWindow* window)
+        {
+            return std::any_of(g_glass_panes.begin(), g_glass_panes.end(), [window](const GlassPane& pane) { return pane.window == window; });
+        }
+
         // root windows that float over something, docked panels and the dockspace host sit on nothing but the editor background
         bool is_glass_window(const ImGuiWindow* window, const ImGuiViewport* viewport)
         {
@@ -503,6 +517,20 @@ namespace ImGui::RHI
         }
     }
 
+    void add_glass_pane(const ImVec2& min, const ImVec2& max, const float rounding)
+    {
+        ImGuiWindow* window = GetCurrentWindowRead();
+        if (window && max.x > min.x && max.y > min.y)
+        {
+            g_glass_panes.push_back({ window, ImRect(min, max), rounding });
+        }
+    }
+
+    void clear_glass_panes()
+    {
+        g_glass_panes.clear();
+    }
+
     // releases backend-owned imgui texture holders, must run while the imgui context is still alive
     void destroy_imgui_textures()
     {
@@ -750,6 +778,7 @@ namespace ImGui::RHI
         static vector<GlassList> glass_lists;
         static vector<ImGuiWindow*> list_windows;
         static vector<ImGuiDockNode*> glass_nodes;
+        static vector<GlassPane> window_panes;
         static vector<ImU32> glass_fills;
         static vector<GlassSegment> glass_segments;
         glass_lists.assign(draw_data->CmdListsCount, GlassList());
@@ -775,7 +804,7 @@ namespace ImGui::RHI
             for (int i = 0; i < draw_data->CmdListsCount && !any_glass; i++)
             {
                 const ImGuiWindow* window = list_windows[i];
-                any_glass = window && (is_glass_window(window, draw_data->OwnerViewport) || (cvar_editor_glass_panels.GetValue() && window->DockNodeAsHost));
+                any_glass = window && (is_glass_window(window, draw_data->OwnerViewport) || (cvar_editor_glass_panels.GetValue() && window->DockNodeAsHost) || has_glass_panes(window));
             }
 
             glass_target = any_glass ? glass_get_target(swapchain) : nullptr;

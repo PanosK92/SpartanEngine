@@ -119,8 +119,14 @@ void spartan::gui::shutdown()
     ImGui::DestroyContext();
 }
 
+void spartan::gui::glass_pane(const ImVec2& min, const ImVec2& max, const float rounding)
+{
+    ImGui::RHI::add_glass_pane(min, max, rounding);
+}
+
 void spartan::gui::begin_frame()
 {
+    ImGui::RHI::clear_glass_panes();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 

@@ -240,6 +240,35 @@ namespace spartan::scripting
             return car && car->IsOccupied();
         };
 
+        // a shop holds the car while its menu is open: the pedals, getting out, the reset key and the driver hud are off, the handbrake is on
+        tuning["SetHeld"] = [](sol::optional<Entity*> entity, bool held)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->SetExternallyControlled(held);
+            car->SetCinematic(held);
+            car->SetThrottle(0.0f);
+            car->SetBrake(0.0f);
+            car->SetSteering(0.0f);
+            car->SetHandbrake(held ? 1.0f : 0.0f);
+            return true;
+        };
+
+        // rests the car with its wheels on the given ground point, at rest
+        tuning["PlaceAt"] = [](sol::optional<Entity*> entity, const math::Vector3& ground_position, const math::Quaternion& rotation)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->PlaceAt(ground_position, rotation);
+            return true;
+        };
+
         // -1 for an unknown part or a car without a simulation
         tuning["GetStage"] = [](sol::optional<Entity*> entity, const std::string& part)
         {

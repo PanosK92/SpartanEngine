@@ -7,9 +7,10 @@
 -- is bought and fits it. parts are bought once and stay owned, so swapping
 -- between owned stages is free.
 --
--- the menu is opened from the main menu's developer quick jump for now, later
--- from the shop building itself. it reads and fits parts through CarTuning,
--- the simulation rebuilds the car with every fitted part.
+-- the menu opens when the player drives into zante tuning, the shop south of the
+-- car wash (plan_tune_shop_entrance.lua), with the car held on the turntable. it
+-- reads and fits parts through CarTuning, the simulation rebuilds the car with
+-- every fitted part.
 --------------------------------------------------------------------------------
 
 local shop = {}
@@ -302,9 +303,11 @@ local unavailable_reason =
 -- state
 --------------------------------------------------------------------------------
 
+local crumbs        = { "ZAKYNTHOS", "ZANTE TUNING", "TUNE SHOP" }
 local car           = nil
 local car_name      = ""
 local camera_entity = nil
+local orbit_angle   = 38
 local time          = 0.0
 local open_time     = 0.0
 local closing       = false
@@ -467,8 +470,8 @@ local function tick_camera()
     local up      = Vector3(0, 1, 0)
 
     -- a three quarter front view that drifts around the nose and back
-    local angle  = math.rad(38 + math.sin(time * 0.11) * 26)
-    -- the garage is tight, further out the orbit ends up inside its walls
+    local angle  = math.rad(orbit_angle + math.sin(time * 0.11) * 26)
+    -- further out the orbit ends up among the bay's lift, racking and tool chests
     local radius = 6.0
     local offset = forward * (math.cos(angle) * radius) + right * (math.sin(angle) * radius)
     local eye    = center + offset + up * (1.45 + math.sin(time * 0.17) * 0.1)
@@ -577,7 +580,7 @@ local function draw_backdrop(w, h, s, a)
 end
 
 local function draw_header(w, h, s, a)
-    ui.header(w, s, a, { "ZAKYNTHOS", "HOME", "TUNE SHOP" }, { { "VEHICLE", string.upper(car_name), "plan_regular" }, { "CREDITS", credits_text(wallet().credits) } }, 1 - a)
+    ui.header(w, s, a, crumbs, { { "VEHICLE", string.upper(car_name), "plan_regular" }, { "CREDITS", credits_text(wallet().credits) } }, 1 - a)
 end
 
 -- departments run along the top like the tabs of a settings screen, a blue rule slides under the current one
@@ -1086,7 +1089,9 @@ end
 -- lifecycle
 --------------------------------------------------------------------------------
 
-function shop.Open()
+-- options.orbit_angle sets where the camera's sweep is centred, in degrees off the car's nose toward its right
+function shop.Open(options)
+    orbit_angle = options and options.orbit_angle or 38
     car        = CarTuning.GetPlayerCar()
     car_name   = car and CarTuning.GetName(car):gsub("%s*/.*$", ""):gsub("%s*%b()", "") or ""
     time       = 0
@@ -1161,7 +1166,7 @@ function shop.Tick(dt)
 
     if not car then
         Hud.Rect(0, 0, w, h, ink(0.92))
-        ui.header(w, s, 1, { "ZAKYNTHOS", "HOME", "TUNE SHOP" }, {})
+        ui.header(w, s, 1, crumbs, {})
         Hud.Text("NO VEHICLE", w * 0.5, h * 0.42, 64 * s, white(1), "plan_thin", 0.5, 12 * s)
         ui.label("THERE IS NO DRIVABLE CAR IN THE WORLD TO WORK ON", w * 0.5, h * 0.42 + 96 * s, 12 * s, accent(1), 0.5)
         ui.footer(w, h, s, 1, { { "ESC", "BACK" } })

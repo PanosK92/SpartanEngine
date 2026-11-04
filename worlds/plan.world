@@ -39,7 +39,9 @@
   <Resource file="airport_warning_yellow_packed_slot0.tex_packed.texture" />
   <Resource file="airport_white_marking.xml" />
   <Resource file="airport_white_marking_packed_slot0.tex_packed.texture" />
+  <Resource file="albedo.texture" />
   <Resource file="albedo_2.texture" />
+  <Resource file="albedo_3.texture" />
   <Resource file="albedo_4.texture" />
   <Resource file="albedo_5.texture" />
   <Resource file="angular_stone_2.mesh" />
@@ -50,12 +52,16 @@
   <Resource file="angular_stone_rock_09_packed_slot0.tex_packed_3.texture" />
   <Resource file="apex_game_caliper.xml" />
   <Resource file="apex_game_caliper_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_caliper_packed_slot0.tex_packed_2.texture" />
   <Resource file="apex_game_rim.xml" />
   <Resource file="apex_game_rim_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rim_packed_slot0.tex_packed_2.texture" />
   <Resource file="apex_game_rotor.xml" />
   <Resource file="apex_game_rotor_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rotor_packed_slot0.tex_packed_2.texture" />
   <Resource file="apex_game_rubber.xml" />
   <Resource file="apex_game_rubber_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rubber_packed_slot0.tex_packed_2.texture" />
   <Resource file="articulation_pad.mesh" />
   <Resource file="asphalt_track_diff_4k.texture" />
   <Resource file="asphalt_track_diff_4k_2.texture" />
@@ -77,6 +83,8 @@
   <Resource file="bark_debris_01_nor_gl_2k_3.texture" />
   <Resource file="bark_debris_01_packed_slot0.tex_packed.texture" />
   <Resource file="bark_debris_01_packed_slot0.tex_packed_3.texture" />
+  <Resource file="bark_diff_5.texture" />
+  <Resource file="bark_nor_gl_5.texture" />
   <Resource file="black.xml" />
   <Resource file="black_3.xml" />
   <Resource file="blanco.xml" />
@@ -1197,10 +1205,15 @@
   <Resource file="myrtle_d_3.mesh" />
   <Resource file="negro.xml" />
   <Resource file="negro_3.xml" />
+  <Resource file="normal.texture" />
   <Resource file="normal_2.texture" />
+  <Resource file="normal_3.texture" />
   <Resource file="normal_5.texture" />
   <Resource file="normal_6.texture" />
   <Resource file="normal_7.texture" />
+  <Resource file="olive_01.mesh" />
+  <Resource file="olive_01_olive_bark_3.xml" />
+  <Resource file="olive_01_olive_foliage_3.xml" />
   <Resource file="othonna_cerarioides.xml" />
   <Resource file="othonna_cerarioides_3.xml" />
   <Resource file="othonna_cerarioides_color_2k.texture" />
@@ -1220,50 +1233,62 @@
   <Resource file="plan_aleppo_1147.mesh" />
   <Resource file="plan_aleppo_1147_bark.xml" />
   <Resource file="plan_aleppo_1147_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_aleppo_1147_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_aleppo_1147_foliage.xml" />
   <Resource file="plan_aleppo_1148.mesh" />
   <Resource file="plan_aleppo_1148_bark.xml" />
   <Resource file="plan_aleppo_1148_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_aleppo_1148_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_aleppo_1148_foliage.xml" />
   <Resource file="plan_aleppo_1149.mesh" />
   <Resource file="plan_aleppo_1149_bark.xml" />
   <Resource file="plan_aleppo_1149_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_aleppo_1149_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_aleppo_1149_foliage.xml" />
   <Resource file="plan_aleppo_young_9281.mesh" />
   <Resource file="plan_aleppo_young_9281_bark.xml" />
   <Resource file="plan_aleppo_young_9281_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_aleppo_young_9281_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_aleppo_young_9281_foliage.xml" />
   <Resource file="plan_aleppo_young_9282.mesh" />
   <Resource file="plan_aleppo_young_9282_bark.xml" />
   <Resource file="plan_aleppo_young_9282_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_aleppo_young_9282_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_aleppo_young_9282_foliage.xml" />
   <Resource file="plan_carob_6173.mesh" />
   <Resource file="plan_carob_6173_bark.xml" />
   <Resource file="plan_carob_6173_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_carob_6173_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_carob_6173_foliage.xml" />
   <Resource file="plan_carob_6174.mesh" />
   <Resource file="plan_carob_6174_bark.xml" />
   <Resource file="plan_carob_6174_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_carob_6174_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_carob_6174_foliage.xml" />
   <Resource file="plan_cypress_421.mesh" />
   <Resource file="plan_cypress_421_bark.xml" />
   <Resource file="plan_cypress_421_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_cypress_421_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_cypress_421_foliage.xml" />
   <Resource file="plan_cypress_422.mesh" />
   <Resource file="plan_cypress_422_bark.xml" />
   <Resource file="plan_cypress_422_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_cypress_422_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_cypress_422_foliage.xml" />
   <Resource file="plan_olive_3511.mesh" />
   <Resource file="plan_olive_3511_bark.xml" />
   <Resource file="plan_olive_3511_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_olive_3511_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_olive_3511_foliage.xml" />
   <Resource file="plan_olive_3512.mesh" />
   <Resource file="plan_olive_3512_bark.xml" />
   <Resource file="plan_olive_3512_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_olive_3512_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_olive_3512_foliage.xml" />
   <Resource file="plan_olive_3513.mesh" />
   <Resource file="plan_olive_3513_bark.xml" />
   <Resource file="plan_olive_3513_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="plan_olive_3513_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="plan_olive_3513_foliage.xml" />
   <Resource file="plastered_stone_wall_diff.texture" />
   <Resource file="plastered_stone_wall_diff_2.texture" />
@@ -1913,6 +1938,263 @@
   <Resource file="tree_stump_02_nor_gl_2k_3.texture" />
   <Resource file="tree_stump_02_packed_slot0.tex_packed.texture" />
   <Resource file="tree_stump_02_packed_slot0.tex_packed_3.texture" />
+  <Resource file="tune_aluminium.xml" />
+  <Resource file="tune_asphalt.xml" />
+  <Resource file="tune_asphalt_packed_slot0.tex_packed.texture" />
+  <Resource file="tune_black_frame.xml" />
+  <Resource file="tune_black_plastic.xml" />
+  <Resource file="tune_block.xml" />
+  <Resource file="tune_brand_red.xml" />
+  <Resource file="tune_carbon.xml" />
+  <Resource file="tune_cardboard.xml" />
+  <Resource file="tune_ceiling_aluminium_897b36661d.mesh" />
+  <Resource file="tune_ceiling_black_frame_dfb9465498.mesh" />
+  <Resource file="tune_ceiling_dark.xml" />
+  <Resource file="tune_ceiling_duct_4bbc90f72e.mesh" />
+  <Resource file="tune_ceiling_led_a1954cbc5b.mesh" />
+  <Resource file="tune_ceiling_steel_dark_9dcf191a92.mesh" />
+  <Resource file="tune_ceiling_steel_grey_07c7e54bfa.mesh" />
+  <Resource file="tune_ceiling_wire_c7e271dc0b.mesh" />
+  <Resource file="tune_chrome.xml" />
+  <Resource file="tune_cladding.xml" />
+  <Resource file="tune_concrete.xml" />
+  <Resource file="tune_concrete_dark.xml" />
+  <Resource file="tune_concrete_dark_packed_slot0.tex_packed.texture" />
+  <Resource file="tune_deck.xml" />
+  <Resource file="tune_diamond.xml" />
+  <Resource file="tune_duct.xml" />
+  <Resource file="tune_dyno_bay_aluminium_e3d0326fb2.mesh" />
+  <Resource file="tune_dyno_bay_black_frame_2b37e23454.mesh" />
+  <Resource file="tune_dyno_bay_black_plastic_d51300780d.mesh" />
+  <Resource file="tune_dyno_bay_chrome_657645cfcc.mesh" />
+  <Resource file="tune_dyno_bay_diamond_6a605110fa.mesh" />
+  <Resource file="tune_dyno_bay_hazard_b0cbf83c44.mesh" />
+  <Resource file="tune_dyno_bay_leather_f3d8f7fdb3.mesh" />
+  <Resource file="tune_dyno_bay_led_blue_f3523ff164.mesh" />
+  <Resource file="tune_dyno_bay_machine_blue_d80f98cff4.mesh" />
+  <Resource file="tune_dyno_bay_machine_yellow_0af9588b5c.mesh" />
+  <Resource file="tune_dyno_bay_orange_8f369d18aa.mesh" />
+  <Resource file="tune_dyno_bay_rubber_3296ba8da8.mesh" />
+  <Resource file="tune_dyno_bay_screen_dyno_6dfb1166e4.mesh" />
+  <Resource file="tune_dyno_bay_steel_dark_9878829584.mesh" />
+  <Resource file="tune_dyno_bay_steel_grey_4be98f97b8.mesh" />
+  <Resource file="tune_dyno_bay_tread_66222ad474.mesh" />
+  <Resource file="tune_engine_alu.xml" />
+  <Resource file="tune_engine_black.xml" />
+  <Resource file="tune_epoxy.xml" />
+  <Resource file="tune_epoxy_dark.xml" />
+  <Resource file="tune_exit_green.xml" />
+  <Resource file="tune_exterior_aluminium_c9876ac409.mesh" />
+  <Resource file="tune_exterior_black_plastic_7df4187ee2.mesh" />
+  <Resource file="tune_exterior_chrome_b63a1bdc39.mesh" />
+  <Resource file="tune_exterior_concrete_dark_90b967545a.mesh" />
+  <Resource file="tune_exterior_fascia_f2d220f139.mesh" />
+  <Resource file="tune_exterior_flag_ff9cf4d9b1.mesh" />
+  <Resource file="tune_exterior_led_blue_d9e2179b5a.mesh" />
+  <Resource file="tune_exterior_led_green_05c883ec5d.mesh" />
+  <Resource file="tune_exterior_led_red_6ee78ef760.mesh" />
+  <Resource file="tune_exterior_led_warm_cd40c1c59b.mesh" />
+  <Resource file="tune_exterior_machine_blue_2ae0110c77.mesh" />
+  <Resource file="tune_exterior_machine_yellow_156ec2177a.mesh" />
+  <Resource file="tune_exterior_paint_white_dbf59ee5c7.mesh" />
+  <Resource file="tune_exterior_pallet_wood_f0a1f02f8b.mesh" />
+  <Resource file="tune_exterior_rubber_ebb60d31a0.mesh" />
+  <Resource file="tune_exterior_soil_3fac3362ed.mesh" />
+  <Resource file="tune_exterior_steel_dark_364edecee5.mesh" />
+  <Resource file="tune_exterior_steel_grey_196eaf49f1.mesh" />
+  <Resource file="tune_exterior_tread_610e90b2cd.mesh" />
+  <Resource file="tune_fabric.xml" />
+  <Resource file="tune_fascia.xml" />
+  <Resource file="tune_flag.xml" />
+  <Resource file="tune_foundation_black_frame_b6f7a54df8.mesh" />
+  <Resource file="tune_foundation_concrete_8d9dc9b9ab.mesh" />
+  <Resource file="tune_foundation_concrete_dark_5eacf05cfc.mesh" />
+  <Resource file="tune_foundation_epoxy_a14e6d745c.mesh" />
+  <Resource file="tune_foundation_epoxy_dark_22869e487d.mesh" />
+  <Resource file="tune_foundation_line_white_75da2c149a.mesh" />
+  <Resource file="tune_foundation_line_yellow_fa23912c26.mesh" />
+  <Resource file="tune_foundation_steel_dark_6bbf23cc41.mesh" />
+  <Resource file="tune_foundation_tile_9761353c7d.mesh" />
+  <Resource file="tune_glass.xml" />
+  <Resource file="tune_gravel.xml" />
+  <Resource file="tune_gravel_packed_slot0.tex_packed.texture" />
+  <Resource file="tune_grey_plastic.xml" />
+  <Resource file="tune_hazard.xml" />
+  <Resource file="tune_hero_bay_aluminium_b756e057d4.mesh" />
+  <Resource file="tune_hero_bay_black_frame_60fe8fa352.mesh" />
+  <Resource file="tune_hero_bay_black_plastic_c574f93697.mesh" />
+  <Resource file="tune_hero_bay_brand_red_d078cff201.mesh" />
+  <Resource file="tune_hero_bay_chrome_01ddd829ec.mesh" />
+  <Resource file="tune_hero_bay_diamond_4c031d5f88.mesh" />
+  <Resource file="tune_hero_bay_fabric_c89b7a4c48.mesh" />
+  <Resource file="tune_hero_bay_grey_plastic_57a748daf0.mesh" />
+  <Resource file="tune_hero_bay_led_blue_1bd57c686c.mesh" />
+  <Resource file="tune_hero_bay_machine_blue_0757d4c9a7.mesh" />
+  <Resource file="tune_hero_bay_machine_yellow_dfd22966d8.mesh" />
+  <Resource file="tune_hero_bay_pegboard_9c809839ee.mesh" />
+  <Resource file="tune_hero_bay_rubber_5e4a30f561.mesh" />
+  <Resource file="tune_hero_bay_screen_dyno_f65315d292.mesh" />
+  <Resource file="tune_hero_bay_steel_dark_7365ffddf1.mesh" />
+  <Resource file="tune_hero_bay_steel_grey_6badd697d2.mesh" />
+  <Resource file="tune_leaf.xml" />
+  <Resource file="tune_leather.xml" />
+  <Resource file="tune_led.xml" />
+  <Resource file="tune_led_blue.xml" />
+  <Resource file="tune_led_green.xml" />
+  <Resource file="tune_led_red.xml" />
+  <Resource file="tune_led_warm.xml" />
+  <Resource file="tune_lift_black_frame_a66c8d7a94.mesh" />
+  <Resource file="tune_lift_grey_plastic_fcb9d3fe1e.mesh" />
+  <Resource file="tune_lift_hazard_5e5c944b0d.mesh" />
+  <Resource file="tune_lift_led_green_783d8ae2cf.mesh" />
+  <Resource file="tune_lift_led_red_ddf4e7cafc.mesh" />
+  <Resource file="tune_lift_machine_blue_f26dbd20d4.mesh" />
+  <Resource file="tune_lift_machine_yellow_edf81866e5.mesh" />
+  <Resource file="tune_lift_rubber_a5d0cc15ed.mesh" />
+  <Resource file="tune_lift_steel_dark_adfed874c7.mesh" />
+  <Resource file="tune_lift_steel_grey_ecaacedd95.mesh" />
+  <Resource file="tune_line_white.xml" />
+  <Resource file="tune_line_yellow.xml" />
+  <Resource file="tune_machine_blue.xml" />
+  <Resource file="tune_machine_yellow.xml" />
+  <Resource file="tune_orange.xml" />
+  <Resource file="tune_paint_white.xml" />
+  <Resource file="tune_pallet_wood.xml" />
+  <Resource file="tune_panel_white.xml" />
+  <Resource file="tune_paper.xml" />
+  <Resource file="tune_parts_aluminium_a24e8496a0.mesh" />
+  <Resource file="tune_parts_black_frame_b55f833af2.mesh" />
+  <Resource file="tune_parts_black_plastic_f53c6ae72b.mesh" />
+  <Resource file="tune_parts_brand_red_272a6505aa.mesh" />
+  <Resource file="tune_parts_cardboard_2313b27c3d.mesh" />
+  <Resource file="tune_parts_chrome_e10edf603d.mesh" />
+  <Resource file="tune_parts_engine_alu_f31b9489fb.mesh" />
+  <Resource file="tune_parts_engine_black_4ca78a9a84.mesh" />
+  <Resource file="tune_parts_fascia_3d0c15c6ef.mesh" />
+  <Resource file="tune_parts_grey_plastic_168240c819.mesh" />
+  <Resource file="tune_parts_led_blue_81c0b617f8.mesh" />
+  <Resource file="tune_parts_machine_blue_22da0508fd.mesh" />
+  <Resource file="tune_parts_orange_f4080e26a4.mesh" />
+  <Resource file="tune_parts_paper_6ff521e4f8.mesh" />
+  <Resource file="tune_parts_rim_black_80d8d998b5.mesh" />
+  <Resource file="tune_parts_rim_bronze_93e6296ffa.mesh" />
+  <Resource file="tune_parts_rim_gold_af784814ef.mesh" />
+  <Resource file="tune_parts_rim_gunmetal_fedb168d3c.mesh" />
+  <Resource file="tune_parts_rim_silver_1cbc896768.mesh" />
+  <Resource file="tune_parts_rubber_bb7f7a8935.mesh" />
+  <Resource file="tune_parts_screen_dyno_6ee98f2f33.mesh" />
+  <Resource file="tune_parts_steel_dark_ad3078282f.mesh" />
+  <Resource file="tune_parts_steel_grey_ec45d76703.mesh" />
+  <Resource file="tune_parts_titanium_fbdfafb3d2.mesh" />
+  <Resource file="tune_parts_tread_03d6ec66af.mesh" />
+  <Resource file="tune_pegboard.xml" />
+  <Resource file="tune_poster_0.xml" />
+  <Resource file="tune_poster_1.xml" />
+  <Resource file="tune_poster_2.xml" />
+  <Resource file="tune_quartz.xml" />
+  <Resource file="tune_reception_aluminium_ecc3ef481a.mesh" />
+  <Resource file="tune_reception_black_frame_d905262241.mesh" />
+  <Resource file="tune_reception_black_plastic_6fc541f8c8.mesh" />
+  <Resource file="tune_reception_brand_red_7d12efa701.mesh" />
+  <Resource file="tune_reception_carbon_8190c05250.mesh" />
+  <Resource file="tune_reception_ceiling_dark_f08fbdbf3f.mesh" />
+  <Resource file="tune_reception_chrome_1de093fe90.mesh" />
+  <Resource file="tune_reception_engine_alu_3a55db51d7.mesh" />
+  <Resource file="tune_reception_engine_black_fe53a18b7f.mesh" />
+  <Resource file="tune_reception_fabric_bf50f0eb8b.mesh" />
+  <Resource file="tune_reception_fascia_1703bb05de.mesh" />
+  <Resource file="tune_reception_glass_ad459c6c3e.mesh" />
+  <Resource file="tune_reception_leaf_d5e29f75d1.mesh" />
+  <Resource file="tune_reception_leather_ceb3f1536b.mesh" />
+  <Resource file="tune_reception_led_blue_10c9e221b7.mesh" />
+  <Resource file="tune_reception_led_e604b8fc20.mesh" />
+  <Resource file="tune_reception_led_warm_e6db7fb2a8.mesh" />
+  <Resource file="tune_reception_machine_blue_9501cc88a8.mesh" />
+  <Resource file="tune_reception_machine_yellow_70f8f1c99b.mesh" />
+  <Resource file="tune_reception_panel_white_f427669591.mesh" />
+  <Resource file="tune_reception_paper_f6ee456d33.mesh" />
+  <Resource file="tune_reception_poster_0_70db8c0d89.mesh" />
+  <Resource file="tune_reception_poster_1_34dd55b6f4.mesh" />
+  <Resource file="tune_reception_poster_2_d6f1b5bfd4.mesh" />
+  <Resource file="tune_reception_quartz_330a559443.mesh" />
+  <Resource file="tune_reception_rim_black_06584e4645.mesh" />
+  <Resource file="tune_reception_rim_bronze_da9fdb9efe.mesh" />
+  <Resource file="tune_reception_rim_gold_0fad132404.mesh" />
+  <Resource file="tune_reception_rubber_987be07560.mesh" />
+  <Resource file="tune_reception_screen_logo_239cef0389.mesh" />
+  <Resource file="tune_reception_soil_c1699083ff.mesh" />
+  <Resource file="tune_reception_steel_dark_208ee011c3.mesh" />
+  <Resource file="tune_reception_tread_3bfc5194cf.mesh" />
+  <Resource file="tune_reception_wood_eeeb6fe05b.mesh" />
+  <Resource file="tune_rim_black.xml" />
+  <Resource file="tune_rim_bronze.xml" />
+  <Resource file="tune_rim_gold.xml" />
+  <Resource file="tune_rim_gunmetal.xml" />
+  <Resource file="tune_rim_silver.xml" />
+  <Resource file="tune_roof.xml" />
+  <Resource file="tune_rubber.xml" />
+  <Resource file="tune_screen_dyno.xml" />
+  <Resource file="tune_screen_logo.xml" />
+  <Resource file="tune_shell_aluminium_47f8d0f410.mesh" />
+  <Resource file="tune_shell_black_frame_b05bac04fe.mesh" />
+  <Resource file="tune_shell_black_plastic_2ca199b01d.mesh" />
+  <Resource file="tune_shell_block_718db26487.mesh" />
+  <Resource file="tune_shell_chrome_140421b44e.mesh" />
+  <Resource file="tune_shell_cladding_478cc6e625.mesh" />
+  <Resource file="tune_shell_concrete_dark_7ac5b92bc7.mesh" />
+  <Resource file="tune_shell_deck_fd3ce4020d.mesh" />
+  <Resource file="tune_shell_fascia_95a74a865d.mesh" />
+  <Resource file="tune_shell_glass_b894bcab04.mesh" />
+  <Resource file="tune_shell_led_blue_e8d9eea9f8.mesh" />
+  <Resource file="tune_shell_panel_white_f30072bf37.mesh" />
+  <Resource file="tune_shell_roof_cb616782ef.mesh" />
+  <Resource file="tune_shell_skylight_8ddb318334.mesh" />
+  <Resource file="tune_shell_steel_grey_ce96750b7c.mesh" />
+  <Resource file="tune_sign_bay_01_653ec48ee1.mesh" />
+  <Resource file="tune_sign_bay_02____dyno_524afacbff.mesh" />
+  <Resource file="tune_sign_dyno_001_62ff4064f5.mesh" />
+  <Resource file="tune_sign_dyno_35d8172573.mesh" />
+  <Resource file="tune_sign_dyno____parts_001_b2ce60868e.mesh" />
+  <Resource file="tune_sign_dyno____parts_517f24d890.mesh" />
+  <Resource file="tune_sign_parts_5d788754a1.mesh" />
+  <Resource file="tune_sign_performance____dyno____parts____service_____69628f47da.mesh" />
+  <Resource file="tune_sign_performance____dyno____parts____service_a9a1cf5059.mesh" />
+  <Resource file="tune_sign_rolling_road____4wd____1500_hp_050bc3f236.mesh" />
+  <Resource file="tune_sign_service_001_ed95331d7e.mesh" />
+  <Resource file="tune_sign_service_bc6d5dbce4.mesh" />
+  <Resource file="tune_sign_tune_shop_e3c61a2859.mesh" />
+  <Resource file="tune_sign_tuning_001_1d10e2b9d9.mesh" />
+  <Resource file="tune_sign_tuning_17d3baeee4.mesh" />
+  <Resource file="tune_sign_zante_001_0acf03fdfb.mesh" />
+  <Resource file="tune_sign_zante_744e7a3ae7.mesh" />
+  <Resource file="tune_sign_zante_tuning_001_d5b7bd84e9.mesh" />
+  <Resource file="tune_sign_zante_tuning_002_875ce543c1.mesh" />
+  <Resource file="tune_sign_zante_tuning_4c5a9cca2c.mesh" />
+  <Resource file="tune_signage_black_frame_b9b5bed07a.mesh" />
+  <Resource file="tune_signage_exit_green_ae1f67d308.mesh" />
+  <Resource file="tune_signage_fascia_748ce9d9d5.mesh" />
+  <Resource file="tune_signage_led_blue_2e84d6cc29.mesh" />
+  <Resource file="tune_signage_poster_0_0642034f2f.mesh" />
+  <Resource file="tune_signage_poster_1_1aacc00a62.mesh" />
+  <Resource file="tune_signage_poster_2_0448d9dd10.mesh" />
+  <Resource file="tune_site_asphalt_de4c478f1d.mesh" />
+  <Resource file="tune_site_concrete_d658f95169.mesh" />
+  <Resource file="tune_site_concrete_dark_874ec8775a.mesh" />
+  <Resource file="tune_site_gravel_c0f2d2d97f.mesh" />
+  <Resource file="tune_site_line_white_f3db815cd5.mesh" />
+  <Resource file="tune_site_machine_yellow_7623926331.mesh" />
+  <Resource file="tune_skylight.xml" />
+  <Resource file="tune_soil.xml" />
+  <Resource file="tune_steel_dark.xml" />
+  <Resource file="tune_steel_grey.xml" />
+  <Resource file="tune_structure_steel_dark_9c68d296f5.mesh" />
+  <Resource file="tune_structure_steel_grey_b664bbd41c.mesh" />
+  <Resource file="tune_tile.xml" />
+  <Resource file="tune_tile_packed_slot0.tex_packed.texture" />
+  <Resource file="tune_titanium.xml" />
+  <Resource file="tune_tread.xml" />
+  <Resource file="tune_wire.xml" />
+  <Resource file="tune_wood.xml" />
   <Resource file="ufo_black_plastic.xml" />
   <Resource file="ufo_black_plastic_packed_slot0.tex_packed.texture" />
   <Resource file="ufo_chrome.xml" />
@@ -2101,7 +2383,8 @@
       <platform entity_id="9046000000000000391" min_x="-10428.5615" min_z="904.832275" max_x="-10413.7256" max_z="919.66864" center_x="-10421.1436" center_z="912.250488" half_x="5.5" half_z="5.5" yaw="-3.62155819" height="334.359985" margin="16.7500305" anchor_x="-10435.2002" anchor_y="338.600006" anchor_z="1065" anchor_qx="0" anchor_qy="0.237685978" anchor_qz="0" anchor_qw="0.971342087" />
       <platform entity_id="9057000000000000013" min_x="6192.6543" min_z="-2878.09546" max_x="6230.20898" max_z="-2835.29517" center_x="6211.43164" center_z="-2856.69531" half_x="18.500061" half_z="15" yaw="1.34390247" height="12.2399988" margin="12.089365" anchor_x="6213.38037" anchor_y="12.7999992" anchor_z="-2857.14502" anchor_qx="0" anchor_qy="-0.622514188" anchor_qz="0" anchor_qw="0.782608509" />
       <platform entity_id="9057000000000000014" min_x="6204.23486" min_z="-2871.68677" max_x="6225.07373" max_z="-2849.34937" center_x="6214.6543" center_z="-2860.51807" half_x="9.5" half_z="8.5" yaw="1.34390247" height="12.7349997" margin="9.70092583" anchor_x="6213.38037" anchor_y="12.7999992" anchor_z="-2857.14502" anchor_qx="0" anchor_qy="-0.622514188" anchor_qz="0" anchor_qw="0.782608509" />
-      <platform entity_id="14989306761396921065" min_x="6141.47949" min_z="-2922.43652" max_x="6221.24707" max_z="-2877.91504" center_x="6181.36328" center_z="-2900.17578" half_x="38.986084" half_z="9.49957275" yaw="-0.34906584" height="11.1900005" margin="4.49838877" anchor_x="6204.37305" anchor_y="11.8500004" anchor_z="-2908.55054" anchor_qx="0" anchor_qy="0.173648164" anchor_qz="0" anchor_qw="0.984807789" />
+      <platform entity_id="14989306761396921065" min_x="6141.47949" min_z="-2922.43652" max_x="6221.24707" max_z="-2877.91504" center_x="6181.36328" center_z="-2900.17578" half_x="38.986084" half_z="9.49957275" yaw="-0.34906584" height="11.1900005" margin="18.2687149" anchor_x="6204.37305" anchor_y="11.8500004" anchor_z="-2908.55054" anchor_qx="0" anchor_qy="0.173648164" anchor_qz="0" anchor_qw="0.984807789" />
+      <platform entity_id="9061000000000000003" min_x="6176.094402976045" max_x="6209.382285529498" min_z="-2961.6970376667105" max_z="-2926.056792344755" center_x="6192.738344252772" center_z="-2943.876915005733" half_x="15.6" half_z="14.15" yaw="1.3962634015954636" height="11.600000000000001" margin="3" />
      </platforms>
     </terrain>
    </Entity>
@@ -75446,7 +75729,7 @@
     </Entity>
    </Entity>
    <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="1847.36 795.925 -28332.9" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-    <script file_path="../data/scripts/ufo_hover.lua" elapsed_time="0" minimum_distance="1100" Start="" watched_distance="2800" watch_time="0" altitude_clearance="350" follow_altitude="650" hover_height="2" zap_duration="0" Initialize="" side="1" Tick="" follow_distance="1700" rotation_speed="0" hover_speed="0" />
+    <script file_path="../data/scripts/ufo_hover.lua" Initialize="" watch_time="0" elapsed_time="0" side="1" follow_altitude="650" Start="" Tick="" rotation_speed="0" hover_speed="0" hover_height="2" follow_distance="1700" zap_duration="0" altitude_clearance="350" watched_distance="2800" minimum_distance="1100" />
     <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
      <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/plan_resources/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/plan_resources/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -75795,6 +76078,820 @@
    <Entity name="car_wash_pylon_text_e" id="5645861310486807232" active="true" position="-11.25 5.35 5.6" rotation="0 -0.707107 0 0.707107" scale="1 1 1">
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="car_wash_paint" material_path="project/mcp/blockout/materials/car_wash_paint.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="CAR WASH" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.460000008" depth="0.0399999991" weight="0.0149999997" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+  </Entity>
+  <Entity name="tune_shop_hub" id="9061000000000000001" active="true" position="6196.58 12.3 -2943.13" rotation="0 -0.642788 0 0.766044" scale="1 1 1" tags="location_tune_shop,landmark,tune_shop,car_service">
+   <Entity name="Site" id="9061000000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_sign_tune_shop_e3c61a2859" id="9061000000000000003" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_tune_shop_e3c61a2859" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_tune_shop_e3c61a2859.mesh" sub_mesh_index="0" material_name="tune_line_white" material_path="project/plan_resources/tune_shop/materials/tune_line_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_dyno_35d8172573" id="9061000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_dyno_35d8172573" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_dyno_35d8172573.mesh" sub_mesh_index="0" material_name="tune_line_white" material_path="project/plan_resources/tune_shop/materials/tune_line_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_site_concrete_d658f95169" id="9061000000000000036" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_site_concrete_d658f95169" mesh_path="project/plan_resources/tune_shop/meshes/tune_site_concrete_d658f95169.mesh" sub_mesh_index="0" material_name="tune_concrete" material_path="project/plan_resources/tune_shop/materials/tune_concrete.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_site_asphalt_8a099cf49d" id="9061000000000000037" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_site_asphalt_8a099cf49d" mesh_path="project/plan_resources/tune_shop/meshes/tune_site_asphalt_8a099cf49d.mesh" sub_mesh_index="0" material_name="tune_asphalt" material_path="project/plan_resources/tune_shop/materials/tune_asphalt.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_site_gravel_c0f2d2d97f" id="9061000000000000038" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_site_gravel_c0f2d2d97f" mesh_path="project/plan_resources/tune_shop/meshes/tune_site_gravel_c0f2d2d97f.mesh" sub_mesh_index="0" material_name="tune_gravel" material_path="project/plan_resources/tune_shop/materials/tune_gravel.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_site_line_white_f3db815cd5" id="9061000000000000039" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_site_line_white_f3db815cd5" mesh_path="project/plan_resources/tune_shop/meshes/tune_site_line_white_f3db815cd5.mesh" sub_mesh_index="0" material_name="tune_line_white" material_path="project/plan_resources/tune_shop/materials/tune_line_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_site_machine_yellow_7623926331" id="9061000000000000040" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_site_machine_yellow_7623926331" mesh_path="project/plan_resources/tune_shop/meshes/tune_site_machine_yellow_7623926331.mesh" sub_mesh_index="0" material_name="tune_machine_yellow" material_path="project/plan_resources/tune_shop/materials/tune_machine_yellow.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Signage" id="9061000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_sign_zante_tuning_70bb7d7e9e" id="9061000000000000006" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_zante_tuning_70bb7d7e9e" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_zante_tuning_70bb7d7e9e.mesh" sub_mesh_index="0" material_name="tune_led" material_path="project/plan_resources/tune_shop/materials/tune_led.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_bay_01_9763782fca" id="9061000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_bay_01_9763782fca" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_bay_01_9763782fca.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_bay_02____dyno_6bddbe02aa" id="9061000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_bay_02____dyno_6bddbe02aa" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_bay_02____dyno_6bddbe02aa.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_performance____dyno____parts____service_7bab477e3e" id="9061000000000000009" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_performance____dyno____parts____service_7bab477e3e" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_performance____dyno____parts____service_7bab477e3e.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_zante_tuning_001_d5b7bd84e9" id="9061000000000000010" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_zante_tuning_001_d5b7bd84e9" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_zante_tuning_001_d5b7bd84e9.mesh" sub_mesh_index="0" material_name="tune_led" material_path="project/plan_resources/tune_shop/materials/tune_led.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_performance____dyno____parts____service_____69628f47da" id="9061000000000000011" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_performance____dyno____parts____service_____69628f47da" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_performance____dyno____parts____service_____69628f47da.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_dyno_001_62ff4064f5" id="9061000000000000012" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_dyno_001_62ff4064f5" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_dyno_001_62ff4064f5.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_rolling_road____4wd____1500_hp_79ad52c47a" id="9061000000000000013" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_rolling_road____4wd____1500_hp_79ad52c47a" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_rolling_road____4wd____1500_hp_79ad52c47a.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_parts_5d788754a1" id="9061000000000000014" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_parts_5d788754a1" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_parts_5d788754a1.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_led_blue_d631d2c284" id="9061000000000000057" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_led_blue_d631d2c284" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_led_blue_d631d2c284.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_fascia_748ce9d9d5" id="9061000000000000058" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_fascia_748ce9d9d5" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_fascia_748ce9d9d5.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_exit_green_ae1f67d308" id="9061000000000000059" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_exit_green_ae1f67d308" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_exit_green_ae1f67d308.mesh" sub_mesh_index="0" material_name="tune_exit_green" material_path="project/plan_resources/tune_shop/materials/tune_exit_green.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_poster_0_0642034f2f" id="9061000000000000060" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_poster_0_0642034f2f" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_poster_0_0642034f2f.mesh" sub_mesh_index="0" material_name="tune_poster_0" material_path="project/plan_resources/tune_shop/materials/tune_poster_0.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_black_frame_b9b5bed07a" id="9061000000000000061" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_black_frame_b9b5bed07a" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_black_frame_b9b5bed07a.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_poster_1_1aacc00a62" id="9061000000000000062" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_poster_1_1aacc00a62" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_poster_1_1aacc00a62.mesh" sub_mesh_index="0" material_name="tune_poster_1" material_path="project/plan_resources/tune_shop/materials/tune_poster_1.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_signage_poster_2_0448d9dd10" id="9061000000000000063" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_signage_poster_2_0448d9dd10" mesh_path="project/plan_resources/tune_shop/meshes/tune_signage_poster_2_0448d9dd10.mesh" sub_mesh_index="0" material_name="tune_poster_2" material_path="project/plan_resources/tune_shop/materials/tune_poster_2.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+   </Entity>
+   <Entity name="Reception" id="9061000000000000015" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_sign_zante_tuning_002_875ce543c1" id="9061000000000000016" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_zante_tuning_002_875ce543c1" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_zante_tuning_002_875ce543c1.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_glass_ad459c6c3e" id="9061000000000000146" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_glass_ad459c6c3e" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_glass_ad459c6c3e.mesh" sub_mesh_index="0" material_name="tune_glass" material_path="project/plan_resources/tune_shop/materials/tune_glass.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_black_frame_d905262241" id="9061000000000000147" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_black_frame_d905262241" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_black_frame_d905262241.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_chrome_1de093fe90" id="9061000000000000148" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_chrome_1de093fe90" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_chrome_1de093fe90.mesh" sub_mesh_index="0" material_name="tune_chrome" material_path="project/plan_resources/tune_shop/materials/tune_chrome.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_ceiling_dark_f08fbdbf3f" id="9061000000000000149" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_ceiling_dark_f08fbdbf3f" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_ceiling_dark_f08fbdbf3f.mesh" sub_mesh_index="0" material_name="tune_ceiling_dark" material_path="project/plan_resources/tune_shop/materials/tune_ceiling_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_panel_white_f427669591" id="9061000000000000150" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_panel_white_f427669591" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_panel_white_f427669591.mesh" sub_mesh_index="0" material_name="tune_panel_white" material_path="project/plan_resources/tune_shop/materials/tune_panel_white.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_led_warm_e6db7fb2a8" id="9061000000000000151" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_led_warm_e6db7fb2a8" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_led_warm_e6db7fb2a8.mesh" sub_mesh_index="0" material_name="tune_led_warm" material_path="project/plan_resources/tune_shop/materials/tune_led_warm.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_led_e604b8fc20" id="9061000000000000152" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_led_e604b8fc20" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_led_e604b8fc20.mesh" sub_mesh_index="0" material_name="tune_led" material_path="project/plan_resources/tune_shop/materials/tune_led.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_wood_eeeb6fe05b" id="9061000000000000153" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_wood_eeeb6fe05b" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_wood_eeeb6fe05b.mesh" sub_mesh_index="0" material_name="tune_wood" material_path="project/plan_resources/tune_shop/materials/tune_wood.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_black_plastic_3ad71ca206" id="9061000000000000154" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_black_plastic_3ad71ca206" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_black_plastic_3ad71ca206.mesh" sub_mesh_index="0" material_name="tune_black_plastic" material_path="project/plan_resources/tune_shop/materials/tune_black_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_screen_logo_239cef0389" id="9061000000000000155" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_screen_logo_239cef0389" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_screen_logo_239cef0389.mesh" sub_mesh_index="0" material_name="tune_screen_logo" material_path="project/plan_resources/tune_shop/materials/tune_screen_logo.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_led_blue_10c9e221b7" id="9061000000000000156" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_led_blue_10c9e221b7" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_led_blue_10c9e221b7.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_leather_ceb3f1536b" id="9061000000000000157" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_leather_ceb3f1536b" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_leather_ceb3f1536b.mesh" sub_mesh_index="0" material_name="tune_leather" material_path="project/plan_resources/tune_shop/materials/tune_leather.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_fabric_bf50f0eb8b" id="9061000000000000158" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_fabric_bf50f0eb8b" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_fabric_bf50f0eb8b.mesh" sub_mesh_index="0" material_name="tune_fabric" material_path="project/plan_resources/tune_shop/materials/tune_fabric.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_carbon_8190c05250" id="9061000000000000159" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_carbon_8190c05250" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_carbon_8190c05250.mesh" sub_mesh_index="0" material_name="tune_carbon" material_path="project/plan_resources/tune_shop/materials/tune_carbon.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_poster_0_70db8c0d89" id="9061000000000000160" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_poster_0_70db8c0d89" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_poster_0_70db8c0d89.mesh" sub_mesh_index="0" material_name="tune_poster_0" material_path="project/plan_resources/tune_shop/materials/tune_poster_0.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_poster_1_34dd55b6f4" id="9061000000000000161" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_poster_1_34dd55b6f4" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_poster_1_34dd55b6f4.mesh" sub_mesh_index="0" material_name="tune_poster_1" material_path="project/plan_resources/tune_shop/materials/tune_poster_1.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_poster_2_d6f1b5bfd4" id="9061000000000000162" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_poster_2_d6f1b5bfd4" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_poster_2_d6f1b5bfd4.mesh" sub_mesh_index="0" material_name="tune_poster_2" material_path="project/plan_resources/tune_shop/materials/tune_poster_2.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_fascia_1703bb05de" id="9061000000000000163" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_fascia_1703bb05de" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_fascia_1703bb05de.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_quartz_330a559443" id="9061000000000000164" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_quartz_330a559443" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_quartz_330a559443.mesh" sub_mesh_index="0" material_name="tune_quartz" material_path="project/plan_resources/tune_shop/materials/tune_quartz.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_paper_f6ee456d33" id="9061000000000000165" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_paper_f6ee456d33" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_paper_f6ee456d33.mesh" sub_mesh_index="0" material_name="tune_paper" material_path="project/plan_resources/tune_shop/materials/tune_paper.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_rubber_987be07560" id="9061000000000000166" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_rubber_987be07560" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_rubber_987be07560.mesh" sub_mesh_index="0" material_name="tune_rubber" material_path="project/plan_resources/tune_shop/materials/tune_rubber.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_tread_3bfc5194cf" id="9061000000000000167" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_tread_3bfc5194cf" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_tread_3bfc5194cf.mesh" sub_mesh_index="0" material_name="tune_tread" material_path="project/plan_resources/tune_shop/materials/tune_tread.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_rim_bronze_da9fdb9efe" id="9061000000000000168" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_rim_bronze_da9fdb9efe" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_rim_bronze_da9fdb9efe.mesh" sub_mesh_index="0" material_name="tune_rim_bronze" material_path="project/plan_resources/tune_shop/materials/tune_rim_bronze.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_rim_black_06584e4645" id="9061000000000000169" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_rim_black_06584e4645" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_rim_black_06584e4645.mesh" sub_mesh_index="0" material_name="tune_rim_black" material_path="project/plan_resources/tune_shop/materials/tune_rim_black.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_steel_dark_208ee011c3" id="9061000000000000170" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_steel_dark_208ee011c3" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_steel_dark_208ee011c3.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_engine_black_fe53a18b7f" id="9061000000000000171" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_engine_black_fe53a18b7f" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_engine_black_fe53a18b7f.mesh" sub_mesh_index="0" material_name="tune_engine_black" material_path="project/plan_resources/tune_shop/materials/tune_engine_black.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_engine_alu_b84fe881a9" id="9061000000000000172" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_engine_alu_b84fe881a9" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_engine_alu_b84fe881a9.mesh" sub_mesh_index="0" material_name="tune_engine_alu" material_path="project/plan_resources/tune_shop/materials/tune_engine_alu.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_aluminium_ecc3ef481a" id="9061000000000000173" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_aluminium_ecc3ef481a" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_aluminium_ecc3ef481a.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_brand_red_7d12efa701" id="9061000000000000174" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_brand_red_7d12efa701" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_brand_red_7d12efa701.mesh" sub_mesh_index="0" material_name="tune_brand_red" material_path="project/plan_resources/tune_shop/materials/tune_brand_red.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_machine_blue_9501cc88a8" id="9061000000000000175" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_machine_blue_9501cc88a8" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_machine_blue_9501cc88a8.mesh" sub_mesh_index="0" material_name="tune_machine_blue" material_path="project/plan_resources/tune_shop/materials/tune_machine_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_machine_yellow_70f8f1c99b" id="9061000000000000176" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_machine_yellow_70f8f1c99b" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_machine_yellow_70f8f1c99b.mesh" sub_mesh_index="0" material_name="tune_machine_yellow" material_path="project/plan_resources/tune_shop/materials/tune_machine_yellow.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_rim_gold_0fad132404" id="9061000000000000177" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_rim_gold_0fad132404" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_rim_gold_0fad132404.mesh" sub_mesh_index="0" material_name="tune_rim_gold" material_path="project/plan_resources/tune_shop/materials/tune_rim_gold.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_reception_soil_c1699083ff" id="9061000000000000178" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_soil_c1699083ff" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_soil_c1699083ff.mesh" sub_mesh_index="0" material_name="tune_soil" material_path="project/plan_resources/tune_shop/materials/tune_soil.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_reception_leaf_d5e29f75d1" id="9061000000000000179" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_reception_leaf_d5e29f75d1" mesh_path="project/plan_resources/tune_shop/meshes/tune_reception_leaf_d5e29f75d1.mesh" sub_mesh_index="0" material_name="tune_leaf" material_path="project/plan_resources/tune_shop/materials/tune_leaf.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+   </Entity>
+   <Entity name="Exterior" id="9061000000000000017" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_sign_zante_744e7a3ae7" id="9061000000000000018" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_zante_744e7a3ae7" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_zante_744e7a3ae7.mesh" sub_mesh_index="0" material_name="tune_led" material_path="project/plan_resources/tune_shop/materials/tune_led.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_tuning_17d3baeee4" id="9061000000000000019" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_tuning_17d3baeee4" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_tuning_17d3baeee4.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_dyno____parts_517f24d890" id="9061000000000000020" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_dyno____parts_517f24d890" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_dyno____parts_517f24d890.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_service_bc6d5dbce4" id="9061000000000000021" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_service_bc6d5dbce4" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_service_bc6d5dbce4.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_zante_001_0acf03fdfb" id="9061000000000000022" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_zante_001_0acf03fdfb" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_zante_001_0acf03fdfb.mesh" sub_mesh_index="0" material_name="tune_led" material_path="project/plan_resources/tune_shop/materials/tune_led.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_tuning_001_1d10e2b9d9" id="9061000000000000023" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_tuning_001_1d10e2b9d9" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_tuning_001_1d10e2b9d9.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_dyno____parts_001_b2ce60868e" id="9061000000000000024" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_dyno____parts_001_b2ce60868e" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_dyno____parts_001_b2ce60868e.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_sign_service_001_ed95331d7e" id="9061000000000000025" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_sign_service_001_ed95331d7e" mesh_path="project/plan_resources/tune_shop/meshes/tune_sign_service_001_ed95331d7e.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_concrete_dark_90b967545a" id="9061000000000000180" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_concrete_dark_90b967545a" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_concrete_dark_90b967545a.mesh" sub_mesh_index="0" material_name="tune_concrete_dark" material_path="project/plan_resources/tune_shop/materials/tune_concrete_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_fascia_f2d220f139" id="9061000000000000181" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_fascia_f2d220f139" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_fascia_f2d220f139.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_aluminium_c9876ac409" id="9061000000000000182" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_aluminium_c9876ac409" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_aluminium_c9876ac409.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_led_blue_d9e2179b5a" id="9061000000000000183" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_led_blue_d9e2179b5a" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_led_blue_d9e2179b5a.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_chrome_b63a1bdc39" id="9061000000000000184" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_chrome_b63a1bdc39" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_chrome_b63a1bdc39.mesh" sub_mesh_index="0" material_name="tune_chrome" material_path="project/plan_resources/tune_shop/materials/tune_chrome.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_led_warm_cd40c1c59b" id="9061000000000000185" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_led_warm_cd40c1c59b" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_led_warm_cd40c1c59b.mesh" sub_mesh_index="0" material_name="tune_led_warm" material_path="project/plan_resources/tune_shop/materials/tune_led_warm.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_steel_dark_430ba029f2" id="9061000000000000186" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_steel_dark_430ba029f2" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_steel_dark_430ba029f2.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_black_plastic_7df4187ee2" id="9061000000000000187" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_black_plastic_7df4187ee2" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_black_plastic_7df4187ee2.mesh" sub_mesh_index="0" material_name="tune_black_plastic" material_path="project/plan_resources/tune_shop/materials/tune_black_plastic.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_led_green_05c883ec5d" id="9061000000000000188" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_led_green_05c883ec5d" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_led_green_05c883ec5d.mesh" sub_mesh_index="0" material_name="tune_led_green" material_path="project/plan_resources/tune_shop/materials/tune_led_green.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_led_red_6ee78ef760" id="9061000000000000189" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_led_red_6ee78ef760" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_led_red_6ee78ef760.mesh" sub_mesh_index="0" material_name="tune_led_red" material_path="project/plan_resources/tune_shop/materials/tune_led_red.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_soil_3fac3362ed" id="9061000000000000190" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_soil_3fac3362ed" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_soil_3fac3362ed.mesh" sub_mesh_index="0" material_name="tune_soil" material_path="project/plan_resources/tune_shop/materials/tune_soil.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_flag_ff9cf4d9b1" id="9061000000000000191" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_flag_ff9cf4d9b1" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_flag_ff9cf4d9b1.mesh" sub_mesh_index="0" material_name="tune_flag" material_path="project/plan_resources/tune_shop/materials/tune_flag.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_exterior_paint_white_dbf59ee5c7" id="9061000000000000192" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_paint_white_dbf59ee5c7" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_paint_white_dbf59ee5c7.mesh" sub_mesh_index="0" material_name="tune_paint_white" material_path="project/plan_resources/tune_shop/materials/tune_paint_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_steel_grey_196eaf49f1" id="9061000000000000193" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_steel_grey_196eaf49f1" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_steel_grey_196eaf49f1.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_machine_yellow_156ec2177a" id="9061000000000000194" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_machine_yellow_156ec2177a" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_machine_yellow_156ec2177a.mesh" sub_mesh_index="0" material_name="tune_machine_yellow" material_path="project/plan_resources/tune_shop/materials/tune_machine_yellow.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_machine_blue_2ae0110c77" id="9061000000000000195" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_machine_blue_2ae0110c77" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_machine_blue_2ae0110c77.mesh" sub_mesh_index="0" material_name="tune_machine_blue" material_path="project/plan_resources/tune_shop/materials/tune_machine_blue.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_rubber_ebb60d31a0" id="9061000000000000196" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_rubber_ebb60d31a0" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_rubber_ebb60d31a0.mesh" sub_mesh_index="0" material_name="tune_rubber" material_path="project/plan_resources/tune_shop/materials/tune_rubber.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_tread_610e90b2cd" id="9061000000000000197" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_tread_610e90b2cd" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_tread_610e90b2cd.mesh" sub_mesh_index="0" material_name="tune_tread" material_path="project/plan_resources/tune_shop/materials/tune_tread.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_exterior_pallet_wood_f0a1f02f8b" id="9061000000000000198" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_exterior_pallet_wood_f0a1f02f8b" mesh_path="project/plan_resources/tune_shop/meshes/tune_exterior_pallet_wood_f0a1f02f8b.mesh" sub_mesh_index="0" material_name="tune_pallet_wood" material_path="project/plan_resources/tune_shop/materials/tune_pallet_wood.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Foundation" id="9061000000000000026" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_foundation_concrete_8d9dc9b9ab" id="9061000000000000027" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_concrete_8d9dc9b9ab" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_concrete_8d9dc9b9ab.mesh" sub_mesh_index="0" material_name="tune_concrete" material_path="project/plan_resources/tune_shop/materials/tune_concrete.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_foundation_epoxy_a14e6d745c" id="9061000000000000028" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_epoxy_a14e6d745c" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_epoxy_a14e6d745c.mesh" sub_mesh_index="0" material_name="tune_epoxy" material_path="project/plan_resources/tune_shop/materials/tune_epoxy.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_foundation_concrete_polished_920b2d8b47" id="9061000000000000029" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_concrete_polished_920b2d8b47" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_concrete_polished_920b2d8b47.mesh" sub_mesh_index="0" material_name="tune_concrete_polished" material_path="project/plan_resources/tune_shop/materials/tune_concrete_polished.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_foundation_epoxy_dark_22869e487d" id="9061000000000000030" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_epoxy_dark_22869e487d" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_epoxy_dark_22869e487d.mesh" sub_mesh_index="0" material_name="tune_epoxy_dark" material_path="project/plan_resources/tune_shop/materials/tune_epoxy_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_foundation_steel_dark_6bbf23cc41" id="9061000000000000031" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_steel_dark_6bbf23cc41" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_steel_dark_6bbf23cc41.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_foundation_concrete_dark_5eacf05cfc" id="9061000000000000032" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_concrete_dark_5eacf05cfc" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_concrete_dark_5eacf05cfc.mesh" sub_mesh_index="0" material_name="tune_concrete_dark" material_path="project/plan_resources/tune_shop/materials/tune_concrete_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_foundation_line_yellow_fa23912c26" id="9061000000000000033" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_line_yellow_fa23912c26" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_line_yellow_fa23912c26.mesh" sub_mesh_index="0" material_name="tune_line_yellow" material_path="project/plan_resources/tune_shop/materials/tune_line_yellow.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_foundation_line_white_75da2c149a" id="9061000000000000034" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_line_white_75da2c149a" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_line_white_75da2c149a.mesh" sub_mesh_index="0" material_name="tune_line_white" material_path="project/plan_resources/tune_shop/materials/tune_line_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_foundation_black_frame_b6f7a54df8" id="9061000000000000035" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_foundation_black_frame_b6f7a54df8" mesh_path="project/plan_resources/tune_shop/meshes/tune_foundation_black_frame_b6f7a54df8.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Shell" id="9061000000000000041" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_shell_cladding_51addf36c1" id="9061000000000000042" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_cladding_51addf36c1" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_cladding_51addf36c1.mesh" sub_mesh_index="0" material_name="tune_cladding" material_path="project/plan_resources/tune_shop/materials/tune_cladding.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_block_13a0633d16" id="9061000000000000043" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_block_13a0633d16" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_block_13a0633d16.mesh" sub_mesh_index="0" material_name="tune_block" material_path="project/plan_resources/tune_shop/materials/tune_block.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_panel_white_f5b75380c4" id="9061000000000000044" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_panel_white_f5b75380c4" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_panel_white_f5b75380c4.mesh" sub_mesh_index="0" material_name="tune_panel_white" material_path="project/plan_resources/tune_shop/materials/tune_panel_white.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_concrete_dark_7ac5b92bc7" id="9061000000000000045" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_concrete_dark_7ac5b92bc7" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_concrete_dark_7ac5b92bc7.mesh" sub_mesh_index="0" material_name="tune_concrete_dark" material_path="project/plan_resources/tune_shop/materials/tune_concrete_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_aluminium_47f8d0f410" id="9061000000000000046" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_aluminium_47f8d0f410" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_aluminium_47f8d0f410.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_black_frame_983ab407c6" id="9061000000000000047" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_black_frame_983ab407c6" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_black_frame_983ab407c6.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_glass_7bcc6ab224" id="9061000000000000048" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_glass_7bcc6ab224" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_glass_7bcc6ab224.mesh" sub_mesh_index="0" material_name="tune_glass" material_path="project/plan_resources/tune_shop/materials/tune_glass.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_steel_grey_ce96750b7c" id="9061000000000000049" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_steel_grey_ce96750b7c" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_steel_grey_ce96750b7c.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_chrome_140421b44e" id="9061000000000000050" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_chrome_140421b44e" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_chrome_140421b44e.mesh" sub_mesh_index="0" material_name="tune_chrome" material_path="project/plan_resources/tune_shop/materials/tune_chrome.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_black_plastic_2ca199b01d" id="9061000000000000051" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_black_plastic_2ca199b01d" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_black_plastic_2ca199b01d.mesh" sub_mesh_index="0" material_name="tune_black_plastic" material_path="project/plan_resources/tune_shop/materials/tune_black_plastic.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_roof_cb616782ef" id="9061000000000000052" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_roof_cb616782ef" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_roof_cb616782ef.mesh" sub_mesh_index="0" material_name="tune_roof" material_path="project/plan_resources/tune_shop/materials/tune_roof.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_deck_fd3ce4020d" id="9061000000000000053" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_deck_fd3ce4020d" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_deck_fd3ce4020d.mesh" sub_mesh_index="0" material_name="tune_deck" material_path="project/plan_resources/tune_shop/materials/tune_deck.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_skylight_8ddb318334" id="9061000000000000054" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_skylight_8ddb318334" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_skylight_8ddb318334.mesh" sub_mesh_index="0" material_name="tune_skylight" material_path="project/plan_resources/tune_shop/materials/tune_skylight.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_fascia_95a74a865d" id="9061000000000000055" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_fascia_95a74a865d" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_fascia_95a74a865d.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_shell_led_blue_e8d9eea9f8" id="9061000000000000056" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_shell_led_blue_e8d9eea9f8" mesh_path="project/plan_resources/tune_shop/meshes/tune_shell_led_blue_e8d9eea9f8.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+    </Entity>
+   </Entity>
+   <Entity name="Structure" id="9061000000000000064" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_structure_steel_dark_9c68d296f5" id="9061000000000000065" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_structure_steel_dark_9c68d296f5" mesh_path="project/plan_resources/tune_shop/meshes/tune_structure_steel_dark_9c68d296f5.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_structure_steel_grey_b664bbd41c" id="9061000000000000066" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_structure_steel_grey_b664bbd41c" mesh_path="project/plan_resources/tune_shop/meshes/tune_structure_steel_grey_b664bbd41c.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="650" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Ceiling" id="9061000000000000067" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_ceiling_duct_4bbc90f72e" id="9061000000000000068" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_duct_4bbc90f72e" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_duct_4bbc90f72e.mesh" sub_mesh_index="0" material_name="tune_duct" material_path="project/plan_resources/tune_shop/materials/tune_duct.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_ceiling_steel_dark_9dcf191a92" id="9061000000000000069" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_steel_dark_9dcf191a92" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_steel_dark_9dcf191a92.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_ceiling_wire_c7e271dc0b" id="9061000000000000070" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_wire_c7e271dc0b" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_wire_c7e271dc0b.mesh" sub_mesh_index="0" material_name="tune_wire" material_path="project/plan_resources/tune_shop/materials/tune_wire.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_ceiling_steel_grey_07c7e54bfa" id="9061000000000000071" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_steel_grey_07c7e54bfa" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_steel_grey_07c7e54bfa.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_ceiling_aluminium_897b36661d" id="9061000000000000072" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_aluminium_897b36661d" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_aluminium_897b36661d.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_ceiling_led_a1954cbc5b" id="9061000000000000073" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_led_a1954cbc5b" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_led_a1954cbc5b.mesh" sub_mesh_index="0" material_name="tune_led" material_path="project/plan_resources/tune_shop/materials/tune_led.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_ceiling_black_frame_dfb9465498" id="9061000000000000074" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_ceiling_black_frame_dfb9465498" mesh_path="project/plan_resources/tune_shop/meshes/tune_ceiling_black_frame_dfb9465498.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+   </Entity>
+   <Entity name="Hero Bay" id="9061000000000000075" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_hero_bay_steel_dark_2c8b44aff4" id="9061000000000000076" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_steel_dark_2c8b44aff4" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_steel_dark_2c8b44aff4.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_led_blue_1bd57c686c" id="9061000000000000077" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_led_blue_1bd57c686c" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_led_blue_1bd57c686c.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_hero_bay_diamond_4c031d5f88" id="9061000000000000078" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_diamond_4c031d5f88" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_diamond_4c031d5f88.mesh" sub_mesh_index="0" material_name="tune_diamond" material_path="project/plan_resources/tune_shop/materials/tune_diamond.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_black_frame_60fe8fa352" id="9061000000000000079" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_black_frame_60fe8fa352" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_black_frame_60fe8fa352.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_pegboard_9c809839ee" id="9061000000000000080" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_pegboard_9c809839ee" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_pegboard_9c809839ee.mesh" sub_mesh_index="0" material_name="tune_pegboard" material_path="project/plan_resources/tune_shop/materials/tune_pegboard.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_aluminium_b756e057d4" id="9061000000000000081" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_aluminium_b756e057d4" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_aluminium_b756e057d4.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_chrome_01ddd829ec" id="9061000000000000082" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_chrome_01ddd829ec" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_chrome_01ddd829ec.mesh" sub_mesh_index="0" material_name="tune_chrome" material_path="project/plan_resources/tune_shop/materials/tune_chrome.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_brand_red_d078cff201" id="9061000000000000083" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_brand_red_d078cff201" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_brand_red_d078cff201.mesh" sub_mesh_index="0" material_name="tune_brand_red" material_path="project/plan_resources/tune_shop/materials/tune_brand_red.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_black_plastic_c574f93697" id="9061000000000000084" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_black_plastic_c574f93697" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_black_plastic_c574f93697.mesh" sub_mesh_index="0" material_name="tune_black_plastic" material_path="project/plan_resources/tune_shop/materials/tune_black_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_machine_yellow_dfd22966d8" id="9061000000000000085" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_machine_yellow_dfd22966d8" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_machine_yellow_dfd22966d8.mesh" sub_mesh_index="0" material_name="tune_machine_yellow" material_path="project/plan_resources/tune_shop/materials/tune_machine_yellow.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_steel_grey_6badd697d2" id="9061000000000000086" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_steel_grey_6badd697d2" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_steel_grey_6badd697d2.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_rubber_5e4a30f561" id="9061000000000000087" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_rubber_5e4a30f561" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_rubber_5e4a30f561.mesh" sub_mesh_index="0" material_name="tune_rubber" material_path="project/plan_resources/tune_shop/materials/tune_rubber.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_machine_blue_0757d4c9a7" id="9061000000000000088" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_machine_blue_0757d4c9a7" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_machine_blue_0757d4c9a7.mesh" sub_mesh_index="0" material_name="tune_machine_blue" material_path="project/plan_resources/tune_shop/materials/tune_machine_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_grey_plastic_57a748daf0" id="9061000000000000089" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_grey_plastic_57a748daf0" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_grey_plastic_57a748daf0.mesh" sub_mesh_index="0" material_name="tune_grey_plastic" material_path="project/plan_resources/tune_shop/materials/tune_grey_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_screen_dyno_f65315d292" id="9061000000000000090" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_screen_dyno_f65315d292" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_screen_dyno_f65315d292.mesh" sub_mesh_index="0" material_name="tune_screen_dyno" material_path="project/plan_resources/tune_shop/materials/tune_screen_dyno.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_hero_bay_fabric_c89b7a4c48" id="9061000000000000091" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_hero_bay_fabric_c89b7a4c48" mesh_path="project/plan_resources/tune_shop/meshes/tune_hero_bay_fabric_c89b7a4c48.mesh" sub_mesh_index="0" material_name="tune_fabric" material_path="project/plan_resources/tune_shop/materials/tune_fabric.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Dyno Bay" id="9061000000000000092" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_dyno_bay_diamond_6a605110fa" id="9061000000000000093" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_diamond_6a605110fa" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_diamond_6a605110fa.mesh" sub_mesh_index="0" material_name="tune_diamond" material_path="project/plan_resources/tune_shop/materials/tune_diamond.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_hazard_b0cbf83c44" id="9061000000000000094" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_hazard_b0cbf83c44" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_hazard_b0cbf83c44.mesh" sub_mesh_index="0" material_name="tune_hazard" material_path="project/plan_resources/tune_shop/materials/tune_hazard.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_dyno_bay_steel_grey_4be98f97b8" id="9061000000000000095" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_steel_grey_4be98f97b8" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_steel_grey_4be98f97b8.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_steel_dark_9878829584" id="9061000000000000096" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_steel_dark_9878829584" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_steel_dark_9878829584.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_machine_yellow_0075fd61aa" id="9061000000000000097" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_machine_yellow_0075fd61aa" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_machine_yellow_0075fd61aa.mesh" sub_mesh_index="0" material_name="tune_machine_yellow" material_path="project/plan_resources/tune_shop/materials/tune_machine_yellow.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_chrome_657645cfcc" id="9061000000000000098" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_chrome_657645cfcc" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_chrome_657645cfcc.mesh" sub_mesh_index="0" material_name="tune_chrome" material_path="project/plan_resources/tune_shop/materials/tune_chrome.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_black_frame_2b37e23454" id="9061000000000000099" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_black_frame_2b37e23454" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_black_frame_2b37e23454.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_rubber_791cf8c4e3" id="9061000000000000100" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_rubber_791cf8c4e3" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_rubber_791cf8c4e3.mesh" sub_mesh_index="0" material_name="tune_rubber" material_path="project/plan_resources/tune_shop/materials/tune_rubber.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_black_plastic_e9af73c536" id="9061000000000000101" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_black_plastic_e9af73c536" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_black_plastic_e9af73c536.mesh" sub_mesh_index="0" material_name="tune_black_plastic" material_path="project/plan_resources/tune_shop/materials/tune_black_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_aluminium_e3d0326fb2" id="9061000000000000102" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_aluminium_e3d0326fb2" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_aluminium_e3d0326fb2.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_led_blue_f3523ff164" id="9061000000000000103" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_led_blue_f3523ff164" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_led_blue_f3523ff164.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_dyno_bay_screen_dyno_6dfb1166e4" id="9061000000000000104" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_screen_dyno_6dfb1166e4" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_screen_dyno_6dfb1166e4.mesh" sub_mesh_index="0" material_name="tune_screen_dyno" material_path="project/plan_resources/tune_shop/materials/tune_screen_dyno.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_leather_f3d8f7fdb3" id="9061000000000000105" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_leather_f3d8f7fdb3" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_leather_f3d8f7fdb3.mesh" sub_mesh_index="0" material_name="tune_leather" material_path="project/plan_resources/tune_shop/materials/tune_leather.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_machine_blue_d80f98cff4" id="9061000000000000106" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_machine_blue_d80f98cff4" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_machine_blue_d80f98cff4.mesh" sub_mesh_index="0" material_name="tune_machine_blue" material_path="project/plan_resources/tune_shop/materials/tune_machine_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_orange_8f369d18aa" id="9061000000000000107" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_orange_8f369d18aa" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_orange_8f369d18aa.mesh" sub_mesh_index="0" material_name="tune_orange" material_path="project/plan_resources/tune_shop/materials/tune_orange.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_dyno_bay_tread_66222ad474" id="9061000000000000108" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_dyno_bay_tread_66222ad474" mesh_path="project/plan_resources/tune_shop/meshes/tune_dyno_bay_tread_66222ad474.mesh" sub_mesh_index="0" material_name="tune_tread" material_path="project/plan_resources/tune_shop/materials/tune_tread.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Lift" id="9061000000000000109" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_lift_steel_dark_adfed874c7" id="9061000000000000110" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_steel_dark_adfed874c7" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_steel_dark_adfed874c7.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_lift_machine_blue_f26dbd20d4" id="9061000000000000111" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_machine_blue_f26dbd20d4" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_machine_blue_f26dbd20d4.mesh" sub_mesh_index="0" material_name="tune_machine_blue" material_path="project/plan_resources/tune_shop/materials/tune_machine_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_lift_black_frame_a66c8d7a94" id="9061000000000000112" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_black_frame_a66c8d7a94" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_black_frame_a66c8d7a94.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_lift_machine_yellow_edf81866e5" id="9061000000000000113" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_machine_yellow_edf81866e5" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_machine_yellow_edf81866e5.mesh" sub_mesh_index="0" material_name="tune_machine_yellow" material_path="project/plan_resources/tune_shop/materials/tune_machine_yellow.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_lift_rubber_a5d0cc15ed" id="9061000000000000114" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_rubber_a5d0cc15ed" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_rubber_a5d0cc15ed.mesh" sub_mesh_index="0" material_name="tune_rubber" material_path="project/plan_resources/tune_shop/materials/tune_rubber.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_lift_hazard_5e5c944b0d" id="9061000000000000115" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_hazard_5e5c944b0d" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_hazard_5e5c944b0d.mesh" sub_mesh_index="0" material_name="tune_hazard" material_path="project/plan_resources/tune_shop/materials/tune_hazard.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_lift_grey_plastic_fcb9d3fe1e" id="9061000000000000116" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_grey_plastic_fcb9d3fe1e" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_grey_plastic_fcb9d3fe1e.mesh" sub_mesh_index="0" material_name="tune_grey_plastic" material_path="project/plan_resources/tune_shop/materials/tune_grey_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_lift_led_green_783d8ae2cf" id="9061000000000000117" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_led_green_783d8ae2cf" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_led_green_783d8ae2cf.mesh" sub_mesh_index="0" material_name="tune_led_green" material_path="project/plan_resources/tune_shop/materials/tune_led_green.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_lift_led_red_ddf4e7cafc" id="9061000000000000118" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_led_red_ddf4e7cafc" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_led_red_ddf4e7cafc.mesh" sub_mesh_index="0" material_name="tune_led_red" material_path="project/plan_resources/tune_shop/materials/tune_led_red.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_lift_steel_grey_ecaacedd95" id="9061000000000000119" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_lift_steel_grey_ecaacedd95" mesh_path="project/plan_resources/tune_shop/meshes/tune_lift_steel_grey_ecaacedd95.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Parts" id="9061000000000000120" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="tune_parts_machine_blue_22da0508fd" id="9061000000000000121" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_machine_blue_22da0508fd" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_machine_blue_22da0508fd.mesh" sub_mesh_index="0" material_name="tune_machine_blue" material_path="project/plan_resources/tune_shop/materials/tune_machine_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_orange_f4080e26a4" id="9061000000000000122" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_orange_f4080e26a4" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_orange_f4080e26a4.mesh" sub_mesh_index="0" material_name="tune_orange" material_path="project/plan_resources/tune_shop/materials/tune_orange.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_steel_grey_ec45d76703" id="9061000000000000123" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_steel_grey_ec45d76703" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_steel_grey_ec45d76703.mesh" sub_mesh_index="0" material_name="tune_steel_grey" material_path="project/plan_resources/tune_shop/materials/tune_steel_grey.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_cardboard_2313b27c3d" id="9061000000000000124" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_cardboard_2313b27c3d" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_cardboard_2313b27c3d.mesh" sub_mesh_index="0" material_name="tune_cardboard" material_path="project/plan_resources/tune_shop/materials/tune_cardboard.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_rubber_bb7f7a8935" id="9061000000000000125" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_rubber_bb7f7a8935" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_rubber_bb7f7a8935.mesh" sub_mesh_index="0" material_name="tune_rubber" material_path="project/plan_resources/tune_shop/materials/tune_rubber.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_tread_03d6ec66af" id="9061000000000000126" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_tread_03d6ec66af" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_tread_03d6ec66af.mesh" sub_mesh_index="0" material_name="tune_tread" material_path="project/plan_resources/tune_shop/materials/tune_tread.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_rim_silver_1cbc896768" id="9061000000000000127" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_rim_silver_1cbc896768" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_rim_silver_1cbc896768.mesh" sub_mesh_index="0" material_name="tune_rim_silver" material_path="project/plan_resources/tune_shop/materials/tune_rim_silver.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_rim_black_80d8d998b5" id="9061000000000000128" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_rim_black_80d8d998b5" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_rim_black_80d8d998b5.mesh" sub_mesh_index="0" material_name="tune_rim_black" material_path="project/plan_resources/tune_shop/materials/tune_rim_black.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_chrome_c0ed470010" id="9061000000000000129" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_chrome_c0ed470010" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_chrome_c0ed470010.mesh" sub_mesh_index="0" material_name="tune_chrome" material_path="project/plan_resources/tune_shop/materials/tune_chrome.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_rim_gold_af784814ef" id="9061000000000000130" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_rim_gold_af784814ef" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_rim_gold_af784814ef.mesh" sub_mesh_index="0" material_name="tune_rim_gold" material_path="project/plan_resources/tune_shop/materials/tune_rim_gold.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_rim_gunmetal_fedb168d3c" id="9061000000000000131" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_rim_gunmetal_fedb168d3c" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_rim_gunmetal_fedb168d3c.mesh" sub_mesh_index="0" material_name="tune_rim_gunmetal" material_path="project/plan_resources/tune_shop/materials/tune_rim_gunmetal.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_rim_bronze_93e6296ffa" id="9061000000000000132" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_rim_bronze_93e6296ffa" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_rim_bronze_93e6296ffa.mesh" sub_mesh_index="0" material_name="tune_rim_bronze" material_path="project/plan_resources/tune_shop/materials/tune_rim_bronze.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_steel_dark_ad3078282f" id="9061000000000000133" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_steel_dark_ad3078282f" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_steel_dark_ad3078282f.mesh" sub_mesh_index="0" material_name="tune_steel_dark" material_path="project/plan_resources/tune_shop/materials/tune_steel_dark.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_titanium_fbdfafb3d2" id="9061000000000000134" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_titanium_fbdfafb3d2" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_titanium_fbdfafb3d2.mesh" sub_mesh_index="0" material_name="tune_titanium" material_path="project/plan_resources/tune_shop/materials/tune_titanium.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_fascia_3d0c15c6ef" id="9061000000000000135" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_fascia_3d0c15c6ef" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_fascia_3d0c15c6ef.mesh" sub_mesh_index="0" material_name="tune_fascia" material_path="project/plan_resources/tune_shop/materials/tune_fascia.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_led_blue_81c0b617f8" id="9061000000000000136" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_led_blue_81c0b617f8" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_led_blue_81c0b617f8.mesh" sub_mesh_index="0" material_name="tune_led_blue" material_path="project/plan_resources/tune_shop/materials/tune_led_blue.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_parts_paper_6ff521e4f8" id="9061000000000000137" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_paper_6ff521e4f8" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_paper_6ff521e4f8.mesh" sub_mesh_index="0" material_name="tune_paper" material_path="project/plan_resources/tune_shop/materials/tune_paper.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+    </Entity>
+    <Entity name="tune_parts_brand_red_272a6505aa" id="9061000000000000138" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_brand_red_272a6505aa" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_brand_red_272a6505aa.mesh" sub_mesh_index="0" material_name="tune_brand_red" material_path="project/plan_resources/tune_shop/materials/tune_brand_red.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_black_frame_b55f833af2" id="9061000000000000139" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_black_frame_b55f833af2" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_black_frame_b55f833af2.mesh" sub_mesh_index="0" material_name="tune_black_frame" material_path="project/plan_resources/tune_shop/materials/tune_black_frame.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_engine_alu_f31b9489fb" id="9061000000000000140" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_engine_alu_f31b9489fb" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_engine_alu_f31b9489fb.mesh" sub_mesh_index="0" material_name="tune_engine_alu" material_path="project/plan_resources/tune_shop/materials/tune_engine_alu.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_engine_black_01bd3b2b50" id="9061000000000000141" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_engine_black_01bd3b2b50" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_engine_black_01bd3b2b50.mesh" sub_mesh_index="0" material_name="tune_engine_black" material_path="project/plan_resources/tune_shop/materials/tune_engine_black.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_black_plastic_f53c6ae72b" id="9061000000000000142" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_black_plastic_f53c6ae72b" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_black_plastic_f53c6ae72b.mesh" sub_mesh_index="0" material_name="tune_black_plastic" material_path="project/plan_resources/tune_shop/materials/tune_black_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_aluminium_a24e8496a0" id="9061000000000000143" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_aluminium_a24e8496a0" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_aluminium_a24e8496a0.mesh" sub_mesh_index="0" material_name="tune_aluminium" material_path="project/plan_resources/tune_shop/materials/tune_aluminium.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_grey_plastic_168240c819" id="9061000000000000144" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_grey_plastic_168240c819" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_grey_plastic_168240c819.mesh" sub_mesh_index="0" material_name="tune_grey_plastic" material_path="project/plan_resources/tune_shop/materials/tune_grey_plastic.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+    <Entity name="tune_parts_screen_dyno_6ee98f2f33" id="9061000000000000145" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="tune_parts_screen_dyno_6ee98f2f33" mesh_path="project/plan_resources/tune_shop/meshes/tune_parts_screen_dyno_6ee98f2f33.mesh" sub_mesh_index="0" material_name="tune_screen_dyno" material_path="project/plan_resources/tune_shop/materials/tune_screen_dyno.xml" material_default="false" flags="13" max_render_distance="120" max_shadow_distance="90" />
+     <physics mass="0" is_static="true" is_kinematic="false" friction=".85" restitution="0" body_type="4" />
+    </Entity>
+   </Entity>
+   <Entity name="Lighting" id="9061000000000000199" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="Turntable light" id="9061000000000000200" active="true" position="0.5 4.95 -2.6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="3" color_r="1.0000" color_g="0.9384" color_b="0.8835" temperature="5600" intensity="8" intensity_photometric="11000" range="12" angle="0.523599" preset="0" area_width="4.2" area_height="1.2" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Turntable light" id="9061000000000000201" active="true" position="0.5 4.95 -0.4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="3" color_r="1.0000" color_g="0.9384" color_b="0.8835" temperature="5600" intensity="8" intensity_photometric="11000" range="12" angle="0.523599" preset="0" area_width="4.2" area_height="1.2" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Turntable light" id="9061000000000000202" active="true" position="0.5 4.95 1.6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="3" color_r="1.0000" color_g="0.9384" color_b="0.8835" temperature="5600" intensity="8" intensity_photometric="11000" range="12" angle="0.523599" preset="0" area_width="4.2" area_height="1.2" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno bay high bay" id="9061000000000000203" active="true" position="-9.9 5.18 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="7000" range="12" angle="0.523599" preset="0" area_width="0.3" area_height="2.6" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno bay high bay" id="9061000000000000204" active="true" position="-9.9 5.18 0.6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="7000" range="12" angle="0.523599" preset="0" area_width="0.3" area_height="2.6" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno bay high bay" id="9061000000000000205" active="true" position="-9.9 5.18 6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="7000" range="12" angle="0.523599" preset="0" area_width="0.3" area_height="2.6" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno bay high bay" id="9061000000000000206" active="true" position="-5.3 5.18 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="7000" range="12" angle="0.523599" preset="0" area_width="0.3" area_height="2.6" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno bay high bay" id="9061000000000000207" active="true" position="-5.3 5.18 0.6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="7000" range="12" angle="0.523599" preset="0" area_width="0.3" area_height="2.6" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno bay high bay" id="9061000000000000208" active="true" position="-5.3 5.18 6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="7000" range="12" angle="0.523599" preset="0" area_width="0.3" area_height="2.6" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Parts store high bay" id="9061000000000000209" active="true" position="7.2 5.18 -4.4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="6500" range="11" angle="0.523599" preset="0" area_width="0.3" area_height="5.0" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Parts store high bay" id="9061000000000000210" active="true" position="10.4 5.18 -4.4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="3" color_r="1.0000" color_g="0.8942" color_b="0.8076" temperature="5000" intensity="8" intensity_photometric="6500" range="11" angle="0.523599" preset="0" area_width="0.3" area_height="5.0" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Tool wall wash" id="9061000000000000211" active="true" position="0.5 4.8 -6" rotation="2.82739e-17 0.887011 -0.461749 5.43137e-17" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.8262" color_b="0.6864" temperature="4200" intensity="8" intensity_photometric="4500" range="9" angle="0.610865" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Wheel wall wash" id="9061000000000000212" active="true" position="11 4.6 -6.8" rotation="2.82739e-17 0.887011 -0.461749 5.43137e-17" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.8071" color_b="0.6513" temperature="4000" intensity="8" intensity_photometric="2500" range="7" angle="0.523599" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Engine bench" id="9061000000000000213" active="true" position="8.4 4.2 -3.2" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.8071" color_b="0.6513" temperature="4000" intensity="8" intensity_photometric="2200" range="7" angle="0.479966" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Dyno console glow" id="9061000000000000214" active="true" position="-11.6 1.6 3.6" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="0" light_type="1" color_r="0.4000" color_g="0.6500" color_b="1.0000" temperature="7000" intensity="8" intensity_photometric="300" range="3" angle="0.523599" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Reception downlight" id="9061000000000000215" active="true" position="7.6 3.15 4.6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="1100" range="6" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Reception downlight" id="9061000000000000216" active="true" position="10.8 3.15 4.6" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="1100" range="6" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Reception downlight" id="9061000000000000217" active="true" position="7.6 3.15 7.4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="1100" range="6" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Reception downlight" id="9061000000000000218" active="true" position="10.8 3.15 7.4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="1100" range="6" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Counter glow" id="9061000000000000219" active="true" position="8.4 0.4 3.8" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="0" light_type="1" color_r="0.3500" color_g="0.6200" color_b="1.0000" temperature="4500" intensity="8" intensity_photometric="180" range="2.5" angle="0.523599" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Canopy downlight" id="9061000000000000220" active="true" position="7.4 3.6 10.1" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.6949" color_b="0.4310" temperature="3000" intensity="8" intensity_photometric="900" range="6" angle="0.610865" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Canopy downlight" id="9061000000000000221" active="true" position="9.2 3.6 10.1" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.6949" color_b="0.4310" temperature="3000" intensity="8" intensity_photometric="900" range="6" angle="0.610865" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Canopy downlight" id="9061000000000000222" active="true" position="11 3.6 10.1" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.6949" color_b="0.4310" temperature="3000" intensity="8" intensity_photometric="900" range="6" angle="0.610865" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Bay wall light" id="9061000000000000223" active="true" position="-10.4 5.7 9.62" rotation="0.642788 0 0 0.766044" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="2600" range="14" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Bay wall light" id="9061000000000000224" active="true" position="-4.8 5.7 9.62" rotation="0.642788 0 0 0.766044" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="2600" range="14" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Bay wall light" id="9061000000000000225" active="true" position="-2.5 5.7 9.62" rotation="0.642788 0 0 0.766044" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="2600" range="14" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+    <Entity name="Bay wall light" id="9061000000000000226" active="true" position="3.5 5.7 9.62" rotation="0.642788 0 0 0.766044" scale="1 1 1">
+     <light flags="0" light_type="2" color_r="1.0000" color_g="0.7201" color_b="0.4828" temperature="3200" intensity="8" intensity_photometric="2600" range="14" angle="0.698132" preset="0" area_width="1" area_height="1" draw_distance="90" distance_shadows="35" distance_volumetric="18" />
+    </Entity>
+   </Entity>
+   <Entity name="Forecourt olive 1" id="9061000000000000227" active="true" position="-15 0.58 11.2" rotation="0 0 0 1" scale="0.42 0.42 0.42">
+    <Entity name="foliage" id="9061000000000000228" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="olive_01" mesh_path="project/plan_resources/exo_chora/meshes/olive_01.mesh" sub_mesh_index="0" material_name="olive_01_olive_foliage" material_path="project/models/island_biomes/olive_01/olive_01_olive_foliage.xml" material_default="false" flags="1" max_render_distance="450" max_shadow_distance="100" />
+    </Entity>
+    <Entity name="bark" id="9061000000000000229" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="olive_01" mesh_path="project/plan_resources/exo_chora/meshes/olive_01.mesh" sub_mesh_index="1" material_name="olive_01_olive_bark" material_path="project/models/island_biomes/olive_01/olive_01_olive_bark.xml" material_default="false" flags="1" max_render_distance="450" max_shadow_distance="100" />
+    </Entity>
+   </Entity>
+   <Entity name="Forecourt olive 2" id="9061000000000000230" active="true" position="13.6 0.58 11" rotation="0 0.317305 0 0.948324" scale="0.42 0.42 0.42">
+    <Entity name="foliage" id="9061000000000000231" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="olive_01" mesh_path="project/plan_resources/exo_chora/meshes/olive_01.mesh" sub_mesh_index="0" material_name="olive_01_olive_foliage" material_path="project/models/island_biomes/olive_01/olive_01_olive_foliage.xml" material_default="false" flags="1" max_render_distance="450" max_shadow_distance="100" />
+    </Entity>
+    <Entity name="bark" id="9061000000000000232" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="olive_01" mesh_path="project/plan_resources/exo_chora/meshes/olive_01.mesh" sub_mesh_index="1" material_name="olive_01_olive_bark" material_path="project/models/island_biomes/olive_01/olive_01_olive_bark.xml" material_default="false" flags="1" max_render_distance="450" max_shadow_distance="100" />
+    </Entity>
+   </Entity>
+   <Entity name="map_label" id="9061000000000000233" active="true" position="0 220 0" rotation="0 0.642788 0 0.766044" scale="1 1 1">
+    <Entity name="map_label_a" id="9061000000000000234" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="zante_white" material_path="./project/plan_resources/zante_white.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="TUNE SHOP" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+    </Entity>
+    <Entity name="map_label_b" id="9061000000000000235" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="zante_white" material_path="./project/plan_resources/zante_white.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="TUNE SHOP" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+    </Entity>
    </Entity>
   </Entity>
  </Entities>
