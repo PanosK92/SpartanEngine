@@ -1485,7 +1485,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float3 streak_center = p.position;
     if (emitter.rain_occluded != 0u)
     {
-        float3 trail     = flow_velocity * 0.022;
+        float3 trail     = flow_velocity * 0.03; // a touch longer than a real shutter so each drop lingers in the eye
         float3 to_camera = safe_normalize(get_camera_position() - p.position, -buffer_frame.camera_forward);
         right            = safe_normalize(trail, float3(0.0, -1.0, 0.0));
         up               = safe_normalize(cross(right, to_camera), up);

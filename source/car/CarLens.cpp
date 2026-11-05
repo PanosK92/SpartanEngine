@@ -25,6 +25,7 @@ namespace spartan
         constexpr float glass_margin        = 1.15f;  // the glass reaches past the frame, lens_glass_margin in lens_drops.hlsl
         constexpr float circle_of_confusion = 0.02f;  // lens units, the camera is focused on the car metres away, the drops blur over this much
         constexpr float impacts_max         = 2048.0f; // LENS_DROPS_MAX in shared_buffers.h, more in one step would not fit
+        constexpr float impacts_boost       = 3.0f;    // art direction, more of the rain lands than the glass's area catches, so the effect is there to be seen
 
         Conditions latest;
         float aspect_ratio  = 16.0f / 9.0f;
@@ -70,7 +71,7 @@ namespace spartan
         if (conditions.rain > 0.0f && conditions.exposure > 0.0f)
         {
             const float approach = rain_approach(-rain_relative(conditions).z);
-            rain_impacts_due    += rain_impacts(conditions.rain, approach, glass_area()) * delta_time * conditions.exposure * amount;
+            rain_impacts_due    += rain_impacts(conditions.rain, approach, glass_area()) * delta_time * conditions.exposure * amount * impacts_boost;
         }
 
         // the mist the tyres throw into the wake

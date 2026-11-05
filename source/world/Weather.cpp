@@ -43,10 +43,11 @@ namespace spartan
         constexpr float ray_length      = 600.0f;
 
         // particles, the drops are born in a slab above and around the camera and fall at terminal speed
-        constexpr float drops_per_second   = 38000.0f;
-        constexpr uint32_t drops_max       = 70000; // the shared particle pool holds 100000, the rest stays for smoke and sparks
+        // the pool caps the count, so the slab is kept close to the camera where the drops are seen, which packs them denser
+        constexpr float drops_per_second   = 48000.0f;
+        constexpr uint32_t drops_max       = 80000; // the shared particle pool holds 100000, the rest stays for smoke and sparks
         constexpr float drops_lifetime     = 2.2f;
-        constexpr float drops_radius       = 18.0f;
+        constexpr float drops_radius       = 13.0f;
         constexpr float drops_height       = 7.0f;  // slab centre above the camera
         constexpr float drops_lead_seconds = 0.8f;  // born where the camera is heading so a moving camera still drives into rain
 

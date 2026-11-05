@@ -35,6 +35,10 @@ static const float lens_mass_min      = 1.0e-8f; // kg, anything lighter dries w
 static const float lens_film_life     = 4.0f;    // seconds a vein lasts in dry air before it drains and dewets off the coating, twice that in the rain
 static const float lens_spray_diameter = 3.0e-4f;
 static const float lens_light_excess  = 4.0f;    // a light is brighter than this many times the frame's mean
+// art direction over the physics, the eye needs time to take a drop in: a fresh one sits while it wets in, then runs slower than it would
+static const float lens_settle_hold   = 5.0f;    // extra pinning at impact, times the coating's own
+static const float lens_settle_time   = 1.5f;    // seconds that extra hold fades over
+static const float lens_slide_pace    = 0.4f;    // of the physical sliding speed
 
 float lens_half_height() { return buffer_frame.lens_rain.z; }
 float lens_aspect()      { return buffer_frame.lens_rain.w; }
@@ -208,7 +212,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         along      += side * drop_pinning(lens_hysteresis) * radius * tilt;
     }
 
-    float pin  = lens_pinning(d.position) * radius;
+    float pin  = lens_pinning(d.position) * radius * (1.0f + lens_settle_hold * exp(-d.age / lens_settle_time));
     d.velocity = drop_slide(d.velocity, d.mass, along, pin, radius, dt);
     d.lean     = along / max(pin, 1e-9f);
     float lean = length(d.lean);
@@ -220,7 +224,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     d.age  += dt;
 
     // a running drop leaves a vein of water behind it, a rounded film as wide as part of its contact line, what it loses there it carries no more
-    float speed = length(d.velocity);
+    float speed = length(d.velocity) * lens_slide_pace;
     if (speed > 0.0f)
     {
         float distance   = speed * dt;
@@ -230,7 +234,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         uint steps       = clamp(uint(ceil(distance / max(half_width, cell_size))), 1u, 16u);
         for (uint s = 0; s < steps; s++)
         {
-            d.position += d.velocity * (dt / float(steps));
+            d.position += d.velocity * (lens_slide_pace * dt / float(steps));
             lens_wet(d.position, half_width, crest);
         }
         d.mass -= crest * (2.0f / 3.0f) * drop_water_density * 2.0f * half_width * distance;
