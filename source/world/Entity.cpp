@@ -547,6 +547,42 @@ namespace spartan
         }
     }
 
+    void Entity::ApplyPrefabOverride(pugi::xml_node& node)
+    {
+        string path    = node.attribute("path").as_string();
+        Entity* target = GetDescendantByPath(path);
+        if (!target)
+        {
+            SP_LOG_WARNING("Prefab override path no longer exists, skipping: %s", path.c_str());
+            return;
+        }
+
+        if (target->m_prefab_transform_override_enabled)
+            load_transform_override(target, node);
+
+        for (pugi::xml_node override_child = node.first_child(); override_child; override_child = override_child.next_sibling())
+        {
+            string override_name = override_child.name();
+            if (override_name == "Entity")
+            {
+                Entity* child = World::CreateEntity();
+                child->Load(override_child);
+                child->SetParent(target);
+            }
+            else
+            {
+                ComponentType override_type = Component::StringToType(override_name);
+                if (override_type != ComponentType::Max)
+                {
+                    if (Component* component = target->AddComponent(override_type))
+                    {
+                        component->Load(override_child);
+                    }
+                }
+            }
+        }
+    }
+
     bool Entity::HasPrefabTransformChanged() const
     {
         return m_position_local != m_prefab_position_local ||
@@ -671,39 +707,7 @@ namespace spartan
                 // apply a user override onto an existing base node, resolved by name path
                 if (type_name == "prefab_override")
                 {
-                    string path     = component_node.attribute("path").as_string();
-                    Entity* target  = GetDescendantByPath(path);
-                    if (!target)
-                    {
-                        SP_LOG_WARNING("Prefab override path no longer exists, skipping: %s", path.c_str());
-                        continue;
-                    }
-
-                    if (target->m_prefab_transform_override_enabled)
-                        load_transform_override(target, component_node);
-
-                    for (pugi::xml_node override_child = component_node.first_child(); override_child; override_child = override_child.next_sibling())
-                    {
-                        string override_name = override_child.name();
-                        if (override_name == "Entity")
-                        {
-                            Entity* child = World::CreateEntity();
-                            child->Load(override_child);
-                            child->SetParent(target);
-                        }
-                        else
-                        {
-                            ComponentType override_type = Component::StringToType(override_name);
-                            if (override_type != ComponentType::Max)
-                            {
-                                if (Component* component = target->AddComponent(override_type))
-                                {
-                                    component->Load(override_child);
-                                }
-                            }
-                        }
-                    }
-
+                    ApplyPrefabOverride(component_node);
                     continue;
                 }
 

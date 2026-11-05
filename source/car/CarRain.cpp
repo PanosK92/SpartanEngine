@@ -22,35 +22,21 @@ Commercial use requires written permission and negotiated payment terms.
 //= NAMESPACES ===============
 using namespace std;
 using namespace spartan::math;
+using namespace spartan::water_drops;
 //============================
 
 namespace spartan
 {
     namespace
     {
-        // water and air at 20 c
-        constexpr float water_density      = 1000.0f;
-        constexpr float air_density        = 1.2f;
-        constexpr float air_viscosity      = 1.5e-5f; // kinematic, m^2/s
-        constexpr float surface_tension    = 0.072f;  // n/m
-        constexpr float vapour_diffusivity = 2.5e-5f; // m^2/s
-        constexpr float vapour_saturation  = 0.0173f; // kg/m^3
-
         // waxed paint and glass
         constexpr float hysteresis_dry   = 0.25f;  // cosine of the receding minus the advancing contact angle
         constexpr float hysteresis_wet   = 0.08f;  // over paint that is already wet the contact line hardly snags
         constexpr float snag_pinning     = 1.0f;   // dirt and cut paint wet out instead of beading, the contact line catches on them
-        constexpr float contact_friction = 0.8f;   // n s/m^2 per metre of contact radius, a 2 mm drop creeps down a vertical panel at about 5 cm/s
-        constexpr float drag_coefficient = 0.8f;
-        constexpr float boundary_layer   = 0.6f;   // share of the free stream a millimetre tall drop feels inside the boundary layer
         constexpr float wake_shelter     = 0.25f;  // faces looking downstream sit in separated, slow air
         constexpr float residue_depth    = 5.0e-6f; // metres of water a sliding drop leaves on the paint it wets
 
         // rain
-        constexpr float rain_rate_max      = 25.0f;  // mm/h at full rain
-        constexpr float rain_fall_speed    = 7.0f;   // m/s, terminal speed of a 2 mm drop
-        constexpr float rain_drop_diameter = 0.001f; // metres, mean of the marshall palmer size spectrum at full rain
-        constexpr float rain_retained      = 0.7f;   // of an impact's mass that stays on the paint, the rest splashes away
         constexpr uint32_t rain_samples    = 4096;   // texels the rain is evaluated on per step, each stands for its share of the paint
 
         // drops
@@ -58,9 +44,6 @@ namespace spartan
         constexpr float drop_mass_nucleate = 7.0e-7f; // kg, this much micro water on one texel has coalesced into a drop
         constexpr float micro_life         = 900.0f;  // seconds on the evaporation clock the micro water of a texel lasts
         constexpr float micro_radius       = 1.5e-4f; // metres, a typical micro droplet, sets how much faster it dries in the airflow
-        constexpr float humidity_rain      = 0.97f;
-        constexpr float humidity_dry       = 0.72f;
-        constexpr float humidity_time      = 300.0f;  // seconds for the air to dry out once the rain stops
         constexpr float transfer_tolerance = 0.015f;  // metres a point may sit off the map it walks onto
         constexpr float step_texels        = 0.5f;    // longest move per substep
         constexpr uint32_t steps_max       = 24;
@@ -265,12 +248,6 @@ namespace spartan
             return p;
         }
 
-        // contact radius of a cap meeting waxed paint at about 90 degrees, a half sphere
-        float radius_of(float mass)
-        {
-            return cbrtf(3.0f * mass / (2.0f * pi * water_density));
-        }
-
         float residue_mg()
         {
             return residue_depth * water_density * texel_size * texel_size * 1.0e6f;
@@ -313,7 +290,7 @@ namespace spartan
             const float fine   = static_cast<float>(hash(x + 7919, y + 104729) & 0xffff) / 65535.0f;
             const float wet    = min(1.0f, micro_now(texel) / max(residue_mg(), 1e-6f));
             const float rough  = texel < snag.size() ? static_cast<float>(snag[texel]) / 255.0f : 0.0f;
-            return 2.0f * surface_tension * (hysteresis_dry + (hysteresis_wet - hysteresis_dry) * wet) * (0.6f + 0.4f * coarse + 0.4f * fine + snag_pinning * rough);
+            return water_drops::pinning(hysteresis_dry + (hysteresis_wet - hysteresis_dry) * wet) * (0.6f + 0.4f * coarse + 0.4f * fine + snag_pinning * rough);
         }
 
         // walks a point onto the paint, over an edge onto the neighbouring map, false once it has left the car
@@ -516,15 +493,8 @@ namespace spartan
             if (c.rain <= 0.0f || c.exposure <= 0.0f || face_texels.empty())
                 return;
 
-            // kg of water per m^3 of air, what falls at the terminal speed to give the rain rate
-            const float rate          = c.rain * rain_rate_max;
-            const float rain_density  = rate / 3.6e6f * water_density / rain_fall_speed;
             // in the car's frame the rain comes at it, faces looking forward catch more the faster it goes
-            const Vector3 fall        = c.gravity.Normalized() * rain_fall_speed + c.wind;
-            const Vector3 relative    = fall - c.velocity;
-            const float diameter      = rain_drop_diameter * (0.7f + 0.3f * c.rain);
-            // mean retained mass of an exponential size spectrum, the mean of d^3 is 6 d0^3
-            const float mass_mean     = water_density * pi * diameter * diameter * diameter * rain_retained;
+            const Vector3 relative    = rain_relative(c);
             const float share         = static_cast<float>(face_texels.size()) / static_cast<float>(rain_samples);
             const float texel_area    = texel_size * texel_size;
 
@@ -538,19 +508,13 @@ namespace spartan
 
                 const uint8_t face     = face_at(texel);
                 const float area       = texel_area / max(fabsf(get(n, face / 2)), 0.3f);
-                const float expected   = rain_density * approach * area * dt * share * c.exposure / mass_mean;
+                const float expected   = rain_impacts(c.rain, approach, area) * dt * share * c.exposure;
                 const uint32_t count   = static_cast<uint32_t>(expected + random01());
                 for (uint32_t k = 0; k < count; k++)
                 {
-                    const float d = min(0.005f, -logf(max(random01(), 1e-6f)) * diameter);
-                    impact(texel, face, water_density * pi / 6.0f * d * d * d * rain_retained);
+                    impact(texel, face, rain_mass_sample(c.rain, random01()));
                 }
             }
-        }
-
-        float ventilation(float speed, float radius)
-        {
-            return 1.0f + 0.3f * sqrtf(2.0f * radius * speed / air_viscosity);
         }
 
         // what the paint, the car's motion and the air do to one drop, touches nothing but the drop
@@ -563,13 +527,12 @@ namespace spartan
             Vector3 flow       = air - n * air.Dot(n);
             flow              *= boundary_layer * (air_dir.Dot(n) > 0.2f ? wake_shelter : 1.0f);
             const float flow_speed = flow.Length();
-            const float area   = 0.5f * pi * radius * radius;
 
-            const Vector3 force = specific * d.mass + flow * (0.5f * air_density * drag_coefficient * area * flow_speed);
+            const Vector3 force = specific * d.mass + drag(flow, radius);
 
             // pulled off the paint harder than surface tension holds it, it drips or is thrown off
             const float normal_force = force.Dot(n);
-            if (normal_force > pi * radius * surface_tension)
+            if (normal_force > hold_off(radius))
             {
                 d.state = state_detached;
                 return;
@@ -592,12 +555,7 @@ namespace spartan
                 }
             }
 
-            // held until the push beats the pinning, then viscous dissipation in the contact region sets the pace
-            const float friction  = contact_friction * radius;
-            const Vector3 momentum = d.velocity * d.mass + along * dt;
-            const float held      = pin * dt;
-            const float p         = momentum.Length();
-            d.velocity            = p <= held ? Vector3::Zero : momentum * ((p - held) / p / (d.mass + friction * dt));
+            d.velocity = slide(d.velocity, d.mass, along, pin, radius, dt);
 
             // the cap deforms by how close the push comes to tearing the contact line loose
             d.lean = along / max(pin, 1e-9f);
@@ -607,8 +565,7 @@ namespace spartan
                 d.lean *= 2.0f / lean_length;
             }
 
-            // diffusion limited evaporation, a sessile drop loses mass in proportion to its radius
-            d.mass -= 2.0f * pi * radius * vapour_diffusivity * vapour_saturation * dryness * ventilation(flow_speed, radius) * dt;
+            d.mass -= evaporation(radius, dryness, flow_speed) * dt;
             if (d.mass < drop_mass_min)
             {
                 d.state = state_evaporated;
@@ -697,8 +654,7 @@ namespace spartan
         {
             // the air saturates in the rain and dries out over minutes after it
             const bool raining   = c.rain > 0.0f && c.exposure > 0.0f;
-            const float target   = raining ? humidity_rain : humidity_dry;
-            humidity            += (target - humidity) * min(1.0f, dt / (raining ? 30.0f : humidity_time));
+            humidity             = humidity_step(humidity, raining, dt);
             const float dryness  = max(0.0f, 1.0f - humidity);
 
             const Vector3 air     = c.wind - c.velocity;

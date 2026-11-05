@@ -280,6 +280,8 @@ namespace spartan
 
         // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
         const float gpu_scatter_fill_margin = 0.85f;
+        // has to match grass_blades_per_thread in grass_populate.hlsl
+        const uint32_t gpu_scatter_blades_per_thread = 1;
 
         // has to match grass_patch_max_boost in grass_populate.hlsl
         const float gpu_scatter_patch_max_boost = 4.0f;
@@ -2168,8 +2170,8 @@ namespace spartan
         RHI_Buffer* road_exclusions = road_terrain->GetRoadExclusionBuffer();
 
         static_assert(renderer_max_gpu_scatter_args == 9 && renderer_max_gpu_scatter_slots == 3);
-        // per slot lod parameters, the protected vehicle region, then the cell window of every ring
-        std::array<Vector4, renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args> detail_parameters{};
+        // per slot lod parameters, the protected vehicle region, the cell window of every ring, then the block window of every card band
+        std::array<Vector4, renderer_gpu_scatter_parameter_count> detail_parameters{};
         for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; ++slot)
         {
             const auto& state = m_pass_state.gpu_scatter[slot];
@@ -2199,6 +2201,7 @@ namespace spartan
         // only the cells the view pyramid can reach get threads, the shader adds the window origin to
         // its thread id so every (cell, blade) keeps the hash and the placement it had on the full grid
         std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_args> cell_windows{};
+        std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_slots * renderer_gpu_scatter_card_bands> card_band_windows{};
         {
             const Vector3 eye              = Renderer::view().frame.camera_position;
             const bool perspective         = fabsf(Renderer::view().frame.projection.m33) < 0.5f;
@@ -2285,6 +2288,68 @@ namespace spartan
             for (uint32_t arg = 0; arg < renderer_max_gpu_scatter_args; arg++)
             {
                 detail_parameters[renderer_max_gpu_scatter_slots + 1 + arg] = Vector4(static_cast<float>(cell_windows[arg][0]), static_cast<float>(cell_windows[arg][1]), 0.0f, 0.0f);
+            }
+
+            // past the thinning distance a card cell survives with 1 / scale^2, so the card ring runs in distance bands whose
+            // threads walk blocks of cells twice as wide as the band before, the window of a band is the ring window cut down
+            // to the band's reach, in blocks
+            const float card_thin = gpu_scatter_card_thin();
+            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+            {
+                const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+                if (!gpu_scatter_ready(state) || !gpu_scatter_card_ring(state, gpu_scatter_card_lod) || card_thin <= 0.0f)
+                {
+                    continue;
+                }
+
+                const float cell_size   = state.params.cell_size_m[gpu_scatter_card_lod];
+                const float ring_radius = gpu_scatter_ring_radius(state, gpu_scatter_card_lod);
+                if (cell_size <= 0.0f || ring_radius <= 0.0f)
+                {
+                    continue;
+                }
+
+                const std::array<uint32_t, 4>& window = cell_windows[renderer_gpu_scatter_arg_index(slot, gpu_scatter_card_lod)];
+                const uint32_t cells_per_axis = 2u * static_cast<uint32_t>(ceilf(ring_radius / cell_size)) + 2u;
+                const int half_cells          = static_cast<int>(cells_per_axis / 2u);
+                // reject_outer in grass_populate.hlsl never reaches past this
+                const float ring_reach        = ring_radius + max(cell_size * 10.0f, ring_radius * 0.42f);
+                for (uint32_t band = 0; band < renderer_gpu_scatter_card_bands; band++)
+                {
+                    const uint32_t block   = 1u << band;
+                    const bool last_band   = band + 1 == renderer_gpu_scatter_card_bands;
+                    const float band_min   = band == 0 ? 0.0f : card_thin * static_cast<float>(block);
+                    const float band_max   = card_thin * static_cast<float>(block * 2u);
+                    std::array<uint32_t, 4>& band_window = card_band_windows[slot * renderer_gpu_scatter_card_bands + band];
+                    band_window = { 0u, 0u, 0u, 0u };
+                    if (window[2] == 0 || window[3] == 0 || band_min > ring_reach)
+                    {
+                        continue;
+                    }
+
+                    int x0 = static_cast<int>(window[0]);
+                    int z0 = static_cast<int>(window[1]);
+                    int x1 = x0 + static_cast<int>(window[2]) - 1;
+                    int z1 = z0 + static_cast<int>(window[3]) - 1;
+                    if (!last_band)
+                    {
+                        const int reach_cells = static_cast<int>(ceilf(band_max / cell_size)) + 2;
+                        x0 = max(x0, half_cells - reach_cells);
+                        z0 = max(z0, half_cells - reach_cells);
+                        x1 = min(x1, half_cells + reach_cells);
+                        z1 = min(z1, half_cells + reach_cells);
+                    }
+                    if (x1 < x0 || z1 < z0)
+                    {
+                        continue;
+                    }
+
+                    const uint32_t bx0 = static_cast<uint32_t>(x0) / block;
+                    const uint32_t bz0 = static_cast<uint32_t>(z0) / block;
+                    band_window = { bx0, bz0, static_cast<uint32_t>(x1) / block - bx0 + 1u, static_cast<uint32_t>(z1) / block - bz0 + 1u };
+                    detail_parameters[renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args + slot * renderer_gpu_scatter_card_bands + band] =
+                        Vector4(static_cast<float>(bx0), static_cast<float>(bz0), 0.0f, 0.0f);
+                }
             }
         }
 
@@ -2478,6 +2543,24 @@ namespace spartan
                     }
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
+                    // a thinned card ring runs one dispatch per distance band, a thread per block of cells
+                    if (card_ring && gpu_scatter_card_thin() > 0.0f)
+                    {
+                        for (uint32_t band = 0; band < renderer_gpu_scatter_card_bands; band++)
+                        {
+                            const std::array<uint32_t, 4>& band_window = card_band_windows[slot * renderer_gpu_scatter_card_bands + band];
+                            if (band_window[2] == 0 || band_window[3] == 0)
+                            {
+                                continue;
+                            }
+
+                            m_pcb_pass_cpu.draw_index = (m_pcb_pass_cpu.draw_index & ~0xCu) | (band << 2);
+                            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                            RHI_CommandList::Dispatch((band_window[2] + 7u) / 8u, (band_window[3] + 7u) / 8u, 1);
+                        }
+                        continue;
+                    }
+
                     // one cell per thread, dispatch z carries the instance index inside the cell, the
                     // shader recomputes instances_per_cell so both formulas must match
                     const uint32_t cells_per_axis =
@@ -2509,7 +2592,7 @@ namespace spartan
                         1u,
                         static_cast<uint32_t>(std::ceil(per_cell))
                     );
-                    RHI_CommandList::Dispatch(groups_x, groups_z, blades_per_cell);
+                    RHI_CommandList::Dispatch(groups_x, groups_z, (blades_per_cell + gpu_scatter_blades_per_thread - 1) / gpu_scatter_blades_per_thread);
                 }
             }
 

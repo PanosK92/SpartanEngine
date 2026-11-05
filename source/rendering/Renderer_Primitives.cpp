@@ -26,11 +26,14 @@ namespace spartan
     {
         SurfaceInteraction surface_interaction;
         SurfaceWater surface_water;
+        LensWater lens_water;
         vector<uint64_t> editor_selection;
         int editor_selected_instance = -1;
     }
     void Renderer::SetSurfaceWater(const SurfaceWater& input) { surface_water = input; }
     const SurfaceWater& Renderer::GetSurfaceWater() { return surface_water; }
+    void Renderer::SetLensWater(const LensWater& input) { lens_water = input; }
+    const LensWater& Renderer::GetLensWater() { return lens_water; }
 
     void Renderer::SetSurfaceInteraction(const SurfaceInteraction& input) { surface_interaction = input; }
     const SurfaceInteraction& Renderer::GetSurfaceInteraction() { return surface_interaction; }

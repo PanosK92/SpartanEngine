@@ -90,6 +90,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounds_min, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounds_max, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_file, string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_prefab, string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_count, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_simulation_frequency, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_physics_radius, float);
@@ -250,10 +251,45 @@ namespace spartan
         m_next_spawn_index = 0;
         m_drivers.reserve(m_car_count);
 
-        m_car_path = m_car_file;
+        string car_file = m_car_file;
+        m_car_fit.clear();
+        pugi::xml_document prefab;
+        if (!m_car_prefab.empty() && prefab.load_file(m_car_prefab.c_str()))
+        {
+            pugi::xml_node root    = prefab.child("Prefab");
+            pugi::xml_node factory = root.child("prefab");
+            if (string(factory.attribute("type").as_string()) == "car" && factory.attribute("file"))
+            {
+                car_file = factory.attribute("file").as_string();
+
+                // overrides on the car's own parts ("vehicle/<part>") carry the fit, the rig attached elsewhere is left out
+                const string vehicle = "vehicle/";
+                for (pugi::xml_node override_node = root.child("prefab_override"); override_node; override_node = override_node.next_sibling("prefab_override"))
+                {
+                    const string path = override_node.attribute("path").as_string();
+                    if (path.rfind(vehicle, 0) != 0 || !override_node.attribute("position"))
+                    {
+                        continue;
+                    }
+
+                    PartFit fit;
+                    fit.path = path.substr(vehicle.size());
+                    stringstream(override_node.attribute("position").as_string()) >> fit.position.x >> fit.position.y >> fit.position.z;
+                    stringstream(override_node.attribute("rotation").as_string("0 0 0 1")) >> fit.rotation.x >> fit.rotation.y >> fit.rotation.z >> fit.rotation.w;
+                    stringstream(override_node.attribute("scale").as_string("1 1 1")) >> fit.scale.x >> fit.scale.y >> fit.scale.z;
+                    m_car_fit.push_back(fit);
+                }
+            }
+            else
+            {
+                SP_LOG_ERROR("Traffic: %s is not a car prefab, spawning the car file %s", m_car_prefab.c_str(), m_car_file.c_str());
+            }
+        }
+
+        m_car_path = car_file;
         if (!World::GetFilePath().empty())
         {
-            const string relative_path = FileSystem::GetDirectoryFromFilePath(World::GetFilePath()) + m_car_file;
+            const string relative_path = FileSystem::GetDirectoryFromFilePath(World::GetFilePath()) + car_file;
             if (FileSystem::Exists(relative_path))
             {
                 m_car_path = relative_path;
@@ -363,6 +399,17 @@ namespace spartan
         {
             car->Destroy();
             return false;
+        }
+
+        for (const PartFit& fit : m_car_fit)
+        {
+            Entity* part = entity->GetDescendantByPath(fit.path);
+            if (part && part->IsPrefabTransformOverrideEnabled())
+            {
+                part->SetPositionLocal(fit.position);
+                part->SetRotationLocal(fit.rotation);
+                part->SetScaleLocal(fit.scale);
+            }
         }
 
         entity->SetObjectName("traffic_car_" + to_string(index + 1));
@@ -1460,6 +1507,7 @@ namespace spartan
         node.append_attribute("follow_roads") = m_follow_roads;
         node.append_attribute("car_count") = m_car_count;
         node.append_attribute("car_file") = m_car_file.c_str();
+        node.append_attribute("car_prefab") = m_car_prefab.c_str();
         node.append_attribute("bounds_min_x") = m_bounds_min.x;
         node.append_attribute("bounds_min_y") = m_bounds_min.y;
         node.append_attribute("bounds_min_z") = m_bounds_min.z;
@@ -1476,6 +1524,7 @@ namespace spartan
         m_follow_roads = node.attribute("follow_roads").as_bool(false);
         m_car_count = node.attribute("car_count").as_uint(m_car_count);
         m_car_file = node.attribute("car_file").as_string(m_car_file.c_str());
+        m_car_prefab = node.attribute("car_prefab").as_string(m_car_prefab.c_str());
         m_bounds_min.x = node.attribute("bounds_min_x").as_float(m_bounds_min.x);
         m_bounds_min.y = node.attribute("bounds_min_y").as_float(m_bounds_min.y);
         m_bounds_min.z = node.attribute("bounds_min_z").as_float(m_bounds_min.z);

@@ -222,6 +222,8 @@ namespace spartan
         // accepting added components/children. This policy is set by the factory.
         void SetPrefabTransformOverrideEnabled(bool enabled) { m_prefab_transform_override_enabled = enabled; }
         bool IsPrefabTransformOverrideEnabled() const { return m_prefab_transform_override_enabled; }
+        // applies a <prefab_override path="..."> node onto the descendant at that name path
+        void ApplyPrefabOverride(pugi::xml_node& node);
 
         // transient entities are not serialized (e.g. dynamically created entities like flashlights)
         void SetTransient(bool transient)  { m_transient = transient; }

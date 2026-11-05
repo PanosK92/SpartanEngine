@@ -68,6 +68,8 @@ namespace spartan
     extern TConsoleVar<float> cvar_entity_icons;
     extern TConsoleVar<float> cvar_performance_metrics;
     extern TConsoleVar<float> cvar_screenshot_ui;
+    extern TConsoleVar<float> cvar_watermark;
+    extern TConsoleVar<float> cvar_watermark_interval;
     extern TConsoleVar<float> cvar_physics;
     extern TConsoleVar<float> cvar_ragdoll;
     extern TConsoleVar<float> cvar_wireframe;
@@ -92,6 +94,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;
+    extern TConsoleVar<float> cvar_lens_rain;
     extern TConsoleVar<float> cvar_vhs;
     extern TConsoleVar<float> cvar_chromatic_aberration;
     extern TConsoleVar<float> cvar_dithering;
@@ -160,6 +163,8 @@ namespace spartan
     {
         void SetSurfaceWater(const SurfaceWater& water);
         const SurfaceWater& GetSurfaceWater();
+        void SetLensWater(const LensWater& water);
+        const LensWater& GetLensWater();
         void SetSurfaceInteraction(const SurfaceInteraction& interaction);
         const SurfaceInteraction& GetSurfaceInteraction();
         void SetEditorSelection(const std::vector<uint64_t>& entities, int instance);

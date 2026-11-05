@@ -6,23 +6,28 @@
   <Resource file="apex_game_caliper_2.xml" />
   <Resource file="apex_game_caliper_3.xml" />
   <Resource file="apex_game_caliper_packed_slot0.tex_packed_2.texture" />
+  <Resource file="apex_game_caliper_packed_slot0.tex_packed_2_2.texture" />
   <Resource file="apex_game_caliper_packed_slot0.tex_packed_3.texture" />
   <Resource file="apex_game_rim_2.xml" />
   <Resource file="apex_game_rim_3.xml" />
   <Resource file="apex_game_rim_packed_slot0.tex_packed_2.texture" />
+  <Resource file="apex_game_rim_packed_slot0.tex_packed_2_2.texture" />
   <Resource file="apex_game_rim_packed_slot0.tex_packed_3.texture" />
   <Resource file="apex_game_rotor_2.xml" />
   <Resource file="apex_game_rotor_3.xml" />
   <Resource file="apex_game_rotor_packed_slot0.tex_packed_2.texture" />
+  <Resource file="apex_game_rotor_packed_slot0.tex_packed_2_2.texture" />
   <Resource file="apex_game_rotor_packed_slot0.tex_packed_3.texture" />
   <Resource file="apex_game_rubber_2.xml" />
   <Resource file="apex_game_rubber_3.xml" />
   <Resource file="apex_game_rubber_packed_slot0.tex_packed_2.texture" />
+  <Resource file="apex_game_rubber_packed_slot0.tex_packed_2_2.texture" />
   <Resource file="apex_game_rubber_packed_slot0.tex_packed_3.texture" />
   <Resource file="apex_r1_wheel_2.mesh" />
   <Resource file="apex_r1_wheel_3.mesh" />
   <Resource file="asphalt.xml" />
   <Resource file="asphalt_packed_slot0.tex_packed.texture" />
+  <Resource file="asphalt_packed_slot0.tex_packed_2.texture" />
   <Resource file="asphalt_track_diff_4k.texture" />
   <Resource file="asphalt_track_nor_gl_4k.texture" />
   <Resource file="black_2.xml" />
@@ -46,6 +51,7 @@
   <Resource file="chrome_base_color_3.texture" />
   <Resource file="concrete.xml" />
   <Resource file="concrete_packed_slot0.tex_packed.texture" />
+  <Resource file="concrete_packed_slot0.tex_packed_2.texture" />
   <Resource file="cone_orange.xml" />
   <Resource file="cp_board_fuel_packed_slot0.tex_packed.texture" />
   <Resource file="cp_board_fuel_packed_slot0.tex_packed_2.texture" />
@@ -150,9 +156,11 @@
   <Resource file="island_tree_01_branches_diff_2k.texture" />
   <Resource file="island_tree_01_branches_nor_gl_2k.texture" />
   <Resource file="island_tree_01_branches_packed_slot0.tex_packed.texture" />
+  <Resource file="island_tree_01_branches_packed_slot0.tex_packed_2.texture" />
   <Resource file="island_tree_01_diff_2k.texture" />
   <Resource file="island_tree_01_nor_gl_2k.texture" />
   <Resource file="island_tree_01_packed_slot0.tex_packed.texture" />
+  <Resource file="island_tree_01_packed_slot0.tex_packed_2.texture" />
   <Resource file="island_tree_02_leaves_color_2k.texture" />
   <Resource file="island_tree_02_leaves_nor_gl_2k.texture" />
   <Resource file="kerb_red.xml" />
@@ -181,6 +189,7 @@
   <Resource file="olive_a.mesh" />
   <Resource file="olive_foliage.xml" />
   <Resource file="olive_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="olive_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="paint_normal_2.texture" />
   <Resource file="paint_normal_3.texture" />
   <Resource file="paint_white.xml" />
@@ -188,20 +197,25 @@
   <Resource file="pine_b.mesh" />
   <Resource file="pine_foliage.xml" />
   <Resource file="pine_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="pine_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="pine_tree_01_bark.xml" />
   <Resource file="pine_tree_01_bark_diff_2k.texture" />
   <Resource file="pine_tree_01_bark_nor_gl_2k.texture" />
   <Resource file="pine_tree_01_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="pine_tree_01_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="pine_tree_01_dead_branches.xml" />
   <Resource file="pine_tree_01_dead_branches_packed_slot0.tex_packed.texture" />
+  <Resource file="pine_tree_01_dead_branches_packed_slot0.tex_packed_2.texture" />
   <Resource file="pine_tree_01_trunk_a.xml" />
   <Resource file="pine_tree_01_trunk_a_diff_2k.texture" />
   <Resource file="pine_tree_01_trunk_a_nor_gl_2k.texture" />
   <Resource file="pine_tree_01_trunk_a_packed_slot0.tex_packed.texture" />
+  <Resource file="pine_tree_01_trunk_a_packed_slot0.tex_packed_2.texture" />
   <Resource file="pine_tree_01_trunk_b.xml" />
   <Resource file="pine_tree_01_trunk_b_diff_2k.texture" />
   <Resource file="pine_tree_01_trunk_b_nor_gl_2k.texture" />
   <Resource file="pine_tree_01_trunk_b_packed_slot0.tex_packed.texture" />
+  <Resource file="pine_tree_01_trunk_b_packed_slot0.tex_packed_2.texture" />
   <Resource file="pine_tree_01_twig_color_2k.texture" />
   <Resource file="pine_tree_01_twig_nor_gl_2k.texture" />
   <Resource file="rear_headlights_2.xml" />
@@ -252,7 +266,7 @@
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-2.66246 1.83616 -160.667" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="-1.33754 1.16384 20.667" rotation="-0.00496882 -0.0498131 -0.000247823 0.998746" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="8.16246 -0.0385388 7.66701" rotation="0.021888 -0.94295 0.0632851 0.326132" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
@@ -1147,21 +1161,21 @@
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="asphalt" material_path="project/car_playground_resources/asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <spline show_racing_line="true" closed_loop="true" resolution="20" road_width="24" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="16" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
-    <race_driver track_entity_id="0" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/player_car.prefab" skill="1" max_speed="95" edge_margin="1.70000005" start_distance="180" start_offset="-3" grid_start="true" start_delay="3" learning="true" verbose="false" />
+    <race_driver track_entity_id="0" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/ferrari_laferrari.prefab" skill="1" max_speed="95" edge_margin="1.70000005" start_distance="180" start_offset="-3" grid_start="true" start_delay="3" learning="true" verbose="false" />
     <Entity name="racer_2" id="15336523452101120701" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/player_car.prefab" skill="0.967999995" max_speed="95" edge_margin="1.70000005" start_distance="178" start_offset="3" grid_start="true" start_delay="3" learning="true" verbose="false" />
+     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/ferrari_laferrari.prefab" skill="0.967999995" max_speed="95" edge_margin="1.70000005" start_distance="178" start_offset="3" grid_start="true" start_delay="3" learning="true" verbose="false" />
     </Entity>
     <Entity name="racer_3" id="15336523452101120702" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/player_car.prefab" skill="0.976000011" max_speed="95" edge_margin="1.70000005" start_distance="170" start_offset="-3" grid_start="true" start_delay="3" learning="true" verbose="false" />
+     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/ferrari_laferrari.prefab" skill="0.976000011" max_speed="95" edge_margin="1.70000005" start_distance="170" start_offset="-3" grid_start="true" start_delay="3" learning="true" verbose="false" />
     </Entity>
     <Entity name="racer_4" id="15336523452101120703" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/player_car.prefab" skill="0.984000027" max_speed="95" edge_margin="1.70000005" start_distance="168" start_offset="3" grid_start="true" start_delay="3" learning="true" verbose="false" />
+     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/ferrari_laferrari.prefab" skill="0.984000027" max_speed="95" edge_margin="1.70000005" start_distance="168" start_offset="3" grid_start="true" start_delay="3" learning="true" verbose="false" />
     </Entity>
     <Entity name="racer_5" id="15336523452101120704" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/player_car.prefab" skill="0.991999984" max_speed="95" edge_margin="1.70000005" start_distance="160" start_offset="-3" grid_start="true" start_delay="3" learning="true" verbose="false" />
+     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/ferrari_laferrari.prefab" skill="0.991999984" max_speed="95" edge_margin="1.70000005" start_distance="160" start_offset="-3" grid_start="true" start_delay="3" learning="true" verbose="false" />
     </Entity>
     <Entity name="racer_6" id="15336523452101120705" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/player_car.prefab" skill="1" max_speed="95" edge_margin="1.70000005" start_distance="158" start_offset="3" grid_start="true" start_delay="3" learning="true" verbose="false" />
+     <race_driver track_entity_id="15336523452101120655" car_file="project/cars/ferrari_laferrari.car" car_prefab="data/prefabs/ferrari_laferrari.prefab" skill="1" max_speed="95" edge_margin="1.70000005" start_distance="158" start_offset="3" grid_start="true" start_delay="3" learning="true" verbose="false" />
     </Entity>
     <Entity name="spline_point_0" id="15336735368802053461" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
     <Entity name="spline_point_1" id="15336728523627598846" active="true" position="250 0 0" rotation="0 0 0 1" scale="1 1 1" />
@@ -1970,9 +1984,6 @@
     </Entity>
    </Entity>
   </Entity>
-  <Entity name="player_car_prefab" id="5601201501308041116" active="true" position="0 -0.2 0" rotation="0 0 0 1" scale="1 1 1">
-   <prefab file="data/prefabs/player_car.prefab" />
-  </Entity>
   <Entity name="sequencer_camera" id="1304752894500324373" active="true" position="0 1 -152" rotation="0 0.999761 0.0218593 0" scale="1 1 1">
    <camera flags="0" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.32084882" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
   </Entity>
@@ -2191,6 +2202,13 @@
    </Entity>
    <Entity name="flood_spot" id="5517422773946707252" active="true" position="-1 26 1.6" rotation="0.156434 0 0 0.987688" scale="1 1 1">
     <light flags="0" light_type="2" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="400000" range="220" angle="1.30899692" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" />
+   </Entity>
+  </Entity>
+  <Entity name="player_car" id="8252462792155150308" active="true" position="0 0.75 -160" rotation="0 0 0 1" scale="1 1 1" tags="focal_point,player_car,current_car">
+   <prefab file="data/prefabs/ferrari_laferrari.prefab" telemetry="true" camera_follows="true" />
+   <car_reset spawn_point_entity_id="9174409735602587355" />
+   <Entity name="player_car_spawn" id="9174409735602587355" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <spawn_point />
    </Entity>
   </Entity>
  </Entities>

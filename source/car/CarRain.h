@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/SurfaceWater.h"
 
 //= INCLUDES ==================
+#include "WaterDrops.h"
 #include "../math/Vector3.h"
 #include "../math/Vector4.h"
 #include <vector>
@@ -27,9 +28,8 @@ namespace spartan
     // every texel holds micro water, the sub millimetre droplets the rain leaves, too small to ever slide, when a texel
     // gathers enough of it they coalesce into a drop, and a drop running over the paint sweeps them up and leaves a thin
     // residue, so the paths the drops take stay visible as clean wet lines through the speckle and later drops follow them
-    // a drop is held by contact angle hysteresis (furmidge, the pinning force grows with the contact line) and pushed by
-    // gravity, the car's acceleration and the airflow in the paint's boundary layer, when the push wins it slides at the
-    // speed viscous dissipation allows, drops that touch merge, drops that are pulled off the paint drip away
+    // the drops follow the physics in WaterDrops.h, pushed by gravity, the car's acceleration and the airflow in the
+    // paint's boundary layer, drops that touch merge, drops that are pulled off the paint drip away
     class CarRain
     {
     public:
@@ -54,15 +54,8 @@ namespace spartan
             WashKind kind  = WashKind::Sweep;
         };
 
-        struct Conditions
-        {
-            math::Vector3 velocity;     // car local, m/s
-            math::Vector3 acceleration; // car local, m/s^2
-            math::Vector3 gravity;      // car local, m/s^2
-            math::Vector3 wind;         // car local, m/s
-            float rain     = 0.0f;      // 0 to 1
-            float exposure = 0.0f;      // 0 under a roof, 1 in the open
-        };
+        // car local
+        using Conditions = water_drops::Conditions;
 
         static void Tick(Entity* root, const Conditions& conditions, float delta_time);
         static void Clear();

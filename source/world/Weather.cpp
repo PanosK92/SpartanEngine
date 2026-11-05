@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../physics/PhysicsWorld.h"
 #include "../profiling/Profiler.h"
 #include "../core/Engine.h"
+#include "../car/WaterDrops.h"
 #include <array>
 #include <vector>
 #include <mutex>
@@ -236,9 +237,10 @@ namespace spartan
                 particles->ApplyPreset(ParticlePreset::Rain);
                 particles->SetMaxParticles(drops_max);
                 particles->SetLifetime(drops_lifetime);
-                particles->SetStartSpeed(6.0f);
+                // the same rain the car body and the lens are hit by (WaterDrops.h): it falls at terminal speed and drifts with the full wind
+                particles->SetStartSpeed(water_drops::rain_fall_speed);
                 particles->SetGravityModifier(-1.0f);
-                particles->SetDrag(1.1f); // terminal speed of g / drag, about 9 m/s, what a 2 mm drop falls at
+                particles->SetDrag(9.81f / water_drops::rain_fall_speed); // terminal speed is g / drag
                 particles->SetEmissionRadius(drops_radius);
                 particles->SetEmissionDirection(Vector3::Down);
                 particles->SetEmissionConeAngle(0.04f);
@@ -248,7 +250,7 @@ namespace spartan
                 particles->SetStartColor(Color(0.72f, 0.76f, 0.82f, 0.22f));
                 particles->SetEndColor(Color(0.72f, 0.76f, 0.82f, 0.18f));
                 particles->SetVelocityStretch(5.0f);
-                particles->SetWindInfluence(0.6f);
+                particles->SetWindInfluence(1.0f);
                 particles->SetTurbulenceStrength(0.0f);
                 particles->SetBlendMode(ParticleBlendMode::Alpha);
                 particles->SetLightingMode(ParticleLightingMode::Lit);

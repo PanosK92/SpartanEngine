@@ -1455,6 +1455,14 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float3 right = safe_normalize(buffer_frame.camera_right, float3(1.0, 0.0, 0.0));
     float3 up    = safe_normalize(cross(buffer_frame.camera_forward, right), float3(0.0, 1.0, 0.0));
     float3 flow_velocity = p.velocity - emitter.emitter_velocity * emitter.velocity_inheritance;
+    // the streak a drop draws on the sensor is its motion relative to the camera, so driving into the rain tilts it
+    // toward the lens and stretches it, the same relative velocity that sets how hard the lens and the body get hit
+    if (emitter.rain_occluded != 0u)
+    {
+        float3 camera_velocity = (buffer_frame.camera_position - buffer_frame.camera_position_previous) / max(buffer_frame.delta_time, 1e-4);
+        camera_velocity       *= (buffer_frame.delta_time > 0.0 && length(camera_velocity) < 150.0) ? 1.0 : 0.0; // paused or teleported
+        flow_velocity          = p.velocity - camera_velocity;
+    }
     float  velocity_len  = length(flow_velocity);
     float3 flow_axis     = safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction);
     float3 velocity_axis = flow_axis - buffer_frame.camera_forward * dot(flow_axis, buffer_frame.camera_forward);
@@ -1471,14 +1479,22 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     // Preserve foreshortening when looking along the exhaust direction.
     if (flame)
         half_size_x *= max(projected_flow_length, 0.2);
-    // a raindrop is a couple of millimetres across, what the eye sees is the streak it draws during one exposure
+    // a raindrop is a couple of millimetres across, what the eye sees is the streak it draws during one exposure:
+    // the segment from where it was relative to the camera one exposure ago to where it is now, drawn in world space
+    // so perspective does the rest, drops the camera drives into come at the lens and grow, corners sweep them sideways
+    float3 streak_center = p.position;
     if (emitter.rain_occluded != 0u)
     {
-        half_size_x = max(velocity_len * 0.011 * projected_flow_length, p.size);
-        half_size_y = p.size * 0.5;
+        float3 trail     = flow_velocity * 0.022;
+        float3 to_camera = safe_normalize(get_camera_position() - p.position, -buffer_frame.camera_forward);
+        right            = safe_normalize(trail, float3(0.0, -1.0, 0.0));
+        up               = safe_normalize(cross(right, to_camera), up);
+        half_size_x      = max(length(trail) * 0.5, p.size);
+        half_size_y      = p.size * 0.5;
+        streak_center    = p.position - trail * 0.5;
     }
     float longitudinal = c.x + (flame ? 1.0 : 0.0);
-    float3 world = p.position + right * longitudinal * half_size_x + up * c.y * half_size_y;
+    float3 world = streak_center + right * longitudinal * half_size_x + up * c.y * half_size_y;
     // a leaf is drawn in its own simulated plane in flight and at rest alike, so landing is not a
     // switch between two looks, and it is lit two sided from the face the camera sees
     float3 leaf_offset = 0.0;
@@ -1520,6 +1536,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * (0.5 + stretch * 1.5) * previous_length_scale
         + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
     if (leaf) previous_world = p.previous_position + leaf_offset;
+    if (emitter.rain_occluded != 0u) previous_world = world + p.previous_position - p.position;
     o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
     o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
     o.position  = clip;

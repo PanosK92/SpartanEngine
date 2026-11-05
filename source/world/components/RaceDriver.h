@@ -35,6 +35,8 @@ namespace spartan
         void Load(pugi::xml_node& node) override;
 
         Car* GetCar() const { return m_car; }
+        // takes effect on the next race start
+        void SetCarPrefab(const std::string& path) { m_car_prefab = path; }
         const std::shared_ptr<RacingLine>& GetRacingLine() const { return m_line; }
         AiDriverSettings GetDriverSettings() const;
 

@@ -24,6 +24,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../profiling/Profiler.h"
 #include "../core/Window.h"
 #include "../core/Timer.h"
+#include "../core/Engine.h"
 #include "../file_system/FileSystem.h"
 #include "../input/Input.h"
 #include "../display/Display.h"
@@ -87,6 +88,62 @@ namespace spartan
         bool materials_uploaded_this_frame = false;
         // Residency swaps replace SRVs without changing material slots or ray tracing geometry.
         bool bindless_textures_dirty = false;
+
+        void draw_watermark()
+        {
+            if (!cvar_watermark.GetValueAs<bool>() || Engine::IsHeadless())
+            {
+                return;
+            }
+
+            shared_ptr<Font>& font = Renderer::GetFont(Renderer_Font::CinematicLabel);
+            if (!font)
+            {
+                return;
+            }
+
+            // corners as screen fractions, the top right one is left to the performance overlay while it shows
+            static const Vector2 corners[] = { Vector2(0.0f, 0.0f), Vector2(0.0f, 1.0f), Vector2(1.0f, 1.0f), Vector2(1.0f, 0.0f) };
+            static uint32_t corner  = 1;
+            static float elapsed    = 0.0f;
+            static uint32_t seed    = 0x9e3779b9u;
+
+            const float interval = max(cvar_watermark_interval.GetValue(), 2.0f);
+            const float fade     = 0.75f;
+            elapsed += static_cast<float>(Timer::GetDeltaTimeRealSec());
+            if (elapsed >= interval)
+            {
+                elapsed               = fmod(elapsed, interval);
+                const uint32_t count  = cvar_performance_metrics.GetValueAs<bool>() ? 3 : 4;
+                seed                  = seed * 1664525u + 1013904223u;
+                corner                = (corner + 1 + (seed >> 16) % (count - 1)) % count;
+            }
+            corner = cvar_performance_metrics.GetValueAs<bool>() && corner == 3 ? 0 : corner;
+
+            const float alpha = clamp(min(elapsed, interval - elapsed) / fade, 0.0f, 1.0f);
+            if (alpha <= 0.0f)
+            {
+                return;
+            }
+
+            // sized in 1080p pixels and scaled to the output height
+            const char* text       = "Panos Karabelas";
+            const float width_px   = static_cast<float>(Renderer::GetViewport().width);
+            const float height_px  = static_cast<float>(Renderer::GetViewport().height);
+            const float unit       = height_px / 1080.0f;
+            const float scale      = unit * 22.0f / font->GetPixelSize();
+            const float tracking   = 1.5f * unit;
+            const float margin     = 32.0f * unit;
+            const float text_w     = font->GetTextWidth(text, false, tracking, scale);
+            const float text_h     = font->GetLineHeight() * scale;
+            const Vector2& anchor  = corners[corner];
+            const float x          = margin + (width_px - text_w - margin * 2.0f) * anchor.x;
+            const float y          = margin + (height_px - text_h - margin * 2.0f) * anchor.y;
+            const float shadow     = 1.5f * unit;
+
+            font->AddText(text, Vector2(x + shadow, y + shadow), Color(0.0f, 0.0f, 0.0f, 0.3f * alpha), false, tracking, scale);
+            font->AddText(text, Vector2(x, y), Color(1.0f, 1.0f, 1.0f, 0.55f * alpha), false, tracking, scale);
+        }
     }
 
     namespace
@@ -1054,6 +1111,7 @@ namespace spartan
         if (render_world)
         {
             UpdateFrameConstantBuffer();
+            draw_watermark();
             ProduceFrame();
 
             // lighting through post is recorded, hand it to the gpu now, otherwise it waits for the
@@ -2295,6 +2353,13 @@ namespace spartan
                 car_dirt             = car_dirt && texture && texture->GetWidth() == Renderer::GetSurfaceWater().width && texture->GetHeight() == Renderer::GetSurfaceWater().height;
             }
             Renderer::view().frame.car_dirt = Vector4(Renderer::GetSurfaceWater().dirt_clock, car_dirt ? 1.0f : 0.0f, 0.0f, 0.0f);
+
+            const LensWater& lens   = Renderer::GetLensWater();
+            const bool lens_visible = cvar_lens_rain.GetValue() > 0.0f && !secondary_render_root_active && !IsStereoView();
+            Renderer::view().frame.lens_rain  = lens_visible ? lens.rain : Vector4::Zero;
+            Renderer::view().frame.lens_air   = lens.air;
+            Renderer::view().frame.lens_force = lens.force;
+            Renderer::view().frame.lens_spawn = lens.spawn;
         }
         Renderer::view().frame.cloud_coverage        = Environment::GetCloudCoverageEffective();
         Renderer::view().frame.cloud_seed_offset     = World::GetCloudSeedOffset();

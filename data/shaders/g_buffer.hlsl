@@ -785,6 +785,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     float road_footprint = max(length(dpdx_world), length(dpdy_world));
     RoadWear road_wear_state = road_wear(material.flags, position_world, vertex.uv_misc.xy, normalize(vertex.normal), normalize(vertex.tangent), road_footprint);
+    // 16x anisotropic filtering keeps the aggregate sharp along the short axis of a grazing pixel
+    float2 road_axes         = float2(length(dpdx_world), length(dpdy_world));
+    road_wear_state.texel    = max(min(road_axes.x, road_axes.y), road_footprint / 16.0f);
     float road_macro     = road_macro_height(material.flags, road_wear_state, height_map);
     float road_paint     = road_weathering(material.flags, road_wear_state, position_world, vertex.uv_misc.xy, height_map, albedo.rgb, roughness, road_footprint);
     road_surface_detail(material.flags, road_wear_state, position_world, vertex.uv_misc.xy, normalize(vertex.normal), height_map, road_paint, albedo.rgb, normal, occlusion);

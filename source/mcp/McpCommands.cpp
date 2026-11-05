@@ -2850,9 +2850,9 @@ namespace spartan
             bool prefab_changed = false;
             if (const std::optional<std::string> prefab_attributes = get_argument(request, "prefab_attributes"))
             {
-                if (entity->GetPrefabType().empty())
+                if (!entity->HasPrefabData())
                 {
-                    return json_error("entity is not a code prefab");
+                    return json_error("entity is not a prefab instance");
                 }
                 auto trim = [](const std::string& value)
                 {

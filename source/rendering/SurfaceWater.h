@@ -68,4 +68,14 @@ namespace spartan
         std::span<const uint32_t> dirt_color, dirt_state, dirt_wear;
         std::span<const SurfaceDirtTexel> dirt_texels;
     };
+
+    // what the glass of the camera lens feels this step (CarLens.h), the drops on it live on the gpu (lens_drops.hlsl)
+    // the layout of FrameBufferData::lens_rain, lens_air, lens_force and lens_spawn
+    struct LensWater
+    {
+        math::Vector4 rain  = math::Vector4::Zero; // x = 0 off, 1 running, 2 wipe first, y = circle of confusion, z = half height in metres, w = aspect
+        math::Vector4 air   = math::Vector4::Zero; // xyz = air over the glass, w = seconds this step
+        math::Vector4 force = math::Vector4::Zero; // xyz = gravity minus acceleration, w = evaporation clock
+        math::Vector4 spawn = math::Vector4::Zero; // x = rain impacts, y = mist impacts, z = rain mean diameter, w = dryness
+    };
 }

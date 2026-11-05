@@ -78,15 +78,23 @@ namespace spartan
             return "";
         }
 
-        // the first entity of a .prefab file that is a car prefab
-        pugi::xml_node find_car_prefab_entity(const pugi::xml_document& document)
+        // the first entity of a .prefab file that is a car prefab, a file that is itself a car gets an entity instancing it
+        pugi::xml_node find_car_prefab_entity(pugi::xml_document& document, const string& prefab_path)
         {
-            for (pugi::xml_node entity = document.child("Prefab").child("Entity"); entity; entity = entity.next_sibling("Entity"))
+            pugi::xml_node root = document.child("Prefab");
+            for (pugi::xml_node entity = root.child("Entity"); entity; entity = entity.next_sibling("Entity"))
             {
                 if (!car_file_from_prefab(entity.child("prefab")).empty())
                 {
                     return entity;
                 }
+            }
+
+            if (string(root.child("prefab").attribute("type").as_string()) == "car")
+            {
+                pugi::xml_node entity = document.append_child("Entity");
+                entity.append_child("prefab").append_attribute("file") = prefab_path.c_str();
+                return entity;
             }
             return pugi::xml_node();
         }
@@ -179,7 +187,7 @@ namespace spartan
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_track_entity_id, uint64_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_file, string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_prefab, string);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_car_prefab, SetCarPrefab, string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_skill, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_speed, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_edge_margin, float);
@@ -400,7 +408,7 @@ namespace spartan
         {
             const string prefab_path = resolve_world_path(m_car_prefab);
             pugi::xml_document document;
-            pugi::xml_node entity    = document.load_file(prefab_path.c_str()) ? find_car_prefab_entity(document) : pugi::xml_node();
+            pugi::xml_node entity    = document.load_file(prefab_path.c_str()) ? find_car_prefab_entity(document, prefab_path) : pugi::xml_node();
             const string prefab_car  = entity ? car_file_from_prefab(entity.child("prefab")) : "";
             if (!prefab_car.empty())
             {
@@ -511,7 +519,7 @@ namespace spartan
             SP_LOG_ERROR("race_driver: failed to read %s", m_car_prefab_path.c_str());
             return nullptr;
         }
-        pugi::xml_node entity = find_car_prefab_entity(document);
+        pugi::xml_node entity = find_car_prefab_entity(document, m_car_prefab_path);
         if (!entity)
         {
             return nullptr;

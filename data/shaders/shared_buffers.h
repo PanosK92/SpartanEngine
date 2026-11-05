@@ -52,6 +52,42 @@ Commercial use requires written permission and negotiated payment terms.
 // constant buffer - updates once per frame
 // rain occlusion grid cells per side, the cpu fills it with downward physics rays around the camera
 #define RAIN_OCCLUSION_RESOLUTION 128
+// drops on the camera lens (CarLens.h, lens_drops.hlsl), simulated on the gpu
+// lens_drops holds two halves, the live drops the frame shows and the work half a step writes into
+// lens_state holds the counters, the merge grid's list heads, the list links, the merge targets and the wet trail
+#define LENS_DROPS_MAX          2048
+#define LENS_GRID_WIDTH         48   // cells of 0.1 lens units over x -2.4 to 2.4
+#define LENS_GRID_HEIGHT        24   // and y -1.2 to 1.2
+#define LENS_GRID_CELL          0.1f
+#define LENS_DOME_RADIUS        0.04f // metres, the front element bulges out as a dome of this radius, the drops ride on it and it turns from the camera towards the frame's edges
+#define LENS_TRAIL_WIDTH        960  // cells over the frame of the water film running drops leave, depth in nanometres, about two pixels each at 1080p so a vein stays smooth
+#define LENS_TRAIL_HEIGHT       540
+#define LENS_LIGHTS_X           8    // the frame is cut into regions, each holds the light brighter than the scene around it
+#define LENS_LIGHTS_Y           4
+#define LENS_LIGHT_STRIDE       8    // uints per light: position xy in lens units, energy rgb, float bits
+#define LENS_STATE_COUNT        0    // live drops
+#define LENS_STATE_COUNT_WORK   1    // drops in the work half
+#define LENS_STATE_RADIUS_MAX   2    // largest contact radius in the work half, float bits
+#define LENS_STATE_HEADS        4
+#define LENS_STATE_NEXT         (LENS_STATE_HEADS + LENS_GRID_WIDTH * LENS_GRID_HEIGHT)
+#define LENS_STATE_TARGET       (LENS_STATE_NEXT + LENS_DROPS_MAX)
+#define LENS_STATE_TRAIL        (LENS_STATE_TARGET + LENS_DROPS_MAX)
+#define LENS_STATE_LIGHTS       (LENS_STATE_TRAIL + LENS_TRAIL_WIDTH * LENS_TRAIL_HEIGHT)
+#define LENS_STATE_SIZE         (LENS_STATE_LIGHTS + LENS_LIGHTS_X * LENS_LIGHTS_Y * LENS_LIGHT_STRIDE)
+
+// one drop on the lens, metres on the glass in the camera's frame, x right, y up
+struct LensDrop
+{
+    SHARED_FLOAT2 position;
+    SHARED_FLOAT2 velocity;
+    SHARED_FLOAT2 lean; // force along the glass over the pinning force
+    SHARED_FLOAT  mass; // kg
+    SHARED_FLOAT  seed;
+    SHARED_FLOAT  age;  // seconds
+    SHARED_FLOAT  padding0;
+    SHARED_FLOAT  padding1;
+    SHARED_FLOAT  padding2;
+};
 
 struct FrameBufferData
 {
@@ -242,6 +278,18 @@ struct FrameBufferData
     // xy = world xz of the window min, z = 1 / window size, w = 1 while waves are running
     SHARED_FLOAT4 ocean_wake;
     SHARED_FLOAT4 ocean_wake_previous;
+
+    // the water on the front element of the camera that follows the car, simulated drop by drop on the gpu (lens_drops.hlsl)
+    // what the glass feels comes from the cpu (CarLens.h), all in the camera's frame, x right, y up, z where it looks
+    // lens units put the frame's height at -1 to 1 and its width at -aspect to aspect
+    // lens_rain x = 0 off, 1 running, 2 wipe the glass first, y = circle of confusion in lens units, z = metres of glass the half height spans, w = aspect
+    // lens_air xyz = the air over the glass, wind minus the camera's velocity, m/s, w = seconds this step
+    // lens_force xyz = gravity minus the camera's acceleration, m/s^2, w = the evaporation clock
+    // lens_spawn x = rain impacts this step, y = tyre mist impacts, z = mean diameter of the rain in metres, w = dryness of the air
+    SHARED_FLOAT4 lens_rain;
+    SHARED_FLOAT4 lens_air;
+    SHARED_FLOAT4 lens_force;
+    SHARED_FLOAT4 lens_spawn;
 
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
@@ -1378,6 +1426,7 @@ namespace spartan
     using Sb_EmitterParams    = EmitterParams;
     using Sb_ParticleWake     = ParticleWakeSample;
     using Sb_GrassInstance    = GrassInstance;
+    static_assert(sizeof(LensDrop) == 48);
 
     static_assert(sizeof(Sb_IndirectDrawArgs) == sizeof(uint32_t) * 5);
     static_assert(sizeof(Sb_MeshletBounds) == sizeof(uint32_t) * 6);

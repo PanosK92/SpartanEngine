@@ -199,6 +199,66 @@ namespace spartan
             swap(tex_in, tex_out);
         }
 
+        // the drops sit on the lens itself, the scene's focus and motion blur never reach them, the bloom does
+        bool lens_ready = true;
+        for (Renderer_Shader kernel : { Renderer_Shader::lens_rain_c, Renderer_Shader::lens_drops_clear_c, Renderer_Shader::lens_drops_simulate_c, Renderer_Shader::lens_drops_spawn_c, Renderer_Shader::lens_drops_insert_c, Renderer_Shader::lens_drops_target_c, Renderer_Shader::lens_drops_merge_c, Renderer_Shader::lens_drops_lights_c })
+        {
+            RHI_Shader* shader = GetShader(kernel);
+            lens_ready         = lens_ready && shader && shader->IsCompiled();
+        }
+        if (lens_ready && Renderer::view().frame.lens_rain.x > 0.0f && !xr_stereo && !IsSecondaryViewActive())
+        {
+            RHI_Buffer* lens_drops = GetBuffer(Renderer_Buffer::LensDrops);
+            RHI_Buffer* lens_state = GetBuffer(Renderer_Buffer::LensState);
+
+            // a drop sees a wide field through a tiny cap, each of its pixels gathers many of the scene's, the mips integrate them so small bright lights keep their energy
+            if (!tex_in->HasPerMipViews() && tex_out->HasPerMipViews())
+            {
+                RHI_CommandList::Blit(tex_in, tex_out, false);
+                swap(tex_in, tex_out);
+            }
+            if (tex_in->HasPerMipViews() && tex_in->GetMipCount() > 1)
+            {
+                Pass_Downscale(tex_in, Renderer_DownsampleFilter::Average);
+            }
+
+            // the step, every kernel runs over a fixed span and reads its counts on the gpu
+            RHI_CommandList::BeginPass("lens_drops");
+            {
+                const uint32_t spawn_count = static_cast<uint32_t>(Renderer::view().frame.lens_spawn.x + Renderer::view().frame.lens_spawn.y);
+                const uint32_t span        = max(LENS_DROPS_MAX, max(LENS_GRID_WIDTH * LENS_GRID_HEIGHT, LENS_TRAIL_WIDTH * LENS_TRAIL_HEIGHT));
+                const pair<Renderer_Shader, uint32_t> kernels[] =
+                {
+                    { Renderer_Shader::lens_drops_clear_c,    span            },
+                    { Renderer_Shader::lens_drops_simulate_c, LENS_DROPS_MAX  },
+                    { Renderer_Shader::lens_drops_spawn_c,    spawn_count     },
+                    { Renderer_Shader::lens_drops_insert_c,   LENS_DROPS_MAX  },
+                    { Renderer_Shader::lens_drops_target_c,   LENS_DROPS_MAX  },
+                    { Renderer_Shader::lens_drops_merge_c,    LENS_DROPS_MAX  },
+                    { Renderer_Shader::lens_drops_lights_c,   1               },
+                };
+                for (const auto& [kernel, threads] : kernels)
+                {
+                    if (threads == 0)
+                        continue;
+
+                    RHI_CommandList::SetShader(GetShader(kernel));
+                    RHI_CommandList::SetBuffer("lens_drops", lens_drops);
+                    RHI_CommandList::SetBuffer("lens_state", lens_state);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
+                    RHI_CommandList::Dispatch((threads + 63) / 64, 1, 1);
+                }
+            }
+            RHI_CommandList::EndPass();
+
+            Pass_Compute("lens_rain", Renderer_Shader::lens_rain_c, tex_in, tex_out, [&]()
+            {
+                RHI_CommandList::SetBuffer("lens_drops", lens_drops);
+                RHI_CommandList::SetBuffer("lens_state", lens_state);
+            });
+            swap(tex_in, tex_out);
+        }
+
         Camera* camera = Renderer::GetViewCamera();
         const bool auto_exposure_enabled =
             camera &&

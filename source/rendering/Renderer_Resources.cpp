@@ -266,6 +266,14 @@ namespace spartan
         at(buffers, Renderer_Buffer::CarDirtTexels) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(SurfaceDirtTexel)),
             SurfaceWater::dirt_texels_max * renderer_frame_resource_count, nullptr, true, "car_dirt_texels");
+        at(buffers, Renderer_Buffer::LensDrops) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(LensDrop)), LENS_DROPS_MAX * 2, nullptr, false, "lens_drops");
+        {
+            vector<uint32_t> lens_state(LENS_STATE_SIZE, 0);
+            at(buffers, Renderer_Buffer::LensState) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), LENS_STATE_SIZE, nullptr, false, "lens_state");
+            at(buffers, Renderer_Buffer::LensState)->UploadSubRegion(lens_state.data(), 0, lens_state.size() * sizeof(uint32_t));
+        }
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_frame_resource_count, nullptr, true,
@@ -442,7 +450,7 @@ namespace spartan
             renderer_max_gpu_scatter_instances, nullptr, false, "grass_instances"
         );
         at(buffers, Renderer_Buffer::GrassLodParameters) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Storage, sizeof(Vector4), renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args, nullptr, false, "grass_lod_parameters"
+            RHI_Buffer_Type::Storage, sizeof(Vector4), renderer_gpu_scatter_parameter_count, nullptr, false, "grass_lod_parameters"
         );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
@@ -1393,6 +1401,14 @@ namespace spartan
             { Renderer_Shader::chromatic_aberration_c,                RHI_Shader_Type::Compute, "chromatic_aberration.hlsl"                                                  },
             { Renderer_Shader::vhs_c,                                 RHI_Shader_Type::Compute, "vhs.hlsl"                                                                   },
             { Renderer_Shader::cinematic_c,                           RHI_Shader_Type::Compute, "cinematic.hlsl"                                                             },
+            { Renderer_Shader::lens_rain_c,                           RHI_Shader_Type::Compute, "lens_rain.hlsl"                                                             },
+            { Renderer_Shader::lens_drops_clear_c,                    RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "CLEAR"    },
+            { Renderer_Shader::lens_drops_simulate_c,                 RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "SIMULATE" },
+            { Renderer_Shader::lens_drops_spawn_c,                    RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "SPAWN"    },
+            { Renderer_Shader::lens_drops_insert_c,                   RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "INSERT"   },
+            { Renderer_Shader::lens_drops_target_c,                   RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "TARGET"   },
+            { Renderer_Shader::lens_drops_merge_c,                    RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "MERGE"    },
+            { Renderer_Shader::lens_drops_lights_c,                   RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "LIGHTS"   },
 
             { Renderer_Shader::output_c,                              RHI_Shader_Type::Compute, "output.hlsl"                                                                },
             { Renderer_Shader::motion_blur_c,                         RHI_Shader_Type::Compute, "motion_blur.hlsl"                                                           },

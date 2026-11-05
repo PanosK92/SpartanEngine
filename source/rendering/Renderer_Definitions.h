@@ -141,6 +141,10 @@ namespace spartan
     }
 
     const uint32_t renderer_max_gpu_scatter_args      = renderer_max_gpu_scatter_slots * renderer_max_gpu_scatter_lods;
+    // distance bands of a card ring, each walks blocks of cells twice as wide as the band before, has to match grass_populate.hlsl
+    const uint32_t renderer_gpu_scatter_card_bands    = 4;
+    // per slot lod parameters, the protected vehicle region, the cell window of every ring, then the block window of every card band
+    const uint32_t renderer_gpu_scatter_parameter_count = renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args + renderer_max_gpu_scatter_slots * renderer_gpu_scatter_card_bands;
     const uint32_t renderer_max_gpu_scatter_instances =
         renderer_gpu_scatter_base(renderer_max_gpu_scatter_slots - 1, renderer_max_gpu_scatter_lods - 1) +
         renderer_gpu_scatter_cap(renderer_max_gpu_scatter_slots - 1, renderer_max_gpu_scatter_lods - 1);
@@ -378,6 +382,14 @@ namespace spartan
         dlss_reactivity_c,
         film_grain_c,
         cinematic_c,
+        lens_rain_c,
+        lens_drops_clear_c,
+        lens_drops_simulate_c,
+        lens_drops_spawn_c,
+        lens_drops_insert_c,
+        lens_drops_target_c,
+        lens_drops_merge_c,
+        lens_drops_lights_c,
         motion_blur_c,
         depth_of_field_focus_c,
         depth_of_field_c,
@@ -723,6 +735,8 @@ namespace spartan
         CarRainDrops,              // the occupied car's drops, ring-buffered per frame
         CarRainTexels,             // the car's micro water changes this frame, ring-buffered per frame
         CarDirtTexels,             // the car's dirt changes this frame, ring-buffered per frame
+        LensDrops,                 // the drops on the camera lens, the live half and the work half, gpu resident
+        LensState,                 // their counters, merge grid, merge targets and wet trail
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices

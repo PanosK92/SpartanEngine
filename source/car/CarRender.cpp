@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarWeather.h"
 #include "CarRain.h"
 #include "CarDirt.h"
+#include "CarLens.h"
 #include "../world/Weather.h"
 #include "../car/Car.h"
 #include "../car/CarSimulation.h"
@@ -33,8 +34,10 @@ namespace spartan
         {
             Renderer::SetSurfaceInteraction({});
             Renderer::SetSurfaceWater({});
+            Renderer::SetLensWater({});
             return;
         }
+        Renderer::SetLensWater(CarLens::Consume());
         SurfaceWater water;
         water.active = CarRain::IsActive();
         FillCarWeather(water);

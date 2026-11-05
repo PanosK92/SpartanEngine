@@ -197,6 +197,8 @@ namespace spartan
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,   "draw entity icons and debug visuals");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,   "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
     TConsoleVar<float> cvar_screenshot_ui                  ("r.screenshot_ui",                  0.0f,   "screenshots capture the whole editor window, ui included");
+    TConsoleVar<float> cvar_watermark                      ("r.watermark",                      1.0f,   "draw the author watermark over the final image, renders and screenshots included");
+    TConsoleVar<float> cvar_watermark_interval             ("r.watermark_interval",             30.0f,  "seconds the watermark stays in one corner before it moves");
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,   "draw physics debug");
     TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,   "draw ragdoll capsules and joints in play mode");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,   "render in wireframe mode");
@@ -222,6 +224,7 @@ namespace spartan
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,   "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,   "depth of field");
     TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,   "film grain effect");
+    TConsoleVar<float> cvar_lens_rain                      ("r.lens_rain",                      1.0f,   "rain drops on the lens of the chase and hood cameras, the value scales how much rain reaches the lens, 0 is off");
     TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,   "NTSC VHS playback: tape jitter, colour bandwidth loss, dropouts and head switching");
     TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,   "chromatic aberration");
     TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,   "dithering to reduce banding");

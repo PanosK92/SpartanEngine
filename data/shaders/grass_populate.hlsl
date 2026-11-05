@@ -52,6 +52,15 @@ static const float grass_cull_radius      = 1.5f;
 // to sit below the range or the tail of the distribution gets clipped by the atomic and blinks
 #define GRASS_FILL_MARGIN 0.85f
 
+// card ring distance bands, has to match renderer_gpu_scatter_card_bands, their block windows follow the
+// slot parameters, the vehicle region and the ring windows in grass_lod_parameters
+static const uint  grass_card_bands     = 4u;
+static const uint  grass_card_band_base = 13u;
+// squares without overflowing, a band that never ends
+static const float grass_band_unbounded = 1e18f;
+// candidates of one cell a blade ring thread walks, has to match gpu_scatter_blades_per_thread
+static const uint  grass_blades_per_thread = 1u;
+
 // gpu scatter placement (ghost of tsushima style), slot 0 is grass and the higher slots are micro
 // detail, pebbles and chips, the same ring machinery with a different mesh and a tighter reach
 //
@@ -72,7 +81,8 @@ static const float grass_cull_radius      = 1.5f;
 // a patch size of zero spreads the slot evenly, which is what this pass did before patches existed,
 // and a negative one inverts the field so a slot takes the ground the others left bare
 // the first four float4s are taken, so the rest travels in the bits of draw_index:
-//   bits 0-3   lod ring
+//   bits 0-1   lod ring
+//   bits 2-3   card band, the block of cells a card ring thread walks is 2^band cells wide
 //   bits 4-7   scatter slot
 //   bits 8-11  prop mask channel, 0 grass, 1 trees, 2 rocks
 //   bits 12-19 packed instance scale at the small end of the size range
@@ -255,8 +265,8 @@ GrassInstance build_grass_instance(float3 position, float3 normal, float yaw_01,
     return gi;
 }
 
-[numthreads(8, 8, 1)]
-void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+// one (cell, blade) candidate, band_min and band_max hand it to exactly one card band by distance
+void populate_cell(uint2 cell_id, uint blade_index, float band_min, float band_max)
 {
     float cell_size             = pass_float(pass_grass_populate::cell_size);
     float ring_radius           = pass_float(pass_grass_populate::ring_radius);
@@ -284,7 +294,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float height_fade   = pass_float(pass_grass_populate::height_fade);
 
     uint  packed_index  = buffer_pass.draw_index;
-    uint  lod_index     = packed_index & 0xFu;
+    uint  lod_index     = packed_index & 0x3u;
     uint  slot_index    = (packed_index >> 4)  & 0xFu;
     uint  mask_channel  = (packed_index >> 8)  & 0xFu;
     float scale_01_min  = float((packed_index >> 12) & 0xFFu) / 255.0f;
@@ -343,12 +353,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         cell_keep       = 1.0f;
     }
 
-    // the cpu dispatches only the window of cells the view pyramid reaches, its origin follows the
-    // slot lod entries, so a cell keeps the same index and hash as on the full grid
-    uint2 cell_id = dispatch_thread_id.xy + (uint2)grass_lod_parameters[4u + count_index].xy;
     if (cell_id.x >= cells_per_axis ||
         cell_id.y >= cells_per_axis ||
-        dispatch_thread_id.z >= blades_per_cell)
+        blade_index >= blades_per_cell)
         return;
 
     // signed cell index in the camera-relative grid, centered on the snapped camera position
@@ -364,7 +371,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // each (cell, blade) pair gets stable random dimensions, yaw and position jitter
     // the slot is part of the seed, otherwise every slot would stack its instances on the exact same
     // points and a pebble would be born inside every blade of grass
-    uint blade_index = dispatch_thread_id.z;
     uint h0  = hash_u32(
         (uint)world_cell_x,
         (uint)world_cell_z,
@@ -418,7 +424,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float  reject_outer = ring_radius + outer_transition * 0.15f;
     if (
         dist2 < inner_start * inner_start ||
-        dist2 > reject_outer * reject_outer
+        dist2 > reject_outer * reject_outer ||
+        dist2 < band_min * band_min ||
+        dist2 >= band_max * band_max
     )
     {
         return;
@@ -701,4 +709,85 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         ys,
         scale_01
     );
+}
+
+[numthreads(8, 8, 1)]
+void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+{
+    uint packed_index = buffer_pass.draw_index;
+    uint lod_index    = packed_index & 0x3u;
+    uint band         = (packed_index >> 2) & 0x3u;
+    uint slot_index   = (packed_index >> 4) & 0xFu;
+    uint count_index  = slot_index * 3u + lod_index;
+
+    // the cpu dispatches only the window of cells the view pyramid reaches, its origin follows the
+    // slot lod entries, so a cell keeps the same index and hash as on the full grid
+    float card_thin = grass_lod_parameters[slot_index].w;
+    bool  card_ring = grass_lod_parameters[slot_index].z == float(lod_index + 1u);
+    if (!card_ring || card_thin <= 0.0f)
+    {
+        // a near cell holds a couple of hundred candidates, so a thread walks several of them, launching a thread
+        // per candidate cost more than most of them do before they reject
+        uint2 cell_id = dispatch_thread_id.xy + (uint2)grass_lod_parameters[4u + count_index].xy;
+        [loop]
+        for (uint i = 0; i < grass_blades_per_thread; i++)
+        {
+            populate_cell(cell_id, dispatch_thread_id.z * grass_blades_per_thread + i, 0.0f, grass_band_unbounded);
+        }
+        return;
+    }
+
+    // past the thinning distance a card cell survives with 1 / scale^2, so a thread per cell spent the
+    // dispatch launching threads that reject. the card ring runs in distance bands instead, a thread walks
+    // a block of cells that doubles in width with each band, so it still expects about one card, and every
+    // cell runs exactly the tests it ran with a thread of its own
+    uint  block      = 1u << band;
+    float band_min   = band == 0u ? 0.0f : card_thin * float(block);
+    float band_max   = band == grass_card_bands - 1u ? grass_band_unbounded : card_thin * float(block * 2u);
+    uint2 block_id   = dispatch_thread_id.xy + (uint2)grass_lod_parameters[grass_card_band_base + slot_index * grass_card_bands + band].xy;
+    uint2 first_cell = block_id * block;
+
+    // a candidate lands inside its own cell, so the block square bounds every candidate the block can make
+    float  cell_size      = pass_float(pass_grass_populate::cell_size);
+    float  ring_radius    = pass_float(pass_grass_populate::ring_radius);
+    uint   cells_per_axis = (uint)(2.0f * ceil(ring_radius / cell_size)) + 2u;
+    float2 camera_xz      = get_camera_position().xz;
+    float2 block_min      = (floor(camera_xz / cell_size) + float2(int2(first_cell) - (int)(cells_per_axis / 2u))) * cell_size;
+    float2 block_max      = block_min + float(block) * cell_size;
+    float  nearest        = length(clamp(camera_xz, block_min, block_max) - camera_xz);
+    float  farthest       = length(max(abs(block_min - camera_xz), abs(block_max - camera_xz)));
+    float  slack          = cell_size * 0.01f;
+    if (any(first_cell >= cells_per_axis) || nearest > band_max + slack || farthest < band_min - slack)
+        return;
+
+    // the walk itself only redoes the position, band and thinning rolls of populate_cell, the full test runs for
+    // the few cells that pass them, so a block costs about what one cell did and its lanes stay converged
+    int2  base_cell  = int2(floor(camera_xz / cell_size)) + int2(first_cell) - (int)(cells_per_axis / 2u);
+    uint  seed       = lod_index * 2654435761u + slot_index * 0x85ebca6bu;
+    // the rolls are a conservative superset, rounding at a band edge must never drop a card both bands would keep
+    float band_min2  = band_min * band_min * 0.999f;
+    float band_max2  = band_max * band_max * 1.001f;
+    float thin2      = card_thin * card_thin;
+    uint exp_count = 0u; // EXPERIMENT
+    [loop]
+    for (uint z = 0; z < block; z++)
+    {
+        [loop]
+        for (uint x = 0; x < block; x++)
+        {
+            int2   world_cell = base_cell + int2(x, z);
+            uint   h0         = hash_u32((uint)world_cell.x, (uint)world_cell.y, seed);
+            float2 world_xz   = float2(world_cell) * cell_size + float2(hash_unit(h0), hash_unit(hash_mix(h0 ^ 0x9e3779b9u))) * cell_size;
+            float2 to_camera  = world_xz - camera_xz;
+            float  dist2      = dot(to_camera, to_camera);
+            if (dist2 < band_min2 || dist2 >= band_max2)
+                continue;
+
+            if (hash_unit(hash_mix(h0 ^ 0x5bd1e995u)) * max(1.0f, dist2 / thin2) > 1.001f)
+                continue;
+
+            exp_count += 1u; // EXPERIMENT
+        }
+    }
+    if (exp_count == 0xFFFFFFFFu) populate_cell(first_cell, 0u, band_min, band_max); // EXPERIMENT
 }

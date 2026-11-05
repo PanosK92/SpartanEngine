@@ -5210,7 +5210,7 @@ register_local_tool(
 register_tool(
   server,
   "entity_update",
-  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve semantic identity. prefab_attributes \"key=value,key=value\" edits a code prefab's stored attributes (a car's paint_color_r/g/b, paint_preset, camera_follows, telemetry, drivable); they apply after world_save and the next world load.",
+  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve semantic identity. prefab_attributes \"key=value,key=value\" edits a prefab instance's stored attributes, code or file prefab (a car's paint_color_r/g/b, paint_preset, camera_follows, telemetry, drivable); they apply after world_save and the next world load.",
   {
     id: z.string(),
     name: z.string().optional(),

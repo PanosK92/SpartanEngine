@@ -258,6 +258,12 @@ namespace spartan
             child->SetParent(parent);
         }
 
+        // overrides last, they target parts the code factory and the children above built
+        for (pugi::xml_node override_node = prefab_node.child("prefab_override"); override_node; override_node = override_node.next_sibling("prefab_override"))
+        {
+            parent->ApplyPrefabOverride(override_node);
+        }
+
         SP_LOG_INFO("Loaded prefab from: %s", file_path.c_str());
         return true;
     }
