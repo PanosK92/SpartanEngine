@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "EditorMcpCommands.h"
 #include "Editor.h"
 #include "widgets/Sequencer.h"
+#include "widgets/SequencerMusic.h"
 #include "world/World.h"
 #include "world/Entity.h"
 #include "world/components/Camera.h"
@@ -1980,7 +1981,57 @@ namespace editor_mcp
                     json += "]}";
                     return json;
                 }
-                return failure("action must be list, set, remove, grid or resolve");
+                if (action == "analyze")
+                {
+                    const string* path = find(request, "path");
+                    if (path && !path->empty() && !FileSystem::Exists(*path))
+                    {
+                        return failure("no audio file at '" + *path + "', paths are relative to the binaries folder or absolute");
+                    }
+                    const bool apply                          = as_bool(find(request, "apply")).value_or(true);
+                    const sequencer_music::Analysis& analysis = sequencer->AnalyzeMusic(path ? *path : string(), apply);
+                    if (!analysis.error.empty())
+                    {
+                        return failure(analysis.error);
+                    }
+
+                    const Sequencer::Snapshot snapshot = sequencer->GetSnapshot();
+                    const bool clip_in_use             = snapshot.cinematic.music.path == analysis.path;
+                    char energy[16];
+                    string json = "{\"ok\":true,\"path\":" + quote(analysis.path) + ",\"applied\":" + (apply ? "true" : "false");
+                    json += ",\"duration\":" + number(analysis.duration) + ",\"bpm\":" + number(analysis.bpm) + ",\"beat_length\":" + number(analysis.beat_length);
+                    json += ",\"beats_per_bar\":" + to_string(analysis.beats_per_bar) + ",\"bar_length\":" + number(analysis.beat_length * static_cast<float>(analysis.beats_per_bar));
+                    json += ",\"confidence\":" + number(analysis.confidence) + ",\"first_downbeat\":" + number(analysis.first_downbeat);
+                    json += ",\"note\":\"song times are seconds into the file; timeline times use the clip's start and offset, set the offset to a section start to begin the music there\"";
+                    json += ",\"sections\":[";
+                    for (size_t i = 0; i < analysis.sections.size(); i++)
+                    {
+                        const sequencer_music::Section& section = analysis.sections[i];
+                        snprintf(energy, sizeof(energy), "%.2f", section.energy);
+                        json += (i > 0 ? "," : "") + string("{\"kind\":") + quote(sequencer_music::get_section_name(section.kind));
+                        json += ",\"start\":" + number(section.start) + ",\"end\":" + number(section.end) + ",\"energy\":" + energy;
+                        if (clip_in_use)
+                        {
+                            json += ",\"timeline_start\":" + number(sequencer->MusicToTimeline(section.start)) + ",\"timeline_end\":" + number(sequencer->MusicToTimeline(section.end));
+                        }
+                        json += "}";
+                    }
+                    json += "],\"bar_energy\":[";
+                    for (size_t i = 0; i < analysis.bar_energy.size(); i++)
+                    {
+                        snprintf(energy, sizeof(energy), "%.2f", analysis.bar_energy[i]);
+                        json += (i > 0 ? "," : "") + string(energy);
+                    }
+                    json += "],\"grid\":{\"bpm\":" + number(snapshot.cinematic.bpm) + ",\"beat_offset\":" + number(snapshot.cinematic.beat_offset) + "},\"markers\":[";
+                    for (size_t i = 0; i < snapshot.cinematic.markers.size(); i++)
+                    {
+                        const Sequencer::Marker& marker = snapshot.cinematic.markers[i];
+                        json += (i > 0 ? "," : "") + string("{\"name\":") + quote(marker.name) + ",\"time\":" + number(marker.time) + "}";
+                    }
+                    json += "]}";
+                    return json;
+                }
+                return failure("action must be list, set, remove, grid, resolve or analyze");
             }
         );
 

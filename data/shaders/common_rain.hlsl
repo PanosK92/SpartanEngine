@@ -635,12 +635,14 @@ float rain_apply(RainSurface s, inout float3 albedo, inout float3 normal, inout 
     {
         // asphalt is stones in bitumen, the film fills the voids first and the stone tops stay proud of it,
         // so a wet road is dark water broken by wet glinting aggregate rather than one glazed sheet
-        float level     = wet * lerp(0.5f, 0.72f, rain) + s.water;
+        // puddliness is how much water the road holds, without it rain only darkens the stones and fills the deepest voids
+        float pools     = max(rain_authored_puddles(), rain_weather_puddles());
+        float level     = wet * lerp(0.2f, 0.62f, pools) + s.water;
         float submerged = smoothstep(s.macro_height - 0.1f, s.macro_height + 0.1f, level);
         // unresolved stones average into the share of the surface under water, and at grazing
         // distances the film is all the eye sees, so far wet roads keep their blurred sky sheen
         float resolved  = 1.0f - saturate(s.footprint * 200.0f - 0.5f);
-        submerged       = lerp(saturate(level * 1.1f), submerged, resolved);
+        submerged       = lerp(saturate(level * 0.9f), submerged, resolved);
         float stone     = lerp(roughness, max(0.32f, roughness * 0.55f), wet);
         roughness       = lerp(stone, 0.06f, submerged);
         normal          = normalize(lerp(normal, n, submerged * 0.85f));

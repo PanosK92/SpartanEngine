@@ -28,6 +28,11 @@ namespace pugi
     class xml_node;
 }
 
+namespace sequencer_music
+{
+    struct Analysis;
+}
+
 class Sequencer : public Widget
 {
 public:
@@ -90,7 +95,7 @@ public:
         ShotSpace space           = ShotSpace::World;
         spartan::math::Vector3 position_start = spartan::math::Vector3::Zero;
         spartan::math::Vector3 position_end   = spartan::math::Vector3::Zero;
-        spartan::math::Vector3 look_start     = spartan::math::Vector3::Zero; // in the shot space, or an offset from the target when one is set
+        spartan::math::Vector3 look_start     = spartan::math::Vector3::Zero; // in the shot space, or an offset from the target when one is set, a car's space starts on the ground under it
         spartan::math::Vector3 look_end       = spartan::math::Vector3::Zero;
         float fov_start   = 0.0f; // horizontal degrees, 0 keeps the camera's own
         float fov_end     = 0.0f;
@@ -313,8 +318,6 @@ public:
     // target or ride it. once the timeline ends the last shot holds until StopCutscene
     bool PlayCutscene(const std::string& name, uint64_t car_entity_id);
     void StopCutscene();
-    bool IsCutscenePlaying() const { return m_cutscene && m_playing; }
-
     // offline frame sequence capture
     struct RenderRequest
     {
@@ -421,6 +424,11 @@ public:
     void ClearMarkers();
     // music, beat grid, fade color and the slow motion audio switch, everything in the block except keys, titles and markers
     void SetCinematicSettings(const Cinematic& settings);
+    // tempo, downbeats and sections of a song, an empty path is the music clip in use. apply makes it the clip,
+    // fits the beat grid to it at the clip's offset and marks every section start on the timeline (marker:drop, marker:build_2...)
+    const sequencer_music::Analysis& AnalyzeMusic(const std::string& path, bool apply);
+    // where a song time lands on the timeline with the current clip start and offset
+    float MusicToTimeline(float music_time) const;
 
     // the evaluated value of every track at a time, without touching the world
     TrackSample SampleTracks(float time) const;
@@ -431,6 +439,8 @@ public:
     // the car and the entity that actually moves for any entity inside a car's hierarchy, or the entity itself
     static spartan::Car* FindCar(spartan::Entity* entity);
     static spartan::Entity* GetMovingEntity(spartan::Entity* entity);
+    // where shot offsets are measured from: the ground under a car, so +y is height above the road, otherwise the entity position
+    static spartan::math::Vector3 GetShotOrigin(spartan::Entity* moving);
     // what a timeline should store for an entity: a car's vehicle child gets a new id on every load, its prefab owner does not
     static spartan::Entity* GetPersistentEntity(spartan::Entity* entity);
     // the shared camera animated shots drive, found by name or created on demand
@@ -458,6 +468,7 @@ private:
         float steering       = 0.0f;
         float throttle       = 0.0f;
         bool staged          = false;
+        bool deferred        = false; // a later take of a car an earlier event drives, it teleports the car in when its start comes
         bool revving         = false; // the gearbox is held in manual neutral, handed back to automatic after
         bool burning         = false; // the gearbox is held in manual first for a burnout, handed back to automatic after
         DriveTelemetry telemetry;
@@ -470,6 +481,11 @@ private:
     ShotPose EvaluateShotPose(const CameraEvent& event, int index, float time, bool cut, bool stateful, spartan::Entity* camera);
     void EvaluateDrives(float delta_time);
     void StageDrives();
+    // puts the car at rest on the ground at the event's staging distance, facing down the path
+    void PlaceDriveCar(const DriveEvent& event, DriveRuntime& runtime, spartan::Car* car);
+    void StartRainDry();
+    // the event in charge of a car at the current time: the latest one that has started, else the first one
+    bool OwnsDriveCar(size_t index) const;
     bool WaitForDrives(float delta_time);
     void ReleaseDrives();
     bool BuildDrivePath(const DriveEvent& event, DriveRuntime& runtime);
@@ -570,8 +586,11 @@ private:
     bool m_preview        = false;
     bool m_was_previewing = false;
     bool m_skip_advance   = false;
+    bool m_filming        = false;
+    std::string m_checkerboard_restore;
     float m_drive_wait    = 0.0f;  // seconds playback has been held waiting for drive cars to stage
     bool m_drive_wait_expired = false;
+    bool m_entered_play       = false; // play mode was entered by playback, stop leaves it again
     int m_last_event      = -1;
     int m_selected        = -1;
     int m_dragging        = -1;
@@ -622,6 +641,7 @@ private:
     float m_applied_time_scale   = 1.0f;
     uint64_t m_music_entity_id   = 0;
     std::string m_music_loaded_path;
+    const sequencer_music::Analysis* m_music_analysis = nullptr; // the last analysis, owned by the analysis cache
 
     // curve and title selection, a curve key is addressed by its channel and index
     int m_curve_channel          = -1;

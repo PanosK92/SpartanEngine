@@ -468,6 +468,14 @@ namespace spartan
         return puddles;
     }
 
+    void Weather::SetWetness(float wetness_value, float puddles_value)
+    {
+        // a later first tick would overwrite the state with the settled one
+        initialized = true;
+        wetness     = clamp(wetness_value, 0.0f, 1.0f);
+        puddles     = clamp(puddles_value, 0.0f, 1.0f);
+    }
+
     float Weather::GetWaterDepth(const Vector3& position, bool porous)
     {
         const bool weathered = rain > 0.0f || wetness > 0.0f || puddles > 0.0f;

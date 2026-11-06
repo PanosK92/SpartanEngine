@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <chrono>
 #include <filesystem>
 #include "world/World.h"
+#include "world/Weather.h"
 #include "world/Entity.h"
 #include "world/components/Camera.h"
 #include "world/components/Physics.h"
@@ -33,6 +34,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "file_system/FileSystem.h"
 #include "resource/ResourceCache.h"
 #include "scripting/ScriptingHooks.h"
+#include "commands/console/ConsoleCommands.h"
 SP_WARNINGS_OFF
 #include "io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -89,6 +91,36 @@ namespace sequencer_common
     float heading_yaw(const Vector3& forward)
     {
         return atan2f(forward.x, forward.z);
+    }
+
+    // keyed speed, linear between keys and held past the ends
+    float keyed_kmh(const vector<Sequencer::SpeedKey>& keys, float time)
+    {
+        if (keys.empty())
+        {
+            return 0.0f;
+        }
+        float kmh = keys.front().speed_kmh;
+        for (size_t k = 0; k < keys.size(); k++)
+        {
+            if (time >= keys[k].time)
+            {
+                kmh = keys[k].speed_kmh;
+                if (k + 1 < keys.size())
+                {
+                    const float span = max(keys[k + 1].time - keys[k].time, 1e-3f);
+                    const float f    = clamp((time - keys[k].time) / span, 0.0f, 1.0f);
+                    kmh              = keys[k].speed_kmh + (keys[k + 1].speed_kmh - keys[k].speed_kmh) * f;
+                }
+            }
+        }
+        return kmh;
+    }
+
+    // a distinct collision interest key per drive event, nothing is ever read through it
+    const void* drive_interest_owner(const void* sequencer, size_t index)
+    {
+        return static_cast<const char*>(sequencer) + 1 + index;
     }
 
     // smooth, deterministic handheld drift, three incommensurate sines per axis never visibly repeat
@@ -729,7 +761,7 @@ Sequencer::Sequencer(Editor* editor) : Widget(editor)
     scripting::SequencerHooks& hooks = scripting::get_sequencer_hooks();
     hooks.play         = [this](const string& name, uint64_t car_entity_id) { return PlayCutscene(name, car_entity_id); };
     hooks.stop         = [this]() { StopCutscene(); };
-    hooks.is_playing   = [this]() { return IsCutscenePlaying(); };
+    hooks.is_playing   = [this]() { return m_playing || m_render_status.active; };
     hooks.get_time     = [this]() { return m_cutscene ? m_time : 0.0f; };
     hooks.get_duration = [this]() { return m_cutscene ? m_duration : 0.0f; };
 }
@@ -855,6 +887,23 @@ Entity* Sequencer::GetMovingEntity(Entity* entity)
     return entity;
 }
 
+Vector3 Sequencer::GetShotOrigin(Entity* moving)
+{
+    if (!moving)
+    {
+        return Vector3::Zero;
+    }
+    // a car's root is its physics body, about half the car's height off the road, so offsets authored from it frame the roof
+    if (Car* car = FindCar(moving))
+    {
+        if (car->GetRootEntity() == moving)
+        {
+            return moving->GetPosition() + moving->GetRotation() * Vector3(0.0f, -car->GetRootHeight(), 0.0f);
+        }
+    }
+    return moving->GetPosition();
+}
+
 Entity* Sequencer::GetOrCreateShotCamera()
 {
     for (Entity* entity : World::GetEntities())
@@ -938,6 +987,20 @@ void Sequencer::SetPlayback(Playback action)
             {
                 m_time = 0.0f;
             }
+            if (m_time <= 0.0f && !m_render_status.active)
+            {
+                StartRainDry();
+            }
+            // drive events need physics, so playing them from edit mode enters play mode instead of filming parked cars
+            if (!m_drive_events.empty() && !Engine::IsFlagSet(EngineMode::Playing))
+            {
+                Engine::SetFlag(EngineMode::Playing, true);
+                m_entered_play = true;
+            }
+            if (!m_drive_events.empty())
+            {
+                Engine::SetFlag(EngineMode::Paused, false);
+            }
             m_playing            = true;
             m_drive_wait         = 0.0f;
             m_drive_wait_expired = false;
@@ -956,6 +1019,12 @@ void Sequencer::SetPlayback(Playback action)
             m_drive_wait         = 0.0f;
             m_drive_wait_expired = false;
             ReleaseDrives();
+            if (m_entered_play && Engine::IsFlagSet(EngineMode::Playing))
+            {
+                Engine::SetFlag(EngineMode::Playing, false);
+                Engine::SetFlag(EngineMode::Paused, false);
+            }
+            m_entered_play = false;
             break;
     }
 }
@@ -1200,6 +1269,22 @@ void Sequencer::OnWorldTicked()
     }
     TickScrubCapture();
 
+    // the denoiser fills checkerboard holes by smearing, which lifts a tire's wet reflection off its contact patch
+    const bool filming = m_playing || m_render_status.active;
+    if (filming != m_filming)
+    {
+        m_filming = filming;
+        if (filming)
+        {
+            m_checkerboard_restore = ConsoleRegistry::Get().GetValueAsString("r.ray_traced_reflections_checkerboard").value_or("1");
+            ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections_checkerboard", "0");
+        }
+        else
+        {
+            ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections_checkerboard", m_checkerboard_restore);
+        }
+    }
+
     // playback that ran off the end hands the cars back
     if (!m_playing && !m_render_status.active && any_of(m_drive_runtime.begin(), m_drive_runtime.end(), [](const DriveRuntime& r) { return r.staged; }))
     {
@@ -1383,7 +1468,7 @@ Sequencer::ShotPose Sequencer::EvaluateShotPose(const CameraEvent& event, int in
     Entity* anchor      = GetMovingEntity(World::GetEntityById(event.anchor_entity_id));
     if (anchor && event.space != ShotSpace::World)
     {
-        origin = anchor->GetPosition();
+        origin = GetShotOrigin(anchor);
         if (event.space == ShotSpace::Anchor)
         {
             frame = anchor->GetRotation();
@@ -1413,7 +1498,7 @@ Sequencer::ShotPose Sequencer::EvaluateShotPose(const CameraEvent& event, int in
     const Vector3 offset_local = Vector3::Lerp(event.position_start, event.position_end, u);
     const Vector3 look_local   = Vector3::Lerp(event.look_start, event.look_end, u);
     Vector3 position           = origin + frame * offset_local;
-    Vector3 look               = target ? target->GetPosition() + target->GetRotation() * look_local : origin + frame * look_local;
+    Vector3 look               = target ? GetShotOrigin(target) + target->GetRotation() * look_local : origin + frame * look_local;
     float fov                  = 0.0f;
     if (event.fov_start > 0.0f)
     {
@@ -1429,7 +1514,7 @@ Sequencer::ShotPose Sequencer::EvaluateShotPose(const CameraEvent& event, int in
         if (target)
         {
             base_yaw = heading_yaw(target->GetForward());
-            center   = target->GetPosition() + Quaternion::FromAxisAngle(Vector3::Up, base_yaw) * look_local;
+            center   = GetShotOrigin(target) + Quaternion::FromAxisAngle(Vector3::Up, base_yaw) * look_local;
         }
         else
         {
@@ -1444,7 +1529,7 @@ Sequencer::ShotPose Sequencer::EvaluateShotPose(const CameraEvent& event, int in
     {
         // the fov follows the subject distance so the subject keeps its framing while the background stretches
         const Vector3 position_first = origin + frame * event.position_start;
-        const Vector3 look_first     = target ? target->GetPosition() + target->GetRotation() * event.look_start : origin + frame * event.look_start;
+        const Vector3 look_first     = target ? GetShotOrigin(target) + target->GetRotation() * event.look_start : origin + frame * event.look_start;
         const float distance_first   = Vector3::Distance(position_first, look_first);
         const float distance         = Vector3::Distance(position, look);
         const float fov_first        = (event.fov_start > 0.0f ? event.fov_start : 60.0f) * deg_to_rad;
@@ -1618,7 +1703,7 @@ bool Sequencer::BuildDrivePath(const DriveEvent& event, DriveRuntime& runtime)
 void Sequencer::StageDrives()
 {
     m_drive_runtime.resize(m_drive_events.size());
-    if (!Engine::IsFlagSet(EngineMode::Playing))
+    if (!Engine::IsFlagSet(EngineMode::Playing) || World::IsPlayBooting())
     {
         return;
     }
@@ -1636,13 +1721,26 @@ void Sequencer::StageDrives()
             continue;
         }
 
-        // the car starts at rest at the staging distance, facing down the road
-        const auto& distances = runtime.distances;
-        size_t start          = static_cast<size_t>(lower_bound(distances.begin(), distances.end(), max(event.start_distance, 0.0f)) - distances.begin());
-        start                 = min(start, runtime.points.size() - 3);
-        Vector3 forward       = runtime.points[start + 2] - runtime.points[start];
-        forward.y             = 0.0f;
-        forward.Normalize();
+        // a later take of the same car waits for its start, its scenery collision is cooked ahead so the teleport lands on solid ground
+        bool later_take = false;
+        for (size_t j = 0; j < m_drive_events.size(); j++)
+        {
+            const DriveEvent& other = m_drive_events[j];
+            if (j != i && other.car_entity_id == event.car_entity_id && (other.start_time < event.start_time || (other.start_time == event.start_time && j < i)))
+            {
+                later_take = true;
+            }
+        }
+        if (later_take)
+        {
+            const size_t start = min(static_cast<size_t>(lower_bound(runtime.distances.begin(), runtime.distances.end(), max(event.start_distance, 0.0f)) - runtime.distances.begin()), runtime.points.size() - 3);
+            PhysicsWorld::SetCollisionInterest(drive_interest_owner(this, i), runtime.points[start], 150.0f);
+            runtime.nearest          = start;
+            runtime.staged           = true;
+            runtime.deferred         = true;
+            runtime.telemetry.staged = true;
+            continue;
+        }
 
         // only one car can be occupied and entering another ejects it into a parked state, so the first drive
         // car is entered (it owns the engine synth and the hud) and the rest are only externally controlled
@@ -1665,22 +1763,79 @@ void Sequencer::StageDrives()
         runtime.revving = false;
         runtime.burning = false;
 
-        Vector3 ground = runtime.points[start];
-        Vector3 hit;
-        if (PhysicsWorld::RaycastStatic(ground + Vector3(0.0f, 20.0f, 0.0f), Vector3::Down, 60.0f, hit))
-        {
-            ground = hit;
-        }
-        car->PlaceAt(ground, Quaternion::FromLookRotation(forward, Vector3::Up));
-        car->SetThrottle(0.0f);
-        car->SetBrake(0.0f);
-        car->SetSteering(0.0f);
-        car->SetHandbrake(1.0f);
-
-        runtime.nearest          = start;
+        PlaceDriveCar(event, runtime, car);
         runtime.staged           = true;
         runtime.telemetry.staged = true;
     }
+}
+
+// a rain track run from the top soaks the road on screen instead of opening on whatever the last take left
+void Sequencer::StartRainDry()
+{
+    bool rain_keyed = false;
+    EvaluateCurve(Channel::Rain, 0.0f, &rain_keyed);
+    if (rain_keyed)
+    {
+        Weather::SetWetness(0.0f, 0.0f);
+    }
+}
+
+void Sequencer::PlaceDriveCar(const DriveEvent& event, DriveRuntime& runtime, Car* car)
+{
+    const auto& distances = runtime.distances;
+    size_t start          = static_cast<size_t>(lower_bound(distances.begin(), distances.end(), max(event.start_distance, 0.0f)) - distances.begin());
+    start                 = min(start, runtime.points.size() - 3);
+    Vector3 forward       = runtime.points[start + 2] - runtime.points[start];
+    forward.y             = 0.0f;
+    forward.Normalize();
+
+    Vector3 ground = runtime.points[start];
+    Vector3 hit;
+    if (PhysicsWorld::RaycastStatic(ground + Vector3(0.0f, 20.0f, 0.0f), Vector3::Down, 60.0f, hit))
+    {
+        ground = hit;
+    }
+    car->PlaceAt(ground, Quaternion::FromLookRotation(forward, Vector3::Up));
+    car->SetThrottle(0.0f);
+    car->SetBrake(0.0f);
+    car->SetSteering(0.0f);
+    car->SetHandbrake(1.0f);
+    runtime.nearest  = start;
+    runtime.steering = 0.0f;
+    runtime.throttle = 0.0f;
+    runtime.integral = 0.0f;
+}
+
+bool Sequencer::OwnsDriveCar(size_t index) const
+{
+    const DriveEvent& event = m_drive_events[index];
+    int owner               = -1;
+    for (size_t j = 0; j < m_drive_events.size(); j++)
+    {
+        const DriveEvent& other = m_drive_events[j];
+        if (other.car_entity_id != event.car_entity_id)
+        {
+            continue;
+        }
+        const bool started = m_time >= other.start_time;
+        if (owner == -1)
+        {
+            owner = static_cast<int>(j);
+            continue;
+        }
+        const DriveEvent& current  = m_drive_events[owner];
+        const bool current_started = m_time >= current.start_time;
+        // the latest started take wins, before any has started the earliest one holds the car
+        if (started && (!current_started || other.start_time > current.start_time))
+        {
+            owner = static_cast<int>(j);
+        }
+        else if (!started && !current_started && other.start_time < current.start_time)
+        {
+            owner = static_cast<int>(j);
+        }
+    }
+    return owner == static_cast<int>(index);
 }
 
 // playback started in edit mode, or in the frames before the cars exist at play entry, leaves drive events
@@ -1721,6 +1876,11 @@ bool Sequencer::WaitForDrives(float delta_time)
         m_time = 0.0f;
     }
 
+    // the play boot starts every entity over several frames, the cars are placed once it is done
+    if (World::IsPlayBooting())
+    {
+        return true;
+    }
     StageDrives();
     m_drive_wait += delta_time;
     if (m_drive_wait > 10.0f)
@@ -1737,11 +1897,13 @@ void Sequencer::ReleaseDrives()
     for (size_t i = 0; i < m_drive_runtime.size(); i++)
     {
         DriveRuntime& runtime = m_drive_runtime[i];
+        PhysicsWorld::RemoveCollisionInterest(drive_interest_owner(this, i));
         if (!runtime.staged)
         {
             continue;
         }
         runtime.staged           = false;
+        runtime.deferred         = false;
         runtime.telemetry.staged = false;
         runtime.telemetry.active = false;
 
@@ -1784,6 +1946,12 @@ void Sequencer::EvaluateDrives(float delta_time)
             continue;
         }
 
+        if (!OwnsDriveCar(i))
+        {
+            runtime.telemetry.active = false;
+            continue;
+        }
+
         Car* car        = FindCar(World::GetEntityById(event.car_entity_id));
         Entity* vehicle = car ? car->GetRootEntity() : nullptr;
         Physics* physics = vehicle ? vehicle->GetComponent<Physics>() : nullptr;
@@ -1791,6 +1959,18 @@ void Sequencer::EvaluateDrives(float delta_time)
         if (!physics || !car->GetSteeringGeometry(wheelbase, max_steer, linearity))
         {
             continue;
+        }
+
+        // a later take cuts the car to its own road, rolling at the keyed speed so the shot opens in motion
+        if (runtime.deferred)
+        {
+            runtime.deferred = false;
+            PlaceDriveCar(event, runtime, car);
+            car->SetHandbrake(0.0f);
+            const float start_ms = keyed_kmh(event.speed_keys, event.start_time) / 3.6f;
+            physics->SetLinearVelocity(vehicle->GetForward() * start_ms);
+            PhysicsWorld::RemoveCollisionInterest(drive_interest_owner(this, i));
+            Renderer::NotifyCameraCut();
         }
 
         // a route driver launches its ai a moment into play and would steer and reset the car back onto its own
@@ -1881,26 +2061,7 @@ void Sequencer::EvaluateDrives(float delta_time)
 
             const bool in_window = m_time <= event.end_time;
 
-            // keyed speed, linear between keys and held past the ends
-            float target_kmh = 0.0f;
-            const vector<SpeedKey>& keys = event.speed_keys;
-            if (!keys.empty())
-            {
-                target_kmh = keys.front().speed_kmh;
-                for (size_t k = 0; k < keys.size(); k++)
-                {
-                    if (m_time >= keys[k].time)
-                    {
-                        target_kmh = keys[k].speed_kmh;
-                        if (k + 1 < keys.size())
-                        {
-                            const float span = max(keys[k + 1].time - keys[k].time, 1e-3f);
-                            const float f    = clamp((m_time - keys[k].time) / span, 0.0f, 1.0f);
-                            target_kmh       = keys[k].speed_kmh + (keys[k + 1].speed_kmh - keys[k].speed_kmh) * f;
-                        }
-                    }
-                }
-            }
+            const float target_kmh = keyed_kmh(event.speed_keys, m_time);
 
             // revs only play while the speed profile holds the car still, so one event can rev, drive, park and rev again
             // a burnout span wins over revs, it needs a car at rest to engage the line lock
@@ -2134,6 +2295,7 @@ bool Sequencer::StartRender(const RenderRequest& request, string& error)
     Renderer::SetCleanCapture(true);
 
     ReleaseDrives();
+    StartRainDry();
     m_time         = -m_render_request.preroll;
     m_playing      = true;
     m_preview      = false;
@@ -4363,7 +4525,7 @@ void Sequencer::DrawShotInspector(float width)
                 Entity* anchor   = GetMovingEntity(World::GetEntityById(event.anchor_entity_id));
                 if (anchor && event.space != ShotSpace::World)
                 {
-                    origin = anchor->GetPosition();
+                    origin = GetShotOrigin(anchor);
                     frame  = event.space == ShotSpace::Anchor ? anchor->GetRotation() : Quaternion::FromAxisAngle(Vector3::Up, heading_yaw(anchor->GetForward()));
                 }
                 const Quaternion inverse = frame.Inverse();

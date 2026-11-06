@@ -3447,10 +3447,10 @@ namespace spartan
             return;
         }
 
-        // legend: an accent bar wipes down, the kicker and headline slide in beside it, body lines follow
+        // legend: the kicker and headline slide in from the left, body lines follow
         Font& label          = *font_label;
         Font& head           = *font_headline;
-        const float in_bar   = ease_out(enter / (fade * 0.8f));
+        const float in_pool  = ease_out(enter / (fade * 0.8f));
         const float in_kick  = ease_out((enter - fade * 0.15f) / fade);
         const float in_head  = ease_out((enter - fade * 0.3f) / fade);
         const float in_body  = ease_out((enter - fade * 0.6f) / fade);
@@ -3458,10 +3458,9 @@ namespace spartan
         const float s_head   = 50.0f * unit / head.GetPixelSize();
         const float s_body   = 25.0f * unit / label.GetPixelSize();
         const float slide    = 46.0f * unit;
-        const float drift    = (1.0f - out) * -18.0f * unit; // leaving, everything eases back towards the bar
+        const float drift    = (1.0f - out) * -18.0f * unit; // leaving, everything eases back to the left
         const float left     = width_px * title.position.x;
         const float top      = height_px * title.position.y;
-        const float gap      = 24.0f * unit;
         const float k_track  = 20.0f * unit * 0.5f;
         const float h_track  = 50.0f * unit * 0.03f;
         const float b_track  = 25.0f * unit * 0.02f;
@@ -3497,7 +3496,7 @@ namespace spartan
         // a feathered shadow pool behind the text, dark at the text and gone at every edge, never a visible box
         {
             const float x_min  = max(left - 140.0f * unit, 0.0f);
-            const float x_max  = left + gap + block_w + 220.0f * unit;
+            const float x_max  = left + block_w + 220.0f * unit;
             const float pad    = 70.0f * unit;
             const float y_min  = top - pad;
             const float y_max  = top + block_h + pad;
@@ -3515,16 +3514,13 @@ namespace spartan
                     const float uc = (u0 + u1) * 0.5f;
                     // ramps in quickly from the left, stays flat behind the text, fades out slowly to the right
                     const float wu = smooth(uc / 0.15f) * (1.0f - smooth((uc - 0.55f) / 0.45f));
-                    const float a  = 0.32f * wu * wv * wv * in_bar * out;
+                    const float a  = 0.32f * wu * wv * wv * in_pool * out;
                     font_back->AddRect(Vector2(x_min + (x_max - x_min) * u0, y_min + (y_max - y_min) * v0), Vector2(x_min + (x_max - x_min) * u1, y_min + (y_max - y_min) * v1), Color(0.0f, 0.0f, 0.0f, a));
                 }
             }
         }
 
-        // the bar
-        label.AddRect(Vector2(left, top + 2.0f * unit), Vector2(left + 4.0f * unit, top + 2.0f * unit + block_h * in_bar), with_alpha(accent, out));
-
-        const float text_x = left + gap + drift;
+        const float text_x = left + drift;
         const float shadow = 2.5f * unit;
         float y            = top;
         if (!kicker.empty())

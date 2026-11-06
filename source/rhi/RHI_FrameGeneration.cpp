@@ -29,6 +29,7 @@ namespace spartan
         // Optimistically prepare the first frame; subsequent frames need a visible scene.
         bool presentation_source = true;
         Rectangle generation_rect;
+        float letterbox_aspect = 0.0f;
         atomic<uint64_t> generated_frames = 0;
     }
 
@@ -118,6 +119,11 @@ namespace spartan
         generation_rect = rect;
     }
 
+    void RHI_FrameGeneration::SetLetterbox(float aspect)
+    {
+        letterbox_aspect = isfinite(aspect) && aspect > 0.0f ? aspect : 0.0f;
+    }
+
     Rectangle RHI_FrameGeneration::GetGenerationRect(uint32_t backbuffer_width, uint32_t backbuffer_height)
     {
         const float width  = static_cast<float>(backbuffer_width);
@@ -131,7 +137,19 @@ namespace spartan
 
         if (rect.width < 1.0f || rect.height < 1.0f)
         {
-            return Rectangle(0.0f, 0.0f, width, height);
+            rect = Rectangle(0.0f, 0.0f, width, height);
+        }
+
+        // interpolation follows the motion vectors, so inside the bars it would warp the picture over the black,
+        // the bars are black in both real frames and stay out of generation, a pixel of margin covers rounding
+        if (letterbox_aspect > 0.0f)
+        {
+            const float bar = ceilf(max(0.0f, (rect.height - rect.width / letterbox_aspect) * 0.5f));
+            if (bar > 0.0f && rect.height - 2.0f * (bar + 1.0f) >= 1.0f)
+            {
+                rect.y      += bar + 1.0f;
+                rect.height -= 2.0f * (bar + 1.0f);
+            }
         }
 
         return rect;

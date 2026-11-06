@@ -70,7 +70,7 @@ namespace spartan
     class TerrainDeformation
     {
     public:
-        static constexpr uint32_t resolution = 1024;
+        static constexpr uint32_t resolution = 4096;
         static constexpr float cell_size      = 0.0625f;
         static constexpr float window_size    = resolution * cell_size;
 

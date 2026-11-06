@@ -142,7 +142,7 @@ namespace spartan
     {
         Plain,   // centered lines with a drop shadow
         Trailer, // wide tracked capitals that slowly track out, an accent kicker above, a rule and a tagline below
-        Legend   // left aligned caption card: accent bar, tracked kicker, headline, body lines, slides in from the left
+        Legend   // left aligned caption card: tracked kicker, headline, body lines, slides in from the left
     };
 
     struct CinematicTitle

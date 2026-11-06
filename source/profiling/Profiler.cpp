@@ -2759,14 +2759,14 @@ namespace spartan
             }
         }
 
-        // panel, frosted glass over the frame, the leading edge carries the engine accent
+        // panel, frosted glass over the frame
         const float panel_y1 = y + padding - px(4.0f);
         font_shapes->AddBackdropBlur(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1));
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1), col::panel);
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);
         font_shapes->AddRect(Vector2(panel_x0, panel_y1 - hairline), Vector2(panel_x1, panel_y1), col::border);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0 + hairline), Vector2(panel_x0 + hairline, panel_y1 - hairline), col::border);
         font_shapes->AddRect(Vector2(panel_x1 - hairline, panel_y0 + hairline), Vector2(panel_x1, panel_y1 - hairline), col::border);
-        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x0 + px(2.0f), panel_y1), Color(col::accent.r, col::accent.g, col::accent.b, 0.55f));
         for (const OverlayRect& shape : rects)
         {
             font_shapes->AddRect(Vector2(shape.x0, shape.y0), Vector2(shape.x1, shape.y1), shape.color);
@@ -2836,7 +2836,6 @@ namespace spartan
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1), col::panel);
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);
         font_shapes->AddRect(Vector2(panel_x0, panel_y1 - hairline), Vector2(panel_x1, panel_y1), col::border);
-        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x0 + px(2.0f), panel_y1), Color(col::accent.r, col::accent.g, col::accent.b, 0.55f));
 
         char buffer[32];
         float y = panel_y0 + padding;

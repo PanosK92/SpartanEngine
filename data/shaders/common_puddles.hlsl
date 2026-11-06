@@ -15,9 +15,9 @@
 // straddles terrain, asphalt and paint keeps one shoreline across all three
 
 // water level at puddliness 0 and 1, the basin field is roughly normal around 0.5 with a spread
-// of about 0.12, so this runs from bone dry to a bit under half of all flat ground submerged
+// of about 0.12, so this runs from bone dry to about a third of all flat ground submerged
 static const float puddle_level_dry      = 0.25f;
-static const float puddle_level_flooded  = 0.49f;
+static const float puddle_level_flooded  = 0.45f;
 // height units, how far below the level the water turns from a film into a full mirror
 static const float puddle_shore_width    = 0.02f;
 // height units, the glossy film either side of the shoreline where water wets but does not yet cover the detail

@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Sequencer.h"
 #include "SequencerCommon.h"
+#include "SequencerMusic.h"
 #include <algorithm>
 #include "world/World.h"
 #include "world/Entity.h"
@@ -953,6 +954,71 @@ void Sequencer::SetCinematicSettings(const Cinematic& settings)
     m_cinematic.slowmo_audio    = settings.slowmo_audio;
     m_cinematic.fade_color      = Vector3(clamp(settings.fade_color.x, 0.0f, 1.0f), clamp(settings.fade_color.y, 0.0f, 1.0f), clamp(settings.fade_color.z, 0.0f, 1.0f));
     CommitState(before);
+}
+
+float Sequencer::MusicToTimeline(float music_time) const
+{
+    return m_cinematic.music.start + music_time - m_cinematic.music.offset;
+}
+
+const sequencer_music::Analysis& Sequencer::AnalyzeMusic(const string& path_in, bool apply)
+{
+    const string path                         = path_in.empty() ? m_cinematic.music.path : path_in;
+    const sequencer_music::Analysis& analysis = sequencer_music::analyze(path);
+    m_music_analysis                          = &analysis;
+    if (!apply || !analysis.error.empty())
+    {
+        return analysis;
+    }
+
+    const State before         = CaptureState();
+    m_cinematic.music.path     = path;
+    m_cinematic.bpm            = analysis.bpm;
+    m_cinematic.beats_per_bar  = analysis.beats_per_bar;
+    const float bar_length     = analysis.beat_length * static_cast<float>(analysis.beats_per_bar);
+    const float first_downbeat = MusicToTimeline(analysis.first_downbeat);
+    float beat_offset          = first_downbeat - floorf(first_downbeat / bar_length) * bar_length;
+    if (beat_offset > bar_length - 0.01f)
+    {
+        beat_offset -= bar_length; // a downbeat right on a bar line rounds to the end of the bar instead of its start
+    }
+    m_cinematic.beat_offset = clamp(beat_offset, 0.0f, m_duration);
+
+    // section markers are rewritten as a set, a marker the user named something else is left alone
+    vector<Marker>& markers = m_cinematic.markers;
+    auto is_section_marker  = [](const string& name)
+    {
+        for (sequencer_music::SectionKind kind : { sequencer_music::SectionKind::Intro, sequencer_music::SectionKind::Build, sequencer_music::SectionKind::Drop, sequencer_music::SectionKind::Breakdown, sequencer_music::SectionKind::Outro })
+        {
+            const string prefix = sequencer_music::get_section_name(kind);
+            if (name == prefix || (name.rfind(prefix + "_", 0) == 0 && name.size() > prefix.size() + 1 && all_of(name.begin() + prefix.size() + 1, name.end(), [](char c) { return isdigit(static_cast<unsigned char>(c)) != 0; })))
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+    markers.erase(remove_if(markers.begin(), markers.end(), [&](const Marker& marker) { return is_section_marker(marker.name); }), markers.end());
+
+    uint32_t counts[5] = {};
+    for (const sequencer_music::Section& section : analysis.sections)
+    {
+        const float time = MusicToTimeline(section.start);
+        if (section.start + 0.001f < m_cinematic.music.offset || time < 0.0f || time > m_duration)
+        {
+            continue;
+        }
+        const uint32_t count = ++counts[static_cast<size_t>(section.kind)];
+        string name          = sequencer_music::get_section_name(section.kind);
+        if (count > 1)
+        {
+            name += "_" + to_string(count);
+        }
+        markers.push_back({ time, name });
+    }
+    sort(markers.begin(), markers.end(), [](const Marker& a, const Marker& b) { return a.time < b.time; });
+    CommitState(before);
+    return analysis;
 }
 
 //= PERSISTENCE =================================================================================================================
@@ -1994,6 +2060,46 @@ void Sequencer::DrawCinematicInspector(float width)
     inspector_label("volume", width);
     ImGui::DragFloat("##seq_c_mvolume", &m_cinematic.music.volume, 0.01f, 0.0f, 4.0f, "%.2f");
     track_edit();
+    if (ImGuiSp::button("analyze music", ImVec2(width, 0.0f)))
+    {
+        AnalyzeMusic("", true);
+    }
+    ImGuiSp::tooltip("finds the tempo, the downbeat and the sections of the song, fits the beat grid to them and marks every section start");
+    if (m_music_analysis && m_music_analysis->path == m_cinematic.music.path)
+    {
+        const sequencer_music::Analysis& analysis = *m_music_analysis;
+        if (!analysis.error.empty())
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "%s", analysis.error.c_str());
+        }
+        else
+        {
+            ImGui::TextDisabled("%.2f bpm, %.0f%% locked, %d sections", analysis.bpm, analysis.confidence * 100.0f, static_cast<int>(analysis.sections.size()));
+            ImGui::PushID("seq_c_sections");
+            for (int i = 0; i < static_cast<int>(analysis.sections.size()); i++)
+            {
+                ImGui::PushID(i);
+                const sequencer_music::Section& section = analysis.sections[i];
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("%s", format_time(section.start).c_str());
+                ImGui::SameLine(70.0f);
+                ImGui::TextUnformatted(sequencer_music::get_section_name(section.kind));
+                ImGui::SameLine(150.0f);
+                ImGui::ProgressBar(section.energy, ImVec2(max(width - 196.0f, 16.0f), ImGui::GetFrameHeight() * 0.5f), "");
+                ImGui::SameLine(max(width - 34.0f, 0.0f));
+                if (ImGui::SmallButton("cue"))
+                {
+                    const State before       = CaptureState();
+                    m_cinematic.music.offset = section.start;
+                    CommitState(before);
+                    AnalyzeMusic("", true);
+                }
+                ImGuiSp::tooltip("start the music at this section, the beat grid and the section markers follow");
+                ImGui::PopID();
+            }
+            ImGui::PopID();
+        }
+    }
 
     ImGui::Dummy(ImVec2(0.0f, 4.0f));
     inspector_section("beat grid");

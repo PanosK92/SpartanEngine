@@ -199,7 +199,7 @@ namespace spartan
         constexpr float sand_wet_kphi = 3000000.0f;
         constexpr float repose_dry    = 0.675f; // tan 34 degrees
         constexpr float repose_wet    = 1.6f;   // tan 58 degrees
-        constexpr float wash_rate     = 0.7f;   // 1/s under a running swash sheet, a print lasts two or three waves
+        constexpr float wash_rate     = 0.35f;  // 1/s under a running swash sheet, a print lasts five or six waves
         constexpr float firm_give     = 0.5f;   // loam and meadow keep half the rut sand takes
 
         TerrainDeformationSand sand_band;

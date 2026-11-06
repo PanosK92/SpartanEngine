@@ -36,6 +36,8 @@ namespace spartan
         static float GetPuddliness();
         // only what the rain has filled, it stands in the open and not under a roof
         static float GetRainPuddliness();
+        // overrides the soak and the rain filled puddles, they then follow the rain again from there
+        static void SetWetness(float wetness, float puddles);
 
         // metres of water standing on the ground at a world point, the rain film plus the puddles the renderer draws there
         // porous ground (soil, grass, gravel) drinks the film and holds less standing water

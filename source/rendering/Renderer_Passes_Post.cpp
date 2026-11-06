@@ -388,7 +388,12 @@ namespace spartan
         }
 
         // asset previews and the headset never show the sequencer's overlay
-        if ((cinematic.fade > 0.0f || cinematic.aspect > 0.0f) && !IsSecondaryViewActive() && !IsStereoView())
+        const bool cinematic_drawn = (cinematic.fade > 0.0f || cinematic.aspect > 0.0f) && !IsSecondaryViewActive() && !IsStereoView();
+        if (!IsSecondaryViewActive() && !IsStereoView())
+        {
+            RHI_FrameGeneration::SetLetterbox(cinematic_drawn ? cinematic.aspect : 0.0f);
+        }
+        if (cinematic_drawn)
         {
             run_effect("cinematic", Renderer_Shader::cinematic_c, [&]()
             {

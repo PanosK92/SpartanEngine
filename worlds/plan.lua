@@ -97,7 +97,10 @@ function plan:Tick(dt)
     if main_menu then
         main_menu.Tick(dt)
     end
-    if not (main_menu and main_menu.IsActive()) then
+    -- a sequence no shop started (played from the editor) owns the screen, the shops' prompts stay off
+    local shop_busy = (tune_shop_entrance and tune_shop_entrance.IsBusy()) or (gt_auto_entrance and gt_auto_entrance.IsBusy())
+    local filming   = Sequencer and Sequencer.IsAvailable() and Sequencer.IsPlaying() and not shop_busy
+    if not (main_menu and main_menu.IsActive()) and not filming then
         -- one shop at a time, a fade in one never lets the other's prompt draw over it
         if tune_shop_entrance and not (gt_auto_entrance and gt_auto_entrance.IsBusy()) then
             tune_shop_entrance.Tick()

@@ -1234,6 +1234,15 @@ namespace spartan
         m_chase_camera = {};
     }
 
+    float Car::GetRootHeight() const
+    {
+        if (!m_vehicle_entity)
+        {
+            return 0.0f;
+        }
+        return m_definition ? get_car_lower_extent(m_definition->performance) : 0.6f;
+    }
+
     void Car::SummonToPlayer()
     {
         if (!m_vehicle_entity || m_is_occupied)

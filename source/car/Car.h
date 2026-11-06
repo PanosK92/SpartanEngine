@@ -157,6 +157,8 @@ namespace spartan
 
         // teleports the car to rest with its wheels on the given road surface point, used to stage a take
         void PlaceAt(const math::Vector3& ground_position, const math::Quaternion& rotation);
+        // how far the root entity sits above the ground the wheels rest on, along the car's up axis
+        float GetRootHeight() const;
 
         // view control
         static bool IsCameraControlled(Entity* camera);

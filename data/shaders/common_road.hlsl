@@ -199,6 +199,11 @@ struct RoadWear
     float  ghost;      // scar of a ground off marking, paint left in the voids
     float  repair;     // inside relaid asphalt
     float  paint_loss; // repairs cut through the lines and were not repainted
+    float  bleach;     // sun bleached, dusty patches, lighter and matte
+    float  stain;      // damp, dirty patches, darker
+    float  flush;      // binder bled up over the stones, dark and glossy
+    float  film;       // road dirt settled where tyres seldom run
+    float  grit;       // loose pebbles lying on the surface, signed: light stones positive, dark negative
     float  texel;      // metres per filtered texel, what the aggregate is resolved at
 };
 
@@ -207,8 +212,19 @@ RoadWear road_wear_none()
     RoadWear w;
     w.crack=0;w.seal=0;w.slope=0;
     w.dust=0;w.ravel=0;w.fatigue=0;w.grime=0;w.oil=0;w.traffic=0;
-    w.age=.7;w.polish=0;w.rubber=0;w.ghost=0;w.repair=0;w.paint_loss=0;w.texel=1;
+    w.age=.7;w.polish=0;w.rubber=0;w.ghost=0;w.repair=0;w.paint_loss=0;
+    w.bleach=0;w.stain=0;w.flush=0;w.film=0;w.grit=0;w.texel=1;
     return w;
+}
+
+// Loose stones a few millimetres across, signed by tone. Fades once a stone is under a texel.
+float road_grit(float2 xz,float density,float fp)
+{
+    float resolved=1-smoothstep(.002,.006,fp);
+    if (resolved<=0 || density<=0) return 0;
+    float light=road_blobs(xz/.012,density,float2(.18,.42),float2(3,11));
+    float dark=road_blobs(xz/.009,density*.8,float2(.2,.45),float2(37,5));
+    return (light-dark*.8)*resolved;
 }
 
 // Adds a crack at distance d. Sealant is a smeared band of bitumen a few centimetres wide,
@@ -477,6 +493,28 @@ RoadWear road_wear(uint flags,float3 world,float2 uv,float3 normal,float3 tangen
         float stripe=exp(-.5*(lane_offset/.32)*(lane_offset/.32))*smoothstep(.3,.6,road_noise_soft(xz*.05+float2(3,3)));
         w.oil=max(w.oil,stripe*.2*(1-w.dust));
     }
+
+    // No road weathers evenly: sun, drainage and traffic leave patches metres across with
+    // ragged edges. Fresh repairs have not had time to pick them up.
+    float2 pw=(float2(road_noise_soft(xz*.23+float2(7,3)),road_noise_soft(xz*.23+float2(19,41)))-.5)*2.5;
+    float ragged=road_noise(xz*2.3+float2(11,5))*.1+road_noise(xz*9.7+float2(3,29))*.06+road_noise(xz*31)*.03;
+    float weathered=1-w.repair*(1-w.age)*.8;
+    w.bleach=smoothstep(.6,.67,road_noise_soft(xz*.05+float2(23,71))*.5+road_noise_soft((xz+pw)*.21+float2(5,29))*.4+ragged)*lerp(.6,1,road_noise_soft(xz*.9+float2(8,2)))*weathered;
+    w.stain=smoothstep(.62,.68,road_noise_soft((xz+pw)*.31+float2(61,2))*.75+ragged*1.4)*lerp(.5,1,road_noise_soft(xz*1.3+float2(3,17)))*weathered;
+    w.bleach*=1-w.stain;
+
+    // bleeding: in the heat the binder rises in the wheel paths and in whole panels laid
+    // binder rich, a dark glaze over the stones that catches the sky
+    float rich=smoothstep(.66,.72,road_noise_soft((xz+pw*.6)*.13+float2(13,88))+ragged*.9);
+    float tracked=smoothstep(.55,.62,road_noise_soft(xz*.11+float2(71,23))*.85+ragged*.9)*w.polish;
+    w.flush=saturate(max(rich*.85,tracked*.8))*(1-w.dust)*lerp(1,.4,w.repair*(1-w.age));
+
+    // dirt drifts out of the wheel paths and settles between them and toward the edges
+    float idle=f.deck ? saturate(1-w.polish*1.4) : .6;
+    w.film=idle*smoothstep(.3,.7,road_noise_soft(xz*.37+float2(41,9))*.7+road_noise_soft(xz*2.3+float2(2,8))*.3)*lerp(.35,1,w.age);
+
+    float scatter=.05+.25*w.dust+.12*w.film+.1*w.ravel;
+    w.grit=road_grit(xz,scatter*smoothstep(.35,.6,road_noise_soft(xz*.9+float2(17,3))),fp);
     return w;
 }
 
@@ -514,12 +552,29 @@ void road_asphalt_surface(RoadWear w,float2 xz,float3 tex,float height,inout flo
     float binder_rough=lerp(.72,.9,w.age)-.12*w.polish;
     float stone_rough=lerp(.6,.48,w.age)-.15*w.polish;
     roughness=lerp(binder_rough,stone_rough,s)*lerp(1,roughness/.83,.4);
-    roughness=clamp(roughness,.3,.97);
+
+    // the glaze drowns the stones but the tallest still poke through, dull
+    float glaze=w.flush*lerp(1,.55,smoothstep(.65,.9,height));
+    albedo=lerp(albedo,lerp(float3(.032,.031,.03),albedo*.6,.35),glaze*.85);
+    roughness=lerp(roughness,lerp(.22,.34,w.age),glaze);
+    roughness=clamp(roughness,.2,.97);
 }
 
 // Damage that sits on top of both the asphalt and the paint.
 void road_damage_apply(RoadWear w,float height,inout float3 albedo,inout float roughness)
 {
+    // sun bleached patches go grey and chalky, damp dirty ones darken and stay a little satin
+    float lum=dot(albedo,float3(.2126,.7152,.0722));
+    albedo=lerp(albedo,lerp(albedo,lum,.5)*1.45+float3(.012,.011,.009),w.bleach*.8);
+    roughness=lerp(roughness,.93,w.bleach*.6);
+    albedo*=lerp(1,float3(.68,.67,.65),w.stain);
+    roughness=lerp(roughness,.68,w.stain*.4);
+
+    // road dirt is a brown grey film, thickest in the voids
+    float film=w.film*lerp(1,.6,saturate(height));
+    albedo=lerp(albedo,lerp(albedo,float3(.15,.135,.115),.6),film*.75);
+    roughness=lerp(roughness,.9,film*.5);
+
     // grinding scars the stone flat and darker, the old paint hangs on in the voids
     float voids=saturate((.48-height)/.25);
     albedo*=1-.22*w.ghost;
@@ -555,6 +610,11 @@ void road_damage_apply(RoadWear w,float height,inout float3 albedo,inout float r
     // cracks hold grit and shadow, not a black void
     albedo=lerp(albedo,albedo*.22,w.crack);
     roughness=lerp(roughness,1,w.crack);
+
+    // loose stones: pale limestone chips and dark basalt grit
+    albedo=lerp(albedo,float3(.42,.4,.36),saturate(w.grit)*.85);
+    albedo=lerp(albedo,float3(.03,.03,.03),saturate(-w.grit)*.7);
+    roughness=lerp(roughness,.85,abs(w.grit)*.6);
 }
 
 // How much paint covers the asphalt, 0 to 1. Paint u is lateral metres / repeat like the
@@ -644,12 +704,12 @@ void road_surface_detail(uint flags,RoadWear wear,float3 world,float2 uv,float3 
     }
 
     // bitumen, dust and rubber fill the texture, grinding flattens it, cracks cut into it
-    float filled=wear.seal*.8+wear.dust*.35+wear.oil*.3+wear.rubber*.35+wear.ghost*.5+wear.repair*(1-wear.age)*.2;
+    float filled=wear.seal*.8+wear.dust*.35+wear.oil*.3+wear.rubber*.35+wear.ghost*.5+wear.repair*(1-wear.age)*.2+wear.flush*.7+wear.film*.2;
     normal=normalize(lerp(normal,geometric_normal,saturate(filled)));
     float3 slope=float3(wear.slope.x,0,wear.slope.y);
     slope-=geometric_normal*dot(slope,geometric_normal);
     normal=normalize(normal-slope);
-    occlusion*=1-.55*wear.crack-.2*wear.ravel;
+    occlusion*=1-.55*wear.crack-.2*wear.ravel-.15*saturate(-wear.grit);
 }
 
 // Aggregate height for the wet film, 0 in the voids to 1 on the stone tops. -1 elsewhere.

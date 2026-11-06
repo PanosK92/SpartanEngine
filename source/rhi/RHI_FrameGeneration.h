@@ -41,6 +41,9 @@ namespace spartan
         // backbuffer area that holds the 3d view, zero size means the whole backbuffer
         static void SetGenerationRect(const math::Rectangle& rect);
 
+        // target aspect of the cinematic letterbox drawn this frame, 0 is off, the bars are cropped out of the generation rect
+        static void SetLetterbox(float aspect);
+
         // runs on the frame command list before it is submitted for presentation
         static void EndFrame(RHI_CommandList* cmd_list, RHI_SwapChain* swapchain);
 

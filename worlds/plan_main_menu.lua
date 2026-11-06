@@ -439,6 +439,19 @@ function menu.Stop()
     state = "off"
 end
 
+-- ends the menu at once as if free roam was picked, the ui stays loaded for the rest of play
+function menu.Dismiss()
+    if state == "off" or state == "done" then
+        return
+    end
+    release_camera()
+    stop_music()
+    if jukebox_audio then
+        jukebox_audio:SetMute(false)
+    end
+    state = "done"
+end
+
 -- true until the player has been handed back their view
 function menu.IsActive()
     return state ~= "off" and state ~= "done"
@@ -446,6 +459,12 @@ end
 
 function menu.Tick()
     if state == "off" or state == "done" then
+        return
+    end
+
+    -- a sequence played from the editor owns the screen, the menu would draw over it
+    if Sequencer and Sequencer.IsAvailable() and Sequencer.IsPlaying() then
+        menu.Dismiss()
         return
     end
 

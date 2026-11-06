@@ -20,6 +20,7 @@ namespace spartan::scripting
         std::function<bool(const std::string& name, uint64_t car_entity_id)> play;
         // hands the camera and the cars back, a finished cutscene holds its last shot until this is called
         std::function<void()> stop;
+        // any playback, a cutscene or a sequence played from the editor, owns the screen
         std::function<bool()> is_playing;
         std::function<float()> get_time;
         std::function<float()> get_duration;
