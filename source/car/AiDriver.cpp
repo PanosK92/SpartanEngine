@@ -762,19 +762,14 @@ namespace spartan
         if (m_light_sample_time <= 0.0f)
         {
             m_light_sample_time = 0.5f;
-            float daylight_lux = 0.0f;
-            if (Light* sun = World::GetDirectionalLight(); sun && sun->GetEntity()->GetActive())
+            const float daylight_lux = World::GetDaylightIlluminance();
+            // switch only when the verdict flips, so a manual choice (l, dpad, car list) holds until the next dusk or dawn
+            const int dark = daylight_lux < 1500.0f ? 1 : (daylight_lux > 2500.0f ? 0 : m_light_dark);
+            if (dark != -1 && dark != m_light_dark)
             {
-                const Color transmission = sun->GetColorEffective();
-                const float luminance = 0.2126f * transmission.r + 0.7152f * transmission.g + 0.0722f * transmission.b;
-                const float clouds = Environment::GetCloudCoverageEffective();
-                const float cloud_transmission = 1.0f - 0.75f * clouds * clouds * clouds;
-                daylight_lux = cloud_transmission * sun->GetIntensityPhotometric() * luminance * max(0.0f, -sun->GetEntity()->GetForward().y);
+                m_light_dark = dark;
+                m_car->SetHeadlights(dark ? CarHeadlights::Low : CarHeadlights::Off);
             }
-            if (daylight_lux < 1500.0f)
-                m_car->SetHeadlights(CarHeadlights::Low);
-            else if (daylight_lux > 2500.0f)
-                m_car->SetHeadlights(CarHeadlights::Off);
         }
         m_line->KeepCollisionLoaded();
         // leaving the car hands its controls to the player, the driver keeps them until it is released

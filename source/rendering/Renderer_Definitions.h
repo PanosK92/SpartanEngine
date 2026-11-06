@@ -383,6 +383,8 @@ namespace spartan
         film_grain_c,
         cinematic_c,
         lens_rain_c,
+        lens_rain_blur_c,
+        lens_rain_composite_c,
         lens_drops_clear_c,
         lens_drops_simulate_c,
         lens_drops_spawn_c,
@@ -601,6 +603,9 @@ namespace spartan
         bloom,
         blur,
         overlay_backdrop,
+        // half resolution, the water on the lens in focus and premultiplied, then spread over the circle of confusion
+        lens_rain_layer,
+        lens_rain_scratch,
         outline,
         shading_rate,
         shadow_atlas,

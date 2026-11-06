@@ -276,6 +276,7 @@ namespace spartan::scripting
         WorldTable["GetAirTemperature"] = []() { return World::GetEnvironment().air_temperature; };
         WorldTable["GetRoadTemperature"] = []() { return World::GetEnvironment().road_temperature; };
         WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
+        WorldTable["GetDaylightIlluminance"]    = &World::GetDaylightIlluminance;
         WorldTable["GetCameraEntity"]           = []() -> Entity*
         {
             Camera* camera = World::GetCamera();

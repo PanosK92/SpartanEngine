@@ -142,6 +142,7 @@ namespace spartan
         static void SetActiveCamera(Entity* entity);
         static Entity* GetActiveCameraOverride();
         static Light* GetDirectionalLight();
+        static float GetDaylightIlluminance(); // lux the sun puts on level ground after clouds, what decides if lamps are needed
         static uint32_t GetLightCount();
         static uint32_t GetAudioSourceCount();
 

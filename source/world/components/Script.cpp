@@ -81,11 +81,30 @@ namespace
             save_lua_value(node, key.as<std::string>(), value);
         }
     }
+
+    // deferred inits outlive their component when a builder or a clear removes it first,
+    // the serial guards against a new script reusing a freed address
+    std::mutex live_scripts_mutex;
+    std::unordered_map<const Script*, uint64_t> live_scripts;
+    std::atomic<uint64_t> next_serial = 1;
+
+    bool is_script_alive(const Script* script, uint64_t serial)
+    {
+        std::lock_guard lock(live_scripts_mutex);
+        auto it = live_scripts.find(script);
+        return it != live_scripts.end() && it->second == serial;
+    }
 }
 
 Script::Script(Entity* Entity)
     :Component(Entity)
 {
+    m_serial = next_serial.fetch_add(1, std::memory_order_relaxed);
+    {
+        std::lock_guard lock(live_scripts_mutex);
+        live_scripts[this] = m_serial;
+    }
+
     RegisterAttribute("file_path", "std::string",
         [this]()
         {
@@ -95,6 +114,12 @@ Script::Script(Entity* Entity)
         {
             LoadScriptFile(std::any_cast<std::string>(value));
         }, true);
+}
+
+Script::~Script()
+{
+    std::lock_guard lock(live_scripts_mutex);
+    live_scripts.erase(this);
 }
 
 void Script::LoadScriptFile(std::string_view path)
@@ -202,10 +227,17 @@ void Script::Load(pugi::xml_node& node)
         // light configuring scripts run first so the scene is lit while heavier builder scripts populate it
         int order = GetEntity() && GetEntity()->GetComponent<Light>() ? 0 : 1;
 
-        // lightweight handle, stays valid while World keeps the load document alive
-        pugi::xml_node node_copy = node;
-        World::AddDeferredScriptInit(order, [this, node_copy]() mutable
+        // own a copy, prefab files, clones and undo load from documents that die before the init runs
+        std::shared_ptr<pugi::xml_document> document = std::make_shared<pugi::xml_document>();
+        document->append_copy(node);
+        World::AddDeferredScriptInit(order, [this, serial = m_serial, document]()
         {
+            if (!is_script_alive(this, serial))
+            {
+                return;
+            }
+
+            pugi::xml_node node_copy = document->first_child();
             LoadInternal(node_copy);
         });
         return;

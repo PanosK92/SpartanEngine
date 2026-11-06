@@ -17,6 +17,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include <array>
 #include <vector>
 #include <cfloat>
+#include <algorithm>
+#include <functional>
 //=================================
 
 //= NAMESPACES ===============
@@ -132,6 +134,65 @@ namespace spartan
         bool active        = false;
         uint32_t rng_state = 0x9e3779b9u;
 
+        // the moves run tile by tile on every thread, the atlas is cut into square tiles in four colours, a drop is moved by
+        // the thread of the tile it starts the step in and may run a margin past it, past that it waits for the serial pass,
+        // so everything a move touches lies within the margin plus the reach of a merge, and tiles of one colour sit a whole
+        // tile apart, far beyond that
+        constexpr uint32_t tile_size   = 32;
+        constexpr int32_t tile_margin  = 10; // plus 3 texels of merge reach and 1 of sweep, twice that must stay within a tile
+
+        struct move_resume
+        {
+            uint32_t drop  = 0;
+            uint32_t first = 0; // the substep it continues from
+            uint32_t steps = 0;
+            float speed    = 0.0f;
+            float step     = 0.0f;
+        };
+
+        // what the moves of one tile leave behind, merged in tile order once every tile of a colour is done
+        struct move_context
+        {
+            int32_t x_min = 0;
+            int32_t y_min = 0;
+            int32_t x_max = 0;
+            int32_t y_max = 0;
+            vector<CarRain::Wash> washes;
+            vector<uint32_t> fresh; // texels whose micro water changed and that were not waiting for the gpu yet
+            uint32_t pending_base = 0;
+            vector<uint32_t> freed;
+            vector<move_resume> resumes;
+
+            bool holds(uint32_t texel) const
+            {
+                const int32_t x = static_cast<int32_t>(texel % atlas_w);
+                const int32_t y = static_cast<int32_t>(texel / atlas_w);
+                return x >= x_min && x <= x_max && y >= y_min && y <= y_max;
+            }
+        };
+        thread_local move_context* context = nullptr;
+
+        uint32_t tiles_x = 0;
+        uint32_t tiles_y = 0;
+        array<uint32_t, 5> colour_first = {}; // the ranked tiles of each colour
+        vector<uint32_t> tile_rank;           // tiles ordered colour by colour
+        vector<uint32_t> tile_order;          // the tile at each rank
+        vector<uint32_t> tile_first;          // where the drops of each ranked tile start in tile_drops
+        vector<uint32_t> tile_cursor;
+        vector<uint32_t> tile_drops;
+        vector<uint32_t> tiles_busy;
+        vector<move_context> contexts;
+        vector<move_resume> resumes;
+
+        // rain samples, drawn on every thread and landed in order
+        struct rain_sample
+        {
+            uint32_t texel = 0;
+            uint32_t count = 0;
+            uint8_t face   = 0;
+        };
+        vector<rain_sample> rain_hits;
+
         float random01()
         {
             rng_state ^= rng_state << 13;
@@ -147,7 +208,7 @@ namespace spartan
             w.drop  = drop_index;
             w.texel = texel;
             w.other = other;
-            washes.push_back(w);
+            (context ? context->washes : washes).push_back(w);
         }
 
         uint32_t hash(uint32_t x, uint32_t y)
@@ -260,15 +321,12 @@ namespace spartan
             return fabsf(micro[texel * 2]) * left;
         }
 
-        void micro_set(uint32_t texel, float mg, bool swept)
+        void queue_pending(uint32_t texel)
         {
-            micro[texel * 2]     = swept ? -mg : mg;
-            micro[texel * 2 + 1] = clock;
-
             CarRainTexelGpu change;
             change.texel = texel;
             change.mass  = micro[texel * 2];
-            change.stamp = clock;
+            change.stamp = micro[texel * 2 + 1];
             if (pending_slot[texel] >= 0)
             {
                 texels_pending[pending_slot[texel]] = change;
@@ -277,6 +335,32 @@ namespace spartan
             {
                 pending_slot[texel] = static_cast<int32_t>(texels_pending.size());
                 texels_pending.push_back(change);
+            }
+        }
+
+        constexpr int32_t pending_fresh = -2; // claimed by a tile, it gets its slot once the tiles of the colour are done
+
+        void micro_set(uint32_t texel, float mg, bool swept)
+        {
+            micro[texel * 2]     = swept ? -mg : mg;
+            micro[texel * 2 + 1] = clock;
+            if (!context)
+            {
+                queue_pending(texel);
+                return;
+            }
+
+            // the texel belongs to this tile's thread alone, a change already waiting is updated in place
+            const int32_t slot = pending_slot[texel];
+            if (slot >= 0)
+            {
+                texels_pending[slot].mass  = micro[texel * 2];
+                texels_pending[slot].stamp = clock;
+            }
+            else if (slot != pending_fresh)
+            {
+                pending_slot[texel] = pending_fresh;
+                context->fresh.push_back(texel);
             }
         }
 
@@ -333,31 +417,66 @@ namespace spartan
             }
             d.mass     = 0.0f;
             d.velocity = Vector3::Zero;
-            drops_free.push_back(index);
+            if (context)
+            {
+                context->freed.push_back(index);
+            }
+            else
+            {
+                drops_free.push_back(index);
+                push_heap(drops_free.begin(), drops_free.end(), greater<uint32_t>());
+            }
+        }
+
+        // the lowest free slot, so the live drops stay packed at the front and the dead tail can be trimmed
+        bool drop_allocate(uint32_t& index)
+        {
+            // trimming leaves slots past the end in the heap, they are always the largest, so once the smallest is past the end all are
+            if (!drops_free.empty() && drops_free.front() >= drops.size())
+            {
+                drops_free.clear();
+            }
+
+            if (!drops_free.empty())
+            {
+                pop_heap(drops_free.begin(), drops_free.end(), greater<uint32_t>());
+                index = drops_free.back();
+                drops_free.pop_back();
+                return true;
+            }
+
+            if (drops.size() < CarRain::drops_max)
+            {
+                index = static_cast<uint32_t>(drops.size());
+                drops.emplace_back();
+                return true;
+            }
+
+            return false;
         }
 
         // the first drop within reach of a circle on the paint, texel is where the circle's centre sits
         int32_t drop_touching(uint32_t texel, uint32_t face, const Vector3& p, float radius, int32_t ignore)
         {
-            const face_rect& r = faces[face];
-            const int32_t x    = static_cast<int32_t>(texel % atlas_w);
-            const int32_t y    = static_cast<int32_t>(texel / atlas_w);
+            const face_rect& r  = faces[face];
+            const int32_t x     = static_cast<int32_t>(texel % atlas_w);
+            const int32_t y     = static_cast<int32_t>(texel / atlas_w);
             const int32_t reach = min(3, static_cast<int32_t>(ceilf((radius + 0.004f) / texel_size)));
-            for (int32_t dy = -reach; dy <= reach; dy++)
+            const int32_t x0    = max(x - reach, static_cast<int32_t>(r.x));
+            const int32_t x1    = min(x + reach, static_cast<int32_t>(r.x + r.w) - 1);
+            const int32_t y0    = max(y - reach, static_cast<int32_t>(r.y));
+            const int32_t y1    = min(y + reach, static_cast<int32_t>(r.y + r.h) - 1);
+            for (int32_t ty = y0; ty <= y1; ty++)
             {
-                const int32_t ty = y + dy;
-                if (ty < static_cast<int32_t>(r.y) || ty >= static_cast<int32_t>(r.y + r.h))
-                    continue;
-                for (int32_t dx = -reach; dx <= reach; dx++)
+                const int32_t* row = occupant.data() + static_cast<size_t>(ty) * atlas_w;
+                for (int32_t tx = x0; tx <= x1; tx++)
                 {
-                    const int32_t tx = x + dx;
-                    if (tx < static_cast<int32_t>(r.x) || tx >= static_cast<int32_t>(r.x + r.w))
-                        continue;
-                    const int32_t other = occupant[static_cast<uint32_t>(ty) * atlas_w + static_cast<uint32_t>(tx)];
+                    const int32_t other = row[tx];
                     if (other < 0 || other == ignore)
                         continue;
-                    const drop& o = drops[other];
-                    if ((o.position - p).Length() < radius + radius_of(o.mass))
+                    const drop& o     = drops[other];
+                    const float touch = radius + radius_of(o.mass);
+                    if ((o.position - p).LengthSquared() < touch * touch)
                         return other;
                 }
             }
@@ -372,6 +491,7 @@ namespace spartan
             const float mass = a.mass + b.mass;
             Vector3 p   = (a.position * a.mass + b.position * b.mass) / mass;
             a.velocity  = (a.velocity * a.mass + b.velocity * b.mass) / mass;
+            const uint8_t face_before = a.face;
             if (b.mass > a.mass)
             {
                 a.seed = b.seed;
@@ -385,6 +505,13 @@ namespace spartan
             uint8_t face = a.face;
             if (project(face, p, texel))
             {
+                // over an edge onto another map, out of reach of this tile's thread, it stays where it is
+                if (context && texel != a.texel && !context->holds(texel))
+                {
+                    a.face = face_before;
+                    return;
+                }
+
                 if (occupant[a.texel] == static_cast<int32_t>(survivor))
                 {
                     occupant[a.texel] = -1;
@@ -406,20 +533,38 @@ namespace spartan
             const int32_t y    = static_cast<int32_t>(d.texel / atlas_w);
             const int32_t reach = radius > texel_size * 0.5f ? 1 : 0;
             const float residue = residue_mg();
+
+            // texel centres in the map's plane, as texel_position() places them
+            const uint32_t axis    = d.face / 2;
+            const float origin_u   = get(box_min, axis_u(axis)) + (0.5f - 1.0f - static_cast<float>(r.x)) * texel_size;
+            const float origin_v   = get(box_min, axis_v(axis)) + (0.5f - 1.0f - static_cast<float>(r.y)) * texel_size;
+            const float drop_u     = get(d.position, axis_u(axis));
+            const float drop_v     = get(d.position, axis_v(axis));
+            const float drop_a     = get(d.position, axis);
+            const float footprint  = radius + texel_size * 0.5f;
+            const float footprint2 = footprint * footprint;
             for (int32_t dy = -reach; dy <= reach; dy++)
             {
+                const int32_t ty = y + dy;
+                if (ty < static_cast<int32_t>(r.y) || ty >= static_cast<int32_t>(r.y + r.h))
+                    continue;
+                const float gap_v = origin_v + static_cast<float>(ty) * texel_size - drop_v;
                 for (int32_t dx = -reach; dx <= reach; dx++)
                 {
                     const int32_t tx = x + dx;
-                    const int32_t ty = y + dy;
-                    if (tx < static_cast<int32_t>(r.x) || tx >= static_cast<int32_t>(r.x + r.w) || ty < static_cast<int32_t>(r.y) || ty >= static_cast<int32_t>(r.y + r.h))
+                    if (tx < static_cast<int32_t>(r.x) || tx >= static_cast<int32_t>(r.x + r.w))
                         continue;
                     const uint32_t t = static_cast<uint32_t>(ty) * atlas_w + static_cast<uint32_t>(tx);
                     if (info_kind(texel_info[t]) != kind_face)
                         continue;
                     // the corners of the window lie outside a round footprint
-                    if ((dx != 0 || dy != 0) && (texel_position(t, d.face, 0.5f, 0.5f) - d.position).Length() > radius + texel_size * 0.5f)
-                        continue;
+                    if (dx != 0 || dy != 0)
+                    {
+                        const float gap_u = origin_u + static_cast<float>(tx) * texel_size - drop_u;
+                        const float gap_a = height[t] - drop_a;
+                        if (gap_u * gap_u + gap_v * gap_v + gap_a * gap_a > footprint2)
+                            continue;
+                    }
 
                     const float gathered = micro_now(t);
                     const float left     = min(residue, max(0.0f, d.mass * 1.0e6f + gathered - 0.05f));
@@ -439,20 +584,8 @@ namespace spartan
             }
 
             uint32_t index;
-            if (!drops_free.empty())
-            {
-                index = drops_free.back();
-                drops_free.pop_back();
-            }
-            else if (drops.size() < CarRain::drops_max)
-            {
-                index = static_cast<uint32_t>(drops.size());
-                drops.emplace_back();
-            }
-            else
-            {
+            if (!drop_allocate(index))
                 return false;
-            }
 
             drop& d    = drops[index];
             d          = drop();
@@ -498,23 +631,45 @@ namespace spartan
             const float share         = static_cast<float>(face_texels.size()) / static_cast<float>(rain_samples);
             const float texel_area    = texel_size * texel_size;
 
-            for (uint32_t i = 0; i < rain_samples; i++)
+            // where the samples land and how many impacts each takes, every sample draws from its own hash so the threads agree
+            const uint32_t seed = static_cast<uint32_t>(random01() * 16777216.0f);
+            rain_hits.resize(rain_samples);
+            auto sample = [&](uint32_t start, uint32_t end)
             {
-                const uint32_t texel = face_texels[static_cast<uint32_t>(random01() * static_cast<float>(face_texels.size())) % face_texels.size()];
-                const Vector3 n      = info_normal(texel_info[texel]);
-                const float approach = -n.Dot(relative);
-                if (approach <= 0.0f)
-                    continue;
-
-                const uint8_t face     = face_at(texel);
-                const float area       = texel_area / max(fabsf(get(n, face / 2)), 0.3f);
-                const float expected   = rain_impacts(c.rain, approach, area) * dt * share * c.exposure;
-                const uint32_t count   = static_cast<uint32_t>(expected + random01());
-                for (uint32_t k = 0; k < count; k++)
+                for (uint32_t i = start; i < end; i++)
                 {
-                    impact(texel, face, rain_mass_sample(c.rain, random01()));
+                    rain_sample& hit     = rain_hits[i];
+                    hit.count            = 0;
+                    const uint32_t pick  = hash(seed, i * 2);
+                    const uint32_t texel = face_texels[pick % face_texels.size()];
+                    const Vector3 n      = info_normal(texel_info[texel]);
+                    const float approach = -n.Dot(relative);
+                    if (approach <= 0.0f)
+                        continue;
+
+                    const uint8_t face   = face_at(texel);
+                    const float area     = texel_area / max(fabsf(get(n, face / 2)), 0.3f);
+                    const float expected = rain_impacts(c.rain, approach, area) * dt * share * c.exposure;
+                    const float u        = static_cast<float>(hash(seed, i * 2 + 1) >> 8) / 16777216.0f;
+                    hit.texel            = texel;
+                    hit.face             = face;
+                    hit.count            = static_cast<uint32_t>(expected + u);
+                }
+            };
+            SP_PROFILE_CPU_START("car_rain_sample");
+            ThreadPool::ParallelLoop(sample, rain_samples);
+            SP_PROFILE_CPU_END();
+
+            // impacts join drops and seed new ones, they land one at a time
+            SP_PROFILE_CPU_START("car_rain_land");
+            for (const rain_sample& hit : rain_hits)
+            {
+                for (uint32_t k = 0; k < hit.count; k++)
+                {
+                    impact(hit.texel, hit.face, rain_mass_sample(c.rain, random01()));
                 }
             }
+            SP_PROFILE_CPU_END();
         }
 
         // what the paint, the car's motion and the air do to one drop, touches nothing but the drop
@@ -572,6 +727,8 @@ namespace spartan
             }
         }
 
+        void drop_walk(uint32_t index, float speed, float step, uint32_t first, uint32_t steps);
+
         void drop_move(uint32_t index, float dt)
         {
             drop& d = drops[index];
@@ -595,7 +752,13 @@ namespace spartan
 
             const uint32_t steps = min(steps_max, max(1u, static_cast<uint32_t>(ceilf(speed * dt / (step_texels * texel_size)))));
             const float step     = speed * dt / static_cast<float>(steps);
-            for (uint32_t s = 0; s < steps; s++)
+            drop_walk(index, speed, step, 0, steps);
+        }
+
+        void drop_walk(uint32_t index, float speed, float step, uint32_t first, uint32_t steps)
+        {
+            drop& d = drops[index];
+            for (uint32_t s = first; s < steps; s++)
             {
                 Vector3 p    = d.position + d.velocity * (step / speed);
                 uint8_t face = d.face;
@@ -605,6 +768,19 @@ namespace spartan
                 {
                     wash(CarRain::WashKind::Lost, index, d.texel);
                     drop_remove(index);
+                    return;
+                }
+
+                // past the reach of its tile's thread it waits for the serial pass, it picks up from this substep
+                if (context && texel != d.texel && !context->holds(texel))
+                {
+                    move_resume resume;
+                    resume.drop  = index;
+                    resume.first = s;
+                    resume.steps = steps;
+                    resume.speed = speed;
+                    resume.step  = step;
+                    context->resumes.push_back(resume);
                     return;
                 }
 
@@ -650,6 +826,169 @@ namespace spartan
             }
         }
 
+        // the tiles in four colours, a colour's tiles never border each other, ranked colour by colour
+        void build_tiles()
+        {
+            tiles_x = (atlas_w + tile_size - 1) / tile_size;
+            tiles_y = (atlas_h + tile_size - 1) / tile_size;
+            tile_rank.assign(tiles_x * tiles_y, 0);
+            tile_order.assign(tiles_x * tiles_y, 0);
+            uint32_t rank = 0;
+            for (uint32_t colour = 0; colour < 4; colour++)
+            {
+                colour_first[colour] = rank;
+                for (uint32_t ty = colour / 2; ty < tiles_y; ty += 2)
+                {
+                    for (uint32_t tx = colour % 2; tx < tiles_x; tx += 2)
+                    {
+                        tile_order[rank]            = ty * tiles_x + tx;
+                        tile_rank[ty * tiles_x + tx] = rank++;
+                    }
+                }
+            }
+            colour_first[4] = rank;
+        }
+
+        // every live drop moves on the thread of its tile, colour after colour, what ran past its tile finishes alone
+        void move_drops(float dt)
+        {
+            const uint32_t count      = static_cast<uint32_t>(drops.size());
+            const uint32_t tile_count = tiles_x * tiles_y;
+            if (count == 0 || tile_count == 0)
+                return;
+
+            // bucket the live drops by ranked tile, a counting sort keeps every tile's drops in slot order
+            SP_PROFILE_CPU_START("car_rain_bucket");
+            tile_first.assign(tile_count + 1, 0);
+            for (uint32_t i = 0; i < count; i++)
+            {
+                const drop& d = drops[i];
+                if (d.mass > 0.0f)
+                {
+                    const uint32_t tile = (d.texel / atlas_w / tile_size) * tiles_x + (d.texel % atlas_w) / tile_size;
+                    tile_first[tile_rank[tile] + 1]++;
+                }
+            }
+            for (uint32_t r = 0; r < tile_count; r++)
+            {
+                tile_first[r + 1] += tile_first[r];
+            }
+            tile_cursor.assign(tile_first.begin(), tile_first.end() - 1);
+            tile_drops.resize(tile_first[tile_count]);
+            for (uint32_t i = 0; i < count; i++)
+            {
+                const drop& d = drops[i];
+                if (d.mass > 0.0f)
+                {
+                    const uint32_t tile = (d.texel / atlas_w / tile_size) * tiles_x + (d.texel % atlas_w) / tile_size;
+                    tile_drops[tile_cursor[tile_rank[tile]]++] = i;
+                }
+            }
+            SP_PROFILE_CPU_END();
+
+            resumes.clear();
+            for (uint32_t colour = 0; colour < 4; colour++)
+            {
+                tiles_busy.clear();
+                for (uint32_t r = colour_first[colour]; r < colour_first[colour + 1]; r++)
+                {
+                    if (tile_first[r + 1] > tile_first[r])
+                    {
+                        tiles_busy.push_back(r);
+                    }
+                }
+                if (tiles_busy.empty())
+                    continue;
+                if (contexts.size() < tiles_busy.size())
+                {
+                    contexts.resize(tiles_busy.size());
+                }
+
+                auto move_tiles = [&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t k = start; k < end; k++)
+                    {
+                        const uint32_t r    = tiles_busy[k];
+                        const uint32_t tile = tile_order[r];
+                        move_context& ctx   = contexts[k];
+                        ctx.washes.clear();
+                        ctx.fresh.clear();
+                        ctx.freed.clear();
+                        ctx.resumes.clear();
+                        ctx.x_min = static_cast<int32_t>((tile % tiles_x) * tile_size) - tile_margin;
+                        ctx.y_min = static_cast<int32_t>((tile / tiles_x) * tile_size) - tile_margin;
+                        ctx.x_max = ctx.x_min + static_cast<int32_t>(tile_size) - 1 + 2 * tile_margin;
+                        ctx.y_max = ctx.y_min + static_cast<int32_t>(tile_size) - 1 + 2 * tile_margin;
+
+                        context = &ctx;
+                        for (uint32_t j = tile_first[r]; j < tile_first[r + 1]; j++)
+                        {
+                            const uint32_t index = tile_drops[j];
+                            // a neighbour may have swallowed it already
+                            if (drops[index].mass > 0.0f)
+                            {
+                                drop_move(index, dt);
+                            }
+                        }
+                        context = nullptr;
+                    }
+                };
+                SP_PROFILE_CPU_START("car_rain_tiles");
+                ThreadPool::ParallelLoop(move_tiles, static_cast<uint32_t>(tiles_busy.size()));
+                SP_PROFILE_CPU_END();
+
+                // in tile order, so the dirt sees the same story every run
+                SP_PROFILE_CPU_START("car_rain_gather");
+                uint32_t pending_end = static_cast<uint32_t>(texels_pending.size());
+                for (uint32_t k = 0; k < tiles_busy.size(); k++)
+                {
+                    contexts[k].pending_base = pending_end;
+                    pending_end += static_cast<uint32_t>(contexts[k].fresh.size());
+                }
+                texels_pending.resize(pending_end);
+                auto claim_pending = [&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t k = start; k < end; k++)
+                    {
+                        const move_context& ctx = contexts[k];
+                        for (uint32_t i = 0; i < ctx.fresh.size(); i++)
+                        {
+                            const uint32_t texel    = ctx.fresh[i];
+                            const uint32_t slot     = ctx.pending_base + i;
+                            CarRainTexelGpu& change = texels_pending[slot];
+                            change.texel            = texel;
+                            change.mass             = micro[texel * 2];
+                            change.stamp            = micro[texel * 2 + 1];
+                            pending_slot[texel]     = static_cast<int32_t>(slot);
+                        }
+                    }
+                };
+                ThreadPool::ParallelLoop(claim_pending, static_cast<uint32_t>(tiles_busy.size()));
+                for (uint32_t k = 0; k < tiles_busy.size(); k++)
+                {
+                    const move_context& ctx = contexts[k];
+                    washes.insert(washes.end(), ctx.washes.begin(), ctx.washes.end());
+                    for (uint32_t index : ctx.freed)
+                    {
+                        drops_free.push_back(index);
+                        push_heap(drops_free.begin(), drops_free.end(), greater<uint32_t>());
+                    }
+                    resumes.insert(resumes.end(), ctx.resumes.begin(), ctx.resumes.end());
+                }
+                SP_PROFILE_CPU_END();
+            }
+
+            SP_PROFILE_CPU_START("car_rain_resume");
+            for (const move_resume& resume : resumes)
+            {
+                if (drops[resume.drop].mass > 0.0f)
+                {
+                    drop_walk(resume.drop, resume.speed, resume.step, resume.first, resume.steps);
+                }
+            }
+            SP_PROFILE_CPU_END();
+        }
+
         void step(const CarRain::Conditions& c, float dt)
         {
             // the air saturates in the rain and dries out over minutes after it
@@ -689,15 +1028,9 @@ namespace spartan
             }
             SP_PROFILE_CPU_END();
 
-            // moving drops merge and write the paint, one at a time
+            // moving drops merge and write the paint
             SP_PROFILE_CPU_START("car_rain_moves");
-            for (uint32_t i = 0; i < count; i++)
-            {
-                if (drops[i].mass > 0.0f)
-                {
-                    drop_move(i, dt);
-                }
-            }
+            move_drops(dt);
             SP_PROFILE_CPU_END();
         }
 
@@ -1063,6 +1396,7 @@ namespace spartan
             drops.clear();
             drops_free.clear();
             texels_pending.clear();
+            build_tiles();
 
             SP_LOG_INFO("car rain, %zu triangles baked into a %ux%u atlas of %.1f mm texels, %zu of them paint", indices.size() / 3, atlas_w, atlas_h, texel_size * 1000.0f, face_texels.size());
             return true;
@@ -1089,6 +1423,55 @@ namespace spartan
                 pending_slot[change.texel] = -1;
             }
             texels_pending.clear();
+        }
+
+        // the passes and the gpu walk every slot up to the last live drop, once the slots are mostly empty the drops at the end
+        // move down into the free ones, the dirt they carry follows them as a merge into an empty drop
+        void compact()
+        {
+            uint32_t live = 0;
+            for (const drop& d : drops)
+            {
+                live += d.mass > 0.0f ? 1 : 0;
+            }
+
+            if (drops.size() > 2 * live + 1024)
+            {
+                SP_PROFILE_CPU_START("car_rain_compact");
+                uint32_t low  = 0;
+                uint32_t high = static_cast<uint32_t>(drops.size());
+                for (;;)
+                {
+                    while (low < high && drops[low].mass > 0.0f)
+                    {
+                        low++;
+                    }
+                    while (high > low && drops[high - 1].mass <= 0.0f)
+                    {
+                        high--;
+                    }
+                    if (low + 1 >= high)
+                        break;
+
+                    const uint32_t from = high - 1;
+                    drops[low]          = drops[from];
+                    drops[from].mass    = 0.0f;
+                    if (occupant[drops[low].texel] == static_cast<int32_t>(from))
+                    {
+                        occupant[drops[low].texel] = static_cast<int32_t>(low);
+                    }
+                    wash(CarRain::WashKind::Merge, low, drops[low].texel, from);
+                }
+                drops.resize(live);
+                drops_free.clear();
+                SP_PROFILE_CPU_END();
+                return;
+            }
+
+            while (!drops.empty() && drops.back().mass <= 0.0f)
+            {
+                drops.pop_back();
+            }
         }
 
         void build_gpu()
@@ -1175,6 +1558,7 @@ namespace spartan
                 step(conditions, delta_time / static_cast<float>(steps));
             }
         }
+        compact();
         build_gpu();
     }
 

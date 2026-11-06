@@ -54,14 +54,12 @@ Commercial use requires written permission and negotiated payment terms.
 #define RAIN_OCCLUSION_RESOLUTION 128
 // drops on the camera lens (CarLens.h, lens_drops.hlsl), simulated on the gpu
 // lens_drops holds two halves, the live drops the frame shows and the work half a step writes into
-// lens_state holds the counters, the merge grid's list heads, the list links, the merge targets and the wet trail
+// lens_state holds the counters, the merge grid's list heads, the list links, the merge targets and the lights
 #define LENS_DROPS_MAX          2048
 #define LENS_GRID_WIDTH         48   // cells of 0.1 lens units over x -2.4 to 2.4
 #define LENS_GRID_HEIGHT        24   // and y -1.2 to 1.2
 #define LENS_GRID_CELL          0.1f
 #define LENS_DOME_RADIUS        0.04f // metres, the front element bulges out as a dome of this radius, the drops ride on it and it turns from the camera towards the frame's edges
-#define LENS_TRAIL_WIDTH        960  // cells over the frame of the water film running drops leave, depth in nanometres, about two pixels each at 1080p so a vein stays smooth
-#define LENS_TRAIL_HEIGHT       540
 #define LENS_LIGHTS_X           8    // the frame is cut into regions, each holds the light brighter than the scene around it
 #define LENS_LIGHTS_Y           4
 #define LENS_LIGHT_STRIDE       8    // uints per light: position xy in lens units, energy rgb, float bits
@@ -71,8 +69,7 @@ Commercial use requires written permission and negotiated payment terms.
 #define LENS_STATE_HEADS        4
 #define LENS_STATE_NEXT         (LENS_STATE_HEADS + LENS_GRID_WIDTH * LENS_GRID_HEIGHT)
 #define LENS_STATE_TARGET       (LENS_STATE_NEXT + LENS_DROPS_MAX)
-#define LENS_STATE_TRAIL        (LENS_STATE_TARGET + LENS_DROPS_MAX)
-#define LENS_STATE_LIGHTS       (LENS_STATE_TRAIL + LENS_TRAIL_WIDTH * LENS_TRAIL_HEIGHT)
+#define LENS_STATE_LIGHTS       (LENS_STATE_TARGET + LENS_DROPS_MAX)
 #define LENS_STATE_SIZE         (LENS_STATE_LIGHTS + LENS_LIGHTS_X * LENS_LIGHTS_Y * LENS_LIGHT_STRIDE)
 
 // one drop on the lens, metres on the glass in the camera's frame, x right, y up

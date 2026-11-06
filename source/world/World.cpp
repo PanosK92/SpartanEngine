@@ -2916,6 +2916,21 @@ namespace spartan
         return light ? light->GetComponent<Light>() : nullptr;
     }
 
+    float World::GetDaylightIlluminance()
+    {
+        Light* sun = GetDirectionalLight();
+        if (!sun || !sun->GetEntity()->GetActive())
+        {
+            return 0.0f;
+        }
+
+        const Color transmission       = sun->GetColorEffective();
+        const float luminance          = 0.2126f * transmission.r + 0.7152f * transmission.g + 0.0722f * transmission.b;
+        const float clouds             = Environment::GetCloudCoverageEffective();
+        const float cloud_transmission = 1.0f - 0.75f * clouds * clouds * clouds;
+        return cloud_transmission * sun->GetIntensityPhotometric() * luminance * max(0.0f, -sun->GetEntity()->GetForward().y);
+    }
+
     uint32_t World::GetLightCount()
     {
         return static_cast<uint32_t>(views.lights.size());

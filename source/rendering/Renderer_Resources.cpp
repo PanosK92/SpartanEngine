@@ -869,6 +869,8 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::taau_history)                = nullptr;
             at(view_targets(), Renderer_RenderTarget::frame_output_stereo)         = nullptr;
             at(view_targets(), Renderer_RenderTarget::bloom)                       = nullptr;
+            at(view_targets(), Renderer_RenderTarget::lens_rain_layer)             = nullptr;
+            at(view_targets(), Renderer_RenderTarget::lens_rain_scratch)           = nullptr;
             at(view_targets(), Renderer_RenderTarget::outline)                     = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth_opaque_output) = nullptr;
         }
@@ -1061,6 +1063,8 @@ namespace spartan
             for (uint32_t edge = min(bloom_width, bloom_height); edge >= 16; edge /= 2)
                 bloom_mips++;
             at(view_targets(), Renderer_RenderTarget::bloom) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, bloom_width, bloom_height, 1, bloom_mips, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
+            at(view_targets(), Renderer_RenderTarget::lens_rain_layer)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, bloom_width, bloom_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lens_rain_layer");
+            at(view_targets(), Renderer_RenderTarget::lens_rain_scratch) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, bloom_width, bloom_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lens_rain_scratch");
             at(view_targets(), Renderer_RenderTarget::outline)                     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,          RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
         };
@@ -1402,6 +1406,8 @@ namespace spartan
             { Renderer_Shader::vhs_c,                                 RHI_Shader_Type::Compute, "vhs.hlsl"                                                                   },
             { Renderer_Shader::cinematic_c,                           RHI_Shader_Type::Compute, "cinematic.hlsl"                                                             },
             { Renderer_Shader::lens_rain_c,                           RHI_Shader_Type::Compute, "lens_rain.hlsl"                                                             },
+            { Renderer_Shader::lens_rain_blur_c,                      RHI_Shader_Type::Compute, "lens_rain.hlsl",                             RHI_Vertex_Type::Max, "BLUR"      },
+            { Renderer_Shader::lens_rain_composite_c,                 RHI_Shader_Type::Compute, "lens_rain.hlsl",                             RHI_Vertex_Type::Max, "COMPOSITE" },
             { Renderer_Shader::lens_drops_clear_c,                    RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "CLEAR"    },
             { Renderer_Shader::lens_drops_simulate_c,                 RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "SIMULATE" },
             { Renderer_Shader::lens_drops_spawn_c,                    RHI_Shader_Type::Compute, "lens_drops.hlsl",                            RHI_Vertex_Type::Max, "SPAWN"    },

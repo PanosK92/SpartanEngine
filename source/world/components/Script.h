@@ -20,6 +20,7 @@ namespace spartan
         bool StartsEarly() const override { return true; }
 
         Script(Entity* Entity);
+        ~Script() override;
 
         void LoadScriptFile(std::string_view path);
         void Initialize() override;
@@ -38,5 +39,7 @@ namespace spartan
     private:
         // loads the script file, applies serialized properties and runs the lua initialize and load hooks
         void LoadInternal(pugi::xml_node& node);
+
+        uint64_t m_serial = 0;
     };
 }

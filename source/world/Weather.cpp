@@ -248,8 +248,9 @@ namespace spartan
                 particles->SetDirectionalBlend(1.0f);
                 particles->SetStartSize(0.014f);
                 particles->SetEndSize(0.014f);
-                particles->SetStartColor(Color(0.72f, 0.76f, 0.82f, 0.22f));
-                particles->SetEndColor(Color(0.72f, 0.76f, 0.82f, 0.18f));
+                // water barely scatters, a streak is mostly the sky refracted through it, a faint grey and not white
+                particles->SetStartColor(Color(0.46f, 0.49f, 0.53f, 0.13f));
+                particles->SetEndColor(Color(0.46f, 0.49f, 0.53f, 0.11f));
                 particles->SetVelocityStretch(5.0f);
                 particles->SetWindInfluence(1.0f);
                 particles->SetTurbulenceStrength(0.0f);

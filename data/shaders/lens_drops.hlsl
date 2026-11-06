@@ -25,14 +25,10 @@ RWStructuredBuffer<uint> lens_state     : register(u94);
 static const uint  lens_none          = 0xffffffffu;
 static const float lens_glass_margin  = 1.15f;   // the glass reaches past the frame, a drop there is not seen but can come back
 static const float lens_hysteresis    = 0.025f;  // the hydrophobic coating of a front element
-static const float lens_hysteresis_wet = 0.008f;  // on the film a drop already left the contact line hardly snags, it runs down the same vein
 static const float lens_stagnation    = 1.5f;    // the head on air parts at the dome's centre and runs out over it at 3/2 the airspeed times the distance over the dome's radius, a sphere's stagnation flow
 static const float lens_wake_shelter  = 0.25f;   // air coming from behind, the glass sits in the camera's own wake
-static const float lens_residue_depth = 1.0e-5f; // metres of water at the crest of the vein a millimetre drop leaves behind
-static const float lens_vein_height   = 0.005f;  // crest of the vein over the contact radius of the drop that ran there, the coating holds little of it
-static const float lens_vein_width    = 0.4f;    // of the drop's contact diameter
 static const float lens_mass_min      = 1.0e-8f; // kg, anything lighter dries without being seen
-static const float lens_film_life     = 4.0f;    // seconds a vein lasts in dry air before it drains and dewets off the coating, twice that in the rain
+static const float lens_speck_size    = 2.0e-4f; // metres, the specks on the coating that snag a contact line
 static const float lens_spray_diameter = 3.0e-4f;
 static const float lens_light_excess  = 4.0f;    // a light is brighter than this many times the frame's mean
 // art direction over the physics, the eye needs time to take a drop in: a fresh one sits while it wets in, then runs slower than it would
@@ -49,59 +45,12 @@ bool lens_on_glass(float2 p)
     return abs(p.x) <= hh * lens_aspect() * lens_glass_margin && abs(p.y) <= hh * lens_glass_margin;
 }
 
-bool lens_trail_cell(float2 p, out uint cell)
-{
-    float hh = lens_half_height();
-    float u  = p.x / (hh * lens_aspect()) * 0.5f + 0.5f;
-    float v  = p.y / hh * 0.5f + 0.5f;
-    cell     = 0;
-    if (u < 0.0f || v < 0.0f || u >= 1.0f || v >= 1.0f)
-        return false;
-
-    cell = uint(v * LENS_TRAIL_HEIGHT) * LENS_TRAIL_WIDTH + uint(u * LENS_TRAIL_WIDTH);
-    return true;
-}
-
 // specks on the coating make every spot a little different, which is what makes a running drop zig-zag
 float lens_pinning(float2 p)
 {
-    uint cell;
-    if (!lens_trail_cell(p, cell))
-        return drop_pinning(lens_hysteresis);
-
-    float wet   = saturate(float(lens_state[LENS_STATE_TRAIL + cell]) * 1.0e-9f / (lens_residue_depth * 0.25f));
-    float speck = float(drop_hash(cell * 2654435761u + 1013904223u) & 0xffff) / 65535.0f;
-    return drop_pinning(lerp(lens_hysteresis, lens_hysteresis_wet, wet)) * (0.8f + 0.4f * speck);
-}
-
-// the vein is rounded across, deepest under the drop's path, nanometres
-void lens_wet(float2 p, float half_width, float crest)
-{
-    float hh      = lens_half_height();
-    float cell_w  = 2.0f * hh * lens_aspect() / float(LENS_TRAIL_WIDTH);
-    float cell_h  = 2.0f * hh / float(LENS_TRAIL_HEIGHT);
-    int reach_x   = min(int(ceil(half_width / cell_w)), 16);
-    int reach_y   = min(int(ceil(half_width / cell_h)), 16);
-    float u       = (p.x / (hh * lens_aspect()) * 0.5f + 0.5f) * float(LENS_TRAIL_WIDTH);
-    float v       = (p.y / hh * 0.5f + 0.5f) * float(LENS_TRAIL_HEIGHT);
-    int cx        = int(floor(u));
-    int cy        = int(floor(v));
-    for (int y = cy - reach_y; y <= cy + reach_y; y++)
-    {
-        for (int x = cx - reach_x; x <= cx + reach_x; x++)
-        {
-            if (x < 0 || y < 0 || x >= LENS_TRAIL_WIDTH || y >= LENS_TRAIL_HEIGHT)
-                continue;
-
-            float2 offset = float2((float(x) + 0.5f - u) * cell_w, (float(y) + 0.5f - v) * cell_h);
-            float across  = saturate(1.0f - dot(offset, offset) / max(half_width * half_width, 1e-12f));
-            if (across <= 0.0f)
-                continue;
-
-            uint previous;
-            InterlockedMax(lens_state[LENS_STATE_TRAIL + uint(y) * LENS_TRAIL_WIDTH + uint(x)], uint(crest * across * 1.0e9f), previous);
-        }
-    }
+    int2 c      = int2(floor(p / lens_speck_size));
+    float speck = float(drop_hash(uint(c.x) * 2654435761u ^ uint(c.y) * 1013904223u) & 0xffff) / 65535.0f;
+    return drop_pinning(lens_hysteresis) * (0.8f + 0.4f * speck);
 }
 
 // patchy wettability of the coating, 0 to 1, smooth over about half a millimetre
@@ -152,13 +101,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (i < LENS_GRID_WIDTH * LENS_GRID_HEIGHT)
     {
         lens_state[LENS_STATE_HEADS + i] = lens_none;
-    }
-    // the vein thins as it dries, slowly while the air is saturated
-    if (i < LENS_TRAIL_WIDTH * LENS_TRAIL_HEIGHT)
-    {
-        float life  = lens_film_life * (2.0f - buffer_frame.lens_spawn.w);
-        float depth = float(lens_state[LENS_STATE_TRAIL + i]) * exp(-buffer_frame.lens_air.w / life);
-        lens_state[LENS_STATE_TRAIL + i] = wipe || depth < 50.0f ? 0u : uint(depth);
     }
     if (i == 0)
     {
@@ -223,22 +165,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     d.mass -= drop_evaporation(radius, dryness, length(flow)) * dt;
     d.age  += dt;
 
-    // a running drop leaves a vein of water behind it, a rounded film as wide as part of its contact line, what it loses there it carries no more
-    float speed = length(d.velocity) * lens_slide_pace;
-    if (speed > 0.0f)
-    {
-        float distance   = speed * dt;
-        float cell_size  = 2.0f * hh / float(LENS_TRAIL_HEIGHT);
-        float half_width = radius * lens_vein_width;
-        float crest      = radius * lens_vein_height;
-        uint steps       = clamp(uint(ceil(distance / max(half_width, cell_size))), 1u, 16u);
-        for (uint s = 0; s < steps; s++)
-        {
-            d.position += d.velocity * (lens_slide_pace * dt / float(steps));
-            lens_wet(d.position, half_width, crest);
-        }
-        d.mass -= crest * (2.0f / 3.0f) * drop_water_density * 2.0f * half_width * distance;
-    }
+    d.position += d.velocity * lens_slide_pace * dt;
 
     if (d.mass < lens_mass_min || !lens_on_glass(d.position))
         return;

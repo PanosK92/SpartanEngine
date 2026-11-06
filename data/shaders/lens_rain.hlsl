@@ -6,12 +6,13 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 // the water on the front element of the camera (CarLens.h), seen from behind the glass
-// every drop is a spherical cap meeting the glass at the coating's contact angle, the caps and the veins the running drops
-// left add up to one height field of water, so drops that touch flow into one surface
+// every drop is a spherical cap meeting the glass at the coating's contact angle, the caps add up to one height field of water,
+// so drops that touch flow into one surface
 // a ray from the camera crosses the flat glass into the water and leaves through the curved surface, snell bends it
 // towards the cap's centre and past it, so a drop holds the scene upside down and minified, sky at its bottom, road at its top,
 // near the contact line the surface is too steep for the ray to leave, it is reflected back inside and the rim goes dark
-// the camera is focused on the car metres away, everything on the glass is spread over the circle of confusion
+// the camera is focused on the car metres away, every point of the glass reaches the sensor as a disc the size of the circle of confusion,
+// so the water is drawn in focus into a layer first, then that layer is spread over the circle (BLUR) and laid over the frame (COMPOSITE)
 
 //= INCLUDES =====================
 #include "common.hlsl"
@@ -29,7 +30,6 @@ static const float lens_cos_contact  = 0.423f;
 static const float lens_wobble       = 0.1f;   // how far a contact line strays from a circle, pinned on specks it never closes round
 static const float lens_trapped      = 0.45f;  // of the light around a drop that the rim reflects back inside carries to the camera
 static const float lens_field        = 0.8f;   // lens units of the scene a cap's radius sees, its image of a light sits this much closer to its centre
-static const float lens_film_visible = 2.0e-6f; // metres of vein where the film is a continuous sheet
 
 groupshared uint tile_drops[LENS_DROPS_MAX];
 groupshared uint tile_count;
@@ -37,43 +37,6 @@ groupshared float2 light_position[LENS_LIGHTS_X * LENS_LIGHTS_Y];
 groupshared float3 light_energy[LENS_LIGHTS_X * LENS_LIGHTS_Y];
 
 float lens_half_height() { return max(buffer_frame.lens_rain.z, 1e-6f); }
-
-// cubic b-spline weights, smooth in value and slope so the cells of the film never show in the light it bends
-float4 film_weights(float f)
-{
-    float g = 1.0f - f;
-    return float4(g * g * g, 3.0f * f * f * f - 6.0f * f * f + 4.0f, 3.0f * g * g * g - 6.0f * g * g + 4.0f, f * f * f) / 6.0f;
-}
-
-// depth of the water film the running drops left, metres, p in lens units
-float film_depth(float2 p)
-{
-    float aspect = max(buffer_frame.lens_rain.w, 1e-3f);
-    float2 g     = float2((p.x / aspect * 0.5f + 0.5f) * LENS_TRAIL_WIDTH, (p.y * 0.5f + 0.5f) * LENS_TRAIL_HEIGHT) - 0.5f;
-    int2 c       = int2(floor(g));
-    float2 f     = g - float2(c);
-    float4 wx    = film_weights(f.x);
-    float4 wy    = film_weights(f.y);
-    float depth  = 0.0f;
-    for (int y = 0; y < 4; y++)
-    {
-        int cy = c.y + y - 1;
-        if (cy < 0 || cy >= LENS_TRAIL_HEIGHT)
-            continue;
-
-        float row = 0.0f;
-        for (int x = 0; x < 4; x++)
-        {
-            int cx = c.x + x - 1;
-            if (cx < 0 || cx >= LENS_TRAIL_WIDTH)
-                continue;
-
-            row += float(lens_state[LENS_STATE_TRAIL + uint(cy) * LENS_TRAIL_WIDTH + uint(cx)]) * wx[x];
-        }
-        depth += row * wy[y];
-    }
-    return depth * 1.0e-9f;
-}
 
 // lens units, the frame's height spans -1 to 1, y up
 float2 to_lens(float2 pixel, float2 resolution)
@@ -150,13 +113,52 @@ float cap_height(float2 q, float radius, float4 wobble, out float edge)
     return sqrt(max(sphere * sphere - d2, 0.0f)) - sphere * lens_cos_contact;
 }
 
+#if defined(BLUR)
+// the disc of confusion, a gaussian with the disc's spread, one direction per dispatch, the layer is premultiplied so coverage spreads with the colour
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    float2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
+    if (any(thread_id.xy >= uint2(resolution)))
+        return;
+
+    float sigma    = max(buffer_frame.lens_rain.y * resolution.y * 0.25f, 0.5f); // a disc of radius r spreads as a gaussian of r / 2, r is in lens units over half the height
+    int reach      = min(int(ceil(sigma * 2.5f)), 48);
+    int2 direction = pass_bool(pass_blur::vertical) ? int2(0, 1) : int2(1, 0);
+    float4 sum     = 0.0f;
+    float weights  = 0.0f;
+    for (int i = -reach; i <= reach; i++)
+    {
+        int2 at  = clamp(int2(thread_id.xy) + direction * i, int2(0, 0), int2(resolution) - 1);
+        float w  = exp(-0.5f * float(i * i) / (sigma * sigma));
+        sum     += tex[at] * w;
+        weights += w;
+    }
+    tex_uav[thread_id.xy] = sum / weights;
+}
+#elif defined(COMPOSITE)
+// the defocused water over the frame
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    float2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
+    if (any(thread_id.xy >= uint2(resolution)))
+        return;
+
+    float4 scene = tex[thread_id.xy];
+    float4 water = tex2.SampleLevel(samplers[sampler_bilinear_clamp], (float2(thread_id.xy) + 0.5f) / resolution, 0);
+    tex_uav[thread_id.xy] = float4(scene.rgb * (1.0f - saturate(water.a)) + water.rgb, scene.a);
+}
+#else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID, uint group_index : SV_GroupIndex)
 {
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
     uint count = min(lens_state[LENS_STATE_COUNT], uint(LENS_DROPS_MAX));
-    float blur = max(buffer_frame.lens_rain.y, 1e-4f);
+    float blur = 3.0f / resolution.y; // in focus, the edges only antialiased over a pixel and a half, the defocus is the blur that follows
     float hh   = lens_half_height();
 
     // the height field is read over the circle of confusion, its slope is the slope the blurred image of the water has
@@ -200,14 +202,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
     if (any(thread_id.xy >= uint2(resolution)))
         return;
 
-    float4 scene = tex[thread_id.xy];
-    float2 p     = to_lens(float2(thread_id.xy) + 0.5f, resolution);
+    float2 p = to_lens(float2(thread_id.xy) + 0.5f, resolution);
 
     uint size_x;
     uint size_y;
     uint levels;
     tex.GetDimensions(0, size_x, size_y, levels);
-    float level_max = float(levels) - 1.0f;
+    float2 scene_resolution = float2(size_x, size_y);
+    float level_max         = float(levels) - 1.0f;
 
     // the water over this pixel and around it, centre, right, left, up, down
     float h[5]       = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
@@ -246,7 +248,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
 
         // a few drop widths of the scene around it light the drop up from inside, the red of a tail lamp next to it glows in its rim
         float2 drop_uv   = 0.5f + to_uv(drop.xy, resolution);
-        float halo_level = clamp(log2(max(drop.z * resolution.y * 2.0f, 1.0f)), 0.0f, level_max);
+        float halo_level = clamp(log2(max(drop.z * scene_resolution.y * 2.0f, 1.0f)), 0.0f, level_max);
         around          += tex.SampleLevel(samplers[sampler_bilinear_clamp], saturate(drop_uv), halo_level).rgb * cover;
         around_w        += cover;
 
@@ -266,24 +268,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
         }
     }
 
-    // the veins are part of the same water, a film so thin it only bends the view a little across it, it never blurs it
-    float film[5];
-    film[0]          = film_depth(p) / hh;
-    float film_cover = saturate(film[0] * hh / lens_film_visible);
-
-    float wet = 1.0f - clear * (1.0f - film_cover);
+    float wet = 1.0f - clear;
     if (wet < 1e-3f)
     {
-        tex_uav[thread_id.xy] = scene;
+        tex_uav[thread_id.xy] = 0.0f;
         return;
-    }
-    for (uint t = 1; t < 5; t++)
-    {
-        film[t] = film_depth(p + taps[t]) / hh;
     }
 
     // the surface of the water, its normal faces the scene
-    float2 slope  = float2(h[1] - h[2], h[3] - h[4]) / (2.0f * spacing) + float2(film[1] - film[2], film[3] - film[4]) / (4.0f * spacing);
+    float2 slope  = float2(h[1] - h[2], h[3] - h[4]) / (2.0f * spacing);
     float3 normal = normalize(float3(-slope, 1.0f));
 
     // the camera's ray crosses the flat glass into the water, then leaves through the curved surface, or is turned back inside
@@ -296,16 +289,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
     float cos_out     = escapes ? saturate(dot(leaving, normal)) : 0.0f;
     float transmitted = escapes ? 1.0f - (0.02f + 0.98f * pow(1.0f - cos_out, 5.0f)) : 0.0f;
 
-    // the cap shrinks the scene into itself, one pixel of it gathers this many of the scene's, the image it forms is small and upside down but sharp,
-    // a little softer than its minification for the focus it shifts, the scene stays as sharp as it is through a flat film
+    // the cap shrinks the scene into itself, one pixel of it gathers this many of the scene's, the image it forms is small and upside down,
+    // a little softer than its minification for the focus it shifts
     float curvature = abs(h[1] + h[2] + h[3] + h[4] - 4.0f * h[0]) / (spacing * spacing);
     float minified  = 1.0f + curvature * (lens_water_index - 1.0f) / (2.0f * lens_tan_half_fov);
-    float level     = clamp(log2(minified) * 1.25f, 0.0f, level_max);
+    // a pixel of the layer spans this many of the scene's
+    float level     = clamp(log2(minified) * 1.25f + log2(scene_resolution.y / resolution.y), 0.0f, level_max);
 
     // a few taps over a texel of that level, so a coarse mip reads as a soft blur and not as its texels
     float2 seen_at  = escapes ? leaving.xy / (max(leaving.z, 1e-3f) * lens_tan_half_fov) : p;
     float2 seen_uv  = 0.5f + to_uv(seen_at, resolution);
-    float2 texel    = exp2(level) / resolution;
+    float2 texel    = exp2(level) / scene_resolution;
     float3 through  = 0.0f;
     for (uint s = 0; s < 4; s++)
     {
@@ -318,5 +312,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
     float3 water_color = through * transmitted + inside * lens_trapped * (1.0f - transmitted);
     water_color       += sparkle / wet;
 
-    tex_uav[thread_id.xy] = float4(lerp(scene.rgb, water_color, wet), scene.a);
+    tex_uav[thread_id.xy] = float4(water_color * wet, wet);
 }
+#endif

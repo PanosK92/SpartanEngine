@@ -189,6 +189,7 @@ namespace spartan
         float m_brake_limit   = 1.0f; // most pedal the tires take before a wheel locks, found by feel like threshold braking
         float m_hold_time     = 0.0f;
         float m_light_sample_time = 0.0f;
+        int m_light_dark          = -1; // last dusk/daylight verdict, -1 until sampled, the lamps switch only when it flips
         bool m_grid_waiting   = false; // race organizer holds the countdown until every car is ready
         bool m_timing         = false; // the lap in progress started at the line
 

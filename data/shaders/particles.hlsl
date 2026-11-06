@@ -1483,6 +1483,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     // the segment from where it was relative to the camera one exposure ago to where it is now, drawn in world space
     // so perspective does the rest, drops the camera drives into come at the lens and grow, corners sweep them sideways
     float3 streak_center = p.position;
+    float streak_share   = 1.0;
     if (emitter.rain_occluded != 0u)
     {
         float3 trail     = flow_velocity * 0.03; // a touch longer than a real shutter so each drop lingers in the eye
@@ -1492,6 +1493,13 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
         half_size_x      = max(length(trail) * 0.5, p.size);
         half_size_y      = p.size * 0.5;
         streak_center    = p.position - trail * 0.5;
+
+        // a drop is a couple of millimetres across, a streak thinner than a pixel and a half is drawn that wide and as much fainter,
+        // so a distant one fades into the downpour instead of flickering as a bright line
+        float depth   = max(dot(streak_center - get_camera_position(), buffer_frame.camera_forward), 0.05);
+        float pixels  = p.size * buffer_frame.projection[1][1] * buffer_frame.resolution_render.y * 0.5 / depth;
+        streak_share  = saturate(pixels / 1.5);
+        half_size_y  /= max(streak_share, 0.05);
     }
     float longitudinal = c.x + (flame ? 1.0 : 0.0);
     float3 world = streak_center + right * longitudinal * half_size_x + up * c.y * half_size_y;
@@ -1542,7 +1550,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.position  = clip;
     o.local     = c;
     o.color     = p.color.rgb;
-    o.alpha     = p.color.a * fade_in;
+    o.alpha     = p.color.a * fade_in * streak_share;
     if (emitter.render_mode >= 2u)
     {
         // Airborne details dissolve near the lens, keeping cockpit/road views clear.

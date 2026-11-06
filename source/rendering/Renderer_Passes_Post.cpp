@@ -201,11 +201,14 @@ namespace spartan
 
         // the drops sit on the lens itself, the scene's focus and motion blur never reach them, the bloom does
         bool lens_ready = true;
-        for (Renderer_Shader kernel : { Renderer_Shader::lens_rain_c, Renderer_Shader::lens_drops_clear_c, Renderer_Shader::lens_drops_simulate_c, Renderer_Shader::lens_drops_spawn_c, Renderer_Shader::lens_drops_insert_c, Renderer_Shader::lens_drops_target_c, Renderer_Shader::lens_drops_merge_c, Renderer_Shader::lens_drops_lights_c })
+        for (Renderer_Shader kernel : { Renderer_Shader::lens_rain_c, Renderer_Shader::lens_rain_blur_c, Renderer_Shader::lens_rain_composite_c, Renderer_Shader::lens_drops_clear_c, Renderer_Shader::lens_drops_simulate_c, Renderer_Shader::lens_drops_spawn_c, Renderer_Shader::lens_drops_insert_c, Renderer_Shader::lens_drops_target_c, Renderer_Shader::lens_drops_merge_c, Renderer_Shader::lens_drops_lights_c })
         {
             RHI_Shader* shader = GetShader(kernel);
             lens_ready         = lens_ready && shader && shader->IsCompiled();
         }
+        RHI_Texture* lens_layer   = GetRenderTarget(Renderer_RenderTarget::lens_rain_layer);
+        RHI_Texture* lens_scratch = GetRenderTarget(Renderer_RenderTarget::lens_rain_scratch);
+        lens_ready                = lens_ready && lens_layer && lens_scratch;
         if (lens_ready && Renderer::view().frame.lens_rain.x > 0.0f && !xr_stereo && !IsSecondaryViewActive())
         {
             RHI_Buffer* lens_drops = GetBuffer(Renderer_Buffer::LensDrops);
@@ -226,7 +229,7 @@ namespace spartan
             RHI_CommandList::BeginPass("lens_drops");
             {
                 const uint32_t spawn_count = static_cast<uint32_t>(Renderer::view().frame.lens_spawn.x + Renderer::view().frame.lens_spawn.y);
-                const uint32_t span        = max(LENS_DROPS_MAX, max(LENS_GRID_WIDTH * LENS_GRID_HEIGHT, LENS_TRAIL_WIDTH * LENS_TRAIL_HEIGHT));
+                const uint32_t span        = max(LENS_DROPS_MAX, LENS_GRID_WIDTH * LENS_GRID_HEIGHT);
                 const pair<Renderer_Shader, uint32_t> kernels[] =
                 {
                     { Renderer_Shader::lens_drops_clear_c,    span            },
@@ -251,10 +254,28 @@ namespace spartan
             }
             RHI_CommandList::EndPass();
 
-            Pass_Compute("lens_rain", Renderer_Shader::lens_rain_c, tex_in, tex_out, [&]()
+            // the water as it would look in focus, then spread over the circle of confusion the way the camera sees it, the car is what it focuses on
+            Pass_Compute("lens_rain", Renderer_Shader::lens_rain_c, tex_in, lens_layer, [&]()
             {
                 RHI_CommandList::SetBuffer("lens_drops", lens_drops);
                 RHI_CommandList::SetBuffer("lens_state", lens_state);
+            });
+            RHI_CommandList::BeginPass("lens_rain_defocus");
+            {
+                RHI_CommandList::SetShader(GetShader(Renderer_Shader::lens_rain_blur_c));
+                for (bool vertical : { false, true })
+                {
+                    m_pcb_pass_cpu.set(pass_blur::vertical, vertical);
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, vertical ? lens_scratch : lens_layer);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, vertical ? lens_layer : lens_scratch);
+                    RHI_CommandList::Dispatch(lens_layer);
+                }
+            }
+            RHI_CommandList::EndPass();
+            Pass_Compute("lens_rain_composite", Renderer_Shader::lens_rain_composite_c, tex_in, tex_out, [&]()
+            {
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, lens_layer);
             });
             swap(tex_in, tex_out);
         }
