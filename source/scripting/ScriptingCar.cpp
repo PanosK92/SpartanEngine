@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include <sol/sol.hpp>
 #include "ScriptingInternal.h"
+#include "visual/VisualApiReflection.h"
 #include "../car/Car.h"
 #include "../car/CarDirt.h"
 #include "../car/CarPhysics.h"
@@ -133,7 +134,8 @@ namespace spartan::scripting
         sol::table body_types = State["BodyType"];
         sol::table values = body_types[sol::metatable_key][sol::meta_function::index];
         values["Vehicle"] = BodyType::Custom;
-        State.new_enum("WheelIndex",
+        visual::detail::add_enum_value("BodyType", "Vehicle", static_cast<int64_t>(BodyType::Custom));
+        visual::enumeration(State, "WheelIndex",
             "FrontLeft",    WheelIndex::FrontLeft,
             "FrontRight",   WheelIndex::FrontRight,
             "RearLeft",     WheelIndex::RearLeft,
@@ -141,7 +143,7 @@ namespace spartan::scripting
             "Count",        WheelIndex::Count);
 
 
-        sol::usertype<Physics> type = State["Physics"];
+        visual::usertype_extension<Physics> type(State, "Physics");
         type["SetVehicleThrottle"] = vehicle_method(&CarPhysics::SetVehicleThrottle);
         type["SetVehicleBrake"] = vehicle_method(&CarPhysics::SetVehicleBrake);
         type["SetVehicleSteering"] = vehicle_method(&CarPhysics::SetVehicleSteering);
@@ -219,7 +221,7 @@ namespace spartan::scripting
 
     void register_car_tuning(sol::state_view state)
     {
-        sol::table tuning = state.create_named_table("CarTuning");
+        visual::table tuning(state, "CarTuning");
 
         tuning["GetSaveDirectory"] = []() { return garage_directory(); };
 

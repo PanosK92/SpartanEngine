@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <sol/sol.hpp>
 #include "Scripting.h"
 #include "ScriptingInternal.h"
+#include "visual/VisualApiReflection.h"
 #include "../world/Entity.h"
 #include "../world/components/AudioSource.h"
 #include "../world/components/Animator.h"
@@ -39,7 +40,7 @@ namespace spartan::scripting
     {
         void register_mesh(sol::state_view State)
         {
-            State.new_enum("MeshFlags",
+            visual::enumeration(State, "MeshFlags",
                 "ImportRemoveRedundantData",       MeshFlags::ImportRemoveRedundantData,
                 "ImportLights",                    MeshFlags::ImportLights,
                 "ImportCombineMeshes",             MeshFlags::ImportCombineMeshes,
@@ -51,7 +52,7 @@ namespace spartan::scripting
                 "PostProcessPreserveTerrainEdges", MeshFlags::PostProcessPreserveTerrainEdges
             );
 
-            State.new_usertype<Mesh>("Mesh",
+            visual::usertype<Mesh>(State, "Mesh",
                 "SaveToFile",               &Mesh::SaveToFile,
                 "LoadFromFile",             &Mesh::LoadFromFile,
                 "Clear",                    &Mesh::Clear,
@@ -64,7 +65,7 @@ namespace spartan::scripting
 
         void register_audio_source(sol::state_view State)
         {
-            State.new_usertype<AudioSource>("AudioSource",
+            visual::usertype<AudioSource>(State, "AudioSource",
                 sol::base_classes,              sol::bases<Component>(),
                 "SetAudioClip",                 &AudioSource::SetAudioClip,
                 "IsPlaying",                    &AudioSource::IsPlaying,
@@ -111,7 +112,7 @@ namespace spartan::scripting
 
         void register_render(sol::state_view State)
         {
-            State.new_enum("MeshType",
+            visual::enumeration(State, "MeshType",
                 "Cube",     MeshType::Cube,
                 "Quad",     MeshType::Quad,
                 "Sphere",   MeshType::Sphere,
@@ -120,12 +121,12 @@ namespace spartan::scripting
                 "Max",      MeshType::Max
             );
 
-            State.new_enum("RenderFlags",
+            visual::enumeration(State, "RenderFlags",
                 "CastsShadows",          RenderFlags::CastsShadows,
                 "ExcludeFromRayTracing", RenderFlags::ExcludeFromRayTracing
             );
 
-            State.new_usertype<Render>("Render",
+            visual::usertype<Render>(State, "Render",
                 sol::base_classes,              sol::bases<Component>(),
                 "GetDecalCount",                &Render::GetDecalCount,
                 "ClearDecals",                  &Render::ClearDecals,
@@ -180,7 +181,7 @@ namespace spartan::scripting
         void register_physics(sol::state_view State)
         {
 
-            State.new_enum("BodyType",
+            visual::enumeration(State, "BodyType",
                 "Box",          BodyType::Box,
                 "Sphere",       BodyType::Sphere,
                 "Plane",        BodyType::Plane,
@@ -194,7 +195,7 @@ namespace spartan::scripting
                 "Max",          BodyType::Max);
 
 
-            State.new_usertype<Physics>("Physics",
+            visual::usertype<Physics>(State, "Physics",
                 sol::base_classes,              sol::bases<Component>(),
 
                 "GetMass",                      &Physics::GetMass,
@@ -238,7 +239,7 @@ namespace spartan::scripting
 
         void register_light(sol::state_view State)
         {
-            State.new_enum("LightType",
+            visual::enumeration(State, "LightType",
                 "Directional",              LightType::Directional,
                 "Point",                    LightType::Point,
                 "Spot",                     LightType::Spot,
@@ -246,7 +247,7 @@ namespace spartan::scripting
                 "Max",                      LightType::Max
             );
 
-            State.new_enum("LightIntensity",
+            visual::enumeration(State, "LightIntensity",
                 "bulb_stadium",             LightIntensity::bulb_stadium,
                 "bulb_500_watt",            LightIntensity::bulb_500_watt,
                 "bulb_150_watt",            LightIntensity::bulb_150_watt,
@@ -258,12 +259,12 @@ namespace spartan::scripting
                 "custom",                   LightIntensity::custom
             );
 
-            State.new_enum("LightIntensityUnit",
+            visual::enumeration(State, "LightIntensityUnit",
                 "Lux",                      LightIntensityUnit::Lux,
                 "Lumens",                   LightIntensityUnit::Lumens
             );
 
-            State.new_enum("LightFlags",
+            visual::enumeration(State, "LightFlags",
                 "Shadows",                  LightFlags::Shadows,
                 "ShadowsScreenSpace",       LightFlags::ShadowsScreenSpace,
                 "Volumetric",               LightFlags::Volumetric,
@@ -271,7 +272,7 @@ namespace spartan::scripting
                 "RealTimeCycle",            LightFlags::RealTimeCycle
             );
 
-            State.new_enum("LightPreset",
+            visual::enumeration(State, "LightPreset",
                 "dawn",                     LightPreset::dawn,
                 "day",                      LightPreset::day,
                 "dusk",                     LightPreset::dusk,
@@ -281,7 +282,7 @@ namespace spartan::scripting
             );
 
 
-            State.new_usertype<Light>("Light",
+            visual::usertype<Light>(State, "Light",
                 sol::base_classes,              sol::bases<Component>(),
 
                 "SetTemperature",               &Light::SetTemperature,
@@ -351,7 +352,7 @@ namespace spartan::scripting
 
         void register_particle_system(sol::state_view state)
         {
-            state.new_usertype<ParticleSystem>("ParticleSystem",
+            visual::usertype<ParticleSystem>(state, "ParticleSystem",
                 sol::base_classes,        sol::bases<Component>(),
 
                 "GetEmissionRate",        &ParticleSystem::GetEmissionRate,
@@ -441,7 +442,7 @@ namespace spartan::scripting
 
         void register_spline(sol::state_view state)
         {
-            state.new_usertype<Spline>("Spline",
+            visual::usertype<Spline>(state, "Spline",
                 "GetPoint",             &Spline::GetPoint,
                 "GetTangent",           &Spline::GetTangent,
                 "GetLength",            [](Spline* self) { return self->GetLength(); },
@@ -462,7 +463,7 @@ namespace spartan::scripting
 
         void register_text_3d(sol::state_view state)
         {
-            state.new_enum(
+            visual::enumeration(state,
                 "Text3DAlignment",
                 "Left",
                 Text3DAlignment::Left,
@@ -472,7 +473,7 @@ namespace spartan::scripting
                 Text3DAlignment::Right
             );
 
-            state.new_usertype<Text3D>(
+            visual::usertype<Text3D>(state,
                 "Text3D",
                 sol::base_classes,
                 sol::bases<Component>(),
@@ -519,7 +520,7 @@ namespace spartan::scripting
 
         void register_animator(sol::state_view state)
         {
-            state.new_usertype<Animator>("Animator",
+            visual::usertype<Animator>(state, "Animator",
                 sol::base_classes, sol::bases<Component>(),
                 "Play",               &Animator::Play,
                 "Stop",               &Animator::Stop,
@@ -545,7 +546,7 @@ namespace spartan::scripting
 
         void register_ragdoll(sol::state_view state)
         {
-            state.new_usertype<Ragdoll>("Ragdoll",
+            visual::usertype<Ragdoll>(state, "Ragdoll",
                 sol::base_classes, sol::bases<Component>(),
                 "IsDead", &Ragdoll::IsDead,
                 "IsFrozen", &Ragdoll::IsFrozen,
@@ -558,12 +559,12 @@ namespace spartan::scripting
 
         void register_camera(sol::state_view state)
         {
-            state.new_enum("CameraExposureMode",
+            visual::enumeration(state, "CameraExposureMode",
                 "manual",    CameraExposureMode::manual,
                 "automatic", CameraExposureMode::automatic
             );
 
-            state.new_enum("CameraFlags",
+            visual::enumeration(state, "CameraFlags",
                 "CanBeControlled",       CameraFlags::CanBeControlled,
                 "IsControlled",          CameraFlags::IsControlled,
                 "WantsCursorHidden",     CameraFlags::WantsCursorHidden,
@@ -572,7 +573,7 @@ namespace spartan::scripting
                 "Flashlight",            CameraFlags::Flashlight
             );
 
-            state.new_usertype<Camera>("Camera",
+            visual::usertype<Camera>(state, "Camera",
                 "GetFovHorizontalDeg",             &Camera::GetFovHorizontalDeg,
                 "SetFovHorizontalDeg",             &Camera::SetFovHorizontalDeg,
                 "GetNearPlane",                    &Camera::GetNearPlane,

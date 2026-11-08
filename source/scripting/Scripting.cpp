@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Scripting.h"
 #include "ScriptingInternal.h"
 #include "ScriptingHooks.h"
+#include "visual/VisualApiReflection.h"
 #include "../world/Entity.h"
 #include "../world/components/Component.h"
 #include "../input/Input.h"
@@ -37,6 +38,7 @@ namespace spartan::scripting
 
     void initialize()
     {
+        visual::detail::reset();
         lua_state.collect_gc();
 
         lua_state.open_libraries(
@@ -50,7 +52,7 @@ namespace spartan::scripting
 
         sol::state_view state_view(lua_state);
 
-        lua_state.set_function("print", [&](sol::this_state s, const sol::variadic_args& args)
+        visual::global_function(state_view, "print", [&](sol::this_state s, const sol::variadic_args& args)
         {
             sol::state_view lua(s);
             sol::protected_function tostring_function =
@@ -90,7 +92,7 @@ namespace spartan::scripting
             SP_LOG_INFO("[Lua] %s", line.c_str());
         });
 
-        sol::table Timer = lua_state.create_named_table("Timer");
+        visual::table Timer(state_view, "Timer");
         Timer["SetFPSLimit"]                    = &Timer::SetFpsLimit;
         Timer["GetFPSLimit"]                    = &Timer::GetFpsLimit;
         Timer["GetTimeMs"]                      = &Timer::GetTimeMs;
@@ -110,7 +112,7 @@ namespace spartan::scripting
         register_hud(state_view);
         register_car_tuning(state_view);
 
-        lua_state.new_enum("ComponentType",
+        visual::enumeration(state_view, "ComponentType",
             "AudioSource",              ComponentType::AudioSource,
             "Camera",                   ComponentType::Camera,
             "Light",                    ComponentType::Light,
@@ -126,7 +128,7 @@ namespace spartan::scripting
             "Ragdoll",                  ComponentType::Ragdoll
         );
 
-        lua_state.new_enum("KeyCode",
+        visual::enumeration(state_view, "KeyCode",
             "F1", KeyCode::F1, "F2", KeyCode::F2, "F3", KeyCode::F3, "F4", KeyCode::F4, "F5", KeyCode::F5,
             "F6", KeyCode::F6, "F7", KeyCode::F7, "F8", KeyCode::F8, "F9", KeyCode::F9, "F10", KeyCode::F10,
             "F11", KeyCode::F11, "F12", KeyCode::F12,
@@ -157,7 +159,7 @@ namespace spartan::scripting
             "Left_Shoulder", KeyCode::Left_Shoulder, "Right_Shoulder", KeyCode::Right_Shoulder
             );
 
-        sol::table InputTable = lua_state.create_named_table("Input");
+        visual::table InputTable(state_view, "Input");
         InputTable["GetKey"]         = &Input::GetKey;
         InputTable["GetKeyDown"]     = &Input::GetKeyDown;
         InputTable["GetKeyUp"]       = &Input::GetKeyUp;
@@ -165,13 +167,13 @@ namespace spartan::scripting
         InputTable["GetMouseWheelDelta"] = &Input::GetMouseWheelDelta;
         InputTable["GetGamepadThumbStickLeft"] = &Input::GetGamepadThumbStickLeft;
 
-        sol::table EngineTable = lua_state.create_named_table("Engine");
+        visual::table EngineTable(state_view, "Engine");
         EngineTable["IsEditorVisible"] = []() { return Engine::IsFlagSet(EngineMode::EditorVisible); };
         EngineTable["IsPlaying"]       = []() { return Engine::IsFlagSet(EngineMode::Playing); };
         EngineTable["IsPaused"]        = []() { return Engine::IsFlagSet(EngineMode::Paused); };
         EngineTable["Quit"]            = []() { Window::Close(); };
 
-        sol::table SequencerTable = lua_state.create_named_table("Sequencer");
+        visual::table SequencerTable(state_view, "Sequencer");
         SequencerTable["IsAvailable"] = []() { return static_cast<bool>(sequencer_hooks.play); };
         SequencerTable["Play"] = [](const std::string& name, sol::optional<Entity*> car) -> bool
         {
@@ -192,7 +194,7 @@ namespace spartan::scripting
         SequencerTable["GetTime"]     = []() { return sequencer_hooks.get_time ? sequencer_hooks.get_time() : 0.0f; };
         SequencerTable["GetDuration"] = []() { return sequencer_hooks.get_duration ? sequencer_hooks.get_duration() : 0.0f; };
 
-        sol::table ConsoleTable = lua_state.create_named_table("Console");
+        visual::table ConsoleTable(state_view, "Console");
         ConsoleTable["Set"] = [](const std::string& name, const std::string& value) -> bool
         {
             return ConsoleRegistry::Get().SetValueFromString(name, value);
@@ -211,6 +213,8 @@ namespace spartan::scripting
         register_world(state_view);
         register_car_physics(state_view);
         register_world_systems(state_view);
+
+        visual::detail::finalize(state_view);
     }
 
     sol::state_view get_state()

@@ -46,7 +46,9 @@ namespace
     bool update_check_started     = false;
     bool download_in_progress     = false;
     bool download_failed          = false;
-    atomic<int> download_result{0}; // worker publishes 1 on success, -1 on failure
+    bool download_failed_worlds   = false; // the failed step was the worlds, not the project package
+    bool project_update_pending   = false; // an update replaces the project even though one is already extracted
+    atomic<int> download_result{0}; // worker publishes 1 on success, -1 when the project failed, -2 when the worlds failed
 
     const float card_rounding      = 8.0f;
     const float panel_rounding     = 8.0f;
@@ -463,11 +465,13 @@ namespace
         scan_directory_recursive(project_dir, visited, found);
 
         vector<string> worlds_dirs = { "worlds", "../worlds" };
+        // an empty worlds/ next to the executable must not hide ../worlds, where downloads install
         for (const string& worlds_dir : worlds_dirs)
         {
-            if (spartan::FileSystem::Exists(worlds_dir))
+            const size_t found_before = found.size();
+            scan_directory_recursive(worlds_dir, visited, found);
+            if (found.size() > found_before)
             {
-                scan_directory_recursive(worlds_dir, visited, found);
                 break;
             }
         }
@@ -1096,21 +1100,48 @@ namespace
         return entry_count > 1;
     }
 
+    // recursive like the launcher scan, so worlds the launcher can list are never reported as missing
+    bool directory_has_world_file(const string& directory, unordered_set<string>& visited)
+    {
+        if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+        {
+            return false;
+        }
+
+        error_code error;
+        const auto canonical = filesystem::canonical(directory, error);
+        if (error || !visited.insert(canonical.generic_string()).second)
+        {
+            return false;
+        }
+
+        for (const string& file : spartan::FileSystem::GetFilesInDirectory(directory))
+        {
+            if (spartan::FileSystem::IsEngineWorldFile(file))
+            {
+                return true;
+            }
+        }
+
+        for (const string& subdirectory : spartan::FileSystem::GetDirectoriesInDirectory(directory))
+        {
+            if (directory_has_world_file(subdirectory, visited))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool has_worlds_on_disk()
     {
+        unordered_set<string> visited;
         for (const char* directory : { "worlds", "../worlds" })
         {
-            if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+            if (directory_has_world_file(directory, visited))
             {
-                continue;
-            }
-
-            for (const string& file : spartan::FileSystem::GetFilesInDirectory(directory))
-            {
-                if (spartan::FileSystem::IsEngineWorldFile(file))
-                {
-                    return true;
-                }
+                return true;
             }
         }
 
@@ -1225,8 +1256,9 @@ namespace
             return;
 
         visible_download_prompt = false;
-        download_in_progress = true;
-        download_failed = false;
+        download_in_progress    = true;
+        download_failed         = false;
+        download_failed_worlds  = false;
 
         spartan::ThreadPool::AddTask([include_project, include_worlds]()
         {
@@ -1251,19 +1283,44 @@ namespace
                 }
             }
 
-            if (success && include_worlds)
+            if (!success)
             {
-                success = download_worlds(progress);
+                download_result.store(-1);
+                return;
+            }
+
+            if (include_worlds && !download_worlds(progress))
+            {
+                download_result.store(-2);
+                return;
             }
 
             // UI state and the world list belong to the main thread
-            download_result.store(success ? 1 : -1);
+            download_result.store(1);
         });
+    }
+
+    void show_world_list()
+    {
+        visible_download_prompt = false;
+        visible_world_list      = true;
+        scan_for_world_files();
     }
 
     void download_and_extract()
     {
-        start_download(!downloaded_and_extracted, !has_worlds_on_disk());
+        // decided from what is on disk now, not when the prompt opened, a retry may find the content already there
+        downloaded_and_extracted   = is_project_extracted();
+        const bool include_project = project_update_pending || !downloaded_and_extracted;
+        const bool include_worlds  = !has_worlds_on_disk();
+        if (!include_project && !include_worlds)
+        {
+            download_failed = false;
+            show_world_list();
+            return;
+        }
+
+        start_download(include_project, include_worlds);
     }
 
     void prompt_text_centered(const char* text)
@@ -1300,13 +1357,14 @@ namespace
     void skip_download_prompt()
     {
         visible_download_prompt = false;
+        download_failed         = false;
+        project_update_pending  = false;
 
-        // the project assets are present, so the launcher still has worlds under project/ to offer
-        if (prompt_missing_worlds_only)
+        // whatever is already extracted stays usable, a declined or failed download should not hide it
+        if (is_project_extracted() || has_worlds_on_disk())
         {
             worlds_prompt_declined = true;
-            visible_world_list     = true;
-            scan_for_world_files();
+            show_world_list();
         }
     }
 
@@ -1315,7 +1373,8 @@ namespace
         if (download_in_progress)
             return;
 
-        visible_update_prompt = false;
+        visible_update_prompt  = false;
+        project_update_pending = true;
         if (spartan::FileSystem::Exists(assets_destination))
         {
             spartan::FileSystem::Delete(assets_destination);
@@ -1341,16 +1400,23 @@ namespace
         ImGui::SetNextWindowSize(scaled_vec(500.0f, 150.0f), ImGuiCond_Always);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, scaled(panel_rounding));
-        if (ImGui::Begin("Download starter worlds", &visible_download_prompt,
+        const bool project_failed = download_failed && !download_failed_worlds;
+        const char* title         = project_failed ? "Download project assets###download_prompt" : "Download starter worlds###download_prompt";
+        if (ImGui::Begin(title, &visible_download_prompt,
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize))
         {
             draw_panel_background(ImGui::GetWindowPos(), ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
             const char* body_0 = "No default worlds are present.";
             const char* body_1 = "Download the project assets and the worlds from GitHub.";
-            if (download_failed)
+            if (project_failed)
             {
-                body_0 = "The download or extraction failed.";
+                body_0 = "The project assets download or extraction failed.";
                 body_1 = "See the log for details. Retry resumes any partial download.";
+            }
+            else if (download_failed)
+            {
+                body_0 = "The worlds download from GitHub failed.";
+                body_1 = "See the log for details. Retry fetches only what is missing.";
             }
             else if (prompt_missing_worlds_only)
             {
@@ -2006,19 +2072,24 @@ void WorldSelector::Tick()
 
     if (const int result = download_result.exchange(0); result != 0)
     {
-        download_in_progress = false;
-        download_failed = result < 0;
+        download_in_progress   = false;
+        download_failed        = result < 0;
+        download_failed_worlds = result == -2;
         if (download_failed)
         {
-            // the project may have extracted before a later step failed, a retry should not fetch it again
+            // the project may have extracted before the worlds failed, a retry should not fetch it again
+            if (download_failed_worlds)
+            {
+                project_update_pending = false;
+            }
             downloaded_and_extracted = is_project_extracted();
             visible_download_prompt  = true;
         }
         else
         {
             downloaded_and_extracted = true;
-            scan_for_world_files();
-            visible_world_list = true;
+            project_update_pending   = false;
+            show_world_list();
         }
     }
 
@@ -2053,9 +2124,14 @@ void WorldSelector::SetVisible(bool visibility)
     }
 
     // a release download has the executables but not the repository's worlds/ directory
+    if (!download_in_progress)
+    {
+        download_failed = false;
+    }
+    downloaded_and_extracted   = is_project_extracted();
     const bool worlds_missing  = !worlds_prompt_declined && !has_worlds_on_disk();
     prompt_missing_worlds_only = downloaded_and_extracted && worlds_missing;
-    if (!downloaded_and_extracted || worlds_missing)
+    if (!download_in_progress && (!downloaded_and_extracted || worlds_missing))
     {
         visible_download_prompt = true;
         return;

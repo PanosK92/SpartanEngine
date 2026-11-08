@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <sol/sol.hpp>
 #include "Scripting.h"
 #include "ScriptingInternal.h"
+#include "visual/VisualApiReflection.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/WorldSystems.h"
@@ -30,7 +31,7 @@ namespace spartan::scripting
 {
     void register_entity(sol::state_view State)
     {
-        State.new_usertype<Entity>("Entity",
+        visual::usertype<Entity>(State, "Entity",
             "GetComponent", [](Entity* Self, ComponentType Type) -> sol::object
             {
                 if (Component* comp = Self->GetComponentByType(Type))
@@ -158,7 +159,7 @@ namespace spartan::scripting
     void register_world_helpers(sol::state_view state)
     {
         // material texture types
-        state.new_enum("MaterialTextureType",
+        visual::enumeration(state, "MaterialTextureType",
             "Color",     MaterialTextureType::Color,
             "Roughness", MaterialTextureType::Roughness,
             "Metalness", MaterialTextureType::Metalness,
@@ -171,7 +172,7 @@ namespace spartan::scripting
         );
 
         // material properties (subset commonly needed by builders)
-        state.new_enum("MaterialProperty",
+        visual::enumeration(state, "MaterialProperty",
             "WorldSpaceUv",               MaterialProperty::WorldSpaceUv,
             "Tessellation",               MaterialProperty::Tessellation,
             "Roughness",                  MaterialProperty::Roughness,
@@ -202,7 +203,7 @@ namespace spartan::scripting
             "CullMode",                   MaterialProperty::CullMode
         );
 
-        state.new_usertype<Material>("Material",
+        visual::usertype<Material>(state, "Material",
             "New",             sol::factories([]() { return make_shared<Material>(); }),
             "SetProperty",     &Material::SetProperty,
             "GetProperty",     &Material::GetProperty,
@@ -215,7 +216,7 @@ namespace spartan::scripting
         );
 
         // resource cache helpers
-        sol::table resource_cache = state.create_named_table("ResourceCache");
+        visual::table resource_cache(state, "ResourceCache");
         resource_cache["LoadMesh"] = sol::overload(
             [](const string& path) -> Mesh*
             {
@@ -232,7 +233,7 @@ namespace spartan::scripting
 
     void register_world(sol::state_view state)
     {
-        sol::table WorldTable = state.create_named_table("World");
+        visual::table WorldTable(state, "World");
         WorldTable["GetName"]                   = &World::GetName;
         WorldTable["GetFilePath"]               = &World::GetFilePath;
         WorldTable["GetBoundingBox"]            = &World::GetBoundingBox;
@@ -323,7 +324,7 @@ namespace spartan::scripting
 
     void register_world_systems(sol::state_view lua)
     {
-        sol::table table = lua.create_named_table("WorldSystems");
+        visual::table table(lua, "WorldSystems");
         table["SetAmbientWildlife"]   = [](bool enabled) { world_systems::GetMutableConfig().ambient_wildlife = enabled; };
         table["SetAmbientAtmosphere"] = [](bool enabled) { world_systems::GetMutableConfig().ambient_atmosphere = enabled; };
         table["SetRoadDetails"]       = [](bool enabled) { world_systems::GetMutableConfig().road_details = enabled; };

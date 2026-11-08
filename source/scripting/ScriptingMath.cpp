@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include <sol/sol.hpp>
 #include "ScriptingInternal.h"
+#include "visual/VisualApiReflection.h"
 #include "../math/Quaternion.h"
 //===========================
 
@@ -21,13 +22,13 @@ namespace spartan::scripting
 {
     void register_math(sol::state_view state)
     {
-        state.new_enum("Intersection",
+        visual::enumeration(state, "Intersection",
             "Outside", Intersection::Outside,
             "Inside",       Intersection::Inside,
             "Intersects",   Intersection::Intersects
             );
 
-        state.new_usertype<BoundingBox>("BoundingBox",
+        visual::usertype<BoundingBox>(state, "BoundingBox",
             sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
 
             "Intersects",               sol::overload(
@@ -47,7 +48,7 @@ namespace spartan::scripting
 
             );
 
-        state.new_usertype<Vector2>("Vector2",
+        visual::usertype<Vector2>(state, "Vector2",
             sol::call_constructor,
             sol::constructors<Vector2(), Vector2(const Vector2&), Vector2(int, int), Vector2(float, float)>(),
 
@@ -131,7 +132,7 @@ namespace spartan::scripting
         );
 
 
-        state.new_usertype<Vector3>("Vector3",
+        visual::usertype<Vector3>(state, "Vector3",
             sol::call_constructor,
             sol::constructors<Vector3(), Vector3(const Vector3&), Vector3(float, float, float)>(),
 
@@ -226,7 +227,7 @@ namespace spartan::scripting
         );
 
 
-        state.new_usertype<Vector4>("Vector4",
+        visual::usertype<Vector4>(state, "Vector4",
             sol::call_constructor,
             sol::constructors<Vector4(), Vector4(const Vector4&), Vector4(float, float, float, float)>(),
 
@@ -327,7 +328,7 @@ namespace spartan::scripting
             "DistanceSquared", [](const Vector4& V, const Vector4& Other) { return Vector4::DistanceSquared(V, Other); }
         );
 
-        state.new_usertype<Quaternion>("Quaternion",
+        visual::usertype<Quaternion>(state, "Quaternion",
             sol::call_constructor,
             sol::constructors<Quaternion()>(),
 

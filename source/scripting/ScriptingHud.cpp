@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include <sol/sol.hpp>
 #include "ScriptingInternal.h"
+#include "visual/VisualApiReflection.h"
 #include "../ui/Hud.h"
 //=========================
 
@@ -21,7 +22,7 @@ namespace spartan::scripting
 {
     void register_hud(sol::state_view state)
     {
-        sol::table table = state.create_named_table("Hud");
+        visual::table table(state, "Hud");
 
         table["GetSize"] = []() -> tuple<float, float>
         {
