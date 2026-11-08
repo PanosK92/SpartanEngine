@@ -131,7 +131,7 @@ namespace spartan
         // diagnostic views are temporary, persisting them poisons the next launch
         bool is_persisted_cvar(string_view name)
         {
-            return name != "r.fog.debug" && !name.starts_with("car.dirt") && name != "car.scratch" && !name.starts_with("showroom.");
+            return name != "r.fog.debug" && name != "r.watermark" && !name.starts_with("car.dirt") && name != "car.scratch" && !name.starts_with("showroom.");
         }
 
         // spartan.xml sections, in file order, a cvar lands in the first section whose name list contains it

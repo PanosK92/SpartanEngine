@@ -108,6 +108,14 @@ namespace
     const char* assets_extract_dir  = "project/";
     const char* assets_expected_sha = "aeb3a0c771e214e42ef597701c68bdadf00af60d7e633aa8e80f8de4a1ea3e96";
 
+    // world files are versioned in the repository, not in the project package, so a release download fetches them separately
+    const char* worlds_listing_url = "https://api.github.com/repos/PanosK92/SpartanEngine/contents/worlds?ref=master";
+    const char* worlds_staging_dir = "cache/worlds_download/";
+    // world scripts reference ../worlds/ relative to the executable, the same layout as a cloned repository
+    const char* worlds_install_dir = "../worlds/";
+    bool prompt_missing_worlds_only = false;
+    bool worlds_prompt_declined     = false;
+
     float dpi()
     {
         return spartan::Window::GetDpiScale();
@@ -1080,7 +1088,138 @@ namespace
         });
     }
 
-    void download_and_extract()
+    bool is_project_extracted()
+    {
+        const string project_dir = spartan::ResourceCache::GetProjectDirectory();
+        size_t entry_count       = spartan::FileSystem::GetFilesInDirectory(project_dir).size();
+        entry_count             += spartan::FileSystem::GetDirectoriesInDirectory(project_dir).size();
+        return entry_count > 1;
+    }
+
+    bool has_worlds_on_disk()
+    {
+        for (const char* directory : { "worlds", "../worlds" })
+        {
+            if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+            {
+                continue;
+            }
+
+            for (const string& file : spartan::FileSystem::GetFilesInDirectory(directory))
+            {
+                if (spartan::FileSystem::IsEngineWorldFile(file))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // pulls every download_url out of a github contents listing, directories have a null url and are skipped
+    vector<string> parse_worlds_listing(const string& json)
+    {
+        vector<string> urls;
+        const string key = "\"download_url\"";
+        size_t position  = json.find(key);
+        while (position != string::npos)
+        {
+            size_t value_start = json.find(':', position + key.size());
+            if (value_start == string::npos)
+            {
+                break;
+            }
+            value_start = json.find_first_not_of(" \t\r\n", value_start + 1);
+            if (value_start != string::npos && json[value_start] == '"')
+            {
+                const size_t value_end = json.find('"', value_start + 1);
+                if (value_end == string::npos)
+                {
+                    break;
+                }
+
+                const string url       = json.substr(value_start + 1, value_end - value_start - 1);
+                const string extension = lowercase_copy(spartan::FileSystem::GetExtensionFromFilePath(url));
+                if (extension == spartan::EXTENSION_WORLD || extension == spartan::EXTENSION_LUA || extension == ".md")
+                {
+                    urls.push_back(url);
+                }
+            }
+
+            position = json.find(key, position + key.size());
+        }
+
+        return urls;
+    }
+
+    bool download_worlds(const spartan::ProgressTask& progress)
+    {
+        progress.SetStep("Downloading worlds", "github.com/PanosK92/SpartanEngine");
+
+        string listing;
+        if (!spartan::FileSystem::DownloadToString(worlds_listing_url, listing))
+        {
+            SP_LOG_ERROR("Failed to list the worlds on GitHub: %s", worlds_listing_url);
+            return false;
+        }
+
+        const vector<string> urls = parse_worlds_listing(listing);
+        const bool has_world_file = any_of(urls.begin(), urls.end(), [](const string& url)
+        {
+            return lowercase_copy(spartan::FileSystem::GetExtensionFromFilePath(url)) == spartan::EXTENSION_WORLD;
+        });
+        if (!has_world_file)
+        {
+            SP_LOG_ERROR("The GitHub worlds listing has no world files");
+            return false;
+        }
+
+        // a clean staging folder, so a failed earlier attempt cannot be resumed into a mismatched file
+        spartan::FileSystem::Delete(worlds_staging_dir);
+        spartan::FileSystem::CreateDirectory_(worlds_staging_dir);
+
+        vector<string> staged_files;
+        for (size_t i = 0; i < urls.size(); i++)
+        {
+            const string staged_path = string(worlds_staging_dir) + spartan::FileSystem::GetFileNameFromFilePath(urls[i]);
+            const float file_start   = static_cast<float>(i) / static_cast<float>(urls.size());
+            const float file_span    = 1.0f / static_cast<float>(urls.size());
+            const bool downloaded    = spartan::FileSystem::DownloadFile(urls[i], staged_path, [&progress, file_start, file_span](float fraction)
+            {
+                progress.SetFraction(file_start + fraction * file_span);
+            });
+
+            if (!downloaded)
+            {
+                spartan::FileSystem::Delete(worlds_staging_dir);
+                return false;
+            }
+            staged_files.push_back(staged_path);
+        }
+
+        // only add what is missing, so local edits to a world are never overwritten
+        spartan::FileSystem::CreateDirectory_(worlds_install_dir);
+        bool success = true;
+        for (const string& staged_path : staged_files)
+        {
+            const string destination = string(worlds_install_dir) + spartan::FileSystem::GetFileNameFromFilePath(staged_path);
+            if (!spartan::FileSystem::Exists(destination) && !spartan::FileSystem::CopyFileFromTo(staged_path, destination))
+            {
+                SP_LOG_ERROR("Failed to install %s", destination.c_str());
+                success = false;
+            }
+        }
+        spartan::FileSystem::Delete(worlds_staging_dir);
+
+        if (success)
+        {
+            SP_LOG_INFO("Installed %zu world files into %s", staged_files.size(), worlds_install_dir);
+        }
+        return success;
+    }
+
+    void start_download(bool include_project, bool include_worlds)
     {
         if (download_in_progress)
             return;
@@ -1089,28 +1228,42 @@ namespace
         download_in_progress = true;
         download_failed = false;
 
-        spartan::ThreadPool::AddTask([]()
+        spartan::ThreadPool::AddTask([include_project, include_worlds]()
         {
-            auto progress = spartan::ProgressTracker::Begin(spartan::ProgressType::Download, "Project library", "Downloading projects");
+            auto progress = spartan::ProgressTracker::Begin(spartan::ProgressType::Download, "Project library", include_project ? "Downloading projects" : "Downloading worlds");
 
-            bool success = spartan::FileSystem::DownloadFile(
-                assets_url,
-                assets_destination,
-                [&progress](float download_progress)
-                {
-                    progress.SetFraction(download_progress);
-                }
-            );
-
-            if (success)
+            bool success = true;
+            if (include_project)
             {
-                progress.SetStep("Extracting projects");
-                success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
+                success = spartan::FileSystem::DownloadFile(
+                    assets_url,
+                    assets_destination,
+                    [&progress](float download_progress)
+                    {
+                        progress.SetFraction(download_progress);
+                    }
+                );
+
+                if (success)
+                {
+                    progress.SetStep("Extracting projects");
+                    success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
+                }
+            }
+
+            if (success && include_worlds)
+            {
+                success = download_worlds(progress);
             }
 
             // UI state and the world list belong to the main thread
             download_result.store(success ? 1 : -1);
         });
+    }
+
+    void download_and_extract()
+    {
+        start_download(!downloaded_and_extracted, !has_worlds_on_disk());
     }
 
     void prompt_text_centered(const char* text)
@@ -1147,6 +1300,14 @@ namespace
     void skip_download_prompt()
     {
         visible_download_prompt = false;
+
+        // the project assets are present, so the launcher still has worlds under project/ to offer
+        if (prompt_missing_worlds_only)
+        {
+            worlds_prompt_declined = true;
+            visible_world_list     = true;
+            scan_for_world_files();
+        }
     }
 
     void update_assets()
@@ -1159,7 +1320,7 @@ namespace
         {
             spartan::FileSystem::Delete(assets_destination);
         }
-        download_and_extract();
+        start_download(true, !has_worlds_on_disk());
     }
 
     void skip_update_prompt()
@@ -1184,10 +1345,19 @@ namespace
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize))
         {
             draw_panel_background(ImGui::GetWindowPos(), ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
-            render_prompt_body(
-                download_failed ? "Project download or extraction failed." : "No default worlds are present.",
-                download_failed ? "See the log for details. Retry resumes any partial download." : "Download the curated project package to populate the launcher.",
-                download_failed ? "Retry" : "Download", "Not now", download_and_extract, skip_download_prompt);
+            const char* body_0 = "No default worlds are present.";
+            const char* body_1 = "Download the project assets and the worlds from GitHub.";
+            if (download_failed)
+            {
+                body_0 = "The download or extraction failed.";
+                body_1 = "See the log for details. Retry resumes any partial download.";
+            }
+            else if (prompt_missing_worlds_only)
+            {
+                body_0 = "The world files are missing.";
+                body_1 = "Download them from GitHub into ../worlds, like a clone.";
+            }
+            render_prompt_body(body_0, body_1, download_failed ? "Retry" : "Download", "Not now", download_and_extract, skip_download_prompt);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
@@ -1822,9 +1992,7 @@ void WorldSelector::Initialize(Editor* editor_in)
     editor = editor_in;
     load_world_recency();
 
-    size_t file_count  = spartan::FileSystem::GetFilesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();
-    file_count        += spartan::FileSystem::GetDirectoriesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();
-    downloaded_and_extracted = file_count > 1;
+    downloaded_and_extracted = is_project_extracted();
 
     if (downloaded_and_extracted)
     {
@@ -1842,7 +2010,9 @@ void WorldSelector::Tick()
         download_failed = result < 0;
         if (download_failed)
         {
-            visible_download_prompt = true;
+            // the project may have extracted before a later step failed, a retry should not fetch it again
+            downloaded_and_extracted = is_project_extracted();
+            visible_download_prompt  = true;
         }
         else
         {
@@ -1882,7 +2052,10 @@ void WorldSelector::SetVisible(bool visibility)
         return;
     }
 
-    if (!downloaded_and_extracted)
+    // a release download has the executables but not the repository's worlds/ directory
+    const bool worlds_missing  = !worlds_prompt_declined && !has_worlds_on_disk();
+    prompt_missing_worlds_only = downloaded_and_extracted && worlds_missing;
+    if (!downloaded_and_extracted || worlds_missing)
     {
         visible_download_prompt = true;
         return;

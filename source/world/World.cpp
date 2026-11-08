@@ -2349,6 +2349,8 @@ namespace spartan
                 world_console_variables.clear();
                 // A transport inspection view must not leak into another world.
                 cvar_fog_debug.SetValue(0.0f);
+                // The watermark protects Plan's material only, its companion script turns it back on.
+                cvar_watermark.SetValue(0.0f);
                 // Atmosphere density belongs to the world, not the last scene or
                 // the editor's saved graphics settings. Persist these controls even
                 // when the source world predates them, so UI edits survive saving.

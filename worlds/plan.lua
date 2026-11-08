@@ -21,6 +21,9 @@ WorldSystems.SetRoadDetails(true)
 -- splines under the "roads" entity, materials keep the island_* names the world already references
 WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "island")
 
+-- the author watermark guards the island's material against reuse, the engine resets it on every world load
+Console.Set("r.watermark", "1")
+
 local directory = World.GetFilePath():match("^(.*[/\\])") or ""
 local main_menu = nil
 local tune_shop_entrance = nil

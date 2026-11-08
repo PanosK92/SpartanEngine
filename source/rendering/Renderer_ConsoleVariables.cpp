@@ -197,7 +197,7 @@ namespace spartan
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,   "draw entity icons and debug visuals");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,   "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
     TConsoleVar<float> cvar_screenshot_ui                  ("r.screenshot_ui",                  0.0f,   "screenshots capture the whole editor window, ui included");
-    TConsoleVar<float> cvar_watermark                      ("r.watermark",                      1.0f,   "draw the author watermark over the final image, renders and screenshots included");
+    TConsoleVar<float> cvar_watermark                      ("r.watermark",                      0.0f,   "draw the author watermark over the final image, renders and screenshots included, reset on every world load so only worlds that ask for it get it");
     TConsoleVar<float> cvar_watermark_interval             ("r.watermark_interval",             30.0f,  "seconds the watermark stays in one corner before it moves");
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,   "draw physics debug");
     TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,   "draw ragdoll capsules and joints in play mode");

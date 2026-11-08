@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="https://github.com/PanosK92/SpartanEngine/releases"><img src="https://img.shields.io/badge/Download-2f81f7?style=for-the-badge&logo=github&logoColor=white" height="34" alt="Download"></a>&nbsp;
+  <a href="docs/README.md"><img src="https://img.shields.io/badge/Documentation-21262d?style=for-the-badge" height="34" alt="Documentation"></a>&nbsp;
   <a href="https://github.com/PanosK92/SpartanEngine/blob/master/plan.md"><img src="https://img.shields.io/badge/The_Plan-21262d?style=for-the-badge" height="34" alt="The Plan"></a>&nbsp;
   <a href="https://github.com/PanosK92/SpartanEngine/wiki"><img src="https://img.shields.io/badge/Wiki-21262d?style=for-the-badge" height="34" alt="Wiki"></a>&nbsp;
   <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/badge/Discord-21262d?style=for-the-badge&logo=discord&logoColor=white" height="34" alt="Discord"></a>&nbsp;
@@ -66,7 +67,7 @@ Spartan is a **complete C++ game engine**. Path-traced global illumination, hard
 The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors and a car showroom. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
 
 > [!IMPORTANT]
-> **Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki), a [Lua scripting guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
+> **Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is [documentation](docs/README.md), a [Lua scripting guide](docs/scripting.md) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
 
 ## Showcase
 
@@ -222,7 +223,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 ## Quick start
 
 > [!TIP]
-> **Just want to try it?** Prebuilt binaries ship with every **[release](https://github.com/PanosK92/SpartanEngine/releases)**. Building from source? The **[Building Guide](https://github.com/PanosK92/SpartanEngine/wiki/Building)** has the details.
+> **Just want to try it?** Prebuilt binaries ship with every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; on first launch the World Launcher downloads the project assets and the worlds. Building from source? **[Getting started](docs/getting_started.md)** has the details.
 
 #### <img src=".github/images/platforms/windows.svg" height="16" alt=""/>&nbsp; Windows
 
@@ -247,9 +248,9 @@ tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 
 <table>
   <tr>
-    <td width="33%" valign="top"><b>Worlds</b><br/><sub>Live in <code>worlds/</code> as XML. Their assets live in <code>binaries/project/</code>, excluded from Git and downloaded during setup.</sub></td>
-    <td width="33%" valign="top"><b>Start reading</b><br/><sub><b><a href="https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp">Engine.cpp</a></b>, the entry point.</sub></td>
-    <td width="33%" valign="top"><b>Gameplay code</b><br/><sub>The <b><a href="https://github.com/PanosK92/SpartanEngine/wiki/Scripting">Lua Scripting Guide</a></b>.</sub></td>
+    <td width="33%" valign="top"><b>Worlds</b><br/><sub>Live in <code>worlds/</code> as XML. Their assets live in <code>binaries/project/</code>, excluded from Git and downloaded during setup. See <b><a href="docs/world.md">Worlds, entities and components</a></b>.</sub></td>
+    <td width="33%" valign="top"><b>Start reading</b><br/><sub>The <b><a href="docs/architecture.md">Architecture</a></b> guide, then <b><a href="https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp">Engine.cpp</a></b>.</sub></td>
+    <td width="33%" valign="top"><b>Gameplay code</b><br/><sub>The <b><a href="docs/scripting.md">Lua Scripting Guide</a></b>.</sub></td>
   </tr>
 </table>
 
@@ -261,14 +262,15 @@ The `binaries/` folder keeps executables at the top level. Windows vendor DLLs l
 
 <br/>
 
-Project generation creates these targets, all using the selected graphics backend:
+Project generation creates one target, `spartan`, built for the selected graphics backend in three configurations:
 
-| Target               | What it is                                                           | Executable                                   |
-| -------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
-| **`Spartan`**        | The editor                                                           | `spartan_<backend>_development.exe`          |
-| **`SpartanRuntime`** | The game and HUD, without editor widgets                             | `spartan_<backend>_runtime_development.exe`  |
+| Configuration     | What it is                                       | Executable                          |
+| ----------------- | ------------------------------------------------ | ----------------------------------- |
+| **`development`** | Optimized with full symbols, the default         | `spartan_<backend>_development.exe` |
+| **`debug`**       | Unoptimized                                      | `spartan_<backend>_debug.exe`       |
+| **`release`**     | Optimized with link-time optimization            | `spartan_<backend>.exe`             |
 
-The runtime targets take an existing world with `--world <absolute-world-path>` and start play once it is prepared. Resource paths remain relative to the executable, as in the editor. The editor's `-game` option hides its panels.
+The same executable is the editor and the game: `-game` hides the editor panels, and a `game.xml` written by **Build Game** next to the executable turns it into a packaged game that plays its start world directly. The full list of command-line arguments is in [Getting started](docs/getting_started.md#command-line-arguments).
 
 With dependencies already installed, regenerate without downloading them:
 
@@ -292,6 +294,29 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 **Play lifecycle.** Play startup captures all authored transforms before any component starts, with both phases spread across frames. Stopping play drains completed worker batches before restoration and removal. World unload cancels staged work and clears renderer scene references and temporal history while preserving device lookup tables.
 
 </details>
+
+## Documentation
+
+<table>
+  <tr>
+    <td width="25%" valign="top"><b><a href="docs/getting_started.md">Getting started</a></b><br/><sub>Build, run, command-line flags and the <code>binaries/</code> layout</sub></td>
+    <td width="25%" valign="top"><b><a href="docs/architecture.md">Architecture</a></b><br/><sub>The engine loop, subsystems, threading, events and profiling</sub></td>
+    <td width="25%" valign="top"><b><a href="docs/world.md">Worlds and entities</a></b><br/><sub>Components, the <code>.world</code> format, prefabs and resources</sub></td>
+    <td width="25%" valign="top"><b><a href="docs/scripting.md">Lua scripting</a></b><br/><sub>Script lifecycle, companion scripts and the full API</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><b><a href="docs/rendering.md">Rendering</a></b><br/><sub>Frame pass order, bindless GPU-driven design, RHI, shaders, materials</sub></td>
+    <td valign="top"><b><a href="docs/physics_and_vehicles.md">Physics and vehicles</a></b><br/><sub>PhysX, the 200 Hz car model, <code>.car</code> files, AI, input</sub></td>
+    <td valign="top"><b><a href="docs/systems.md">Engine systems</a></b><br/><sub>Animation, audio, navigation, terrain, weather, cinematics, XR, Steam</sub></td>
+    <td valign="top"><b><a href="docs/console_variables.md">Console variables</a></b><br/><sub>The cvar system and every registered cvar</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><b><a href="docs/editor.md">Editor</a></b><br/><sub>Panels, shortcuts, undo and the game builder</sub></td>
+    <td valign="top"><b><a href="docs/mcp.md">MCP bridge</a></b><br/><sub>Driving the live engine from AI agents and tools</sub></td>
+    <td valign="top"><b><a href="docs/testing_and_ci.md">Testing and CI</a></b><br/><sub>Smoke tests and the build pipeline</sub></td>
+    <td valign="top"><b><a href="docs/code_style.md">Code style</a></b><br/><sub>Conventions for contributions</sub></td>
+  </tr>
+</table>
 
 ## In the wild
 
