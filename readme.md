@@ -247,14 +247,6 @@ tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make 
 tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 ```
 
-<table>
-  <tr>
-    <td width="33%" valign="top"><b>Worlds</b><br/><sub>Live in <code>worlds/</code> as XML. Their assets live in <code>binaries/project/</code>, excluded from Git and downloaded during setup. See <b><a href="docs/world.md">Worlds, entities and components</a></b>.</sub></td>
-    <td width="33%" valign="top"><b>Start reading</b><br/><sub>The <b><a href="docs/architecture.md">Architecture</a></b> guide, then <b><a href="https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp">Engine.cpp</a></b>.</sub></td>
-    <td width="33%" valign="top"><b>Gameplay code</b><br/><sub>The <b><a href="docs/scripting.md">Lua Scripting Guide</a></b>.</sub></td>
-  </tr>
-</table>
-
 <details>
 <summary><b>Build targets and architecture notes</b></summary>
 
