@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "MenuBar.h"
 #include "FileDialog.h"
 #include "GameBuilder.h"
+#include "Viewport.h"
 #include "Style.h"
 #include "../Editor.h"
 #include "../EditorLayout.h"
@@ -1201,6 +1202,11 @@ void MenuBar::Tick()
             if (ImGui::IsKeyPressed(ImGuiKey_F6, false))
             {
                 buttons_toolbar::toggle_paused();
+            }
+
+            if (ImGui::IsKeyPressed(ImGuiKey_F7, false))
+            {
+                Viewport::TogglePerformanceOverlay();
             }
 
             const bool ctrl  = ImGui::GetIO().KeyCtrl;

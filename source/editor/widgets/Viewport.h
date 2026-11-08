@@ -23,6 +23,9 @@ public:
     static const spartan::math::Vector2& GetScreenPosition() { return m_screen_position; }
     static const spartan::math::Vector2& GetScreenSize()     { return m_screen_size; }
 
+    // hides the performance overlay or brings it back in the layout it had, full or compact
+    static void TogglePerformanceOverlay();
+
 private:
     spartan::math::Vector2 m_offset = spartan::math::Vector2::Zero;
     float m_window_padding          = 4.0f;

@@ -28,6 +28,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "widgets/AssetViewer.h"
 #include "widgets/TreeCreator.h"
 #include "widgets/GameBuilder.h"
+#include "widgets/VisualScriptEditor.h"
 #include "mcp/McpAssistant.h"
 //===================================
 
@@ -53,5 +54,6 @@ void Editor::RegisterWidgets()
     AddWidget<AssetViewer>();
     AddWidget<TreeCreator>();
     AddWidget<GameBuilder>();
+    AddWidget<VisualScriptEditor>();
     AddWidget<McpAssistant>();
 }

@@ -362,6 +362,8 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 
 > [!NOTE]
 > Free for noncommercial use under the **[Spartan Engine License 1.0](license.md)**. **Commercial use requires prior written permission and negotiated payment terms.**
+>
+> The commercial terms are aimed mainly at larger companies. **Individuals and small independent teams who want to monetize their work will get exceptionally favorable terms**, tailored to their project after a conversation. Just [reach out](https://panoskarabelas.com/) and an arrangement that works for you will be found.
 
 <details>
 <summary>License summary</summary>

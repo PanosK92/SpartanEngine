@@ -645,8 +645,14 @@ namespace spartan::scripting::visual
                     continue;
                 }
 
+                // sol keeps its own bookkeeping under "sol.*" keys and the base library aliases _G as "base"
                 const string name = key.as<string>();
-                if (lua_globals.count(name) || owner_lookup.count(name) || enum_lookup.count(name))
+                if (lua_globals.count(name) || owner_lookup.count(name) || enum_lookup.count(name) || name.rfind("sol.", 0) == 0)
+                {
+                    continue;
+                }
+
+                if (value.get_type() == sol::type::table && value.as<sol::table>() == state.globals())
                 {
                     continue;
                 }

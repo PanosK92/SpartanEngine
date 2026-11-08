@@ -601,6 +601,7 @@ license.)";
             { "Ctrl+Z",       "Undo"                     },
             { "Ctrl+Shift+Z", "Redo"                     },
             { "Alt+Enter",    "Toggle fullscreen"        },
+            { "F7",           "Toggle performance overlay" },
             { "F",            "Focus on entity"          }
         };
 

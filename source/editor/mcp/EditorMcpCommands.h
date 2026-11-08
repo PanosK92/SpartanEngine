@@ -50,4 +50,5 @@ namespace editor_mcp
     void register_sequencer(Editor* editor);
     void register_tree_creator(Editor* editor);
     void register_game_build(Editor* editor);
+    void register_visual_script(Editor* editor);
 }

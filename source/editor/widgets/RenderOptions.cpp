@@ -797,7 +797,7 @@ namespace
                 row_end();
             }
 
-            cvar_combo("Performance overlay", "r.performance_metrics", { "Off", "Full", "Compact" }, "Frame time, GPU and memory statistics over the viewport.");
+            cvar_combo("Performance overlay", "r.performance_metrics", { "Off", "Full", "Compact" }, "Frame time, GPU and memory statistics over the viewport. F7 toggles it, hovering it shows close and compact buttons.");
         }
         section_end();
     }

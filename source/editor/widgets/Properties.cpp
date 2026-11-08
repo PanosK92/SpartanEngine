@@ -14,6 +14,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../EditorHistory.h"
 #include "Window.h"
 #include "FileDialog.h"
+#include "VisualScriptEditor.h"
+#include "../Editor.h"
+#include "scripting/visual/VisualGraph.h"
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Properties.h"
@@ -1392,6 +1395,24 @@ void Properties::ShowScript(spartan::Script* script) const
         else
         {
             layout::note("The file did not load, check the console for the Lua error and reload.", ImGui::Style::color_error);
+        }
+
+        // visual scripts are edited as graphs, the file check is cached since it reads from disk
+        {
+            static string checked_path;
+            static bool checked_visual = false;
+            if (checked_path != script->file_path)
+            {
+                checked_path   = script->file_path;
+                checked_visual = !checked_path.empty() && scripting::visual::is_visual_script_file(checked_path);
+            }
+            if (checked_visual && primary_button("Edit graph"))
+            {
+                if (VisualScriptEditor* visual_script_editor = m_editor->GetWidget<VisualScriptEditor>())
+                {
+                    visual_script_editor->Open(script->file_path);
+                }
+            }
         }
 
         // the script's globals as ordinary rows, so a script reads like any other component; functions and tables are its code, not its settings

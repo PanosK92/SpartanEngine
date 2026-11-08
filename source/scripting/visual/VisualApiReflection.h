@@ -620,14 +620,14 @@ namespace spartan::scripting::visual
     }
 
     template <typename... Args>
-    sol::table enumeration(sol::state_view state, const char* name, Args&&... args)
+    void enumeration(sol::state_view state, const char* name, Args&&... args)
     {
         static_assert(sizeof...(Args) % 2 == 0, "enum entries come in name, value pairs");
         std::vector<std::pair<std::string, int64_t>> values;
         std::type_index cpp = typeid(void);
         reflection::collect_enum(values, cpp, args...);
         detail::add_enum(name, cpp, std::move(values));
-        return state.new_enum(name, std::forward<Args>(args)...);
+        state.new_enum(name, std::forward<Args>(args)...);
     }
 
     // a named lua table whose functions are recorded as they are assigned
@@ -679,7 +679,7 @@ namespace spartan::scripting::visual
     class usertype_extension
     {
     public:
-        usertype_extension(sol::state_view state, const char* name) : m_name(name), m_type(state[name])
+        usertype_extension(sol::state_view state, const char* name) : m_name(name), m_type(make_type(state, name))
         {
         }
 
@@ -709,6 +709,12 @@ namespace spartan::scripting::visual
         }
 
     private:
+        static sol::usertype<T> make_type(sol::state_view state, const char* name)
+        {
+            sol::usertype<T> type = state[name];
+            return type;
+        }
+
         std::string m_name;
         sol::usertype<T> m_type;
     };

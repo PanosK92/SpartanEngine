@@ -107,6 +107,9 @@ namespace spartan
         uint32_t frame_history_head  = 0;
         uint32_t frame_history_count = 0;
 
+        // where the performance overlay landed in viewport pixels, zero sized when it was not drawn
+        array<float, 4> performance_metrics_rect = {};
+
         // time blocks (double buffered)
         int m_time_block_index = -1;
         vector<int> open_time_blocks;
@@ -1799,6 +1802,7 @@ namespace spartan
             DrawCompilationProgress();
         }
 
+        performance_metrics_rect = {};
         if (cvar_performance_metrics.GetValueAs<bool>() && !Engine::IsHeadless())
         {
             DrawPerformanceMetrics();
@@ -2066,6 +2070,15 @@ namespace spartan
     bool Profiler::IsVisualized()
     {
         return is_visualized;
+    }
+
+    bool Profiler::GetPerformanceMetricsRect(float& x0, float& y0, float& x1, float& y1)
+    {
+        x0 = performance_metrics_rect[0];
+        y0 = performance_metrics_rect[1];
+        x1 = performance_metrics_rect[2];
+        y1 = performance_metrics_rect[3];
+        return x1 > x0 && y1 > y0;
     }
 
     TimeBlock* Profiler::GetLastIncompleteTimeBlock(
@@ -2761,6 +2774,7 @@ namespace spartan
 
         // panel, frosted glass over the frame
         const float panel_y1 = y + padding - px(4.0f);
+        performance_metrics_rect = { panel_x0, panel_y0, panel_x1, panel_y1 };
         font_shapes->AddBackdropBlur(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1));
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1), col::panel);
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);

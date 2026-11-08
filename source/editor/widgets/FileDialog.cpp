@@ -21,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/Prefab.h"
 #include "world/World.h"
 #include "world/components/Script.h"
+#include "scripting/visual/VisualScript.h"
 #include "core/ThreadPool.h"
 #include "core/Event.h"
 //=========================================
@@ -1321,7 +1322,7 @@ void FileDialog::ItemReleased(FileDialogItem* item)
     else
     {
         m_selection_made = true;
-        if (m_type == FileDialog_Type_Browser)
+        if (m_type == FileDialog_Type_Browser && !(m_callback_on_item_open && m_callback_on_item_open(path)))
         {
             FileSystem::OpenUrl(path);
         }
@@ -2404,6 +2405,21 @@ void FileDialog::EmptyAreaContextMenu()
         {
             FileSystem::WriteFile(m_current_path + "/new_lua_script" + EXTENSION_LUA, NewLuaScriptContents);
             m_is_dirty = true;
+        }
+
+        if (ImGui::MenuItem("New visual script"))
+        {
+            string path = m_current_path + "/new_visual_script" + EXTENSION_LUA;
+            for (uint32_t i = 2; FileSystem::Exists(path); i++)
+            {
+                path = m_current_path + "/new_visual_script_" + to_string(i) + EXTENSION_LUA;
+            }
+            scripting::visual::create_visual_script(path);
+            m_is_dirty = true;
+            if (m_callback_on_item_open)
+            {
+                m_callback_on_item_open(path);
+            }
         }
 
         if (ImGui::MenuItem("New material"))

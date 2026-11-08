@@ -48,6 +48,15 @@ Negotiations, attribution, donations, or sponsorship alone do not grant commerci
 permission. Commercial rights are conditional on compliance with the agreed
 payment terms and scope.
 
+Statement of intent for individuals and small teams: the commercial terms exist
+mainly for larger companies. For individual developers, solo creators, and small
+independent teams, the Licensor intends to keep the engine very accessible and to
+offer exceptionally favorable terms, shaped around each project's needs after a
+conversation. If you are an individual who wants to sell or monetize your work,
+please get in touch; the Licensor will always try to find an arrangement that
+works for you. This statement expresses intent only and does not by itself grant
+commercial permission or fix any terms; those come from the written agreement.
+
 The written agreement records the commercial permission and payment terms under
 this license. All other terms of this license continue to apply unless expressly
 varied in that agreement.

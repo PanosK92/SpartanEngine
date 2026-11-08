@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "rhi/RHI_Device.h"
 #include "rendering/Renderer.h"
 #include "rendering/Material.h"
+#include "profiling/Profiler.h"
 #include "resource/ResourceCache.h"
 #include "world/Prefab.h"
 #include "world/components/Render.h"
@@ -150,6 +151,145 @@ namespace
 
         return sp_payload->path;
     }
+
+    // the overlay layout to restore when it is shown again, 1 full or 2 compact
+    float performance_overlay_mode = 1.0f;
+
+    void set_performance_overlay(const float mode)
+    {
+        ConsoleRegistry::Get().SetValueFromString("r.performance_metrics", to_string(mode));
+    }
+
+    // the performance overlay is drawn by the renderer into the frame, its controls live here because only imgui gets the mouse
+    struct PerformanceOverlayControls
+    {
+        bool hovered = false;
+        ImVec2 close_min;
+        ImVec2 close_max;
+        ImVec2 layout_min;
+        ImVec2 layout_max;
+    };
+
+    PerformanceOverlayControls performance_overlay_controls(const ImVec2& image_min, const ImVec2& image_max)
+    {
+        PerformanceOverlayControls controls;
+
+        float x0, y0, x1, y1;
+        const RHI_Viewport& viewport = Renderer::GetViewport();
+        if (!Profiler::GetPerformanceMetricsRect(x0, y0, x1, y1) || viewport.width <= 0.0f || viewport.height <= 0.0f)
+        {
+            return controls;
+        }
+
+        Camera* camera = World::GetCamera();
+        if ((camera && camera->GetFlag(CameraFlags::IsControlled)) || !ImGui::IsWindowHovered())
+        {
+            return controls;
+        }
+
+        const float scale_x     = (image_max.x - image_min.x) / viewport.width;
+        const float scale_y     = (image_max.y - image_min.y) / viewport.height;
+        const ImVec2 panel_min  = ImVec2(image_min.x + x0 * scale_x, image_min.y + y0 * scale_y);
+        const ImVec2 panel_max  = ImVec2(image_min.x + x1 * scale_x, image_min.y + y1 * scale_y);
+
+        // a column hanging off the left edge, inside the panel every pixel is a reading
+        const float size    = ImGui::EditorUi::scaled(22.0f);
+        const float gap     = ImGui::EditorUi::scaled(4.0f);
+        const float right   = panel_min.x - gap;
+        controls.close_min  = ImVec2(right - size, panel_min.y);
+        controls.close_max  = ImVec2(right, panel_min.y + size);
+        controls.layout_min = ImVec2(controls.close_min.x, controls.close_max.y + gap);
+        controls.layout_max = ImVec2(right, controls.layout_min.y + size);
+
+        // the gap between the column and the panel stays live so the buttons do not vanish on the way over
+        const bool in_panel  = ImGui::IsMouseHoveringRect(panel_min, panel_max, false);
+        const bool in_column = ImGui::IsMouseHoveringRect(ImVec2(controls.close_min.x, panel_min.y), ImVec2(panel_min.x, controls.layout_max.y), false);
+        controls.hovered     = in_panel || in_column;
+
+        return controls;
+    }
+
+    void performance_overlay_controls_draw(const PerformanceOverlayControls& controls)
+    {
+        if (!controls.hovered)
+        {
+            return;
+        }
+
+        namespace ui    = ImGui::EditorUi;
+        namespace style = ImGui::Style;
+
+        ImDrawList* draw     = ImGui::GetWindowDrawList();
+        const float rounding = ui::scaled(3.0f);
+        const float inset    = ui::scaled(7.0f);
+        const float stroke   = ui::scaled(1.5f);
+        const bool compact   = cvar_performance_metrics.GetValueAs<float>() >= 2.0f;
+
+        auto button = [&](const ImVec2& min, const ImVec2& max, const char* tooltip)
+        {
+            const bool hovered = ImGui::IsMouseHoveringRect(min, max, false);
+            draw->AddRectFilled(min, max, ui::color(hovered ? style::color_surface_hover : ui::alpha(style::color_panel, 0.9f)), rounding);
+            draw->AddRect(min, max, ui::color(style::color_border), rounding);
+            if (hovered)
+            {
+                ImGui::SetTooltip("%s", tooltip);
+            }
+
+            return hovered;
+        };
+
+        const bool close_hovered = button(controls.close_min, controls.close_max, "Hide performance overlay (F7)");
+        {
+            const ImU32 glyph = ui::color(close_hovered ? style::color_text : style::color_text_muted);
+            const ImVec2 a    = ImVec2(controls.close_min.x + inset, controls.close_min.y + inset);
+            const ImVec2 b    = ImVec2(controls.close_max.x - inset, controls.close_max.y - inset);
+            draw->AddLine(a, b, glyph, stroke);
+            draw->AddLine(ImVec2(a.x, b.y), ImVec2(b.x, a.y), glyph, stroke);
+        }
+
+        const bool layout_hovered = button(controls.layout_min, controls.layout_max, compact ? "Show full overlay" : "Show compact overlay");
+        {
+            // a bar collapses the panel, an outlined box expands it back
+            const ImU32 glyph = ui::color(layout_hovered ? style::color_text : style::color_text_muted);
+            const ImVec2 a    = ImVec2(controls.layout_min.x + inset, controls.layout_min.y + inset);
+            const ImVec2 b    = ImVec2(controls.layout_max.x - inset, controls.layout_max.y - inset);
+            if (compact)
+            {
+                draw->AddRect(a, b, glyph, 0.0f, stroke);
+            }
+            else
+            {
+                const float mid = IM_ROUND((a.y + b.y) * 0.5f);
+                draw->AddLine(ImVec2(a.x, mid), ImVec2(b.x, mid), glyph, stroke);
+            }
+        }
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            if (close_hovered)
+            {
+                Viewport::TogglePerformanceOverlay();
+            }
+            else if (layout_hovered)
+            {
+                set_performance_overlay(compact ? 1.0f : 2.0f);
+            }
+        }
+    }
+}
+
+void Viewport::TogglePerformanceOverlay()
+{
+    const float mode = cvar_performance_metrics.GetValue();
+    if (mode > 0.0f)
+    {
+        performance_overlay_mode = mode;
+        set_performance_overlay(0.0f);
+    }
+    else
+    {
+        set_performance_overlay(performance_overlay_mode);
+    }
 }
 
 Viewport::Viewport(Editor* editor) : Widget(editor)
@@ -210,6 +350,9 @@ void Viewport::OnTickVisible()
     // cache the image rect for hover tests, isitemhovered can return false during drag-drop
     ImVec2 image_rect_min = ImGui::GetItemRectMin();
     ImVec2 image_rect_max = ImGui::GetItemRectMax();
+
+    // the overlay covers the scene, so clicks on it belong to its controls and never pick through it
+    const PerformanceOverlayControls overlay_controls = performance_overlay_controls(image_rect_min, image_rect_max);
 
     // Draw without submitting another item: picking and drops below belong to the viewport image.
     if (!World::GetCamera())
@@ -341,7 +484,7 @@ void Viewport::OnTickVisible()
     Camera* camera = World::GetCamera();
 
     // double-click to focus on entity
-    if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
+    if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && !overlay_controls.hovered && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
         spartan::Selection::Pick(*camera);
         m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(spartan::Selection::GetSelectedEntity());
@@ -351,7 +494,7 @@ void Viewport::OnTickVisible()
         }
     }
     // mouse picking (with multi-select via Ctrl handled in Pick())
-    else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
+    else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && !overlay_controls.hovered && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
         spartan::Selection::Pick(*camera);
 
@@ -408,6 +551,9 @@ void Viewport::OnTickVisible()
     // The gizmo projects its own pivot, which can be the geometry center of a hierarchy.
     // Culling by the selected entity's origin hides visible gizmos on offset geometry.
     ImGui::TransformGizmo::tick();
+
+    // drawn last, the tooltip would otherwise become the item the hover tests above read
+    performance_overlay_controls_draw(overlay_controls);
 
     // check if the engine wants cursor control
     if (camera && camera->GetFlag(spartan::CameraFlags::IsControlled))

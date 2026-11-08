@@ -13,6 +13,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/ImGui_EditorUi.h"
 #include "../widgets/FileDialog.h"
 #include "Viewport.h"
+#include "VisualScriptEditor.h"
+#include "../Editor.h"
+#include "scripting/visual/VisualGraph.h"
 //================================
 
 //= NAMESPACES =========
@@ -208,6 +211,18 @@ AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 
     // just clicked, not selected (double clicked, end of dialog)
     file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
+    file_dialog_view->SetCallbackOnItemOpen([editor](const string& path)
+    {
+        if (!scripting::visual::is_visual_script_file(path))
+        {
+            return false;
+        }
+        if (VisualScriptEditor* visual_script_editor = editor->GetWidget<VisualScriptEditor>())
+        {
+            return visual_script_editor->Open(path);
+        }
+        return false;
+    });
     file_dialog_view->SetToolbarAction("Import Model", []() { show_file_dialog_load = true; });
 }
 

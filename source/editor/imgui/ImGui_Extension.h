@@ -78,10 +78,18 @@ namespace ImGuiSp
 
     static const ImVec4 default_tint(1, 1, 1, 1);
 
+    // a focused widget with its own undo, save and delete sets this every frame, so the world's shortcuts stay out of its way
+    inline int editor_shortcuts_claimed_frame = -2;
+
     // true while typing, flying the camera or playing, game input owns the keyboard so editor shortcuts must not fire
     static bool editor_shortcuts_blocked()
     {
         if (ImGui::GetIO().WantTextInput)
+        {
+            return true;
+        }
+
+        if (editor_shortcuts_claimed_frame >= ImGui::GetFrameCount() - 1)
         {
             return true;
         }

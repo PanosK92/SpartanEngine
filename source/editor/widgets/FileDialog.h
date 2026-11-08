@@ -159,6 +159,8 @@ public:
     bool Show(bool* is_visible, Editor* editor, std::string* directory = nullptr, std::string* file_path = nullptr);
     void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_clicked = callback; }
     void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_double_clicked = callback; }
+    // a browser opens files with the system by default, returning true from this keeps a file in the editor instead
+    void SetCallbackOnItemOpen(const std::function<bool(const std::string&)>& callback) { m_callback_on_item_open = callback; }
     void SetToolbarAction(const std::string& label, const std::function<void()>& callback) { m_toolbar_action_label = label; m_toolbar_action = callback; }
 
     // view state, also driven by the mcp so the browser can be reviewed without mouse input
@@ -256,6 +258,7 @@ private:
     // callbacks
     std::function<void(const std::string&)> m_callback_on_item_clicked;
     std::function<void(const std::string&)> m_callback_on_item_double_clicked;
+    std::function<bool(const std::string&)> m_callback_on_item_open;
     std::string m_toolbar_action_label;
     std::function<void()> m_toolbar_action;
 

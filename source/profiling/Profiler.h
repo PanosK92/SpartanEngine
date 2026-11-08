@@ -76,6 +76,8 @@ namespace spartan
         static bool IsGpuStuttering();
         static void SetVisualized(bool value);
         static bool IsVisualized();
+        // performance overlay bounds in renderer viewport pixels, false when it was not drawn last frame
+        static bool GetPerformanceMetricsRect(float& x0, float& y0, float& x1, float& y1);
 
         // csv capture
         static bool StartRecording();
