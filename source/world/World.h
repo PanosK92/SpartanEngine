@@ -84,6 +84,8 @@ namespace spartan
         static bool SaveToFile(std::string file_path);
         static bool SaveToFileAsync(std::string file_path);
         static bool LoadFromFile(const std::string& file_path);
+        // clears to an empty world at the start of the next frame, with the same teardown a load does
+        static bool New();
         static bool IsLoadingFromFile();
         static bool IsPreparing();
         static void ProcessPendingLoad();

@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "file_system/FileSystem.h"
 #include "../imgui/ImGui_Extension.h"
 #include <vector>
+#include <memory>
 #include <string>
 #include <functional>
 #include <filesystem>
@@ -79,9 +80,10 @@ public:
     }
 
     // standalone image thumbnail, samples the whole texture
-    FileDialogItem(const std::string& path, spartan::RHI_Texture* thumbnail)
+    FileDialogItem(const std::string& path, std::shared_ptr<spartan::RHI_Texture> thumbnail)
     {
-        m_icon.texture = thumbnail;
+        m_thumbnail    = std::move(thumbnail);
+        m_icon.texture = m_thumbnail.get();
         m_icon.uv_min  = spartan::math::Vector2(0.0f, 0.0f);
         m_icon.uv_max  = spartan::math::Vector2(1.0f, 1.0f);
         Init(path);
@@ -122,6 +124,8 @@ private:
     void InitDetails();
 
     spartan::Icon m_icon;
+    // private to the dialog, a cached texture can be repacked or released by a material while the browser uploads it
+    std::shared_ptr<spartan::RHI_Texture> m_thumbnail;
     uint32_t m_id;
     std::string m_path;
     std::string m_path_relative;
@@ -228,6 +232,8 @@ private:
     FileDialog_Operation m_operation;
     FileDialog_Filter m_filter;
     std::vector<FileDialogItem> m_items;
+    // the previous listing, its thumbnails can still be referenced by this frame's ui draw data
+    std::vector<FileDialogItem> m_items_retired;
     spartan::math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
     std::string m_current_path;

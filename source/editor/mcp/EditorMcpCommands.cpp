@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../widgets/Properties.h"
 #include "../widgets/AssetBrowser.h"
 #include "../widgets/Console.h"
+#include "world/World.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -124,6 +125,19 @@ namespace editor_mcp
                     match->RequestPosition(math::Vector2(*x, *y));
                 }
                 return "{\"ok\":true,\"title\":" + quote(match->GetTitle()) + ",\"visible\":" + boolean(match->GetVisible()) + "}";
+            }
+        );
+
+        // same as File > New World, clears the current world without saving it
+        add(
+            "world_new",
+            [](const McpRequest&) -> string
+            {
+                if (!World::New())
+                {
+                    return "{\"ok\":false,\"error\":\"world is saving or loading\"}";
+                }
+                return "{\"ok\":true}";
             }
         );
 

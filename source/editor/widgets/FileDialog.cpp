@@ -24,6 +24,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "scripting/visual/VisualScript.h"
 #include "core/ThreadPool.h"
 #include "core/Event.h"
+#include "rhi/RHI_Texture.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -48,6 +49,19 @@ namespace
             extension == ".JPEG" ||
             extension == ".GIF" ||
             extension == ".WEBP";
+    }
+
+    // not taken from the resource cache, a material using the same file can release or repack that texture mid upload
+    shared_ptr<RHI_Texture> load_thumbnail(const string& path)
+    {
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture>();
+        texture->LoadFromFile(path);
+        if (texture->GetWidth() == 0 || texture->GetHeight() == 0)
+        {
+            return nullptr;
+        }
+        texture->PrepareForGpu();
+        return texture;
     }
 
     // visual configuration
@@ -358,6 +372,7 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
         SP_EVENT_HANDLER_EXPRESSION(
             {
                 lock_guard<mutex> lock(m_mutex_items);
+                m_items_retired = move(m_items);
                 m_items.clear();
                 m_is_dirty = true;
             }
@@ -2088,6 +2103,7 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
     catch (...) {}
 
     lock_guard<mutex> lock(m_mutex_items);
+    m_items_retired = move(m_items);
     m_items.clear();
     m_selected_item_id      = UINT32_MAX;
     m_is_renaming           = false;
@@ -2114,13 +2130,9 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
                 // load the thumbnail off the main thread so the folder opens instantly
                 ThreadPool::AddTask([this, path]()
                 {
-                    auto texture = spartan::ResourceCache::Load<RHI_Texture>(path);
-                    if (texture)
-                    {
-                        texture->PrepareForGpu();
-                    }
+                    shared_ptr<RHI_Texture> texture = load_thumbnail(path);
                     lock_guard<mutex> lock(m_mutex_items);
-                    m_items.emplace_back(path, texture.get());
+                    m_items.emplace_back(path, move(texture));
                 });
             }
             else if (FileSystem::IsSupportedAudioFile(path))
@@ -2196,13 +2208,9 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 
             ThreadPool::AddTask([this, path]()
             {
-                auto texture = spartan::ResourceCache::Load<RHI_Texture>(path);
-                if (texture)
-                {
-                    texture->PrepareForGpu();
-                }
+                shared_ptr<RHI_Texture> texture = load_thumbnail(path);
                 lock_guard<mutex> lock(m_mutex_items);
-                m_items.emplace_back(path, texture.get());
+                m_items.emplace_back(path, move(texture));
             });
         }
     }

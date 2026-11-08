@@ -339,6 +339,7 @@ namespace spartan
             bool notify_loaded = false;
             bool restore_edit_mode = false;
             string pending_path;
+            bool pending_new = false;
             ProgressTask pending_progress;
             uint64_t pending_frame = 0;
             Stopwatch load_timer;
@@ -2028,6 +2029,17 @@ namespace spartan
         return true;
     }
 
+    bool World::New()
+    {
+        if (io.state.load(memory_order_acquire) != WorldIoState::Idle)
+        {
+            return false;
+        }
+
+        io.pending_new = true;
+        return true;
+    }
+
     bool World::IsLoadingFromFile()
     {
         const auto state = io.state.load(memory_order_acquire);
@@ -2041,6 +2053,27 @@ namespace spartan
 
     void World::ProcessPendingLoad()
     {
+        if (io.pending_new)
+        {
+            // workers may still hold resources of the world being cleared
+            if (ThreadPool::AreTasksRunning())
+            {
+                return;
+            }
+
+            io.pending_new = false;
+
+            // a pending load tears the world down by itself
+            if (io.pending_path.empty())
+            {
+                // without the geometry reset the global buffer keeps the old world's meshlets
+                // after their meshes are freed, and the next gpu cull over it loses the device
+                Shutdown();
+                Renderer::ResetWorldGeometry();
+                return;
+            }
+        }
+
         if (io.pending_path.empty())
         {
             return;

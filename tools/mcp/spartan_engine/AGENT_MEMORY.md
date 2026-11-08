@@ -80,3 +80,9 @@ Shared memory for agents working on Spartan Engine. Keep it short, factual and c
 ## Advice To Maintainers
 - Add native engine tools when agents repeatedly need the same multi-step sequence; keep MCP schemas close to engine metadata. Log only unknown commands as capability gaps.
 - Open gaps: a second play-mode entry per session has hit VK_ERROR_DEVICE_LOST during car renders; a second world_load per session blows up GPU memory; no MCP capture of the full audio mix (engine_sound_capture records only the engine synth), UI clicking or camera follow for a moving car; Memory Viewer CSV export is button only; ReSTIR hit shaders do not apply puddles; restir direct lacks cloud shadows, ocean transmission and non-TLAS grass contact shadows; GeometryInfo storage buffer is rewritten at offset 0 per TLAS rebuild while older frames may read it; world_save after play has crashed in Render::UpdateLodIndices on a freed car Mesh (probably the freed-mesh bug fixed 2026-10-19, unverified).
+
+## New World / asset browser crashes
+- New World must go through World::New() (deferred to ProcessPendingLoad, runs Shutdown + Renderer::ResetWorldGeometry once workers are idle). Calling World::Shutdown from UI leaves freed meshlets in the global geometry buffer and the next thumbnail render loses the device. Bridge: `engine_command world_new`.
+- Assets panel image thumbnails use private textures (FileDialog load_thumbnail), never ResourceCache ones: Material::PrepareForGpu repacks/releases channel textures mid upload -> InsertBarrier mip assert.
+- Repro: liminal_space play ~600 frames, edit, world_new x2, cube, `asset_browser {path: mcp/library/dependencies/<unbrowsed folder>}` (thumbnail cache: project/mcp/cache/generated_cache/thumbnails).
+- screenshot_take {ui:true} can come back black right after thumbnail work; retake with wait_ms 2000.

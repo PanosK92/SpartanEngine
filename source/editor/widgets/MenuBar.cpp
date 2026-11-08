@@ -209,7 +209,7 @@ namespace
                 {
                     if (spartan::World::GetEntities().empty())
                     {
-                        spartan::World::Shutdown();
+                        spartan::World::New();
                     }
                     else
                     {
@@ -297,7 +297,7 @@ namespace
                 ImGui::SameLine();
                 if (ImGuiSp::button("Create New", ImVec2(100.0f * spartan::Window::GetDpiScale(), 0.0f)))
                 {
-                    spartan::World::Shutdown();
+                    spartan::World::New();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
