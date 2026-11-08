@@ -50,7 +50,7 @@ Run `npm install` in `tools/mcp/spartan_engine` once. Server options: `--host`, 
 | Vehicles | `vehicle_list`, `vehicle_enter`, `vehicle_set_input`, `vehicle_telemetry`, `vehicle_validate`, `vehicle_dyno` |
 | Cinematics | `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_render` |
 | Diagnostics | `console_read`, `profiler_snapshot`, `gpu_memory_snapshot`, `cvar_get`, `cvar_set`, `shader_reload` |
-| Scripting | `execute_lua` (edit mode only) |
+| Scripting | `execute_lua` (edit mode only), and the `visual_script_*` bridge commands through `engine_command` to build [visual scripts](visual_scripting.md#using-it-from-tools) |
 | Headless | `headless_start`, `headless_stop`, `headless_smoke_test` run a private hidden instance |
 | Escape hatch | `engine_command` sends any bridge command by name |
 

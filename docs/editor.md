@@ -21,6 +21,7 @@ All panels dock and are listed under **View**. They are registered in [`EditorWi
 | **Texture Viewer** | Render targets and textures, per mip |
 | **Shader Editor** | Edit and hot-reload HLSL |
 | **Script Editor** | Edit and reload Lua |
+| **Visual Script** | Node graph editor for [visual scripts](visual_scripting.md); open it with **Edit graph** on a Script component |
 | **Terrain** | Sculpt and paint terrain |
 | **Sequencer** | Cinematic timeline (see [Engine systems](systems.md#cinematics)) |
 | **Asset Viewer** | Inspect and edit a single asset in isolation |

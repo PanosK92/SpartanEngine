@@ -57,10 +57,10 @@ function script:Tick(entity)
     -- Branch [3]
     if (math.sin((Timer.GetTimeSec() * self.speed)) > 0) then
         -- Set Intensity (number) [11]
-        (entity:GetComponent(ComponentType.Light)):SetIntensity(self.bright)
+        ;(entity:GetComponent(ComponentType.Light)):SetIntensity(self.bright)
     else
         -- Set Intensity (number) [13]
-        (entity:GetComponent(ComponentType.Light)):SetIntensity(self.dim)
+        ;(entity:GetComponent(ComponentType.Light)):SetIntensity(self.dim)
     end
 end
 

@@ -2,7 +2,7 @@
 -- changes made to this file by hand are replaced the next time the graph is saved.
 --[==[spartan-visual-script
 <visual_script version="1" next_id="20">
-  <view x="100" y="254.755402" zoom="0.699342132" />
+  <view x="100" y="263.245148" zoom="0.718773246" />
   <variables>
     <variable name="height" type="number" value="0.25" />
     <variable name="speed" type="number" value="2" />
@@ -30,7 +30,7 @@
     <node id="15" type="api:Entity.GetPosition" x="560" y="300" />
     <node id="16" type="break:Vector3" x="740" y="300" />
     <node id="17" type="api:Vector3.new(number,number,number)" x="920" y="340" />
-    <node id="18" type="api:Entity.SetPosition" x="1140" y="300" />
+    <node id="18" type="api:Entity.SetPosition" x="1240" y="300" />
   </nodes>
   <links>
     <link from="2" from_pin="then" to="5" to_pin="exec" />

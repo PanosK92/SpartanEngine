@@ -7,6 +7,8 @@ There are two ways to run Lua:
 - A **Script component** on an entity, for behavior that belongs to that entity.
 - A **world companion script**, `worlds/<world>.lua`, for world-wide setup and game flow.
 
+Script components can also run [visual scripts](visual_scripting.md): node graphs built in the editor that compile to Lua.
+
 ## Script components
 
 Add a **Script** component to an entity and point its `file_path` at a `.lua` file (paths are relative to `binaries/`, e.g. `project/my_world_resources/scripts/door.lua` or `../worlds/my_world_door.lua`). Right-clicking in the **Assets** panel and choosing **New Lua script** creates this template:
@@ -219,6 +221,12 @@ return Pickup
 ```
 
 `spin_speed` and `bob_height` appear in the inspector and are saved with the world.
+
+## Visual scripting
+
+Scripts can also be built as node graphs in the editor's **Visual Script** window. A visual script is an ordinary `.lua` file: the graph is stored as XML in a comment block at the top, and the Lua generated from it follows. The Script component runs it like any other script, with no interpreter at runtime, and its variables show up in the inspector like the values in the example above. Every function in the API reference is also a node.
+
+See **[Visual scripting](visual_scripting.md)** for the editor, the node library, variables and the tutorial world, `worlds/visual_scripting.world`.
 
 ## Running Lua from tools
 

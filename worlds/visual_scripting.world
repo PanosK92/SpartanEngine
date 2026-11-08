@@ -2,6 +2,13 @@
 <World name="visual_scripting" description="Visual scripting tutorial: four small graphs, On Tick, Variables, Input and Branch. Select an object and press Edit graph on its Script component.">
  <OwnedResources>
   <Resource file="material_ground.xml" />
+  <Resource file="vs_bulb.xml" />
+  <Resource file="vs_coral.xml" />
+  <Resource file="vs_cyan.xml" />
+  <Resource file="vs_lime.xml" />
+  <Resource file="vs_pedestal.xml" />
+  <Resource file="vs_sign.xml" />
+  <Resource file="vs_stage.xml" />
  </OwnedResources>
  <Environment utc_days="9665.2506397366524" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="-0.200000003" seasonal_amplitude="14.3000002" daily_amplitude="5.69999981" sea_level_pressure="96700" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.349999994" />
  <ConsoleVariables>
@@ -14,13 +21,13 @@
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-0.1235 2.42532 -7.29057" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="0.1235 0.57468 -0.20943" rotation="0.047458 0 0 0.998873" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0.1235 0.57468 -0.20943" rotation="0.0568653 0 0 0.998382" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
   <Entity name="light_directional" id="1001000000000000003" active="true" position="0.600442 2.00258 -0.359809" rotation="-0.00090951 0.870061 0.00160532 0.492941" scale="1 1 1">
    <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <script file_path="project/scripts/sun.lua" Initialize="" rot_roll="0" preset="dusk" override_rotation="false" volumetric="false" rot_yaw="0" rot_pitch="0" />
+   <script file_path="project/scripts/sun.lua" rot_yaw="0" volumetric="false" rot_pitch="0" override_rotation="false" preset="dusk" Initialize="" rot_roll="0" />
   </Entity>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -28,79 +35,79 @@
   </Entity>
   <Entity name="stage" id="8768217397096706943" active="true" position="0 0.15 3" rotation="0 0 0 1" scale="18 0.1 6">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="vs_stage" material_path="project/mcp/blockout/materials/vs_stage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="vs_stage" material_path="project/visual_scripting_resources/vs_stage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="pedestal_1_on_tick" id="8768160027337618984" active="true" position="-6 0.45 3" rotation="0 0 0 1" scale="0.75 0.8 0.75">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/mcp/blockout/materials/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/visual_scripting_resources/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="pedestal_2_variables" id="8769899215642082189" active="true" position="-2 0.45 3" rotation="0 0 0 1" scale="0.75 0.8 0.75">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/mcp/blockout/materials/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/visual_scripting_resources/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="pedestal_3_input" id="8770039012045145205" active="true" position="2 0.45 3" rotation="0 0 0 1" scale="0.75 0.8 0.75">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/mcp/blockout/materials/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/visual_scripting_resources/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="pedestal_4_branch" id="8769782578969555357" active="true" position="6 0.45 3" rotation="0 0 0 1" scale="0.75 0.8 0.75">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/mcp/blockout/materials/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="vs_pedestal" material_path="project/visual_scripting_resources/vs_pedestal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="spinning_cube" id="8770075291804876639" active="true" position="-6 1.25 3" rotation="0 0 0 1" scale="0.8 0.8 0.8">
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="vs_cyan" material_path="project/mcp/blockout/materials/vs_cyan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="vs_cyan" material_path="project/visual_scripting_resources/vs_cyan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <script file_path="../worlds/visual_scripting_spin.lua" speed="90" Tick="" />
   </Entity>
   <Entity name="bobbing_sphere" id="8769924400201099995" active="true" position="-2 1.6 3" rotation="0 0 0 1" scale="0.75 0.75 0.75">
-   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="vs_lime" material_path="project/mcp/blockout/materials/vs_lime.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   <script file_path="../worlds/visual_scripting_bob.lua" Start="" base_y="0" Tick="" height="0" speed="2" />
+   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="vs_lime" material_path="project/visual_scripting_resources/vs_lime.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <script file_path="../worlds/visual_scripting_bob.lua" Tick="" height="0.25" Start="" speed="2" base_y="1.60000002384186" />
   </Entity>
-  <Entity name="growing_cube" id="8770453499835281320" active="true" position="2 1.25 3" rotation="0 0 0 1" scale="0.8 0.8 0.8">
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="vs_coral" material_path="project/mcp/blockout/materials/vs_coral.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   <script file_path="../worlds/visual_scripting_input.lua" small="1" Tick="" big="1" />
+  <Entity name="growing_cube" id="8770453499835281320" active="true" position="2 1.55 3" rotation="0 0 0 1" scale="0.8 0.8 0.8">
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="vs_coral" material_path="project/visual_scripting_resources/vs_coral.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <script file_path="../worlds/visual_scripting_input.lua" big="1.3" Tick="" small="0.8" />
   </Entity>
   <Entity name="lamp_bulb" id="8770203735000679019" active="true" position="6 1.2 3" rotation="0 0 0 1" scale="0.35 0.35 0.35">
-   <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="9000" range="6" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="vs_bulb" material_path="project/mcp/blockout/materials/vs_bulb.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   <script file_path="../worlds/visual_scripting_branch.lua" speed="3" bright="12000" dim="300" Tick="" />
+   <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="300" range="6" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="vs_bulb" material_path="project/visual_scripting_resources/vs_bulb.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <script file_path="../worlds/visual_scripting_branch.lua" Tick="" bright="12000" speed="3" dim="300" />
   </Entity>
   <Entity name="sign_1_heading" id="15913795024033044105" active="true" position="-6 2.85 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="1  ON TICK" font_path="data/fonts/OpenSans/OpenSans-ExtraBold.ttf" size="0.300000012" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_title" id="14032605392761983851" active="true" position="0 4.1 6.5" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="VISUAL SCRIPTING" font_path="data/fonts/OpenSans/OpenSans-ExtraBold.ttf" size="0.899999976" depth="0.0799999982" weight="0" letter_spacing="0.0399999991" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_1_caption" id="1313623768123678344" active="true" position="-6 2.5 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="runs every frame, spins the cube" font_path="data/fonts/OpenSans/OpenSans-SemiBold.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_2_heading" id="1568594003123051162" active="true" position="-2 2.85 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="2  VARIABLES" font_path="data/fonts/OpenSans/OpenSans-ExtraBold.ttf" size="0.300000012" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_2_caption" id="1514378382500093211" active="true" position="-2 2.5 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="tweak height and speed in Properties" font_path="data/fonts/OpenSans/OpenSans-SemiBold.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_3_heading" id="17374026682828211249" active="true" position="2 2.85 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="3  INPUT" font_path="data/fonts/OpenSans/OpenSans-ExtraBold.ttf" size="0.300000012" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_3_caption" id="17231538302717968234" active="true" position="2 2.5 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="press Space while playing" font_path="data/fonts/OpenSans/OpenSans-SemiBold.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_4_heading" id="17487346424654060587" active="true" position="6 2.85 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="4  BRANCH" font_path="data/fonts/OpenSans/OpenSans-ExtraBold.ttf" size="0.300000012" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_4_caption" id="17431568776235075831" active="true" position="6 2.5 3.9" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="if / else picks bright or dim" font_path="data/fonts/OpenSans/OpenSans-SemiBold.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
   <Entity name="sign_hint" id="17729799792354162153" active="true" position="0 3.55 6.5" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/mcp/blockout/materials/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="vs_sign" material_path="project/visual_scripting_resources/vs_sign.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <text_3d text="select an object, find its Script component and press Edit graph" font_path="data/fonts/OpenSans/OpenSans-SemiBold.ttf" size="0.219999999" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
   </Entity>
  </Entities>

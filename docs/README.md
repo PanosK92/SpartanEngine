@@ -10,6 +10,7 @@ Spartan was documented by its code for twelve years. These pages are the map: th
 | [Architecture](architecture.md) | Understand the engine loop, the subsystems, threading, events, logging and profiling |
 | [Worlds, entities and components](world.md) | Build scenes: the entity model, every component, the `.world` format, prefabs and resources |
 | [Lua scripting](scripting.md) | Write gameplay: script lifecycle, world companion scripts and the full Lua API |
+| [Visual scripting](visual_scripting.md) | Build gameplay as node graphs that compile to Lua, with a tutorial world |
 
 ## Systems
 

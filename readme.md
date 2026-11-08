@@ -57,7 +57,7 @@ Spartan is a **complete C++ game engine**. Path-traced global illumination, hard
 <table>
   <tr>
     <td align="center" width="20%" valign="top"><b>Editor</b></td>
-    <td align="center" width="20%" valign="top"><b>Lua scripting</b><br/><sub>for gameplay</sub></td>
+    <td align="center" width="20%" valign="top"><b>Lua and visual scripting</b><br/><sub>code or node graphs for gameplay</sub></td>
     <td align="center" width="20%" valign="top"><b>Standalone runtime</b></td>
     <td align="center" width="20%" valign="top"><b>Game builder</b><br/><sub>packages a world into a distributable game</sub></td>
     <td align="center" width="20%" valign="top"><b>Steam</b><br/><sub>achievements, stats and rich presence</sub></td>
@@ -209,11 +209,12 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 | **Weather**          | Rain that soaks exposed surfaces, fills puddles and keeps covered areas dry, feeding tire grip    |
 | **Procedural roads** | Catmull-Rom spline roads with extruded profiles, terrain conforming, instanced props and path followers |
 | **Scripting**        | Lua 5.4 via Sol2 with the full engine API and lifecycle callbacks                                 |
+| **Visual scripting** | Node graph editor that compiles to Lua, with every engine API function as a node and a tutorial world |
 | **Audio**            | 3D positional audio, streaming, reverb and procedural engine synthesis via SDL3                   |
 | **Cinematics**       | Camera cut sequencer with entity tracking, spline-driven movement and exact cut timing            |
 | **Entity system**    | Component-based with transform hierarchies, prefabs and XML serialization                         |
 | **Threading**        | Hardware-aware thread pool with parallel loops and nested parallelism detection                   |
-| **Editor**           | Hierarchy, asset browser, inspector, script and shader editors, gizmos, profiler and memory viewer |
+| **Editor**           | Hierarchy, asset browser, inspector, script, visual script and shader editors, gizmos, profiler and memory viewer |
 | **Profiling**        | Nsight/RGP-style timeline with graphics and async compute lanes, RenderDoc integration and a GPU/CPU memory fragmentation map |
 | **Asset import**     | 40+ model formats (Assimp), 30+ image formats (FreeImage), 10+ font formats (FreeType)            |
 | **VR (WIP)**         | OpenXR with multiview single-pass stereo on Vulkan and DirectX 12                                 |
@@ -302,7 +303,7 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
     <td width="25%" valign="top"><b><a href="docs/getting_started.md">Getting started</a></b><br/><sub>Build, run, command-line flags and the <code>binaries/</code> layout</sub></td>
     <td width="25%" valign="top"><b><a href="docs/architecture.md">Architecture</a></b><br/><sub>The engine loop, subsystems, threading, events and profiling</sub></td>
     <td width="25%" valign="top"><b><a href="docs/world.md">Worlds and entities</a></b><br/><sub>Components, the <code>.world</code> format, prefabs and resources</sub></td>
-    <td width="25%" valign="top"><b><a href="docs/scripting.md">Lua scripting</a></b><br/><sub>Script lifecycle, companion scripts and the full API</sub></td>
+    <td width="25%" valign="top"><b><a href="docs/scripting.md">Lua scripting</a></b><br/><sub>Script lifecycle, companion scripts, the full API and <a href="docs/visual_scripting.md">visual scripting</a></sub></td>
   </tr>
   <tr>
     <td valign="top"><b><a href="docs/rendering.md">Rendering</a></b><br/><sub>Frame pass order, bindless GPU-driven design, RHI, shaders, materials</sub></td>

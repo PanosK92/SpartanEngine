@@ -16,10 +16,10 @@
     <node id="3" type="flow.flip_flop" x="220" y="0" />
     <node id="4" type="var.get:big" x="240" y="150" />
     <node id="5" type="api:Vector3.new(number,number,number)" x="420" y="110" />
-    <node id="6" type="api:Entity.SetScale" x="700" y="-20" />
+    <node id="6" type="api:Entity.SetScale" x="780" y="-20" />
     <node id="7" type="var.get:small" x="240" y="330" />
     <node id="8" type="api:Vector3.new(number,number,number)" x="420" y="290" />
-    <node id="9" type="api:Entity.SetScale" x="700" y="230" />
+    <node id="9" type="api:Entity.SetScale" x="780" y="230" />
     <node id="2" type="event.key" x="-101" y="0">
       <value pin="key" value="Space" />
     </node>
