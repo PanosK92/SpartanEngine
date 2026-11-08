@@ -31,7 +31,7 @@ namespace spartan
         // memcpy that splits multi-megabyte copies across the pool, inline on pool workers
         static void ParallelCopy(void* destination, const void* source, size_t size);
 
-        // wait for all threads to finish work
+        // wait for all queued and running tasks to finish, not callable from a pool task
         static void Flush(bool remove_queued = false);
 
         // stats

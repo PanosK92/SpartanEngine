@@ -24,89 +24,109 @@ namespace spartan
 {
     namespace
     {
-        uint32_t thread_count           = 0;
-        atomic<uint32_t> working_count  = 0;
-        atomic<uint32_t> pending_count  = 0;
-        bool stopping                   = false;
+        uint32_t thread_count = 0;
+        bool stopping         = false; // guarded by task_mutex
 
         mutex task_mutex;
-        condition_variable task_cv;      // signaled when tasks are added or stopping
-        condition_variable idle_cv;      // signaled when a task completes
-
+        condition_variable task_cv; // signaled when tasks are added or the pool stops
+        condition_variable idle_cv; // signaled when pending_count reaches zero
         vector<thread> threads;
         deque<Task> tasks;
-        // mirrors tasks.size() so idle workers can poll for work without taking the mutex
-        atomic<uint32_t> queued_count = 0;
-        atomic<bool> stopping_flag    = false;
 
-        thread_local bool is_worker_thread = false;
-        // nested ParallelLoop from inside a pool task must run inline, otherwise workers
-        // wait on futures that can only run on the same exhausted pool and the load freezes
+        // queued plus running tasks, flush waits for zero, only incremented under task_mutex
+        atomic<uint32_t> pending_count = 0;
+        // mirrors tasks.size() so idle workers can poll for work without taking the mutex, only written under task_mutex
+        atomic<uint32_t> queued_count  = 0;
+        atomic<uint32_t> working_count = 0;
+        atomic<bool> stopping_flag     = false;
+
+        thread_local bool is_worker_thread   = false;
+        // nested ParallelLoop runs inline, the outer loop already occupies every worker
         thread_local uint32_t parallel_depth = 0;
 
-        void complete_task()
+        struct depth_scope
         {
-            // Flush tests this predicate while holding task_mutex. Updating it
-            // under the same lock prevents the last completion notification
-            // from landing between its predicate check and entering the wait.
-            {
-                lock_guard<mutex> lock(task_mutex);
-                working_count.fetch_sub(1, memory_order_relaxed);
-                pending_count.fetch_sub(1, memory_order_relaxed);
-            }
-            idle_cv.notify_all();
+            depth_scope()  { parallel_depth++; }
+            ~depth_scope() { parallel_depth--; }
+        };
+
+        // caller holds task_mutex
+        void push_locked(Task&& task)
+        {
+            tasks.emplace_back(std::move(task));
+            queued_count.fetch_add(1, memory_order_relaxed);
+            pending_count.fetch_add(1, memory_order_relaxed);
         }
-    }
 
-    static void thread_loop()
-    {
-        CrashHandler::InitializeThread();
-        is_worker_thread = true;
-
-        while (true)
+        // caller must not hold task_mutex
+        void release_pending(uint32_t count)
         {
-            // a frame issues parallel loops back to back, waking from the condition variable costs
-            // tens of microseconds per thread, so stay awake briefly and pick the next loop up at once
-            if (queued_count.load(memory_order_relaxed) == 0)
+            if (pending_count.fetch_sub(count, memory_order_acq_rel) == count)
             {
-                const auto spin_end = chrono::steady_clock::now() + chrono::microseconds(100);
-                for (uint32_t spin = 0; queued_count.load(memory_order_relaxed) == 0 && !stopping_flag.load(memory_order_relaxed); ++spin)
+                // a flusher may sit between its predicate check and its wait, passing through the mutex orders this wake after that wait
                 {
-                    _mm_pause();
-                    if ((spin & 63) == 63 && chrono::steady_clock::now() >= spin_end)
+                    lock_guard<mutex> lock(task_mutex);
+                }
+                idle_cv.notify_all();
+            }
+        }
+
+        void thread_loop()
+        {
+            CrashHandler::InitializeThread();
+            is_worker_thread = true;
+
+            while (true)
+            {
+                // a frame issues parallel loops back to back, waking from the condition variable costs
+                // tens of microseconds per thread, so stay awake briefly and pick the next loop up at once
+                if (queued_count.load(memory_order_relaxed) == 0)
+                {
+                    const auto spin_end = chrono::steady_clock::now() + chrono::microseconds(100);
+                    for (uint32_t spin = 1; queued_count.load(memory_order_relaxed) == 0 && !stopping_flag.load(memory_order_relaxed); ++spin)
                     {
-                        break;
+                        _mm_pause();
+                        if ((spin & 63) == 0 && chrono::steady_clock::now() >= spin_end)
+                        {
+                            break;
+                        }
                     }
                 }
-            }
 
-            Task task;
-            {
-                unique_lock<mutex> lock(task_mutex);
-
-                task_cv.wait(lock, [] { return !tasks.empty() || stopping; });
-
-                if (stopping && tasks.empty())
+                Task task;
                 {
-                    return;
+                    unique_lock<mutex> lock(task_mutex);
+                    task_cv.wait(lock, [] { return !tasks.empty() || stopping; });
+
+                    // queued work is drained before exiting
+                    if (tasks.empty())
+                    {
+                        return;
+                    }
+
+                    task = std::move(tasks.front());
+                    tasks.pop_front();
+                    queued_count.fetch_sub(1, memory_order_relaxed);
                 }
 
-                task = std::move(tasks.front());
-                tasks.pop_front();
-                queued_count.fetch_sub(1, memory_order_relaxed);
-                // count work before releasing the mutex so flush cannot see empty+idle in the pop gap
                 working_count.fetch_add(1, memory_order_relaxed);
+                task();
+                // captures must be gone before the task counts as complete, flush callers tear down what they reference
+                task = nullptr;
+                working_count.fetch_sub(1, memory_order_relaxed);
+
+                release_pending(1);
             }
-
-            // execute task - exceptions are handled by packaged_task if one is used
-            task();
-
-            complete_task();
         }
     }
 
     void ThreadPool::Initialize()
     {
+        if (!threads.empty())
+        {
+            return;
+        }
+
         stopping = false;
         stopping_flag.store(false, memory_order_relaxed);
 
@@ -117,8 +137,8 @@ namespace spartan
         }
 
         // assume half are physical cores, then scale for mixed workloads
-        uint32_t core_count = max(1u, hw_threads / 2);
-        thread_count        = min(core_count * 2, core_count + 4);
+        const uint32_t core_count = max(1u, hw_threads / 2);
+        thread_count              = min(core_count * 2, core_count + 4);
 
         threads.reserve(thread_count);
         for (uint32_t i = 0; i < thread_count; i++)
@@ -126,11 +146,16 @@ namespace spartan
             threads.emplace_back(thread_loop);
         }
 
-        SP_LOG_INFO("%d threads have been created", thread_count);
+        SP_LOG_INFO("%u threads have been created", thread_count);
     }
 
     void ThreadPool::Shutdown()
     {
+        if (threads.empty())
+        {
+            return;
+        }
+
         Flush(true);
 
         {
@@ -138,40 +163,59 @@ namespace spartan
             stopping = true;
             stopping_flag.store(true, memory_order_relaxed);
         }
-
         task_cv.notify_all();
 
         for (thread& t : threads)
         {
-            if (t.joinable())
-            {
-                t.join();
-            }
+            t.join();
         }
 
         threads.clear();
-        working_count.store(0, memory_order_relaxed);
-        pending_count.store(0, memory_order_relaxed);
         thread_count = 0;
     }
 
     future<void> ThreadPool::AddTask(Task&& task)
     {
-        auto packaged = make_shared<packaged_task<void()>>(std::forward<Task>(task));
-        future<void> result = packaged->get_future();
+        // a promise instead of packaged_task, so the work and its captures are destroyed before the future becomes ready
+        struct AsyncTask
+        {
+            Task work;
+            promise<void> done;
+        };
+        const shared_ptr<AsyncTask> job = make_shared<AsyncTask>();
+        job->work                       = std::move(task);
+        future<void> result             = job->done.get_future();
 
         {
             lock_guard<mutex> lock(task_mutex);
-
             if (stopping)
             {
                 SP_LOG_WARNING("ThreadPool::AddTask() called while pool is stopping");
                 return result;
             }
 
-            pending_count.fetch_add(1, memory_order_relaxed);
-            tasks.emplace_back([packaged]() { (*packaged)(); });
-            queued_count.fetch_add(1, memory_order_relaxed);
+            push_locked([job]()
+            {
+                exception_ptr failure;
+                try
+                {
+                    job->work();
+                }
+                catch (...)
+                {
+                    failure = current_exception();
+                }
+                job->work = nullptr;
+
+                if (failure)
+                {
+                    job->done.set_exception(failure);
+                }
+                else
+                {
+                    job->done.set_value();
+                }
+            });
         }
 
         task_cv.notify_one();
@@ -182,30 +226,10 @@ namespace spartan
     {
         SP_ASSERT_MSG(work_total > 0, "parallel loop requires work_total > 0");
 
-        // no threads available - run on calling thread
-        if (threads.empty())
-        {
-            work_fn(0, work_total);
-            return;
-        }
-
-        // nested ParallelLoop from inside a chunk must run inline, scheduling more pool
-        // tasks while every worker waits on futures freezes world load (dreamcore at ~89%)
-        if (parallel_depth > 0)
-        {
-            work_fn(0, work_total);
-            return;
-        }
-
-        struct depth_scope
-        {
-            depth_scope()  { parallel_depth++; }
-            ~depth_scope() { parallel_depth--; }
-        };
-
+        // the caller is one of the workers, so one pool thread stays free for async tasks
         const uint32_t workers = min(thread_count, work_total);
         depth_scope caller_depth;
-        if (workers == 1)
+        if (workers <= 1 || parallel_depth > 1)
         {
             work_fn(0, work_total);
             return;
@@ -229,7 +253,7 @@ namespace spartan
         state->chunk_count = min(work_total, workers * 4);
 
         // a helper that wakes after every chunk is claimed returns without touching fn,
-        // the caller waits for every claimed chunk, so fn and its captures outlive any call
+        // the caller waits for every claimed chunk, so fn's captures outlive every call
         auto run_chunks = [](LoopState& loop)
         {
             while (true)
@@ -239,6 +263,7 @@ namespace spartan
                 {
                     return;
                 }
+
                 const uint32_t first = static_cast<uint32_t>(static_cast<uint64_t>(loop.work_total) * chunk / loop.chunk_count);
                 const uint32_t last  = static_cast<uint32_t>(static_cast<uint64_t>(loop.work_total) * (chunk + 1) / loop.chunk_count);
                 try
@@ -253,53 +278,56 @@ namespace spartan
                         loop.failure = current_exception();
                     }
                 }
-                loop.done_chunk.fetch_add(1, memory_order_release);
+
+                if (loop.done_chunk.fetch_add(1, memory_order_acq_rel) + 1 == loop.chunk_count)
+                {
+                    loop.done_chunk.notify_all();
+                }
             }
         };
 
         const uint32_t helpers = workers - 1;
+        bool queued            = false;
         {
             lock_guard<mutex> lock(task_mutex);
             if (!stopping)
             {
-                pending_count.fetch_add(helpers, memory_order_relaxed);
                 for (uint32_t i = 0; i < helpers; ++i)
                 {
-                    // chunks inherit nesting depth so ParallelLoop inside them stays inline
-                    tasks.emplace_back([state, run_chunks]()
+                    push_locked([state, run_chunks]()
                     {
                         depth_scope chunk_depth;
                         run_chunks(*state);
                     });
                 }
-                queued_count.fetch_add(helpers, memory_order_relaxed);
+                queued = true;
             }
         }
-        if (helpers >= thread_count)
+        if (queued)
         {
-            task_cv.notify_all();
-        }
-        else
-        {
-            for (uint32_t i = 0; i < helpers; ++i)
+            if (helpers + 1 >= thread_count)
             {
-                task_cv.notify_one();
+                task_cv.notify_all();
+            }
+            else
+            {
+                for (uint32_t i = 0; i < helpers; ++i)
+                {
+                    task_cv.notify_one();
+                }
             }
         }
 
         run_chunks(*state);
 
-        // the remaining chunks are already running on other threads, they finish within one chunk of work
-        for (uint32_t spin = 0; state->done_chunk.load(memory_order_acquire) < state->chunk_count; ++spin)
+        // the remaining chunks are already running on other threads, spin briefly then sleep until the last one lands
+        for (uint32_t spin = 0; spin < 2048 && state->done_chunk.load(memory_order_acquire) < state->chunk_count; ++spin)
         {
-            if (spin < 4096)
-            {
-                _mm_pause();
-            }
-            else
-            {
-                this_thread::yield();
-            }
+            _mm_pause();
+        }
+        for (uint32_t done = state->done_chunk.load(memory_order_acquire); done < state->chunk_count; done = state->done_chunk.load(memory_order_acquire))
+        {
+            state->done_chunk.wait(done, memory_order_acquire);
         }
 
         if (state->failure)
@@ -330,20 +358,33 @@ namespace spartan
 
     void ThreadPool::Flush(bool remove_queued)
     {
-        if (remove_queued)
+        // the calling task is pending itself, waiting would never return
+        if (is_worker_thread)
         {
-            lock_guard<mutex> lock(task_mutex);
-            uint32_t removed = static_cast<uint32_t>(tasks.size());
-            tasks.clear();
-            queued_count.store(0, memory_order_relaxed);
-            pending_count.fetch_sub(removed, memory_order_relaxed);
+            SP_LOG_ERROR("ThreadPool::Flush() called from a pool task, ignoring to avoid a deadlock");
+            return;
         }
 
-        // wait for all in-flight work to complete using condition variable (no spin)
+        if (remove_queued)
+        {
+            deque<Task> dropped;
+            {
+                lock_guard<mutex> lock(task_mutex);
+                dropped.swap(tasks);
+                queued_count.store(0, memory_order_relaxed);
+            }
+
+            // destroyed outside the lock, captures may break promises or schedule work from their destructors
+            const uint32_t removed = static_cast<uint32_t>(dropped.size());
+            dropped.clear();
+            if (removed > 0)
+            {
+                release_pending(removed);
+            }
+        }
+
         unique_lock<mutex> lock(task_mutex);
-        idle_cv.wait(lock, [] {
-            return tasks.empty() && working_count.load(memory_order_relaxed) == 0;
-        });
+        idle_cv.wait(lock, [] { return pending_count.load(memory_order_acquire) == 0; });
     }
 
     uint32_t ThreadPool::GetThreadCount()
@@ -358,7 +399,7 @@ namespace spartan
 
     uint32_t ThreadPool::GetIdleThreadCount()
     {
-        uint32_t working = working_count.load(memory_order_relaxed);
+        const uint32_t working = working_count.load(memory_order_relaxed);
         return (thread_count > working) ? (thread_count - working) : 0;
     }
 
