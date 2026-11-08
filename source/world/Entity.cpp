@@ -776,7 +776,7 @@ namespace spartan
         if (!m_components[index]) return;
         m_components[index].reset();
         m_component_mask &= ~(uint64_t(1) << index);
-        World::InvalidateRenderSceneData();
+        World::InvalidateEntityViews();
         RefreshPreTickGate();
     }
 

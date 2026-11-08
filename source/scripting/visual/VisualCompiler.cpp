@@ -372,7 +372,8 @@ namespace spartan::scripting::visual
 
             void emit(int indent, const string& text)
             {
-                m_lines.push_back({ indent, text, m_current_node });
+                // lua reads a line that opens with ( as a call on the previous statement, the ; ends that statement
+                m_lines.push_back({ indent, !text.empty() && text[0] == '(' ? ";" + text : text, m_current_node });
             }
 
             // follows an execution output to whatever it leads into

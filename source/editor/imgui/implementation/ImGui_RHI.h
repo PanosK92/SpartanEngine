@@ -280,7 +280,7 @@ namespace ImGui::RHI
         {
             constexpr int rings  = 8;
             const float spread   = 18.0f * scale;
-            const float drop     = 5.0f * scale;
+            const float drop     = 1.5f * scale;
             const float step     = spread / static_cast<float>(rings);
             for (int i = 0; i < rings; i++)
             {

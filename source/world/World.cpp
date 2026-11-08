@@ -2819,6 +2819,12 @@ namespace spartan
         views.render_dirty.store(true, memory_order_relaxed);
     }
 
+    void World::InvalidateEntityViews()
+    {
+        views.render_dirty.store(true, memory_order_relaxed);
+        resolve = true;
+    }
+
     const vector<const RenderSceneData*>& World::GetRenderSceneData()
     {
         // Read on the owner thread before dispatch. Component construction/destruction

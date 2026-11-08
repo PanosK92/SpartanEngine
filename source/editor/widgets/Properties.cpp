@@ -1432,23 +1432,30 @@ void Properties::ShowScript(spartan::Script* script) const
                         script->script[K] = value;
                     }
                 }
-                else if (V.is<int>())
+                else if (V.get_type() == sol::type::number)
                 {
-                    int value = V.as<int>();
+                    // sol calls every number an int, lua itself knows whether 0.25 is a float
+                    lua_State* state = V.lua_state();
+                    V.push(state);
+                    const bool is_integer = lua_isinteger(state, -1) != 0;
+                    lua_pop(state, 1);
+
                     layout::begin_property(key.c_str());
-                    if (ImGui::DragInt("##value", &value))
+                    if (is_integer)
                     {
-                        script->script[K] = value;
+                        int value = V.as<int>();
+                        if (ImGui::DragInt("##value", &value))
+                        {
+                            script->script[K] = value;
+                        }
                     }
-                    ImGui::EditorUi::decorate_field();
-                }
-                else if (V.is<float>() || V.is<double>())
-                {
-                    float value = V.as<float>();
-                    layout::begin_property(key.c_str());
-                    if (ImGui::DragFloat("##value", &value, 0.01f, 0.0f, 0.0f, "%.3f"))
+                    else
                     {
-                        script->script[K] = value;
+                        double value = V.as<double>();
+                        if (ImGui::DragScalar("##value", ImGuiDataType_Double, &value, 0.01f, nullptr, nullptr, "%.6g"))
+                        {
+                            script->script[K] = value;
+                        }
                     }
                     ImGui::EditorUi::decorate_field();
                 }

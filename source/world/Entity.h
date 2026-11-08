@@ -111,7 +111,7 @@ namespace spartan
 
             component->SetType(type);
             component->Initialize();
-            World::InvalidateRenderSceneData();
+            World::InvalidateEntityViews();
             RefreshPreTickGate();
 
             return component;

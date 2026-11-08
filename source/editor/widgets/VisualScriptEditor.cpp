@@ -1088,7 +1088,7 @@ bool VisualScriptEditor::DrawInlineValue(Node& node, const PinDefinition& pin, f
     else if (type == "number")
     {
         float number = strtof(value.c_str(), nullptr);
-        if (ImGui::DragFloat("##value", &number, 0.01f, 0.0f, 0.0f, "%.3g"))
+        if (ImGui::DragFloat("##value", &number, 0.01f, 0.0f, 0.0f, "%.6g"))
         {
             edited  = number_text(number);
             changed = true;
@@ -1097,7 +1097,7 @@ bool VisualScriptEditor::DrawInlineValue(Node& node, const PinDefinition& pin, f
     else if (const size_t count = vector_size(type))
     {
         vector<float> numbers = parse_floats(value, count);
-        if (ImGui::DragScalarN("##value", ImGuiDataType_Float, numbers.data(), static_cast<int>(count), 0.01f, nullptr, nullptr, "%.3g"))
+        if (ImGui::DragScalarN("##value", ImGuiDataType_Float, numbers.data(), static_cast<int>(count), 0.01f, nullptr, nullptr, "%.6g"))
         {
             edited.clear();
             for (size_t i = 0; i < count; i++)
@@ -1534,11 +1534,19 @@ void VisualScriptEditor::DrawComment(ImDrawList* draw, Node& node)
         draw->AddRect(min, max, ImGui::EditorUi::color(ImGui::Style::color_accent_hi), rounding, 1.5f);
     }
 
+    // the first line is the title in the header, the rest wraps inside the frame as the note
     auto text = node.data.find("text");
-    const string label = text != node.data.end() ? text->second : "Comment";
+    const string label     = text != node.data.end() ? text->second : "Comment";
+    const size_t title_end = label.find('\n');
     draw->PushClipRect(min, ImVec2(max.x, min.y + header), true);
-    draw->AddText(Editor::font_bold, ImGui::GetFontSize(), ImVec2(min.x + k_pad * zoom, min.y + (header - ImGui::GetFontSize()) * 0.5f), ImGui::EditorUi::color(ImGui::Style::color_text), label.c_str());
+    draw->AddText(Editor::font_bold, ImGui::GetFontSize(), ImVec2(min.x + k_pad * zoom, min.y + (header - ImGui::GetFontSize()) * 0.5f), ImGui::EditorUi::color(ImGui::Style::color_text), label.c_str(), label.c_str() + std::min(title_end, label.size()));
     draw->PopClipRect();
+    if (title_end != string::npos && title_end + 1 < label.size())
+    {
+        const float pad  = k_pad * zoom;
+        const ImVec4 clip(min.x + pad, min.y + header, max.x - pad, max.y - pad);
+        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(clip.x, min.y + header + pad * 0.6f), ImGui::EditorUi::color(ImGui::Style::with_alpha(ImGui::Style::color_text, 0.72f)), label.c_str() + title_end + 1, nullptr, clip.z - clip.x, &clip);
+    }
 
     ImGui::PushID(static_cast<int>(node.id));
 

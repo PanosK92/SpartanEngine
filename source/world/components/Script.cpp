@@ -50,13 +50,12 @@ namespace
             attr = node.append_attribute(key_name.c_str());
         }
 
-        if (value.is<int>())
+        // sol reports every lua number as an int, so a fraction like 0.25 has to be written from the double
+        if (value.get_type() == sol::type::number)
         {
-            attr = value.as<int>();
-        }
-        else if (value.is<float>() || value.is<double>())
-        {
-            attr = value.as<float>();
+            char text[32];
+            snprintf(text, sizeof(text), "%.15g", value.as<double>());
+            attr.set_value(text);
         }
         else if (value.is<bool>())
         {
@@ -277,15 +276,20 @@ void Script::LoadInternal(pugi::xml_node& node)
                 continue;
             }
 
-            if (value.is<int>())
+            if (value.get_type() == sol::type::number)
             {
-                script[key_name] = attr.as_int();
-                saved_data[key_name] = attr.as_int();
-            }
-            else if (value.is<float>() || value.is<double>())
-            {
-                script[key_name] = attr.as_float();
-                saved_data[key_name] = attr.as_float();
+                // whole numbers stay lua integers, anything with a fraction or exponent stays a double
+                const std::string text = attr.as_string();
+                if (text.find_first_of(".eEnN") != std::string::npos)
+                {
+                    script[key_name] = attr.as_double();
+                    saved_data[key_name] = attr.as_double();
+                }
+                else
+                {
+                    script[key_name] = attr.as_llong();
+                    saved_data[key_name] = attr.as_llong();
+                }
             }
             else if (value.is<bool>())
             {

@@ -124,6 +124,8 @@ namespace spartan
         static const std::vector<Entity*>& GetEntitiesWithRender();
         static const std::vector<const RenderSceneData*>& GetRenderSceneData();
         static void InvalidateRenderSceneData();
+        // component membership changed, so the light, render, logic and pre tick lists must be rebuilt
+        static void InvalidateEntityViews();
         static void NotifyRenderBoundsChanged(Render* render);
         // editor gizmo icons, excludes render-only props
         static const std::vector<Entity*>& GetEntitiesWithIcon();
