@@ -48,7 +48,7 @@ private:
 
     spartan::Terrain* ResolveTerrain() const;
     int ResolveSelectedTileIndex() const;
-    void DrawBrushRing(const spartan::math::Vector3& hit) const;
+    void DrawBrushRing(const spartan::Terrain* terrain, const spartan::math::Vector3& hit) const;
     void TickSculpting();
 
     void DrawSummary(spartan::Terrain* terrain);

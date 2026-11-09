@@ -310,6 +310,7 @@ namespace spartan
         const std::vector<math::Vector3>& GetPositions() const { return m_positions; }
         uint32_t GetDenseWidth() const  { return m_dense_width; }
         uint32_t GetDenseHeight() const { return m_dense_height; }
+        // the ray carries a real direction, not the far plane point Selection::ComputePickingRay stores
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
         // without detail the coarse grid answers, road pages come and go with the camera
         bool SampleHeight(float world_x, float world_z, float& height_out, bool include_detail = true) const;

@@ -1721,7 +1721,7 @@ int TerrainEditor::ResolveSelectedTileIndex() const
     return Terrain::ParseTileIndex(selected);
 }
 
-void TerrainEditor::DrawBrushRing(const Vector3& hit) const
+void TerrainEditor::DrawBrushRing(const Terrain* terrain, const Vector3& hit) const
 {
     Camera* camera = World::GetCamera();
     if (!camera)
@@ -1730,38 +1730,60 @@ void TerrainEditor::DrawBrushRing(const Vector3& hit) const
     }
 
     ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-    const int segments    = 48;
     const ImU32 color     = IM_COL32(80, 180, 255, 200);
+    const int segments    = clamp(static_cast<int>(m_brush.radius * 2.0f), 48, 256);
 
-    Vector2 prev_screen;
-    bool has_prev = false;
-    for (int i = 0; i <= segments; i++)
+    // points behind the near plane project mirrored across the screen, so segments are clipped
+    // against it in world space before they are projected
+    const Vector3 camera_position = camera->GetEntity()->GetPosition();
+    const Vector3 camera_forward  = camera->GetEntity()->GetForward();
+    const float near_depth        = camera->GetNearPlane() * 2.0f;
+    const Vector2& viewport_position = Viewport::GetScreenPosition();
+
+    auto ring_point = [&](int index)
     {
-        const float angle = (static_cast<float>(i) / static_cast<float>(segments)) * pi_2;
-        const Vector3 world(
-            hit.x + cosf(angle) * m_brush.radius,
-            hit.y,
-            hit.z + sinf(angle) * m_brush.radius
-        );
+        const float angle = (static_cast<float>(index) / static_cast<float>(segments)) * pi_2;
+        Vector3 point(hit.x + cosf(angle) * m_brush.radius, hit.y, hit.z + sinf(angle) * m_brush.radius);
+        float height = 0.0f;
+        if (terrain->SampleHeight(point.x, point.z, height))
+        {
+            point.y = height;
+        }
+        return point;
+    };
 
+    auto to_screen = [&](const Vector3& world)
+    {
         Vector2 screen;
         camera->WorldToScreenCoordinates(world, screen);
+        return ImVec2(viewport_position.x + screen.x, viewport_position.y + screen.y);
+    };
 
-        const Vector2& viewport_position = Viewport::GetScreenPosition();
-        const ImVec2 point(viewport_position.x + screen.x, viewport_position.y + screen.y);
+    Vector3 previous     = ring_point(0);
+    float previous_depth = Vector3::Dot(previous - camera_position, camera_forward);
+    for (int i = 1; i <= segments; i++)
+    {
+        const Vector3 current = ring_point(i);
+        const float depth     = Vector3::Dot(current - camera_position, camera_forward);
 
-        if (has_prev)
+        if (previous_depth >= near_depth || depth >= near_depth)
         {
-            draw_list->AddLine(
-                ImVec2(viewport_position.x + prev_screen.x, viewport_position.y + prev_screen.y),
-                point,
-                color,
-                2.0f
-            );
+            Vector3 a = previous;
+            Vector3 b = current;
+            if (previous_depth < near_depth)
+            {
+                a = lerp(previous, current, (near_depth - previous_depth) / (depth - previous_depth));
+            }
+            else if (depth < near_depth)
+            {
+                b = lerp(previous, current, (near_depth - previous_depth) / (depth - previous_depth));
+            }
+
+            draw_list->AddLine(to_screen(a), to_screen(b), color, 2.0f);
         }
 
-        prev_screen = screen;
-        has_prev    = true;
+        previous       = current;
+        previous_depth = depth;
     }
 }
 
@@ -1816,13 +1838,14 @@ void TerrainEditor::TickSculpting()
     }
 
     const Ray& pick_ray = spartan::Selection::ComputePickingRay(*camera);
+    const Ray ray(pick_ray.GetStart(), pick_ray.GetDirection() - pick_ray.GetStart());
     Vector3 hit;
-    if (!terrain->Raycast(pick_ray, hit))
+    if (!terrain->Raycast(ray, hit))
     {
         return;
     }
 
-    DrawBrushRing(hit);
+    DrawBrushRing(terrain, hit);
 
     if (Input::GetKey(KeyCode::Click_Left) && !Input::GetKey(KeyCode::Click_Right))
     {

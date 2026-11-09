@@ -1659,12 +1659,7 @@ namespace spartan
             return false;
         }
 
-        // camera picking stores a far-plane world point in direction
-        Vector3 direction = ray.GetDirection() - ray.GetStart();
-        if (direction.LengthSquared() < epsilon)
-        {
-            direction = ray.GetDirection();
-        }
+        Vector3 direction = ray.GetDirection();
         if (direction.LengthSquared() < epsilon)
         {
             return false;
