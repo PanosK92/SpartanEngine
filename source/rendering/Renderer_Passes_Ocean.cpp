@@ -1157,7 +1157,7 @@ namespace spartan
         if (!IsSecondaryViewActive())
         {
             // waves only run while the game simulates, a new play session starts on a calm sea
-            const bool simulating = Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused);
+            const bool simulating = Engine::IsFlagSet(EngineMode::Playing);
             const Water* water    = m_pass_state.ocean;
             if ((simulating && !state.was_simulating) || !OceanWake::IsEnabled() || !water)
             {

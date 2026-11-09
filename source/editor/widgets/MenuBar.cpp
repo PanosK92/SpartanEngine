@@ -607,12 +607,6 @@ namespace
         {
             spartan::Engine::ToggleFlag(spartan::EngineMode::Playing);
 
-            // clear paused state when leaving play mode
-            if (!spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
-            {
-                spartan::Engine::SetFlag(spartan::EngineMode::Paused, false);
-            }
-
             if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
             {
                 ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
@@ -625,10 +619,7 @@ namespace
 
         void toggle_paused()
         {
-            if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
-            {
-                spartan::Engine::ToggleFlag(spartan::EngineMode::Paused);
-            }
+            spartan::Engine::ToggleFlag(spartan::EngineMode::Paused);
         }
 
         void draw_gizmo_mode_button(
@@ -1368,7 +1359,7 @@ void MenuBar::Tick()
             }
 
             // while the simulation runs, a signal spreads out of the black under the transport
-            const bool live       = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing) && !spartan::Engine::IsFlagSet(spartan::EngineMode::Paused);
+            const bool live       = spartan::Engine::IsPlayingUnpaused();
             const float intensity = ImGui::EditorUi::animate(ImGui::GetID("##titlebar_signal"), live ? 1.0f : 0.0f, 6.0f);
             if (intensity > 0.01f)
             {

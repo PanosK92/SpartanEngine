@@ -456,7 +456,7 @@ namespace spartan
 
     void Ragdoll::Tick()
     {
-        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        if (!Engine::IsPlayingUnpaused())
         {
             return;
         }

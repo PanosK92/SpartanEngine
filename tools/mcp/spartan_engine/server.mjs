@@ -1734,7 +1734,7 @@ async function wait_for_world(world_path, timeout_ms)
   while (Date.now() < deadline)
   {
     const status = await send_engine_command("engine_status");
-    if (status.ok && !status.loading)
+    if (status.ok && (status.ready ?? !status.loading))
     {
       const world = await send_engine_command("world_summary");
       if (world.ok && String(world.file_path ?? "").replaceAll("\\", "/").toLowerCase() === wanted)
@@ -1937,7 +1937,7 @@ register_tool(server, "ping", "Check that the Spartan live-control endpoint is r
   annotations: read_only,
 });
 
-register_tool(server, "engine_status", "Read editor/runtime status, frame metrics, and loading state.", {}, "engine_status", {
+register_tool(server, "engine_status", "Read editor/runtime status, frame metrics, and loading state. mode is edit, starting (play requested, entities still starting, nothing simulates yet), playing or paused. world_io is idle, loading, preparing or saving. ready is true when nothing is loading, world io is idle and play is not starting: poll ready instead of combining loading/playing.", {}, "engine_status", {
   annotations: read_only,
   outputSchema: output_schemas.engine_status,
 });
@@ -1974,7 +1974,7 @@ register_tool(
 register_tool(
   server,
   "engine_set_mode",
-  "Set play, edit, pause, resume, or individual engine flags.",
+  "Set play, edit, pause, resume, or individual engine flags. Paused only exists inside play mode: pause from edit mode is rejected (play first), resume from edit enters play, and leaving play clears paused.",
   {
     mode: z.enum(["edit", "play", "pause", "resume"]).optional(),
     playing: z.boolean().optional(),

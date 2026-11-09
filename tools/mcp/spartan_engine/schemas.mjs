@@ -87,6 +87,9 @@ export const output_schemas = {
     tasks: z.array(any_object).optional(),
   }),
   engine_status: with_error_fields({
+    mode: z.enum(["edit", "starting", "playing", "paused"]).optional(),
+    world_io: z.enum(["idle", "loading", "preparing", "saving"]).optional(),
+    ready: z.boolean().optional(),
     playing: z.boolean().optional(),
     paused: z.boolean().optional(),
     loading: z.boolean().optional(),

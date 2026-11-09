@@ -13,7 +13,7 @@ namespace spartan
     {
         EditorVisible = 1 << 0, // off with -game, editor code stays in the binary
         Playing       = 1 << 1,
-        Paused        = 1 << 2
+        Paused        = 1 << 2  // only valid while Playing, SetFlag/ToggleFlag enforce it
     };
 
     class Engine
@@ -25,6 +25,8 @@ namespace spartan
         static bool IsFlagSet(const EngineMode flag);
         static void SetFlag(const EngineMode flag, const bool enabled);
         static void ToggleFlag(const EngineMode flag);
+        // play mode and not paused, the gate for anything that advances simulation time
+        static bool IsPlayingUnpaused();
         static bool HasArgument(const std::string& argument);
 
         // --headless (or -headless, or --mcp-control --mcp-hidden): hidden window, no editor ui, no steam,

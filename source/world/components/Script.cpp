@@ -34,7 +34,7 @@ namespace
 
     bool is_simulation_active()
     {
-        return Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused);
+        return Engine::IsPlayingUnpaused();
     }
 
     void save_lua_value(pugi::xml_node& node, const std::string& key_name, const sol::object& value)

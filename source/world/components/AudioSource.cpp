@@ -300,7 +300,7 @@ namespace spartan
 
     void AudioSource::Tick()
     {
-        const bool in_play_mode = Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused);
+        const bool in_play_mode = Engine::IsPlayingUnpaused();
         if (m_ambient)
         {
             TickAmbient(in_play_mode);

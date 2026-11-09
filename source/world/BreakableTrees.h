@@ -833,7 +833,7 @@ namespace spartan::breakable_trees
 
     inline void Tick(float dt)
     {
-        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused) || World::IsLoadingFromFile() || dt <= 0.0f)
+        if (!Engine::IsPlayingUnpaused() || World::IsLoadingFromFile() || dt <= 0.0f)
             return;
         clock += dt;
 

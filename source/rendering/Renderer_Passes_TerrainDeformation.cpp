@@ -42,7 +42,7 @@ namespace spartan
         {
             // nothing persists, a new play session or switching the feature off erases every rut, the ruts of the
             // last session stay around the camera after stopping so they can be inspected with the editor camera
-            const bool simulating = Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused);
+            const bool simulating = Engine::IsFlagSet(EngineMode::Playing);
             if ((simulating && !state.was_simulating) || !TerrainDeformation::IsEnabled())
             {
                 TerrainDeformation::Clear();

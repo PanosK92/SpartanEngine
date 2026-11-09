@@ -225,7 +225,7 @@ namespace spartan
             FinishPreloadOnMainThread();
         }
 
-        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        if (!Engine::IsPlayingUnpaused())
         {
             return;
         }

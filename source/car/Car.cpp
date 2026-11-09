@@ -2682,7 +2682,7 @@ namespace spartan
             m_surface_effects->Tick(m_vehicle_entity, static_cast<float>(Timer::GetDeltaTimeSec()),
                 Engine::IsFlagSet(EngineMode::Playing));
         }
-        if (m_ai_driver && Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
+        if (m_ai_driver && Engine::IsPlayingUnpaused())
         {
             m_ai_driver->Tick(std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f));
         }

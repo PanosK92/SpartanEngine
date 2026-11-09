@@ -1077,15 +1077,49 @@ namespace spartan
             return "{\"ok\":true,\"version\":" + json_string(version::c_str()) + "}";
         }
 
+        // edit, starting (play requested, entities still starting, nothing simulates yet), playing, paused
+        const char* get_run_mode()
+        {
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return "edit";
+            }
+            if (World::IsPlayBooting())
+            {
+                return "starting";
+            }
+            return Engine::IsFlagSet(EngineMode::Paused) ? "paused" : "playing";
+        }
+
+        const char* get_world_io()
+        {
+            if (World::IsSaving())
+            {
+                return "saving";
+            }
+            if (World::IsPreparing())
+            {
+                return "preparing";
+            }
+            return World::IsLoadingFromFile() ? "loading" : "idle";
+        }
+
         std::string command_engine_status()
         {
+            const std::string_view mode     = get_run_mode();
+            const std::string_view world_io = get_world_io();
+            const bool loading              = ProgressTracker::IsLoading();
+
             std::string json = "{\"ok\":true";
             json += ",\"version\":" + json_string(version::c_str());
             json += ",\"editor_visible\":" + json_bool(Engine::IsFlagSet(EngineMode::EditorVisible));
             json += ",\"headless\":" + json_bool(Engine::IsHeadless());
+            json += ",\"mode\":" + json_string(std::string(mode));
+            json += ",\"world_io\":" + json_string(std::string(world_io));
+            json += ",\"ready\":" + json_bool(!loading && world_io == "idle" && mode != "starting");
             json += ",\"playing\":" + json_bool(Engine::IsFlagSet(EngineMode::Playing));
             json += ",\"paused\":" + json_bool(Engine::IsFlagSet(EngineMode::Paused));
-            json += ",\"loading\":" + json_bool(ProgressTracker::IsLoading());
+            json += ",\"loading\":" + json_bool(loading);
             json += ",\"minimized\":" + json_bool(!Engine::IsHeadless() && Window::IsMinimized());
             json += ",\"fps\":" + std::to_string(Profiler::GetFps());
             json += ",\"fps_presented\":" + std::to_string(Profiler::GetFpsPresented());
@@ -1195,7 +1229,6 @@ namespace spartan
                 if (*mode == "edit")
                 {
                     Engine::SetFlag(EngineMode::Playing, false);
-                    Engine::SetFlag(EngineMode::Paused, false);
                 }
                 else if (*mode == "play")
                 {
@@ -1204,6 +1237,10 @@ namespace spartan
                 }
                 else if (*mode == "pause")
                 {
+                    if (!Engine::IsFlagSet(EngineMode::Playing))
+                    {
+                        return json_error("pause needs play mode, call engine_set_mode with mode play first");
+                    }
                     Engine::SetFlag(EngineMode::Paused, true);
                 }
                 else if (*mode == "resume")
@@ -1232,6 +1269,10 @@ namespace spartan
                     if (!parse_bool(*value, parsed))
                     {
                         return json_error(std::string("invalid ") + name);
+                    }
+                    if (flag == EngineMode::Paused && parsed && !Engine::IsFlagSet(EngineMode::Playing))
+                    {
+                        return json_error("paused needs play mode, also pass playing true");
                     }
                     Engine::SetFlag(flag, parsed);
                 }

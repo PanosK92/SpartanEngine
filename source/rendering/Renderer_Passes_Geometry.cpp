@@ -2764,7 +2764,7 @@ namespace spartan
 
         state.dispatch = false;
         const auto& interaction = GetSurfaceInteraction();
-        const bool simulating = Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused);
+        const bool simulating = Engine::IsFlagSet(EngineMode::Playing);
         RHI_Shader* shader = GetShader(Renderer_Shader::vegetation_interaction_c);
         if (!simulating || !interaction.id || !shader || !shader->IsCompiled())
         {

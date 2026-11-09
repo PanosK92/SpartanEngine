@@ -532,7 +532,7 @@ export function register_agent_toolkit(context)
       if (last_status.ok)
       {
         first_frame ??= last_status.frame_number;
-        let done = !last_status.loading;
+        let done = last_status.ready ?? !last_status.loading;
         if (done && until === "jobs_idle")
         {
           done = !last_status.jobs_running;
@@ -804,7 +804,16 @@ export function register_agent_toolkit(context)
 
     if (mode)
     {
-      status = await send_engine_command("engine_set_mode", { mode });
+      // paused only exists inside play mode, so a session set up straight into pause enters play first
+      if (mode === "pause")
+      {
+        status = await send_engine_command("engine_status");
+        if (status.ok && !status.playing)
+        {
+          status = await send_engine_command("engine_set_mode", { mode: "play" });
+        }
+      }
+      status = status.ok === false ? status : await send_engine_command("engine_set_mode", { mode });
       if (!status.ok)
       {
         return tool_result({ ...status, launched });

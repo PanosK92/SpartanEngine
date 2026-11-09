@@ -232,7 +232,7 @@ async function run_simple_read(run, prompt) {
   const status = snapshot.status ?? {};
   return [
     `World: ${world.name ?? "unknown"} with ${world.entity_count ?? "unknown"} entities.`,
-    `Engine: ${status.playing ? "playing" : "edit mode"}, ${status.loading ? "loading" : "ready"}.`,
+    `Engine: ${status.mode ?? (status.playing ? "playing" : "edit")} mode, ${(status.ready ?? !status.loading) ? "ready" : `busy (${status.world_io ?? "loading"})`}.`,
   ].join(" ");
 }
 

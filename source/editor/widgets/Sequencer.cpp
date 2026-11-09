@@ -1022,7 +1022,6 @@ void Sequencer::SetPlayback(Playback action)
             if (m_entered_play && Engine::IsFlagSet(EngineMode::Playing))
             {
                 Engine::SetFlag(EngineMode::Playing, false);
-                Engine::SetFlag(EngineMode::Paused, false);
             }
             m_entered_play = false;
             break;
@@ -1932,7 +1931,7 @@ void Sequencer::ReleaseDrives()
 
 void Sequencer::EvaluateDrives(float delta_time)
 {
-    if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+    if (!Engine::IsPlayingUnpaused())
     {
         return;
     }
@@ -2228,7 +2227,7 @@ bool Sequencer::StartRender(const RenderRequest& request, string& error)
         error = "a render is already running";
         return false;
     }
-    if (!m_drive_events.empty() && (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused)))
+    if (!m_drive_events.empty() && !Engine::IsPlayingUnpaused())
     {
         error = "drive events need physics, enter play mode (unpaused) first";
         return false;

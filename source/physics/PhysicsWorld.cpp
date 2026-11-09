@@ -708,8 +708,7 @@ namespace spartan
         static float accumulated_time = 0.0f;
 
         // Loading, play boot and paused/editor time are not simulation debt.
-        if (ProgressTracker::IsLoading() || World::IsPlayBooting() ||
-            !Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        if (ProgressTracker::IsLoading() || World::IsPlayBooting() || !Engine::IsPlayingUnpaused())
         {
             accumulated_time = 0.0f;
             return;
@@ -780,7 +779,7 @@ namespace spartan
         // World::Tick can leave play or pause, the steps were owed to the state Tick saw
         const uint32_t count = simulation_thread::queued_steps;
         simulation_thread::queued_steps = 0;
-        const bool can_step = Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused) && !ProgressTracker::IsLoading();
+        const bool can_step = Engine::IsPlayingUnpaused() && !ProgressTracker::IsLoading();
         if (count == 0 || !scene || !can_step)
         {
             return;

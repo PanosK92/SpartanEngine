@@ -164,7 +164,7 @@ namespace spartan
     void Traffic::Tick()
     {
         SP_PROFILE_CPU();
-        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        if (!Engine::IsPlayingUnpaused())
         {
             return;
         }

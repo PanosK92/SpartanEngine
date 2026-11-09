@@ -982,7 +982,7 @@ namespace spartan
             if (IsLoadingFromFile()) return;
         }
 
-        if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused) && !play.IsStarting())
+        if (Engine::IsPlayingUnpaused() && !play.IsStarting())
         {
             if (Light* light = GetDirectionalLight(); light && light->GetFlag(LightFlags::DayNightCycle))
                 Environment::Tick(Timer::GetDeltaTimeSec());
@@ -996,7 +996,7 @@ namespace spartan
         // during boot keep rendering, but skip sim ticks and the per entity change scan
         if (!play.IsStarting())
         {
-            if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
+            if (Engine::IsPlayingUnpaused())
                 if (callbacks.before_tick) callbacks.before_tick(static_cast<float>(Timer::GetDeltaTimeSec()));
 
             SP_PROFILE_CPU_START("world_pretick");

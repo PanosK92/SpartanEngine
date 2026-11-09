@@ -2667,7 +2667,7 @@ namespace spartan
                 angle = 2.0f * acosf(min(fabs(delta.w), 1.0f));
                 axis = Vector3(delta.x, delta.y, delta.z) * (delta.w < 0.0f ? -1.0f : 1.0f);
             }
-            if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused) || angle < 0.0001f || axis.LengthSquared() < 1e-12f)
+            if (!Engine::IsPlayingUnpaused() || angle < 0.0001f || axis.LengthSquared() < 1e-12f)
                 continue;
             axis.Normalize();
 

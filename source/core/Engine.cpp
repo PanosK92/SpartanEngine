@@ -293,12 +293,27 @@ namespace spartan
 
     void Engine::SetFlag(const EngineMode flag, const bool enabled)
     {
+        if (flag == EngineMode::Paused && enabled && !IsFlagSet(EngineMode::Playing))
+        {
+            return;
+        }
+
         enabled ? (flags |= static_cast<uint32_t>(flag)) : (flags &= ~static_cast<uint32_t>(flag));
+
+        if (flag == EngineMode::Playing && !enabled)
+        {
+            flags &= ~static_cast<uint32_t>(EngineMode::Paused);
+        }
     }
 
     void Engine::ToggleFlag(const EngineMode flag)
     {
-        IsFlagSet(flag) ? (flags &= ~static_cast<uint32_t>(flag)) : (flags |= static_cast<uint32_t>(flag));
+        SetFlag(flag, !IsFlagSet(flag));
+    }
+
+    bool Engine::IsPlayingUnpaused()
+    {
+        return IsFlagSet(EngineMode::Playing) && !IsFlagSet(EngineMode::Paused);
     }
 
     bool Engine::HasArgument(const string& argument)
