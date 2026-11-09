@@ -2267,7 +2267,7 @@ namespace spartan
         Renderer::view().frame.resolution_scale_previous = Renderer::view().frame.resolution_scale;
         Renderer::view().frame.resolution_scale      = GetResolutionScale();
         Renderer::view().frame.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
-        // 0 = sdr, 1 = hdr10 pq, 2 = hdr scrgb (d3d12 windowed)
+        // 0 = sdr, 1 = hdr10 pq, 2 = hdr scrgb (fp16 swapchain)
         Renderer::view().frame.hdr_enabled = 0.0f;
         if (RHI_SwapChain* swapchain = RHI_Device::GetSwapChain())
         {

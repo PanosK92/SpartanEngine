@@ -2562,9 +2562,8 @@ namespace spartan
             }
         }
 
-        // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
-        // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
-        b.has_root_signature_graphics = false;
+        // the blit changed the bound root signature, pipeline and input assembler state, the next graphics call rebinds all of it
+        restore_after_external_pass();
 
         // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
         if (blit_mips)
@@ -2648,8 +2647,8 @@ namespace spartan
 
         d3d12_blit::blit(cmd_list, params);
 
-        // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
-        b.has_root_signature_graphics = false;
+        // the blit swapped in its own root signature, pso and input assembler state, force the next graphics bind to restore them
+        restore_after_external_pass();
 
         SetTrackedTextureLayout(source, 0, source->GetResidentMipCount(), RHI_Image_Layout::General);
 
@@ -2743,7 +2742,7 @@ namespace spartan
                 d3d12_blit::blit(cmd_list, params);
                 d3d12_descriptors::FreeRtv(reinterpret_cast<void*>(rtv.ptr));
 
-                b.has_root_signature_graphics = false;
+                restore_after_external_pass();
             }
         }
 
@@ -2877,8 +2876,8 @@ namespace spartan
             d3d12_descriptors::FreeRtv(reinterpret_cast<void*>(rtv.ptr));
         }
 
-        // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
-        b.has_root_signature_graphics = false;
+        // the blit swapped in its own root signature, pso and input assembler state, force the next graphics bind to restore them
+        restore_after_external_pass();
 
         // the xr image stays in render_target which is the state the runtime expects on release, restore the source
         InsertBarrier(source, source_layout_initial, 0, source->GetResidentMipCount());
@@ -4041,13 +4040,17 @@ namespace spartan
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         bind_shader_visible_heaps(cmd_list);
 
-        // external libraries leave their own root signature bound, force a full rebind on the next pso
+        // external libraries and the graphics blit leave their own root signature, pso, buffers, viewport and scissor bound, force a full rebind
         auto& b = cmd_state::get(this);
         b.has_root_signature_graphics = false;
         b.has_root_signature_compute  = false;
         b.srv_dirty = true;
         b.uav_dirty = true;
         m_pipeline_state_dirty = true;
+        m_buffer_id_vertex     = 0;
+        m_buffer_id_index      = 0;
+        m_viewport_valid       = false;
+        m_scissor_valid        = false;
     }
 
     void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage)
