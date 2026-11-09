@@ -1,98 +1,132 @@
-# Spartan Engine License 1.0
+# Spartan Engine License 2.0
 
 Copyright(c) 2015-2026 Panos Karabelas
 
-## 1. Scope
+## 1. Scope and definitions
 
 This license applies to the original Spartan Engine code and associated materials
 offered under this license by Panos Karabelas (the "Licensor"), including any
-covered portions copied into other projects (the "Software"). It applies to use
-of the Software in games, engines, libraries, tools, applications, and other
-projects, whether the Software is used unchanged or modified.
+covered portions copied into other projects (the "Software"). It applies whether
+the Software is used unchanged or modified.
 
 Third-party components and material identified as separately licensed remain
-subject to their own licenses. This license does not replace their terms or grant
-rights the Licensor does not control. It does not withdraw permissions already
+subject to their own licenses. This license does not withdraw permissions already
 granted for copies or versions previously released under the MIT License or
-another license. Rights available under applicable law, including fair use, are
-not restricted by this license.
+another license, and does not restrict rights available under applicable law,
+including fair use.
 
-## 2. Noncommercial permission
+In this license:
 
-Subject to this license, the Licensor grants you a worldwide, non-exclusive,
-royalty-free copyright license to use, copy, modify, combine, and distribute the
-Software, including as part of other projects, for noncommercial purposes only.
-You may distribute source code or compiled forms, with or without modifications.
+- "Product" means a game, application, tool, service, or deliverable (such as
+  renders, video, or client work) that uses or was produced with the Software.
+  Editions, ports, updates, expansions, and downloadable content of a Product are
+  part of the same Product.
+- "Gross Revenue" means all revenue attributable to a Product from any source,
+  including sales, in-app purchases, subscriptions, advertising, sponsorship,
+  crowdfunding, publisher advances, and fees for services, before deducting
+  platform or store fees. Refunds, chargebacks, and sales taxes or VAT are
+  excluded.
+- "Organization Size" means the combined gross revenue and external funding
+  received in the previous 12 months by you and any entity that controls, is
+  controlled by, or is under common control with you.
 
-Noncommercial means not intended for or directed toward commercial advantage or
-monetary compensation. Personal learning, experimentation, and hobby projects
-qualify only when they meet that condition. Making a project available free of
-charge does not by itself make its use noncommercial.
+All amounts are in US dollars, converted at the exchange rate on the date revenue
+is received.
 
-## 3. Commercial use and negotiated payment
+## 2. Noncommercial use
 
-Commercial use requires a written agreement with the Licensor granting permission
-for that use and specifying the payment terms, before commercial use begins.
-Commercial use includes developing or distributing paid products, using the
-Software to provide paid services or support business operations, and using the
-Software in projects monetized through advertising, subscriptions, sponsorship,
-or other compensation connected to the project. It includes commercial reuse of
-covered code in another project, even when the rest of the engine is not used.
-Commercial use can begin before any revenue or profit is received.
+The Licensor grants you a worldwide, non-exclusive, royalty-free copyright license
+to use, copy, modify, combine, and distribute the Software, in source or compiled
+form, for noncommercial purposes. Noncommercial means not intended for or directed
+toward commercial advantage or monetary compensation.
 
-Payment is negotiated case by case. It may be a fixed fee, royalties, a combination
-of both, or another mutually agreed payment arrangement. This license sets no
-default price, royalty rate, revenue threshold, or payment schedule. The written
-agreement must identify the permitted use and the applicable payment terms.
-Negotiations, attribution, donations, or sponsorship alone do not grant commercial
-permission. Commercial rights are conditional on compliance with the agreed
-payment terms and scope.
+## 3. Commercial use
 
-Statement of intent for individuals and small teams: the commercial terms exist
-mainly for larger companies. For individual developers, solo creators, and small
-independent teams, the Licensor intends to keep the engine very accessible and to
-offer exceptionally favorable terms, shaped around each project's needs after a
-conversation. If you are an individual who wants to sell or monetize your work,
-please get in touch; the Licensor will always try to find an arrangement that
-works for you. This statement expresses intent only and does not by itself grant
-commercial permission or fix any terms; those come from the written agreement.
+### 3.1 Standard commercial license
 
-The written agreement records the commercial permission and payment terms under
-this license. All other terms of this license continue to apply unless expressly
-varied in that agreement.
+If your Organization Size is below $25,000,000, you are granted the rights in
+section 2 for commercial purposes as well, under the following terms. No
+agreement, application, or approval is required.
 
-To discuss commercial use, contact Panos Karabelas:
-https://panoskarabelas.com/
+- **Royalty-free threshold:** no fees or royalties are owed for a Product until
+  its lifetime Gross Revenue exceeds $1,000,000.
+- **Royalty:** after that, you owe 3% of the Product's Gross Revenue above
+  $1,000,000, calculated per calendar quarter.
+- **Reporting:** notify the Licensor within 30 days of a Product passing the
+  threshold. For each quarter with royalties owed, send a short revenue statement
+  and payment within 45 days of the quarter's end.
 
-## 4. Attribution and redistribution
+Developing, prototyping, and evaluating the Software for commercial purposes is
+free and requires no notice.
+
+### 3.2 Growing past the standard license
+
+If your Organization Size reaches $25,000,000 or more, Products you commercially
+released before that point remain under section 3.1. New Products require an
+agreement under section 3.3 before their commercial release.
+
+### 3.3 Custom commercial agreements
+
+A written agreement with the Licensor is required before commercial release or
+production use in the following cases:
+
+- your Organization Size is $25,000,000 or more;
+- you distribute the Software, or a substantial part of it, as an engine,
+  framework, SDK, or tool for use by other developers;
+- you offer the Software's functionality as a hosted service.
+
+Custom agreements may use license fees, royalties, buyouts, support terms, or a
+combination, and set their own scope. Organizations eligible for section 3.1 may
+also request a custom agreement, for example a one-time buyout instead of
+royalties. To discuss terms, contact Panos Karabelas: https://panoskarabelas.com/
+
+## 4. Version lock
+
+Each Product keeps the commercial terms of the license version under which it was
+first commercially released, for its lifetime, including updates and expansions.
+You may choose to move a Product to a later version of this license. Agreements
+made under earlier versions of this license remain in effect.
+
+## 5. Contributions
+
+Unless agreed otherwise in writing, by submitting a contribution to the
+Licensor's Spartan Engine repository you grant the Licensor a perpetual,
+worldwide, non-exclusive, royalty-free, irrevocable license to use, modify,
+sublicense, and relicense your contribution under any terms, including commercial
+terms. You keep the copyright to your contribution and confirm you have the right
+to grant this license.
+
+## 6. Attribution and redistribution
 
 You must retain the copyright notice identifying Panos Karabelas, this license,
 and any applicable third-party notices in all copies or portions of the Software
-that you redistribute, including modified copies and code incorporated into other
-projects. For compiled distributions, include these notices and this license in
-the accompanying documentation or an accessible legal notices section.
+you redistribute, including modified copies and code incorporated into other
+projects. For compiled distributions, include them in the accompanying
+documentation or an accessible legal notices section. You do not have to publish
+your source code or display a logo or splash screen.
 
 You must clearly identify modifications you distribute and must not claim that
 you authored the original Software or that the Licensor endorses your project.
-This license does not require you to publish your source code or display a logo
-or splash screen.
+Recipients receive their permissions directly from the Licensor under this
+license; you may not remove or override these terms for the Software.
 
-Recipients receive permission for covered Software directly under this license.
-Redistributing the Software does not grant recipients commercial permission; they
-must obtain it under section 3 unless the Licensor's written agreement expressly
-covers their use. You may license your original contributions separately, but may
-not remove or override these terms for covered Software.
+## 7. Records
 
-## 5. Termination
+If royalties are owed, keep records of the relevant Gross Revenue for three years.
+At most once per year and with 30 days' notice, the Licensor may have them
+reviewed by an independent accountant under confidentiality. The Licensor pays
+for the review unless it finds an underpayment of more than 5%, in which case you
+pay for it along with the shortfall.
 
-Your rights under this license terminate automatically if you breach its terms.
-After termination, you must stop using and distributing the Software except as
-authorized by another valid license or applicable law. Reinstatement requires
-written permission from the Licensor. Termination does not eliminate payment
-obligations already incurred or terminate the rights of recipients who remain in
-compliance with their own licenses.
+## 8. Termination
 
-## 6. No warranty or liability
+Your rights under this license terminate if you breach its terms. For a first
+breach, your rights are reinstated if you fix it, including paying any amounts
+owed, within 30 days of written notice from the Licensor. Otherwise reinstatement
+requires written permission from the Licensor. Termination does not cancel
+amounts already owed or the rights of recipients who comply with this license.
+
+## 9. No warranty or liability
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
@@ -102,8 +136,10 @@ ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
-## 7. Reserved rights
+## 10. Reserved rights
 
 All rights not expressly granted are reserved. No trademark rights are granted.
-This is a custom source-available license, not the MIT License or a PolyForm
-license.
+This is a custom source-available license, not an open source license.
+
+Plain-language answers to common questions are in [license_faq.md](license_faq.md).
+The FAQ is guidance only; this license governs.

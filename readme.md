@@ -354,20 +354,25 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 ## License
 
 > [!NOTE]
-> Free for noncommercial use under the **[Spartan Engine License 1.0](license.md)**. **Commercial use requires prior written permission and negotiated payment terms.**
->
-> The commercial terms are aimed mainly at larger companies. **Individuals and small independent teams who want to monetize their work will get exceptionally favorable terms**, tailored to their project after a conversation. Just [reach out](https://panoskarabelas.com/) and an arrangement that works for you will be found.
+> Released under the **[Spartan Engine License 2.0](license.md)**. **Free for noncommercial use, and free for commercial use until a product earns $1M**, for any team under $25M a year. No sign-up, no approval.
+
+| Who | What you pay |
+| --- | --- |
+| Hobbyists, students, noncommercial projects | Nothing |
+| Organizations under $25M a year (revenue plus funding) | Nothing until a product earns $1M, then 3% of revenue above $1M |
+| Organizations at $25M a year or more | Custom agreement, [get in touch](https://panoskarabelas.com/) |
+| Selling Spartan itself as an engine, SDK, or hosted service | Custom agreement, [get in touch](https://panoskarabelas.com/) |
 
 <details>
 <summary>License summary</summary>
 
 <br/>
 
-The license permits free noncommercial use, modification, and redistribution, including reuse of covered code in other projects. Keep the copyright notice identifying **Panos Karabelas** and the license with redistributed code; compiled distributions must carry them in documentation or accessible legal notices.
+Use, modify, and redistribute the engine, including reusing its code in other projects. Keep the copyright notice identifying **Panos Karabelas** and the license with redistributed code; compiled distributions must carry them in documentation or accessible legal notices. No splash screen or logo is required.
 
-Commercial fees, royalties, or a combination are agreed case by case, with no automatic rate or revenue threshold. This applies to the engine and covered code copied into other games, engines, libraries, tools, or applications. Contact [Panos Karabelas](https://panoskarabelas.com/) to discuss your project.
+Each product keeps the terms of the license version it first shipped under, for its lifetime. One-time buyouts are available on request. Third-party components retain their own licenses, and copies previously released under MIT retain their existing permissions.
 
-Third-party components retain their own licenses. Copies and versions previously released under MIT retain their existing permissions. See [license.md](license.md) for the complete terms.
+See [license.md](license.md) for the complete terms and the [license FAQ](license_faq.md) for plain-language answers.
 
 </details>
 
