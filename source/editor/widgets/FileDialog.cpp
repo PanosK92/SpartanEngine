@@ -705,7 +705,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
         float button_height = ImGui::GetFrameHeight();
         float vertical_pad  = (toolbar_height - button_height) * 0.5f;
-        ImGui::SetCursorPos(ImVec2(8, vertical_pad));
+        ImGui::SetCursorPos(ImVec2(8, ImGui::GetCursorPosY() + vertical_pad));
     }
 
     const float button_height = ImGui::GetFrameHeight();
