@@ -1010,6 +1010,15 @@ float3x3 make_tangent_to_world_matrix(float3 n, float3 t)
     return float3x3(t, b, n); 
 }
 
+// the vertex tangent carries no handedness, +1 where cross(n, t) runs along +v, -1 where the uv layout is mirrored,
+// dp and duv are any two position and uv deltas on the surface (screen derivatives or triangle edges)
+float uv_handedness(float3 n, float3 t, float3 dp1, float3 dp2, float2 duv1, float2 duv2)
+{
+    float det     = duv1.x * duv2.y - duv2.x * duv1.y;
+    float3 dp_dv  = duv1.x * dp2 - duv2.x * dp1; // scaled by det
+    return dot(cross(n, t), dp_dv) * det < 0.0f ? -1.0f : 1.0f;
+}
+
 float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
 {
     return transpose(make_tangent_to_world_matrix(n, t));

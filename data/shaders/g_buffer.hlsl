@@ -732,6 +732,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float3 low_pass    = GET_TEXTURE(material_texture_index_normal).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy, max(float(levels) - 5.0f, 0.0f)).xyz;
             tangent_normal.xy -= unpack(low_pass).xy;
         }
+        if (material.is_normal_green_up())
+            tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, ddx(vertex.uv_misc.xy), ddy(vertex.uv_misc.xy));
     
         // reconstruct z for bc5 two-channel normal maps
         tangent_normal.z = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));

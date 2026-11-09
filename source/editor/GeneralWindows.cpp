@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =====================
 #include "pch.h"
 #include "GeneralWindows.h"
+#include "Updates.h"
 #include "WorldPreviews.h"
 #include "AssetThumbnails.h"
 #include "windows/WorldSelector.h"
@@ -811,272 +812,6 @@ license.)";
             ImGui::End();
         }
     }
-
-    namespace engine_update
-    {
-        constexpr const char* api_url      = "https://api.github.com/repos/PanosK92/SpartanEngine/releases?per_page=1";
-        constexpr const char* releases_url = "https://github.com/PanosK92/SpartanEngine/releases";
-        constexpr const char* skip_file    = "settings/spartan_update.txt";
-
-        atomic<bool> visible{false};
-        string remote_tag;
-        string remote_url;
-        bool dismissed_this_session = false;
-
-        string skip_path()
-        {
-            return spartan::FileSystem::GetExecutableDirectory() + "/" + skip_file;
-        }
-
-        string read_skipped_tag()
-        {
-            string tag;
-            const string path = skip_path();
-            if (!spartan::FileSystem::Exists(path))
-            {
-                return {};
-            }
-
-            if (!spartan::FileSystem::ReadFile(path, tag))
-            {
-                return {};
-            }
-
-            while (!tag.empty() && (tag.back() == '\n' || tag.back() == '\r' || tag.back() == ' '))
-            {
-                tag.pop_back();
-            }
-
-            return tag;
-        }
-
-        void write_skipped_tag(const string& tag)
-        {
-            spartan::FileSystem::WriteFile(skip_path(), tag);
-        }
-
-        string json_string(const string& json, const string& key)
-        {
-            const string needle = "\"" + key + "\"";
-            size_t key_pos = json.find(needle);
-            if (key_pos == string::npos)
-            {
-                return {};
-            }
-
-            size_t colon = json.find(':', key_pos + needle.size());
-            if (colon == string::npos)
-            {
-                return {};
-            }
-
-            size_t quote_start = json.find('"', colon + 1);
-            if (quote_start == string::npos)
-            {
-                return {};
-            }
-
-            size_t quote_end = json.find('"', quote_start + 1);
-            if (quote_end == string::npos)
-            {
-                return {};
-            }
-
-            return json.substr(quote_start + 1, quote_end - quote_start - 1);
-        }
-
-        int64_t to_minutes(int year, int month, int day, int hour, int minute)
-        {
-            return (static_cast<int64_t>(year) * 366 + month * 31 + day) * 24 * 60 + hour * 60 + minute;
-        }
-
-        bool parse_tag(const string& tag, int& year, int& month, int& day, int& hour, int& minute)
-        {
-            string value = tag;
-            if (!value.empty() && (value[0] == 'v' || value[0] == 'V'))
-            {
-                value.erase(value.begin());
-            }
-
-            year = month = day = hour = minute = 0;
-
-            auto parse_int = [](const char*& p, int& out) -> bool
-            {
-                if (*p < '0' || *p > '9')
-                {
-                    return false;
-                }
-
-                out = 0;
-                while (*p >= '0' && *p <= '9')
-                {
-                    out = out * 10 + (*p - '0');
-                    p++;
-                }
-
-                return true;
-            };
-
-            const char* p = value.c_str();
-            int* fields[] = { &year, &month, &day, &hour, &minute };
-            for (int i = 0; i < 5; i++)
-            {
-                if (!parse_int(p, *fields[i]))
-                {
-                    return false;
-                }
-
-                if (i < 4)
-                {
-                    if (*p != '.')
-                    {
-                        return false;
-                    }
-                    p++;
-                }
-            }
-
-            return *p == '\0';
-        }
-
-        void start_check()
-        {
-            if (!spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
-            {
-                return;
-            }
-
-            spartan::ThreadPool::AddTask([]()
-            {
-                string json;
-                if (!spartan::FileSystem::DownloadToString(api_url, json))
-                {
-                    return;
-                }
-
-                const string tag = json_string(json, "tag_name");
-                if (tag.empty() || tag == read_skipped_tag())
-                {
-                    return;
-                }
-
-                int year = 0, month = 0, day = 0, hour = 0, minute = 0;
-                if (!parse_tag(tag, year, month, day, hour, minute))
-                {
-                    return;
-                }
-
-                const int64_t remote_minutes = to_minutes(year, month, day, hour, minute);
-                const int64_t local_minutes  = to_minutes(
-                    spartan::version::year(),
-                    spartan::version::month(),
-                    spartan::version::day(),
-                    spartan::version::hour(),
-                    spartan::version::minute()
-                );
-
-                // ci builds carry the exact release stamp, so any newer tag is a real update
-                if (remote_minutes <= local_minutes)
-                {
-                    return;
-                }
-
-                string url = json_string(json, "html_url");
-                if (url.empty())
-                {
-                    url = releases_url;
-                }
-
-                remote_tag = tag;
-                remote_url = url;
-                visible.store(true, memory_order_release);
-            });
-        }
-
-        void open_releases()
-        {
-            const string url = remote_url.empty() ? releases_url : remote_url;
-            spartan::FileSystem::OpenUrl(url);
-            visible.store(false, memory_order_relaxed);
-            dismissed_this_session = true;
-        }
-
-        void skip()
-        {
-            visible.store(false, memory_order_relaxed);
-            dismissed_this_session = true;
-            if (!remote_tag.empty())
-            {
-                write_skipped_tag(remote_tag);
-            }
-        }
-
-        void window()
-        {
-            if (welcome::visible || dismissed_this_session)
-            {
-                return;
-            }
-
-            if (!visible.load(memory_order_acquire))
-            {
-                return;
-            }
-
-            const float dpi = spartan::Window::GetDpiScale();
-            ImGui::SetNextWindowPos(
-                editor->GetWidget<Viewport>()->GetCenter(),
-                ImGuiCond_Always,
-                ImVec2(0.5f, 0.5f)
-            );
-            ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID);
-
-            bool open = true;
-            const ImGuiWindowFlags flags =
-                ImGuiWindowFlags_NoDocking |
-                ImGuiWindowFlags_NoCollapse |
-                ImGuiWindowFlags_AlwaysAutoResize |
-                ImGuiWindowFlags_NoSavedSettings |
-                ImGuiWindowFlags_NoMove;
-            if (ImGui::Begin("Engine update available", &open, flags))
-            {
-                float content_width = 500.0f * dpi;
-                ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);
-
-                ImGui::Text("A newer engine build is available.");
-                ImGui::Spacing();
-                ImGui::TextDisabled("You have: %s", spartan::version::c_str());
-                ImGui::TextDisabled("Latest: Spartan v%s", remote_tag.c_str());
-
-                ImGui::PopTextWrapPos();
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-
-                float button_width = 140.0f;
-                float total_width  = button_width * 2.0f + ImGui::GetStyle().ItemSpacing.x;
-                float offset_x     = (ImGui::GetContentRegionAvail().x - total_width) * 0.5f;
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
-
-                if (ImGui::Button("Open", ImVec2(button_width, 0.0f)))
-                {
-                    open_releases();
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Skip", ImVec2(button_width, 0.0f)))
-                {
-                    skip();
-                }
-            }
-            ImGui::End();
-
-            if (!open)
-            {
-                skip();
-            }
-        }
-    }
-
 }
 
 void GeneralWindows::Initialize(Editor* editor_in)
@@ -1086,10 +821,11 @@ void GeneralWindows::Initialize(Editor* editor_in)
     // the welcome window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
     welcome::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
 
-    // initialize world selector (handles asset download and world file scanning)
+    // initialize world selector (handles world file scanning)
     WorldSelector::Initialize(editor_in);
 
-    engine_update::start_check();
+    // engine releases, the project package and the worlds, all checked against github in one place
+    Updates::Initialize(editor_in);
 }
 
 void GeneralWindows::Tick()
@@ -1121,9 +857,9 @@ void GeneralWindows::Tick()
 
     // windows
     {
+        Updates::Tick(!welcome::visible, WorldSelector::GetVisible());
         WorldSelector::Tick();
         welcome::window();
-        engine_update::window();
         about::window();
         controls::window();
     }

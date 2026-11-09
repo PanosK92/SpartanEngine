@@ -3839,6 +3839,7 @@ namespace spartan
                 properties[count].dielectric_flags =
                     material->GetProperty(MaterialProperty::ThinWalled) != 0.0f &&
                     material->GetProperty(MaterialProperty::IsWater) == 0.0f ? 1u : 0u;
+                properties[count].dielectric_flags |= material->GetProperty(MaterialProperty::Gltf) == 1.0f ? 2u : 0u;
 
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;

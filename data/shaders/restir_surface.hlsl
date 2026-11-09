@@ -201,6 +201,8 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
 
         // Same two-channel normal decode and strength as the raster G-buffer.
         normal_sample = normalize(normal_sample * 2.0f - 1.0f);
+        if (mat.is_normal_green_up())
+            normal_sample.y *= -uv_handedness(normal_world, tangent_world, edge1_world, edge2_world, (uv1 - uv0) * geo.uv_tiling, (uv2 - uv0) * geo.uv_tiling);
         normal_sample.z = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
         normal_sample.xy *= saturate(max(0.01f, mat.normal));
 

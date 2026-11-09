@@ -32,7 +32,9 @@ struct RaySurface
     float  roughness;
     float  metallic;
     float3 emission;
+    float  alpha;
     uint   material_index;
+    bool   front_face;
     bool   hit;
 };
 
@@ -88,7 +90,9 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
     float3 face           = cross(edge1_world, edge2_world);
     float  face_length    = length(face);
     float3 geometric      = face_length > 1e-12f ? face / face_length : normal_world;
-    if (dot(geometric, ray.Direction) > 0.0f)
+    // winding defines the outside, the same test the restir path uses for media
+    surface.front_face    = dot(geometric, ray.Direction) <= 0.0f;
+    if (!surface.front_face)
         geometric = -geometric;
     if (dot(normal_world, geometric) < 0.0f)
         normal_world = -normal_world;
@@ -154,6 +158,8 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
             float low_mip     = max(float(levels) - 5.0f, normal_mip);
             normal_sample.xy -= material_textures[NonUniformResourceIndex(normal_texture_index)].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, low_mip).xy * 2.0f - 1.0f;
         }
+        if (mat.is_normal_green_up())
+            normal_sample.y *= -uv_handedness(normal_world, tangent_world, edge1_world, edge2_world, (uv1 - uv0) * geo.uv_tiling, (uv2 - uv0) * geo.uv_tiling);
         normal_sample.z   = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
         normal_sample.xy *= saturate(max(0.01f, mat.normal));
 
@@ -169,6 +175,7 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
 
     float albedo_mip = 0.0f;
     float3 albedo    = mat.color.rgb;
+    float alpha      = mat.color.a;
     if (terrain_shaded)
     {
         albedo = terrain.albedo;
@@ -182,10 +189,12 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
         {
             sampled_albedo.rgb = srgb_to_linear(sampled_albedo.rgb);
         }
-        if (sampled_albedo.a > 0.01f)
+        // opaque materials ignore texture alpha, only cutout texels that are gone may carry junk color
+        if (sampled_albedo.a > 0.01f || !mat.is_alpha_tested())
         {
             albedo = sampled_albedo.rgb * mat.color.rgb;
         }
+        alpha *= sampled_albedo.a;
     }
 
     float roughness = mat.roughness;
@@ -270,6 +279,7 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
     surface.roughness        = max(roughness, 0.04f);
     surface.metallic         = saturate(metallic);
     surface.emission         = emission;
+    surface.alpha            = saturate(alpha);
     surface.material_index   = material_index;
     return surface;
 }

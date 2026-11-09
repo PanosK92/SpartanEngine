@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ========================
 #include "pch.h"
 #include "WorldSelector.h"
+#include "../Updates.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
 #include "../imgui/ImGui_EditorUi.h"
@@ -19,7 +20,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cctype>
 #include <filesystem>
 #include <future>
-#include <mutex>
 #include <unordered_set>
 SP_WARNINGS_OFF
 #include "io/pugixml.hpp"
@@ -41,15 +41,10 @@ namespace
     int visible_columns        = 1;
 
     bool visible_download_prompt  = false;
-    bool visible_update_prompt    = false;
     bool visible_world_list       = false;
     bool downloaded_and_extracted = false;
-    bool update_check_started     = false;
-    bool download_in_progress     = false;
     bool download_failed          = false;
     bool download_failed_worlds   = false; // the failed step was the worlds, not the project package
-    bool project_update_pending   = false; // an update replaces the project even though one is already extracted
-    atomic<int> download_result{0}; // worker publishes 1 on success, -1 when the project failed, -2 when the worlds failed, -3 when a worlds update failed
 
     const float card_rounding      = 8.0f;
     const float panel_rounding     = 8.0f;
@@ -106,49 +101,8 @@ namespace
 
     const char* world_recency_file = "settings/spartan_worlds.xml";
 
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/pkh7ix0qm6rd747ym21pn/project.7z?rlkey=wdqf3qzmemjzirrvrk78043vp&dl=1";
-    const char* assets_destination  = "project/project.7z";
-    const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "aeb3a0c771e214e42ef597701c68bdadf00af60d7e633aa8e80f8de4a1ea3e96";
-
-    // world files are versioned in the repository, not in the project package, so a release download fetches them separately
-    const char* worlds_branch_url  = "https://api.github.com/repos/PanosK92/SpartanEngine/branches/master";
-    const char* worlds_listing_url = "https://api.github.com/repos/PanosK92/SpartanEngine/contents/worlds?ref=";
-    const char* worlds_raw_url     = "https://raw.githubusercontent.com/PanosK92/SpartanEngine/";
-    const char* worlds_staging_dir = "cache/worlds_download/";
-    // world scripts reference ../worlds/ relative to the executable, the same layout as a cloned repository
-    const char* worlds_install_dir = "../worlds/";
-    const char* worlds_backup_dir  = "../worlds_backup/";
-    const char* worlds_manifest    = "settings/spartan_worlds_manifest.xml";
     bool prompt_missing_worlds_only = false;
     bool worlds_prompt_declined     = false;
-
-    struct RemoteWorldFile
-    {
-        string name;
-        string sha; // git blob sha1, what github reports for every file in a listing
-    };
-
-    struct PendingWorldFile
-    {
-        RemoteWorldFile remote;
-        bool exists         = false;
-        bool locally_edited = false; // differs from what was last installed, so it is backed up before being replaced
-    };
-
-    // world update check, the worker fills these and publishes through worlds_check_result
-    mutex worlds_check_mutex;
-    string worlds_check_commit;
-    vector<PendingWorldFile> worlds_check_pending;
-    atomic<int> worlds_check_result{0}; // 1 updates found, 2 up to date, -1 failed
-    atomic<bool> worlds_check_running{false};
-    bool worlds_check_manual         = false;
-    bool visible_worlds_update       = false;
-    bool worlds_update_pending       = false; // found while the launcher was closed, shown when it opens
-    bool worlds_update_failed        = false;
-    float worlds_up_to_date_until    = -1.0f;
-    string worlds_update_commit;
-    vector<PendingWorldFile> worlds_update_files;
 
     float dpi()
     {
@@ -1107,31 +1061,6 @@ namespace
         ImGui::EndPopup();
     }
 
-    void check_assets_outdated_async()
-    {
-        spartan::ThreadPool::AddTask([]()
-        {
-            if (!spartan::FileSystem::Exists(assets_destination))
-            {
-                return;
-            }
-
-            string local_hash = spartan::FileSystem::ComputeFileSha256(assets_destination);
-            if (!local_hash.empty() && local_hash != assets_expected_sha)
-            {
-                visible_update_prompt = true;
-            }
-        });
-    }
-
-    bool is_project_extracted()
-    {
-        const string project_dir = spartan::ResourceCache::GetProjectDirectory();
-        size_t entry_count       = spartan::FileSystem::GetFilesInDirectory(project_dir).size();
-        entry_count             += spartan::FileSystem::GetDirectoriesInDirectory(project_dir).size();
-        return entry_count > 1;
-    }
-
     // recursive like the launcher scan, so worlds the launcher can list are never reported as missing
     bool directory_has_world_file(const string& directory, unordered_set<string>& visited)
     {
@@ -1180,521 +1109,6 @@ namespace
         return false;
     }
 
-    // a clone gets its worlds through git, writing into its working tree would fight with it
-    bool is_worlds_directory_a_clone()
-    {
-        return spartan::FileSystem::Exists("../.git");
-    }
-
-    string sha1_hex(const string& data)
-    {
-        const auto rotate_left = [](uint32_t value, int bits)
-        {
-            return (value << bits) | (value >> (32 - bits));
-        };
-
-        uint32_t h[5] = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0 };
-
-        string message           = data;
-        const uint64_t bit_count = static_cast<uint64_t>(data.size()) * 8;
-        message.push_back(static_cast<char>(0x80));
-        while (message.size() % 64 != 56)
-        {
-            message.push_back('\0');
-        }
-        for (int i = 7; i >= 0; i--)
-        {
-            message.push_back(static_cast<char>((bit_count >> (i * 8)) & 0xff));
-        }
-
-        for (size_t chunk = 0; chunk < message.size(); chunk += 64)
-        {
-            uint32_t w[80];
-            for (int i = 0; i < 16; i++)
-            {
-                const unsigned char* p = reinterpret_cast<const unsigned char*>(&message[chunk + i * 4]);
-                w[i] = (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16) | (uint32_t(p[2]) << 8) | uint32_t(p[3]);
-            }
-            for (int i = 16; i < 80; i++)
-            {
-                w[i] = rotate_left(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
-            }
-
-            uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4];
-            for (int i = 0; i < 80; i++)
-            {
-                uint32_t f = 0;
-                uint32_t k = 0;
-                if (i < 20)
-                {
-                    f = (b & c) | (~b & d);
-                    k = 0x5A827999;
-                }
-                else if (i < 40)
-                {
-                    f = b ^ c ^ d;
-                    k = 0x6ED9EBA1;
-                }
-                else if (i < 60)
-                {
-                    f = (b & c) | (b & d) | (c & d);
-                    k = 0x8F1BBCDC;
-                }
-                else
-                {
-                    f = b ^ c ^ d;
-                    k = 0xCA62C1D6;
-                }
-
-                const uint32_t temp = rotate_left(a, 5) + f + e + k + w[i];
-                e = d;
-                d = c;
-                c = rotate_left(b, 30);
-                b = a;
-                a = temp;
-            }
-
-            h[0] += a;
-            h[1] += b;
-            h[2] += c;
-            h[3] += d;
-            h[4] += e;
-        }
-
-        char hex[41];
-        snprintf(hex, sizeof(hex), "%08x%08x%08x%08x%08x", h[0], h[1], h[2], h[3], h[4]);
-        return hex;
-    }
-
-    // the same hash git and the github listing use, so local files compare without downloading anything
-    string git_blob_sha1(const string& path)
-    {
-        string contents;
-        if (!spartan::FileSystem::IsFile(path) || !spartan::FileSystem::ReadFile(path, contents))
-        {
-            return {};
-        }
-
-        string blob = "blob " + to_string(contents.size());
-        blob.push_back('\0');
-        blob += contents;
-        return sha1_hex(blob);
-    }
-
-    string json_string_value(const string& json, const string& key, size_t start = 0)
-    {
-        const string needle = "\"" + key + "\"";
-        const size_t key_pos = json.find(needle, start);
-        if (key_pos == string::npos)
-        {
-            return {};
-        }
-
-        size_t value_start = json.find(':', key_pos + needle.size());
-        if (value_start == string::npos)
-        {
-            return {};
-        }
-        value_start = json.find_first_not_of(" \t\r\n", value_start + 1);
-        if (value_start == string::npos || json[value_start] != '"')
-        {
-            return {};
-        }
-
-        const size_t value_end = json.find('"', value_start + 1);
-        if (value_end == string::npos)
-        {
-            return {};
-        }
-
-        return json.substr(value_start + 1, value_end - value_start - 1);
-    }
-
-    // every listing entry starts with its name, so the text up to the next name belongs to that entry
-    vector<RemoteWorldFile> parse_worlds_listing(const string& json)
-    {
-        vector<RemoteWorldFile> files;
-        const string key = "\"name\"";
-        size_t position  = json.find(key);
-        while (position != string::npos)
-        {
-            const size_t next  = json.find(key, position + key.size());
-            const string entry = json.substr(position, next == string::npos ? string::npos : next - position);
-            position           = next;
-
-            RemoteWorldFile file;
-            file.name = json_string_value(entry, "name");
-            file.sha  = json_string_value(entry, "sha");
-            if (json_string_value(entry, "type") != "file" || file.name.empty() || file.sha.size() != 40)
-            {
-                continue;
-            }
-
-            const string extension = lowercase_copy(spartan::FileSystem::GetExtensionFromFilePath(file.name));
-            if (extension == spartan::EXTENSION_WORLD || extension == spartan::EXTENSION_LUA || extension == ".md")
-            {
-                files.push_back(file);
-            }
-        }
-
-        return files;
-    }
-
-    // pinned to one commit, so the listing and the downloads cannot disagree and no stale raw cache is served
-    bool fetch_worlds_listing(string& commit, vector<RemoteWorldFile>& files)
-    {
-        string branch;
-        if (!spartan::FileSystem::DownloadToString(worlds_branch_url, branch))
-        {
-            SP_LOG_ERROR("Failed to query the latest commit on GitHub: %s", worlds_branch_url);
-            return false;
-        }
-
-        commit = json_string_value(branch, "sha", branch.find("\"commit\""));
-        if (commit.size() != 40)
-        {
-            SP_LOG_ERROR("The GitHub branch response has no commit");
-            return false;
-        }
-
-        string listing;
-        const string listing_url = string(worlds_listing_url) + commit;
-        if (!spartan::FileSystem::DownloadToString(listing_url, listing))
-        {
-            SP_LOG_ERROR("Failed to list the worlds on GitHub: %s", listing_url.c_str());
-            return false;
-        }
-
-        files = parse_worlds_listing(listing);
-        const bool has_world_file = any_of(files.begin(), files.end(), [](const RemoteWorldFile& file)
-        {
-            return lowercase_copy(spartan::FileSystem::GetExtensionFromFilePath(file.name)) == spartan::EXTENSION_WORLD;
-        });
-        if (!has_world_file)
-        {
-            SP_LOG_ERROR("The GitHub worlds listing has no world files");
-            return false;
-        }
-
-        return true;
-    }
-
-    // what was installed last, so a file that differs from github can be told apart as outdated or edited by the user
-    struct WorldsManifest
-    {
-        unordered_map<string, string> installed; // file name to git blob sha1
-        string skipped;                          // signature of the update the user said no to
-    };
-
-    WorldsManifest load_worlds_manifest()
-    {
-        WorldsManifest manifest;
-        pugi::xml_document doc;
-        if (!spartan::FileSystem::Exists(worlds_manifest) || !doc.load_file(worlds_manifest))
-        {
-            return manifest;
-        }
-
-        pugi::xml_node root = doc.child("WorldsManifest");
-        manifest.skipped    = root.attribute("skipped").as_string();
-        for (pugi::xml_node file_node = root.child("File"); file_node; file_node = file_node.next_sibling("File"))
-        {
-            const string name = file_node.attribute("name").as_string();
-            const string sha  = file_node.attribute("sha").as_string();
-            if (!name.empty() && !sha.empty())
-            {
-                manifest.installed[name] = sha;
-            }
-        }
-
-        return manifest;
-    }
-
-    void save_worlds_manifest(const WorldsManifest& manifest)
-    {
-        pugi::xml_document doc;
-        pugi::xml_node root = doc.append_child("WorldsManifest");
-        root.append_attribute("skipped").set_value(manifest.skipped.c_str());
-        for (const auto& [name, sha] : manifest.installed)
-        {
-            pugi::xml_node file_node = root.append_child("File");
-            file_node.append_attribute("name").set_value(name.c_str());
-            file_node.append_attribute("sha").set_value(sha.c_str());
-        }
-
-        spartan::FileSystem::CreateDirectory_(spartan::FileSystem::GetDirectoryFromFilePath(worlds_manifest));
-        if (!doc.save_file(worlds_manifest))
-        {
-            SP_LOG_ERROR("Failed to save the worlds manifest: %s", worlds_manifest);
-        }
-    }
-
-    // files that already match github are recorded as installed, so their later edits are recognized
-    vector<PendingWorldFile> plan_worlds_sync(const vector<RemoteWorldFile>& remote_files, WorldsManifest& manifest)
-    {
-        vector<PendingWorldFile> pending;
-        for (const RemoteWorldFile& remote : remote_files)
-        {
-            const string local_path = string(worlds_install_dir) + remote.name;
-            PendingWorldFile file;
-            file.remote = remote;
-            file.exists = spartan::FileSystem::IsFile(local_path);
-            if (file.exists)
-            {
-                const string local_sha = git_blob_sha1(local_path);
-                if (local_sha == remote.sha)
-                {
-                    manifest.installed[remote.name] = remote.sha;
-                    continue;
-                }
-
-                // without a record of what was installed the change cannot be proven safe, so it is kept as a backup
-                const auto installed = manifest.installed.find(remote.name);
-                file.locally_edited  = installed == manifest.installed.end() || installed->second != local_sha;
-            }
-            pending.push_back(file);
-        }
-
-        return pending;
-    }
-
-    string worlds_update_signature(const vector<PendingWorldFile>& files)
-    {
-        vector<string> parts;
-        for (const PendingWorldFile& file : files)
-        {
-            parts.push_back(file.remote.name + ":" + file.remote.sha);
-        }
-        sort(parts.begin(), parts.end());
-
-        string signature;
-        for (const string& part : parts)
-        {
-            signature += part + ";";
-        }
-        return sha1_hex(signature);
-    }
-
-    bool install_world_files(const string& commit, const vector<PendingWorldFile>& files, const spartan::ProgressTask& progress)
-    {
-        progress.SetStep("Downloading worlds", "github.com/PanosK92/SpartanEngine");
-
-        // a clean staging folder, so a failed earlier attempt cannot be resumed into a mismatched file
-        spartan::FileSystem::Delete(worlds_staging_dir);
-        spartan::FileSystem::CreateDirectory_(worlds_staging_dir);
-
-        for (size_t i = 0; i < files.size(); i++)
-        {
-            const RemoteWorldFile& remote = files[i].remote;
-            const string url              = string(worlds_raw_url) + commit + "/worlds/" + remote.name;
-            const string staged_path      = string(worlds_staging_dir) + remote.name;
-            const float file_start        = static_cast<float>(i) / static_cast<float>(files.size());
-            const float file_span         = 1.0f / static_cast<float>(files.size());
-            const bool downloaded         = spartan::FileSystem::DownloadFile(url, staged_path, [&progress, file_start, file_span](float fraction)
-            {
-                progress.SetFraction(file_start + fraction * file_span);
-            });
-
-            if (!downloaded || git_blob_sha1(staged_path) != remote.sha)
-            {
-                SP_LOG_ERROR("Failed to download %s, or it does not match GitHub's listing", url.c_str());
-                spartan::FileSystem::Delete(worlds_staging_dir);
-                return false;
-            }
-        }
-
-        // everything is staged before anything is replaced, so a dropped connection never leaves a half updated folder
-        WorldsManifest manifest = load_worlds_manifest();
-        string backup_dir;
-        size_t backed_up = 0;
-        bool success     = true;
-        spartan::FileSystem::CreateDirectory_(worlds_install_dir);
-        for (const PendingWorldFile& file : files)
-        {
-            const string staged_path = string(worlds_staging_dir) + file.remote.name;
-            const string destination = string(worlds_install_dir) + file.remote.name;
-
-            if (file.exists && file.locally_edited)
-            {
-                if (backup_dir.empty())
-                {
-                    backup_dir = string(worlds_backup_dir) + to_string(get_current_timestamp()) + "/";
-                    spartan::FileSystem::CreateDirectory_(backup_dir);
-                }
-
-                if (!spartan::FileSystem::CopyFileFromTo(destination, backup_dir + file.remote.name))
-                {
-                    SP_LOG_ERROR("Failed to back up %s, it was left untouched", destination.c_str());
-                    success = false;
-                    continue;
-                }
-                backed_up++;
-            }
-
-            if (!spartan::FileSystem::CopyFileFromTo(staged_path, destination) || git_blob_sha1(destination) != file.remote.sha)
-            {
-                SP_LOG_ERROR("Failed to install %s", destination.c_str());
-                success = false;
-                continue;
-            }
-            manifest.installed[file.remote.name] = file.remote.sha;
-        }
-        spartan::FileSystem::Delete(worlds_staging_dir);
-
-        manifest.skipped.clear();
-        save_worlds_manifest(manifest);
-
-        if (backed_up > 0)
-        {
-            SP_LOG_INFO("Backed up %zu locally edited world files into %s", backed_up, backup_dir.c_str());
-        }
-        if (success)
-        {
-            SP_LOG_INFO("Installed %zu world files into %s", files.size(), worlds_install_dir);
-        }
-        return success;
-    }
-
-    // a first download only adds what is missing, files already on disk are left for the update check to judge
-    bool download_worlds(const spartan::ProgressTask& progress)
-    {
-        progress.SetStep("Downloading worlds", "github.com/PanosK92/SpartanEngine");
-
-        string commit;
-        vector<RemoteWorldFile> remote_files;
-        if (!fetch_worlds_listing(commit, remote_files))
-        {
-            return false;
-        }
-
-        WorldsManifest manifest          = load_worlds_manifest();
-        vector<PendingWorldFile> pending = plan_worlds_sync(remote_files, manifest);
-        save_worlds_manifest(manifest);
-        pending.erase(remove_if(pending.begin(), pending.end(), [](const PendingWorldFile& file)
-        {
-            return file.exists;
-        }), pending.end());
-
-        if (pending.empty())
-        {
-            return true;
-        }
-
-        return install_world_files(commit, pending, progress);
-    }
-
-    void check_worlds_update_async(bool manual)
-    {
-        if (worlds_check_running.exchange(true))
-        {
-            return;
-        }
-
-        worlds_check_manual = manual;
-        spartan::ThreadPool::AddTask([manual]()
-        {
-            string commit;
-            vector<RemoteWorldFile> remote_files;
-            if (!fetch_worlds_listing(commit, remote_files))
-            {
-                worlds_check_running = false;
-                worlds_check_result  = -1;
-                return;
-            }
-
-            WorldsManifest manifest          = load_worlds_manifest();
-            vector<PendingWorldFile> pending = plan_worlds_sync(remote_files, manifest);
-            const bool skipped               = !manual && !pending.empty() && manifest.skipped == worlds_update_signature(pending);
-            save_worlds_manifest(manifest);
-
-            {
-                lock_guard<mutex> lock(worlds_check_mutex);
-                worlds_check_commit  = commit;
-                worlds_check_pending = pending;
-            }
-            worlds_check_running = false;
-            worlds_check_result  = (pending.empty() || skipped) ? 2 : 1;
-        });
-    }
-
-    void start_worlds_update()
-    {
-        if (download_in_progress || worlds_update_files.empty())
-        {
-            return;
-        }
-
-        visible_worlds_update = false;
-        worlds_update_failed  = false;
-        download_in_progress  = true;
-
-        spartan::ThreadPool::AddTask([commit = worlds_update_commit, files = worlds_update_files]()
-        {
-            auto progress = spartan::ProgressTracker::Begin(spartan::ProgressType::Download, "Worlds", "Updating worlds");
-            download_result.store(install_world_files(commit, files, progress) ? 1 : -3);
-        });
-    }
-
-    void skip_worlds_update()
-    {
-        visible_worlds_update = false;
-        worlds_update_failed  = false;
-
-        WorldsManifest manifest = load_worlds_manifest();
-        manifest.skipped        = worlds_update_signature(worlds_update_files);
-        save_worlds_manifest(manifest);
-    }
-
-    void start_download(bool include_project, bool include_worlds)
-    {
-        if (download_in_progress)
-            return;
-
-        visible_download_prompt = false;
-        download_in_progress    = true;
-        download_failed         = false;
-        download_failed_worlds  = false;
-
-        spartan::ThreadPool::AddTask([include_project, include_worlds]()
-        {
-            auto progress = spartan::ProgressTracker::Begin(spartan::ProgressType::Download, "Project library", include_project ? "Downloading projects" : "Downloading worlds");
-
-            bool success = true;
-            if (include_project)
-            {
-                success = spartan::FileSystem::DownloadFile(
-                    assets_url,
-                    assets_destination,
-                    [&progress](float download_progress)
-                    {
-                        progress.SetFraction(download_progress);
-                    }
-                );
-
-                if (success)
-                {
-                    progress.SetStep("Extracting projects");
-                    success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
-                }
-            }
-
-            if (!success)
-            {
-                download_result.store(-1);
-                return;
-            }
-
-            if (include_worlds && !download_worlds(progress))
-            {
-                download_result.store(-2);
-                return;
-            }
-
-            // UI state and the world list belong to the main thread
-            download_result.store(1);
-        });
-    }
-
     void show_world_list()
     {
         visible_download_prompt = false;
@@ -1705,17 +1119,19 @@ namespace
     void download_and_extract()
     {
         // decided from what is on disk now, not when the prompt opened, a retry may find the content already there
-        downloaded_and_extracted   = is_project_extracted();
-        const bool include_project = project_update_pending || !downloaded_and_extracted;
+        downloaded_and_extracted   = Updates::IsProjectInstalled();
+        const bool include_project = !downloaded_and_extracted;
         const bool include_worlds  = !has_worlds_on_disk();
+        download_failed            = false;
+        download_failed_worlds     = false;
         if (!include_project && !include_worlds)
         {
-            download_failed = false;
             show_world_list();
             return;
         }
 
-        start_download(include_project, include_worlds);
+        visible_download_prompt = false;
+        Updates::InstallContent(include_project, include_worlds);
     }
 
     void prompt_text_centered(const char* text)
@@ -1753,34 +1169,13 @@ namespace
     {
         visible_download_prompt = false;
         download_failed         = false;
-        project_update_pending  = false;
 
         // whatever is already extracted stays usable, a declined or failed download should not hide it
-        if (is_project_extracted() || has_worlds_on_disk())
+        if (Updates::IsProjectInstalled() || has_worlds_on_disk())
         {
             worlds_prompt_declined = true;
             show_world_list();
         }
-    }
-
-    void update_assets()
-    {
-        if (download_in_progress)
-            return;
-
-        visible_update_prompt  = false;
-        project_update_pending = true;
-        if (spartan::FileSystem::Exists(assets_destination))
-        {
-            spartan::FileSystem::Delete(assets_destination);
-        }
-        start_download(true, !has_worlds_on_disk());
-    }
-
-    void skip_update_prompt()
-    {
-        visible_update_prompt = false;
-        visible_world_list    = true;
     }
 
     void window_download_prompt()
@@ -1822,85 +1217,6 @@ namespace
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
-    }
-
-    void window_update_prompt()
-    {
-        if (!visible_update_prompt)
-        {
-            return;
-        }
-
-        visible_world_list = false;
-
-        update_colors();
-        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(scaled_vec(500.0f, 150.0f), ImGuiCond_Always);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, scaled(panel_rounding));
-        if (ImGui::Begin("Update available", &visible_update_prompt,
-            ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize))
-        {
-            draw_panel_background(ImGui::GetWindowPos(), ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
-            render_prompt_body("A newer starter project package is available.", "Update now, or keep browsing the worlds already on disk.", "Update", "Skip", update_assets, skip_update_prompt);
-        }
-        ImGui::End();
-        ImGui::PopStyleVar(2);
-    }
-
-    void skip_worlds_update_prompt()
-    {
-        skip_worlds_update();
-        visible_world_list = true;
-    }
-
-    void window_worlds_update_prompt()
-    {
-        if (!visible_worlds_update)
-        {
-            return;
-        }
-
-        visible_world_list = false;
-
-        size_t added  = 0;
-        size_t edited = 0;
-        for (const PendingWorldFile& file : worlds_update_files)
-        {
-            added  += file.exists ? 0 : 1;
-            edited += file.locally_edited ? 1 : 0;
-        }
-        const size_t changed = worlds_update_files.size() - added;
-
-        string body_0 = "GitHub has " + to_string(added) + " new and " + to_string(changed) + " changed world files.";
-        string body_1 = edited > 0 ? to_string(edited) + " of them have local edits, those get backed up to ../worlds_backup." : "Files you created yourself are never touched.";
-        if (worlds_update_failed)
-        {
-            body_0 = "The world update failed.";
-            body_1 = "See the log for details. Nothing was replaced unless it downloaded fully.";
-        }
-
-        update_colors();
-        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(scaled_vec(560.0f, 150.0f), ImGuiCond_Always);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, scaled(panel_rounding));
-        bool open = true;
-        if (ImGui::Begin("World updates available###worlds_update", &open,
-            ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize))
-        {
-            draw_panel_background(ImGui::GetWindowPos(), ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
-            render_prompt_body(body_0.c_str(), body_1.c_str(), worlds_update_failed ? "Retry" : "Update", "Skip", start_worlds_update, skip_worlds_update_prompt);
-        }
-        ImGui::End();
-        ImGui::PopStyleVar(2);
-
-        // closing only dismisses it for this session, skip is what remembers the choice
-        if (!open)
-        {
-            visible_worlds_update = false;
-            visible_world_list    = true;
-        }
     }
 
     void load_selected_world()
@@ -2226,19 +1542,31 @@ namespace
         }
 
         ImGui::SameLine(0.0f, scaled(8.0f));
-        const bool is_clone     = is_worlds_directory_a_clone();
-        const bool checking     = worlds_check_running || download_in_progress;
-        const bool up_to_date   = ImGui::GetTime() < worlds_up_to_date_until;
-        const char* check_label = checking ? "Checking...###check_worlds" : up_to_date ? "Up to date###check_worlds" : "Check updates###check_worlds";
-        ImGui::BeginDisabled(is_clone || checking);
+        const Updates::CheckStatus status = Updates::GetCheckStatus();
+        const bool checking               = status == Updates::CheckStatus::Checking || Updates::IsBusy();
+        const char* check_label           = "Check updates###check_updates";
+        if (checking)
+        {
+            check_label = "Checking...###check_updates";
+        }
+        else if (status == Updates::CheckStatus::UpToDate)
+        {
+            check_label = "Up to date###check_updates";
+        }
+        else if (status == Updates::CheckStatus::Failed)
+        {
+            check_label = "Check failed###check_updates";
+        }
+        ImGui::BeginDisabled(checking);
         if (launcher_button(check_label, ImVec2(check_button_w, 0.0f)))
         {
-            check_worlds_update_async(true);
+            Updates::CheckNow();
         }
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
         {
-            ImGui::SetTooltip("%s", is_clone ? "This is a git clone, use git pull to update the worlds." : "Download new and changed worlds from GitHub.");
+            const char* tooltip = Updates::IsWorldsDirectoryAClone() ? "Check GitHub for a newer engine build and project package. The worlds are a git clone, use git pull for them." : "Check GitHub for a newer engine build, project package and worlds.";
+            ImGui::SetTooltip("%s", status == Updates::CheckStatus::Failed ? "GitHub could not be reached or answered unexpectedly, see the log for details." : tooltip);
         }
 
         ImGui::SameLine(0.0f, scaled(8.0f));
@@ -2431,7 +1759,8 @@ namespace
     {
         static bool was_visible     = false;
         static int placement_frames = 0;
-        if (!visible_world_list)
+        // an update prompt or install takes the launcher's place, the launcher stays open and returns after it
+        if (!visible_world_list || Updates::IsPromptVisible() || Updates::IsBusy())
         {
             was_visible = false;
             return;
@@ -2525,18 +1854,11 @@ void WorldSelector::Initialize(Editor* editor_in)
     editor = editor_in;
     load_world_recency();
 
-    downloaded_and_extracted = is_project_extracted();
+    downloaded_and_extracted = Updates::IsProjectInstalled();
 
     if (downloaded_and_extracted)
     {
         initial_scan = async(launch::async, collect_world_files);
-    }
-
-    // a release download installs its worlds once, this keeps them in step with the repository on every startup
-    unordered_set<string> visited;
-    if (!is_worlds_directory_a_clone() && directory_has_world_file(worlds_install_dir, visited))
-    {
-        check_worlds_update_async(false);
     }
 }
 
@@ -2544,56 +1866,18 @@ void WorldSelector::Tick()
 {
     apply_initial_scan_if_ready();
 
-    if (const int result = worlds_check_result.exchange(0); result != 0)
+    const Updates::InstallResult result = Updates::TakeInstallResult();
+    if (result == Updates::InstallResult::Installed)
     {
-        if (result == 1)
-        {
-            lock_guard<mutex> lock(worlds_check_mutex);
-            worlds_update_commit  = worlds_check_commit;
-            worlds_update_files   = worlds_check_pending;
-            worlds_update_failed  = false;
-            worlds_update_pending = true;
-        }
-        else if (result == 2 && worlds_check_manual)
-        {
-            worlds_up_to_date_until = static_cast<float>(ImGui::GetTime()) + 3.0f;
-        }
+        downloaded_and_extracted = true;
+        show_world_list();
     }
-
-    // shown with the launcher, never on top of a world that is being played or edited
-    if (worlds_update_pending && visible_world_list && !download_in_progress)
+    else if (result != Updates::InstallResult::None)
     {
-        worlds_update_pending = false;
-        visible_worlds_update = true;
-    }
-
-    if (const int result = download_result.exchange(0); result == -3)
-    {
-        download_in_progress  = false;
-        worlds_update_failed  = true;
-        visible_worlds_update = true;
-    }
-    else if (result != 0)
-    {
-        download_in_progress   = false;
-        download_failed        = result < 0;
-        download_failed_worlds = result == -2;
-        if (download_failed)
-        {
-            // the project may have extracted before the worlds failed, a retry should not fetch it again
-            if (download_failed_worlds)
-            {
-                project_update_pending = false;
-            }
-            downloaded_and_extracted = is_project_extracted();
-            visible_download_prompt  = true;
-        }
-        else
-        {
-            downloaded_and_extracted = true;
-            project_update_pending   = false;
-            show_world_list();
-        }
+        download_failed          = true;
+        download_failed_worlds   = result == Updates::InstallResult::WorldsFailed;
+        downloaded_and_extracted = Updates::IsProjectInstalled();
+        visible_download_prompt  = true;
     }
 
     // a world loading from anywhere else (menu, mcp, command line) makes the launcher redundant
@@ -2606,24 +1890,18 @@ void WorldSelector::Tick()
     was_loading = is_loading;
 
     window_download_prompt();
-    window_update_prompt();
-    window_worlds_update_prompt();
     window_world_list();
 }
 
 bool WorldSelector::GetVisible()
 {
-    return visible_world_list || visible_download_prompt || visible_update_prompt || visible_worlds_update;
+    return visible_world_list || visible_download_prompt;
 }
 
 void WorldSelector::SetVisible(bool visibility)
 {
-    // a hidden update prompt comes back the next time the launcher opens
-    worlds_update_pending   = worlds_update_pending || visible_worlds_update;
     visible_world_list      = false;
     visible_download_prompt = false;
-    visible_update_prompt   = false;
-    visible_worlds_update   = false;
 
     if (!visibility)
     {
@@ -2631,14 +1909,15 @@ void WorldSelector::SetVisible(bool visibility)
     }
 
     // a release download has the executables but not the repository's worlds/ directory
-    if (!download_in_progress)
+    const bool installing = Updates::IsBusy();
+    if (!installing)
     {
         download_failed = false;
     }
-    downloaded_and_extracted   = is_project_extracted();
+    downloaded_and_extracted   = Updates::IsProjectInstalled();
     const bool worlds_missing  = !worlds_prompt_declined && !has_worlds_on_disk();
     prompt_missing_worlds_only = downloaded_and_extracted && worlds_missing;
-    if (!download_in_progress && (!downloaded_and_extracted || worlds_missing))
+    if (!installing && (!downloaded_and_extracted || worlds_missing))
     {
         visible_download_prompt = true;
         return;
@@ -2655,10 +1934,4 @@ void WorldSelector::SetVisible(bool visibility)
     last_click_index       = -1;
     last_click_time        = -1.0f;
     scroll_to_selection    = true;
-
-    if (!update_check_started)
-    {
-        update_check_started = true;
-        check_assets_outdated_async();
-    }
 }

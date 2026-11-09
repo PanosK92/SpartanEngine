@@ -846,11 +846,13 @@ struct MaterialParameters
     SHARED_FLOAT terrain_coating_scale   SHARED_DEFAULT(3.0f);
 
     // Dielectric interface classification is independent of estimated shell thickness.
-    SHARED_UINT dielectric_flags SHARED_DEFAULT(0); // bit 0: thin surface, no interior medium
+    SHARED_UINT dielectric_flags SHARED_DEFAULT(0); // bit 0: thin surface, no interior medium, bit 1: normal map green points up (gltf)
     SHARED_FLOAT3 dielectric_padding SHARED_DEFAULT(spartan::math::Vector3::Zero);
 
 #ifndef __cplusplus
     bool is_thin_walled()        { return (dielectric_flags & 1u) != 0; }
+    // the left handed import mirrors the tangent frame, so the bitangent rebuilt from cross(n, t) points down the texture
+    bool is_normal_green_up()    { return (dielectric_flags & 2u) != 0; }
     bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
     bool has_texture_normal()    { return (flags & (1 << 1))  != 0; }
     bool has_texture_height()    { return (flags & (1 << 0))  != 0; }
