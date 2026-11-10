@@ -39,7 +39,7 @@ Then open `spartan.xcworkspace`.
 
 ### Web
 
-To just try it, download `spartan_web_release_*.zip` from the [releases](https://github.com/PanosK92/SpartanEngine/releases), unzip it, run `python serve.py` and open the printed address in Chrome, Edge or Brave.
+To just try it, download `spartan_web_webgpu_*.zip` from the [releases](https://github.com/PanosK92/SpartanEngine/releases), unzip it, run `python serve.py` and open the printed address in Chrome, Edge or Brave.
 
 The browser build is the WebGPU backend compiled to WebAssembly by [`tools/web_build.py`](../tools/web_build.py). Generate and build the Windows WebGPU backend first (`generate_project_files.bat vs2026 webgpu`, or option `[3]` in the menu; setup downloads Dawn), then run it once so the WGSL shader cache exists:
 

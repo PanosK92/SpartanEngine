@@ -39,8 +39,8 @@ Every CI release on master carries two WebGPU downloads:
 
 | Artifact | How to run it |
 | -------- | ------------- |
-| `spartan_webgpu_release_*.zip` | Unzip and run `spartan_webgpu.exe` (Windows 10/11, any D3D12 GPU). |
-| `spartan_web_release_*.zip` | Unzip, run `python serve.py` in that folder (it opens `http://localhost:8080/spartan.html`; pass another port as the first argument), and use Chrome, Edge or Brave. Opening `spartan.html` straight from disk doesn't work, because browsers don't load WebAssembly from `file://`. |
+| `spartan_windows_webgpu_*.zip` | Unzip and run `spartan_webgpu.exe` (Windows 10/11, any D3D12 GPU). |
+| `spartan_web_webgpu_*.zip` | Unzip, run `python serve.py` in that folder (it opens `http://localhost:8080/spartan.html`; pass another port as the first argument), and use Chrome, Edge or Brave. Opening `spartan.html` straight from disk doesn't work, because browsers don't load WebAssembly from `file://`. |
 
 The release web package boots the editor with an empty world. CI has no copy of the project assets, so a world with models has to be packaged locally (see [Browser build](#browser-build)).
 
@@ -114,9 +114,9 @@ Native bake caches (meshlets, LODs, collision) aren't shipped; the browser bakes
 
 The `build_webgpu` job in [`.github/workflows/workflow.yml`](../.github/workflows/workflow.yml) runs on Windows Server 2025:
 
-1. It generates `vs2026 webgpu` (setup fetches and links Dawn), builds `release`, runs the GPU-free startup smoke test, and zips `spartan_webgpu_release.zip`.
+1. It generates `vs2026 webgpu` (setup fetches and links Dawn), builds `release`, runs the GPU-free startup smoke test, and zips `spartan_windows_webgpu.zip`.
 2. It runs `spartan_webgpu.exe --software-gpu --bake-shaders` on WARP. `--bake-shaders` (any backend) starts the engine headless, waits until the shader queue has drained, and exits without rendering a frame. That fills the WGSL cache, about 130 modules in under half a minute on a desktop CPU. The job fails if the process hangs or writes fewer than 100 shaders.
-3. It installs emsdk (pinned by `EMSDK_VERSION`), runs `python tools/web_build.py engine` without a world, and zips `spartan_web_release.zip`.
+3. It installs emsdk (pinned by `EMSDK_VERSION`), runs `python tools/web_build.py engine` without a world, and zips `spartan_web_webgpu.zip`.
 
 The release waits on this job like it does on the other platforms.
 

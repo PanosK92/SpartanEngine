@@ -89,7 +89,7 @@ jobs:
       - name: Create artifact
         shell: cmd
         run: |
-          set ZIP=spartan_${{ matrix.api }}_release.zip
+          set ZIP=spartan_windows_${{ matrix.api }}.zip
           set EXE=spartan_${{ matrix.api }}.exe
           if exist binaries\steam_appid.txt (
             tar -a -c -f %ZIP% binaries\third_party binaries\steam_appid.txt binaries\data binaries\%EXE%
@@ -100,8 +100,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_${{ matrix.api }}_release
-          path: spartan_${{ matrix.api }}_release.zip
+          name: spartan_windows_${{ matrix.api }}
+          path: spartan_windows_${{ matrix.api }}.zip
 
   # webgpu ships twice: a native windows build on dawn and the browser package
   # the browser can't compile hlsl, so the native build first fills the wgsl cache on warp (no gpu on the runner)
@@ -157,16 +157,16 @@ jobs:
         shell: cmd
         run: |
           if exist binaries\steam_appid.txt (
-            tar -a -c -f spartan_webgpu_release.zip binaries\third_party binaries\steam_appid.txt binaries\data binaries\tint.exe binaries\spartan_webgpu.exe
+            tar -a -c -f spartan_windows_webgpu.zip binaries\third_party binaries\steam_appid.txt binaries\data binaries\tint.exe binaries\spartan_webgpu.exe
           ) else (
-            tar -a -c -f spartan_webgpu_release.zip binaries\third_party binaries\data binaries\tint.exe binaries\spartan_webgpu.exe
+            tar -a -c -f spartan_windows_webgpu.zip binaries\third_party binaries\data binaries\tint.exe binaries\spartan_webgpu.exe
           )
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_webgpu_release
-          path: spartan_webgpu_release.zip
+          name: spartan_windows_webgpu
+          path: spartan_windows_webgpu.zip
 
       # --bake-shaders compiles every shader the renderer creates on warp and exits without rendering a frame
       - name: Bake WebGPU shaders on WARP
@@ -221,13 +221,13 @@ jobs:
 
       - name: Create web artifact
         shell: cmd
-        run: tar -a -c -f spartan_web_release.zip -C binaries\web spartan.html spartan.js spartan.wasm spartan.data serve.py
+        run: tar -a -c -f spartan_web_webgpu.zip -C binaries\web spartan.html spartan.js spartan.wasm spartan.data serve.py
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_web_release
-          path: spartan_web_release.zip
+          name: spartan_web_webgpu
+          path: spartan_web_webgpu.zip
 
   build_linux:
     name: linux vulkan release
@@ -318,13 +318,13 @@ jobs:
           retention-days: 14
 
       - name: Create artifact
-        run: tar -czf spartan_vulkan_linux_release.tar.gz -C binaries spartan_vulkan libdxcompiler.so libdxil.so data
+        run: tar -czf spartan_linux_vulkan.tar.gz -C binaries spartan_vulkan libdxcompiler.so libdxil.so data
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_vulkan_linux_release
-          path: spartan_vulkan_linux_release.tar.gz
+          name: spartan_linux_vulkan
+          path: spartan_linux_vulkan.tar.gz
 
   build_macos:
     name: macos metal release
@@ -447,13 +447,13 @@ jobs:
           fi
 
       - name: Create artifact
-        run: tar -czf spartan_metal_macos_release.tar.gz -C binaries spartan_metal $(cd binaries && ls *.dylib) data
+        run: tar -czf spartan_macos_metal.tar.gz -C binaries spartan_metal $(cd binaries && ls *.dylib) data
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_metal_macos_release
-          path: spartan_metal_macos_release.tar.gz
+          name: spartan_macos_metal
+          path: spartan_macos_metal.tar.gz
 
   release:
     # every platform must build and pass startup before any release is published
@@ -469,18 +469,17 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          pattern: spartan_*_release
+          pattern: spartan_*
           merge-multiple: true
           path: .
 
+      # spartan_<platform>_<api>.<ext> becomes spartan_<platform>_<api>_<tag>.<ext>
       - name: Rename release artifacts
         run: |
-          mv spartan_vulkan_release.zip spartan_vulkan_release_$TAG.zip
-          mv spartan_d3d12_release.zip spartan_d3d12_release_$TAG.zip
-          mv spartan_webgpu_release.zip spartan_webgpu_release_$TAG.zip
-          mv spartan_web_release.zip spartan_web_release_$TAG.zip
-          mv spartan_vulkan_linux_release.tar.gz spartan_vulkan_linux_release_$TAG.tar.gz
-          mv spartan_metal_macos_release.tar.gz spartan_metal_macos_release_$TAG.tar.gz
+          for file in spartan_*.zip spartan_*.tar.gz; do
+            mv "$file" "${file%%.*}_$TAG.${file#*.}"
+          done
+          ls -l spartan_*
 
       - name: Generate release notes
         id: generate_release_notes
@@ -546,7 +545,7 @@ jobs:
               if (!groups[area]) {
                 groups[area] = [];
               }
-              groups[area].push(`- [\`${sha}\`](${commit.html_url}) ${text}`);
+              groups[area].push(`- ${text} <sub>[\`${sha}\`](${commit.html_url})</sub>`);
             }
 
             const seen = new Set();
@@ -557,33 +556,126 @@ jobs:
               }
               seen.add(area);
               const title = groupTitle[area] || area.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-              sections.push(`### ${title}\n${groups[area].join('\n')}`);
+              sections.push(`### ${title} <sub>${groups[area].length}</sub>\n\n${groups[area].join('\n')}`);
             }
+
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const tag = process.env.TAG;
+            const repo_url = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const images_url = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/${context.sha}/.github/images`;
+            const icon = (name) => `<img src="${images_url}/platforms/${name}.svg" width="16" height="16" alt=""/>`;
+            const previous_tag = lastRelease ? lastRelease.tag_name : null;
+
+            const downloads = [
+              { os: 'windows', os_name: 'Windows', api: 'vulkan', api_name: 'Vulkan', name: 'spartan_windows_vulkan', ext: 'zip', notes: '**Recommended**' },
+              { os: 'windows', os_name: 'Windows', api: 'directx', api_name: 'DirectX&nbsp;12', name: 'spartan_windows_d3d12', ext: 'zip', notes: '' },
+              { os: 'linux', os_name: 'Linux', api: 'vulkan', api_name: 'Vulkan', name: 'spartan_linux_vulkan', ext: 'tar.gz', notes: 'x64' },
+              { os: 'apple', os_name: 'macOS', api: 'metal', api_name: 'Metal', name: 'spartan_macos_metal', ext: 'tar.gz', notes: 'macOS 26+, Apple&nbsp;silicon' },
+              { os: 'windows', os_name: 'Windows', api: 'webgpu', api_name: 'WebGPU', name: 'spartan_windows_webgpu', ext: 'zip', notes: '_Work in progress_' },
+              { os: 'web', os_name: 'Browser', api: 'webgpu', api_name: 'WebGPU', name: 'spartan_web_webgpu', ext: 'zip', notes: '_Work in progress_' }
+            ];
+
+            const sha256 = (file) => new Promise((resolve, reject) => {
+              const hash = crypto.createHash('sha256');
+              fs.createReadStream(file).on('data', (data) => hash.update(data)).on('end', () => resolve(hash.digest('hex'))).on('error', reject);
+            });
+
+            const rows = [];
+            const checksums = [];
+            for (const download of downloads) {
+              const file = `${download.name}_${tag}.${download.ext}`;
+              const size = `${Math.max(1, Math.round(fs.statSync(file).size / (1024 * 1024)))} MB`;
+              const url = `${repo_url}/releases/download/${tag}/${file}`;
+              rows.push(`| ${icon(download.os)} | **${download.os_name}** | ${icon(download.api)} | ${download.api_name} | [**${download.name}**.${download.ext}](${url}) | ${size} | ${download.notes} |`);
+              checksums.push(`${await sha256(file)}  ${file}`);
+            }
+
+            // the tag is yyyy.mm.dd.hh.mm in utc
+            const [year, month, day, hour, minute] = tag.split('.');
+            const month_name = new Date(Date.UTC(year, month - 1, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+            const short_sha = context.sha.substring(0, 7);
+            const commit_count = Object.values(groups).reduce((total, entries) => total + entries.length, 0);
+            const since = previous_tag
+              ? ` · ${commit_count} ${commit_count === 1 ? 'commit' : 'commits'} since <a href="${repo_url}/releases/tag/${previous_tag}">${previous_tag}</a>`
+              : '';
 
             const changelog = sections.length > 0
               ? sections.join('\n\n')
               : '_No new commits since the last release._';
 
             const notes = [
-              'Editor builds. On Windows unzip and run `spartan_vulkan.exe` or `spartan_d3d12.exe`, on Linux extract and run `./spartan_vulkan` (needs `libfreeimage3` and a Vulkan driver).',
-              'On macOS 26+ (Apple silicon) extract, run `xattr -dr com.apple.quarantine .` in the extracted folder since the build is not notarized, then run `./spartan_metal`.',
-              'WebGPU (work in progress): on Windows unzip and run `spartan_webgpu.exe` (Dawn). For the browser unzip `spartan_web_release_*.zip`, run `python serve.py` in that folder and open the printed address in Chrome, Edge or Brave. The web package boots the editor with an empty world, see `docs/webgpu.md` to package a world.',
+              '<p align="center">',
+              `  <img src="${images_url}/logo256.png" width="88" alt="Spartan"/>`,
+              '</p>',
+              '<p align="center">',
+              `  Automated editor build of <a href="${repo_url}/commit/${context.sha}"><code>${short_sha}</code></a> · ${Number(day)} ${month_name} ${year}, ${hour}:${minute} UTC${since}`,
+              '</p>',
               '',
-              '| Platform | Backend | Artifact |',
-              '| --- | --- | --- |',
-              '| Windows | Vulkan | `spartan_vulkan_release_*.zip` |',
-              '| Windows | Direct3D 12 | `spartan_d3d12_release_*.zip` |',
-              '| Windows | WebGPU (Dawn) | `spartan_webgpu_release_*.zip` |',
-              '| Web | WebGPU (browser) | `spartan_web_release_*.zip` |',
-              '| Linux | Vulkan | `spartan_vulkan_linux_release_*.tar.gz` |',
-              '| macOS | Metal | `spartan_metal_macos_release_*.tar.gz` |',
+              '## Download',
               '',
-              '## Changelog',
+              '| | Platform | | Graphics API | File | Size | Notes |',
+              '| :-: | :-- | :-: | :-- | :-- | --: | :-- |',
+              ...rows,
               '',
-              changelog
+              '> [!TIP]',
+              '> Not sure which one to pick? On Windows take **Vulkan**. On first launch the World Launcher downloads the project assets and worlds, so the first start needs an internet connection.',
+              '',
+              '## Getting started',
+              '',
+              `<details><summary>${icon('windows')}&nbsp; <b>Windows</b> &nbsp;<sub>Vulkan, DirectX 12, WebGPU</sub></summary>`,
+              '',
+              '1. Unzip the archive anywhere.',
+              '2. Open the `binaries` folder and run `spartan_vulkan.exe`, `spartan_d3d12.exe` or `spartan_webgpu.exe`.',
+              '',
+              '</details>',
+              '',
+              `<details><summary>${icon('linux')}&nbsp; <b>Linux</b> &nbsp;<sub>Vulkan</sub></summary>`,
+              '',
+              '1. Install `libfreeimage3` and a Vulkan driver.',
+              '2. Extract and run it:',
+              '',
+              '```bash',
+              `mkdir spartan && tar -xzf spartan_linux_vulkan_${tag}.tar.gz -C spartan`,
+              'cd spartan && ./spartan_vulkan',
+              '```',
+              '',
+              '</details>',
+              '',
+              `<details><summary>${icon('apple')}&nbsp; <b>macOS</b> &nbsp;<sub>Metal, macOS 26+, Apple silicon</sub></summary>`,
+              '',
+              'The build is not notarized, so clear the quarantine flag before the first run:',
+              '',
+              '```bash',
+              `mkdir spartan && tar -xzf spartan_macos_metal_${tag}.tar.gz -C spartan`,
+              'cd spartan && xattr -dr com.apple.quarantine . && ./spartan_metal',
+              '```',
+              '',
+              '</details>',
+              '',
+              `<details><summary>${icon('web')}&nbsp; <b>Browser</b> &nbsp;<sub>WebGPU, work in progress</sub></summary>`,
+              '',
+              '1. Unzip the archive and run `python serve.py` in that folder.',
+              '2. Open the printed address in Chrome, Edge or Brave.',
+              '',
+              `The web package boots the editor with an empty world. See [docs/webgpu.md](${repo_url}/blob/master/docs/webgpu.md) to package a world.`,
+              '',
+              '</details>',
+              '',
+              "## What's changed",
+              '',
+              changelog,
+              '',
+              ...(previous_tag ? [`**Full changelog:** [${previous_tag}...${tag}](${repo_url}/compare/${previous_tag}...${tag})`, ''] : []),
+              '<details><summary>SHA-256 checksums</summary>',
+              '',
+              '```',
+              ...checksums,
+              '```',
+              '',
+              '</details>'
             ].join('\n');
 
-            const fs = require('fs');
             const delimiter = 'EOF_' + Math.random().toString(36).substr(2, 9);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${notes}\n${delimiter}\n`);
 
@@ -595,9 +687,9 @@ jobs:
           body: ${{ steps.generate_release_notes.outputs.notes }}
           prerelease: true
           files: |
-            spartan_vulkan_release_${{ env.TAG }}.zip
-            spartan_d3d12_release_${{ env.TAG }}.zip
-            spartan_webgpu_release_${{ env.TAG }}.zip
-            spartan_web_release_${{ env.TAG }}.zip
-            spartan_vulkan_linux_release_${{ env.TAG }}.tar.gz
-            spartan_metal_macos_release_${{ env.TAG }}.tar.gz
+            spartan_windows_vulkan_${{ env.TAG }}.zip
+            spartan_windows_d3d12_${{ env.TAG }}.zip
+            spartan_linux_vulkan_${{ env.TAG }}.tar.gz
+            spartan_macos_metal_${{ env.TAG }}.tar.gz
+            spartan_windows_webgpu_${{ env.TAG }}.zip
+            spartan_web_webgpu_${{ env.TAG }}.zip

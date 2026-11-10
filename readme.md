@@ -251,7 +251,7 @@ tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 
 #### <img src=".github/images/platforms/web.svg" height="16" alt=""/>&nbsp; Web &nbsp;<sub>WebGPU, WIP</sub>
 
-To just try it: download `spartan_web_release_*.zip` from the releases, unzip, run `python serve.py` and open the printed address in Chrome, Edge or Brave. To build it ([full guide](docs/webgpu.md)):
+To just try it: download `spartan_web_webgpu_*.zip` from the releases, unzip, run `python serve.py` and open the printed address in Chrome, Edge or Brave. To build it ([full guide](docs/webgpu.md)):
 
 ```powershell
 # the browser can't compile hlsl: build and run the windows webgpu backend once so it fills the shader cache
