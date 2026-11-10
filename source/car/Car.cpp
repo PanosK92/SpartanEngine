@@ -60,6 +60,43 @@ namespace spartan
         constexpr float car_enter_reach = 2.5f;
         // weave repeats per body uv unit for the carbon finish
         constexpr float carbon_weave_tiling = 40.0f;
+        // lens glow over what the emissive presets author, a lit headlight or stop lamp has to read against a sunlit body
+        // the white preset is 100k nits and the red one 2k, the position lamps stay there so they hold their red at night
+        constexpr float lamp_gain_low_beam  = 4.0f;
+        constexpr float lamp_gain_high_beam = 8.0f;
+        constexpr float lamp_gain_position  = 1.0f;
+        constexpr float lamp_gain_stop      = 75.0f;
+        // pedal travel that closes the stop lamp switch
+        constexpr float stop_lamp_pedal_threshold = 0.05f;
+        // emergency stop signal, the lamps flash while the abs works and for a moment after so the rhythm does not stutter
+        constexpr float stop_lamp_flash_hz   = 4.5f;
+        constexpr float stop_lamp_flash_hold = 0.6f;
+        constexpr float stop_lamp_flash_dim  = 0.03f;
+        // seconds a lamp takes to cover most of the way to its switch, discharge burners warm up and cool down, leds are all but instant
+        constexpr float lamp_rise_headlight = 0.1f;
+        constexpr float lamp_fall_headlight = 0.14f;
+        constexpr float lamp_blend_high_beam = 0.06f;
+        constexpr float lamp_rise_position  = 0.04f;
+        constexpr float lamp_fall_position  = 0.06f;
+        constexpr float lamp_rise_stop      = 0.02f;
+        constexpr float lamp_fall_stop      = 0.035f;
+        constexpr float lamp_level_epsilon  = 1.0e-4f;
+
+        // eases a lamp level towards its target, true while it is still moving
+        bool approach_lamp_level(float& level, float target, float rise, float fall, float dt)
+        {
+            if (level == target)
+            {
+                return false;
+            }
+
+            level += (target - level) * (1.0f - expf(-dt / (target > level ? rise : fall)));
+            if (fabsf(target - level) < lamp_level_epsilon)
+            {
+                level = target;
+            }
+            return true;
+        }
 
         float get_car_lower_extent(const car::car_preset& preset)
         {
@@ -76,6 +113,32 @@ namespace spartan
             return definition.body_is_placeholder
                 ? ferrari_body_offset_y
                 : CarPhysics::Get(*physics).GetVehicleSimulation()->get_chassis_visual_offset_y();
+        }
+
+        void fit_body(Entity* body, const car::car_definition& definition, Physics* physics)
+        {
+            if (definition.body_fit_axle)
+            {
+                // authored bodies put their origin on the wheel centre line at mid wheelbase, in metres, nose along the yawed +z
+                float axle_y = 0.0f;
+                if (auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
+                {
+                    axle_y = (simulation->get_wheel_offset(car::front_left).y + simulation->get_wheel_offset(car::rear_left).y) * 0.5f;
+                }
+                body->SetPositionLocal(math::Vector3(0.0f, axle_y, 0.0f));
+                body->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, definition.body_yaw * math::deg_to_rad));
+                body->SetScaleLocal(definition.body_scale);
+                return;
+            }
+
+            body->SetPositionLocal(math::Vector3(0.0f, get_body_visual_offset_y(definition, physics), 0.07f));
+            body->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
+            body->SetScaleLocal(1.1f);
+        }
+
+        math::Vector3 to_vector(const float* values)
+        {
+            return math::Vector3(values[0], values[1], values[2]);
         }
 
         enum class CarMaterialSlot
@@ -437,9 +500,8 @@ namespace spartan
             if (car->m_body_entity)
             {
                 car->m_body_entity->SetParent(car->m_vehicle_entity);
-                car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, get_body_visual_offset_y(*definition, physics), 0.07f));
-                car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
-                car->m_body_entity->SetScaleLocal(1.1f);
+                fit_body(car->m_body_entity, *definition, physics);
+                car->BindBodyParts();
 
                 CarPhysics::Get(*physics).SetChassisEntity(car->m_body_entity, excluded_wheel_entities);
             }
@@ -467,6 +529,7 @@ namespace spartan
             {
                 car->m_body_entity->SetParent(car->m_vehicle_entity);
                 car->m_body_entity->SetPositionLocal(math::Vector3::Zero);
+                car->BindBodyParts();
             }
 
             // spawn real wheel entities where the baked in tires were
@@ -782,9 +845,8 @@ namespace spartan
             m_body_entity->SetParent(m_vehicle_entity);
             // play stop strips non transient play spawned entities, keep the body with the car
             mark_entity_tree_transient(m_body_entity);
-            m_body_entity->SetPositionLocal(math::Vector3(0.0f, get_body_visual_offset_y(*definition, physics), 0.07f));
-            m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
-            m_body_entity->SetScaleLocal(1.1f);
+            fit_body(m_body_entity, *definition, physics);
+            BindBodyParts();
             CarPhysics::Get(*physics).SetChassisEntity(m_body_entity, excluded_wheel_entities);
         }
 
@@ -879,10 +941,9 @@ namespace spartan
 
     void Car::SetHeadlights(CarHeadlights mode)
     {
-        m_headlights     = mode;
-        m_rear_lamps     = mode != CarHeadlights::Off;
-        m_lamps_switched = true;
-        ApplyLamps();
+        m_headlights = mode;
+        m_rear_lamps = mode != CarHeadlights::Off;
+        SwitchLamps();
     }
 
     void Car::CycleHeadlights()
@@ -1550,9 +1611,10 @@ namespace spartan
         else if (m_current_view == CarView::Hood)
         {
             camera->SetParent(m_body_entity);
-            // hood position
+            // the driver's eye when the car has a cabin, otherwise above the hood
             math::Quaternion camera_correction = m_body_entity->GetRotationLocal().Inverse();
-            camera->SetPositionLocal(math::Vector3(0.0f, 0.8f, -1.0f));
+            const bool cockpit = m_definition && m_definition->has_cockpit_eye;
+            camera->SetPositionLocal(cockpit ? to_vector(m_definition->cockpit_eye) : math::Vector3(0.0f, 0.8f, -1.0f));
             camera->SetRotationLocal(camera_correction);
         }
         else
@@ -1762,8 +1824,22 @@ namespace spartan
 
     void Car::SetRearLamps(bool on)
     {
-        m_rear_lamps     = on;
+        m_rear_lamps = on;
+        SwitchLamps();
+    }
+
+    void Car::SwitchLamps()
+    {
         m_lamps_switched = true;
+
+        // a display car has no tick to fade over, its lamps switch at once
+        if (!m_lamps_ticked)
+        {
+            m_headlight_level = m_headlights != CarHeadlights::Off ? 1.0f : 0.0f;
+            m_high_beam_level = m_headlights == CarHeadlights::High ? 1.0f : 0.0f;
+            m_rear_lamp_level = m_rear_lamps ? 1.0f : 0.0f;
+        }
+
         ApplyLamps();
     }
 
@@ -1775,21 +1851,211 @@ namespace spartan
     void Car::ApplyLamps()
     {
         // the lamp entities follow the switches through car_lights.lua, the lenses follow them here
-        // until something switches the lamps the lenses keep the glow they are authored with
-        if (!m_lamps_switched)
+        // a display car keeps the glow its lenses are authored with until something switches its lamps
+        // the levels ease towards the switches in TickLamps, so the lenses fade with the light the lamps throw
+        if (m_lamps_switched)
+        {
+            const float front = m_headlight_level * (lamp_gain_low_beam + (lamp_gain_high_beam - lamp_gain_low_beam) * m_high_beam_level);
+            for (const LampMaterial& lamp : m_lamp_white)
+            {
+                lamp.material->SetPropertyRuntime(MaterialProperty::EmissiveFromAlbedo, lamp.emission * front);
+            }
+        }
+
+        for (const LampMaterial& lamp : m_lamp_red)
+        {
+            float position = lamp.emission;
+            if (m_lamps_switched)
+            {
+                position = lamp.stop_only ? 0.0f : lamp.emission * lamp_gain_position * m_rear_lamp_level;
+            }
+            const float stop = lamp.emission * lamp_gain_stop * m_stop_lamp;
+            lamp.material->SetPropertyRuntime(MaterialProperty::EmissiveFromAlbedo, std::max(position, stop));
+        }
+    }
+
+    void Car::TickLamps()
+    {
+        // a car that ticks owns its lamps from the start, switched off means dark lenses, only display cars keep the authored glow
+        bool moving      = !m_lamps_switched;
+        m_lamps_ticked   = true;
+        m_lamps_switched = true;
+        const float dt   = std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
+
+        // the stop lamps follow the brake pedal, a stop hard enough to wake the abs flashes them like an emergency stop signal
+        Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
+        if (physics && m_is_drivable && Engine::IsFlagSet(EngineMode::Playing))
+        {
+            // a paused car holds what the pedal last asked for
+            if (!Engine::IsFlagSet(EngineMode::Paused))
+            {
+                const bool braking = CarPhysics::Get(*physics).GetVehicleBrake() > stop_lamp_pedal_threshold;
+                m_stop_flash_hold  = (braking && CarPhysics::Get(*physics).IsAbsActiveAny()) ? stop_lamp_flash_hold : std::max(m_stop_flash_hold - dt, 0.0f);
+                if (braking && m_stop_flash_hold > 0.0f)
+                {
+                    m_stop_flash_phase = fmodf(m_stop_flash_phase + dt * stop_lamp_flash_hz, 1.0f);
+                    m_stop_target      = m_stop_flash_phase < 0.5f ? 1.0f : stop_lamp_flash_dim;
+                }
+                else
+                {
+                    m_stop_flash_phase = 0.0f;
+                    m_stop_target      = braking ? 1.0f : 0.0f;
+                }
+            }
+        }
+        else
+        {
+            m_stop_target      = 0.0f;
+            m_stop_flash_hold  = 0.0f;
+            m_stop_flash_phase = 0.0f;
+        }
+
+        // no lamp answers its switch at once, the levels ease there and the lenses and car_lights.lua follow them
+        moving |= approach_lamp_level(m_headlight_level, m_headlights != CarHeadlights::Off ? 1.0f : 0.0f, lamp_rise_headlight, lamp_fall_headlight, dt);
+        moving |= approach_lamp_level(m_high_beam_level, m_headlights == CarHeadlights::High ? 1.0f : 0.0f, lamp_blend_high_beam, lamp_blend_high_beam, dt);
+        moving |= approach_lamp_level(m_rear_lamp_level, m_rear_lamps ? 1.0f : 0.0f, lamp_rise_position, lamp_fall_position, dt);
+        moving |= approach_lamp_level(m_stop_lamp, m_stop_target, lamp_rise_stop, lamp_fall_stop, dt);
+        if (moving)
+        {
+            ApplyLamps();
+        }
+    }
+
+    void Car::BindBodyParts()
+    {
+        m_openings.clear();
+        m_steering_wheel_id = 0;
+        if (!m_body_entity || !m_definition)
         {
             return;
         }
 
-        const float front = m_headlights == CarHeadlights::Off ? 0.0f : (m_headlights == CarHeadlights::High ? 1.6f : 1.0f);
-        for (const LampMaterial& lamp : m_lamp_white)
+        std::vector<Entity*> descendants;
+        m_body_entity->GetDescendants(&descendants);
+
+        // importers can split a multi material node into same named children, the outermost one carries the hinge
+        auto find_part = [&descendants](const std::string& part) -> Entity*
         {
-            lamp.material->SetPropertyRuntime(MaterialProperty::EmissiveFromAlbedo, lamp.emission * front);
-        }
-        for (const LampMaterial& lamp : m_lamp_red)
+            const std::string wanted = to_lower_copy(part);
+            Entity* best   = nullptr;
+            int best_depth = std::numeric_limits<int>::max();
+            for (Entity* entity : descendants)
+            {
+                if (to_lower_copy(entity->GetObjectName()) != wanted)
+                {
+                    continue;
+                }
+
+                int depth = 0;
+                for (Entity* parent = entity->GetParent(); parent; parent = parent->GetParent())
+                {
+                    depth++;
+                }
+
+                if (depth < best_depth)
+                {
+                    best       = entity;
+                    best_depth = depth;
+                }
+            }
+            return best;
+        };
+
+        for (const car::body_opening& opening : m_definition->body_openings)
         {
-            lamp.material->SetPropertyRuntime(MaterialProperty::EmissiveFromAlbedo, m_rear_lamps ? lamp.emission : 0.0f);
+            Entity* entity = find_part(opening.part);
+            if (!entity)
+            {
+                SP_LOG_WARNING("car opening '%s' has no part named '%s'", opening.name.c_str(), opening.part.c_str());
+                continue;
+            }
+
+            OpeningState state;
+            state.entity_id     = entity->GetObjectId();
+            state.name          = opening.name;
+            state.shut_rotation = entity->GetRotationLocal();
+            state.axis          = to_vector(opening.axis).Normalized();
+            state.angle         = opening.angle * math::deg_to_rad;
+            m_openings.push_back(state);
         }
+
+        if (!m_definition->steering_wheel_part.empty())
+        {
+            if (Entity* wheel = find_part(m_definition->steering_wheel_part))
+            {
+                m_steering_wheel_id   = wheel->GetObjectId();
+                m_steering_wheel_rest = wheel->GetRotationLocal();
+            }
+            else
+            {
+                SP_LOG_WARNING("car steering wheel part '%s' not found", m_definition->steering_wheel_part.c_str());
+            }
+        }
+    }
+
+    void Car::TickBodyParts()
+    {
+        const float dt = std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
+
+        // a door takes about a second to swing through its arc, eased at both ends
+        constexpr float opening_speed = 1.0f;
+        for (OpeningState& opening : m_openings)
+        {
+            Entity* entity = World::GetEntityById(opening.entity_id);
+            if (!entity)
+            {
+                continue;
+            }
+
+            const float step = opening_speed * dt;
+            opening.amount   = opening.amount < opening.target ? std::min(opening.amount + step, opening.target) : std::max(opening.amount - step, opening.target);
+            const float eased = opening.amount * opening.amount * (3.0f - 2.0f * opening.amount);
+            entity->SetRotationLocal(math::Quaternion::FromAxisAngle(opening.axis, opening.angle * eased) * opening.shut_rotation);
+        }
+
+        if (m_steering_wheel_id != 0 && m_vehicle_entity)
+        {
+            Entity* wheel     = World::GetEntityById(m_steering_wheel_id);
+            Physics* physics  = m_vehicle_entity->GetComponent<Physics>();
+            if (wheel && physics)
+            {
+                const float steering = std::clamp(CarPhysics::Get(*physics).GetVehicleSteering(), -1.0f, 1.0f);
+                const math::Vector3 axis = to_vector(m_definition->steering_wheel_axis).Normalized();
+                wheel->SetRotationLocal(math::Quaternion::FromAxisAngle(axis, steering * m_definition->steering_wheel_lock * math::deg_to_rad) * m_steering_wheel_rest);
+            }
+        }
+    }
+
+    bool Car::SetOpeningTarget(const std::string& name, float target)
+    {
+        const std::string wanted = to_lower_copy(name);
+        bool found = false;
+        for (OpeningState& opening : m_openings)
+        {
+            if (wanted == "all" || to_lower_copy(opening.name) == wanted)
+            {
+                opening.target = std::clamp(target, 0.0f, 1.0f);
+                found = true;
+            }
+        }
+        return found;
+    }
+
+    void Car::ToggleOpenings()
+    {
+        // any opening ajar closes everything, otherwise everything opens
+        const bool any_open = std::any_of(m_openings.begin(), m_openings.end(), [](const OpeningState& opening) { return opening.target > 0.0f; });
+        SetOpeningTarget("all", any_open ? 0.0f : 1.0f);
+    }
+
+    std::vector<Car::OpeningStatus> Car::GetOpenings() const
+    {
+        std::vector<OpeningStatus> result;
+        for (const OpeningState& opening : m_openings)
+        {
+            result.push_back({ opening.name, opening.amount, opening.target });
+        }
+        return result;
     }
 
     void Car::SetSteeringRequest(float value)
@@ -1942,12 +2208,14 @@ namespace spartan
             m_carbon_weave = nullptr;
             m_lamp_white.clear();
             m_lamp_red.clear();
-            auto add_lamp = [](std::vector<LampMaterial>& lamps, const std::shared_ptr<Material>& material)
+            auto add_lamp = [](std::vector<LampMaterial>& lamps, const std::shared_ptr<Material>& material, bool stop_only = false)
             {
                 const bool known = std::any_of(lamps.begin(), lamps.end(), [&material](const LampMaterial& lamp) { return lamp.material == material; });
                 if (!known)
                 {
-                    lamps.push_back({ material, material->GetProperty(MaterialProperty::EmissiveFromAlbedo) });
+                    // the source's own emissive would shine through a lamp that is switched off, the albedo emission is the lamp
+                    material->SetProperty(MaterialProperty::EmissiveIntensity, 0.0f);
+                    lamps.push_back({ material, material->GetProperty(MaterialProperty::EmissiveFromAlbedo), stop_only });
                 }
             };
             auto clone_material =
@@ -2112,7 +2380,7 @@ namespace spartan
                             clone_material(render, "emissive_red_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveRedLight, false);
-                            add_lamp(m_lamp_red, material);
+                            add_lamp(m_lamp_red, material, contains(context, "break") || contains(context, "brake") || contains(context, "stop"));
                         }
                         break;
                     }
@@ -2572,6 +2840,8 @@ namespace spartan
             return;
         }
 
+        TickLamps();
+
         if (m_dyno)
         {
             Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
@@ -2693,6 +2963,7 @@ namespace spartan
         TickViewSwitch();
         TickSummon();
         TickVisualization();
+        TickBodyParts();
 
         if (IsViewed() && !m_cinematic)
         {
@@ -3087,7 +3358,9 @@ namespace spartan
             engine_sound::listener_view view = engine_sound::listener_view::chase;
             if (m_current_view == CarView::Hood)
             {
-                view = engine_sound::listener_view::hood;
+                // a modelled cabin puts the hood view at the driver's ears
+                const bool cockpit = m_definition && m_definition->has_cockpit_eye;
+                view = cockpit ? engine_sound::listener_view::cabin : engine_sound::listener_view::hood;
             }
             else if (m_current_view == CarView::Wheel)
             {
@@ -3300,6 +3573,16 @@ namespace spartan
         )
         {
             return;
+        }
+
+        // keyboard: O swings the doors and lids of a parked car, from the seat or standing next to it
+        if (!m_openings.empty() && Input::GetKeyDown(KeyCode::O) && (m_is_occupied || IsPlayerInRange()))
+        {
+            Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
+            if (!physics || physics->GetLinearVelocity().Length() * 3.6f < 5.0f)
+            {
+                ToggleOpenings();
+            }
         }
 
         // keyboard: E, gamepad: west button (X on xbox, square on playstation)

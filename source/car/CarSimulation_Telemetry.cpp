@@ -586,11 +586,14 @@ namespace car
                     assisted_actuators.stability_brake_torque[3]);
                 fprintf(file, ",%.6g", engine_net_output_torque);
                 fputs(",\"", file);
-                const std::string skeleton = get_physics_telemetry_json();
-                std::string escaped;
-                escaped.reserve(skeleton.size() + skeleton.size() / 4);
-                for (char c : skeleton) { if (c == '"') escaped += '"'; escaped += c; }
-                fwrite(escaped.data(), 1, escaped.size(), file);
+                if (log_skeleton)
+                {
+                    const std::string skeleton = get_physics_telemetry_json();
+                    std::string escaped;
+                    escaped.reserve(skeleton.size() + skeleton.size() / 4);
+                    for (char c : skeleton) { if (c == '"') escaped += '"'; escaped += c; }
+                    fwrite(escaped.data(), 1, escaped.size(), file);
+                }
                 event_flags = 0; contact_impulse = PxVec3(0);
                 contact_reports.clear(); contact_reports_dropped = 0;
                 fputc('"', file);

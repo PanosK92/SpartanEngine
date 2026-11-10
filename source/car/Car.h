@@ -191,6 +191,11 @@ namespace spartan
         void CycleHeadlights();
         void SetRearLamps(bool on);
         bool GetRearLamps() const { return m_rear_lamps; }
+        // how lit each lamp is right now, 0 dark to 1 lit, they ease towards their switch the way a real lamp warms up and cools down
+        // the stop lamps follow the brake pedal and flash while the abs works a hard stop
+        float GetHeadlightLevel() const { return m_headlight_level; }
+        float GetRearLampLevel() const { return m_rear_lamp_level; }
+        float GetStopLamp() const { return m_stop_lamp; }
         // true when the car carries headlight entities to switch
         bool HasLights() const;
         // true when the car has lamps of any kind to switch, entities or emissive lenses
@@ -199,6 +204,18 @@ namespace spartan
         // steers the front wheels from outside the cockpit, a parked car holds the angle, -1 full left lock to 1 full right lock
         void SetSteeringRequest(float value);
         float GetSteeringRequest() const { return m_steering_request; }
+
+        // doors and lids the .car file declares as openings, 0 shut to 1 fully open, they swing there over a moment
+        // name "all" addresses every opening, returns false when no opening has that name
+        bool SetOpeningTarget(const std::string& name, float target);
+        void ToggleOpenings();
+        struct OpeningStatus
+        {
+            std::string name;
+            float amount = 0.0f;
+            float target = 0.0f;
+        };
+        std::vector<OpeningStatus> GetOpenings() const;
 
         // camera orbit (right stick control)
         void AddCameraOrbitYaw(float delta);
@@ -255,6 +272,11 @@ namespace spartan
         void ApplyPaint(Material* material, RHI_Texture* original_color_texture) const;
         void ApplyPaintAll();
         void ApplyLamps();
+        void SwitchLamps();
+        void TickLamps();
+        // finds the opening and steering wheel parts in a freshly created body
+        void BindBodyParts();
+        void TickBodyParts();
         // restore=false when the cached entities are about to be destroyed
         void ClearBodyRenderStates(bool restore);
 
@@ -298,11 +320,34 @@ namespace spartan
         {
             std::shared_ptr<Material> material;
             float emission = 0.0f;
+            bool stop_only = false; // a high mounted stop lamp, dark unless braking
         };
         std::vector<LampMaterial> m_lamp_white;
         std::vector<LampMaterial> m_lamp_red;
-        bool  m_lamps_switched    = false; // the lenses glow as authored until something switches the lamps
+        bool  m_lamps_switched    = false; // a display car's lenses glow as authored until something switches the lamps
+        bool  m_lamps_ticked      = false; // a car nothing ticks has no time to fade over, its lamps switch at once
+        float m_headlight_level   = 0.0f;  // 0 dark to 1 lit
+        float m_high_beam_level   = 0.0f;
+        float m_rear_lamp_level   = 0.0f;
+        float m_stop_lamp         = 0.0f;
+        float m_stop_target       = 0.0f;  // what the pedal and the abs ask of the stop lamps
+        float m_stop_flash_hold   = 0.0f;  // seconds the stop lamps keep flashing after the abs last worked
+        float m_stop_flash_phase  = 0.0f;
         float m_steering_request  = 0.0f;
+
+        struct OpeningState
+        {
+            uint64_t         entity_id = 0; // id not raw pointer, the body can be rebuilt between ticks
+            std::string      name;
+            math::Quaternion shut_rotation;
+            math::Vector3    axis;
+            float            angle  = 0.0f; // radians at fully open
+            float            amount = 0.0f;
+            float            target = 0.0f;
+        };
+        std::vector<OpeningState> m_openings;
+        uint64_t         m_steering_wheel_id = 0;
+        math::Quaternion m_steering_wheel_rest;
         bool              m_spawn_error_logged = false;
         car_camera::ChaseState m_chase_camera;
         bool m_camera_wind_shake = true;

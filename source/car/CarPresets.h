@@ -397,7 +397,7 @@ namespace car
         float load_sensitivity;
         float load_reference;
         float rear_grip_ratio;           // rear axle mu relative to front, 1.0 = matched compound
-        float slip_angle_deadband;
+        float slip_angle_deadband;       // legacy XML compatibility, no longer used
         float camber_thrust_coeff;
         float max_slip_angle;
         float tire_pressure;             // bar, nominal hot pressure
@@ -577,6 +577,15 @@ namespace car
 
     //= car definition =============================================================
 
+    // a body part that swings about a hinge, doors and lids, the pivot is the part's own origin
+    struct body_opening
+    {
+        std::string name;                          // the name the toggle uses, door_left, frunk, ...
+        std::string part;                          // entity name in the body model
+        float       axis[3]  = { 1.0f, 0.0f, 0.0f }; // hinge axis in the part's parent space
+        float       angle    = 0.0f;               // degrees at fully open
+    };
+
     // a complete car described by a .car xml file: visuals, geometry and performance
     struct car_definition
     {
@@ -589,6 +598,16 @@ namespace car
         float       body_scale     = 1.0f;
         float       body_forward_z = 1.0f;         // sign of the local z axis the nose points at
         std::vector<std::string> body_hide_parts;  // baked in parts to deactivate, the spawned wheels replace them
+        bool        body_fit_axle = false;         // fit="axle": the model origin sits on the wheel centre line at mid wheelbase, no correction rotation
+        float       body_yaw      = 0.0f;          // degrees about up, axle fit only
+
+        // cabin, all in body model space
+        bool        has_cockpit_eye = false;
+        float       cockpit_eye[3]  = { 0.0f, 0.0f, 0.0f }; // the hood view eye point
+        std::string steering_wheel_part;
+        float       steering_wheel_axis[3] = { 0.0f, 0.0f, 1.0f }; // column axis in the wheel's parent space
+        float       steering_wheel_lock    = 0.0f;                  // degrees of wheel rotation at full steering input
+        std::vector<body_opening> body_openings;
 
         // wheel visual
         std::string wheel_model;

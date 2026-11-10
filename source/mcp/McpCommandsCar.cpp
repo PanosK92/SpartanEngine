@@ -18,6 +18,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "car/CarState.h"
 #include "car/CarDirt.h"
 #include "car/CarRain.h"
+#include "car/CarPresets.h"
+#include "file_system/FileSystem.h"
 #include "world/World.h"
 #include "world/Entity.h"
 #include "world/components/Physics.h"
@@ -838,6 +840,104 @@ namespace spartan
             return car_status_json(car);
         }
 
+        std::string command_vehicle_set_car(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> name = get_argument(request, "car");
+            if (!name)
+            {
+                return json_error("missing car, a catalog name or a .car file name");
+            }
+
+            const std::string wanted = to_lower_copy(*name);
+            const car::car_definition* definition = nullptr;
+            for (const car::preset_entry& entry : car::preset_registry)
+            {
+                const std::string stem = to_lower_copy(FileSystem::GetFileNameWithoutExtensionFromFilePath(entry.definition->file_path));
+                if (to_lower_copy(entry.name) == wanted || stem == wanted)
+                {
+                    definition = entry.definition;
+                    break;
+                }
+            }
+
+            if (!definition)
+            {
+                return json_error("unknown car " + *name + ", the catalog lists the .car files next to the loaded cars");
+            }
+
+            car->LoadDefinition(definition);
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_openings(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> name = get_argument(request, "name");
+            if (const std::optional<std::string> action = get_argument(request, "action"))
+            {
+                const std::string action_name = to_lower_copy(*action);
+                if (action_name == "toggle")
+                {
+                    car->ToggleOpenings();
+                }
+                else if (action_name == "open" || action_name == "close" || action_name == "set")
+                {
+                    float target = action_name == "open" ? 1.0f : 0.0f;
+                    if (action_name == "set")
+                    {
+                        const std::optional<std::string> amount = get_argument(request, "amount");
+                        if (!amount)
+                        {
+                            return json_error("set needs amount 0 to 1");
+                        }
+                        target = std::strtof(amount->c_str(), nullptr);
+                    }
+                    if (!car->SetOpeningTarget(name ? *name : "all", target))
+                    {
+                        return json_error("no opening named " + (name ? *name : std::string("all")));
+                    }
+                }
+                else if (action_name != "get")
+                {
+                    return json_error("action must be get, open, close, set or toggle");
+                }
+            }
+
+            std::string json = "{\"ok\":true,\"openings\":[";
+            bool first = true;
+            for (const Car::OpeningStatus& opening : car->GetOpenings())
+            {
+                json += first ? "" : ",";
+                json += "{\"name\":" + json_string(opening.name) + ",\"amount\":" + std::to_string(opening.amount) + ",\"target\":" + std::to_string(opening.target) + "}";
+                first = false;
+            }
+            json += "]}";
+            return json;
+        }
+
         std::string command_vehicle_visualization(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading()) return json_error("world is loading");
@@ -998,6 +1098,13 @@ namespace spartan
             bool include_skeleton = true;
             if (const auto value = get_argument(request, "include_skeleton"))
                 if (!parse_bool(*value, include_skeleton)) return json_error("invalid include_skeleton");
+            // a handling run only needs the scalar columns, the skeleton makes each row over a hundred kilobytes
+            if (const auto value = get_argument(request, "record_skeleton"))
+            {
+                bool record_skeleton = true;
+                if (!parse_bool(*value, record_skeleton)) return json_error("invalid record_skeleton");
+                simulation->set_log_skeleton(record_skeleton);
+            }
             std::string csv_text;
             std::string path;
             int total_lines = 0;
@@ -1033,6 +1140,116 @@ namespace spartan
             return json;
         }
 
+        // keyframes are "time:throttle,brake,steering,handbrake" joined by semicolons, e.g. "0:1,0,0,0;6:0,1,0,0;10:0,0,0,1"
+        std::string command_vehicle_maneuver(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return json_error("vehicle maneuver requires play mode");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (!car)
+            {
+                return json_error(error);
+            }
+            Entity* entity = car->GetRootEntity();
+            Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr;
+            ::car::Simulation* simulation = physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
+            if (!simulation)
+            {
+                return json_error("target car has no vehicle simulation");
+            }
+
+            bool stop = false;
+            if (const auto value = get_argument(request, "stop"))
+            {
+                if (!parse_bool(*value, stop)) return json_error("invalid stop");
+            }
+            if (stop)
+            {
+                simulation->stop_input_script();
+            }
+            else if (const std::optional<std::string> keyframes_arg = get_argument(request, "keyframes"))
+            {
+                if (!car->IsOccupied())
+                {
+                    return json_error("car is not occupied, call vehicle_enter first");
+                }
+                std::vector<::car::input_keyframe> keyframes;
+                std::stringstream stream(*keyframes_arg);
+                std::string item;
+                while (std::getline(stream, item, ';'))
+                {
+                    if (item.find_first_not_of(" \t\r\n") == std::string::npos)
+                    {
+                        continue;
+                    }
+                    ::car::input_keyframe keyframe;
+                    const size_t colon = item.find(':');
+                    if (colon == std::string::npos || !parse_float(item.substr(0, colon), keyframe.time))
+                    {
+                        return json_error("invalid keyframe, expected time:throttle,brake,steering,handbrake");
+                    }
+                    float values[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    std::stringstream value_stream(item.substr(colon + 1));
+                    std::string value_text;
+                    int count = 0;
+                    while (count < 4 && std::getline(value_stream, value_text, ','))
+                    {
+                        if (!parse_float(value_text, values[count]))
+                        {
+                            return json_error("invalid keyframe value");
+                        }
+                        count++;
+                    }
+                    if (count < 3)
+                    {
+                        return json_error("invalid keyframe, expected time:throttle,brake,steering,handbrake");
+                    }
+                    keyframe.throttle  = std::clamp(values[0], 0.0f, 1.0f);
+                    keyframe.brake     = std::clamp(values[1], 0.0f, 1.0f);
+                    keyframe.steering  = std::clamp(values[2], -1.0f, 1.0f);
+                    keyframe.handbrake = std::clamp(values[3], 0.0f, 1.0f);
+                    keyframes.push_back(keyframe);
+                }
+
+                bool record = true;
+                if (const auto value = get_argument(request, "record"))
+                {
+                    if (!parse_bool(*value, record)) return json_error("invalid record");
+                }
+                bool record_skeleton = false;
+                if (const auto value = get_argument(request, "record_skeleton"))
+                {
+                    if (!parse_bool(*value, record_skeleton)) return json_error("invalid record_skeleton");
+                }
+                if (record)
+                {
+                    simulation->set_log_skeleton(record_skeleton);
+                }
+                car->SetExternallyControlled(true);
+                if (!simulation->start_input_script(keyframes, record))
+                {
+                    return json_error("keyframes must be finite, start at zero or later and be sorted by time");
+                }
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"active\":" + json_bool(simulation->is_input_script_active());
+            json += ",\"time\":" + std::to_string(simulation->get_input_script_time());
+            json += ",\"duration\":" + std::to_string(simulation->get_input_script_duration());
+            json += ",\"recording\":" + json_bool(simulation->get_log_to_file());
+            json += ",\"path\":" + json_string(simulation->get_telemetry_path());
+            json += "}";
+            return json;
+        }
+
     }
     void RegisterCarMcpCommands()
     {
@@ -1048,8 +1265,11 @@ namespace spartan
         RegisterMcpCommand("vehicle_shift", command_vehicle_shift);
         RegisterMcpCommand("vehicle_reset", command_vehicle_reset);
         RegisterMcpCommand("vehicle_set_view", command_vehicle_set_view);
+        RegisterMcpCommand("vehicle_openings", command_vehicle_openings);
+        RegisterMcpCommand("vehicle_set_car", command_vehicle_set_car);
         RegisterMcpCommand("vehicle_visualization", command_vehicle_visualization);
         RegisterMcpCommand("vehicle_telemetry", command_vehicle_telemetry);
+        RegisterMcpCommand("vehicle_maneuver", command_vehicle_maneuver);
         RegisterMcpCommand("vehicle_export_hull", command_vehicle_export_hull);
         RegisterMcpCommand("engine_sound_capture", command_engine_sound_capture);
     }

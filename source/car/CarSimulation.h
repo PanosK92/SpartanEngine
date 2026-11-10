@@ -45,6 +45,18 @@ namespace car
     };
 
     // the whole vehicle model, a physx chassis body plus per-wheel tire, suspension, drivetrain and aero
+    // Timed pedal and steering keyframes played inside the physics step. Each keyframe holds until
+    // the next one, the last one ends the script and stays applied. A handling test driven this
+    // way repeats tick for tick, which inputs sent over the bridge between frames cannot do.
+    struct input_keyframe
+    {
+        float time      = 0.0f;
+        float throttle  = 0.0f;
+        float brake     = 0.0f;
+        float steering  = 0.0f;
+        float handbrake = 0.0f;
+    };
+
     class Simulation
     {
     private:
@@ -54,6 +66,13 @@ namespace car
         bool log_pacejka = false;
         bool log_telemetry = false;
         bool log_to_file = false;
+        // the assembly skeleton is over a hundred kilobytes per tick, handling runs record without it
+        bool log_skeleton = true;
+        std::vector<input_keyframe> input_script;
+        float input_script_time = 0.0f;
+        bool input_script_active = false;
+        bool input_script_recording = false;
+        void advance_input_script(float dt);
         std::string telemetry_path = "car_telemetry.csv";
         PxRigidDynamic* body = nullptr;
         bool fallback_chassis = false;
@@ -78,6 +97,12 @@ namespace car
         float           sweep_distance[wheel_count] = {};
         float           abs_phase               = 0.0f;
         bool            abs_active[wheel_count] = {};
+        // per wheel modulator state: the share of the pedal pressure let through, the pressure that last
+        // broke the tire loose, the braking slip of the previous step and whether a release is under way
+        float           abs_pressure[wheel_count]      = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float           abs_lock_pressure[wheel_count] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float           abs_slip[wheel_count]          = {};
+        bool            abs_releasing[wheel_count]     = {};
         float           tc_reduction            = 0.0f;
         bool            tc_active               = false;
         bool            burnout_active          = false;
@@ -183,6 +208,13 @@ namespace car
         const multibody_state& get_multibody_state() const;
         bool get_log_to_file() const;
         void set_log_to_file(bool enabled);
+        bool get_log_skeleton() const { return log_skeleton; }
+        void set_log_skeleton(bool enabled) { log_skeleton = enabled; }
+        bool start_input_script(const std::vector<input_keyframe>& keyframes, bool record);
+        void stop_input_script();
+        bool is_input_script_active() const { return input_script_active; }
+        float get_input_script_time() const { return input_script_time; }
+        float get_input_script_duration() const { return input_script.empty() ? 0.0f : input_script.back().time; }
         void set_telemetry_path(const std::string& path);
         std::string get_telemetry_path() const;
         bool get_rev_limiter_active() const;
@@ -248,6 +280,7 @@ namespace car
         float exp_decay(float rate, float dt);
         bool is_valid_wheel(int i);
         void clear_abs_state();
+        float get_steering_speed_limit();
         float get_assisted_steering_target(float raw_input);
         void update_stability_controller();
         const assist_command& get_assist_state() const { return assisted_actuators; }

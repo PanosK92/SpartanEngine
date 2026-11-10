@@ -961,6 +961,47 @@ namespace car
             definition.body_scale     = body.attribute("scale").as_float(1.0f);
             definition.body_forward_z = body.attribute("forward_z").as_float(1.0f);
             split_csv(body.attribute("hide_parts").as_string(""), definition.body_hide_parts);
+            definition.body_fit_axle = std::string(body.attribute("fit").as_string("")) == "axle";
+            definition.body_yaw      = body.attribute("yaw").as_float(0.0f);
+
+            auto read_vector = [](pugi::xml_node node, const char* prefix, float* out)
+            {
+                const char* suffixes[3] = { "_x", "_y", "_z" };
+                for (int i = 0; i < 3; i++)
+                {
+                    out[i] = node.attribute((std::string(prefix) + suffixes[i]).c_str()).as_float(out[i]);
+                }
+            };
+
+            if (pugi::xml_node cockpit = body.child("cockpit"))
+            {
+                definition.has_cockpit_eye = true;
+                read_vector(cockpit, "eye", definition.cockpit_eye);
+            }
+
+            if (pugi::xml_node steering_wheel = body.child("steering_wheel"))
+            {
+                definition.steering_wheel_part = steering_wheel.attribute("part").as_string("");
+                definition.steering_wheel_lock = steering_wheel.attribute("lock").as_float(0.0f);
+                read_vector(steering_wheel, "axis", definition.steering_wheel_axis);
+            }
+
+            for (pugi::xml_node opening_node : body.children("opening"))
+            {
+                body_opening opening;
+                opening.name  = opening_node.attribute("name").as_string("");
+                opening.part  = opening_node.attribute("part").as_string("");
+                opening.angle = opening_node.attribute("angle").as_float(0.0f);
+                read_vector(opening_node, "axis", opening.axis);
+                if (!opening.part.empty())
+                {
+                    if (opening.name.empty())
+                    {
+                        opening.name = opening.part;
+                    }
+                    definition.body_openings.push_back(opening);
+                }
+            }
         }
 
         if (definition.body_model.empty())

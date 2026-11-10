@@ -160,6 +160,9 @@ namespace spartan::scripting
         type["GetVehicleHeadlights"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? static_cast<int>(CarPhysics::Get(self).GetCar()->GetHeadlights()) : 0; };
         type["SetVehicleHeadlights"] = [](Physics& self, int mode) { if (CarPhysics::Get(self).GetCar()) CarPhysics::Get(self).GetCar()->SetHeadlights(static_cast<CarHeadlights>(std::clamp(mode, 0, 2))); };
         type["GetVehicleRearLamps"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? CarPhysics::Get(self).GetCar()->GetRearLamps() : false; };
+        type["GetVehicleHeadlightLevel"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? CarPhysics::Get(self).GetCar()->GetHeadlightLevel() : 0.0f; };
+        type["GetVehicleRearLampLevel"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? CarPhysics::Get(self).GetCar()->GetRearLampLevel() : 0.0f; };
+        type["GetVehicleStopLamp"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? CarPhysics::Get(self).GetCar()->GetStopLamp() : 0.0f; };
         type["GetVehicleSteering"] = vehicle_method(&CarPhysics::GetVehicleSteering);
         type["GetVehicleHandbrake"] = vehicle_method(&CarPhysics::GetVehicleHandbrake);
         type["IsWheelGrounded"] = vehicle_method(&CarPhysics::IsWheelGrounded);

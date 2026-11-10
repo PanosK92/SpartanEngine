@@ -143,6 +143,7 @@ namespace car
         float        tire_load            = 0.0f;
         float        slip_angle           = 0.0f;
         float        slip_ratio           = 0.0f;
+        float        wheel_speed_slip     = 0.0f; // slip ratio straight from wheel and hub speed, what a wheel speed sensor reads before the tread relaxes
         float        stiction_long        = 0.0f; // m, low speed tread deflection against the road
         float        stiction_lat         = 0.0f; // m
         float        lateral_force        = 0.0f;

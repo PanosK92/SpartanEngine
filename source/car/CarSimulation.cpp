@@ -469,7 +469,19 @@ namespace car
             for (int i = 0; i < wheel_count; i++)
             {
                 abs_active[i] = false;
+                abs_pressure[i] = 1.0f;
+                abs_lock_pressure[i] = 1.0f;
+                abs_slip[i] = 0.0f;
+                abs_releasing[i] = false;
             }
+    }
+
+
+    float Simulation::get_steering_speed_limit()
+    {
+            float speed_kmh = body ? body->getLinearVelocity().magnitude() * 3.6f : 0.0f;
+            float speed_factor = PxClamp(speed_kmh / PxMax(spec.assists.steering_speed_reference, 1.0f), 0.0f, 1.0f);
+            return 1.0f - spec.assists.steering_speed_reduction * speed_factor;
     }
 
 
@@ -478,9 +490,7 @@ namespace car
             float deadzone = PxClamp(spec.steering_deadzone, 0.0f, 0.95f);
             float magnitude = fabsf(raw_input);
             float filtered_input = magnitude <= deadzone ? 0.0f : copysignf((magnitude - deadzone) / (1.0f - deadzone), raw_input);
-            float speed_kmh = body ? body->getLinearVelocity().magnitude() * 3.6f : 0.0f;
-            float speed_factor = PxClamp(speed_kmh / PxMax(spec.assists.steering_speed_reference, 1.0f), 0.0f, 1.0f);
-            float steering_limit = 1.0f - spec.assists.steering_speed_reduction * speed_factor;
+            float steering_limit = get_steering_speed_limit();
             return PxClamp(filtered_input, -steering_limit, steering_limit);
     }
 
@@ -537,21 +547,56 @@ namespace car
 
             abs_phase += spec.abs_pulse_frequency * dt;
             abs_phase -= floorf(abs_phase);
+            // Each wheel has its own pressure modulator, as on a real unit. The old controller only cut
+            // the torque to abs_release_rate for half of every pulse, so a pedal asking for more than
+            // about 1.2 times the grip locked the wheel for the whole stop with the lamp lit.
             for (int i = 0; i < wheel_count; i++)
             {
                 abs_active[i] = false;
+                // the controller reads the wheel speed sensor, the relaxed slip the tire force uses trails it
+                // by a relaxation length of travel and at low speed that lag turns the loop into a lock and release hammer
+                const float slip = -wheels[i].wheel_speed_slip;
+                const float previous_slip = abs_slip[i];
+                abs_slip[i] = slip;
                 if (!spec.abs_enabled || spec.assists.abs_level <= 0.0f || !wheels[i].grounded)
                 {
+                    abs_pressure[i] = 1.0f;
+                    abs_lock_pressure[i] = 1.0f;
+                    abs_releasing[i] = false;
                     continue;
                 }
                 float load_factor = PxClamp(wheels[i].tire_load / PxMax(spec.load_reference, 1000.0f), 0.6f, 1.6f);
                 float threshold = spec.abs_slip_threshold * (1.0f - spec.abs_load_sensitivity * (load_factor - 1.0f));
-                if (-wheels[i].slip_ratio > threshold)
+                // Stay on the rising side of the tire curve. Past the peak the force falls as the slip
+                // grows and the wheel runs away to lock faster than the valves can follow.
+                threshold = PxMax(PxMin(threshold, 0.9f * get_traction_slip_target(i)), 0.01f);
+                const float over = slip / threshold - 1.0f;
+                if (over > 0.0f)
                 {
-                    abs_active[i] = true;
-                    float release_factor = lerp(1.0f, spec.abs_release_rate, spec.assists.abs_level);
-                    assisted_actuators.brake_torque_scale[i] = abs_phase < 0.5f ? release_factor : 1.0f;
+                    if (!abs_releasing[i])
+                    {
+                        abs_releasing[i] = true;
+                        abs_lock_pressure[i] = abs_pressure[i];
+                    }
+                    // release one step per half pulse, faster the deeper the wheel is into the slide,
+                    // and hold as soon as it is spinning back up
+                    if (slip >= previous_slip)
+                    {
+                        const float release_factor = lerp(1.0f, spec.abs_release_rate, spec.assists.abs_level);
+                        const float steps = 2.0f * spec.abs_pulse_frequency * dt * (1.0f + 4.0f * over);
+                        abs_pressure[i] = PxMax(abs_pressure[i] * powf(release_factor, steps), 0.02f);
+                    }
                 }
+                else
+                {
+                    abs_releasing[i] = false;
+                    // build quickly to just under the pressure that broke the tire loose, then creep up to find the limit again
+                    const float knee = 0.9f * abs_lock_pressure[i];
+                    const float rate = spec.abs_pulse_frequency * (abs_pressure[i] < knee ? 2.0f : 0.1f);
+                    abs_pressure[i] = PxMin(abs_pressure[i] + rate * dt, 1.0f);
+                }
+                abs_active[i] = abs_pressure[i] < 0.995f;
+                assisted_actuators.brake_torque_scale[i] = abs_pressure[i];
             }
     }
 
@@ -568,13 +613,7 @@ namespace car
         const float peak_long = peak * fabsf(spec.long_D);
         const float peak_lat = peak * fabsf(spec.lat_D) * get_camber_grip_factor(w.dynamic_camber);
         const auto brush = evaluate_brush_params(spec, w.effective_radius, cfg.wheel_width_for(i), w.tire_load, w.condition_stiffness, w.pressure_bar);
-        float angle = w.slip_angle;
-        if (fabsf(angle) < spec.slip_angle_deadband)
-        {
-            const float factor = fabsf(angle) / spec.slip_angle_deadband;
-            angle *= factor * factor;
-        }
-        angle = PxClamp(angle, -spec.max_slip_angle, spec.max_slip_angle);
+        const float angle = PxClamp(w.slip_angle, -spec.max_slip_angle, spec.max_slip_angle);
         // Search the production force law, not a second fitted tire model. The
         // first maximum retains adhesion instead of selecting the sliding plateau.
         float best_force = -1, best_slip = 0.01f;
@@ -1718,7 +1757,13 @@ namespace car
             PxVec3 wheel_local = wheel_offsets[wheel_index];
             PxVec3 wheel_world = hardpoint_world(chassis_pose, wheel_local);
             float side = wheel_local.x < 0.0f ? -1.0f : 1.0f;
-            const suspension_pickups pickups = resolve_pickups(geometry, wheel_local);
+            const suspension_pickups pickups = resolve_pickups(geometry, wheel_local, cfg.wheel_radius_for(wheel_index), is_front(wheel_index));
+            // authored hardpoints are used as written, so say when they steer the wheel through its travel
+            float bump_steer = 0.0f;
+            if (geometry.explicit_hardpoints && side < 0.0f && bump_steer_gradient(pickups, wheel_local, bump_steer) && fabsf(bump_steer) > 0.17f)
+            {
+                SP_LOG_WARNING("%s suspension hardpoints toe the wheel %.2f deg per cm of bump, move the toe link inner pivot until it tracks the arms", is_front(wheel_index) ? "front" : "rear", bump_steer * 0.573f);
+            }
             float camber = is_front(wheel_index) ? spec.front_camber : spec.rear_camber;
             float toe = is_front(wheel_index) ? spec.front_toe : spec.rear_toe;
             // negative camber must lean the wheel top inboard and positive toe must point the leading
@@ -1999,56 +2044,23 @@ namespace car
     {
             PxTransform chassis_pose = body->getGlobalPose();
             const suspension_geometry& geometry = spec.front_geometry;
-            // the steering arm is the tie rod z offset, so rack travel maps onto the requested lock
-            const float steering_arm = PxMax(fabsf(geometry.tie_rod_z), 0.05f);
-            multibody.rack_travel = PxClamp(tanf(fabsf(spec.max_steer_angle)) * steering_arm, 0.03f, 0.20f);
             const PxVec3& wheel_local = wheel_offsets[front_left];
-            const float half_track = fabsf(wheel_local.x);
-            float front_z = wheel_local.z + geometry.tie_rod_z;
-            float rack_y = wheel_local.y + geometry.tie_rod_y;
-
-            // zero bump steer needs the tie rod to sweep the same arc as the arms, so both of its
-            // pivots sit on the line between the lower and upper pivots at the tie rod height
-            float lower_inner_x = half_track * geometry.chassis_inset;
-            float upper_inner_x = geometry.mechanism == suspension_mechanism::macpherson
-                ? half_track - geometry.strut_top_inset
-                : half_track * geometry.upper_chassis_inset;
-            float upper_inner_y = geometry.mechanism == suspension_mechanism::macpherson
-                ? geometry.strut_top_y
-                : geometry.upper_inner_y;
-            float lower_outer_x = half_track - PxMax(geometry.lower_upright_inset, 0.0f);
-            float upper_outer_x = geometry.mechanism == suspension_mechanism::macpherson
-                ? half_track
-                : half_track - PxMax(geometry.upper_upright_inset, 0.0f);
-            float upper_outer_y = geometry.mechanism == suspension_mechanism::macpherson
-                ? geometry.strut_top_y
-                : geometry.upper_upright_y;
-
-            float inner_span_y = PxMax(upper_inner_y - geometry.lower_inner_y, 0.01f);
-            float inner_t = PxClamp((geometry.tie_rod_y - geometry.lower_inner_y) / inner_span_y, 0.0f, 1.0f);
-            float rack_half_length = lerp(lower_inner_x, upper_inner_x, inner_t);
-            rack_half_length = PxClamp(rack_half_length, 0.1f, half_track - 0.1f);
-
-            float outer_span_y = PxMax(upper_outer_y - geometry.lower_upright_y, 0.01f);
-            float outer_t = PxClamp((geometry.tie_rod_y - geometry.lower_upright_y) / outer_span_y, 0.0f, 1.0f);
-            float tie_rod_upright_inset = half_track - lerp(lower_outer_x, upper_outer_x, outer_t);
-            tie_rod_upright_inset = PxMax(tie_rod_upright_inset, 0.0f);
-
-            if (geometry.explicit_hardpoints)
-            {
-                const auto pickups = resolve_pickups(geometry, wheel_local);
-                rack_half_length = fabsf(pickups.toe_inner.x);
-                rack_y = pickups.toe_inner.y;
-                front_z = pickups.toe_inner.z;
-                multibody.rack_travel = PxClamp(tanf(fabsf(spec.max_steer_angle)) * fabsf(pickups.toe_outer.z - wheel_local.z), 0.03f, 0.20f);
-            }
+            // The tie rod pivots come from the same resolved pickups as the arms. The rack sits where
+            // the tie rod tracks the arms through travel, which is how bump steer is shimmed out.
+            const suspension_pickups rack_pickups = resolve_pickups(geometry, wheel_local, cfg.wheel_radius_for(front_left), true);
+            const float rack_half_length = fabsf(rack_pickups.toe_inner.x);
+            const float rack_y = rack_pickups.toe_inner.y;
+            const float front_z = rack_pickups.toe_inner.z;
+            // the steering arm is the tie rod z offset, so rack travel maps onto the requested lock
+            const float steering_arm = PxMax(fabsf(rack_pickups.toe_outer.z - wheel_local.z), 0.05f);
+            multibody.rack_travel = PxClamp(tanf(fabsf(spec.max_steer_angle)) * steering_arm, 0.03f, 0.20f);
             // The tangent estimate ignores steering-axis inclination and the
             // tie-rod arc. Limit rack stroke using the same authored links as
             // the physical assembly, otherwise the drive fights the upright
             // stops and stretches the suspension at full steering input.
             for (int wheel_index : { front_left, front_right })
             {
-                const auto pickups = resolve_pickups(geometry, wheel_offsets[wheel_index]);
+                const auto pickups = resolve_pickups(geometry, wheel_offsets[wheel_index], cfg.wheel_radius_for(wheel_index), true);
                 const float limit = multibody.corners[wheel_index].steering_limit;
                 for (float direction : { -1.0f, 1.0f })
                 {
@@ -2102,7 +2114,7 @@ namespace car
             for (int i : { front_left, front_right })
             {
                 const auto& corner = multibody.corners[i];
-                const float arm = PxMax(fabsf(geometry.tie_rod_z), 0.05f);
+                const float arm = steering_arm;
                 effective_rack_mass += (corner.wheel_body->getMassSpaceInertiaTensor().y
                     + corner.upright->getMassSpaceInertiaTensor().y) / (arm * arm);
             }
@@ -2117,9 +2129,7 @@ namespace car
                 suspension_corner& corner = multibody.corners[wheel_index];
                 float side = wheel_index == front_left ? -1.0f : 1.0f;
                 PxVec3 rack_end_world = hardpoint_world(chassis_pose, PxVec3(side * rack_half_length, rack_y, front_z));
-                PxVec3 upright_anchor_world = hardpoint_world(chassis_pose, wheel_offsets[wheel_index] + PxVec3(-side * tie_rod_upright_inset, geometry.tie_rod_y, geometry.tie_rod_z));
-                if (geometry.explicit_hardpoints)
-                    upright_anchor_world = hardpoint_world(chassis_pose, resolve_pickups(geometry, wheel_offsets[wheel_index]).toe_outer);
+                PxVec3 upright_anchor_world = hardpoint_world(chassis_pose, resolve_pickups(geometry, wheel_offsets[wheel_index], cfg.wheel_radius_for(wheel_index), true).toe_outer);
                 if (!add_link_member(corner, rack_end_world, upright_anchor_world, spec.suspension_link_mass, multibody.rack))
                 {
                     return false;
@@ -3888,7 +3898,7 @@ namespace car
         float engine_speed = engine_rpm * PxTwoPi / 60.0f;
         float demand = is_brake_reverse_throttle() ? input.brake : input.throttle;
         if (is_in_reverse()) demand *= spec.reverse_power_ratio;
-        if (downshift_blip_timer > 0) demand = PxMax(demand, spec.downshift_blip_amount);
+        const float blip = downshift_blip_timer > 0 ? spec.downshift_blip_amount : 0.0f;
         bool starting = !intake_flooded && (starter_requested || (!engine_running && demand > spec.input_deadzone && fabsf(wheel_speed) < 2));
         starter_engaged = starting && !engine_running;
         const int steps = PxMax(1, static_cast<int>(ceilf(dt / 0.0005f)));
@@ -3916,7 +3926,10 @@ namespace car
             // the limiter cuts fuel at redline and restores it with hysteresis, like a real ecu
             if (rpm >= spec.engine_redline_rpm) rev_limiter_active = true;
             else if (rpm < spec.engine_redline_rpm - 200.0f) rev_limiter_active = false;
-            float combustion = engine_running && !rev_limiter_active ? full_load * (1.0f + boost_pressure * spec.boost_torque_mult) * demand * assisted_actuators.engine_torque_scale : 0;
+            // The blip only has to bring the engine up to the lower gear's speed. Held for its whole timer it
+            // kept pushing through the closed clutch and cancelled most of the rear brake force on every downshift.
+            const float step_demand = engine_speed < gearbox_input_angular_velocity ? PxMax(demand, blip) : demand;
+            float combustion = engine_running && !rev_limiter_active ? full_load * (1.0f + boost_pressure * spec.boost_torque_mult) * step_demand * assisted_actuators.engine_torque_scale : 0;
             float idle_torque = engine_running ? PxClamp((idle - engine_speed) * ie * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f) : 0;
             float starter = starting && rpm < spec.engine_idle_rpm ? spec.starter_torque : 0;
             nitrous_delivery = 0.0f;
@@ -3927,7 +3940,7 @@ namespace car
                 condition.nitrous_kg = PxMax(0.0f, condition.nitrous_kg - nitrous_delivery * h);
                 combustion += nitrous_delivery * 1500000.0f / PxMax(engine_speed, 100.0f);
             }
-            float losses = friction + engine_oil_loss(engine_speed, spec) + (1 - demand) * PxMax(engine_speed - idle, 0.0f) * spec.engine_peak_torque * 0.0004f;
+            float losses = friction + engine_oil_loss(engine_speed, spec) + (1 - step_demand) * PxMax(engine_speed - idle, 0.0f) * spec.engine_peak_torque * 0.0004f;
             net_sum += combustion + idle_torque - losses;
             engine_speed = PxMax(0.0f, engine_speed + h * (combustion + idle_torque + starter - losses) / ie);
             combustion_sum += combustion + idle_torque;
@@ -4108,7 +4121,8 @@ namespace car
                     {
                         float inertia_y = spec.inertia_yy > 0 ? spec.inertia_yy : cfg.mass * cfg.wheelbase * cfg.wheelbase / 12;
                         float release = fabsf(error) * spec.yaw_control_gain * inertia_y * cfg.wheel_radius_for(i) / PxMax(fabsf(wheel_offsets[i].x) * 2, 0.1f);
-                        if (release > 0.0f && t > 0.0f) assisted_actuators.stability_active = true;
+                        // a release of a few newton metres is sensor noise on a straight stop, not an intervention worth a lamp
+                        if (release > 0.02f * t && t > 0.0f) assisted_actuators.stability_active = true;
                         t = PxMax(t - release, 0.0f);
                     }
                 }
@@ -4481,6 +4495,7 @@ namespace car
                     float slip_denominator = PxMax(PxMax(fabsf(vx), fabsf(wheel_speed)), 0.01f);
                     float raw_slip_ratio = PxClamp((wheel_speed - vx) / slip_denominator, -1.0f, 1.0f);
                     float raw_slip_angle = atan2f(vy, PxMax(fabsf(vx), 0.5f));
+                    w.wheel_speed_slip = raw_slip_ratio;
                     relax_tire_slip(w, raw_slip_ratio, raw_slip_angle, ground_speed, wheel_speed, substep);
 
                     // smoothstep blend: 0 at rest, 1 at full speed, smooth transition in between
@@ -4514,13 +4529,10 @@ namespace car
                         static_lat_f /= static_magnitude;
                     }
 
-                    float effective_slip_angle = w.slip_angle;
-                    if (fabsf(effective_slip_angle) < spec.slip_angle_deadband)
-                    {
-                        float factor = fabsf(effective_slip_angle) / spec.slip_angle_deadband;
-                        effective_slip_angle *= factor * factor;
-                    }
-                    float curve_slip_angle = PxClamp(effective_slip_angle, -spec.max_slip_angle, spec.max_slip_angle);
+                    // A tire has its full cornering stiffness at zero slip, that slope is what holds a
+                    // car straight. The old dead band cubed the force away inside half a degree, so
+                    // nothing resisted a small yaw at speed until the car was already wandering.
+                    float curve_slip_angle = PxClamp(w.slip_angle, -spec.max_slip_angle, spec.max_slip_angle);
 
                     tire_force_result dynamic_force;
                     float saturation = 0.0f;
@@ -4715,7 +4727,7 @@ namespace car
         {
             SP_LOG_INFO("[%s] airborne: grounded=%d, tire_load=%.1f", wheel_name, w.grounded, w.tire_load);
         }
-        w.slip_angle = w.slip_ratio = w.lateral_force = w.camber_force = w.longitudinal_force = 0.0f;
+        w.slip_angle = w.slip_ratio = w.wheel_speed_slip = w.lateral_force = w.camber_force = w.longitudinal_force = 0.0f;
         w.friction_use = w.slip_power = 0.0f;
         w.peak_force_lat = w.peak_force_long = 0.0f;
         w.stiction_long = w.stiction_lat = 0.0f;
@@ -5141,10 +5153,7 @@ namespace car
             burnout_active = false;
             reverse_request_timer = 0.0f;
             abs_phase = 0.0f;
-            for (int i = 0; i < wheel_count; i++)
-            {
-                abs_active[i] = false;
-            }
+            clear_abs_state();
             longitudinal_accel = 0.0f;
             lateral_accel = 0.0f;
             prev_velocity = PxVec3(0);
@@ -6033,6 +6042,81 @@ namespace car
     { input_target.handbrake = PxClamp(v, 0.0f, 1.0f); }
 
 
+    bool Simulation::start_input_script(const std::vector<input_keyframe>& keyframes, bool record)
+    {
+        if (keyframes.empty())
+        {
+            return false;
+        }
+        for (size_t i = 0; i < keyframes.size(); i++)
+        {
+            const input_keyframe& keyframe = keyframes[i];
+            bool finite = std::isfinite(keyframe.time) && std::isfinite(keyframe.throttle) && std::isfinite(keyframe.brake) && std::isfinite(keyframe.steering) && std::isfinite(keyframe.handbrake);
+            if (!finite || keyframe.time < 0.0f || (i > 0 && keyframe.time < keyframes[i - 1].time))
+            {
+                return false;
+            }
+        }
+        stop_input_script();
+        input_script = keyframes;
+        input_script_time = 0.0f;
+        input_script_recording = record;
+        if (record)
+        {
+            // a fresh file, so the csv clock starts with the script
+            set_log_to_file(false);
+            set_log_to_file(true);
+            if (!open_telemetry_if_needed())
+            {
+                set_log_to_file(false);
+                input_script.clear();
+                return false;
+            }
+        }
+        input_script_active = true;
+        return true;
+    }
+
+
+    void Simulation::stop_input_script()
+    {
+        if (input_script_active && input_script_recording)
+        {
+            set_log_to_file(false);
+        }
+        input_script_active = false;
+        input_script_recording = false;
+    }
+
+
+    void Simulation::advance_input_script(float dt)
+    {
+        const input_keyframe* current = &input_script.front();
+        for (const input_keyframe& keyframe : input_script)
+        {
+            if (keyframe.time > input_script_time)
+            {
+                break;
+            }
+            current = &keyframe;
+        }
+        // nothing is applied before the first keyframe is due
+        if (current->time <= input_script_time)
+        {
+            set_throttle(current->throttle);
+            set_brake(current->brake);
+            set_steering(current->steering);
+            set_handbrake(current->handbrake);
+        }
+        if (input_script_time >= input_script.back().time)
+        {
+            stop_input_script();
+            return;
+        }
+        input_script_time += dt;
+    }
+
+
     void Simulation::set_parked(bool enabled)
     {
         if (parked == enabled) return;
@@ -6096,6 +6180,11 @@ namespace car
 
     void Simulation::update_input(float dt)
     {
+            if (input_script_active)
+            {
+                advance_input_script(dt);
+            }
+
             if (parked)
             {
                 // a parked car keeps its pedals released and the handbrake on, the wheel can still be turned from outside
@@ -6110,7 +6199,11 @@ namespace car
 
             float steering_target = get_assisted_steering_target(input_target.steering);
             float diff = steering_target - input.steering;
-            float max_change = spec.steering_rate * dt;
+            // Winding lock on slows with the speed limited lock, so a key or stick takes the same time
+            // to reach whatever lock the speed allows. At a fixed rate a tenth of a second on a key
+            // at 250 km/h asked for well over a g. Unwinding toward centre keeps the full rate.
+            float winding_scale = diff * input.steering < 0.0f ? 1.0f : get_steering_speed_limit();
+            float max_change = spec.steering_rate * winding_scale * dt;
             input.steering = (fabsf(diff) <= max_change) ? steering_target : input.steering + ((diff > 0) ? max_change : -max_change);
 
             // pedals smooth application but release immediately

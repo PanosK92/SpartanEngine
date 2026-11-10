@@ -6697,6 +6697,32 @@ register_tool(
 
 register_tool(
   server,
+  "vehicle_set_car",
+  "Swap a car to another .car preset in place (like the car picker): car is the catalog name (e.g. Rubra) or the .car file name without extension. The catalog holds every .car next to the cars already loaded.",
+  {
+    id: z.string().optional(),
+    car: z.string(),
+  },
+  "vehicle_set_car",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_openings",
+  "Read or drive the doors and lids a .car file declares as <opening> entries (same as O while parked in play mode). action get (default), open, close, toggle, or set with amount 0 to 1; name picks one opening (door_left, frunk, ...), default all. Openings swing over about a second while the car ticks. Returns each opening's amount and target.",
+  {
+    id: z.string().optional(),
+    action: z.enum(["get", "open", "close", "toggle", "set"]).optional(),
+    name: z.string().optional(),
+    amount: z.number().min(0).max(1).optional(),
+  },
+  "vehicle_openings",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
   "vehicle_export_hull",
   "Export the selected car's cooked chassis hull vertices to car_validation_hulls.csv for repeatable headless physics validation.",
   { id: z.string().optional() },
@@ -6713,14 +6739,37 @@ register_tool(
     "Not an Excel file; it is a per-physics-tick csv written while a drivable car simulates with log_to_file enabled.",
     "Set recording to start or stop export. Starting after a stop replaces the previous recording, as in the F3 dashboard.",
     "Includes a live physics_skeleton snapshot by default, even without a recording. CSV rows contain physics_skeleton_json with every assembly actor, shape, joint and corner mapping. Use small max_rows for full skeleton recordings.",
+    "Set record_skeleton false before a handling run: rows shrink from over 100 KB to about 3 KB, the frame rate holds and the physics_skeleton_json column is written empty.",
   ].join(" "),
   {
     max_rows: z.number().int().min(1).max(5000).optional(),
     include_csv: z.boolean().optional(),
     include_skeleton: z.boolean().optional(),
     recording: z.boolean().optional(),
+    record_skeleton: z.boolean().optional(),
   },
   "vehicle_telemetry",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_maneuver",
+  [
+    "Play timed pedal and steering keyframes on an occupied car inside the physics step, for handling tests that repeat tick for tick.",
+    "keyframes is 'time:throttle,brake,steering,handbrake' entries joined by semicolons, e.g. '0:1,0,0,0;6:0,1,0,0;10:0,0,0,1'.",
+    "Each keyframe holds until the next one and the last one ends the script and stays applied, so finish on brake or handbrake.",
+    "record (default true) starts a fresh telemetry csv with the script and closes it when the script ends, without the skeleton column unless record_skeleton is true.",
+    "Call with only an id to poll active, time and duration. stop true cancels the script and leaves the last input applied.",
+  ].join(" "),
+  {
+    id: z.string().optional(),
+    keyframes: z.string().optional(),
+    record: z.boolean().optional(),
+    record_skeleton: z.boolean().optional(),
+    stop: z.boolean().optional(),
+  },
+  "vehicle_maneuver",
   { annotations: edit_tool },
 );
 
