@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     std::vector<std::string> args(argv, argv + argc);
 #endif
     const auto has_argument = [&](const char* argument) { return std::find(args.begin(), args.end(), argument) != args.end(); };
-    spartan::CrashHandler::SetInteractive(!(has_argument("--headless") || has_argument("-headless") || has_argument("--ci-smoke-test") ||
+    spartan::CrashHandler::SetInteractive(!(has_argument("--headless") || has_argument("-headless") || has_argument("--ci-smoke-test") || has_argument("--bake-shaders") ||
         (has_argument("--mcp-control") && has_argument("--mcp-hidden"))));
 #ifdef SP_RUNTIME
     return spartan::RunRuntime(args);

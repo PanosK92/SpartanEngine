@@ -331,7 +331,7 @@ namespace spartan
 
     bool Engine::IsHeadless()
     {
-        return IsStartupSmokeTest() || HasArgument("--headless") || HasArgument("-headless") || (HasArgument("--mcp-control") && HasArgument("--mcp-hidden"));
+        return IsStartupSmokeTest() || HasArgument("--headless") || HasArgument("--bake-shaders") || HasArgument("-headless") || (HasArgument("--mcp-control") && HasArgument("--mcp-hidden"));
     }
 
     bool Engine::IsStartupSmokeTest()

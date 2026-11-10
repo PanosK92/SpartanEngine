@@ -22,6 +22,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "widgets/TextureViewer.h"
 #include "core/Engine.h"
 #include "core/GameManifest.h"
+#include "core/Stopwatch.h"
 #include "core/Timer.h"
 #include "core/Window.h"
 #include "input/Input.h"
@@ -31,6 +32,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "mcp/McpCommandsComponents.h"
 #include "world/World.h"
 #include "rendering/Renderer.h"
+#include "rhi/RHI_Compiler.h"
 #include "imgui/source/imgui_internal.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_messagebox.h>
@@ -180,6 +182,34 @@ void Editor::Tick()
             spartan::Timer::PostTick();
         }
         SP_LOG_INFO("Startup smoke test: completed 10 editor idle ticks");
+        return;
+    }
+    // --bake-shaders compiles every shader the renderer creates and exits without rendering a frame, ci fills the
+    // browser's wgsl cache this way on a software adapter, the renderer submits in waves so the queue has to stay idle
+    if (spartan::Engine::HasArgument("--bake-shaders"))
+    {
+        const spartan::Stopwatch timer;
+        double idle_since_ms = -1.0;
+        while (timer.GetElapsedTimeMs() < 30.0 * 60.0 * 1000.0)
+        {
+            spartan::Window::PumpEvents();
+            const bool idle = spartan::RHI_Compiler::Shaders().IsIdle();
+            if (!idle)
+            {
+                idle_since_ms = -1.0;
+            }
+            else if (idle_since_ms < 0.0)
+            {
+                idle_since_ms = timer.GetElapsedTimeMs();
+            }
+            else if (timer.GetElapsedTimeMs() - idle_since_ms > 3000.0)
+            {
+                SP_LOG_INFO("Shader bake finished in %.1f sec", timer.GetElapsedTimeSec());
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        SP_LOG_ERROR("Shader bake timed out");
         return;
     }
     while (!spartan::Window::WantsToClose())

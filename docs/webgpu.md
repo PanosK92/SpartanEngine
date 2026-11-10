@@ -60,7 +60,7 @@ The headers in `third_party/webgpu` are vendored and match that version. To upda
 
 Open `spartan.slnx` and build `development` or `release`; the executable is `binaries/spartan_webgpu_development.exe` (`spartan_webgpu.exe` in release). The first load of a world compiles every pipeline through Tint, which takes about a minute.
 
-`--software-gpu` makes Dawn use WARP, the D3D12 software rasterizer that every Windows machine has. On a machine without a GPU, Dawn falls back to WARP on its own. CI uses this to compile the browser's shaders.
+`--software-gpu` makes Dawn use WARP, the D3D12 software rasterizer that every Windows machine has. On a machine without a GPU, Dawn falls back to WARP on its own. CI uses this together with `--bake-shaders` to compile the browser's shaders. `spartan_webgpu.exe --bake-shaders` is also the fastest way to refresh the cache locally after a shader edit.
 
 The MCP bridge works as on the other backends (`--mcp-control --mcp-port=<port>`). Use `screenshot_take {ui:true}`; the default viewport-cropped capture comes back black on this backend.
 
@@ -115,7 +115,7 @@ Native bake caches (meshlets, LODs, collision) aren't shipped; the browser bakes
 The `build_webgpu` job in [`.github/workflows/workflow.yml`](../.github/workflows/workflow.yml) runs on Windows Server 2025:
 
 1. It generates `vs2026 webgpu` (setup fetches and links Dawn), builds `release`, runs the GPU-free startup smoke test, and zips `spartan_webgpu_release.zip`.
-2. It runs `spartan_webgpu.exe --software-gpu -ci_test --ci-exit` on WARP. Rendering the smoke-test scene compiles every shader the renderer creates into the WGSL cache. The job fails if fewer than 100 shaders were written; the test results themselves are ignored, since the runner lacks fixtures such as the car assets.
+2. It runs `spartan_webgpu.exe --software-gpu --bake-shaders` on WARP. `--bake-shaders` (any backend) starts the engine headless, waits until the shader queue has drained, and exits without rendering a frame. That fills the WGSL cache, about 130 modules in under half a minute on a desktop CPU. The job fails if the process hangs or writes fewer than 100 shaders.
 3. It installs emsdk (pinned by `EMSDK_VERSION`), runs `python tools/web_build.py engine` without a world, and zips `spartan_web_release.zip`.
 
 The release waits on this job like it does on the other platforms.

@@ -168,17 +168,20 @@ jobs:
           name: spartan_webgpu_release
           path: spartan_webgpu_release.zip
 
-      # the smoke tests render on warp, which compiles every shader the renderer creates, the exit code reflects
-      # gpu fixtures a runner doesn't have, the cache is what matters
+      # --bake-shaders compiles every shader the renderer creates on warp and exits without rendering a frame
       - name: Bake WebGPU shaders on WARP
         id: bake
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
-          $process = Start-Process binaries\spartan_webgpu.exe -ArgumentList "--software-gpu", "-ci_test", "--ci-exit", "--no-steam" -WorkingDirectory binaries -PassThru -Wait
+          $process = Start-Process binaries\spartan_webgpu.exe -ArgumentList "--software-gpu", "--bake-shaders", "--no-steam" -WorkingDirectory binaries -PassThru
+          $finished = $process.WaitForExit(20 * 60 * 1000)
+          if (-not $finished) {
+            $process.Kill()
+          }
           $count = (Get-ChildItem binaries\cache\generated_cache\webgpu_shaders -File -ErrorAction SilentlyContinue | Measure-Object).Count
-          echo "baked $count shaders (exit code $($process.ExitCode))"
-          if ($count -lt 100) {
-            Get-Content binaries\logs\log.txt -Tail 80
+          echo "baked $count shaders (finished: $finished)"
+          if (-not $finished -or $count -lt 100) {
+            Get-Content binaries\logs\log_headless.txt -Tail 80 -ErrorAction SilentlyContinue
             exit 1
           }
 
