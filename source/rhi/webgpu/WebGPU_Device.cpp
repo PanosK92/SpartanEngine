@@ -612,6 +612,347 @@ namespace spartan
         bindless::generation++;
     }
 
+    namespace material_layers
+    {
+        // implicit derivatives pick the source mip that matches the destination mip, so every mip is drawn straight
+        // from the source and a 4k texture shrinks without aliasing
+        const char* source = R"(
+            struct vertex_output
+            {
+                @builtin(position) position : vec4f,
+                @location(0) uv : vec2f,
+            };
+
+            @group(0) @binding(0) var source_texture : texture_2d<f32>;
+            @group(0) @binding(1) var source_sampler : sampler;
+
+            @vertex fn layer_vs(@builtin(vertex_index) id : u32) -> vertex_output
+            {
+                var output : vertex_output;
+                output.uv       = vec2f(f32((id << 1u) & 2u), f32(id & 2u));
+                output.position = vec4f(output.uv * vec2f(2.0, -2.0) + vec2f(-1.0, 1.0), 0.0, 1.0);
+                return output;
+            }
+
+            @fragment fn layer_ps(input : vertex_output) -> @location(0) vec4f
+            {
+                return textureSample(source_texture, source_sampler, input.uv);
+            }
+        )";
+
+        // the layer size trades detail for memory, 64 layers of 1024 or 256 of 512 are both about 360 mb
+        const uint32_t layer_size_large   = 1024;
+        const uint32_t layer_size_small   = 512;
+        const uint32_t layer_count_large  = 64;
+        const uint32_t capacity_minimum   = 16;
+        const WGPUTextureFormat format    = WGPUTextureFormat_RGBA8Unorm;
+
+        struct Source
+        {
+            RHI_Texture* texture = nullptr;
+            void* srv            = nullptr;
+        };
+
+        mutex mutex_layers;
+        WGPUShaderModule module       = nullptr;
+        WGPUBindGroupLayout layout    = nullptr;
+        WGPURenderPipeline pipeline   = nullptr;
+        WGPUSampler sampler           = nullptr;
+        WGPUTexture texture           = nullptr;
+        WGPUTextureView view          = nullptr;
+        uint32_t capacity             = 0;
+        uint32_t layer_size           = 0;
+        uint32_t mip_count            = 0;
+        vector<Source> sources;
+        bool capacity_warning_logged  = false;
+
+        bool create_pipeline()
+        {
+            if (pipeline)
+                return true;
+
+            WGPUShaderSourceWGSL wgsl             = WGPU_SHADER_SOURCE_WGSL_INIT;
+            wgsl.code                             = webgpu::label(source);
+            WGPUShaderModuleDescriptor descriptor = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
+            descriptor.nextInChain                = &wgsl.chain;
+            descriptor.label                      = webgpu::label("material_texture_layers");
+            module                                = wgpuDeviceCreateShaderModule(RHI_Context::device, &descriptor);
+
+            WGPUSamplerDescriptor sampler_descriptor = WGPU_SAMPLER_DESCRIPTOR_INIT;
+            sampler_descriptor.addressModeU          = WGPUAddressMode_Repeat;
+            sampler_descriptor.addressModeV          = WGPUAddressMode_Repeat;
+            sampler_descriptor.magFilter             = WGPUFilterMode_Linear;
+            sampler_descriptor.minFilter             = WGPUFilterMode_Linear;
+            sampler_descriptor.mipmapFilter          = WGPUMipmapFilterMode_Linear;
+            sampler                                  = wgpuDeviceCreateSampler(RHI_Context::device, &sampler_descriptor);
+
+            WGPUBindGroupLayoutEntry entries[2] = { WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT, WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT };
+            entries[0].binding                  = 0;
+            entries[0].visibility               = WGPUShaderStage_Fragment;
+            entries[0].texture.sampleType       = WGPUTextureSampleType_Float;
+            entries[0].texture.viewDimension    = WGPUTextureViewDimension_2D;
+            entries[1].binding                  = 1;
+            entries[1].visibility               = WGPUShaderStage_Fragment;
+            entries[1].sampler.type             = WGPUSamplerBindingType_Filtering;
+            WGPUBindGroupLayoutDescriptor layout_descriptor = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+            layout_descriptor.entryCount                    = 2;
+            layout_descriptor.entries                       = entries;
+            layout                                          = wgpuDeviceCreateBindGroupLayout(RHI_Context::device, &layout_descriptor);
+
+            WGPUPipelineLayoutDescriptor pipeline_layout_descriptor = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
+            pipeline_layout_descriptor.bindGroupLayoutCount         = 1;
+            pipeline_layout_descriptor.bindGroupLayouts             = &layout;
+            WGPUPipelineLayout pipeline_layout                      = wgpuDeviceCreatePipelineLayout(RHI_Context::device, &pipeline_layout_descriptor);
+
+            WGPUColorTargetState target = WGPU_COLOR_TARGET_STATE_INIT;
+            target.format               = format;
+            WGPUFragmentState fragment  = WGPU_FRAGMENT_STATE_INIT;
+            fragment.module             = module;
+            fragment.entryPoint         = webgpu::label("layer_ps");
+            fragment.targetCount        = 1;
+            fragment.targets            = &target;
+
+            WGPURenderPipelineDescriptor pipeline_descriptor = WGPU_RENDER_PIPELINE_DESCRIPTOR_INIT;
+            pipeline_descriptor.label                        = webgpu::label("material_texture_layers");
+            pipeline_descriptor.layout                       = pipeline_layout;
+            pipeline_descriptor.vertex.module                = module;
+            pipeline_descriptor.vertex.entryPoint            = webgpu::label("layer_vs");
+            pipeline_descriptor.primitive.topology           = WGPUPrimitiveTopology_TriangleList;
+            pipeline_descriptor.fragment                     = &fragment;
+            pipeline                                         = wgpuDeviceCreateRenderPipeline(RHI_Context::device, &pipeline_descriptor);
+            wgpuPipelineLayoutRelease(pipeline_layout);
+            return pipeline != nullptr;
+        }
+
+        void release_texture()
+        {
+            if (view)
+            {
+                wgpuTextureViewRelease(view);
+                view = nullptr;
+            }
+            if (texture)
+            {
+                wgpuTextureRelease(texture);
+                texture = nullptr;
+            }
+            capacity = 0;
+            sources.clear();
+        }
+
+        void create_texture(const uint32_t layer_count, const uint32_t size)
+        {
+            release_texture();
+
+            mip_count = 1;
+            while ((size >> mip_count) > 0)
+            {
+                mip_count++;
+            }
+
+            WGPUTextureDescriptor descriptor = WGPU_TEXTURE_DESCRIPTOR_INIT;
+            descriptor.label                 = webgpu::label("material_texture_layers");
+            descriptor.usage                 = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
+            descriptor.dimension             = WGPUTextureDimension_2D;
+            descriptor.size                  = { size, size, layer_count };
+            descriptor.format                = format;
+            descriptor.mipLevelCount         = mip_count;
+            descriptor.sampleCount           = 1;
+            texture                          = wgpuDeviceCreateTexture(RHI_Context::device, &descriptor);
+            if (!texture)
+                return;
+
+            WGPUTextureViewDescriptor view_descriptor = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
+            view_descriptor.dimension                 = WGPUTextureViewDimension_2DArray;
+            view_descriptor.mipLevelCount             = mip_count;
+            view_descriptor.arrayLayerCount           = layer_count;
+            view                                      = wgpuTextureCreateView(texture, &view_descriptor);
+            capacity                                  = layer_count;
+            layer_size                                = size;
+            sources.assign(layer_count, Source());
+        }
+
+        // a null source fills the layer with white, what a material without that texture would read
+        void draw_layer(WGPUCommandEncoder encoder, const uint32_t layer, WGPUTextureView source_view)
+        {
+            WGPUBindGroup group = nullptr;
+            if (source_view)
+            {
+                WGPUBindGroupEntry entries[2] = { WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT };
+                entries[0].binding            = 0;
+                entries[0].textureView        = source_view;
+                entries[1].binding            = 1;
+                entries[1].sampler            = sampler;
+                WGPUBindGroupDescriptor group_descriptor = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
+                group_descriptor.layout                  = layout;
+                group_descriptor.entryCount              = 2;
+                group_descriptor.entries                 = entries;
+                group                                    = wgpuDeviceCreateBindGroup(RHI_Context::device, &group_descriptor);
+            }
+
+            for (uint32_t mip = 0; mip < mip_count; mip++)
+            {
+                WGPUTextureViewDescriptor view_descriptor = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
+                view_descriptor.dimension                 = WGPUTextureViewDimension_2D;
+                view_descriptor.baseMipLevel              = mip;
+                view_descriptor.mipLevelCount             = 1;
+                view_descriptor.baseArrayLayer            = layer;
+                view_descriptor.arrayLayerCount           = 1;
+                WGPUTextureView destination               = wgpuTextureCreateView(texture, &view_descriptor);
+
+                WGPURenderPassColorAttachment attachment = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
+                attachment.view                          = destination;
+                attachment.loadOp                        = WGPULoadOp_Clear;
+                attachment.storeOp                       = WGPUStoreOp_Store;
+                attachment.clearValue                    = { 1.0, 1.0, 1.0, 1.0 };
+                WGPURenderPassDescriptor pass_descriptor = WGPU_RENDER_PASS_DESCRIPTOR_INIT;
+                pass_descriptor.label                    = webgpu::label("material_texture_layer");
+                pass_descriptor.colorAttachmentCount     = 1;
+                pass_descriptor.colorAttachments         = &attachment;
+
+                WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(encoder, &pass_descriptor);
+                if (group)
+                {
+                    wgpuRenderPassEncoderSetPipeline(pass, pipeline);
+                    wgpuRenderPassEncoderSetBindGroup(pass, 0, group, 0, nullptr);
+                    wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
+                }
+                wgpuRenderPassEncoderEnd(pass);
+                wgpuRenderPassEncoderRelease(pass);
+                wgpuTextureViewRelease(destination);
+            }
+
+            if (group)
+            {
+                wgpuBindGroupRelease(group);
+            }
+        }
+
+        // only filterable 2d textures can be resampled, anything else reads white like it did before
+        WGPUTextureView source_view_of(RHI_Texture* source)
+        {
+            if (!source || source->GetType() != RHI_Texture_Type::Type2D)
+                return nullptr;
+
+            if (webgpu::sample_type_of(webgpu::texture_format(source)) != WGPUTextureSampleType_Float)
+                return nullptr;
+
+            return static_cast<WGPUTextureView>(source->GetRhiSrv());
+        }
+
+        void update(const array<RHI_Texture*, rhi_max_array_size>& textures)
+        {
+            uint32_t count = 0;
+            for (uint32_t i = 0; i < rhi_max_array_size; i++)
+            {
+                if (textures[i])
+                {
+                    count = i + 1;
+                }
+            }
+
+            lock_guard<mutex> lock(mutex_layers);
+            if (count == 0 || !create_pipeline())
+                return;
+
+            WGPULimits limits = WGPU_LIMITS_INIT;
+            wgpuDeviceGetLimits(RHI_Context::device, &limits);
+            const uint32_t layer_limit = max(limits.maxTextureArrayLayers, 1u);
+            if (count > layer_limit && !capacity_warning_logged)
+            {
+                SP_LOG_WARNING("%u material textures but only %u texture array layers, the rest read the last layer", count, layer_limit);
+                capacity_warning_logged = true;
+            }
+            const uint32_t needed = min(count, layer_limit);
+
+            // growing redraws everything, the capacity doubles so a world that streams materials in rarely pays for it
+            const uint32_t size = needed <= layer_count_large ? layer_size_large : layer_size_small;
+            if (!texture || needed > capacity || size != layer_size)
+            {
+                uint32_t layer_count = capacity_minimum;
+                while (layer_count < needed)
+                {
+                    layer_count *= 2;
+                }
+                create_texture(min(layer_count, layer_limit), size);
+                webgpu::bindless_invalidate();
+                if (!texture)
+                {
+                    SP_LOG_ERROR("Failed to create the material texture layers");
+                    return;
+                }
+            }
+
+            WGPUCommandEncoder encoder = nullptr;
+            for (uint32_t layer = 0; layer < needed; layer++)
+            {
+                RHI_Texture* source = textures[layer];
+                void* srv           = source ? source->GetRhiSrv() : nullptr;
+                if (sources[layer].texture == source && sources[layer].srv == srv)
+                    continue;
+
+                // the renderer retries until a texture has a view, the layer keeps what it had until then
+                if (source && !srv)
+                    continue;
+
+                if (!encoder)
+                {
+                    WGPUCommandEncoderDescriptor descriptor = WGPU_COMMAND_ENCODER_DESCRIPTOR_INIT;
+                    descriptor.label                        = webgpu::label("material_texture_layers");
+                    encoder                                 = wgpuDeviceCreateCommandEncoder(RHI_Context::device, &descriptor);
+                }
+                draw_layer(encoder, layer, source_view_of(source));
+                sources[layer] = { source, srv };
+            }
+
+            if (encoder)
+            {
+                WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+                wgpuQueueSubmit(webgpu::queue(), 1, &commands);
+                wgpuCommandBufferRelease(commands);
+                wgpuCommandEncoderRelease(encoder);
+            }
+        }
+
+        void destroy()
+        {
+            lock_guard<mutex> lock(mutex_layers);
+            release_texture();
+            layer_size = 0;
+            if (pipeline)
+            {
+                wgpuRenderPipelineRelease(pipeline);
+                pipeline = nullptr;
+            }
+            if (layout)
+            {
+                wgpuBindGroupLayoutRelease(layout);
+                layout = nullptr;
+            }
+            if (module)
+            {
+                wgpuShaderModuleRelease(module);
+                module = nullptr;
+            }
+            if (sampler)
+            {
+                wgpuSamplerRelease(sampler);
+                sampler = nullptr;
+            }
+        }
+    }
+
+    WGPUTextureView webgpu::material_texture_layers()
+    {
+        lock_guard<mutex> lock(material_layers::mutex_layers);
+        return material_layers::view;
+    }
+
+    void webgpu::material_texture_layers_destroy()
+    {
+        material_layers::destroy();
+    }
+
     void RHI_Device::Initialize()
     {
         // instance
@@ -830,6 +1171,7 @@ namespace spartan
         StagingBufferPoolDestroy();
         DeletionQueueFlush();
         webgpu::bindless_reset();
+        webgpu::material_texture_layers_destroy();
         webgpu::destroy_dummies();
 
         if (native_queue)
@@ -1130,7 +1472,10 @@ namespace spartan
     // bindless, every pipeline builds its own group 1 out of these, see bind_bindless in WebGPU_CommandList.cpp
     void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
-        // core webgpu has no texture arrays, materials sample a white texture until binding arrays exist
+        if (textures)
+        {
+            material_layers::update(*textures);
+        }
         bindless::set_buffer(316, parameters);
     }
 

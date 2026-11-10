@@ -459,11 +459,11 @@ namespace spartan
                 {
                     case webgpu::Kind::Texture:
                     {
-                        // material textures aren't bindless yet, every material reads white
+                        // the material textures are the only bindless textures, one array with a layer per texture
                         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
                         entry.binding            = binding.binding;
-                        const bool white         = binding.dimension == WGPUTextureViewDimension_2D && (binding.sample_type == WGPUTextureSampleType_Float || binding.sample_type == WGPUTextureSampleType_UnfilterableFloat);
-                        entry.textureView        = white ? webgpu::white_texture() : webgpu::dummy_texture(binding.dimension, binding.sample_type);
+                        WGPUTextureView layers   = binding.binding == webgpu::binding_material_textures && binding.dimension == WGPUTextureViewDimension_2DArray ? webgpu::material_texture_layers() : nullptr;
+                        entry.textureView        = layers ? layers : webgpu::dummy_texture(binding.dimension, binding.sample_type);
                         entries.push_back(entry);
                         break;
                     }

@@ -11,7 +11,39 @@ Commercial use requires written permission and negotiated payment terms.
 #include "shared_buffers.h"
 
 // bindless arrays
+#if defined(API_WEBGPU)
+// core webgpu has no binding arrays, the backend resamples every material texture into one layer of an array
+// and material_textures[i] reads layer i, the uv wraps per layer so samplers behave the same
+Texture2DArray material_texture_layers : register(t15, space1);
+struct MaterialTexture2D
+{
+    uint layer;
+
+    float4 Sample(SamplerState s, float2 uv)                                  { return material_texture_layers.Sample(s, float3(uv, layer)); }
+    float4 SampleLevel(SamplerState s, float2 uv, float mip)                  { return material_texture_layers.SampleLevel(s, float3(uv, layer), mip); }
+    float4 SampleGrad(SamplerState s, float2 uv, float2 ddx_uv, float2 ddy_uv) { return material_texture_layers.SampleGrad(s, float3(uv, layer), ddx_uv, ddy_uv); }
+    void GetDimensions(uint mip, out uint width, out uint height, out uint levels)
+    {
+        uint elements;
+        material_texture_layers.GetDimensions(mip, width, height, elements, levels);
+    }
+};
+struct MaterialTextureLayers
+{
+    uint unused; // wgsl has no empty structs
+
+    MaterialTexture2D operator[](uint index)
+    {
+        MaterialTexture2D texture;
+        texture.layer = index;
+        return texture;
+    }
+};
+static MaterialTextureLayers material_textures;
+#else
+typedef Texture2D MaterialTexture2D;
 Texture2D material_textures[]                            : register(t15, space1);
+#endif
 StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);
 StructuredBuffer<LightParameters> light_parameters       : register(t17, space3);
 StructuredBuffer<aabb> aabbs                             : register(t18, space4);

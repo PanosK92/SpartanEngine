@@ -37,7 +37,7 @@ namespace spartan
     // hlsl becomes spir-v through dxc, spir-v becomes wgsl through tint, the browser only ever sees the cached wgsl
     namespace
     {
-        const char* cache_version = "webgpu_shader_v4";
+        const char* cache_version = "webgpu_shader_v5";
 
         // wgsl can't test for nan/inf, has no non-uniform indexing qualifier and browsers don't allow subgroups in every stage
         // so the wave intrinsics run as a single lane, every lane is its own wave which keeps the per-wave atomics correct
@@ -90,32 +90,6 @@ namespace spartan
                 i++;
             }
             return i;
-        }
-
-        // core webgpu has no arrays of textures, every material samples one white texture until binding arrays exist
-        void rewrite_material_textures(string& source)
-        {
-            const string name        = "material_textures[";
-            const string replacement = "material_textures_webgpu";
-            size_t position          = 0;
-            while ((position = source.find(name, position)) != string::npos)
-            {
-                if (position > 0 && is_identifier(source[position - 1]))
-                {
-                    position += name.size();
-                    continue;
-                }
-
-                size_t end  = position + name.size();
-                int depth   = 1;
-                while (end < source.size() && depth > 0)
-                {
-                    depth += source[end] == '[' ? 1 : (source[end] == ']' ? -1 : 0);
-                    end++;
-                }
-                source.replace(position, end - position, replacement);
-                position += replacement.size();
-            }
         }
 
         void replace_all(string& source, const string& from, const string& to)
@@ -238,7 +212,6 @@ namespace spartan
         string rewrite_source(string source)
         {
             source.erase(remove(source.begin(), source.end(), '\r'), source.end());
-            rewrite_material_textures(source);
             replace_all(source, "samplers_comparison[]", "samplers_comparison[1]");
             replace_all(source, "SamplerState samplers[]", "SamplerState samplers[8]");
             rewrite_storage_textures(source);

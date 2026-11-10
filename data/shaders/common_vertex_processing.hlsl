@@ -1054,7 +1054,7 @@ uint2 impostor_nearest_frame(float3 view_local, uint frames)
 }
 
 // uv holds frame + position inside the frame, returns the first layer whose source texel survives the cutout
-bool impostor_resolve(float2 uv_frames, Texture2D albedo_texture, float alpha_threshold, out float2 uv, out float3 normal_frame, out float mip)
+bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float alpha_threshold, out float2 uv, out float3 normal_frame, out float mip)
 {
     uint frames      = _draw.impostor_layout & 0xFFu;
     uint resolution  = (_draw.impostor_layout >> 8) & 0xFFFFu;

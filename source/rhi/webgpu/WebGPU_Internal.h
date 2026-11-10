@@ -185,11 +185,16 @@ namespace spartan
             uint32_t binding   = 0;
         };
         uint64_t bindless_generation();
+        // core webgpu has no binding arrays, every material texture is resampled into a layer of one rgba8 array
+        // whose layer index is the texture's bindless index, a texture whose source changes (streaming) is redrawn
+        constexpr uint32_t binding_material_textures = 315; // t15 space1
+        WGPUTextureView material_texture_layers();
         std::vector<BindlessBuffer> bindless_buffers();
         RHI_Sampler* bindless_sampler(uint32_t index); // 0 is the comparison sampler, 1 to 8 the regular ones
         bool bindless_sampler_filtering(uint32_t binding);
         void bindless_invalidate(); // a buffer got a new gpu resource, groups that point at the old one rebuild
         void bindless_reset();
+        void material_texture_layers_destroy();
 
         // views are created on demand per mip, layer and dimension, they live as long as the texture
         WGPUTextureFormat texture_format(const RHI_Texture* texture); // what the texture is stored as, which can be wider than its rhi format

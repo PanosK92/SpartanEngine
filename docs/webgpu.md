@@ -28,7 +28,7 @@ The renderer is bindless and keeps buffers persistently mapped. WebGPU has neith
 
 - **Persistently mapped buffers**: every buffer the engine treats as mapped has a CPU shadow. `GetMappedData()` returns the shadow, and before each submit the backend uploads the changed ranges with `wgpuQueueWriteBuffer`, using tracked dirty ranges or a page compare. Readbacks copy to a staging buffer and wait on `wgpuBufferMapAsync`. See [`WebGPU_Buffer.cpp`](../source/rhi/webgpu/WebGPU_Buffer.cpp).
 - **Bindless buffers**: the engine's global buffers (materials, lights, geometry, draw data) get fixed slots in bind group 1. Each pipeline builds that group from the bindings its shader reflects, and a generation counter rebuilds it when a buffer is replaced.
-- **Bindless textures**: not implemented. Core WebGPU has no binding arrays, so every material samples a single white texture for now. Shapes, lighting and material colours are correct; texture detail is missing.
+- **Bindless textures**: core WebGPU has no binding arrays, so every material texture is resampled into a layer of one `rgba8unorm` 2D array (binding `t15, space1`), with the layer index equal to the bindless index. Layers are 1024² while there are up to 64 textures and 512² beyond that, with a full mip chain drawn from the source. The array grows by doubling, up to the device's `maxTextureArrayLayers` (at least 256). A layer is redrawn when its texture changes, for example when streaming swaps in more mips. In the shaders, `material_textures[i]` returns a `MaterialTexture2D` wrapper with `Sample`, `SampleLevel`, `SampleGrad` and `GetDimensions`, so material code is the same on every backend. Non-2D or non-filterable sources sample white.
 - **Vertex pulling**: std430 aligns `float3` to 16 bytes, so pulled vertices are read as scalars (`PulledVertexScalars`, `load_pulled_vertex` in `common_resources_bindless.hlsl`).
 - **Storage texture formats**: WGSL storage textures declare a format. When the bound texture's format differs from the reflected one, the backend creates a pipeline variant with the WGSL patched to match (`pipeline_variant`).
 - **No dynamic state**: cull mode, blend and similar states are baked into pipelines, and variants are created on first use. A variant that is still compiling logs a one-off `can't bind` warning.
@@ -123,7 +123,7 @@ The release waits on this job like it does on the other platforms.
 ## Limitations
 
 - No ray tracing: ReSTIR path tracing, ray-traced shadows and reflections are off. Worlds that rely on path tracing (`light_test.world` sets `r.restir_pt`) render dark.
-- Bindless textures aren't implemented (see above).
+- Material textures are resampled to 1024² or 512² RGBA8 (see above), so very high-resolution or HDR material textures lose detail and range.
 - No tessellation stage.
 - GPU BC1/BC3 texture compression fails in Tint, so those textures stay uncompressed.
 - The browser build is single-threaded, so CPU-heavy worlds run slower than natively.
