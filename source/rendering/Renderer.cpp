@@ -868,7 +868,12 @@ namespace spartan
             512u * 1024u         // instances, lush biome props exceed the old 16k floor
         );
 
-        if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
+        // a headless run has nobody to dismiss a message box, ci on warp would wait on it forever
+        if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements() && Engine::IsHeadless())
+        {
+            SP_LOG_WARNING("The GPU does not meet the minimum requirements for running the engine");
+        }
+        else if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
         {
             Window::SetSplashScreenVisible(false);
             SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine might be missing features and it won't perform as expected.");
