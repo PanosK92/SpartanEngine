@@ -786,7 +786,11 @@ namespace spartan
         SP_ASSERT(tex->GetMipCount() > 1);
 
         constexpr uint32_t spd_max_size = 4096;
+    #if defined(API_GRAPHICS_WEBGPU)
+        constexpr uint32_t spd_max_mips = 8; // webgpu stages see at most 8 storage textures, the rest go in another pass
+    #else
         constexpr uint32_t spd_max_mips = 12;
+    #endif
 
         Renderer_Shader shader_spd = Renderer_Shader::ffx_spd_average_c;
         shader_spd = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_c : shader_spd;

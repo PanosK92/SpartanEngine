@@ -17,6 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/source/imgui_stdlib.h"
 #include "../widgets/Viewport.h"
 #include "core/ProgressTracker.h"
+#include "core/ThreadPool.h"
 #include <cctype>
 #include <filesystem>
 #include <future>
@@ -1858,7 +1859,7 @@ void WorldSelector::Initialize(Editor* editor_in)
 
     if (downloaded_and_extracted)
     {
-        initial_scan = async(launch::async, collect_world_files);
+        initial_scan = spartan::ThreadPool::RunDetached(collect_world_files);
     }
 }
 

@@ -71,9 +71,9 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
         uint i1 = geometry_indices[base_index_pos + 1u] + gs_draw.lod_vertex_offset;
         uint i2 = geometry_indices[base_index_pos + 2u] + gs_draw.lod_vertex_offset;
 
-        PulledVertex v0 = geometry_vertices[i0];
-        PulledVertex v1 = geometry_vertices[i1];
-        PulledVertex v2 = geometry_vertices[i2];
+        PulledVertex v0 = load_pulled_vertex(i0);
+        PulledVertex v1 = load_pulled_vertex(i1);
+        PulledVertex v2 = load_pulled_vertex(i2);
 
         // transform to world space using the cached world transform, engine convention places the vector on the left of mul
         float3 p0_world = mul(float4(v0.position, 1.0f), gs_world_xform).xyz;

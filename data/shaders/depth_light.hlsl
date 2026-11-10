@@ -53,10 +53,16 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     uint index_array = pass_uint(pass_depth_light::array_index);
 
     // validate light index to prevent out-of-bounds buffer access
+#if defined(API_WEBGPU)
+    // tint can't take the length of a buffer of row major matrices, webgpu clamps out of bounds reads anyway
+    if (index_array >= 6)
+        return (gbuffer_vertex)0;
+#else
     uint light_count, light_stride;
     light_parameters.GetDimensions(light_count, light_stride);
     if (index_light >= light_count || index_array >= 6)
         return (gbuffer_vertex)0;
+#endif
 
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;

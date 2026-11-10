@@ -9,7 +9,7 @@ Spartan is a single C++20 executable. Everything lives in `namespace spartan`, m
 | [`core`](../source/core) | `Engine`, `Window`, `Timer`, `Event`, `Settings`, `ThreadPool`, `ProgressTracker`, `GameManifest`, process entry |
 | [`world`](../source/world) | `World`, `Entity`, all components, prefabs, terrain, weather, roads and world systems |
 | [`rendering`](../source/rendering) | The renderer: passes, materials, the global geometry buffer, lights, IES profiles |
-| [`rhi`](../source/rhi) | Render hardware interface with `d3d12/`, `vulkan/` and `metal/` backends, shader compilation, texture streaming, upscalers |
+| [`rhi`](../source/rhi) | Render hardware interface with `d3d12/`, `vulkan/`, `metal/` and `webgpu/` backends, shader compilation, texture streaming, upscalers |
 | [`physics`](../source/physics) | PhysX world, fixed-step scheduling, queries, contact reporting |
 | [`car`](../source/car) | Vehicle simulation, AI drivers, car audio, HUD, telemetry, car weather effects |
 | [`scripting`](../source/scripting) | Lua 5.4 state and all bindings (sol2) |

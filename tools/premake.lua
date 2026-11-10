@@ -49,6 +49,9 @@ function configure_graphics_api()
     elseif ARG_API_GRAPHICS == "metal" then
         API_CPP_DEFINE = "API_GRAPHICS_METAL"
         EXECUTABLE_NAME = EXECUTABLE_NAME .. "_metal"
+    elseif ARG_API_GRAPHICS == "webgpu" then
+        API_CPP_DEFINE = "API_GRAPHICS_WEBGPU"
+        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_webgpu"
     else
         error("Unsupported graphics API: " .. tostring(ARG_API_GRAPHICS))
     end
@@ -76,6 +79,17 @@ end
 
 local function link_windows_libraries(configs, suffix)
     filter { "system:windows", "configurations:" .. configs }
+        -- webgpu has no vendor upscalers or denoisers, it compiles hlsl through dxc to spir-v and links dawn
+        if ARG_API_GRAPHICS == "webgpu" then
+            links { "dxcompiler", "dxguid", "steam_api64", "delayimp", "webgpu_dawn" }
+            -- dawn lives in binaries/third_party next to dxcompiler.dll and dxil.dll, it only loads them from its own directory
+            linkoptions { "/DELAYLOAD:dxcompiler.dll", "/DELAYLOAD:steam_api64.dll", "/DELAYLOAD:webgpu_dawn.dll" }
+            links(suffixed(LIBS_COMMON, suffix))
+            links(suffixed({ "Recast", "Detour", "DetourCrowd" }, suffix))
+            links(suffixed(LIBS_PHYSX, suffix))
+            links(suffixed(LIBS_SPIRV, suffix))
+            return
+        end
         links { "dxcompiler", "libxess", "dxguid", "steam_api64", "delayimp" }
         linkoptions { "/DELAYLOAD:dxcompiler.dll", "/DELAYLOAD:libxess.dll", "/DELAYLOAD:steam_api64.dll" }
         links { suffix == "" and "nvsdk_ngx_s" or "nvsdk_ngx_s_dbg" }
@@ -232,11 +246,13 @@ function spartan_project_configuration()
         filter {}
 
         if ARG_API_GRAPHICS == "d3d12" then
-            removefiles { SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**" }
+            removefiles { SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/rhi/webgpu/**" }
         elseif ARG_API_GRAPHICS == "vulkan" then
-            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/metal/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/metal/**", SOURCE_DIR .. "/rhi/webgpu/**" }
         elseif ARG_API_GRAPHICS == "metal" then
-            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/webgpu/**" }
+        elseif ARG_API_GRAPHICS == "webgpu" then
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**", SOURCE_DIR .. "/rhi/vulkan/**", SOURCE_DIR .. "/rhi/metal/**" }
         end
 
         pchheader "pch.h"
@@ -291,6 +307,10 @@ function spartan_project_configuration()
 
             if ARG_API_GRAPHICS == "vulkan" then
                 includedirs { "../third_party/spirv_cross", "../third_party/vulkan", "../third_party/vulkan_memory_allocator" }
+            end
+
+            if ARG_API_GRAPHICS == "webgpu" then
+                includedirs { "../third_party/webgpu", "../third_party/spirv_cross" }
             end
 
             -- agility sdk headers must precede the windows sdk copies of d3d12.h and dxgiformat.h

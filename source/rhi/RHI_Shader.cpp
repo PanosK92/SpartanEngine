@@ -269,6 +269,12 @@ namespace spartan
         string line;
         while (getline(line_stream, line))
         {
+            // windows text streams drop the carriage return, other platforms keep it, the source has to hash the same everywhere
+            if (!line.empty() && line.back() == '\r')
+            {
+                line.pop_back();
+            }
+
             // check for #include directive
             size_t include_start = line.find(include_prefix);
             if (include_start != string::npos)

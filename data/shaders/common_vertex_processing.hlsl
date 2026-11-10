@@ -72,7 +72,7 @@ float4x4 compose_packed_instance(PackedInstance instance)
 
 Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_offset)
 {
-    PulledVertex pulled = geometry_vertices[vertex_id];
+    PulledVertex pulled = load_pulled_vertex(vertex_id);
 
     // slot 0 of the global instance pool is seeded with an identity instance, non-instanced renderables pass instance_offset=0 and read it
     PackedInstance pi = geometry_instances[instance_offset + instance_id];
@@ -1067,7 +1067,7 @@ bool impostor_resolve(float2 uv_frames, Texture2D albedo_texture, float alpha_th
     // one impostor texel covers many source texels, a coarse mip keeps the cutout from sparkling
     uint width, height, mip_count;
     albedo_texture.GetDimensions(0, width, height, mip_count);
-    mip = max(log2((float)max(width, 1u)) - log2((float)resolution) - 1.0f, 0.0f);
+    mip = max(log2((float)max(width, 1u)) - log2((float)max(resolution, 1u)) - 1.0f, 0.0f);
 
     uv           = 0.0f;
     normal_frame = float3(0.0f, 0.0f, 1.0f);
@@ -1178,7 +1178,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float3 position          = mul(position_local, transform).xyz;
     float3 position_local_previous = input.position;
     if (_draw.previous_vertex_offset != 0)
-        position_local_previous = geometry_vertices[input.vertex_id + _draw.previous_vertex_offset].position;
+        position_local_previous = load_pulled_vertex(input.vertex_id + _draw.previous_vertex_offset).position;
     float3 position_previous = mul(float4(position_local_previous, 1.0f), transform_previous).xyz;
 
     // the same vertex relative to the camera, subtracting two nearby floats is exact so the translation

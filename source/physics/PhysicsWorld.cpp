@@ -569,7 +569,7 @@ namespace spartan
                 SP_PROFILE_CPU_END();
                 // The next substep's forces/queries read these results, so steps stay serial
                 SP_PROFILE_CPU_START("physics_fetch_results");
-                while (cvar_physics_assist.GetValue() && !scene->checkResults(false))
+                while ((cvar_physics_assist.GetValue() || dispatcher->getWorkerCount() == 0) && !scene->checkResults(false))
                 {
                     if (dispatcher->Assist()) ++step_statistics.assisted_tasks;
                     else std::this_thread::yield();
@@ -616,7 +616,9 @@ namespace spartan
         void start()
         {
             exit_requested = false;
+#if !defined(__EMSCRIPTEN__)
             worker = thread(worker_main);
+#endif
         }
 
         void stop()
@@ -649,7 +651,12 @@ namespace spartan
         scene_desc.gravity                 = PxVec3(0.0f, settings::gravity, 0.0f);
         // Independent vehicle islands can solve concurrently. Keep the pool small
         // to leave CPU capacity for rendering and avoid tiny-task scheduling overhead.
+#if defined(__EMSCRIPTEN__)
+        // no threads in the browser, the fetch loop runs every task on the caller through Assist
+        const uint32_t physics_workers = 0;
+#else
         const uint32_t physics_workers = clamp(std::thread::hardware_concurrency() / 2u, 1u, 4u);
+#endif
         scene_desc.cpuDispatcher           = new PhysicsDispatcher(physics_workers);
         scene_desc.filterShader            = collision_filter_shader;
         scene_desc.simulationEventCallback = &contact_callback;
@@ -791,7 +798,7 @@ namespace spartan
             RebaseOrigin(camera->GetEntity()->GetPosition());
         }
 
-        if (!cvar_physics_threaded.GetValue())
+        if (!cvar_physics_threaded.GetValue() || !simulation_thread::worker.joinable())
         {
             simulation_thread::run_steps(count, simulation_thread::queued_step_size);
             return;

@@ -143,4 +143,11 @@ inline __m256 _mm256_cmp_ps(const __m256 a, const __m256 b, const int predicate)
 #include <immintrin.h>
 //==================
 
+// wasm has no control register, denormals always stay as they are
+#if defined(__EMSCRIPTEN__)
+inline void _mm_setcsr(unsigned int)
+{
+}
+#endif
+
 #endif

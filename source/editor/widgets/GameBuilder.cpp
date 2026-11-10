@@ -63,6 +63,11 @@ namespace
             start = start.parent_path();
         }
         const string location = start.empty() ? string() : start.string();
+#if defined(__EMSCRIPTEN__)
+        // the browser has no folder picker that hands back a real path, the dialog closes as if cancelled
+        on_folder_chosen(nullptr, nullptr, -1);
+        return;
+#endif
         SDL_ShowOpenFolderDialog(on_folder_chosen, nullptr, static_cast<SDL_Window*>(Window::GetHandleSDL()), location.empty() ? nullptr : location.c_str(), false);
     }
 

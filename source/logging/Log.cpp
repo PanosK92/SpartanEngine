@@ -35,6 +35,11 @@ namespace spartan
 
         void write_to_file(const char* text, const LogType type)
         {
+            #if defined(__EMSCRIPTEN__)
+            // the browser's file system lives in memory, the developer console is the only place a log can be read
+            printf("%s%s\n", type == LogType::Info ? "Info: " : (type == LogType::Warning ? "Warning: " : "Error: "), text);
+            #endif
+
             // the log being replaced here is the only record of why the last run died, and the restart
             // after a gpu crash is what lands on this path, so it is rotated rather than deleted
             static bool is_first_log = true;

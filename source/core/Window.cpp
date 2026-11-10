@@ -264,6 +264,10 @@ namespace spartan
 
         const bool headless  = Engine::IsHeadless();
         m_show_splash_screen = !headless;
+        #if defined(__EMSCRIPTEN__)
+        // every sdl window in the browser is the one canvas, a software splash would claim it before webgpu can
+        m_show_splash_screen = false;
+        #endif
         // show a splash screen
         if (m_show_splash_screen)
         {

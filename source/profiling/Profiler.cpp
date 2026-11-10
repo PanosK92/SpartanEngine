@@ -563,6 +563,9 @@ namespace spartan
                     Renderer::GetRhiApiType() ==
                     RHI_Api_Type::Metal ?
                         "metal" :
+                    Renderer::GetRhiApiType() ==
+                    RHI_Api_Type::WebGpu ?
+                        "webgpu" :
                         "d3d12";
             const bool gpu_timing_enabled =
                 cvar_debug_gpu_timing.GetValue();

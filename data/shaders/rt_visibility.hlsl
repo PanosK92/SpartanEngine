@@ -25,9 +25,9 @@ bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 baryc
     }
 
     uint index_base = geo.index_offset + primitive_index * 3u;
-    float2 uv0 = unpack_vertex_uv(geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 0u]].uv);
-    float2 uv1 = unpack_vertex_uv(geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 1u]].uv);
-    float2 uv2 = unpack_vertex_uv(geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 2u]].uv);
+    float2 uv0 = unpack_vertex_uv(load_pulled_vertex(geo.vertex_offset + geometry_indices[index_base + 0u]).uv);
+    float2 uv1 = unpack_vertex_uv(load_pulled_vertex(geo.vertex_offset + geometry_indices[index_base + 1u]).uv);
+    float2 uv2 = unpack_vertex_uv(load_pulled_vertex(geo.vertex_offset + geometry_indices[index_base + 2u]).uv);
     float3 bary     = float3(saturate(1.0f - barycentrics.x - barycentrics.y), barycentrics);
     float2 texcoord = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
     texcoord        = texcoord * geo.uv_tiling + geo.uv_offset;

@@ -12,8 +12,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_resources_bindless.hlsl"
 
 // buffers
-#ifdef API_D3D12
-// d3d12 path: root 32-bit constants at b1 (vk::push_constant is ignored by dxil)
+#if defined(API_D3D12) || defined(API_WEBGPU)
+// d3d12 path: root 32-bit constants at b1 (vk::push_constant is ignored by dxil), webgpu has no push constants either
 cbuffer BufferPass : register(b1) { PassBufferData buffer_pass; };
 #else
 [[vk::push_constant]]

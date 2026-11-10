@@ -26,7 +26,11 @@ Texture3D tex3d : register(t13);
 [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss                  : register(u5);
 RWStructuredBuffer<uint> visibility                                                   : register(u6); // unused, kept for descriptor layout stability
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter                            : register(u7); // used by FidelityFX SPD
+#if defined(API_WEBGPU)
+[[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[8] : register(u8); // used by FidelityFX SPD, webgpu stages see at most 8 storage textures
+#else
 [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u8); // used by FidelityFX SPD
+#endif
 // integer format textures (vrs, etc)
 RWTexture2D<uint> tex_uav_uint : register(u30);
 

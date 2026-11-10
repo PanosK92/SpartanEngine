@@ -130,6 +130,13 @@ namespace spartan
         stopping = false;
         stopping_flag.store(false, memory_order_relaxed);
 
+#if defined(__EMSCRIPTEN__)
+        // the browser build has no threads, tasks run on the caller as they are added
+        thread_count = 0;
+        SP_LOG_INFO("no worker threads, tasks run inline");
+        return;
+#endif
+
         uint32_t hw_threads = thread::hardware_concurrency();
         if (hw_threads == 0)
         {
@@ -185,6 +192,22 @@ namespace spartan
         const shared_ptr<AsyncTask> job = make_shared<AsyncTask>();
         job->work                       = std::move(task);
         future<void> result             = job->done.get_future();
+
+#if defined(__EMSCRIPTEN__)
+        // a waiting future can't be woken without threads, so the work is done before the caller gets it
+        try
+        {
+            job->work();
+            job->work = nullptr;
+            job->done.set_value();
+        }
+        catch (...)
+        {
+            job->work = nullptr;
+            job->done.set_exception(current_exception());
+        }
+        return result;
+#endif
 
         {
             lock_guard<mutex> lock(task_mutex);

@@ -671,9 +671,9 @@ bool leaf_trace_contact(float3 previous, float3 next, EmitterParams emitter, out
         if (query.CommittedStatus() == COMMITTED_NOTHING) return false;
         GeometryInfo geo = geometry_infos[query.CommittedInstanceIndex()];
         uint base = geo.index_offset + query.CommittedPrimitiveIndex() * 3u;
-        float3 a = geometry_vertices[geo.vertex_offset + geometry_indices[base]].position;
-        float3 b = geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position;
-        float3 c = geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position;
+        float3 a = load_pulled_vertex(geo.vertex_offset + geometry_indices[base]).position;
+        float3 b = load_pulled_vertex(geo.vertex_offset + geometry_indices[base + 1u]).position;
+        float3 c = load_pulled_vertex(geo.vertex_offset + geometry_indices[base + 2u]).position;
         float3x3 transform = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
         normal = safe_normalize(cross(mul(b - a, transform), mul(c - a, transform)), float3(0, 1, 0));
         if (dot(normal, ray.Direction) > 0) normal = -normal;

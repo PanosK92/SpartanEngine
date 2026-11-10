@@ -449,6 +449,12 @@ namespace spartan
             return true;
         }
 
+#if defined(__EMSCRIPTEN__)
+        // a browser tab can't listen on a socket
+        SP_LOG_WARNING("The MCP server isn't available in the browser");
+        return false;
+#endif
+
         mcp_port = port;
         McpQueue::Initialize();
 

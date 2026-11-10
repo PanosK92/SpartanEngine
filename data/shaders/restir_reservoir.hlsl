@@ -344,9 +344,9 @@ bool restir_hit_emitter_triangle(uint2 identity, out EmissiveTriangle tri)
         return false;
     float3x3 transform = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
     float3 translation = float3(geo.object_to_world_0.w, geo.object_to_world_1.w, geo.object_to_world_2.w);
-    tri.v0 = mul(geometry_vertices[geo.vertex_offset + geometry_indices[base]].position, transform) + translation;
-    tri.v1 = mul(geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position, transform) + translation;
-    tri.v2 = mul(geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position, transform) + translation;
+    tri.v0 = mul(load_pulled_vertex(geo.vertex_offset + geometry_indices[base]).position, transform) + translation;
+    tri.v1 = mul(load_pulled_vertex(geo.vertex_offset + geometry_indices[base + 1u]).position, transform) + translation;
+    tri.v2 = mul(load_pulled_vertex(geo.vertex_offset + geometry_indices[base + 2u]).position, transform) + translation;
     float3 area_normal = cross(tri.v1 - tri.v0, tri.v2 - tri.v0);
     float twice_area = length(area_normal);
     if (twice_area <= 1e-12f)
@@ -484,9 +484,9 @@ bool restir_rc_hit_position(uint3 hit, out float3 position)
     uint base = geo.index_offset + hit.y * 3u;
     if (base >= index_count || index_count - base < 3u) return false;
     float3 bary = unpack_hit_barycentrics(hit.z);
-    float3 p0 = geometry_vertices[geo.vertex_offset + geometry_indices[base]].position;
-    float3 p1 = geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position;
-    float3 p2 = geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position;
+    float3 p0 = load_pulled_vertex(geo.vertex_offset + geometry_indices[base]).position;
+    float3 p1 = load_pulled_vertex(geo.vertex_offset + geometry_indices[base + 1u]).position;
+    float3 p2 = load_pulled_vertex(geo.vertex_offset + geometry_indices[base + 2u]).position;
     float3x3 transform = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
     position = mul(p0 * bary.x + p1 * bary.y + p2 * bary.z, transform) +
         float3(geo.object_to_world_0.w, geo.object_to_world_1.w, geo.object_to_world_2.w);

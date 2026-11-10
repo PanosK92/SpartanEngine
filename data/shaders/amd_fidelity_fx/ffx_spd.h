@@ -824,7 +824,13 @@ void SpdDownsample(
 
     if (mips <= 6) return;
 
+#if defined(API_WEBGPU)
+    // wgsl only allows barriers in uniform control flow and the counter is never provably uniform,
+    // so every workgroup runs the tail and only the last one stores
+    spd_store_enabled = !SpdExitWorkgroup(numWorkGroups, localInvocationIndex, slice);
+#else
     if (SpdExitWorkgroup(numWorkGroups, localInvocationIndex, slice)) return;
+#endif
 
     SpdResetAtomicCounter(slice);
 
@@ -1272,7 +1278,11 @@ void SpdDownsampleH(
 
     if (mips < 7) return;
 
+#if defined(API_WEBGPU)
+    spd_store_enabled = !SpdExitWorkgroup(numWorkGroups, localInvocationIndex, slice);
+#else
     if (SpdExitWorkgroup(numWorkGroups, localInvocationIndex, slice)) return;
+#endif
 
     SpdResetAtomicCounter(slice);
 

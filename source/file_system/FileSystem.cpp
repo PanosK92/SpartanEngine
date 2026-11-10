@@ -30,6 +30,41 @@ SP_WARNINGS_ON
 using namespace std;
 //==================
 
+// a browser tab can't spawn processes and sdl's emscripten port leaves the api out, every spawn fails like a missing binary would
+#if defined(__EMSCRIPTEN__)
+extern "C"
+{
+    SDL_Process* SDL_CreateProcessWithProperties(SDL_PropertiesID)
+    {
+        SDL_SetError("processes aren't available in the browser");
+        return nullptr;
+    }
+
+    void* SDL_ReadProcess(SDL_Process*, size_t*, int*)
+    {
+        return nullptr;
+    }
+
+    SDL_IOStream* SDL_GetProcessOutput(SDL_Process*)
+    {
+        return nullptr;
+    }
+
+    bool SDL_WaitProcess(SDL_Process*, bool, int* exit_code)
+    {
+        if (exit_code)
+        {
+            *exit_code = -1;
+        }
+        return true;
+    }
+
+    void SDL_DestroyProcess(SDL_Process*)
+    {
+    }
+}
+#endif
+
 namespace spartan
 {
     namespace

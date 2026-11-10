@@ -43,7 +43,11 @@
 #include "common_def.h"
 
 #define CMP_MAX_16BITFLOAT 65504.0f
+#if defined(API_WEBGPU)
+#define CMP_FLT_MAX 1e15F // tint folds arithmetic on flt_max into inf and asserts
+#else
 #define CMP_FLT_MAX 3.402823466e+38F
+#endif
 #define BC1ConstructColour(r, g, b) (((r) << 11) | ((g) << 5) | (b))
 
 #ifdef ASPM_HLSL

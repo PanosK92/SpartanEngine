@@ -1034,7 +1034,12 @@ float get_depth(const uint2 position)
 
 float get_depth(const float2 uv)
 {
+#if defined(API_WEBGPU)
+    // webgpu can't filter depth textures
+    return tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+#else
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
+#endif
 }
 
 float linearize_depth(const float z)
@@ -1717,11 +1722,20 @@ float light_sample_depth(Light light, float3 uv)
         atlas_offset + atlas_scale
     );
 
+#if defined(API_WEBGPU)
+    // webgpu can't filter depth textures
+    return tex2.SampleLevel(
+        samplers[sampler_point_clamp_border],
+        atlas_uv,
+        0
+    ).r;
+#else
     return tex2.SampleLevel(
         samplers[sampler_bilinear_clamp_border],
         atlas_uv,
         0
     ).r;
+#endif
 }
 
 #endif // SPARTAN_COMMON

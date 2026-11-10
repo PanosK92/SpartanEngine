@@ -25,11 +25,20 @@ Commercial use requires written permission and negotiated payment terms.
     #include <bit>
 
     #define SHARED_FLOAT    float
+#if defined(API_GRAPHICS_WEBGPU)
+    // wgsl can't express hlsl's packed buffer layouts, so webgpu shaders use std140/std430 and vectors align naturally here too
+    #define SHARED_FLOAT2   alignas(8) spartan::math::Vector2
+    #define SHARED_FLOAT3   alignas(16) spartan::math::Vector3
+    #define SHARED_FLOAT4   alignas(16) spartan::math::Vector4
+    #define SHARED_COLOR    alignas(16) spartan::Color
+    #define SHARED_MATRIX   alignas(16) spartan::math::Matrix
+#else
     #define SHARED_FLOAT2   spartan::math::Vector2
     #define SHARED_FLOAT3   spartan::math::Vector3
     #define SHARED_FLOAT4   spartan::math::Vector4
     #define SHARED_COLOR    spartan::Color
     #define SHARED_MATRIX   spartan::math::Matrix
+#endif
     #define SHARED_UINT     uint32_t
     #define SHARED_INT      int32_t
     #define SHARED_DOUBLE   double
@@ -126,8 +135,8 @@ struct FrameBufferData
     SHARED_FLOAT3 camera_position_previous;
     SHARED_FLOAT  resolution_scale;
 
-#if defined(API_GRAPHICS_METAL) || defined(API_METAL)
-    // metal gpus have no fp64, the padding keeps the double's 8 bytes so the layout matches the other apis
+#if defined(API_GRAPHICS_METAL) || defined(API_METAL) || defined(API_GRAPHICS_WEBGPU) || defined(API_WEBGPU)
+    // metal gpus and wgsl have no fp64, the padding keeps the double's 8 bytes so the layout matches the other apis
     SHARED_FLOAT  time;
     SHARED_FLOAT  time_padding;
 #else

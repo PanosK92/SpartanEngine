@@ -9,6 +9,10 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#if defined(__EMSCRIPTEN__)
+// xxhash includes this inside extern "C" on wasm, emscripten's version carries templates, so it goes in first
+#include <arm_neon.h>
+#endif
 #define XXH_INLINE_ALL
 #include "../../third_party/xxhash/xxhash.h"
 

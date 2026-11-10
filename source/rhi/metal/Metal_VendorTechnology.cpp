@@ -17,7 +17,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    // xess and dlss have no metal backends, nrd is a passthrough, see NRD_Dispatch
+    // fsr, xess and dlss have no metal backends, nrd is a passthrough, see NRD_Dispatch
     void RHI_VendorTechnology::Initialize()
     {
     }
@@ -32,6 +32,30 @@ namespace spartan
 
     void RHI_VendorTechnology::ResetHistory()
     {
+    }
+
+    bool RHI_VendorTechnology::FSR_IsAvailable()
+    {
+        return false;
+    }
+
+    void RHI_VendorTechnology::FSR_Shutdown()
+    {
+    }
+
+    void RHI_VendorTechnology::FSR_ResetHistory()
+    {
+    }
+
+    void RHI_VendorTechnology::FSR_GenerateJitterSample(float* x, float* y)
+    {
+        *x = 0.0f;
+        *y = 0.0f;
+    }
+
+    bool RHI_VendorTechnology::FSR_Dispatch(RHI_Texture* color, RHI_Texture* depth, RHI_Texture* velocity, RHI_Texture* output, RHI_Texture* reactive)
+    {
+        return false;
     }
 
     float RHI_VendorTechnology::XeSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)

@@ -103,6 +103,129 @@ jobs:
           name: spartan_${{ matrix.api }}_release
           path: spartan_${{ matrix.api }}_release.zip
 
+  # webgpu ships twice: a native windows build on dawn and the browser package
+  # the browser can't compile hlsl, so the native build first fills the wgsl cache on warp (no gpu on the runner)
+  build_webgpu:
+    name: windows webgpu and web release
+    needs: stamp
+    runs-on: windows-2025
+    env:
+      SPARTAN_BUILD_STAMP: ${{ needs.stamp.outputs.stamp }}
+      EMSDK_VERSION: 7.0.0
+      SPARTAN_WEB_DEPS: ${{ github.workspace }}\..\spartan_web_deps
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[18.0,19.0)'
+
+      # setup.lua verifies the sha256 of both archives and skips the downloads when the cached copies match
+      - name: Cache libraries and dawn archives
+        uses: actions/cache@v4
+        with:
+          path: |
+            third_party/libraries/libraries.7z
+            third_party/libraries/dawn_windows.tar.gz
+          key: libraries-webgpu-${{ hashFiles('tools/setup.lua') }}
+
+      - name: Generate project files
+        shell: cmd
+        run: call generate_project_files.bat vs2026 webgpu
+
+      - name: Build
+        shell: cmd
+        run: msbuild /p:Platform=x64 /p:Configuration=release /m spartan.slnx
+
+      - name: Startup smoke test (no GPU)
+        id: smoke
+        timeout-minutes: 3
+        run: python tools/ci_smoke_test.py binaries/spartan_webgpu.exe
+
+      - name: Upload startup failure diagnostics
+        if: ${{ failure() && steps.smoke.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-windows-webgpu
+          path: |
+            binaries/logs/log.txt
+            binaries/logs/smoke_test_*.txt
+          retention-days: 14
+
+      # tint.exe compiles the shaders at runtime, it has to ship next to the executable
+      - name: Create native artifact
+        shell: cmd
+        run: |
+          if exist binaries\steam_appid.txt (
+            tar -a -c -f spartan_webgpu_release.zip binaries\third_party binaries\steam_appid.txt binaries\data binaries\tint.exe binaries\spartan_webgpu.exe
+          ) else (
+            tar -a -c -f spartan_webgpu_release.zip binaries\third_party binaries\data binaries\tint.exe binaries\spartan_webgpu.exe
+          )
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spartan_webgpu_release
+          path: spartan_webgpu_release.zip
+
+      # the smoke tests render on warp, which compiles every shader the renderer creates, the exit code reflects
+      # gpu fixtures a runner doesn't have, the cache is what matters
+      - name: Bake WebGPU shaders on WARP
+        id: bake
+        timeout-minutes: 15
+        run: |
+          $process = Start-Process binaries\spartan_webgpu.exe -ArgumentList "--software-gpu", "-ci_test", "--ci-exit", "--no-steam" -WorkingDirectory binaries -PassThru -Wait
+          $count = (Get-ChildItem binaries\cache\generated_cache\webgpu_shaders -File -ErrorAction SilentlyContinue | Measure-Object).Count
+          echo "baked $count shaders (exit code $($process.ExitCode))"
+          if ($count -lt 100) {
+            Get-Content binaries\logs\log.txt -Tail 80
+            exit 1
+          }
+
+      - name: Upload bake diagnostics
+        if: ${{ failure() && steps.bake.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: shader-bake-windows-webgpu
+          path: binaries/logs/*.txt
+          retention-days: 14
+
+      - name: Cache emsdk
+        id: emsdk_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/emsdk
+          key: emsdk-${{ env.EMSDK_VERSION }}
+
+      - name: Install emsdk
+        if: steps.emsdk_cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$env:USERPROFILE\emsdk"
+          & "$env:USERPROFILE\emsdk\emsdk.bat" install $env:EMSDK_VERSION
+          & "$env:USERPROFILE\emsdk\emsdk.bat" activate $env:EMSDK_VERSION
+
+      # physx, assimp, lua and freeimage sources, the libraries themselves rebuild with the engine
+      - name: Cache web dependency sources
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SPARTAN_WEB_DEPS }}
+          key: web-deps-${{ hashFiles('tools/web_build.py') }}
+
+      - name: Build web
+        run: |
+          python -m pip install ninja
+          python tools/web_build.py engine
+
+      - name: Create web artifact
+        shell: cmd
+        run: tar -a -c -f spartan_web_release.zip -C binaries\web spartan.html spartan.js spartan.wasm spartan.data serve.py
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spartan_web_release
+          path: spartan_web_release.zip
+
   build_linux:
     name: linux vulkan release
     needs: stamp
@@ -331,9 +454,9 @@ jobs:
 
   release:
     # every platform must build and pass startup before any release is published
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.build.result == 'success' && needs.build_linux.result == 'success' && needs.build_macos.result == 'success' }}
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.build.result == 'success' && needs.build_linux.result == 'success' && needs.build_macos.result == 'success' && needs.build_webgpu.result == 'success' }}
     runs-on: ubuntu-latest
-    needs: [stamp, build, build_linux, build_macos]
+    needs: [stamp, build, build_webgpu, build_linux, build_macos]
     permissions:
       contents: write
     env:
@@ -351,6 +474,8 @@ jobs:
         run: |
           mv spartan_vulkan_release.zip spartan_vulkan_release_$TAG.zip
           mv spartan_d3d12_release.zip spartan_d3d12_release_$TAG.zip
+          mv spartan_webgpu_release.zip spartan_webgpu_release_$TAG.zip
+          mv spartan_web_release.zip spartan_web_release_$TAG.zip
           mv spartan_vulkan_linux_release.tar.gz spartan_vulkan_linux_release_$TAG.tar.gz
           mv spartan_metal_macos_release.tar.gz spartan_metal_macos_release_$TAG.tar.gz
 
@@ -386,7 +511,7 @@ jobs:
             }
 
             const groupOrder = [
-              'rhi', 'vulkan', 'd3d12', 'metal', 'rendering', 'editor',
+              'rhi', 'vulkan', 'd3d12', 'metal', 'webgpu', 'platforms', 'rendering', 'editor',
               'world', 'terrain', 'animation', 'physics', 'other'
             ];
             const groupTitle = {
@@ -394,6 +519,8 @@ jobs:
               vulkan: 'Vulkan',
               d3d12: 'Direct3D 12',
               metal: 'Metal',
+              webgpu: 'WebGPU',
+              platforms: 'Platforms',
               rendering: 'Rendering',
               editor: 'Editor',
               world: 'World',
@@ -437,11 +564,14 @@ jobs:
             const notes = [
               'Editor builds. On Windows unzip and run `spartan_vulkan.exe` or `spartan_d3d12.exe`, on Linux extract and run `./spartan_vulkan` (needs `libfreeimage3` and a Vulkan driver).',
               'On macOS 26+ (Apple silicon) extract, run `xattr -dr com.apple.quarantine .` in the extracted folder since the build is not notarized, then run `./spartan_metal`.',
+              'WebGPU (work in progress): on Windows unzip and run `spartan_webgpu.exe` (Dawn). For the browser unzip `spartan_web_release_*.zip`, run `python serve.py` in that folder and open the printed address in Chrome, Edge or Brave. The web package boots the editor with an empty world, see `docs/webgpu.md` to package a world.',
               '',
               '| Platform | Backend | Artifact |',
               '| --- | --- | --- |',
               '| Windows | Vulkan | `spartan_vulkan_release_*.zip` |',
               '| Windows | Direct3D 12 | `spartan_d3d12_release_*.zip` |',
+              '| Windows | WebGPU (Dawn) | `spartan_webgpu_release_*.zip` |',
+              '| Web | WebGPU (browser) | `spartan_web_release_*.zip` |',
               '| Linux | Vulkan | `spartan_vulkan_linux_release_*.tar.gz` |',
               '| macOS | Metal | `spartan_metal_macos_release_*.tar.gz` |',
               '',
@@ -464,5 +594,7 @@ jobs:
           files: |
             spartan_vulkan_release_${{ env.TAG }}.zip
             spartan_d3d12_release_${{ env.TAG }}.zip
+            spartan_webgpu_release_${{ env.TAG }}.zip
+            spartan_web_release_${{ env.TAG }}.zip
             spartan_vulkan_linux_release_${{ env.TAG }}.tar.gz
             spartan_metal_macos_release_${{ env.TAG }}.tar.gz

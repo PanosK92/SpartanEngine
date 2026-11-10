@@ -80,9 +80,9 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
     GeometryInfo geometry = geometry_infos[hit.x];
     uint index_base = geometry.index_offset + hit.y * 3u;
     float3 bary = unpack_hit_barycentrics(hit.z);
-    float3 p0 = geometry_vertices[geometry.vertex_offset + geometry_indices[index_base]].position;
-    float3 p1 = geometry_vertices[geometry.vertex_offset + geometry_indices[index_base + 1u]].position;
-    float3 p2 = geometry_vertices[geometry.vertex_offset + geometry_indices[index_base + 2u]].position;
+    float3 p0 = load_pulled_vertex(geometry.vertex_offset + geometry_indices[index_base]).position;
+    float3 p1 = load_pulled_vertex(geometry.vertex_offset + geometry_indices[index_base + 1u]).position;
+    float3 p2 = load_pulled_vertex(geometry.vertex_offset + geometry_indices[index_base + 2u]).position;
     float3 local_position = p0 * bary.x + p1 * bary.y + p2 * bary.z;
     float3x3 transform = float3x3(geometry.object_to_world_0.xyz,
         geometry.object_to_world_1.xyz, geometry.object_to_world_2.xyz);

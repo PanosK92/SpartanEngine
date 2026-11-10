@@ -18,6 +18,12 @@ SP_WARNINGS_OFF
 #include "NRDIntegration.hpp"
 #include "nvsdk_ngx.h"
 #include "nvsdk_ngx_helpers.h"
+// amd's loader checks PLATFORM_WINDOWS rather than the compiler's _WIN32
+#define PLATFORM_WINDOWS
+#include <api/include/ffx_api_loader.h>
+#undef PLATFORM_WINDOWS
+#include <upscalers/include/ffx_upscale.h>
+#include <api/include/dx12/ffx_api_dx12.h>
 #endif
 SP_WARNINGS_ON
 #include "../RHI_VendorTechnology.h"
@@ -29,6 +35,7 @@ SP_WARNINGS_ON
 #include "../RHI_Nrd.h"
 #include "D3D12_Internal.h"
 #include "../../rendering/Renderer.h"
+#include "../../rendering/Renderer_Internal.h"
 #include "../../rendering/Renderer_Buffers.h"
 #include "../../world/World.h"
 #include "../../world/components/Camera.h"
@@ -726,6 +733,101 @@ namespace spartan
             return pool_shadows;
         }
     }
+
+    // fsr, the sdk loader picks fsr 4 on supported hardware and fsr 3.1 otherwise
+    namespace amd
+    {
+        HMODULE module          = nullptr;
+        ffxFunctions api        = {};
+        ffxContext context      = nullptr;
+        bool load_attempted     = false;
+        bool reset_history      = true;
+        bool failed             = false;
+        uint32_t render_width   = 0;
+        uint32_t render_height  = 0;
+        uint32_t output_width   = 0;
+        uint32_t output_height  = 0;
+        uint32_t jitter_index   = 0;
+
+        void context_destroy()
+        {
+            if (context)
+            {
+                RHI_Device::QueueWaitAll();
+                api.DestroyContext(&context, nullptr);
+                context = nullptr;
+            }
+            reset_history = true;
+        }
+
+        uint32_t to_ffx_format(RHI_Format format)
+        {
+            switch (format)
+            {
+                case RHI_Format::R8_Unorm:           return FFX_API_SURFACE_FORMAT_R8_UNORM;
+                case RHI_Format::R16_Float:          return FFX_API_SURFACE_FORMAT_R16_FLOAT;
+                case RHI_Format::R32_Float:
+                case RHI_Format::D32_Float:          return FFX_API_SURFACE_FORMAT_R32_FLOAT;
+                case RHI_Format::R16G16_Float:       return FFX_API_SURFACE_FORMAT_R16G16_FLOAT;
+                case RHI_Format::R11G11B10_Float:    return FFX_API_SURFACE_FORMAT_R11G11B10_FLOAT;
+                case RHI_Format::R16G16B16A16_Float: return FFX_API_SURFACE_FORMAT_R16G16B16A16_FLOAT;
+                case RHI_Format::R8G8B8A8_Unorm:     return FFX_API_SURFACE_FORMAT_R8G8B8A8_UNORM;
+                default:                             return FFX_API_SURFACE_FORMAT_UNKNOWN;
+            }
+        }
+
+        FfxApiResource to_ffx_resource(RHI_Texture* texture, bool output = false)
+        {
+            FfxApiResource result     = ffxApiGetResourceDX12(static_cast<ID3D12Resource*>(texture->GetRhiResource()), output ? FFX_API_RESOURCE_STATE_UNORDERED_ACCESS : FFX_API_RESOURCE_STATE_COMPUTE_READ);
+            result.description.format = to_ffx_format(texture->GetFormat());
+            return result;
+        }
+
+        bool load()
+        {
+            if (!load_attempted)
+            {
+                load_attempted = true;
+                module         = LoadLibraryW(L"amd_fidelityfx_loader_dx12.dll");
+                if (module)
+                {
+                    ffxLoadFunctions(&api, module);
+                }
+                if (!api.CreateContext || !api.DestroyContext || !api.Query || !api.Dispatch || !api.Configure)
+                {
+                    if (module)
+                    {
+                        FreeLibrary(module);
+                    }
+                    module = nullptr;
+                    api    = {};
+                    SP_LOG_WARNING("FSR upscaling runtime unavailable; run dependency setup");
+                }
+            }
+            return module != nullptr && !failed;
+        }
+
+        void shutdown()
+        {
+            context_destroy();
+            if (module)
+            {
+                FreeLibrary(module);
+            }
+            module         = nullptr;
+            api            = {};
+            load_attempted = false;
+            failed         = false;
+            jitter_index   = 0;
+        }
+
+        void request_history_reset()
+        {
+            reset_history = true;
+            failed        = false;
+            jitter_index  = 0;
+        }
+    }
     #endif
 
     void RHI_VendorTechnology::Initialize()
@@ -737,8 +839,8 @@ namespace spartan
 
     void RHI_VendorTechnology::Shutdown()
     {
-        FSR_Shutdown();
     #ifdef _WIN32
+        amd::shutdown();
         intel::context_destroy();
         dlss::sdk_shutdown();
         nvidia::context_destroy();
@@ -790,10 +892,178 @@ namespace spartan
 
     void RHI_VendorTechnology::ResetHistory()
     {
-        FSR_ResetHistory();
     #ifdef _WIN32
+        amd::request_history_reset();
         common::reset_history = true;
         nvidia::request_history_reset();
+    #endif
+    }
+
+    bool RHI_VendorTechnology::FSR_IsAvailable()
+    {
+    #ifdef _WIN32
+        return amd::load();
+    #else
+        return false;
+    #endif
+    }
+
+    void RHI_VendorTechnology::FSR_Shutdown()
+    {
+    #ifdef _WIN32
+        amd::shutdown();
+    #endif
+    }
+
+    void RHI_VendorTechnology::FSR_ResetHistory()
+    {
+    #ifdef _WIN32
+        amd::request_history_reset();
+    #endif
+    }
+
+    void RHI_VendorTechnology::FSR_GenerateJitterSample(float* x, float* y)
+    {
+        *x = 0.0f;
+        *y = 0.0f;
+    #ifdef _WIN32
+        if (!amd::load())
+            return;
+
+        const Vector2& resolution = Renderer::GetResolutionRender();
+        const float scale         = Renderer::GetResolutionScale();
+        const uint32_t width      = Renderer::GetScaledDimension(static_cast<uint32_t>(resolution.x), scale);
+        const uint32_t height     = Renderer::GetScaledDimension(static_cast<uint32_t>(resolution.y), scale);
+        if (!width || !height)
+            return;
+
+        int32_t phases                              = 8;
+        ffxQueryDescUpscaleGetJitterPhaseCount phase = {};
+        phase.header.type                           = FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTERPHASECOUNT;
+        phase.renderWidth                           = width;
+        phase.displayWidth                          = static_cast<uint32_t>(Renderer::GetResolutionOutput().x);
+        phase.pOutPhaseCount                        = &phases;
+        amd::api.Query(nullptr, &phase.header);
+        if (phases <= 0)
+        {
+            phases = 8;
+        }
+
+        ffxQueryDescUpscaleGetJitterOffset offset = {};
+        offset.header.type                        = FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTEROFFSET;
+        offset.index                              = static_cast<int32_t>(amd::jitter_index++ % static_cast<uint32_t>(phases));
+        offset.phaseCount                         = phases;
+        offset.pOutX                              = x;
+        offset.pOutY                              = y;
+        amd::api.Query(nullptr, &offset.header);
+        *x *= -2.0f / static_cast<float>(width);
+        *y *=  2.0f / static_cast<float>(height);
+    #endif
+    }
+
+    bool RHI_VendorTechnology::FSR_Dispatch(RHI_Texture* color, RHI_Texture* depth, RHI_Texture* velocity, RHI_Texture* output, RHI_Texture* reactive)
+    {
+    #ifdef _WIN32
+        if (!amd::load())
+            return false;
+
+        Camera* camera = Renderer::GetViewCamera();
+        if (!camera)
+            return false;
+
+        if (amd::render_width != color->GetWidth() || amd::render_height != color->GetHeight() || amd::output_width != output->GetWidth() || amd::output_height != output->GetHeight())
+        {
+            amd::context_destroy();
+            amd::render_width  = color->GetWidth();
+            amd::render_height = color->GetHeight();
+            amd::output_width  = output->GetWidth();
+            amd::output_height = output->GetHeight();
+        }
+
+        if (!amd::context)
+        {
+            ffxCreateBackendDX12Desc backend = {};
+            backend.header.type              = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
+            backend.device                   = RHI_Context::device;
+
+            ffxCreateContextDescUpscaleVersion version = {};
+            version.header.type                        = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE_VERSION;
+            version.header.pNext                       = &backend.header;
+            version.version                            = FFX_UPSCALER_VERSION;
+
+            ffxCreateContextDescUpscale create = {};
+            create.header.type                 = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
+            create.header.pNext                = &version.header;
+            create.flags                       = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE | FFX_UPSCALE_ENABLE_DEPTH_INVERTED | FFX_UPSCALE_ENABLE_AUTO_EXPOSURE | FFX_UPSCALE_ENABLE_DYNAMIC_RESOLUTION;
+            create.maxRenderSize               = { amd::render_width, amd::render_height };
+            create.maxUpscaleSize              = { amd::output_width, amd::output_height };
+            if (amd::api.CreateContext(&amd::context, &create.header, nullptr) != FFX_API_RETURN_OK)
+            {
+                SP_LOG_WARNING("FSR upscaling context creation failed; using TAAU");
+                amd::context = nullptr;
+                amd::failed  = true;
+                return false;
+            }
+
+            ffxQueryGetProviderVersion provider = {};
+            provider.header.type                = FFX_API_QUERY_DESC_TYPE_GET_PROVIDER_VERSION;
+            if (amd::api.Query(&amd::context, &provider.header) == FFX_API_RETURN_OK && provider.versionName)
+            {
+                SP_LOG_INFO("FSR upscaling selected: %s", provider.versionName);
+            }
+        }
+
+        RHI_CommandList* cmd = RHI_Device::Cmd();
+        RHI_CommandList::RenderPassEnd();
+        for (RHI_Texture* input : { color, depth, velocity, reactive })
+        {
+            cmd->EnsureComputeShaderResource(input);
+        }
+        cmd->PrepareForExternalWrite(output);
+        cmd->FlushBarriers();
+
+        const float scale            = Renderer::GetResolutionScale();
+        const uint32_t width         = Renderer::GetScaledDimension(amd::render_width, scale);
+        const uint32_t height        = Renderer::GetScaledDimension(amd::render_height, scale);
+        const Vector2& jitter        = Renderer::view().jitter_offset;
+        ffxDispatchDescUpscale dispatch = {};
+        dispatch.header.type             = FFX_API_DISPATCH_DESC_TYPE_UPSCALE;
+        dispatch.commandList             = cmd->GetRhiResource();
+        dispatch.color                   = amd::to_ffx_resource(color);
+        dispatch.depth                   = amd::to_ffx_resource(depth);
+        dispatch.motionVectors           = amd::to_ffx_resource(velocity);
+        dispatch.reactive                = amd::to_ffx_resource(reactive);
+        dispatch.output                  = amd::to_ffx_resource(output, true);
+        dispatch.renderSize              = { width, height };
+        dispatch.upscaleSize             = { amd::output_width, amd::output_height };
+        dispatch.jitterOffset            = { -jitter.x * 0.5f * width, jitter.y * 0.5f * height };
+        dispatch.motionVectorScale       = { -0.5f * width, 0.5f * height };
+        dispatch.frameTimeDelta          = Renderer::view().frame.delta_time_real * 1000.0f;
+        dispatch.preExposure             = 1.0f;
+        dispatch.reset                   = amd::reset_history;
+        // reverse z, near and far swap
+        dispatch.cameraNear              = camera->GetFarPlane();
+        dispatch.cameraFar               = camera->GetNearPlane();
+        dispatch.cameraFovAngleVertical  = camera->GetFovVerticalRad();
+        dispatch.viewSpaceToMetersFactor = 1.0f;
+        const bool dispatched            = amd::api.Dispatch(&amd::context, &dispatch.header) == FFX_API_RETURN_OK;
+
+        for (RHI_Texture* input : { color, depth, velocity, reactive })
+        {
+            cmd->AdoptComputeShaderResource(input);
+        }
+        cmd->AdoptUnorderedAccess(output);
+        cmd->restore_after_external_pass();
+
+        amd::reset_history = !dispatched;
+        if (!dispatched)
+        {
+            SP_LOG_WARNING("FSR upscaling dispatch failed; using TAAU");
+            amd::failed = true;
+        }
+        return dispatched;
+    #else
+        return false;
     #endif
     }
 

@@ -19,7 +19,12 @@ float4 sample_footprint(Texture2D source, float2 uv, float2 texel_footprint, int
         [loop] for (int x = 0; x < taps.x; x++)
         {
             const float2 offset = (float2(x, y) + 0.5f) / (float2)taps - 0.5f;
+#if defined(API_WEBGPU)
+            // webgpu can't filter depth, which this blit also copies, the taps still box filter
+            sum += source.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv + offset * texel_footprint, 0);
+#else
             sum += source.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv + offset * texel_footprint, 0);
+#endif
         }
     }
 

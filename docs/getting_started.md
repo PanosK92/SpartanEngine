@@ -7,6 +7,7 @@
 | Windows 10/11 x64 | Visual Studio 2026 (2022 also generates), CPU with AVX2 | DirectX 12 or Vulkan |
 | Linux x64 | GCC or Clang with `make`, CPU with AVX2/FMA/F16C | Vulkan |
 | macOS 26.0+ on Apple silicon | Xcode 26, Homebrew `cmake` and `ninja`, [Metal Shader Converter](https://developer.apple.com/metal/shader-converter/) | Metal 4 |
+| Web (WIP) | [Emscripten](https://emscripten.org/) (emsdk), CMake, Ninja, Python; a browser with WebGPU (Chrome, Edge, Brave) | WebGPU, see [WebGPU and the web](webgpu.md) |
 
 Hardware ray tracing is needed for ReSTIR path tracing, ray-traced shadows and ray-traced reflections. The renderer runs without it, with those features off.
 
@@ -36,12 +37,26 @@ tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 
 Then open `spartan.xcworkspace`.
 
+### Web
+
+To just try it, download `spartan_web_release_*.zip` from the [releases](https://github.com/PanosK92/SpartanEngine/releases), unzip it, run `python serve.py` and open the printed address in Chrome, Edge or Brave.
+
+The browser build is the WebGPU backend compiled to WebAssembly by [`tools/web_build.py`](../tools/web_build.py). Generate and build the Windows WebGPU backend first (`generate_project_files.bat vs2026 webgpu`, or option `[3]` in the menu; setup downloads Dawn), then run it once so the WGSL shader cache exists:
+
+```powershell
+python tools/web_build.py deps                        # once, wasm32 PhysX, Assimp, FreeImage, Lua, meshoptimizer
+python tools/web_build.py engine --world pbr.world    # binaries/web/spartan.html, .js, .wasm, .data
+python tools/web_build.py serve                       # http://localhost:8080/spartan.html
+```
+
+Details and limitations are in [WebGPU and the web](webgpu.md).
+
 ### Actions, APIs and configurations
 
 | Argument | Values |
 | -------- | ------ |
 | Action | `vs2026`, `vs2022`, `gmake`, `gmake2`, `codelite`, `xcode4`, and `setup` (dependencies only) |
-| Graphics API | `d3d12` (defines `API_GRAPHICS_D3D12`), `vulkan` (`API_GRAPHICS_VULKAN`), `metal` (`API_GRAPHICS_METAL`) |
+| Graphics API | `d3d12` (defines `API_GRAPHICS_D3D12`), `vulkan` (`API_GRAPHICS_VULKAN`), `metal` (`API_GRAPHICS_METAL`), `webgpu` (`API_GRAPHICS_WEBGPU`, Windows through Dawn) |
 | Option | `--skip-setup` generates without downloading dependencies |
 
 There is one project, `spartan`, built in three configurations:

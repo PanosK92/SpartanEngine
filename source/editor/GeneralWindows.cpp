@@ -33,7 +33,7 @@ SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include <renderdoc/replay/version.h>
 #include "io/pugixml.hpp"
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(API_GRAPHICS_WEBGPU)
 #include <xess/xess.h>
 #endif
 #if defined(API_GRAPHICS_VULKAN)
@@ -50,7 +50,8 @@ using namespace std;
 
 namespace
 {
-    Editor* editor = nullptr;
+    Editor* editor               = nullptr;
+    bool startup_world_requested = false;
 
     static void center_next_window(Editor* editor)
     {
@@ -369,7 +370,7 @@ license.)";
 
                 v.push_back({ "ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui" });
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(API_GRAPHICS_WEBGPU)
                 // xessGetVersion reports XeSS-SR lib version; sdk package version is separate
                 {
                     xess_version_t xv = {};
@@ -821,6 +822,13 @@ void GeneralWindows::Initialize(Editor* editor_in)
     // the welcome window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
     welcome::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
 
+    // a world given on the command line opens straight into it, the launcher and welcome would load it a second time
+    startup_world_requested = spartan::Engine::HasArgument("--world");
+    if (startup_world_requested)
+    {
+        welcome::visible = false;
+    }
+
     // initialize world selector (handles world file scanning)
     WorldSelector::Initialize(editor_in);
 
@@ -849,7 +857,7 @@ void GeneralWindows::Tick()
     if (first_tick)
     {
         first_tick = false;
-        if (!welcome::visible && !WorldSelector::GetVisible())
+        if (!welcome::visible && !WorldSelector::GetVisible() && !startup_world_requested)
         {
             WorldSelector::SetVisible(true);
         }

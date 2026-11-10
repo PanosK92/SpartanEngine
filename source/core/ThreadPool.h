@@ -25,6 +25,20 @@ namespace spartan
         // add a task
         static std::future<void> AddTask(Task&& task);
 
+        // runs a function on a dedicated thread, the browser has no threads so it runs inline and the future is ready on return
+        template<typename Function>
+        static auto RunDetached(Function&& function) -> std::future<std::invoke_result_t<std::decay_t<Function>>>
+        {
+#if defined(__EMSCRIPTEN__)
+            std::packaged_task<std::invoke_result_t<std::decay_t<Function>>()> task(std::forward<Function>(function));
+            auto result = task.get_future();
+            task();
+            return result;
+#else
+            return std::async(std::launch::async, std::forward<Function>(function));
+#endif
+        }
+
         // spread execution of a given function across all available threads
         static void ParallelLoop(std::function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total);
 

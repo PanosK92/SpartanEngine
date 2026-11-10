@@ -20,6 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 groupshared AF4 spd_intermediate[16][16];
 groupshared AU1 spd_counter;
+static bool spd_store_enabled = true; // webgpu only, cleared on the workgroups that aren't last
 
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
@@ -41,7 +42,14 @@ AF4 SpdLoad(ASU2 pos, AU1 slice)
 
 void SpdStore(ASU2 pos, AF4 value, AU1 index, AU1 slice)
 {
-    tex_uav_mips[index][pos] = value;
+#if defined(API_WEBGPU)
+    if (spd_store_enabled && index < 8)
+#else
+    if (spd_store_enabled)
+#endif
+    {
+        tex_uav_mips[index][pos] = value;
+    }
 }
 
 AF4 SpdLoadIntermediate(AU1 x, AU1 y)
@@ -80,7 +88,10 @@ AU1 SpdGetAtomicCounter()
 
 void SpdResetAtomicCounter(AU1 slice)
 {
-    g_atomic_counter[0] = 0;
+    if (spd_store_enabled)
+    {
+        g_atomic_counter[0] = 0;
+    }
 }
 
 #if ONE_MIP

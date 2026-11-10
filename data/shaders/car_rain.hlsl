@@ -76,8 +76,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (length(float2(texel) + 0.5f - drop.uv) > reach)
                 continue;
 
+#if defined(API_WEBGPU)
+            // wgsl has no texture atomics, overlapping drops can race but one of them still wins
+            if (key > tex_car_rain_ids_uav[uint2(texel)])
+            {
+                tex_car_rain_ids_uav[uint2(texel)] = key;
+            }
+#else
             uint previous;
             InterlockedMax(tex_car_rain_ids_uav[uint2(texel)], key, previous);
+#endif
         }
     }
 }

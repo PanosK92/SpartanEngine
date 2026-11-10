@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_TextureStreaming.h"
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
+#include "../core/ThreadPool.h"
 #include <chrono>
 #include <cmath>
 #include <future>
@@ -364,7 +365,7 @@ namespace spartan
             ids.push_back(job.source->GetObjectId());
         try
         {
-            batch = async(launch::async, [jobs = move(jobs)]() mutable
+            batch = ThreadPool::RunDetached([jobs = move(jobs)]() mutable
             {
                 for (Job& job : jobs)
                 {

@@ -69,9 +69,9 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     uint i1 = geometry_indices[index_base + 1];
     uint i2 = geometry_indices[index_base + 2];
 
-    PulledVertex pv0 = geometry_vertices[geo.vertex_offset + i0];
-    PulledVertex pv1 = geometry_vertices[geo.vertex_offset + i1];
-    PulledVertex pv2 = geometry_vertices[geo.vertex_offset + i2];
+    PulledVertex pv0 = load_pulled_vertex(geo.vertex_offset + i0);
+    PulledVertex pv1 = load_pulled_vertex(geo.vertex_offset + i1);
+    PulledVertex pv2 = load_pulled_vertex(geo.vertex_offset + i2);
 
     float3 bary = unpack_hit_barycentrics(barycentrics_packed);
 

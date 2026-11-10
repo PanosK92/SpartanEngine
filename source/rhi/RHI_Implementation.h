@@ -280,6 +280,135 @@ inline constexpr MTL::BlendOperation metal_blend_operation[] =
 
 #endif // API_GRAPHICS_METAL
 
+// definition - WebGPU, dawn on desktop, the browser through emdawnwebgpu on the web
+#if defined(API_GRAPHICS_WEBGPU)
+#if defined(_WIN32)
+// the other apis bring windows.h with them, the platform code relies on it
+#include <windows.h>
+#endif
+#include <webgpu/webgpu.h>
+
+// must match the RHI_CullMode enum order, Back, Front, None
+inline constexpr WGPUCullMode webgpu_cull_mode[] =
+{
+    WGPUCullMode_Back,
+    WGPUCullMode_Front,
+    WGPUCullMode_None
+};
+
+inline constexpr WGPUPrimitiveTopology webgpu_primitive_topology[] =
+{
+    WGPUPrimitiveTopology_TriangleList,
+    WGPUPrimitiveTopology_LineList,
+    WGPUPrimitiveTopology_PointList
+};
+
+inline constexpr WGPUTextureFormat webgpu_format[] =
+{
+    // R
+    WGPUTextureFormat_R8Unorm,
+    WGPUTextureFormat_R8Uint,
+    WGPUTextureFormat_R16Unorm,
+    WGPUTextureFormat_R16Uint,
+    WGPUTextureFormat_R16Float,
+    WGPUTextureFormat_R32Uint,
+    WGPUTextureFormat_R32Float,
+    // RG
+    WGPUTextureFormat_RG8Unorm,
+    WGPUTextureFormat_RG16Float,
+    WGPUTextureFormat_RG32Float,
+    // RGB
+    WGPUTextureFormat_RG11B10Ufloat,
+    WGPUTextureFormat_Undefined, // webgpu has no 96 bit texture format
+    // RGBA
+    WGPUTextureFormat_RGBA8Unorm,
+    WGPUTextureFormat_RGB10A2Unorm,
+    WGPUTextureFormat_RGBA16Unorm,
+    WGPUTextureFormat_RGBA16Snorm,
+    WGPUTextureFormat_RGBA16Float,
+    WGPUTextureFormat_RGBA32Float,
+    // Depth
+    WGPUTextureFormat_Depth16Unorm,
+    WGPUTextureFormat_Depth32Float,
+    WGPUTextureFormat_Depth32FloatStencil8,
+    // Compressed
+    WGPUTextureFormat_BC1RGBAUnorm,
+    WGPUTextureFormat_BC3RGBAUnorm,
+    WGPUTextureFormat_BC5RGUnorm,
+    WGPUTextureFormat_BC7RGBAUnorm,
+    WGPUTextureFormat_ASTC4x4Unorm,
+    // Surface
+    WGPUTextureFormat_BGRA8Unorm,
+    WGPUTextureFormat_RG32Uint,
+    // Unknown
+    WGPUTextureFormat_Undefined
+};
+
+inline constexpr WGPUAddressMode webgpu_sampler_address_mode[] =
+{
+    WGPUAddressMode_Repeat,
+    WGPUAddressMode_MirrorRepeat,
+    WGPUAddressMode_ClampToEdge,
+    WGPUAddressMode_ClampToEdge, // no border color in webgpu
+    WGPUAddressMode_MirrorRepeat // no mirror once in webgpu
+};
+
+inline constexpr WGPUCompareFunction webgpu_comparison_function[] =
+{
+    WGPUCompareFunction_Never,
+    WGPUCompareFunction_Less,
+    WGPUCompareFunction_Equal,
+    WGPUCompareFunction_LessEqual,
+    WGPUCompareFunction_Greater,
+    WGPUCompareFunction_NotEqual,
+    WGPUCompareFunction_GreaterEqual,
+    WGPUCompareFunction_Always
+};
+
+inline constexpr WGPUStencilOperation webgpu_stencil_operation[] =
+{
+    WGPUStencilOperation_Keep,
+    WGPUStencilOperation_Zero,
+    WGPUStencilOperation_Replace,
+    WGPUStencilOperation_IncrementClamp,
+    WGPUStencilOperation_DecrementClamp,
+    WGPUStencilOperation_Invert,
+    WGPUStencilOperation_IncrementWrap,
+    WGPUStencilOperation_DecrementWrap
+};
+
+inline constexpr WGPUBlendFactor webgpu_blend_factor[] =
+{
+    WGPUBlendFactor_Zero,
+    WGPUBlendFactor_One,
+    WGPUBlendFactor_Src,
+    WGPUBlendFactor_OneMinusSrc,
+    WGPUBlendFactor_SrcAlpha,
+    WGPUBlendFactor_OneMinusSrcAlpha,
+    WGPUBlendFactor_DstAlpha,
+    WGPUBlendFactor_OneMinusDstAlpha,
+    WGPUBlendFactor_Dst,
+    WGPUBlendFactor_OneMinusDst,
+    WGPUBlendFactor_SrcAlphaSaturated,
+    WGPUBlendFactor_Constant,
+    WGPUBlendFactor_OneMinusConstant,
+    WGPUBlendFactor_Src1,
+    WGPUBlendFactor_OneMinusSrc1,
+    WGPUBlendFactor_Src1Alpha,
+    WGPUBlendFactor_OneMinusSrc1Alpha
+};
+
+inline constexpr WGPUBlendOperation webgpu_blend_operation[] =
+{
+    WGPUBlendOperation_Add,
+    WGPUBlendOperation_Subtract,
+    WGPUBlendOperation_ReverseSubtract,
+    WGPUBlendOperation_Min,
+    WGPUBlendOperation_Max
+};
+
+#endif // API_GRAPHICS_WEBGPU
+
 // definition - vulkan
 #if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
@@ -532,6 +661,10 @@ namespace spartan
             static VkPhysicalDevice device_physical;
         #elif defined(API_GRAPHICS_METAL)
             static MTL::Device* device;
+        #elif defined(API_GRAPHICS_WEBGPU)
+            static WGPUInstance instance;
+            static WGPUAdapter adapter;
+            static WGPUDevice device;
         #endif
 
         // api agnostic

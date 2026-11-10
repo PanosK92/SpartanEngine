@@ -40,6 +40,14 @@ namespace spartan
     MTL::Device* RHI_Context::device                      = nullptr;
     uint32_t     RHI_Context::sdl_window_flags            = SDL_WINDOW_METAL;
     bool         RHI_Context::supports_imgui_multi_viewport = false;
+#elif defined(API_GRAPHICS_WEBGPU)
+    RHI_Api_Type RHI_Context::api_type                    = RHI_Api_Type::WebGpu;
+    const char*  RHI_Context::api_type_str                = "WebGPU";
+    WGPUInstance RHI_Context::instance                    = nullptr;
+    WGPUAdapter  RHI_Context::adapter                     = nullptr;
+    WGPUDevice   RHI_Context::device                      = nullptr;
+    uint32_t     RHI_Context::sdl_window_flags            = 0;
+    bool         RHI_Context::supports_imgui_multi_viewport = false;
 #endif
 
     // api agnostic

@@ -46,6 +46,7 @@ Commercial use requires written permission and negotiated payment terms.
     #include <arpa/inet.h>
     #include <netinet/in.h>
     #include <sys/socket.h>
+    #include <sys/time.h>
     #include <unistd.h>
 #endif
 

@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Display.h"
 #include "Window.h"
+#include "../core/ThreadPool.h"
 SP_WARNINGS_OFF
 #if defined(_WIN32)
 // used by GetLuminanceMax() and GetSdrWhiteNits()
@@ -180,7 +181,7 @@ namespace spartan
         InvalidateProperties();
         display_modes.clear();
         display_modes_enumerated = false;
-        luminance_max_task       = async(launch::async, query_luminance_max);
+        luminance_max_task       = ThreadPool::RunDetached(query_luminance_max);
 
         // log display info, the max luminance is still being queried in the background
         SP_LOG_INFO("name: %s, hz: %.1f, gamma: %.1f, hdr: %s", GetName(), GetRefreshRate(), GetGamma(), GetHdr() ? "true" : "false");

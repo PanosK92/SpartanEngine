@@ -35,16 +35,18 @@
 
 <table align="center">
   <tr>
-    <td align="center" colspan="3"><sub><b>PLATFORMS</b></sub></td>
-    <td align="center" colspan="3"><sub><b>GRAPHICS APIS</b></sub></td>
+    <td align="center" colspan="4"><sub><b>PLATFORMS</b></sub></td>
+    <td align="center" colspan="4"><sub><b>GRAPHICS APIS</b></sub></td>
   </tr>
   <tr>
-    <td align="center" width="105"><img src=".github/images/platforms/windows.svg" height="30" alt=""/><br/><sub>Windows</sub></td>
-    <td align="center" width="105"><img src=".github/images/platforms/linux.svg" height="30" alt=""/><br/><sub>Linux</sub></td>
-    <td align="center" width="105"><img src=".github/images/platforms/apple.svg" height="30" alt=""/><br/><sub>macOS</sub></td>
-    <td align="center" width="105"><img src=".github/images/platforms/directx.svg" height="30" alt=""/><br/><sub>DirectX 12</sub></td>
-    <td align="center" width="105"><img src=".github/images/platforms/vulkan.svg" height="30" alt=""/><br/><sub>Vulkan</sub></td>
-    <td align="center" width="105"><img src=".github/images/platforms/metal.svg" height="30" alt=""/><br/><sub>Metal</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/windows.svg" height="30" alt=""/><br/><sub>Windows</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/linux.svg" height="30" alt=""/><br/><sub>Linux</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/apple.svg" height="30" alt=""/><br/><sub>macOS</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/web.svg" height="30" alt=""/><br/><sub>Web (WIP)</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/directx.svg" height="30" alt=""/><br/><sub>DirectX 12</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/vulkan.svg" height="30" alt=""/><br/><sub>Vulkan</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/metal.svg" height="30" alt=""/><br/><sub>Metal</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/webgpu.svg" height="30" alt=""/><br/><sub>WebGPU (WIP)</sub></td>
   </tr>
 </table>
 
@@ -146,7 +148,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 - **GPU-driven indirect rendering** with per-meshlet frustum, Hi-Z occlusion and backface cone culling; the CPU issues a single `DrawIndexedIndirectCount` per pass
 - **Meshlet clustering** via meshoptimizer, with mesh shaders when available and a vertex-pulling fallback
 - **Bindless everything**: materials, lights, samplers, uber shaders, minimal PSO permutations
-- **Universal HLSL** compiled for Vulkan (SPIR-V), DirectX 12 and Metal (Metal Shader Converter)
+- **Universal HLSL** compiled for Vulkan (SPIR-V), DirectX 12, Metal (Metal Shader Converter) and WebGPU (SPIR-V to WGSL through Tint)
 - **GPU-side asset processing**: mip generation (FidelityFX SPD) and texture compression (Compressonator) at load time, not baked offline
 - **Unified deferred rendering**: opaque and transparent surfaces share the same BSDF and render path
 - **Async compute** for SSAO and screen-space shadows, in parallel with shadow rasterization
@@ -202,7 +204,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 | System               | Details                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
-| **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)** |
+| **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; WebGPU (WIP) on Windows through Dawn and in the browser through WebAssembly, see **[WebGPU and the web](docs/webgpu.md)** |
 | **Physics**          | PhysX with rigid bodies, character kinematics and vehicle dynamics                                |
 | **Animation**        | Skeletal animation with keyframed clips, crossfade blending, four-bone skinning and two-bone IK with ground-aware foot planting |
 | **Particles**        | GPU-driven compute emission and simulation, depth-buffer collision and soft blending              |
@@ -245,6 +247,20 @@ tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make 
 # needs Xcode 26, Homebrew (brew install cmake ninja) and the Metal Shader Converter
 # from developer.apple.com/metal/shader-converter, then open spartan.xcworkspace
 tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
+```
+
+#### <img src=".github/images/platforms/web.svg" height="16" alt=""/>&nbsp; Web &nbsp;<sub>WebGPU, WIP</sub>
+
+To just try it: download `spartan_web_release_*.zip` from the releases, unzip, run `python serve.py` and open the printed address in Chrome, Edge or Brave. To build it ([full guide](docs/webgpu.md)):
+
+```powershell
+# the browser can't compile hlsl: build and run the windows webgpu backend once so it fills the shader cache
+# (setup downloads dawn, the menu option is [3] visual studio 2026 - webgpu)
+generate_project_files.bat vs2026 webgpu
+# needs emsdk (EMSDK or ~/emsdk), cmake, ninja and git, then open http://localhost:8080/spartan.html in a WebGPU browser
+python tools/web_build.py deps
+python tools/web_build.py engine --world pbr.world
+python tools/web_build.py serve
 ```
 
 <details>
@@ -308,6 +324,9 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
     <td valign="top"><b><a href="docs/mcp.md">MCP bridge</a></b><br/><sub>Driving the live engine from AI agents and tools</sub></td>
     <td valign="top"><b><a href="docs/testing_and_ci.md">Testing and CI</a></b><br/><sub>Smoke tests and the build pipeline</sub></td>
     <td valign="top"><b><a href="docs/code_style.md">Code style</a></b><br/><sub>Conventions for contributions</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><b><a href="docs/webgpu.md">WebGPU and the web</a></b><br/><sub>The fourth RHI, native through Dawn and in the browser through WebAssembly</sub></td>
   </tr>
 </table>
 

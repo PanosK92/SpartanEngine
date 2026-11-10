@@ -95,6 +95,18 @@ local STEAMWORKS_URL   = "https://github.com/rlabrecque/SteamworksSDK/archive/re
 local STEAMWORKS_ZIP   = path.join(PROJECT_ROOT, "third_party", "steamworks_sdk.zip")
 local STEAM_APP_ID     = "480" -- valve spacewar test appid, replace with the real one
 
+-- dawn (webgpu), only fetched when generating the webgpu projects
+-- the release ships a static /MD library, it's linked into a dll so it can sit next to the /MT engine
+-- the headers and the export list are vendored in third_party/webgpu and must match this version
+local DAWN_VERSION     = "v20261106.204713"
+local DAWN_FOLDER      = "Dawn-66f899221d41dbc6d6257350c4b654a9b375c7f2-windows-latest-Release"
+local DAWN_URL         = "https://github.com/google/dawn/releases/download/" .. DAWN_VERSION .. "/" .. DAWN_FOLDER .. ".tar.gz"
+local DAWN_HASH        = "d9fef7fa3171feab2680be072aaf099a492fdcb3b4b06b51687a61b79a954b5c"
+local DAWN_ARCHIVE     = path.join(LIBRARIES_DIR, "dawn_windows.tar.gz")
+local DAWN_STAMP       = path.join(LIBRARIES_DIR, "dawn_version.txt")
+local DAWN_DEF         = path.join(PROJECT_ROOT, "third_party", "webgpu", "webgpu_dawn.def")
+local DAWN_SYSTEM_LIBS = "d3d12.lib dxgi.lib d3d11.lib dxguid.lib user32.lib kernel32.lib gdi32.lib ole32.lib onecore.lib"
+
 local function is_windows()
     return os.host() == "windows"
 end
@@ -410,6 +422,90 @@ local function stage_agility_runtime()
     end
 end
 
+local function find_vcvars()
+    local vswhere = path.join(os.getenv("ProgramFiles(x86)") or "C:/Program Files (x86)", "Microsoft Visual Studio", "Installer", "vswhere.exe")
+    if not file_exists(vswhere) then
+        return nil
+    end
+    local handle = io.popen(quote(vswhere) .. " -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath", "r")
+    if not handle then
+        return nil
+    end
+    local installation = (handle:read("*l") or ""):gsub("%s+$", "")
+    handle:close()
+    local vcvars = path.join(installation, "VC", "Auxiliary", "Build", "vcvars64.bat")
+    return file_exists(vcvars) and vcvars or nil
+end
+
+local function ensure_dawn()
+    local dll  = path.join(LIBRARIES_DIR, "webgpu_dawn.dll")
+    local lib  = path.join(LIBRARIES_DIR, "webgpu_dawn.lib")
+    local tint = path.join(LIBRARIES_DIR, "tint.exe")
+
+    local present = read_text(DAWN_STAMP) == DAWN_VERSION and file_exists(dll) and file_exists(lib) and file_exists(tint)
+    if present then
+        print("dawn " .. DAWN_VERSION .. " present, skipping download")
+    else
+        if compute_sha256(DAWN_ARCHIVE) ~= DAWN_HASH then
+            print("downloading dawn " .. DAWN_VERSION .. "...")
+            os.mkdir(LIBRARIES_DIR)
+            os.remove(DAWN_ARCHIVE)
+            local result, code = download_with_progress(DAWN_URL, DAWN_ARCHIVE)
+            if result ~= "OK" then
+                error(string.format("dawn download failed: %s (http %s)", tostring(result), tostring(code)))
+            end
+            local hash = compute_sha256(DAWN_ARCHIVE)
+            if hash ~= DAWN_HASH then
+                error(string.format("dawn hash mismatch (expected %s, got %s)", DAWN_HASH, tostring(hash)))
+            end
+        end
+
+        local extract_root = path.join(LIBRARIES_DIR, "dawn_extract")
+        if os.isdir(extract_root) then
+            os.rmdir(extract_root)
+        end
+        os.mkdir(extract_root)
+        print("extracting dawn...")
+        local cmd = string.format('tar -xzf %s -C %s --strip-components=2 %s/bin/tint.exe %s/lib/webgpu_dawn.lib', quote(DAWN_ARCHIVE), quote(extract_root), DAWN_FOLDER, DAWN_FOLDER)
+        local ok = run(cmd)
+        if ok ~= true and ok ~= 0 then
+            error("dawn extraction failed (cmd: " .. cmd .. ")")
+        end
+
+        local vcvars = find_vcvars()
+        if not vcvars then
+            error("dawn needs the msvc linker, install visual studio with the c++ workload")
+        end
+
+        -- vcvars chokes on very long inherited paths, a script with a minimal path sidesteps that and the quoting
+        local script = path.join(extract_root, "link_dawn.bat")
+        local f = io.open(script, "wb")
+        f:write("@echo off\r\n")
+        f:write("set PATH=%SystemRoot%\\system32;%SystemRoot%\r\n")
+        f:write("call " .. quote(vcvars) .. " >nul || exit /b 1\r\n")
+        f:write(string.format("link /nologo /DLL /DEF:%s /OUT:%s /IMPLIB:%s /MACHINE:X64 %s %s\r\n", quote(DAWN_DEF), quote(dll), quote(lib), quote(path.join(extract_root, "webgpu_dawn.lib")), DAWN_SYSTEM_LIBS))
+        f:close()
+        print("linking webgpu_dawn.dll...")
+        ok = run(quote(script))
+        if (ok ~= true and ok ~= 0) or not file_exists(dll) then
+            error("linking webgpu_dawn.dll failed")
+        end
+        copy_file(path.join(extract_root, "tint.exe"), tint)
+        os.remove(path.join(LIBRARIES_DIR, "webgpu_dawn.exp"))
+        os.rmdir(extract_root)
+
+        f = io.open(DAWN_STAMP, "wb")
+        f:write(DAWN_VERSION)
+        f:close()
+        print("dawn " .. DAWN_VERSION .. " installed")
+    end
+
+    -- the shader compiler runs tint next to the executable
+    copy_file(dll, path.join(RUNTIME_DIR, "webgpu_dawn.dll"))
+    copy_file(tint, path.join(BINARIES_DIR, "tint.exe"))
+    print("  staged webgpu_dawn.dll and tint.exe")
+end
+
 local function ensure_xess_sdk()
     if not is_windows() then
         print("  not windows, skipping xess sdk")
@@ -634,6 +730,11 @@ function setup.run()
 
     print("\n[6/7] ensuring steamworks sdk...")
     ensure_steamworks()
+
+    if ARG_API_GRAPHICS == "webgpu" then
+        print("ensuring dawn (webgpu)...")
+        ensure_dawn()
+    end
 
     print("\n[7/7] copying runtime dlls into binaries/third_party...")
     for _, dll in ipairs(RUNTIME_DLLS) do

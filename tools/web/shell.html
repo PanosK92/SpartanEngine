@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spartan Engine (WebGPU)</title>
+<style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #101014; overflow: hidden; font-family: sans-serif; color: #ddd; }
+    #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+    #status { position: absolute; left: 16px; bottom: 16px; font-size: 13px; opacity: 0.8; white-space: pre; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+<div id="status">loading...</div>
+<script>
+    const status_element = document.getElementById("status");
+    function set_status(text)
+    {
+        status_element.textContent = text;
+        status_element.style.display = text ? "block" : "none";
+    }
+
+    if (!navigator.gpu)
+    {
+        set_status("this browser doesn't expose WebGPU (navigator.gpu is missing)");
+    }
+
+    // ?world=worlds/name.world opens another packaged world
+    const world = new URLSearchParams(window.location.search).get("world") || "SPARTAN_DEFAULT_WORLD";
+
+    var Module =
+    {
+        arguments: world ? ["--world", world] : [],
+        canvas: document.getElementById("canvas"),
+        print: (text) => console.log(text),
+        printErr: (text) => console.warn(text),
+        setStatus: (text) => set_status(text),
+        monitorRunDependencies: (left) => { if (left) set_status("loading data (" + left + " left)"); },
+        onRuntimeInitialized: () => set_status(""),
+        onAbort: (what) => { set_status("aborted: " + what); console.error("abort: " + what + "\n" + new Error().stack); },
+    };
+
+    window.addEventListener("error", (event) => set_status("error: " + event.message));
+    window.addEventListener("unhandledrejection", (event) => console.error("unhandled: " + (event.reason && event.reason.stack ? event.reason.stack : event.reason)));
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

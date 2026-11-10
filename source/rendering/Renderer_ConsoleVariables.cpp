@@ -202,6 +202,7 @@ namespace spartan
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,   "draw physics debug");
     TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,   "draw ragdoll capsules and joints in play mode");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,   "render in wireframe mode");
+    TConsoleVar<float> cvar_debug_view                     ("r.debug_view",                     0.0f,   "show a render target in place of the final image, 0 off, n shows Renderer_RenderTarget n - 1 (color 2d targets only)");
     // post-processing                                                                                  
     TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,   "lens scattering strength, 1 redistributes about 4 percent of light, 0 disables");
     TConsoleVar<float> cvar_bloom_scatter                  ("r.bloom_scatter",                  0.7f,   "bloom halo spread, 0.05 to 0.95, higher is wider");

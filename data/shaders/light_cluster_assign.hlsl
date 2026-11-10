@@ -107,7 +107,12 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
     uint final_count = min(raw_count, (uint)CLUSTER_MAX_LIGHTS);
 
     // bitonic sort the survivors ascending so the set is deterministic across frames
+#if defined(API_WEBGPU)
+    // wgsl wants barriers in provably uniform control flow and gs_count is an atomic, sorting 0 or 1 entries is harmless
+    if (true)
+#else
     if (final_count > 1u)
+#endif
     {
         // pad the upper lanes with a sentinel so the sort leaves them alone
         for (uint pad = final_count + thread_index; pad < (uint)CLUSTER_MAX_LIGHTS; pad += THREADS_PER_GROUP)

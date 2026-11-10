@@ -21,9 +21,38 @@ SamplerState samplers[]                                  : register(s1,  space7)
 // bindless draw data - per-draw transforms, material indices, etc.
 StructuredBuffer<DrawData> draw_data                     : register(t19, space5);
 
+#if defined(API_WEBGPU)
+// std430 aligns a float3 to 16 bytes, which would stretch the 24 byte vertices to 32, so they are read as scalars
+struct PulledVertexScalars
+{
+    float position_x;
+    float position_y;
+    float position_z;
+    uint  uv;
+    uint  normal;
+    uint  tangent;
+};
+StructuredBuffer<PulledVertexScalars> geometry_vertices : register(t20, space8);
+#else
 StructuredBuffer<PulledVertex> geometry_vertices    : register(t20, space8);
+#endif
 StructuredBuffer<uint> geometry_indices             : register(t22, space9);
 StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
+
+PulledVertex load_pulled_vertex(uint index)
+{
+#if defined(API_WEBGPU)
+    PulledVertexScalars scalars = geometry_vertices[index];
+    PulledVertex vertex;
+    vertex.position = float3(scalars.position_x, scalars.position_y, scalars.position_z);
+    vertex.uv       = scalars.uv;
+    vertex.normal   = scalars.normal;
+    vertex.tangent  = scalars.tangent;
+    return vertex;
+#else
+    return geometry_vertices[index];
+#endif
+}
 
 // vertex attribute unpackers, must match the cpu-side encoders in rhi_vertex.h
 float2 unpack_vertex_uv(uint packed)

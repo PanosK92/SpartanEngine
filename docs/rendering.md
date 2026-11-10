@@ -67,6 +67,7 @@ To add a pass: declare it in `Renderer.h`, register its shader in `Renderer::Cre
 | DirectX 12 | `d3d12/` | HLSL to DXIL with DXC; Agility SDK when present |
 | Vulkan | `vulkan/` | HLSL to SPIR-V with DXC |
 | Metal 4 | `metal/` | HLSL through DXC and the Metal Shader Converter |
+| WebGPU (WIP) | `webgpu/` | HLSL to SPIR-V with DXC, then WGSL with Tint; the browser reads a prebuilt WGSL cache, see [WebGPU and the web](webgpu.md) |
 
 The backend is chosen at build time by the `API_GRAPHICS_*` define; [`RHI_Implementation.h`](../source/rhi/RHI_Implementation.h) maps it to backend headers. Only the selected backend folder is compiled.
 

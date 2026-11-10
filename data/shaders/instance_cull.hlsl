@@ -12,6 +12,10 @@ Commercial use requires written permission and negotiated payment terms.
 
 StructuredBuffer<DrawLod>    draw_lods             : register(t86);
 RWStructuredBuffer<DrawData> indirect_draw_data_rw : register(u87);
+#if defined(API_WEBGPU)
+// webgpu can't alias one buffer through a read and a write binding in a dispatch, so reads go through the writable one
+#define indirect_draw_data indirect_draw_data_rw
+#endif
 // one bit per task lane, the early cull writes whether it drew the instance and the late cull reads it back
 // a stored bit, not a replayed test, because the early cull rewrites the lod bounds the test would read
 RWStructuredBuffer<uint>     instance_visibility   : register(u89);

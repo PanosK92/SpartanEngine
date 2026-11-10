@@ -35,6 +35,9 @@ Commercial use requires written permission and negotiated payment terms.
 SP_WARNINGS_OFF
 #include <SDL3/SDL_messagebox.h>
 SP_WARNINGS_ON
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 //===============================
 
 //= NAMESPACES =====
@@ -140,6 +143,16 @@ Editor::Editor(const vector<string>& args)
         GeneralWindows::Initialize(this); // welcome/update services may access the network
     else
         SP_LOG_INFO("Startup smoke test: editor initialized, entering idle loop");
+
+    // --world opens a world at startup, the browser build passes the one it packaged
+    for (size_t i = 0; i + 1 < args.size(); i++)
+    {
+        if (args[i] == "--world")
+        {
+            spartan::World::LoadFromFile(args[i + 1]);
+            break;
+        }
+    }
 }
 
 Editor::~Editor()
@@ -209,5 +222,10 @@ void Editor::Tick()
         spartan::Profiler::TimeBlockEnd(spartan::TimeBlockType::Cpu);
         spartan::Timer::PostTick();
         spartan::Profiler::PostTick();
+
+#if defined(__EMSCRIPTEN__)
+        // the browser only presents the canvas and delivers input once the frame hands control back
+        emscripten_sleep(0);
+#endif
     }
 }

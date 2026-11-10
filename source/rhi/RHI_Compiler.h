@@ -40,6 +40,14 @@ namespace spartan
         {
             std::packaged_task<void()> task(std::move(function));
             auto result = task.get_future();
+#if defined(__EMSCRIPTEN__)
+            // the browser build has no threads, the work is done before the caller gets its future
+            m_batch_completed = 0;
+            m_batch_submitted = 1;
+            task();
+            m_batch_completed = 1;
+            return result;
+#endif
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_pending == 0)
@@ -86,8 +94,11 @@ namespace spartan
         }
 
     private:
-        explicit RHI_Compiler(const uint32_t worker_count)
+        explicit RHI_Compiler(uint32_t worker_count)
         {
+#if defined(__EMSCRIPTEN__)
+            worker_count = 0;
+#endif
             for (uint32_t i = 0; i < worker_count; i++)
             {
                 m_workers.emplace_back([this]()

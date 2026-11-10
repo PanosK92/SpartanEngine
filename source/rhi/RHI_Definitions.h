@@ -71,6 +71,7 @@ namespace spartan
         D3d12,
         Vulkan,
         Metal,
+        WebGpu,
         Max
     };
 

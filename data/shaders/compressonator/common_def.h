@@ -160,7 +160,11 @@
 //  BC4 alpha always maps as AAAA to channels [0,1,2,3]
 //  BC5 decoded (Red&Green) maps R,G,B=0,A=255 to [0,1,2,3] else  maps [B=0,G,R,A=255] to [0,1,2,3]
 #define CMP_SET_BC13_DECODER_RGBA  
+#if defined(API_WEBGPU)
+#define CMP_FLOAT_MAX 1e15F  // tint folds arithmetic on flt_max into inf and asserts
+#else
 #define CMP_FLOAT_MAX 3.402823466e+38F  // max value used to detect an Error in processing
+#endif
 #define CMP_FLOAT_MAX_EXP 38
 #define USE_PROCESS_SEPERATE_ALPHA  // Enable this to use higher quality code using CompressDualIndexBlock
 #define COMPRESSED_BLOCK_SIZE 16    // Size of a compressed block in bytes

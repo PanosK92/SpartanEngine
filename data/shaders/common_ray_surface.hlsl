@@ -69,9 +69,9 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
     uint i1         = geometry_indices[index_base + 1];
     uint i2         = geometry_indices[index_base + 2];
 
-    PulledVertex v0 = geometry_vertices[geo.vertex_offset + i0];
-    PulledVertex v1 = geometry_vertices[geo.vertex_offset + i1];
-    PulledVertex v2 = geometry_vertices[geo.vertex_offset + i2];
+    PulledVertex v0 = load_pulled_vertex(geo.vertex_offset + i0);
+    PulledVertex v1 = load_pulled_vertex(geo.vertex_offset + i1);
+    PulledVertex v2 = load_pulled_vertex(geo.vertex_offset + i2);
 
     float2 uv0 = unpack_vertex_uv(v0.uv);
     float2 uv1 = unpack_vertex_uv(v1.uv);

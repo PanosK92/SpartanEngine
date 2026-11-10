@@ -811,7 +811,7 @@ namespace spartan
         const uint32_t window_height    = Window::GetHeightInPixels();
         const RHI_Present_Mode present  = cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate;
         const bool hdr                  = Display::GetHdr();
-        future<void> swapchain_future   = async(launch::async, [=]()
+        future<void> swapchain_future   = ThreadPool::RunDetached([=]()
         {
             RHI_Device::CreateSwapChain(window_sdl, window_width, window_height, present, swap_chain_buffer_count, hdr, "renderer");
         });
@@ -2260,7 +2260,7 @@ namespace spartan
         Renderer::view().frame.resolution_render     = m_resolution_render;
         Renderer::view().frame.taa_jitter_previous   = Renderer::view().frame.taa_jitter_current;
         Renderer::view().frame.taa_jitter_current    = Renderer::view().jitter_offset;
-        Renderer::view().frame.time                  = Timer::GetSimTimeSec();
+        Renderer::view().frame.time                  = static_cast<decltype(Renderer::view().frame.time)>(Timer::GetSimTimeSec());
         Renderer::view().frame.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
         Renderer::view().frame.delta_time_real       = static_cast<float>(Timer::GetDeltaTimeRealSec());
         Renderer::view().frame.frame                 = ++view().temporal_frame;
@@ -5153,7 +5153,11 @@ namespace spartan
         geometry_info.world_to_object_0 = Vector4(inverse.m00, inverse.m01, inverse.m02, 0.0f);
         geometry_info.world_to_object_1 = Vector4(inverse.m10, inverse.m11, inverse.m12, 0.0f);
         geometry_info.world_to_object_2 = Vector4(inverse.m20, inverse.m21, inverse.m22, 0.0f);
+#if defined(API_GRAPHICS_WEBGPU)
+        static_assert(sizeof(Sb_GeometryInfo) == 160, "RT geometry buffer layout must match HLSL"); // std430 aligns the float4 rows to 16
+#else
         static_assert(sizeof(Sb_GeometryInfo) == 152, "RT geometry buffer layout must match HLSL");
+#endif
         fill_uv_draw_fields_from_render(geometry_info, render);
     }
 
@@ -7377,6 +7381,16 @@ namespace spartan
         RHI_Device::Bind(RHI_Frame_List::Graphics);
         if (!secondary_render_root_active)
         {
+            const uint32_t debug_view = static_cast<uint32_t>(cvar_debug_view.GetValue());
+            if (debug_view > 0 && debug_view <= static_cast<uint32_t>(Renderer_RenderTarget::max))
+            {
+                RHI_Texture* debug_target = GetRenderTarget(static_cast<Renderer_RenderTarget>(debug_view - 1));
+                if (debug_target && debug_target != rt_output && debug_target->GetType() == RHI_Texture_Type::Type2D && !debug_target->IsDepthStencilFormat())
+                {
+                    RHI_CommandList::Blit(debug_target, rt_output, false);
+                }
+            }
+
             Pass_Text(rt_output, true);
         }
 

@@ -23,9 +23,10 @@ python tools/ci_smoke_test.py binaries/spartan_vulkan.exe
 | Job | Runner | Steps |
 | --- | ------ | ----- |
 | `build` | Windows Server 2025, matrix `d3d12` and `vulkan` | Premake `vs2026`, MSBuild `release`, smoke test, zip |
+| `build_webgpu` | Windows Server 2025 | Premake `vs2026 webgpu` (fetches Dawn), MSBuild `release`, smoke test, zip; bakes the WGSL cache on WARP, then builds the browser package with emsdk and zips it ([details](webgpu.md#ci)) |
 | `build_linux` | Ubuntu 24.04 | `linux_dependencies.sh`, `gmake` release, smoke test, archive |
 | `build_macos` | macOS 26 | Xcode 26, `macos_dependencies.sh`, Metal build, bundle libraries, smoke test, archive |
-| `release` | Pushes to `master` when every build passes | Publishes a GitHub release with all four builds and a changelog |
+| `release` | Pushes to `master` when every build passes | Publishes a GitHub release with all six builds (Windows Vulkan, D3D12 and WebGPU, the web package, Linux and macOS) and a changelog |
 
 ## Before submitting a change
 

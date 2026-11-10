@@ -15,7 +15,7 @@ StructuredBuffer<DrawData> draw_data                 : register(t19, space5);
 SamplerState samplers[]                              : register(s1, space7);
 cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
 
-#ifdef API_D3D12
+#if defined(API_D3D12) || defined(API_WEBGPU)
 cbuffer BufferPass : register(b1) { PassBufferData buffer_pass; };
 #else
 [[vk::push_constant]]

@@ -127,8 +127,8 @@ namespace spartan
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.is_multiview));
             }
 
-            // d3d12 bakes cull into the pso, vulkan keeps it dynamic and ignores this field
-#if defined(API_GRAPHICS_D3D12)
+            // d3d12 and webgpu bake cull into the pso, vulkan keeps it dynamic and ignores this field
+#if defined(API_GRAPHICS_D3D12) || defined(API_GRAPHICS_WEBGPU)
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.cull_mode));
 #endif
 

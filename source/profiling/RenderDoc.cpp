@@ -8,6 +8,35 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ===========================
 #include "pch.h"
 #include "RenderDoc.h"
+//======================================
+
+// renderdoc can't attach to a browser tab
+#if defined(__EMSCRIPTEN__)
+namespace spartan
+{
+    void RenderDoc::OnPreDeviceCreation()
+    {
+    }
+
+    void RenderDoc::Shutdown()
+    {
+    }
+
+    void RenderDoc::Tick()
+    {
+    }
+
+    void RenderDoc::FrameCapture()
+    {
+    }
+
+    void RenderDoc::LaunchRenderDocUi()
+    {
+    }
+}
+#else
+
+//= INCLUDES ===========================
 #include "../rhi/RHI_Implementation.h"
 #include "renderdoc/app/renderdoc_app.h"
 //======================================
@@ -241,3 +270,4 @@ namespace spartan
         }
     }
 }
+#endif

@@ -14,6 +14,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include <Windows.h>
 #include <DbgHelp.h>
 #pragma comment(lib, "dbghelp.lib")
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten.h>
 #else
 #include <execinfo.h>
 #include <cxxabi.h>
@@ -89,6 +91,11 @@ namespace spartan
         }
 
         SymCleanup(process);
+#elif defined(__EMSCRIPTEN__)
+        // the browser owns the wasm stack, it hands it back as javascript stack text
+        char buffer[4096] = {};
+        emscripten_get_callstack(EM_LOG_C_STACK, buffer, sizeof(buffer));
+        callstack << buffer;
 #else
         // Unix-like systems implementation (unchanged)
         void* array[25];
