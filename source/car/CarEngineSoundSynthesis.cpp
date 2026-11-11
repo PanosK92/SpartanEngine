@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstdio>
 #include <cstring>
 #include <mutex>
+#include <numeric>
 #include <string>
 #include <vector>
 #include "../math/Intrinsics.h"
@@ -677,9 +678,15 @@ namespace engine_sound
             float pop_kick_delay[2] = { -1.0f, -1.0f };
             float pop_kick_amp[2]   = { 0.0f, 0.0f };
             float cylinder_count = 1.0f;
+            // how fast the gas moves where this bank's primaries merge, mach, whichever way it goes, and what
+            // a wave turning back there keeps of itself
+            float primary_mach    = 0.0f;
+            float primary_damping = 1.0f;
 
             void reset()
             {
+                primary_mach    = 0.0f;
+                primary_damping = 1.0f;
                 collector_front.reset();
                 tailpipe_front.reset();
                 collector_down.reset();
@@ -736,9 +743,16 @@ namespace engine_sound
             float tailpipe_area     = 1.0e-3f;
             float tailpipe_feedback = 0.0f; // without flow
             // where the exhaust stream separates into a jet it sheds vortices that eat sound, a reflection keeps
-            // (1 - m) / (1 + m) of itself at mean flow mach m; negligible at idle, large flat out
-            float primary_flow_damping   = 1.0f;
+            // (1 - m) / (1 + m) of itself at flow mach m; negligible at idle, large flat out; the primaries
+            // measure theirs, see exhaust_bank::primary_mach
             float collector_flow_damping = 1.0f;
+            float primary_mach_follow    = 1.0f;
+            // the limiter fires every this many sparks; it shares no factor with the cylinder count, or the same few
+            // cylinders would get every spark, all of them on one bank where the firing order goes from bank to bank
+            std::uint32_t cut_stride     = 4;
+            // a pocket of unburnt charge big enough to light off in the pipe takes about four cylinders' worth, so
+            // pops come at a rate set by engine speed, not once per cylinder
+            float pocket_share           = 1.0f;
             float tailpipe_radius   = 0.03f;
             float radiation_gain    = 0.0f;
             float turbine_transmission = 1.0f;
@@ -798,6 +812,10 @@ namespace engine_sound
                 intake_runner.configure(runner_length, 343.0f, -0.42f, 4500.0f, sample_rate);
 
                 openness = std::clamp(1.1f - config.muffler_level, 0.1f, 1.0f);
+                // long enough to see a whole cycle of a slow idle's pulses as one stream
+                primary_mach_follow = 1.0f - expf(-1.0f / (0.02f * sample_rate));
+                cut_stride   = std::gcd(n, 4) == 1 ? 4u : (n % 5 != 0 ? 5u : 3u);
+                pocket_share = std::min(1.0f, 4.0f / static_cast<float>(n));
 
                 // slider crank with a typical rod of 1.6 strokes
                 const float bore         = std::max(config.bore_mm, 20.0f) * 1.0e-3f;
@@ -1044,7 +1062,7 @@ namespace engine_sound
             }
         };
 
-        // mean exhaust mass flow of one cylinder, kg/s, sets the stream's mach number in each pipe
+        // mean exhaust mass flow of one cylinder, kg/s, sets the stream's mach number in the collector and the tailpipe
         inline void set_mean_flow(engine_model& model, float cylinder_flow)
         {
             auto damping = [&](float flow, float area, float temperature)
@@ -1055,7 +1073,6 @@ namespace engine_sound
             };
             const float collector_temperature = model.gas_temperature * (collector_cold_temperature / primary_cold_temperature);
             const float tailpipe_temperature  = model.gas_temperature * (tailpipe_cold_temperature / primary_cold_temperature);
-            model.primary_flow_damping = damping(cylinder_flow, model.primary_area, model.gas_temperature);
             for (exhaust_bank& b : model.banks)
             {
                 const float bank_flow = cylinder_flow * b.cylinder_count;
@@ -1395,7 +1412,9 @@ namespace engine_sound
                 }
             }
 
-            m_limiter_release = expf(-1.0f / (0.05f * m_sample_rate));
+            m_limiter_release      = expf(-1.0f / (0.05f * m_sample_rate));
+            m_limiter_release_fast = expf(-1.0f / (0.004f * m_sample_rate));
+            m_limiter_busy_follow  = 1.0f - expf(-1.0f / (0.03f * m_sample_rate));
             m_tick_decay      = expf(-1.0f / (0.0012f * m_sample_rate));
             m_injector_decay  = expf(-1.0f / (0.0005f * m_sample_rate));
             m_pump_decay      = expf(-1.0f / (0.0025f * m_sample_rate));
@@ -1912,7 +1931,11 @@ namespace engine_sound
                 float out_r = (mono - wide) * gain;
 
                 float loud = std::max(fabsf(out_l), fabsf(out_r));
-                m_limiter_env = std::max(loud, m_limiter_env * m_limiter_release);
+                // a loud engine sits over the limit a good part of the time and the gain is held down steadily; the
+                // crack of a pop is over in a fraction of a millisecond, the gain lets go at once and nothing pumps
+                m_limiter_busy += ((loud > 0.85f ? 1.0f : 0.0f) - m_limiter_busy) * m_limiter_busy_follow;
+                const float held = std::min(m_limiter_busy * (1.0f / limiter_busy_held), 1.0f);
+                m_limiter_env = std::max(loud, m_limiter_env * (m_limiter_release_fast + (m_limiter_release - m_limiter_release_fast) * held));
                 float limiter_gain = m_limiter_env > 0.85f ? 0.85f / m_limiter_env : 1.0f;
                 out_l = tanhf(out_l * limiter_gain * 1.15f) * 0.87f;
                 out_r = tanhf(out_r * limiter_gain * 1.15f) * 0.87f;
@@ -2274,9 +2297,23 @@ namespace engine_sound
                 const float total_area = bank.cylinder_count * model.primary_area + model.collector_area;
                 junction[b] = 2.0f * (model.primary_area * bank_in[b] + model.collector_area * collector_back[b]) / total_area;
             }
+            // the gas at the merge moves with what arrives less what turns back, u / c = p / (gamma p_mean) each;
+            // the waves carry the steady stream as well, and with the throttle shut, when next to nothing passes
+            // through the engine, the gas still rushes into each cylinder and out again about as fast
+            float merge_swing[2] = { 0.0f, 0.0f };
             for (cylinder& c : model.cylinders)
             {
-                c.up.send((junction[c.bank] - c.at_junction) * model.primary_flow_damping);
+                const float back = junction[c.bank] - c.at_junction;
+                merge_swing[c.bank] += fabsf(c.at_junction - back);
+                c.up.send(back * model.banks[static_cast<size_t>(c.bank)].primary_damping);
+            }
+            const float mach_per_bar = pascal_per_bar / (gas_gamma * model.back_pressure);
+            for (int b = 0; b < nb; b++)
+            {
+                exhaust_bank& bank = model.banks[static_cast<size_t>(b)];
+                bank.primary_mach += (merge_swing[b] * mach_per_bar / bank.cylinder_count - bank.primary_mach) * model.primary_mach_follow;
+                const float mach = std::min(bank.primary_mach, 0.6f);
+                bank.primary_damping = (1.0f - mach) / (1.0f + mach);
             }
 
             // per bank collector, muffler, tailpipe
@@ -2490,6 +2527,7 @@ namespace engine_sound
             m_debug = debug_data();
             m_debug.initialized = is_initialized();
             m_limiter_env    = 0.0f;
+            m_limiter_busy   = 0.0f;
             m_tick_env       = 0.0f;
             m_bov_env        = 0.0f;
             m_surge_env      = 0.0f;
@@ -2562,9 +2600,10 @@ namespace engine_sound
             const engine_config& cfg = model.config;
             c.valve_phase = std::max(lead_deg, 0.0f);
 
-            // the limiter drops three sparks in four on a fixed rotation; closed throttle overrun cuts fuel to all
-            // cylinders at once, the film left on the ports leans every charge out together over a few cycles
-            const bool cut = fuel_cut && (m_cut_counter++ % 4u) != 3u;
+            // the limiter drops all but one spark in four or so, on a rotation that takes every cylinder in turn;
+            // closed throttle overrun cuts fuel to all cylinders at once, the film left on the ports leans every
+            // charge out together over a few cycles
+            const bool cut = fuel_cut && (m_cut_counter++ % model.cut_stride) != 0u;
             const float fuel = 1.0f - m_overrun_level;
             bool burning = !cut && fuel > 0.02f;
             if (m_start_combustion < 1.0f)
@@ -2595,7 +2634,7 @@ namespace engine_sound
                     // still burning, and some of it lights off in the pipe
                     pressure    *= 1.3f;
                     temperature += 250.0f;
-                    if (m_event_rng.uniform() < 0.15f * clamp01(p.pop_rate))
+                    if (m_event_rng.uniform() < 0.15f * model.pocket_share * clamp01(p.pop_rate))
                     {
                         trigger_pop(model, c.bank, 0.4f + 0.4f * m_event_rng.uniform());
                     }
@@ -2607,7 +2646,7 @@ namespace engine_sound
             c.turbulence   = p.rasp;
 
             // raw charge meeting a hot pipe lights off behind the head
-            if (m_start_combustion >= 1.0f && cut && m_event_rng.uniform() < 0.12f * clamp01(p.pop_rate))
+            if (m_start_combustion >= 1.0f && cut && m_event_rng.uniform() < 0.12f * model.pocket_share * clamp01(p.pop_rate))
             {
                 trigger_pop(model, c.bank, 0.6f + 0.6f * m_event_rng.uniform());
             }
@@ -2884,6 +2923,11 @@ namespace engine_sound
         float m_whine_phase    = 0.0f;
         float m_limiter_env    = 0.0f;
         float m_limiter_release = 0.999f;
+        float m_limiter_release_fast = 0.99f;
+        // share of the last few hundredths of a second spent over the limit, and the share that counts as sustained
+        float m_limiter_busy   = 0.0f;
+        float m_limiter_busy_follow = 0.001f;
+        static constexpr float limiter_busy_held = 0.02f;
         float m_lift_time      = 10.0f;
 
         rng m_noise;

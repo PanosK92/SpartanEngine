@@ -339,6 +339,19 @@ namespace spartan
             restir_pairing_element_count, nullptr, true, "restir_pairing"
         );
 
+        // the current tlas slot of every instance the reservoir history refers to, as many entries as the geometry
+        // info table, device local, written in the compute stream by UpdateAccelerationStructures
+        at(buffers, Renderer_Buffer::RestirInstanceRemap) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            rhi_max_array_size * 4, nullptr, false, "restir_instance_remap"
+        );
+
+        // the same for emissive pool indices, grows with the pool, written by BuildEmissiveTriangleNeePool
+        at(buffers, Renderer_Buffer::RestirPoolRemap) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            restir_emissive_tri_initial_capacity, nullptr, false, "restir_pool_remap"
+        );
+
         // 2^19 cells of 4 uints, see common_radiance_cache.hlsl, zeroed once so every cell starts empty
         {
             const uint32_t radiance_cache_elements = (1u << 19) * 4u;

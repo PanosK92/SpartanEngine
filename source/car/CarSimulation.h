@@ -164,6 +164,8 @@ namespace car
         bool            parked                  = false;
         PxRigidDynamicLockFlags parking_locks;
         float           engine_brake_torque     = 0.0f;
+        // what the engine is actually asked for, the pedal after the reverse mapping, shift lifts and downshift blips
+        float           engine_demand           = 0.0f;
         float           engine_output_torque    = 0.0f;
         float           engine_net_output_torque = 0.0f;
         float           axle_drive_torque       = 0.0f;
@@ -544,6 +546,7 @@ namespace car
         float get_motor_power_kw();
         const hybrid_state& get_hybrid_state() const { return battery; }
         bool get_engine_running() const { return engine_running; }
+        float get_engine_demand() const { return engine_demand; }
         void set_intake_flooded(bool flooded) { intake_flooded = flooded; }
         bool get_intake_flooded() const { return intake_flooded; }
         bool get_starter_engaged() const { return starter_engaged; }

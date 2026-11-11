@@ -525,7 +525,9 @@ namespace pass_path_tracing
 
 namespace pass_restir_temporal
 {
-    static const SHARED_UINT history_m_cap = 0; // float, 0 keeps the default confidence cap
+    static const SHARED_UINT history_m_cap        = 0; // float, 0 keeps the default confidence cap
+    static const SHARED_UINT instance_remap_count = 1; // uint, entries of restir_instance_remap, 0 when the history's tlas slots still match
+    static const SHARED_UINT pool_remap_count     = 2; // uint, entries of restir_pool_remap, 0 when the history's emissive pool indices still match
 }
 
 namespace pass_bend_sss

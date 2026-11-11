@@ -70,10 +70,12 @@ namespace spartan
     // rgba32f textures per reservoir set, must match pack_reservoir in restir_reservoir.hlsl
     const uint32_t restir_reservoir_textures       = 4;
     // a lighting change that keeps the reservoirs caps temporal confidence this low for this many
-    // frames, stale radiance from a light that switched halves every frame instead of living for
-    // the full default cap, clearing the reservoirs instead restarts every pixel from one sample
+    // frames, stale suffix radiance then loses a ninth of its weight per frame instead of living for
+    // the full default cap, emission is re-read on every reuse so only bounced light lags
+    // a cap of one read as a reset, every flickering fixture or easing brake lamp left the whole
+    // screen at two samples per pixel, and worlds where that happens most frames never converged
     const uint32_t restir_history_fade_frames      = 4;
-    const float    restir_history_fade_m_cap       = 1.0f;
+    const float    restir_history_fade_m_cap       = 8.0f;
     // paired spatial reuse tables, lin 2026 3, sizes and order must match RESTIR_PAIRING_SIZES
     // in restir_reservoir.hlsl, near coprime so tiling periods never align within a screen
     const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };
@@ -759,6 +761,8 @@ namespace spartan
         RestirLightTiles,
         RestirEnvironmentCdf,
         RestirPairing,             // restir spatial reuse tables, built once when the reservoirs initialize
+        RestirInstanceRemap,       // tlas slot of each instance the reservoir history refers to, written when the instance list changes
+        RestirPoolRemap,           // emissive pool index of each pool triangle the reservoir history refers to, written when the pool order changes
         RadianceCache,             // world space hash grid of incoming radiance, read and written by the ray traced reflection passes
         // gpu-driven particles
         ParticleBufferA,

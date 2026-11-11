@@ -97,7 +97,12 @@ namespace spartan
             bool history_invalid = true;
             // frames left with a short temporal confidence cap, set by lighting changes that keep the reservoirs
             uint32_t history_fade_frames = 0;
-            uint64_t scene_signature = 0;
+            // the tlas instance list changed since the reservoir history was written, the temporal pass
+            // looks the cached instance slots up in the remap buffer, zero means the slots still match
+            uint32_t instance_remap_count = 0;
+            // the emissive pool was rebuilt with another triangle order since the history was written, history samples
+            // that end on a pool index look it up in the pool remap buffer, zero means the indices still match
+            uint32_t pool_remap_count = 0;
             // the gbuffer copy set written this frame, the other one holds last frame's opaque gbuffer
             uint32_t gbuffer_copy_index = 0;
             // consecutive frames that wrote a gbuffer copy, async needs last frame's copy as history

@@ -13,6 +13,49 @@ Commercial use requires written permission and negotiated payment terms.
 Texture2D<uint2> tex_normal_previous : register(t87);
 Texture2D<float4> restir_primary_hit_previous : register(t94);
 Texture2D<float4> restir_primary_surface_previous : register(t95);
+// current tlas slot of every instance the history was written against, see UpdateAccelerationStructures
+StructuredBuffer<uint> restir_instance_remap : register(t96);
+// current emissive pool index of every pool triangle the history was written against, see BuildEmissiveTriangleNeePool
+StructuredBuffer<uint> restir_pool_remap : register(t97);
+
+// the history caches tlas slots, streaming and culling compact the instance list under it, false when the instance left the tlas
+bool restir_remap_history_instance(inout uint slot)
+{
+    uint remap_count = pass_uint(pass_restir_temporal::instance_remap_count);
+    if (remap_count == 0u)
+        return true;
+    if (slot >= remap_count)
+        return false;
+    slot = restir_instance_remap[slot];
+    return slot != 0xffffffffu;
+}
+
+// the same for emissive pool indices, emitters entering or leaving the pool shift the triangles behind them
+bool restir_remap_history_pool_index(inout uint index)
+{
+    uint remap_count = pass_uint(pass_restir_temporal::pool_remap_count);
+    if (remap_count == 0u)
+        return true;
+    if (index >= remap_count)
+        return false;
+    index = restir_pool_remap[index];
+    return index != 0xffffffffu;
+}
+
+// moves the reconnection vertex of a packed history sample to the current tlas slots or pool order, false when it is gone
+bool restir_remap_history_endpoint(inout float4 tex0, float4 tex3)
+{
+    PathSample s = (PathSample)0;
+    unpack_path_info(asuint(tex3.y), s);
+    if (!is_triangle_reconnection(s))
+        return true;
+    bool pool_hit = s.endpoint_light == RESTIR_ENDPOINT_EMTRI && (s.flags & PATH_FLAG_NEE) != 0u;
+    uint index = asuint(tex0.x);
+    bool alive = pool_hit ? restir_remap_history_pool_index(index) : restir_remap_history_instance(index);
+    if (alive)
+        tex0.x = asfloat(index);
+    return alive;
+}
 
 // Nearest reprojection must use the positions at which paths were traced.
 // Snapping reduced-resolution samples to G-buffer centers shifts their grid
@@ -77,6 +120,8 @@ bool find_dual_history_uv(float2 current_uv, float2 previous_uv, float3 current_
 
     uint3 hit = asuint(stored_hit.xyz);
     hit.x -= 1u;
+    if (!restir_remap_history_instance(hit.x))
+        return false;
     GeometryInfo geometry = geometry_infos[hit.x];
     uint index_base = geometry.index_offset + hit.y * 3u;
     float3 bary = unpack_hit_barycentrics(hit.z);
@@ -205,11 +250,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             // Duplication confidence belongs to the selected reservoir too.
             history_uv = (float2(prev_pixel) + 0.5f) / resolution;
 
+            float4 history0 = tex_reservoir_prev0[prev_pixel];
+            float4 history3 = tex_reservoir_prev3[prev_pixel];
+            bool endpoint_alive = restir_remap_history_endpoint(history0, history3);
             temporal = unpack_reservoir(
-                tex_reservoir_prev0[prev_pixel],
+                history0,
                 tex_reservoir_prev1[prev_pixel],
                 tex_reservoir_prev2[prev_pixel],
-                tex_reservoir_prev3[prev_pixel],
+                history3,
                 restir_primary_surface_previous[prev_pixel],
                 asuint(restir_primary_hit_previous[prev_pixel].w)
             );
@@ -221,7 +269,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             // Normal/depth confidence rejection discards usable paths under
             // jitter and motion, especially when tracing a reduced guide grid.
             // Both shift directions below still evaluate transport and visibility.
-            bool usable = asuint(restir_primary_hit_previous[prev_pixel].x) != 0u &&
+            // a sample whose reconnection instance was streamed out or whose pool index went stale has no path to shift
+            bool usable = asuint(restir_primary_hit_previous[prev_pixel].x) != 0u && endpoint_alive &&
                 is_reservoir_valid(temporal) && temporal.M > 0.0f;
 
             if (usable)

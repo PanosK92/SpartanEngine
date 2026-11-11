@@ -25,9 +25,13 @@ Commercial use requires written permission and negotiated payment terms.
 
 namespace
 {
-    constexpr int sample_rate = 48000;
+    // the game runs the synthesizer at the audio device's rate, --sample_rate renders at another one
+    int sample_rate = 48000;
     // one control update per 10 ms, roughly what the game feeds per frame
-    constexpr int block_size = 480;
+    int block_size = 480;
+    // the hold scenario's operating point, --rpm and --throttle
+    float hold_rpm = 0.0f;
+    float hold_throttle = 1.0f;
 
     float clamp01(float v)
     {
@@ -284,10 +288,10 @@ namespace
         std::function<void(const car_spec&, scenario_state&, float, controls&)> step;
     };
 
-    // the game's own load mapping, see Car.cpp: max(throttle * 0.15, output torque / peak torque)
+    // the game's own load mapping, see Car::TickSounds: max(throttle, output torque / peak torque)
     float game_load(float throttle, float torque_norm)
     {
-        return clamp01(std::max(throttle * 0.15f, torque_norm));
+        return clamp01(std::max(throttle, torque_norm));
     }
 
     void finish_controls(const car_spec& spec, scenario_state& s, float dt, float torque_norm, controls& out)
@@ -366,7 +370,8 @@ namespace
             {
                 s.throttle = std::max(0.0f, s.throttle - dt / 0.08f);
                 float target = c.idle_rpm;
-                s.rpm = std::max(target, s.rpm - (900.0f + 0.22f * s.rpm) * dt);
+                // engine braking slows a car in gear by a few hundred rpm a second, the engine spends seconds up high
+                s.rpm = std::max(target, s.rpm - (120.0f + 0.07f * s.rpm) * dt);
             }
             s.gear = s.rpm > c.idle_rpm + 250.0f ? 3 : 0;
             float torque = s.throttle > 0.05f ? spec.torque_norm(s.rpm) * s.throttle : (s.gear == 0 ? 0.06f : -0.2f);
@@ -387,12 +392,22 @@ namespace
             {
                 s.cut = true;
             }
-            else if (s.rpm < c.redline_rpm - 150.0f)
+            else if (s.rpm < c.redline_rpm - 200.0f)
             {
                 s.cut = false;
             }
             s.rpm += (s.cut ? -2500.0f : 2200.0f) * dt;
             finish_controls(spec, s, dt, s.cut ? -0.1f : spec.torque_norm(s.rpm), out);
+        } });
+
+        // a steady operating point, --rpm and --throttle, for looking at one speed without a sweep smearing it
+        list.push_back({ "hold", 6.0f, false, [](const car_spec& spec, scenario_state& s, float dt, controls& out)
+        {
+            const engine_sound::engine_config& c = spec.config;
+            s.rpm = hold_rpm > 0.0f ? hold_rpm : c.redline_rpm * 0.9f;
+            s.throttle = hold_throttle;
+            s.gear = 3;
+            finish_controls(spec, s, dt, s.throttle > 0.05f ? spec.torque_norm(s.rpm) * s.throttle : -0.2f, out);
         } });
 
         // free revving in neutral, short stabs of throttle
@@ -539,12 +554,17 @@ int main(int argc, char** argv)
     stages.intake = std::stof(argument(argc, argv, "intake_stage", "0"));
     stages.turbo = std::stof(argument(argc, argv, "turbo_stage", "0"));
     stages.muffler = std::stof(argument(argc, argv, "muffler", "-1"));
+    sample_rate = std::clamp(std::stoi(argument(argc, argv, "sample_rate", "48000")), 8000, 192000);
+    block_size = sample_rate / 100;
+    hold_rpm = std::stof(argument(argc, argv, "rpm", "0"));
+    hold_throttle = std::stof(argument(argc, argv, "throttle", "1"));
 
     std::vector<scenario> scenarios = make_scenarios();
     if (car_path.empty() || out_base.empty())
     {
         printf("usage: engine_sound_render --car=<file.car> --out=<path without extension> [--scenario=name] [--view=chase|hood|cabin]\n");
         printf("       [--engine_stage=0..1] [--exhaust_stage=0..1] [--intake_stage=0..1] [--turbo_stage=0..1] [--muffler=0..1]\n");
+        printf("       [--sample_rate=48000] [--rpm=.. --throttle=0..1 for the hold scenario]\n");
         printf("scenarios:");
         for (const scenario& s : scenarios)
         {

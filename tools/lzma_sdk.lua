@@ -74,7 +74,8 @@ local function lzma_sources()
         "CpuArch", "Delta", "LzFind", "LzFindMt", "LzFindOpt", "Lzma2Dec",
         "Lzma2DecMt", "Lzma2Enc", "LzmaDec", "LzmaEnc", "MtCoder", "MtDec",
         "SwapBytes", "Threads", "7zCrc", "7zCrcOpt",
-        "7zAlloc", "7zBuf", "7zFile", "7zDec", "7zArcIn"
+        "7zAlloc", "7zBuf", "7zFile", "7zDec", "7zArcIn",
+        "Sha256", "Sha256Opt"
     }
     for _, f in ipairs(c) do
         add("C/" .. f .. ".c")
@@ -83,6 +84,7 @@ local function lzma_sources()
     add("spartan/create_object.cpp")
     add("spartan/archive_create.cpp")
     add("spartan/archive_extract.cpp")
+    add("spartan/file_sha256.cpp")
 
     return files_list
 end

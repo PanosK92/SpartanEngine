@@ -358,7 +358,7 @@ def lzma_sources():
     arcommon = ["CoderMixer2", "HandlerOut", "InStreamWithCRC", "ItemNameUtils", "OutStreamWithCRC", "ParseProperties"]
     z7 = ["7zCompressionMode", "7zDecode", "7zEncode", "7zExtract", "7zFolderInStream", "7zHandler", "7zHandlerOut", "7zHeader", "7zIn", "7zOut", "7zProperties", "7zSpecStream", "7zUpdate", "7zRegister"]
     compress = ["CodecExports", "Bcj2Coder", "Bcj2Register", "BcjCoder", "BcjRegister", "BranchMisc", "BranchRegister", "ByteSwap", "CopyCoder", "CopyRegister", "DeltaFilter", "Lzma2Decoder", "Lzma2Encoder", "Lzma2Register", "LzmaDecoder", "LzmaEncoder", "LzmaRegister"]
-    c = ["7zStream", "Alloc", "Bcj2", "Bcj2Enc", "Bra", "Bra86", "BraIA64", "CpuArch", "Delta", "LzFind", "LzFindMt", "LzFindOpt", "Lzma2Dec", "Lzma2DecMt", "Lzma2Enc", "LzmaDec", "LzmaEnc", "MtCoder", "MtDec", "SwapBytes", "Threads", "7zCrc", "7zCrcOpt", "7zAlloc", "7zBuf", "7zFile", "7zDec", "7zArcIn"]
+    c = ["7zStream", "Alloc", "Bcj2", "Bcj2Enc", "Bra", "Bra86", "BraIA64", "CpuArch", "Delta", "LzFind", "LzFindMt", "LzFindOpt", "Lzma2Dec", "Lzma2DecMt", "Lzma2Enc", "LzmaDec", "LzmaEnc", "MtCoder", "MtDec", "SwapBytes", "Threads", "7zCrc", "7zCrcOpt", "7zAlloc", "7zBuf", "7zFile", "7zDec", "7zArcIn", "Sha256", "Sha256Opt"]
     files = []
     files += [root / "CPP" / "Common" / f"{f}.cpp" for f in common]
     files += [root / "CPP" / "Windows" / f"{f}.cpp" for f in windows]
@@ -368,7 +368,7 @@ def lzma_sources():
     files += [root / "CPP" / "7zip" / "Archive" / "7z" / f"{f}.cpp" for f in z7]
     files += [root / "CPP" / "7zip" / "Compress" / f"{f}.cpp" for f in compress]
     files += [root / "C" / f"{f}.c" for f in c]
-    files += [root / "spartan" / f"{f}.cpp" for f in ["create_object", "archive_create", "archive_extract"]]
+    files += [root / "spartan" / f"{f}.cpp" for f in ["create_object", "archive_create", "archive_extract", "file_sha256"]]
     return files, root
 
 

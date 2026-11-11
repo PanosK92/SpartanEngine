@@ -2858,7 +2858,6 @@ namespace spartan
         }
 
         const uint64_t fnv_basis  = 14695981039346656037ull;
-        uint64_t scene_signature  = fnv_basis;
         uint64_t emitter_signature = fnv_basis;
         auto mix = [](uint64_t& signature, uint64_t value) { signature = (signature ^ value) * 1099511628211ull; };
         auto mix_float = [&mix](uint64_t& signature, float value)
@@ -2898,8 +2897,6 @@ namespace spartan
                 continue;
             }
 
-            mix(scene_signature, entity->GetObjectId());
-
             Render* render     = nullptr;
             Material* material = emitter_material(entity, render);
             if (!material)
@@ -2927,16 +2924,10 @@ namespace spartan
         }
         mix(emitter_signature, pool_representable ? 1u : 0u);
 
-        // A change in the set of renderables fades the reservoirs out. Motion retains temporal
-        // reuse so a moving car does not discard its history every frame.
-        // worlds that stream geometry around the camera change the set on most frames while walking, so
-        // clearing here left restir with no temporal reuse, reuse re-traces visibility and new surfaces
-        // have no history of their own, so only radiance cached from removed geometry goes stale
-        if (scene_signature != m_pass_state.restir.scene_signature)
-        {
-            m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
-        }
-        m_pass_state.restir.scene_signature  = scene_signature;
+        // a change in the set of renderables keeps the reservoirs at full confidence, worlds that stream
+        // geometry around the camera change the set on most frames while walking, reuse re-traces
+        // visibility, the tlas update drops the samples whose reconnection instance is gone and new
+        // surfaces have no history of their own, so only suffix radiance past removed geometry lags
 
         RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
         if (emitter_signature == pool_signature && emissive_triangles_buffer == pool_buffer)
@@ -2945,11 +2936,24 @@ namespace spartan
             return;
         }
 
-        // Rebuilding changes triangle indices, source PDFs and cached emission.
-        // A confidence fade cannot make an old endpoint valid in the new pool.
-        // Reset history even when only the backing buffer changed: that also
-        // invalidates the pool represented by the cached endpoint descriptors.
-        m_pass_state.restir.history_invalid = true;
+        // rebuilding changes source pdfs and cached emission, the history fades instead of clearing,
+        // a flickering fixture or a streamed chunk rebuilds the pool many times a second and a clear
+        // on each one left restir with no temporal reuse at all, the samples that end on a pool index
+        // follow their triangle through the pool remap when the order changed, see pool_ranges
+        m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
+
+        // the triangles each emitter owns, a history sample that ends on the pool stores a triangle index,
+        // it stays valid while its emitter keeps its triangle count, a moved or recolored emitter does
+        struct pool_range
+        {
+            uint64_t entity_id = 0;
+            uint32_t first     = 0;
+            uint32_t count     = 0;
+        };
+        static vector<pool_range> pool_ranges;         // of the pool the gpu samples
+        static vector<pool_range> history_pool_ranges; // of the pool the reservoir history was written against
+        static vector<pool_range> ranges;
+        ranges.clear();
 
         // statics avoid heap thrash on rebuilds, the capacity ratchets up to the largest pool seen so far
         static vector<Sb_EmissiveTriangle>      tris;
@@ -3040,7 +3044,8 @@ namespace spartan
 
             const Matrix& transform = entity->GetMatrix();
 
-            const size_t tri_count = local.positions.size() / 3u;
+            const size_t tri_count  = local.positions.size() / 3u;
+            const size_t pool_first = tris.size();
             for (size_t i = 0; i < tri_count; i++)
             {
                 const Vector3 p0 = transform * local.positions[i * 3u + 0u];
@@ -3070,6 +3075,64 @@ namespace spartan
                 tri.cdf      = 0.0f;
                 tris.push_back(tri);
             }
+
+            if (tris.size() > pool_first)
+            {
+                ranges.push_back({ entity->GetObjectId(), static_cast<uint32_t>(pool_first), static_cast<uint32_t>(tris.size() - pool_first) });
+            }
+        }
+
+        const bool order_changed = ranges.size() != pool_ranges.size() || !equal(ranges.begin(), ranges.end(), pool_ranges.begin(), [](const pool_range& a, const pool_range& b)
+        {
+            return a.entity_id == b.entity_id && a.first == b.first && a.count == b.count;
+        });
+        if (order_changed)
+        {
+            // a pending remap means the history is older than the pool being replaced, its ranges stay
+            if (m_pass_state.restir.pool_remap_count == 0)
+            {
+                history_pool_ranges.swap(pool_ranges);
+            }
+            pool_ranges = ranges;
+
+            const uint32_t history_count = history_pool_ranges.empty() ? 0 : history_pool_ranges.back().first + history_pool_ranges.back().count;
+            if (history_count > 0)
+            {
+                constexpr uint32_t invalid_index = 0xFFFFFFFFu;
+                static unordered_map<uint64_t, pool_range> current_ranges;
+                static vector<uint32_t> remap;
+                current_ranges.clear();
+                for (const pool_range& range : pool_ranges)
+                {
+                    current_ranges[range.entity_id] = range;
+                }
+                remap.assign(history_count, invalid_index);
+                for (const pool_range& range : history_pool_ranges)
+                {
+                    const auto it = current_ranges.find(range.entity_id);
+                    if (it == current_ranges.end() || it->second.count != range.count)
+                    {
+                        continue;
+                    }
+                    for (uint32_t i = 0; i < range.count; i++)
+                    {
+                        remap[range.first + i] = it->second.first + i;
+                    }
+                }
+
+                RHI_Buffer* remap_buffer   = EnsureBufferCapacity(Renderer_Buffer::RestirPoolRemap, static_cast<uint32_t>(sizeof(uint32_t)), history_count, "restir_pool_remap");
+                const uint64_t remap_size  = static_cast<uint64_t>(history_count) * sizeof(uint32_t);
+                if (RHI_Device::IsRecording())
+                {
+                    RHI_CommandList::UpdateBuffer(remap_buffer, 0, remap_size, remap.data(), false);
+                    m_cross_queue_sync.gi_upload_hazard = true;
+                }
+                else
+                {
+                    remap_buffer->UploadSubRegion(remap.data(), 0, remap_size);
+                }
+            }
+            m_pass_state.restir.pool_remap_count = history_count;
         }
 
         for (auto it = geometry_cache.begin(); it != geometry_cache.end();)
@@ -5782,10 +5845,18 @@ namespace spartan
             instanced_slots.resize(render_count);
             uint32_t output_count    = 0;
             uint32_t instanced_index = 0;
-            uint64_t geometry_instance_signature = 14695981039346656037ull;
-            auto mix_geometry_instance = [&](uint64_t value)
+            // primary hit history and reconnection vertices both cache tlas slots, one identity per slot lets
+            // the temporal pass follow an instance to its new slot when streaming or culling compacts the list
+            // moving transforms preserve identity, geometry replacement does not
+            static vector<uint64_t> slot_keys;
+            slot_keys.clear();
+            auto slot_key = [](uint64_t owner, uint64_t blas_address, uint64_t geometry)
             {
-                geometry_instance_signature = (geometry_instance_signature ^ value) * 1099511628211ull;
+                uint64_t key = 14695981039346656037ull;
+                key = (key ^ owner) * 1099511628211ull;
+                key = (key ^ blas_address) * 1099511628211ull;
+                key = (key ^ geometry) * 1099511628211ull;
+                return key;
             };
             for (uint32_t i = 0; i < render_count; ++i)
             {
@@ -5795,23 +5866,15 @@ namespace spartan
                 {
                     instanced_slots[i] = instanced_index;
                     const InstancedTlasCache& instances_cache = instanced_tlas_caches[instanced_index++];
-                    mix_geometry_instance(instances_cache.render_id);
-                    mix_geometry_instance(output_count);
-                    mix_geometry_instance(instances_cache.blas_address);
-                    mix_geometry_instance(instances_cache.source_indices.size());
                     for (uint32_t source_index : instances_cache.source_indices)
-                        mix_geometry_instance(source_index);
+                    {
+                        slot_keys.push_back(slot_key(instances_cache.render_id, instances_cache.blas_address, (1ull << 63) | source_index));
+                    }
                     output_count += static_cast<uint32_t>(instances_cache.instances.size());
                 }
                 else if (cache.valid)
                 {
-                    // Primary hit history and terminal emitters both cache TLAS indices.
-                    // Moving transforms preserve identity; compaction or geometry replacement does not.
-                    mix_geometry_instance(cache.entity_id);
-                    mix_geometry_instance(cache.instance.device_address);
-                    mix_geometry_instance(output_count);
-                    mix_geometry_instance(cache.geometry.vertex_offset);
-                    mix_geometry_instance(cache.geometry.index_offset);
+                    slot_keys.push_back(slot_key(cache.entity_id, cache.instance.device_address, (static_cast<uint64_t>(cache.geometry.vertex_offset) << 31) ^ cache.geometry.index_offset));
                     output_count++;
                 }
                 else if (cache.invalid_transform)
@@ -5819,12 +5882,6 @@ namespace spartan
                     ++invalid_transforms;
                     if (!first_invalid_name) first_invalid_name = ray_tracing_renders[i]->GetEntity()->GetObjectName().c_str();
                 }
-            }
-            static uint64_t previous_geometry_instance_signature = 0;
-            if (geometry_instance_signature != previous_geometry_instance_signature)
-            {
-                m_pass_state.restir.history_invalid = true;
-                previous_geometry_instance_signature = geometry_instance_signature;
             }
             instances.resize(output_count);
             geometry_infos.resize(output_count);
@@ -5889,6 +5946,101 @@ namespace spartan
                 );
                 geometry_infos.resize(geometry_capacity);
                 instances.resize(geometry_capacity);
+            }
+            slot_keys.resize(instances.size());
+
+            // clearing the reservoirs whenever the instance list changed left restir without temporal reuse
+            // in every world that streams or culls geometry around the camera, the list changes on most frames
+            // of a walk there, the history now keeps its samples and looks their instances up in a remap table,
+            // only the samples whose instance left the tlas are dropped
+            {
+                // identities of the tlas being traced and of the tlas the reservoir history was written against
+                static vector<uint64_t> tlas_slot_keys;
+                static vector<uint64_t> history_slot_keys;
+                if (slot_keys != tlas_slot_keys)
+                {
+                    SP_PROFILE_CPU_START("rt_restir_remap");
+
+                    // a pending remap means the history is older than the tlas being replaced, its identities stay
+                    if (m_pass_state.restir.instance_remap_count == 0)
+                    {
+                        history_slot_keys.swap(tlas_slot_keys);
+                    }
+                    tlas_slot_keys = slot_keys;
+
+                    RHI_Buffer* remap_buffer     = GetBuffer(Renderer_Buffer::RestirInstanceRemap);
+                    const uint32_t history_count = static_cast<uint32_t>(history_slot_keys.size());
+                    const uint32_t current_count = static_cast<uint32_t>(tlas_slot_keys.size());
+                    const bool history_tracked   = cvar_restir_pt.GetValueAs<bool>() && !m_pass_state.restir.history_invalid && history_count > 0 && remap_buffer && history_count <= remap_buffer->GetElementCount();
+                    if (!history_tracked)
+                    {
+                        m_pass_state.restir.history_invalid      = true;
+                        m_pass_state.restir.instance_remap_count = 0;
+                    }
+                    else
+                    {
+                        // open addressing over the current identities, a free cell holds the invalid slot
+                        constexpr uint32_t invalid_slot = 0xFFFFFFFFu;
+                        static vector<uint64_t> table_keys;
+                        static vector<uint32_t> table_slots;
+                        static vector<uint32_t> remap;
+                        uint32_t table_size = 16;
+                        while (table_size < current_count * 2u)
+                        {
+                            table_size <<= 1;
+                        }
+                        const uint32_t table_mask = table_size - 1;
+                        table_keys.resize(table_size);
+                        table_slots.assign(table_size, invalid_slot);
+                        auto table_home = [table_mask](uint64_t key) { return static_cast<uint32_t>((key * 0x9E3779B97F4A7C15ull) >> 32) & table_mask; };
+                        for (uint32_t slot = 0; slot < current_count; ++slot)
+                        {
+                            const uint64_t key = tlas_slot_keys[slot];
+                            uint32_t cell      = table_home(key);
+                            while (table_slots[cell] != invalid_slot)
+                            {
+                                cell = (cell + 1) & table_mask;
+                            }
+                            table_keys[cell]  = key;
+                            table_slots[cell] = slot;
+                        }
+
+                        remap.resize(history_count);
+                        auto lookup = [&](uint32_t first, uint32_t last)
+                        {
+                            for (uint32_t slot = first; slot < last; ++slot)
+                            {
+                                const uint64_t key = history_slot_keys[slot];
+                                uint32_t cell      = table_home(key);
+                                uint32_t found     = invalid_slot;
+                                while (table_slots[cell] != invalid_slot)
+                                {
+                                    if (table_keys[cell] == key)
+                                    {
+                                        found = table_slots[cell];
+                                        break;
+                                    }
+                                    cell = (cell + 1) & table_mask;
+                                }
+                                remap[slot] = found;
+                            }
+                        };
+                        if (history_count >= 16384)
+                        {
+                            ThreadPool::ParallelLoop(lookup, history_count);
+                        }
+                        else
+                        {
+                            lookup(0, history_count);
+                        }
+
+                        // ordered on the compute queue, after last frame's temporal pass and before this frame's
+                        RHI_CommandList::UpdateBuffer(remap_buffer, 0, static_cast<uint64_t>(history_count) * sizeof(uint32_t), remap.data(), false);
+                        m_pass_state.restir.instance_remap_count = history_count;
+                    }
+
+                    SP_PROFILE_CPU_END();
+                }
             }
 
             static uint32_t last_instance_count = 0;

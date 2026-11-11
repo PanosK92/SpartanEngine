@@ -607,9 +607,17 @@ namespace
             }
 
             progress.SetStep("Verifying project");
-            if (lowercase_copy(spartan::FileSystem::ComputeFileSha256(archive)) != package.sha256)
+            const string archive_sha = lowercase_copy(spartan::FileSystem::ComputeFileSha256(archive));
+            if (archive_sha.size() != 64)
             {
-                SP_LOG_ERROR("The downloaded project package does not match its sha256, it was deleted so the next attempt starts over");
+                // kept, nothing shows the download to be wrong and the next attempt verifies it again
+                SP_LOG_ERROR("Failed to compute the sha256 of the downloaded project package, it could not be read: %s", archive.c_str());
+                return false;
+            }
+
+            if (archive_sha != package.sha256)
+            {
+                SP_LOG_ERROR("The downloaded project package has sha256 %s but %s was expected, it was deleted so the next attempt starts over", archive_sha.c_str(), package.sha256.c_str());
                 spartan::FileSystem::Delete(archive);
                 return false;
             }

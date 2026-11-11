@@ -3904,7 +3904,7 @@ namespace car
         const int steps = PxMax(1, static_cast<int>(ceilf(dt / 0.0005f)));
         const float h = dt / steps;
         const float nitrous_flow = upgrades.nitrous > 0 && nitrous_requested ? get_upgrade_setting("nitrous_flow") : 0.0f;
-        float shaft_sum = 0, combustion_sum = 0, net_sum = 0;
+        float shaft_sum = 0, combustion_sum = 0, net_sum = 0, demand_sum = 0;
         float initial_engine_speed = engine_speed, initial_gearbox_speed = gearbox_input_angular_velocity;
         for (int j = 0; j < steps; ++j)
         {
@@ -3928,7 +3928,11 @@ namespace car
             else if (rpm < spec.engine_redline_rpm - 200.0f) rev_limiter_active = false;
             // The blip only has to bring the engine up to the lower gear's speed. Held for its whole timer it
             // kept pushing through the closed clutch and cancelled most of the rear brake force on every downshift.
-            const float step_demand = engine_speed < gearbox_input_angular_velocity ? PxMax(demand, blip) : demand;
+            // With the clutch open for a shift the driver is off the throttle until the engine has come down to the
+            // next gear's speed. Held open it flared into the limiter and sat on the fuel cut for the whole shift.
+            const bool shift_lift = is_shifting && !power_shift && fabsf(ratio) > 0.001f && engine_speed > gearbox_input_angular_velocity;
+            const float step_demand = shift_lift ? 0.0f : (engine_speed < gearbox_input_angular_velocity ? PxMax(demand, blip) : demand);
+            demand_sum += step_demand;
             float combustion = engine_running && !rev_limiter_active ? full_load * (1.0f + boost_pressure * spec.boost_torque_mult) * step_demand * assisted_actuators.engine_torque_scale : 0;
             float idle_torque = engine_running ? PxClamp((idle - engine_speed) * ie * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f) : 0;
             float starter = starting && rpm < spec.engine_idle_rpm ? spec.starter_torque : 0;
@@ -3992,6 +3996,7 @@ namespace car
         }
         engine_rpm = engine_speed * 60 / PxTwoPi;
 
+        engine_demand = demand_sum / steps;
         engine_output_torque = combustion_sum / steps;
         engine_net_output_torque = net_sum / steps;
         driveshaft_torque = shaft_sum / steps;

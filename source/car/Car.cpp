@@ -3248,13 +3248,14 @@ namespace spartan
         // engine sound
         if (IsViewed() && physics && audio_engine)
         {
+            car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
             float engine_rpm  = CarPhysics::Get(*physics).GetEngineRPM();
-            float throttle    = CarPhysics::Get(*physics).GetVehicleThrottle();
+            // what the engine is asked for, not the pedal: the brake drives the car in reverse, a clutch shift lifts, a downshift blips
+            float throttle    = simulation->get_engine_demand();
             float boost       = CarPhysics::Get(*physics).GetBoostPressure();
             float idle_rpm    = CarPhysics::Get(*physics).GetIdleRPM();
             float redline_rpm = CarPhysics::Get(*physics).GetRedlineRPM();
             float rpm_normalized = std::clamp((engine_rpm - idle_rpm) / (redline_rpm - idle_rpm), 0.0f, 1.0f);
-            car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
 
             // the synth reads the effective spec so upgrades are heard, reconfigure only when it changes
             {

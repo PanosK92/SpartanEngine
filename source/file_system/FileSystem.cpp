@@ -1138,72 +1138,12 @@ namespace spartan
 
     string FileSystem::ComputeFileSha256(const string& path)
     {
-        namespace fs = filesystem;
-        error_code ec;
-
-        if (!fs::exists(path, ec))
+        // hashed in-process, a system tool like certutil or sha256sum can be missing and that must not read as a bad file
+        char hash[65] = {};
+        if (archive_7z_sha256_file(path.c_str(), hash) != 0)
         {
             return "";
         }
-
-        // detect which hash utility is available at runtime
-        bool use_certutil = IsExecutableInPath("certutil");
-        vector<string> args;
-        if (use_certutil)
-        {
-            args = {"certutil", "-hashfile", path, "SHA256"};
-        }
-        else
-        {
-            args = {"sha256sum", path};
-        }
-
-        // run process and capture output
-        string result;
-        run_silent_process(args, &result);
-
-        if (result.empty())
-        {
-            return "";
-        }
-
-        // parse hash from output - handle both certutil and sha256sum formats
-        string hash;
-        istringstream stream(result);
-        string line;
-        int line_num = 0;
-
-        while (getline(stream, line))
-        {
-            line_num++;
-
-            // certutil outputs hash on the second line
-            if (use_certutil && line_num == 2)
-            {
-                // remove spaces and carriage returns
-                line.erase(remove(line.begin(), line.end(), ' '), line.end());
-                line.erase(remove(line.begin(), line.end(), '\r'), line.end());
-                hash = line;
-                break;
-            }
-            // sha256sum outputs: <hash>  <filename>
-            else if (!use_certutil)
-            {
-                size_t space = line.find(' ');
-                if (space != string::npos)
-                {
-                    hash = line.substr(0, space);
-                }
-                else
-                {
-                    hash = line;
-                }
-                break;
-            }
-        }
-
-        // convert to lowercase for consistency
-        transform(hash.begin(), hash.end(), hash.begin(), ::tolower);
 
         return hash;
     }

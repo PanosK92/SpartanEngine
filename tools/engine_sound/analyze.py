@@ -4,6 +4,7 @@ the live synthesizer and turns them into spectrograms, engine order maps, cycle 
 metrics file, so a change can be judged by numbers and pictures and not only by ear.
 
     python tools/engine_sound/analyze.py render  [--out DIR] [--cars a,b] [--scenarios a,b] [--view chase]
+                                                 [--sample_rate 44100] [--scenarios hold --rpm 6000 --throttle 0]
     python tools/engine_sound/analyze.py analyze DIR
     python tools/engine_sound/analyze.py compare DIR_BEFORE DIR_AFTER [--out DIR]
 """
@@ -26,6 +27,8 @@ root = Path(__file__).resolve().parent
 repo = root.parent.parent
 cars_dir = repo / "binaries" / "project" / "plan_resources" / "cars"
 all_scenarios = ["idle", "start", "wot_sweep", "part_sweep", "overrun", "limiter", "blips", "pulls"]
+# passed straight through to the renderer when given, hold is the scenario that reads rpm and throttle
+render_options = ("engine_stage", "exhaust_stage", "intake_stage", "turbo_stage", "muffler", "sample_rate", "rpm", "throttle")
 # in-game captures are usually dyno pulls, only their rising, on-throttle stretches are order analysed
 sweep_scenarios = {"wot_sweep", "part_sweep", "capture"}
 
@@ -287,7 +290,7 @@ def command_render(args):
         for scenario in scenarios:
             base = out_dir / f"{car.stem}_{scenario}"
             command = [str(exe), f"--car={car}", f"--scenario={scenario}", f"--out={base}", f"--view={args.view}"]
-            for stage in ("engine_stage", "exhaust_stage", "intake_stage", "turbo_stage", "muffler"):
+            for stage in render_options:
                 value = getattr(args, stage)
                 if value is not None:
                     command.append(f"--{stage}={value}")
@@ -346,8 +349,8 @@ def main():
     render.add_argument("--scenarios", default="")
     render.add_argument("--view", default="chase", choices=["chase", "hood", "cabin"])
     render.add_argument("--exe", default="engine_sound_render", help="renderer in bin/, build.ps1 -Name makes others")
-    for stage in ("engine_stage", "exhaust_stage", "intake_stage", "turbo_stage", "muffler"):
-        render.add_argument(f"--{stage}", type=float, default=None)
+    for option in render_options:
+        render.add_argument(f"--{option}", type=int if option == "sample_rate" else float, default=None)
     render.set_defaults(func=command_render)
     analyze = sub.add_parser("analyze")
     analyze.add_argument("dir")

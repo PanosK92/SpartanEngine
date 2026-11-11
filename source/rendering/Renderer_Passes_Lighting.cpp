@@ -782,6 +782,12 @@ namespace spartan
 
             const float history_m_cap = m_pass_state.restir.history_fade_frames > 0 ? restir_history_fade_m_cap : 0.0f;
             m_pcb_pass_cpu.set(pass_restir_temporal::history_m_cap, history_m_cap);
+
+            // the history keeps its samples across a tlas rebuild or a pool rebuild, see UpdateAccelerationStructures and BuildEmissiveTriangleNeePool
+            RHI_CommandList::SetBuffer("restir_instance_remap", GetBuffer(Renderer_Buffer::RestirInstanceRemap));
+            m_pcb_pass_cpu.set(pass_restir_temporal::instance_remap_count, m_pass_state.restir.instance_remap_count);
+            RHI_CommandList::SetBuffer("restir_pool_remap", GetBuffer(Renderer_Buffer::RestirPoolRemap));
+            m_pcb_pass_cpu.set(pass_restir_temporal::pool_remap_count, m_pass_state.restir.pool_remap_count);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
@@ -897,6 +903,10 @@ namespace spartan
             uint32_t idx_prev = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0) + i;
             swap(render_targets[idx_cur], render_targets[idx_prev]);
         }
+
+        // the history now holds this frame's reservoirs, they refer to the current tlas slots and pool order
+        m_pass_state.restir.instance_remap_count = 0;
+        m_pass_state.restir.pool_remap_count     = 0;
     }
 
     // cpu only pointer swap, call at frame end once every consumer of the current depth and normal targets has finished recording
