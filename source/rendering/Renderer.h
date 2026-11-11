@@ -171,6 +171,9 @@ namespace spartan
         void SetEditorSelection(const std::vector<uint64_t>& entities, int instance);
         std::vector<Entity*> GetEditorSelection();
         int GetEditorSelectedInstance();
+        // what gameplay points at, outlined while playing in place of the editor selection, 0 clears it
+        void SetGameplayHighlight(uint64_t entity_id);
+        Entity* GetGameplayHighlight();
 
         // one ring_radii_m and cell_size_m entry per lod ring, the renderer assumes three rings ordered near to far
         struct GpuScatterParams

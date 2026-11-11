@@ -34,6 +34,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Physics.h"
 #include "../world/components/Render.h"
 #include "../world/components/CarReset.h"
+#include "../world/components/Script.h"
 #include "../world/components/SpawnPoint.h"
 #include "../world/Prefab.h"
 #include "../io/pugixml.hpp"
@@ -1990,6 +1991,21 @@ namespace spartan
             {
                 SP_LOG_WARNING("car steering wheel part '%s' not found", m_definition->steering_wheel_part.c_str());
             }
+        }
+
+        // the body's lua lives and dies with the body, a car swap builds a new body and with it new scripts
+        // Script::Load defers the lua to the main thread while a world loads, prefabs build bodies on loader threads
+        for (const std::string& file : m_definition->body_scripts)
+        {
+            Entity* script_entity = World::CreateEntity();
+            script_entity->SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(file));
+            script_entity->SetTransient(true);
+            script_entity->SetParent(m_body_entity);
+
+            pugi::xml_document document;
+            pugi::xml_node node = document.append_child("script");
+            node.append_attribute("file_path") = file.c_str();
+            script_entity->AddComponent<Script>()->Load(node);
         }
     }
 

@@ -164,6 +164,9 @@ namespace spartan::scripting
         type["GetVehicleRearLampLevel"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? CarPhysics::Get(self).GetCar()->GetRearLampLevel() : 0.0f; };
         type["GetVehicleStopLamp"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? CarPhysics::Get(self).GetCar()->GetStopLamp() : 0.0f; };
         type["GetVehicleSteering"] = vehicle_method(&CarPhysics::GetVehicleSteering);
+        // the measured counterparts of the inputs: where the rack really is (-1 to 1) and how engaged the clutch is (0 to 1)
+        type["GetVehicleSteeringRack"] = [](Physics& self) { ::car::Simulation* simulation = CarPhysics::Get(self).GetVehicleSimulation(); return simulation ? simulation->get_steering_rack() : 0.0f; };
+        type["GetVehicleClutch"] = [](Physics& self) { ::car::Simulation* simulation = CarPhysics::Get(self).GetVehicleSimulation(); return simulation ? simulation->get_clutch() : 1.0f; };
         type["GetVehicleHandbrake"] = vehicle_method(&CarPhysics::GetVehicleHandbrake);
         type["IsWheelGrounded"] = vehicle_method(&CarPhysics::IsWheelGrounded);
         type["GetWheelCompression"] = vehicle_method(&CarPhysics::GetWheelCompression);

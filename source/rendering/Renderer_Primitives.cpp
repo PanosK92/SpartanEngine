@@ -29,6 +29,7 @@ namespace spartan
         LensWater lens_water;
         vector<uint64_t> editor_selection;
         int editor_selected_instance = -1;
+        uint64_t gameplay_highlight  = 0;
     }
     void Renderer::SetSurfaceWater(const SurfaceWater& input) { surface_water = input; }
     const SurfaceWater& Renderer::GetSurfaceWater() { return surface_water; }
@@ -51,6 +52,8 @@ namespace spartan
         return selected;
     }
     int Renderer::GetEditorSelectedInstance() { return editor_selected_instance; }
+    void Renderer::SetGameplayHighlight(uint64_t entity_id) { gameplay_highlight = entity_id; }
+    Entity* Renderer::GetGameplayHighlight() { return gameplay_highlight != 0 ? World::GetEntityById(gameplay_highlight) : nullptr; }
 
     void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Color& color_from, const Color& color_to, float duration_sec /*= 0.0f*/)
     {

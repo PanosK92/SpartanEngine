@@ -1002,6 +1002,15 @@ namespace car
                     definition.body_openings.push_back(opening);
                 }
             }
+
+            for (pugi::xml_node script_node : body.children("script"))
+            {
+                const std::string file = script_node.attribute("file").as_string("");
+                if (!file.empty())
+                {
+                    definition.body_scripts.push_back(file);
+                }
+            }
         }
 
         if (definition.body_model.empty())

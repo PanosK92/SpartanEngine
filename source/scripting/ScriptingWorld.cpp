@@ -17,9 +17,13 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Camera.h"
 #include "../world/components/Light.h"
 #include "../physics/PhysicsWorld.h"
+#include "../world/components/Render.h"
 #include "../rendering/Material.h"
+#include "../rendering/Renderer.h"
 #include "../resource/ResourceCache.h"
 #include "../geometry/Mesh.h"
+#include "../input/Input.h"
+#include "../math/Ray.h"
 //======================================
 
 //= NAMESPACES ================
@@ -29,6 +33,126 @@ using namespace spartan::math;
 
 namespace spartan::scripting
 {
+    namespace
+    {
+        // a renderable's triangles in its own space, kept so hovering every frame does not copy its mesh every frame
+        struct pick_geometry
+        {
+            const Mesh* mesh      = nullptr;
+            uint32_t index_offset = 0;
+            uint32_t index_count  = 0;
+            vector<Vector3> positions;
+            vector<uint32_t> indices;
+        };
+        unordered_map<uint64_t, pick_geometry> pick_cache;
+
+        const pick_geometry& get_pick_geometry(Entity* entity, Render* render)
+        {
+            pick_geometry& geometry = pick_cache[entity->GetObjectId()];
+            if (geometry.mesh != render->GetMesh() || geometry.index_offset != render->GetIndexOffset() || geometry.index_count != render->GetIndexCount())
+            {
+                geometry.mesh         = render->GetMesh();
+                geometry.index_offset = render->GetIndexOffset();
+                geometry.index_count  = render->GetIndexCount();
+                geometry.positions.clear();
+                geometry.indices.clear();
+
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                render->GetGeometry(&geometry.indices, &vertices);
+                geometry.positions.reserve(vertices.size());
+                for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+                {
+                    geometry.positions.emplace_back(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+                }
+            }
+            return geometry;
+        }
+
+        // the nearest front facing triangle of root or its descendants along the ray, instanced renderables are skipped
+        sol::object pick(const Vector3& origin, const Vector3& direction, float max_distance, Entity* root)
+        {
+            if (!root || direction.LengthSquared() == 0.0f)
+            {
+                return sol::lua_nil;
+            }
+
+            // stale entries belong to removed entities, they are only memory, so a full cache is simply dropped
+            if (pick_cache.size() > 512)
+            {
+                pick_cache.clear();
+            }
+
+            const Vector3 world_direction = direction.Normalized();
+            const Ray ray(origin, world_direction);
+
+            vector<Entity*> entities;
+            entities.push_back(root);
+            root->GetDescendants(&entities);
+
+            vector<pair<float, Entity*>> candidates;
+            for (Entity* entity : entities)
+            {
+                Render* render = entity->IsActive() ? entity->GetComponent<Render>() : nullptr;
+                if (!render || render->HasInstancing() || !render->GetMesh())
+                {
+                    continue;
+                }
+
+                const float distance = ray.HitDistance(render->GetBoundingBox());
+                if (distance < max_distance)
+                {
+                    candidates.emplace_back(distance, entity);
+                }
+            }
+            sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+
+            float best_distance = max_distance;
+            Entity* best_entity = nullptr;
+            for (const auto& [box_distance, entity] : candidates)
+            {
+                if (box_distance >= best_distance)
+                {
+                    break;
+                }
+
+                // the triangles stay in mesh space, the ray goes there instead, an affine map keeps the order of hits along it
+                const Matrix to_local      = entity->GetMatrix().Inverted();
+                const Vector3 local_origin = origin * to_local;
+                const Vector3 local_step   = (origin + world_direction) * to_local - local_origin;
+                const float local_scale    = local_step.Length();
+                if (local_scale <= 0.0f)
+                {
+                    continue;
+                }
+                const Ray local_ray(local_origin, local_step);
+
+                const pick_geometry& geometry = get_pick_geometry(entity, entity->GetComponent<Render>());
+                for (size_t i = 0; i + 2 < geometry.indices.size(); i += 3)
+                {
+                    const float local_distance = local_ray.HitDistance(geometry.positions[geometry.indices[i]], geometry.positions[geometry.indices[i + 1]], geometry.positions[geometry.indices[i + 2]]);
+                    const float distance       = local_distance / local_scale;
+                    if (distance < best_distance)
+                    {
+                        best_distance = distance;
+                        best_entity   = entity;
+                    }
+                }
+            }
+
+            if (!best_entity)
+            {
+                return sol::lua_nil;
+            }
+
+            sol::state_view lua = get_state();
+            sol::table result   = lua.create_table();
+            result["entity"]    = best_entity;
+            result["position"]  = origin + world_direction * best_distance;
+            result["distance"]  = best_distance;
+            return result;
+        }
+    }
+
     void register_entity(sol::state_view State)
     {
         visual::usertype<Entity>(State, "Entity",
@@ -319,6 +443,31 @@ namespace spartan::scripting
                 return result;
             }
             return sol::lua_nil;
+        };
+        // the ray from the camera through the mouse cursor, nil while the cursor is outside the viewport
+        WorldTable["GetCursorRay"] = []() -> tuple<sol::object, sol::object>
+        {
+            Camera* camera = World::GetCamera();
+            if (!camera || !camera->GetEntity() || !Input::GetMouseIsInViewport())
+            {
+                return { sol::lua_nil, sol::lua_nil };
+            }
+
+            // the ray carries a far plane point in its direction field
+            const Ray ray           = camera->ComputeRay(Input::GetMousePositionRelativeToEditorViewport());
+            const Vector3 direction = (ray.GetDirection() - ray.GetStart()).Normalized();
+            sol::state_view lua     = get_state();
+            return { sol::make_object(lua, ray.GetStart()), sol::make_object(lua, direction) };
+        };
+        // triangle exact, against the rendered meshes of root and its descendants: { entity, position, distance } or nil
+        WorldTable["Pick"] = [](const Vector3& origin, const Vector3& direction, float max_distance, Entity* root) -> sol::object
+        {
+            return pick(origin, direction, max_distance, root);
+        };
+        // outlines an entity and its descendants while playing, nil clears it
+        WorldTable["SetHighlight"] = [](sol::optional<Entity*> entity)
+        {
+            Renderer::SetGameplayHighlight(entity && entity.value() ? entity.value()->GetObjectId() : 0);
         };
     }
 

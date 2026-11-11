@@ -1,6 +1,6 @@
 # Spartan Agent Memory
 
-Shared memory for agents working on Spartan Engine. Keep it short, factual and current: replace wrong notes instead of stacking corrections, state the rule and where it lives, drop the story. One note stays under 1200 chars. When the file passes its limit, dated notes are dropped oldest first, then undated topic notes; the first four sections are never dropped. There is no archive, so keep what matters current here.
+Shared memory for agents working on Spartan Engine. Keep it short, factual and current: replace wrong notes instead of stacking corrections, state the rule and where it lives, drop the story. One note stays under 1200 chars. Past the limit, dated topic notes move to AGENT_MEMORY_ARCHIVE.md oldest first; the first four sections stay.
 
 ## Engine Facts
 - MCP commands run on the engine main thread at the start of the frame; request ids are echoed in responses and debug logs. Mutating scene tools require edit mode. World loading blocks most commands.
@@ -12,7 +12,7 @@ Shared memory for agents working on Spartan Engine. Keep it short, factual and c
 - `world_save` prunes unreferenced files from the world resources directory; `world_resources_clean` returns a receipt.
 - `camera_set_view` works in edit mode and paused play; in first person play it teleports the player (position is the eye). `viewport_frame` frames descendant bounds from a named view.
 - `screenshot_take` returns a 1024 px preview (full PNG under binaries/project/mcp/blockout/thumbnails); by default it is the editor frame cropped to the viewport (UI over the viewport included, viewport display size), `{ui:true}` captures the whole editor window. Sequencer clean captures, XR and headless keep the plain render capture. Screenshots freeze while play is paused or the window is minimized; parallel calls grab the same frame, so shoot series sequentially.
-- Cars: `vehicle_list/get/enter/exit`, `vehicle_set_input`, `vehicle_shift`, `vehicle_set_view`, `vehicle_reset`, `vehicle_set_tire_pressure {psi|bar}` (stored in bar), `vehicle_telemetry`, `vehicle_ai`, `vehicle_spectate`. Sequencer: `sequencer_*`, state in `sequencer_<world>.xml` under the project directory.
+- Cars: `vehicle_*` tools (tire pressure in psi or bar). Sequencer: `sequencer_*`, state in `sequencer_<world>.xml` under the project directory.
 - `spline_query` (no args) returns each spline camera's `arc_distance` and `pass_time_seconds`; `spline_distribute` respaces cameras (`edge_offset` 2, or 1 on roads with side walls).
 - Glass materials use `color_a`, `ior`, `absorption`, `thickness`.
 - cvar_set blocks only r.hdr (is_blocked_cvar in McpCommands.cpp); value must be a string. Render cvars persist to binaries/spartan.xml, so restore what you change. debug.* cvars are startup only.
@@ -56,7 +56,7 @@ Shared memory for agents working on Spartan Engine. Keep it short, factual and c
 - `material_textured_create` returns `material_path`; `height` is texture pixels, `displacement_height` is displacement. Roughness/metalness maps set those scalars to 1 by design. Glazed ceramic, car paint, varnish: `clearcoat` 1, `clearcoat_roughness` 0.04, `ior` 1.5.
 - `texture_generate` at a loaded path writes the next free suffix; read `path` back. material color_r/g/b only darken; to lighten, generate at a new path.
 - 2026-11-11 Asset layout contract: binaries/project/README.md, read it before touching assets. `<world>_resources/` has engine managed meshes/ materials/ textures/ and its Lua in scripts/; worlds/ holds only .world. A car is plan_resources/cars/<car>/: <car>.car, <car>.prefab, model; shared parts in cars/shared. Car `name` is fictional, `reference` the real car. MCP output: mcp/blockout; no new top-level folders.
-- No MCP tool clicks editor UI, injects WASD or OS mouse input, or captures the full audio mix (only the engine synth, via engine_sound_capture): hover, popups and sound mixes need the user.
+- No MCP tool clicks editor UI, moves the OS cursor or records the full audio mix: popups and mixes need the user. World.GetCursorRay follows the OS cursor; hold input_inject Click_Right so Lua aims from the view centre. `.car` `<body><script file>` runs body Lua (cars/rubra/rubra.lua). vehicle_set_car to the current car is a no-op: swap away and back.
 - Static collision exists only within 40-80 m of the active camera. Entering play with the camera far from a car drops it through the floor: frame the car first or `vehicle_reset`. Keep the player off live traffic lanes. An inactive entity keeps its static collision: remove its physics component (road guardrails: details_<road>/roadside_guardrail_beams, one merged entity per road).
 - `asset_viewer_preview_path` takes library/blockout .mesh, material and texture paths; preview .glb models through an entity with `asset_viewer_preview_entity`. A pending asset_viewer_screenshot can block screenshot_take; `asset_viewer_open {visible:false}` clears it.
 - ModelImporter reuses `<model_dir>/<material>.xml` and caches packed textures: rename the material or delete that xml and restart after changing GLB textures. Engine glb needs external texture uris.

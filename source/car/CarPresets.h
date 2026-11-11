@@ -608,6 +608,7 @@ namespace car
         float       steering_wheel_axis[3] = { 0.0f, 0.0f, 1.0f }; // column axis in the wheel's parent space
         float       steering_wheel_lock    = 0.0f;                  // degrees of wheel rotation at full steering input
         std::vector<body_opening> body_openings;
+        std::vector<std::string>  body_scripts;    // lua that brings the body to life, each runs on its own child of the body
 
         // wheel visual
         std::string wheel_model;

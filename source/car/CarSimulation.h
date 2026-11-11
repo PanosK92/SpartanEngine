@@ -88,6 +88,7 @@ namespace car
         wheel           wheels[wheel_count];
         input_state     input;
         input_state     input_target;
+        float           steering_rack = 0.0f; // where the rack actually is, in steering input units, read before each step
         assist_command  assisted_actuators;
         PxVec3          wheel_offsets[wheel_count];
         float           wheel_moi[wheel_count];
@@ -477,6 +478,8 @@ namespace car
         float get_throttle();
         float get_brake();
         float get_steering();
+        // the steering input the rack's real travel corresponds to, the column turns with it when the road moves the wheels
+        float get_steering_rack() const { return multibody.rack_joint ? steering_rack : input.steering; }
 
         // where the lateral force acts behind the wheel centre. the brush model already knows this from its
         // patch length, only the curve fit needs the separate trail model

@@ -389,7 +389,9 @@ namespace spartan
 
     void Renderer::Pass_Outline(RHI_Texture* tex_out)
     {
-        if (!cvar_selection_outline.GetValueAs<bool>() || Engine::IsFlagSet(EngineMode::Playing))
+        // while playing the editor selection is hidden and the outline marks what gameplay points at instead
+        const bool playing = Engine::IsFlagSet(EngineMode::Playing);
+        if (!playing && !cvar_selection_outline.GetValueAs<bool>())
         {
             return;
         }
@@ -400,7 +402,16 @@ namespace spartan
 
         if (Camera* camera = Renderer::GetViewCamera())
         {
-            const std::vector<Entity*>& selected_entities = GetEditorSelection();
+            std::vector<Entity*> selected_entities;
+            if (!playing)
+            {
+                selected_entities = GetEditorSelection();
+            }
+            else if (Entity* highlight = GetGameplayHighlight())
+            {
+                selected_entities.push_back(highlight);
+            }
+            const Color outline_color = playing ? Color(1.0f, 0.86f, 0.62f, 1.0f) : Color::standard_renderer_lines;
             if (!selected_entities.empty())
             {
                 RHI_CommandList::BeginPass("outline");
@@ -460,7 +471,7 @@ namespace spartan
                                 // clicking a scattered tree selects the renderable that carries every
                                 // tree on that tile, outlining all of them says nothing about which
                                 // one was clicked, so a picked instance outlines on its own
-                                const int picked = GetEditorSelectedInstance();
+                                const int picked = playing ? -1 : GetEditorSelectedInstance();
                                 // every part of one prop, bark and leaves, shares the tile transform
                                 // list, so the same index outlines the whole tree and nothing else
                                 const bool one_instance = render->HasInstancing() &&
@@ -493,7 +504,7 @@ namespace spartan
                                     outline_draw_count++;
 
                                     m_pcb_pass_cpu.draw_index = draw_index;
-                                    m_pcb_pass_cpu.set(pass_outline::color, Color::standard_renderer_lines);
+                                    m_pcb_pass_cpu.set(pass_outline::color, outline_color);
                                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                                     RHI_CommandList::SetBufferVertex(render->GetVertexBuffer());
                                     RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());

@@ -330,14 +330,24 @@ namespace spartan::scripting
 
         visual::usertype<Quaternion>(state, "Quaternion",
             sol::call_constructor,
-            sol::constructors<Quaternion()>(),
+            sol::constructors<Quaternion(), Quaternion(float, float, float, float)>(),
 
             "x", &Quaternion::x,
             "y", &Quaternion::y,
             "z", &Quaternion::z,
             "w", &Quaternion::w,
 
+            // a * b applies b first, a * v rotates the vector
+            sol::meta_function::multiplication, sol::overload(
+                [](const Quaternion& a, const Quaternion& b) { return a * b; },
+                [](const Quaternion& q, const Vector3& v) { return q * v; }
+            ),
+
             "FromEulerAngles", [](float pitch, float yaw, float roll) { return Quaternion::FromEulerAngles(pitch, yaw, roll); },
+            // angle in radians
+            "FromAxisAngle", [](const Vector3& axis, float angle) { return Quaternion::FromAxisAngle(axis.Normalized(), angle); },
+            "Inverse",       [](const Quaternion& q) { return q.Inverse(); },
+            "Normalized",    [](const Quaternion& q) { return q.Normalized(); },
             "FromLookRotation", [](const Vector3& direction, const Vector3& up)
             {
                 return Quaternion::FromLookRotation(direction, up);

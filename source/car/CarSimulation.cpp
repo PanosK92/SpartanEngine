@@ -2922,6 +2922,10 @@ namespace car
 
             if (multibody.rack_joint)
             {
+                // undo the drive mapping below on the measured travel, so the column reads in the same units as the input
+                const float rack_curved = PxClamp(-multibody.rack_joint->getRelativeTransform().p.x / PxMax(multibody.rack_travel, 1e-4f), -1.15f, 1.15f);
+                steering_rack = copysignf(powf(fabsf(rack_curved), 1.0f / PxMax(spec.steering_linearity, 0.1f)), rack_curved);
+
                 float curved_input = copysignf(powf(fabsf(PxClamp(input.steering, -1.0f, 1.0f)), spec.steering_linearity), input.steering);
                 // minus matches trailing-rod + input convention, verify in-game before flipping
                 float rack_target = -curved_input * multibody.rack_travel;
