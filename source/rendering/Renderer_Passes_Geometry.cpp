@@ -248,6 +248,10 @@ namespace spartan
             return max(cvar_grass_impostor_thin.GetValue(), 0.0f);
         }
 
+        // the band walk in grass_populate.hlsl still ends in an experiment that counts its candidates and commits none,
+        // so a thinned card ring draws nothing, its dispatches are skipped until the walk hands them to populate_cell again
+        constexpr bool gpu_scatter_card_bands_emit = false;
+
         float gpu_scatter_card_scale(const float distance)
         {
             const float thin = gpu_scatter_card_thin();
@@ -2546,7 +2550,7 @@ namespace spartan
                     // a thinned card ring runs one dispatch per distance band, a thread per block of cells
                     if (card_ring && gpu_scatter_card_thin() > 0.0f)
                     {
-                        for (uint32_t band = 0; band < renderer_gpu_scatter_card_bands; band++)
+                        for (uint32_t band = 0; gpu_scatter_card_bands_emit && band < renderer_gpu_scatter_card_bands; band++)
                         {
                             const std::array<uint32_t, 4>& band_window = card_band_windows[slot * renderer_gpu_scatter_card_bands + band];
                             if (band_window[2] == 0 || band_window[3] == 0)

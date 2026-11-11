@@ -223,6 +223,7 @@ struct FrameBufferData
     SHARED_FLOAT4 radial_blur_hubs[64];          // xyz = current pivot, w = unwrapped radians/frame
     SHARED_FLOAT4 radial_blur_axes[64];          // xyz = world rotation axis, w = object mask ID
     SHARED_FLOAT4 radial_blur_extents[64];       // x = outer radius, y = half width (world units), w = 1 when measured
+    SHARED_FLOAT4 radial_blur_bounds;            // uv rectangle around every wheel on screen, xy = min, zw = max, empty when none spin
     SHARED_FLOAT  radial_blur_hub_count;
     // UTC fraction of the calendar day; the star catalogue uses the ephemeris transform below.
     SHARED_FLOAT  time_of_day;
@@ -679,6 +680,11 @@ namespace pass_output
 namespace pass_dlss_reactivity
 {
     static const SHARED_UINT scale = 0; // float
+}
+
+namespace pass_upscaler_exposure
+{
+    static const SHARED_UINT inverse = 0; // bool, back to radiometric after the upscaler
 }
 
 namespace pass_taau

@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include "pch.h"
 #include "Renderer.h"
+#include "Renderer_Internal.h"
 #include "Material.h"
 #include "../rhi/RHI_Texture.h"
 #include "../world/World.h"
@@ -29,19 +30,22 @@ namespace spartan
         // the stamp is the scan that last saw the material, older entries belong to removed materials
         struct MaterialState
         {
-            size_t hash    = 0;
-            uint64_t stamp = 0;
+            size_t hash       = 0;
+            uint32_t revision = 0;
+            uint64_t stamp    = 0;
         };
         unordered_map<uint64_t, MaterialState> material_state_hashes;
+        // filled by the last scan, see GetMaterialsWithChangedValues
+        vector<Material*> materials_with_changed_values;
 
         // light change tracking - things that change the nature of the light for rendering
         unordered_map<uint64_t, size_t> light_state_hashes;
 
         size_t compute_material_hash(Material* material)
         {
-            // revision covers property/texture pointer edits, resource states catch async prep
+            // texture pointers and resource states, what decides the slots a material and its textures get
+            // the revision is tracked next to it, a property edit moves the revision and leaves this alone
             size_t hash = 17;
-            hash = (hash * 31) ^ static_cast<size_t>(material->GetRevision());
             hash = (hash * 31) ^ static_cast<size_t>(material->GetResourceState());
 
             for (const auto* texture : material->GetTextures())
@@ -102,9 +106,17 @@ namespace spartan
         last_global_revision = 0;
         resource_poll_frame = 0;
         materials_invalidated = lights_invalidated = true;
+        materials_with_changed_values.clear();
     }
+
+    const vector<Material*>& Renderer::GetMaterialsWithChangedValues()
+    {
+        return materials_with_changed_values;
+    }
+
     bool Renderer::HaveMaterialsChangedThisFrame()
     {
+        materials_with_changed_values.clear();
 
         const uint32_t global_revision = Material::GetGlobalRevision();
         const bool props_changed = global_revision != last_global_revision;
@@ -121,6 +133,8 @@ namespace spartan
         }
 
         bool changed = std::exchange(materials_invalidated, false);
+        // an invalidated scene, a new material or a moved texture changes who owns which slot
+        bool slots_changed = changed;
         const uint64_t stamp = Material::NewVisitStamp();
 
         for (const RenderSceneData* data : World::GetRenderSceneData())
@@ -140,13 +154,27 @@ namespace spartan
             auto [it, inserted] = material_state_hashes.try_emplace(material->GetObjectId());
             if (inserted || it->second.hash != current_hash)
             {
-                it->second.hash = current_hash;
-                changed = true;
+                it->second.hash     = current_hash;
+                it->second.revision = material->GetRevision();
+                changed             = true;
+                slots_changed       = true;
+            }
+            else if (it->second.revision != material->GetRevision())
+            {
+                // a brake lamp easing, a paint edit, the material is the same one with other numbers in it
+                it->second.revision = material->GetRevision();
+                changed             = true;
+                materials_with_changed_values.push_back(material);
             }
             it->second.stamp = stamp;
         }
 
-        changed |= std::erase_if(material_state_hashes, [stamp](const auto& entry) { return entry.second.stamp != stamp; }) != 0;
+        slots_changed |= std::erase_if(material_state_hashes, [stamp](const auto& entry) { return entry.second.stamp != stamp; }) != 0;
+        changed       |= slots_changed;
+        if (slots_changed)
+        {
+            materials_with_changed_values.clear();
+        }
         return changed;
     }
 

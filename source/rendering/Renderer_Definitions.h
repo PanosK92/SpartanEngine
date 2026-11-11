@@ -380,6 +380,7 @@ namespace spartan
         fxaa_c,
         taau_c,
         dlss_reactivity_c,
+        upscaler_exposure_c,
         film_grain_c,
         cinematic_c,
         lens_rain_c,

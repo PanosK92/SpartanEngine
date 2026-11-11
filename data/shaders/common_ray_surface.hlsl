@@ -483,9 +483,10 @@ float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky,
             if (dot(s.normal, to_light) <= 0.0f)
                 continue;
 
+            // a light too faint to show at the hit is not a candidate, its shadow ray would resolve nothing visible
             float3 incoming = ray_light_irradiance(i, s.position, s.normal);
             float  weight   = luminance(incoming);
-            if (weight <= 0.0f)
+            if (weight <= 0.0f || !light_energy_is_visible(incoming))
                 continue;
 
             // one uniform number drives the whole stream, rescaled into the part of it each step leaves

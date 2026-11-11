@@ -220,6 +220,15 @@ float light_spot_factor(uint flags, float3 dir_from_light, float3 forward, float
     return lighting_spot_attenuation(dot(dir_from_light, forward), angle);
 }
 
+// exposed luminance below which a light's energy cannot be told apart from none, headlights at noon fall under it a few
+// tens of meters out while their range runs to hundreds, so anything a light costs per pixel is gated on it
+static const float light_contribution_cull = 1e-3f;
+
+bool light_energy_is_visible(float3 radiance)
+{
+    return luminance(radiometric_to_photometric(radiance)) * get_effective_exposure() > light_contribution_cull;
+}
+
 struct Light
 {
     // properties
@@ -497,6 +506,13 @@ struct Light
         attenuation = compute_attenuation(surface.position);
         
         radiance = color * intensity * attenuation * n_dot_l;
+    }
+
+    // raw energy at the surface without n_dot_l, scattering needs it too, the inverse square tail reaches far past where it can be seen
+    // shading and the shadow rays share this gate, so a ray is never traced for a light the pixel will not be lit by
+    bool can_contribute()
+    {
+        return light_energy_is_visible(color * intensity * attenuation);
     }
 };
 

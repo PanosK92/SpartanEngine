@@ -347,14 +347,6 @@ namespace spartan
             swap(tex_in, tex_out);
         };
 
-        if (apply_dithering && cvar_dithering.GetValueAs<bool>())
-        {
-            run_effect("dithering", Renderer_Shader::dithering_c, [&]()
-            {
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
-            });
-        }
-
         if (cvar_sharpness.GetValueAs<bool>())
         {
             run_effect("sharpening", Renderer_Shader::ffx_cas_c, [&]()
@@ -401,6 +393,16 @@ namespace spartan
                 m_pcb_pass_cpu.set(pass_cinematic::fade_color, cinematic.color);
                 m_pcb_pass_cpu.set(pass_cinematic::letterbox, cinematic.aspect);
                 m_pcb_pass_cpu.set(pass_cinematic::force_sdr, force_sdr);
+            });
+        }
+
+        // last, so nothing filters the noise before the swapchain rounds, and only when the frame is blitted to the swapchain
+        // as is, the ui draws the frame at the viewport's size and dithers it there, per swapchain pixel
+        if (apply_dithering && m_present_in_renderer && cvar_dithering.GetValueAs<bool>())
+        {
+            run_effect("dithering", Renderer_Shader::dithering_c, [&]()
+            {
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
             });
         }
     }
@@ -570,35 +572,60 @@ namespace spartan
         RHI_Texture* tex_velocity    = GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         const float resolution_scale = Renderer::GetResolutionScale();
+        const bool is_stereo         = eye_layer != rhi_all_mips;
+        Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+
+        // a secondary view renders a single isolated frame, a temporal upscaler has no
+        // history for it so it resolves as a soft upscale, and its history copy would
+        // overwrite the primary camera's history and make the main viewport flicker
+        if (IsSecondaryViewActive())
+        {
+            method = Renderer_AntiAliasing_Upsampling::AA_Off_Upscale_Linear;
+        }
+
+        // vendor upscalers keep one global temporal context, cannot run twice per frame for two eyes
+        if (is_stereo &&
+            (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
+             method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
+             method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr))
+        {
+            method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+        }
+
+        // the first frames after launch show while dlss is still loading in the background
+        if (method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss && !RHI_VendorTechnology::DLSS_IsReady())
+        {
+            method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+        }
+
+        // the frame is radiometric, at night it sits around 1e-4, vendor upscalers round values that small into bands and
+        // lose the dim end next to a lamp, so they get the frame in display range with its highlights compressed and their
+        // output is brought back, taau works in float and needs neither
+        RHI_Shader* shader_exposure = GetShader(Renderer_Shader::upscaler_exposure_c);
+        const bool scale_exposure   = shader_exposure && shader_exposure->IsCompiled() &&
+            (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
+             method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
+             method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr);
+        const auto pass_exposure = [&](const char* name, RHI_Texture* texture, const bool inverse, const float scale)
+        {
+            RHI_CommandList::BeginPass(name);
+            SetCommonTextures(eye_layer);
+            {
+                RHI_CommandList::SetShader(shader_exposure);
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, texture);
+                m_pcb_pass_cpu.set(pass_upscaler_exposure::inverse, inverse);
+                RHI_CommandList::Dispatch(texture, scale);
+            }
+            RHI_CommandList::EndPass();
+        };
+        if (scale_exposure)
+        {
+            pass_exposure("upscaler_exposure_in", tex_in, false, resolution_scale);
+        }
 
         RHI_CommandList::BeginPass("aa_upscale");
         {
             SP_PROFILE_CPU_START("upscale_dispatch");
-            bool is_stereo = eye_layer != rhi_all_mips;
-            Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
-
-            // a secondary view renders a single isolated frame, a temporal upscaler has no
-            // history for it so it resolves as a soft upscale, and its history copy would
-            // overwrite the primary camera's history and make the main viewport flicker
-            if (IsSecondaryViewActive())
-            {
-                method = Renderer_AntiAliasing_Upsampling::AA_Off_Upscale_Linear;
-            }
-
-            // vendor upscalers keep one global temporal context, cannot run twice per frame for two eyes
-            if (is_stereo &&
-                (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
-                 method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
-                 method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr))
-            {
-                method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
-            }
-
-            // the first frames after launch show while dlss is still loading in the background
-            if (method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss && !RHI_VendorTechnology::DLSS_IsReady())
-            {
-                method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
-            }
 
             bool fsr_dispatched = false;
             if (method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
@@ -719,6 +746,11 @@ namespace spartan
             SP_PROFILE_CPU_END();
         }
         RHI_CommandList::EndPass();
+
+        if (scale_exposure)
+        {
+            pass_exposure("upscaler_exposure_out", tex_out, true, 1.0f);
+        }
     }
 
     void Renderer::Pass_AutoExposure(RHI_Texture* tex_in)

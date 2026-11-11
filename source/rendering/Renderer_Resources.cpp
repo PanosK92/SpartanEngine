@@ -975,9 +975,11 @@ namespace spartan
         {
             // light_* textures are produced by the compute lighting batch, concurrent sharing keeps
             // them safe if any future graphics pass samples them without ownership transfer
+            // 16-bit, the buffers are radiometric so night lighting sits around 1e-4 and below, r11g11b10 has a 6 bit mantissa
+            // (5 for blue) and stops at 6e-5, under that it steps by 1e-6, which showed as banded, hue shifted gradients
             uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
-            at(view_targets(), Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_diffuse");
-            at(view_targets(), Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_specular");
+            at(view_targets(), Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_diffuse");
+            at(view_targets(), Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_specular");
 
             at(view_targets(), Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
             at(view_targets(), Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
@@ -1081,10 +1083,11 @@ namespace spartan
             // cumulus transmittance toward the sun, projected on the cloud base plane, read by lighting and fog
             // float4 so the shared gaussian blur can soften it in place, mips kill distant screen-space moire
             at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, compute_mip_count(1024, 1024, 16),                 RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "cloud_shadow");
-            at(render_targets, Renderer_RenderTarget::cloud_environment)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 1, compute_mip_count(renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 16), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "cloud_environment");
+            at(render_targets, Renderer_RenderTarget::cloud_environment)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 1, compute_mip_count(renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 16), RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "cloud_environment");
 
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
-            at(render_targets, Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, 1, compute_mip_count(renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "skysphere");
+            // 16-bit, the night sky is a smooth gradient around 1e-4 radiometric, r11g11b10 gave its blue about 24 levels from zenith to horizon, which showed as contour bands
+            at(render_targets, Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, 1, compute_mip_count(renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, lowest_dimension), RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "skysphere");
             // l2 sh coeffs for directional diffuse ibl, 9 float4s in a 9x1 texture
             at(render_targets, Renderer_RenderTarget::sky_sh) = make_shared<RHI_Texture>(
                 RHI_Texture_Type::Type2D,
@@ -1169,12 +1172,18 @@ namespace spartan
             const uint32_t fog_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
             const auto create_fog = [&](Renderer_RenderTarget target, const char* name, bool integrated)
             {
+                // A half-float interface fraction shifts the water boundary
+                // by metres in far cells, producing moving horizon bands.
+                RHI_Format format = target == Renderer_RenderTarget::fog_extinction ? RHI_Format::R32G32_Float : RHI_Format::R16G16B16A16_Float;
+                // the sources hold radiance scattered per metre and the integral sums it, at night that is 1e-8 to 1e-5, a half
+                // float steps by 6e-8 down there so a cell held a handful of levels and the fog came out as bands along the horizon
+                if (target == Renderer_RenderTarget::fog_scatter || target == Renderer_RenderTarget::fog_scatter_history || target == Renderer_RenderTarget::fog_water_source || target == Renderer_RenderTarget::fog_water_history || target == Renderer_RenderTarget::fog_integrated)
+                {
+                    format = RHI_Format::R32G32B32A32_Float;
+                }
                 at(view_targets(), target) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type3D, renderer_fog_volume_width, renderer_fog_volume_height,
-                    renderer_fog_volume_depth + (integrated ? 1u : 0u), 1,
-                    // A half-float interface fraction shifts the water boundary
-                    // by metres in far cells, producing moving horizon bands.
-                    target == Renderer_RenderTarget::fog_extinction ? RHI_Format::R32G32_Float : RHI_Format::R16G16B16A16_Float, fog_flags, name);
+                    renderer_fog_volume_depth + (integrated ? 1u : 0u), 1, format, fog_flags, name);
             };
             create_fog(Renderer_RenderTarget::fog_scatter, "fog_scatter", false);
             create_fog(Renderer_RenderTarget::fog_scatter_history, "fog_scatter_history", false);
@@ -1398,6 +1407,7 @@ namespace spartan
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },
             { Renderer_Shader::taau_c,                                RHI_Shader_Type::Compute, "taau.hlsl"                                                                  },
             { Renderer_Shader::dlss_reactivity_c,                      RHI_Shader_Type::Compute, "dlss_reactivity.hlsl"                                                     },
+            { Renderer_Shader::upscaler_exposure_c,                   RHI_Shader_Type::Compute, "upscaler_exposure.hlsl"                                                     },
             // synchronous so the shader compilation progress can be drawn while everything else compiles
             { Renderer_Shader::font_v,                                RHI_Shader_Type::Vertex,  "font.hlsl",                                  RHI_Vertex_Type::Pos2dUvCol8, nullptr, false },
             { Renderer_Shader::font_p,                                RHI_Shader_Type::Pixel,   "font.hlsl",                                  RHI_Vertex_Type::Max,         nullptr, false },

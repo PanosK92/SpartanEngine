@@ -139,6 +139,31 @@ float3 fog_sky_ambient(FogSkyProbe probe, float2 uv, float distance, float3 ray_
     return lerp(sky_zenith, sky_sun, sun_lobe);
 }
 
+// what the medium at a sample sends toward the camera per unit of light arriving from light_dir
+float3 fog_light_scattering(Light light, float3 sample_pos, float3 ray_direction, float3 light_dir, bool in_water, float3 sigma_s)
+{
+    // Keep sun shafts visible from oblique underwater views as well as looking
+    // directly toward the sun; the previous narrow g=0.72 lobe hid most of them.
+    float phase_g = in_water || light.is_directional() ? 0.4f : 0.6f;
+    float phase = henyey_greenstein_phase(dot(ray_direction, light_dir), phase_g);
+    float3 scattering = phase * sigma_s;
+    if (!in_water && !light.is_directional())
+    {
+        // Local lights illuminate the same molecular air and aerosols as the
+        // sun/sky. Mist adds particles; zero mist never removes the atmosphere.
+        // Baseline extinction is applied once by integrate_camera_atmosphere,
+        // which also supplies the sun/moon source (do not count those twice).
+        float height = get_height(sample_pos);
+        if (height >= 0.0f && height < atmosphere_radius - earth_radius)
+        {
+            float cosine = dot(ray_direction, light_dir);
+            scattering += rayleigh_scatter * get_rayleigh_density(height) * rayleigh_phase(cosine)
+                + mie_scatter * get_mie_density(height) * cornette_shanks_phase(cosine, mie_g);
+        }
+    }
+    return scattering;
+}
+
 float3 fog_evaluate_light(
     Light light,
     float3 sample_pos,
@@ -166,6 +191,20 @@ float3 fog_evaluate_light(
         // shadows for deep cells whose incident energy is already negligible.
         float depth = max(buffer_frame.ocean_sea_level - sample_pos.y, 0.0f);
         if (depth * get_ocean_extinction().b > 12.0f) return 0.0f;
+    }
+
+    // a local light in air keeps its direction, so what it scatters is known before the shadow ray is paid for
+    // a view ray crosses at most two ranges of its support, where even the unshadowed scattering over that whole length
+    // stays below what the display can show the sample adds nothing, a headlight beam at noon ends a few meters out
+    bool is_local_in_air = !in_water && !light.is_directional();
+    float3 scattering = 0.0f;
+    if (is_local_in_air)
+    {
+        scattering = fog_light_scattering(light, sample_pos, ray_direction, light_dir, in_water, sigma_s);
+        if (!light_energy_is_visible(light.color * light.intensity * local_atten * scattering * (2.0f * light.far)))
+        {
+            return 0.0f;
+        }
     }
 
     float visibility = 1.0f;
@@ -206,24 +245,10 @@ float3 fog_evaluate_light(
         }
     }
 
-    // Keep sun shafts visible from oblique underwater views as well as looking
-    // directly toward the sun; the previous narrow g=0.72 lobe hid most of them.
-    float phase_g = in_water || light.is_directional() ? 0.4f : 0.6f;
-    float phase = henyey_greenstein_phase(dot(ray_direction, light_dir), phase_g);
-    float3 scattering = phase * sigma_s;
-    if (!in_water && !light.is_directional())
+    // the sun's direction bends at the water surface above, so its scattering waits for the refracted direction
+    if (!is_local_in_air)
     {
-        // Local lights illuminate the same molecular air and aerosols as the
-        // sun/sky. Mist adds particles; zero mist never removes the atmosphere.
-        // Baseline extinction is applied once by integrate_camera_atmosphere,
-        // which also supplies the sun/moon source (do not count those twice).
-        float height = get_height(sample_pos);
-        if (height >= 0.0f && height < atmosphere_radius - earth_radius)
-        {
-            float cosine = dot(ray_direction, light_dir);
-            scattering += rayleigh_scatter * get_rayleigh_density(height) * rayleigh_phase(cosine)
-                + mie_scatter * get_mie_density(height) * cornette_shanks_phase(cosine, mie_g);
-        }
+        scattering = fog_light_scattering(light, sample_pos, ray_direction, light_dir, in_water, sigma_s);
     }
     return light.color * light.intensity * local_atten * visibility * tint * scattering;
 }

@@ -47,6 +47,11 @@ namespace spartan
 
     namespace Renderer
     {
+        // materials whose property values alone moved in the scan HaveMaterialsChangedThisFrame last ran, they keep
+        // their slot and their textures, so the upload rewrites their entries instead of repacking every material
+        // empty when that scan also saw a material arrive, leave, or swap a texture
+        const std::vector<Material*>& GetMaterialsWithChangedValues();
+
         template<typename F = std::nullptr_t>
         void Pass_Compute(const char* name, Renderer_Shader shader_enum, RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
         template<typename F = std::nullptr_t>

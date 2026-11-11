@@ -228,7 +228,7 @@ namespace spartan
     TConsoleVar<float> cvar_lens_rain                      ("r.lens_rain",                      1.0f,   "rain drops on the lens of the chase and hood cameras, the value scales how much rain reaches the lens, 0 is off");
     TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,   "NTSC VHS playback: tape jitter, colour bandwidth loss, dropouts and head switching");
     TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,   "chromatic aberration");
-    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,   "dithering to reduce banding");
+    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      1.0f,   "one display step of noise before the swapchain rounds to 8 or 10 bits, removes banding in smooth gradients");
     TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,   "sharpening intensity");
     // quality settings                                                                               
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,   "tonemapping algorithm index");

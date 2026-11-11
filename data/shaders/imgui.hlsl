@@ -82,6 +82,17 @@ float3 hdr10_to_linear(float3 color, float white_point)
     return color;
 }
 
+// triangular noise in [-1, 1] per channel, new every frame so the eye averages it
+float3 dither_noise(uint2 pixel, uint frame)
+{
+    uint3 v = uint3(pixel, frame) * 1664525u + 1013904223u;
+    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+    v   ^= v >> 16u;
+    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+    v   ^= v >> 16u;
+    return (float3(v & 0xFFFFu) + float3(v >> 16u)) / 65535.0f - 1.0f;
+}
+
 float4 main_ps(vertex input) : SV_Target
 {
     uint flags = pass_uint(pass_imgui::flags);
@@ -100,6 +111,7 @@ float4 main_ps(vertex input) : SV_Target
     uint is_frame_texture = (flags & (1 << 10)) != 0 ? 1 : 0;
     uint is_sdr_capture   = (flags & (1 << 11)) != 0 ? 1 : 0;
     uint is_glass         = (flags & (1 << 12)) != 0 ? 1 : 0;
+    uint is_dithered      = (flags & (1 << 13)) != 0 ? 1 : 0;
 
     float4 channels = float4(channel_r, channel_g, channel_b, channel_a);
     float2 uv       = input.uv;
@@ -163,6 +175,16 @@ float4 main_ps(vertex input) : SV_Target
         float grain = frac(sin(dot(floor(input.position.xy), float2(12.9898f, 78.233f))) * 43758.5453f) - 0.5f;
         color.rgb  += grain * 0.025f;
         color.a     = input.color.a;
+    }
+
+    // the frame is fp16 and this write is where it gets rounded to the swapchain's 8 or 10 bits, one step of noise here
+    // turns the bands of a smooth gradient into grain too fine to see, it has to be per swapchain pixel, noise added
+    // to the frame itself is filtered away when the viewport is not the size of the frame
+    float levels = buffer_frame.hdr_enabled > 1.5f ? 0.0f : (buffer_frame.hdr_enabled > 0.5f ? 1023.0f : 255.0f);
+    if (is_dithered != 0 && levels > 0.0f)
+    {
+        // fades out under one step so black stays black
+        color.rgb += dither_noise(uint2(input.position.xy), buffer_frame.frame) * saturate(color.rgb * levels) / levels;
     }
 
     return color;

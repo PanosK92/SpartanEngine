@@ -86,6 +86,9 @@ namespace spartan
 
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
         bool materials_uploaded_this_frame = false;
+        // the material every slot of the uploaded table went to, and the ones UpdateMaterials is asked to rewrite in place
+        array<uint64_t, rhi_max_array_size> material_slot_owners = {};
+        vector<Material*> material_values_to_upload;
         // Residency swaps replace SRVs without changing material slots or ray tracing geometry.
         bool bindless_textures_dirty = false;
 
@@ -1550,18 +1553,38 @@ namespace spartan
             restir_fade_pending         = false;
         }
 
+        // traffic eases its brake lamps most frames, that moves a few numbers in materials that keep their slot and their
+        // textures, repacking every material and the texture table for it costs milliseconds, so those go up in place
+        material_values_to_upload.clear();
+        if (GetFrameNumber() != 0 && !secondary_changed && !bindless_changed && world_changed)
+        {
+            material_values_to_upload = GetMaterialsWithChangedValues();
+            for (Material* material : material_values_to_upload)
+            {
+                const uint32_t index = material->GetIndex();
+                if (index >= rhi_max_array_size || material_slot_owners[index] != material->GetObjectId())
+                {
+                    // not in the uploaded table as far as it can be told, the full upload sorts it out
+                    material_values_to_upload.clear();
+                    break;
+                }
+            }
+        }
+        const bool values_only = !material_values_to_upload.empty();
+
         if (update_materials)
         {
             m_pass_state.bindless_materials_dirty = false;
             uploaded_secondary_signature = secondary_signature;
             materials_uploaded_this_frame = true;
             UpdateMaterials();
+            material_values_to_upload.clear();
         }
         bindless_textures_dirty = false;
         SP_PROFILE_CPU_START("material_bindless");
         // a residency swap only touches the swapped textures, the full table is prepared with the materials
         const vector<shared_ptr<RHI_Texture>> streamed = RHI_TextureStreaming::TakePublished();
-        if (update_materials)
+        if (update_materials && !values_only)
         {
             RHI_CommandList::PrepareTexturesForSampling(&m_bindless_textures);
         }
@@ -1571,7 +1594,7 @@ namespace spartan
         }
         RHI_Device::UpdateBindlessMaterials(
             &m_bindless_textures,
-            update_materials ? GetBuffer(Renderer_Buffer::MaterialParameters) : nullptr
+            update_materials && !values_only ? GetBuffer(Renderer_Buffer::MaterialParameters) : nullptr
         );
         SP_PROFILE_CPU_END();
 
@@ -2595,13 +2618,23 @@ namespace spartan
 
     void Renderer::UpdateFrameCb_RadialBlurHubs()
     {
-        uint32_t count = 0;
+        // every spinning wheel in the world is gathered first, traffic alone spins far more than the buffer holds
+        struct HubRecord
+        {
+            Vector4 hub;
+            Vector4 axis;
+            Vector4 extents;
+            Vector4 bounds;        // uv rectangle the wheel can touch, xy = min, zw = max
+            float coverage = 0.0f; // projected size, the largest wheels on screen keep their records
+        };
+        static vector<HubRecord> records;
+        records.clear();
         unordered_map<uint32_t, uint32_t> written_masks;
 
         // Grows the analytic wheel cylinder (radius, half width) that the shader uses to blur
         // the gaps between spokes. Face centres of a disc's mesh box lie on its rim and its axis,
         // so they measure the disc under any spin, unlike the corners or a world-space box.
-        auto expand_extents = [](Render* render, uint32_t index)
+        auto expand_extents = [](Render* render, HubRecord& record)
         {
             const BoundingBox& box = render->GetBoundingBoxMesh();
             if (box.IsInfinite())
@@ -2609,9 +2642,9 @@ namespace spartan
             const Matrix& transform = render->GetEntity()->GetMatrix();
             const Vector3 box_center = box.GetCenter();
             const Vector3 box_extents = box.GetExtents();
-            const Vector3 pivot = Vector3(Renderer::view().frame.radial_blur_hubs[index].x, Renderer::view().frame.radial_blur_hubs[index].y, Renderer::view().frame.radial_blur_hubs[index].z);
-            const Vector3 axis = Vector3(Renderer::view().frame.radial_blur_axes[index].x, Renderer::view().frame.radial_blur_axes[index].y, Renderer::view().frame.radial_blur_axes[index].z);
-            Vector4& extents = Renderer::view().frame.radial_blur_extents[index];
+            const Vector3 pivot = Vector3(record.hub.x, record.hub.y, record.hub.z);
+            const Vector3 axis = Vector3(record.axis.x, record.axis.y, record.axis.z);
+            Vector4& extents = record.extents;
             for (uint32_t face = 0; face < 6; face++)
             {
                 Vector3 offset = Vector3::Zero;
@@ -2642,11 +2675,9 @@ namespace spartan
 
             if (auto written = written_masks.find(render->GetMotionBlurId()); written != written_masks.end())
             {
-                expand_extents(render, written->second);
+                expand_extents(render, records[written->second]);
                 continue;
             }
-            if (count >= 64)
-                continue;
 
             Entity* motion_entity = render->GetMotionBlurGroup() ? World::GetEntityById(render->GetMotionBlurGroup()) : entity;
             if (!motion_entity)
@@ -2679,14 +2710,81 @@ namespace spartan
             // Transform the same local pivot in both frames; world AABB centers drift during rotation.
             const Vector3 local_center = render->HasMotionBlurAngularVelocity() ? render->GetMotionBlurPivotLocal() : render->GetBoundingBoxMesh().GetCenter();
             const Vector3 center = current * local_center;
-            Renderer::view().frame.radial_blur_hubs[count] = Vector4(center.x, center.y, center.z, angle);
-            Renderer::view().frame.radial_blur_axes[count] = Vector4(axis.x, axis.y, axis.z, static_cast<float>(render->GetMotionBlurId()));
-            Renderer::view().frame.radial_blur_extents[count] = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-            expand_extents(render, count);
-            written_masks[render->GetMotionBlurId()] = count;
-            count++;
+            HubRecord& record = records.emplace_back();
+            record.hub        = Vector4(center.x, center.y, center.z, angle);
+            record.axis       = Vector4(axis.x, axis.y, axis.z, static_cast<float>(render->GetMotionBlurId()));
+            record.extents    = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+            expand_extents(render, record);
+            written_masks[render->GetMotionBlurId()] = static_cast<uint32_t>(records.size() - 1);
         }
-        Renderer::view().frame.radial_blur_hub_count = static_cast<float>(count);
+
+        // a wheel outside the frame has no pixel to blur, yet every record costs each pixel a test in the motion blur pass
+        // so only wheels that can touch the frame keep a record, and the rectangle around them spares the rest of the screen
+        Camera* camera      = Renderer::GetViewCamera();
+        const Matrix& view_projection = Renderer::view().frame.view_projection_unjittered;
+        const float scale_x = camera ? fabsf(camera->GetProjectionMatrix().m00) : 1.0f;
+        const float scale_y = camera ? fabsf(camera->GetProjectionMatrix().m11) : 1.0f;
+        const float near_z  = Renderer::view().frame.camera_near;
+        // the jittered reprojection and the bilinear footprints reach a few pixels past the projected wheel
+        const float margin_x = 8.0f / max(Renderer::view().frame.resolution_render.x, 1.0f);
+        const float margin_y = 8.0f / max(Renderer::view().frame.resolution_render.y, 1.0f);
+        size_t kept = 0;
+        for (size_t i = 0; i < records.size(); i++)
+        {
+            HubRecord& record  = records[i];
+            const float radius = record.extents.x + record.extents.y;
+            const Vector4 clip = Vector4(record.hub.x, record.hub.y, record.hub.z, 1.0f) * view_projection;
+
+            // an unmeasured wheel, or one the camera is next to, can be anywhere on screen
+            record.bounds   = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
+            record.coverage = numeric_limits<float>::max();
+            if (camera && radius > 0.0f && clip.w - radius > near_z)
+            {
+                // a point within radius of the center moves its projection by at most radius * (scale + |ndc|) / (depth - radius)
+                const float ndc_x    = clip.x / clip.w;
+                const float ndc_y    = clip.y / clip.w;
+                const float reach    = radius / (clip.w - radius);
+                const float extent_x = reach * (scale_x + fabsf(ndc_x)) * 0.5f + margin_x;
+                const float extent_y = reach * (scale_y + fabsf(ndc_y)) * 0.5f + margin_y;
+                const float uv_x     = ndc_x * 0.5f + 0.5f;
+                const float uv_y     = ndc_y * -0.5f + 0.5f;
+                record.bounds        = Vector4(uv_x - extent_x, uv_y - extent_y, uv_x + extent_x, uv_y + extent_y);
+                record.coverage      = reach;
+                if (record.bounds.x > 1.0f || record.bounds.y > 1.0f || record.bounds.z < 0.0f || record.bounds.w < 0.0f)
+                {
+                    continue;
+                }
+            }
+            else if (camera && radius > 0.0f && clip.w + radius < near_z)
+            {
+                // entirely behind the camera
+                continue;
+            }
+
+            records[kept++] = record;
+        }
+        records.resize(kept);
+
+        const size_t capacity = size(Renderer::view().frame.radial_blur_hubs);
+        if (records.size() > capacity)
+        {
+            partial_sort(records.begin(), records.begin() + capacity, records.end(), [](const HubRecord& a, const HubRecord& b) { return a.coverage > b.coverage; });
+            records.resize(capacity);
+        }
+
+        Vector4 bounds = Vector4(1.0f, 1.0f, 0.0f, 0.0f);
+        for (size_t i = 0; i < records.size(); i++)
+        {
+            Renderer::view().frame.radial_blur_hubs[i]    = records[i].hub;
+            Renderer::view().frame.radial_blur_axes[i]    = records[i].axis;
+            Renderer::view().frame.radial_blur_extents[i] = records[i].extents;
+            bounds.x = min(bounds.x, records[i].bounds.x);
+            bounds.y = min(bounds.y, records[i].bounds.y);
+            bounds.z = max(bounds.z, records[i].bounds.z);
+            bounds.w = max(bounds.w, records[i].bounds.w);
+        }
+        Renderer::view().frame.radial_blur_bounds    = bounds;
+        Renderer::view().frame.radial_blur_hub_count = static_cast<float>(records.size());
     }
 
     void Renderer::UpdateFrameConstantBuffer()
@@ -3763,24 +3861,9 @@ namespace spartan
                    format == RHI_Format::BC7_Unorm;
         };
     
-        auto update_material = [&count, &should_decode_as_srgb, &texture_indices, &texture_count, stamp](Material* material)
+        // everything an entry takes from the material's own properties, the slot and the texture indices are not touched
+        auto write_values = [&should_decode_as_srgb](const uint32_t count, Material* material)
         {
-            if (!material->Visit(stamp))
-            {
-                return;
-            }
-
-            if (count >= rhi_max_array_size)
-            {
-                material->SetIndex(0);
-                if (!capacity_warning_logged)
-                {
-                    SP_LOG_ERROR("material bindless capacity exceeded, overflowing materials will use index 0");
-                    capacity_warning_logged = true;
-                }
-                return;
-            }
-
             {
                 // uv state (tiling, offset, invert, rotation, world_space_uv) intentionally not uploaded here,
                 // it is per-render and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
@@ -3878,6 +3961,56 @@ namespace spartan
                 properties[count].flags |= static_cast<uint32_t>(road_half_width * 4.0f + 0.5f) << 26;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
+        };
+
+        // a brake lamp easing or a paint edit moves numbers inside entries that already exist, the slots and the textures
+        // stand as the last full upload left them, so only those entries are written, runs of neighbours go up in one copy
+        if (!material_values_to_upload.empty())
+        {
+            static vector<uint32_t> indices;
+            indices.clear();
+            for (Material* material : material_values_to_upload)
+            {
+                write_values(material->GetIndex(), material);
+                indices.push_back(material->GetIndex());
+            }
+            sort(indices.begin(), indices.end());
+
+            RHI_Buffer* buffer        = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
+            const uint64_t stride     = buffer->GetStride();
+            constexpr uint32_t bridge = 8;
+            for (size_t first = 0; first < indices.size();)
+            {
+                size_t last = first;
+                while (last + 1 < indices.size() && indices[last + 1] - indices[last] <= bridge)
+                {
+                    last++;
+                }
+                RHI_CommandList::UpdateBuffer(buffer, indices[first] * stride, (indices[last] - indices[first] + 1) * stride, &properties[indices[first]]);
+                first = last + 1;
+            }
+            return;
+        }
+
+        auto update_material = [&count, &write_values, &texture_indices, &texture_count, stamp](Material* material)
+        {
+            if (!material->Visit(stamp))
+            {
+                return;
+            }
+
+            if (count >= rhi_max_array_size)
+            {
+                material->SetIndex(0);
+                if (!capacity_warning_logged)
+                {
+                    SP_LOG_ERROR("material bindless capacity exceeded, overflowing materials will use index 0");
+                    capacity_warning_logged = true;
+                }
+                return;
+            }
+
+            write_values(count, material);
     
             // textures
             {
@@ -3912,6 +4045,7 @@ namespace spartan
             }
     
             material->SetIndex(count);
+            material_slot_owners[count] = material->GetObjectId();
 
             ++count;
         };
@@ -5178,6 +5312,10 @@ namespace spartan
         float cull_radius       = 0.0f;
         uint64_t blas_address   = 0;
         uint32_t material_index = 0;
+        // the instance flags and the uv fields come out of the material, a cache only goes stale when its own material is edited,
+        // dropping every cache on any upload rebuilt the whole forest each frame a car's brake lamp eased
+        uint32_t material_revision = 0;
+        uint64_t material_id    = 0;
         uint32_t instance_count = 0;
         uint32_t group_count    = 0;
         uint32_t mask           = 0;
@@ -5230,6 +5368,8 @@ namespace spartan
             cache.render_id != render->GetObjectId() ||
             cache.blas_address != blas_address ||
             cache.material_index != material->GetIndex() ||
+            cache.material_revision != material->GetRevision() ||
+            cache.material_id != material->GetObjectId() ||
             cache.mask != tlas_instance_mask(render, material) ||
             cache.instance_count != render->GetInstanceCount() ||
             cache.group_count != static_cast<uint32_t>(render->GetInstanceBoundsGroups().size()) ||
@@ -5249,6 +5389,8 @@ namespace spartan
         cache.cull_radius    = radius;
         cache.blas_address   = blas_address;
         cache.material_index = material->GetIndex();
+        cache.material_revision = material->GetRevision();
+        cache.material_id    = material->GetObjectId();
         cache.mask           = tlas_instance_mask(render, material);
         cache.instance_count = render->GetInstanceCount();
         cache.group_count    = static_cast<uint32_t>(render->GetInstanceBoundsGroups().size());
@@ -5422,8 +5564,6 @@ namespace spartan
             m_pass_state.skip_rt_trace = true;
             return;
         }
-
-        if (materials_uploaded_this_frame) instanced_tlas_caches.clear();
 
         // every path below rebuilds or drops the tlas, so it never keeps pointing at pre-compaction storage
         RHI_CommandList::BeginMarker("blas_compact");

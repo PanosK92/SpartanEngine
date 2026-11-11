@@ -789,5 +789,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             exp_count += 1u; // EXPERIMENT
         }
     }
+    // nothing above commits a card, so the cpu stopped dispatching the bands (gpu_scatter_card_bands_emit in Renderer_Passes_Geometry.cpp)
     if (exp_count == 0xFFFFFFFFu) populate_cell(first_cell, 0u, band_min, band_max); // EXPERIMENT
 }

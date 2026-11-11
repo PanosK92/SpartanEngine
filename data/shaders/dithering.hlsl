@@ -9,42 +9,39 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common.hlsl"
 //====================
 
-// dithering settings
-static const float g_dither_strength = 0.1f;
-static const int g_dither_mode       = 0; // 0 = additive, 1 = multiplicative
+// the frame is fp16 up to here, the swapchain then rounds it to 8 bits per channel in sdr and 10 in hdr10, in a dark
+// smooth gradient one such step is a visible contour, noise of one step added before the rounding turns that
+// error into grain too fine to see, it has to be sized to the step, not to the color, and added to the encoded signal
+
+// triangular noise in [-1, 1], the r and g channels of the blue noise texture are independent
+float dither_noise(uint2 coord, uint2 size)
+{
+    float2 noise = tex2[coord % size].rg;
+    return noise.r + noise.g - 1.0f;
+}
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // get output resolution
-    float2 resolution;
-    tex_uav.GetDimensions(resolution.x, resolution.y);
+    const uint2 coord = thread_id.xy;
 
-    // compute coordinates
-    const int2 coord = thread_id.xy;
-    const float2 uv = (coord + 0.5f) / resolution;
-
-    // read input color (16-bit buffer, assumed post-tone mapping/pq encoding)
+    // read input color (16-bit buffer, post-tone mapping, srgb or pq encoded)
     float4 color = tex[coord];
 
-    // sample blue noise (tile the texture)
-    float2 blue_noise_size;
-    tex2.GetDimensions(blue_noise_size.x, blue_noise_size.y);
-    int2 noise_coord = coord % blue_noise_size;
-    float pattern    = tex2[noise_coord].r; // [0,1]
-
-    // apply dithering
-    if (g_dither_mode == 0) // additive
+    // steps the display stores per channel, scrgb is an fp16 swapchain and rounds nothing
+    float levels = buffer_frame.hdr_enabled > 1.5f ? 0.0f : (buffer_frame.hdr_enabled > 0.5f ? 1023.0f : 255.0f);
+    if (levels > 0.0f)
     {
-        color.rgb += pattern * g_dither_strength * color.rgb; // scale with color to preserve intensity
-    }
-    else // multiplicative
-    {
-        color.rgb *= lerp(1.0f, pattern, g_dither_strength);
-    }
+        uint2 noise_size;
+        tex2.GetDimensions(noise_size.x, noise_size.y);
 
-    // ensure no negative values
-    color.rgb = max(0.0f, color.rgb);
+        // the pattern moves every frame so the eye averages it, each channel reads its own tap so the grain stays neutral
+        uint2 shift  = coord + uint2(buffer_frame.frame * 37u, buffer_frame.frame * 91u);
+        float3 noise = float3(dither_noise(shift, noise_size), dither_noise(shift + uint2(41u, 73u), noise_size), dither_noise(shift + uint2(89u, 17u), noise_size));
+
+        // fades out under one step so black stays black
+        color.rgb += noise * saturate(color.rgb * levels) / levels;
+    }
 
     tex_uav[coord] = color;
 }

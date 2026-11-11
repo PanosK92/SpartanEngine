@@ -183,7 +183,9 @@ void ray_gen()
     uint material_index = get_material_index(uv);
     MaterialParameters material = material_parameters[material_index];
     Surface receiver;
-    receiver.flags = material.flags;
+    receiver.flags    = material.flags;
+    receiver.position = pos_ws;
+    receiver.normal   = normal_ws;
     bool has_scattering = material.subsurface_scattering > 0.0f;
     bool thin_foliage = has_scattering && receiver.is_foliage();
 
@@ -241,6 +243,12 @@ void ray_gen()
             }
             if (facing < -0.001f) continue;
         }
+        // the lighting pass drops a light whose exposed energy at this pixel is sub perceptual and never reads its shadow,
+        // headlights in daylight reach a few tens of meters of a 300 m range, the rest of the screen needs no ray
+        Light reach;
+        reach.Build(light_i, receiver);
+        if (!reach.can_contribute())
+            continue;
         float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
         float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
         trace_local_light_shadow(launch_id, slot, light, pos_ws + normal_ws * (local_offset * normal_sign));

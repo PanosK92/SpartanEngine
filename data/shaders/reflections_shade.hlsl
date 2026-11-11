@@ -29,6 +29,10 @@ static const float k_cache_bounce_distance  = 32.0f;
 static const float k_coat_trace_fresnel     = 0.10f;
 // misses cross this much air before reaching the sky
 static const float k_fog_miss_distance      = 256.0f;
+// paper whites one ray may add to its pixel, and the ggx alpha range over which that bound sets in
+static const float k_ray_limit_whites       = 4.0f;
+static const float k_ray_limit_alpha_start  = 0.02f;
+static const float k_ray_limit_alpha_end    = 0.1f;
 
 float3 reflections_compress_luminance(float3 color, float knee, float shoulder)
 {
@@ -41,6 +45,26 @@ float3 reflections_compress_luminance(float3 color, float knee, float shoulder)
     float excess          = luma - knee;
     float compressed_luma = knee + excess / (1.0f + excess / max(shoulder, 1e-3f));
     return color * (compressed_luma / max(luma, FLT_MIN));
+}
+
+// the most radiance one ray may return, reflections_apply weighs it with the split sum of the lobe the
+// tracer carried and the display path with the exposure, so the bound is set where it is seen, in paper
+// whites on screen, a lobe narrower than a small light resolves it with every ray and is left alone
+float reflections_ray_limit(float2 uv, float3 position, float roughness, float coat, float alpha)
+{
+    float sparse = smoothstep(k_ray_limit_alpha_start, k_ray_limit_alpha_end, alpha);
+    if (sparse <= 0.0f)
+        return FLT_MAX_16U;
+
+    float3 view     = normalize(get_camera_position() - position);
+    float  n_dot_v  = saturate(dot(get_normal(uv), view));
+    float3 albedo   = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
+    float  metallic = gbuffer_unpack_material(tex_material[gbuffer_texel(uv)]).g;
+    float3 f0       = lerp(lerp(0.04f, albedo, metallic), 0.04f, coat);
+    float2 brdf     = ray_env_brdf(roughness, n_dot_v);
+    float  weight   = max(luminance(f0 * brdf.x + brdf.y), 0.01f);
+    float  limit    = k_ray_limit_whites / (weight * LUMINOUS_EFFICACY_MAX * get_effective_exposure());
+    return min(limit / (sparse * sparse), FLT_MAX_16U);
 }
 
 float reflections_random(inout uint seed)
@@ -352,6 +376,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         sky_visibility     = ray_trace_sky_visibility(position, normal, sky_vis_dir);
         indirect           = lerp(ray_sky_ambient(tex4, mip_count, normal) * sky_visibility, cached, cache_confidence);
     }
+    else if (rough_reflection >= 1.0f)
+    {
+        // a wide source lobe averages hundreds of hits, so a trusted cell's darkness against the open sky stands in
+        // for the sky visibility ray, the same measure of enclosure the secondary hits use
+        sky_visibility = saturate(luminance(cached) / max(luminance(ray_sky_ambient(tex4, mip_count, normal)), 1e-4f));
+    }
     float3 diffuse_energy = (1.0f - metallic) * (1.0f - F_Schlick(F0, get_f90(), n_dot_v)) * (1.0f - F_Schlick(0.04f, 1.0f, n_dot_v) * clearcoat);
     float3 ibl_diffuse    = albedo * indirect * diffuse_energy;
 
@@ -435,6 +465,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     final_color        = reflections_fog(final_color, source_pos, -view_dir, view_dist);
     float  final_knee  = lerp(FLT_MAX_16U, 96.0f, rough_reflection);
     final_color        = reflections_compress_luminance(final_color, final_knee, final_knee * 0.5f);
+
+    // one ray per pixel finds a small light, or a wall right next to one, only a few times in a thousand
+    // once the lobe is wider than the light, the denoiser gathers a few hundred rays, so that light reaches
+    // it as isolated fireflies which it spreads into blotches that crawl, what a single ray may add to its
+    // pixel on screen is bounded instead, a light the lobe resolves keeps reading as white
+    float ray_limit = reflections_ray_limit(uv_source, source_pos, source_roughness, source_coat, source_alpha);
+    final_color     = reflections_compress_luminance(final_color, ray_limit * 0.5f, ray_limit * 0.5f);
 
     // a stores hit distance for nrd reblur specular
     tex_uav[thread_id.xy] = validate_output(float4(final_color, max(hit_distance, 0.0f)));

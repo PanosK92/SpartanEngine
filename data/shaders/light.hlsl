@@ -170,11 +170,7 @@ void evaluate_light(
 
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
     // cull the inverse square tail clustering cannot, skip when the exposed contribution is sub perceptual
-    const float k_contribution_cull = 1e-3f;
-    float contribution_luminance    =
-        luminance(radiometric_to_photometric(light_radiance_raw)) *
-        get_effective_exposure();
-    bool light_can_contribute       = contribution_luminance > k_contribution_cull;
+    bool light_can_contribute       = light.can_contribute();
     bool has_brdf                   = any(light.radiance > 0.0f);
     bool has_sss                    = scattering_fraction > 0.0f && surface.metallic < 1.0f;
 

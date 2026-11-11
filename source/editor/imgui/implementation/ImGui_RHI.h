@@ -1224,7 +1224,7 @@ namespace ImGui::RHI
                 else if (segment.step == GlassStep::Ambient)
                 {
                     texture = frame_output;
-                    flags   = (1u << 10) | (sdr_capture ? (1u << 11) : 0u);
+                    flags   = (1u << 10) | (sdr_capture ? (1u << 11) : (cvar_dithering.GetValueAs<bool>() ? (1u << 13) : 0u));
                 }
                 if (!texture)
                 {
@@ -1381,6 +1381,7 @@ namespace ImGui::RHI
                             flags |= is_texture_visualised ? (1u << 9) : 0;
                             flags |= is_frame_texture      ? (1u << 10) : 0;
                             flags |= sdr_capture           ? (1u << 11) : 0;
+                            flags |= is_frame_texture && !sdr_capture && cvar_dithering.GetValueAs<bool>() ? (1u << 13) : 0;
 
                             if (!state_valid || flags != flags_last || mip_level != mip_level_last || array_level != array_level_last)
                             {
