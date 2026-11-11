@@ -126,7 +126,7 @@ Editable fields are registered as **attributes** (`SP_REGISTER_ATTRIBUTE_*` macr
  <Entities>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics body_type="2" is_static="true" ... />
-   <render mesh_name="standard_quad" material_path="./project/empty_resources/material_ground.xml" ... />
+   <render mesh_name="standard_quad" material_path="./project/empty_resources/materials/material_ground.xml" ... />
    <Entity ...> <!-- children nest -->
   </Entity>
  </Entities>
@@ -148,7 +148,7 @@ On save the world records the native assets it references in `OwnedResources` an
 
 ## World companion scripts and world systems
 
-If `worlds/<name>.lua` exists next to `<name>.world`, it runs on every load, before the entity scripts and before roads are built. If it returns a table, its `Start`, `Tick(dt)` and `Stop` run during play. This is where a world turns on the optional world systems:
+If `project/<name>_resources/scripts/<name>.lua` exists for `<name>.world`, it runs on every load, before the entity scripts and before roads are built. If it returns a table, its `Start`, `Tick(dt)` and `Stop` run during play. This is where a world turns on the optional world systems:
 
 ```lua
 WorldSystems.SetAmbientWildlife(true)
@@ -157,16 +157,16 @@ WorldSystems.SetRoadDetails(true)
 WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "island")
 ```
 
-All four are off by default. See [`worlds/plan.lua`](../worlds/plan.lua) and [Lua scripting](scripting.md#world-companion-scripts).
+All four are off by default. See `project/plan_resources/scripts/plan.lua` and [Lua scripting](scripting.md#world-companion-scripts).
 
 ## Prefabs
 
 [`source/world/Prefab.h`](../source/world/Prefab.h) supports two kinds:
 
-- **File prefabs** (`.prefab`): an entity subtree saved with `Prefab::SaveToFile` and instanced with `<prefab file="data/prefabs/ferrari_laferrari.prefab" .../>`. Attributes on the instance node become overrides, and components or children added to an instance are saved as `prefab_override` entries. Ids are regenerated on load.
+- **File prefabs** (`.prefab`): an entity subtree saved with `Prefab::SaveToFile` and instanced with `<prefab file="project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab" .../>`. Attributes on the instance node become overrides, and components or children added to an instance are saved as `prefab_override` entries. Ids are regenerated on load.
 - **Code prefabs**: a type name registered with `Prefab::Register(name, create_fn)` and instanced with `<prefab type="car" .../>`.
 
-Every car in the bundled worlds is the `ferrari_laferrari.prefab`, with per-scene overrides.
+A car's prefab lives in its own folder next to its physics preset and model, `project/plan_resources/cars/<car>/<car>.prefab`. Every car in the bundled worlds is the `ferrari_laferrari.prefab`, with per-scene overrides.
 
 ## Resources
 

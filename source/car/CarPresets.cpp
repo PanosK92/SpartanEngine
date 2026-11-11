@@ -1006,7 +1006,7 @@ namespace car
 
         if (definition.body_model.empty())
         {
-            definition.body_model          = "project/models/ferrari_laferrari/scene.gltf";
+            definition.body_model          = "project/plan_resources/cars/ferrari_laferrari/scene.gltf";
             definition.body_is_placeholder = true;
             definition.body_scale          = 2.0f;
             definition.body_forward_z      = -1.0f;
@@ -1058,10 +1058,21 @@ namespace car
 
     void load_car_directory(const string& directory)
     {
-        const string path = normalize_path(directory);
+        string path = normalize_path(directory);
+        while (!path.empty() && path.back() == '/')
+        {
+            path.pop_back();
+        }
+
         if (!spartan::FileSystem::IsDirectory(path))
         {
             return;
+        }
+
+        // every car owns a folder named after it (cars/<name>/<name>.car), so the catalogue is the folder holding the car folders
+        if (spartan::FileSystem::Exists(path + "/" + spartan::FileSystem::GetFileNameFromFilePath(path) + ".car"))
+        {
+            path = normalize_path(spartan::FileSystem::GetParentDirectory(path));
         }
 
         lock_guard<mutex> lock(directory_mutex);
@@ -1070,12 +1081,21 @@ namespace car
             return;
         }
 
-        for (const string& file : spartan::FileSystem::GetFilesInDirectory(path))
+        auto load_car_files = [](const string& folder)
         {
-            if (spartan::FileSystem::GetExtensionFromFilePath(file) == ".car")
+            for (const string& file : spartan::FileSystem::GetFilesInDirectory(folder))
             {
-                load_car_file(file);
+                if (spartan::FileSystem::GetExtensionFromFilePath(file) == ".car")
+                {
+                    load_car_file(file);
+                }
             }
+        };
+
+        load_car_files(path);
+        for (const string& folder : spartan::FileSystem::GetDirectoriesInDirectory(path))
+        {
+            load_car_files(folder);
         }
         loaded_directories.insert(path);
     }

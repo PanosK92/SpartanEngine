@@ -11,12 +11,30 @@ Commercial use requires written permission and negotiated payment terms.
 #include <filesystem>
 namespace spartan::world_resources
 {
+    std::string GetTypeDirectory(const std::string& name)
+    {
+        if (FileSystem::IsEngineMeshFile(name))     return "meshes/";
+        if (FileSystem::IsEngineMaterialFile(name)) return "materials/";
+        if (FileSystem::IsEngineTextureFile(name))  return "textures/";
+        return "";
+    }
+
     bool IsOwnedFileName(const std::string& name)
     {
-        if (name.empty() || name == "." || name == ".." || name.find_first_of("/\\:") != std::string::npos)
+        // the type folder is the only directory an owned name may carry
+        std::string file = name;
+        const size_t separator = name.find('/');
+        if (separator != std::string::npos)
+        {
+            file = name.substr(separator + 1);
+            if (name.substr(0, separator + 1) != GetTypeDirectory(file))
+                return false;
+        }
+
+        if (file.empty() || file == "." || file == ".." || file.find_first_of("/\\:") != std::string::npos)
             return false;
-        return FileSystem::IsEngineMeshFile(name) || FileSystem::IsEngineTextureFile(name) ||
-               FileSystem::IsEngineMaterialFile(name);
+        return FileSystem::IsEngineMeshFile(file) || FileSystem::IsEngineTextureFile(file) ||
+               FileSystem::IsEngineMaterialFile(file);
     }
 
     std::set<std::string> ReadOwnedFiles(const std::string& world_path)

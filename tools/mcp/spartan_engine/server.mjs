@@ -20,7 +20,7 @@ import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mj
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
 import { is_zod_schema, json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
-import { agent_memory_archive_path, agent_memory_note_max_chars, agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, search_agent_memory_archive, write_agent_memory } from "./agent_memory.mjs";
+import { agent_memory_note_max_chars, agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
 import { calibrate_existing_light } from "./light_calibration.mjs";
 import { register_agent_toolkit } from "./agent_toolkit.mjs";
 import { audit_scene_quality } from "./scene_quality.mjs";
@@ -1615,29 +1615,21 @@ register_local_tool("get_capability_details", {
 
 register_local_tool("agent_memory_read", {
   title: "Agent Memory Read",
-  description: "Read the shared Spartan agent memory markdown file. Use this early for project-specific lessons and maintainer advice. Older lessons are moved to AGENT_MEMORY_ARCHIVE.md when the file fills up; pass archive_query (space separated words, all must match) to also search that archive.",
-  inputSchema: {
-    archive_query: z.string().optional(),
-  },
+  description: "Read the shared Spartan agent memory markdown file. Use this early for project-specific lessons and maintainer advice.",
+  inputSchema: {},
   outputSchema: output_schemas.agent_memory,
   annotations: read_only,
-}, async ({ archive_query } = {}) => {
-  const result = {
+}, async () => {
+  return tool_result({
     ok: true,
     path: agent_memory_path,
     memory: await read_agent_memory(),
-  };
-  if (archive_query)
-  {
-    result.archive_path = agent_memory_archive_path;
-    result.archive_matches = await search_agent_memory_archive(archive_query);
-  }
-  return tool_result(result);
+  });
 });
 
 register_local_tool("agent_memory_append", {
   title: "Agent Memory Append",
-  description: `Append one durable lesson (under ${agent_memory_note_max_chars} chars) to a named section in the shared Spartan agent memory file. Prefer an existing topic section (Rendering, Worlds, Racing AI, ...) and start the note with its date (YYYY-MM-DD). When the file is full, dated notes move to AGENT_MEMORY_ARCHIVE.md oldest first, then undated topic notes; Engine Facts, Good Agent Strategies, Gotchas and Advice To Maintainers stay. Returns a receipt (chars, limit, archived), not the whole file.`,
+  description: `Append one durable lesson (under ${agent_memory_note_max_chars} chars) to a named section in the shared Spartan agent memory file. Prefer an existing topic section (Rendering, Worlds, Racing AI, ...) and start the note with its date (YYYY-MM-DD). When the file is full, dated notes are dropped oldest first, then undated topic notes; Engine Facts, Good Agent Strategies, Gotchas and Advice To Maintainers stay. Returns a receipt (chars, limit, dropped), not the whole file.`,
   inputSchema: {
     section: z.string(),
     note: z.string(),
@@ -6698,7 +6690,7 @@ register_tool(
 register_tool(
   server,
   "vehicle_set_car",
-  "Swap a car to another .car preset in place (like the car picker): car is the catalog name (e.g. Rubra) or the .car file name without extension. The catalog holds every .car next to the cars already loaded.",
+  "Swap a car to another .car preset in place (like the car picker): car is the catalog name (e.g. Ruba) or the .car file name without extension. The catalog holds every .car next to the cars already loaded.",
   {
     id: z.string().optional(),
     car: z.string(),

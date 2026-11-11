@@ -88,7 +88,7 @@ tools/premake5.exe --file=tools/premake.lua setup
 
 ### World assets
 
-World files live in `worlds/` and are versioned. Their assets (meshes, textures, materials, audio, `.car` files) live in `binaries/project/`, which is not in Git and is downloaded as `project.7z` during setup. See [`worlds/README.md`](../worlds/README.md).
+World files live in `worlds/` and are versioned. Their assets (meshes, textures, materials, audio, Lua scripts, `.car` files) live in `binaries/project/`, which is not in Git and is downloaded as `project.7z` during setup. See [`worlds/README.md`](../worlds/README.md).
 
 ## Run
 

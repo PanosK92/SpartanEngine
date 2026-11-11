@@ -21,7 +21,7 @@
    </render>
   </Entity>
   <Entity name="builder" id="1002000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/scripts/light_test.lua" />
+   <script file_path="project/light_test_resources/scripts/light_test.lua" />
   </Entity>
  </Entities>
 </World>

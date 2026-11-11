@@ -5,13 +5,15 @@ Gameplay in Spartan is written in **Lua 5.4**, bound with sol2. There is one Lua
 There are two ways to run Lua:
 
 - A **Script component** on an entity, for behavior that belongs to that entity.
-- A **world companion script**, `worlds/<world>.lua`, for world-wide setup and game flow.
+- A **world companion script**, `project/<world>_resources/scripts/<world>.lua`, for world-wide setup and game flow.
+
+Scripts are project assets: they live in the `scripts/` folder of the world that owns them, `binaries/project/<world>_resources/scripts/`, and ship in the project package, not in Git.
 
 Script components can also run [visual scripts](visual_scripting.md): node graphs built in the editor that compile to Lua.
 
 ## Script components
 
-Add a **Script** component to an entity and point its `file_path` at a `.lua` file (paths are relative to `binaries/`, e.g. `project/my_world_resources/scripts/door.lua` or `../worlds/my_world_door.lua`). Right-clicking in the **Assets** panel and choosing **New Lua script** creates this template:
+Add a **Script** component to an entity and point its `file_path` at a `.lua` file (paths are relative to `binaries/`, e.g. `project/my_world_resources/scripts/my_world_door.lua`). Right-clicking in the **Assets** panel and choosing **New Lua script** creates this template:
 
 ```lua
 MyScript = {
@@ -80,7 +82,7 @@ Every callback runs in protected mode. A Lua error is logged to the console with
 
 ## World companion scripts
 
-`worlds/plan.lua` runs whenever `worlds/plan.world` loads, before the entity scripts and before roads are generated. Top-level code runs at load; if the file returns a table, its callbacks run during play:
+The companion script is the one named after the world inside its resource folder: `project/plan_resources/scripts/plan.lua` runs whenever `worlds/plan.world` loads, before the entity scripts and before roads are generated. Top-level code runs at load; if the file returns a table, its callbacks run during play:
 
 | Callback | When |
 | -------- | ---- |
@@ -97,7 +99,7 @@ WorldSystems.SetRoadDetails(true)
 WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "island")
 
 function plan:Start()
-    main_menu = dofile("../worlds/plan_main_menu.lua")
+    main_menu = dofile("project/plan_resources/scripts/plan_main_menu.lua")
     main_menu.Start()
 end
 
@@ -183,11 +185,11 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `Text(text, x, y, size, color, font, align, spacing)` | Returns the drawn width |
 | `TextWidth(text, size, font, spacing)` | Measures text |
 
-[`worlds/plan_ui.lua`](../worlds/plan_ui.lua) is a full example.
+`project/plan_resources/scripts/plan_ui.lua` is a full example.
 
 ### CarTuning
 
-Operates on the player car, or on the entity passed as the first argument: `GetPlayerCar`, `GetName`, `IsOccupied`, `SetHeld`, `PlaceAt`, `GetStage`/`SetStage`/`GetStageMax` per part, `GetSetting`/`SetSetting`/`GetSettings`, `Service`, `GetDirt`, `Wash`, `GetTireWear`, `ReplaceTires`, `SetNitrous`, `GetStats`, `PreviewStats`, `Save`, `Load`, `ResetAll`. See [`worlds/plan_tune_shop.lua`](../worlds/plan_tune_shop.lua).
+Operates on the player car, or on the entity passed as the first argument: `GetPlayerCar`, `GetName`, `IsOccupied`, `SetHeld`, `PlaceAt`, `GetStage`/`SetStage`/`GetStageMax` per part, `GetSetting`/`SetSetting`/`GetSettings`, `Service`, `GetDirt`, `Wash`, `GetTireWear`, `ReplaceTires`, `SetNitrous`, `GetStats`, `PreviewStats`, `Save`, `Load`, `ResetAll`. See `project/plan_resources/scripts/plan_tune_shop.lua`.
 
 ## Example: a spinning, bobbing pickup
 

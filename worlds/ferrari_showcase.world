@@ -1,103 +1,103 @@
 <?xml version="1.0"?>
 <World name="ferrari_showcase" description="Ferrari laferrari rotating on a lit turntable">
  <OwnedResources>
-  <Resource file="albedo.texture" />
-  <Resource file="apex_game_caliper.xml" />
-  <Resource file="apex_game_caliper_packed_slot0.tex_packed.texture" />
-  <Resource file="apex_game_caliper_packed_slot0.tex_packed_2_2.texture" />
-  <Resource file="apex_game_rim.xml" />
-  <Resource file="apex_game_rim_packed_slot0.tex_packed.texture" />
-  <Resource file="apex_game_rim_packed_slot0.tex_packed_2_2.texture" />
-  <Resource file="apex_game_rotor.xml" />
-  <Resource file="apex_game_rotor_packed_slot0.tex_packed.texture" />
-  <Resource file="apex_game_rotor_packed_slot0.tex_packed_2_2.texture" />
-  <Resource file="apex_game_rubber.xml" />
-  <Resource file="apex_game_rubber_packed_slot0.tex_packed.texture" />
-  <Resource file="apex_game_rubber_packed_slot0.tex_packed_2_2.texture" />
-  <Resource file="apex_r1_wheel.mesh" />
-  <Resource file="black_2.xml" />
-  <Resource file="body.xml" />
-  <Resource file="break_lights_001_2.xml" />
-  <Resource file="break_lights_glasses_2.xml" />
-  <Resource file="breake_lights_chrom_2.xml" />
-  <Resource file="carbon_fiber_2.xml" />
-  <Resource file="carbon_fiber_base_color.texture" />
-  <Resource file="chrome_2.xml" />
-  <Resource file="chrome_base_color.texture" />
-  <Resource file="disc_003_2.xml" />
-  <Resource file="disc_004_2.xml" />
-  <Resource file="disc_006_2.xml" />
-  <Resource file="disk_2.xml" />
-  <Resource file="engine_glass_2.xml" />
-  <Resource file="ferrari_laferrari_29.xml" />
-  <Resource file="front_headlights_001_2.xml" />
-  <Resource file="game_caliper_color.texture" />
-  <Resource file="game_caliper_normal.texture" />
-  <Resource file="game_rim_color.texture" />
-  <Resource file="game_rim_normal.texture" />
-  <Resource file="game_rotor_color.texture" />
-  <Resource file="game_rotor_normal.texture" />
-  <Resource file="game_rubber_color.texture" />
-  <Resource file="game_rubber_normal.texture" />
-  <Resource file="glasses_2.xml" />
-  <Resource file="head_lights_glasses_002_2.xml" />
-  <Resource file="horizon_line_cool_packed_slot0.tex_packed.texture" />
-  <Resource file="inside_stickers_2.xml" />
-  <Resource file="inside_stickers_base_color.texture" />
-  <Resource file="int_mirror_2.xml" />
-  <Resource file="interior_2_001_2.xml" />
-  <Resource file="led_ring_ferrari_red.xml" />
-  <Resource file="led_ring_ferrari_red_packed_slot0.tex_packed.texture" />
-  <Resource file="led_ring_ferrari_red_packed_slot0.tex_packed_2.texture" />
-  <Resource file="led_ring_r380.mesh" />
-  <Resource file="logo.texture" />
-  <Resource file="logos_2.xml" />
-  <Resource file="logos_base_color.texture" />
-  <Resource file="material_009_2.xml" />
-  <Resource file="material_019_2.xml" />
-  <Resource file="material_113_2.xml" />
-  <Resource file="material_116_2.xml" />
-  <Resource file="material_144_2.xml" />
-  <Resource file="material_146_2.xml" />
-  <Resource file="material_147_2.xml" />
-  <Resource file="normal.texture" />
-  <Resource file="paint_normal.texture" />
-  <Resource file="rear_headlights_2.xml" />
-  <Resource file="rear_logo_2.xml" />
-  <Resource file="rear_something_2.xml" />
-  <Resource file="red_light_2.xml" />
-  <Resource file="rim_001_2.xml" />
-  <Resource file="rim_002_2.xml" />
-  <Resource file="run_lights_2.xml" />
-  <Resource file="scene_2.mesh" />
-  <Resource file="seats_nuts_2.xml" />
-  <Resource file="seets_logo_2.xml" />
-  <Resource file="showroom_floor_epoxy.xml" />
-  <Resource file="showroom_floor_epoxy_packed_slot0.tex_packed.texture" />
-  <Resource file="showroom_floor_epoxy_packed_slot0.tex_packed_2.texture" />
-  <Resource file="side_mirrors_2.xml" />
-  <Resource file="softbox_emissive_white.xml" />
-  <Resource file="softbox_emissive_white_packed_slot0.tex_packed.texture" />
-  <Resource file="softbox_emissive_white_packed_slot0.tex_packed_2.texture" />
-  <Resource file="studio_void_black.xml" />
-  <Resource file="studio_void_black_packed_slot0.tex_packed.texture" />
-  <Resource file="studio_void_black_packed_slot0.tex_packed_2.texture" />
-  <Resource file="tail_lights_2.xml" />
-  <Resource file="tile_black.xml" />
-  <Resource file="tile_black_packed_slot0.tex_packed_2.texture" />
-  <Resource file="tile_black_packed_slot0.tex_packed_3.texture" />
-  <Resource file="tread_001_2.xml" />
-  <Resource file="tread_002_2.xml" />
-  <Resource file="tread_003_2.xml" />
-  <Resource file="tread_004_2.xml" />
-  <Resource file="tube_front_warm_emitter.xml" />
-  <Resource file="tube_left_cyan_emitter.xml" />
-  <Resource file="tube_right_red_emitter.xml" />
-  <Resource file="turntable_gloss_black.xml" />
-  <Resource file="turntable_gloss_black_packed_slot0.tex_packed.texture" />
-  <Resource file="turntable_gloss_black_packed_slot0.tex_packed_2.texture" />
-  <Resource file="viper_2.xml" />
-  <Resource file="wireframe_color_0xe0c657_2.xml" />
+  <Resource file="textures/albedo.texture" />
+  <Resource file="materials/apex_game_caliper.xml" />
+  <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="materials/apex_game_rim.xml" />
+  <Resource file="textures/apex_game_rim_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/apex_game_rim_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="materials/apex_game_rotor.xml" />
+  <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="materials/apex_game_rubber.xml" />
+  <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="meshes/apex_r1_wheel.mesh" />
+  <Resource file="materials/black_2.xml" />
+  <Resource file="materials/body.xml" />
+  <Resource file="materials/break_lights_001_2.xml" />
+  <Resource file="materials/break_lights_glasses_2.xml" />
+  <Resource file="materials/breake_lights_chrom_2.xml" />
+  <Resource file="materials/carbon_fiber_2.xml" />
+  <Resource file="textures/carbon_fiber_base_color.texture" />
+  <Resource file="materials/chrome_2.xml" />
+  <Resource file="textures/chrome_base_color.texture" />
+  <Resource file="materials/disc_003_2.xml" />
+  <Resource file="materials/disc_004_2.xml" />
+  <Resource file="materials/disc_006_2.xml" />
+  <Resource file="materials/disk_2.xml" />
+  <Resource file="materials/engine_glass_2.xml" />
+  <Resource file="materials/ferrari_laferrari_29.xml" />
+  <Resource file="materials/front_headlights_001_2.xml" />
+  <Resource file="textures/game_caliper_color.texture" />
+  <Resource file="textures/game_caliper_normal.texture" />
+  <Resource file="textures/game_rim_color.texture" />
+  <Resource file="textures/game_rim_normal.texture" />
+  <Resource file="textures/game_rotor_color.texture" />
+  <Resource file="textures/game_rotor_normal.texture" />
+  <Resource file="textures/game_rubber_color.texture" />
+  <Resource file="textures/game_rubber_normal.texture" />
+  <Resource file="materials/glasses_2.xml" />
+  <Resource file="materials/head_lights_glasses_002_2.xml" />
+  <Resource file="textures/horizon_line_cool_packed_slot0.tex_packed.texture" />
+  <Resource file="materials/inside_stickers_2.xml" />
+  <Resource file="textures/inside_stickers_base_color.texture" />
+  <Resource file="materials/int_mirror_2.xml" />
+  <Resource file="materials/interior_2_001_2.xml" />
+  <Resource file="materials/led_ring_ferrari_red.xml" />
+  <Resource file="textures/led_ring_ferrari_red_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/led_ring_ferrari_red_packed_slot0.tex_packed_2.texture" />
+  <Resource file="meshes/led_ring_r380.mesh" />
+  <Resource file="textures/logo.texture" />
+  <Resource file="materials/logos_2.xml" />
+  <Resource file="textures/logos_base_color.texture" />
+  <Resource file="materials/material_009_2.xml" />
+  <Resource file="materials/material_019_2.xml" />
+  <Resource file="materials/material_113_2.xml" />
+  <Resource file="materials/material_116_2.xml" />
+  <Resource file="materials/material_144_2.xml" />
+  <Resource file="materials/material_146_2.xml" />
+  <Resource file="materials/material_147_2.xml" />
+  <Resource file="textures/normal.texture" />
+  <Resource file="textures/paint_normal.texture" />
+  <Resource file="materials/rear_headlights_2.xml" />
+  <Resource file="materials/rear_logo_2.xml" />
+  <Resource file="materials/rear_something_2.xml" />
+  <Resource file="materials/red_light_2.xml" />
+  <Resource file="materials/rim_001_2.xml" />
+  <Resource file="materials/rim_002_2.xml" />
+  <Resource file="materials/run_lights_2.xml" />
+  <Resource file="meshes/scene_2.mesh" />
+  <Resource file="materials/seats_nuts_2.xml" />
+  <Resource file="materials/seets_logo_2.xml" />
+  <Resource file="materials/showroom_floor_epoxy.xml" />
+  <Resource file="textures/showroom_floor_epoxy_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/showroom_floor_epoxy_packed_slot0.tex_packed_2.texture" />
+  <Resource file="materials/side_mirrors_2.xml" />
+  <Resource file="materials/softbox_emissive_white.xml" />
+  <Resource file="textures/softbox_emissive_white_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/softbox_emissive_white_packed_slot0.tex_packed_2.texture" />
+  <Resource file="materials/studio_void_black.xml" />
+  <Resource file="textures/studio_void_black_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/studio_void_black_packed_slot0.tex_packed_2.texture" />
+  <Resource file="materials/tail_lights_2.xml" />
+  <Resource file="materials/tile_black.xml" />
+  <Resource file="textures/tile_black_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/tile_black_packed_slot0.tex_packed_3.texture" />
+  <Resource file="materials/tread_001_2.xml" />
+  <Resource file="materials/tread_002_2.xml" />
+  <Resource file="materials/tread_003_2.xml" />
+  <Resource file="materials/tread_004_2.xml" />
+  <Resource file="materials/tube_front_warm_emitter.xml" />
+  <Resource file="materials/tube_left_cyan_emitter.xml" />
+  <Resource file="materials/tube_right_red_emitter.xml" />
+  <Resource file="materials/turntable_gloss_black.xml" />
+  <Resource file="textures/turntable_gloss_black_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/turntable_gloss_black_packed_slot0.tex_packed_2.texture" />
+  <Resource file="materials/viper_2.xml" />
+  <Resource file="materials/wireframe_color_0xe0c657_2.xml" />
  </OwnedResources>
  <Environment utc_days="9665.25" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
  <ConsoleVariables>
@@ -112,7 +112,7 @@
  </ConsoleVariables>
  <Entities>
   <Entity name="music" id="9100000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/soundtrack/gran_turismo_4.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
+   <audio_source path="project/audio/soundtrack/gran_turismo_4.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -121,24 +121,24 @@
   <Entity name="tube_front_warm" id="12638874799870260079" active="true" position="-2.23517e-08 1.15 -5.04129" rotation="0 0 0 1" scale="0.02 2.3 0.02">
    <light flags="5" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.3499999" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_front_warm_emitter" material_path="project/ferrari_showcase_resources/tube_front_warm_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_front_warm_emitter" material_path="project/ferrari_showcase_resources/materials/tube_front_warm_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="walls" id="6007008001612798289" active="true" position="0 -4.4 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="Cube_1_1" id="2124977161275690050" active="true" position="10.0771 1.13078 1.95973" rotation="0 0 0 1" scale="1 5.8 20">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Cube_1" id="10406687217253271126" active="true" position="-10.1229 1.13078 1.2597" rotation="0 0 0 1" scale="1 5.8 20">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Cube_2" id="7640846457856079411" active="true" position="0.377128 1.13078 -8.5403" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Cube" id="5196688867028285157" active="true" position="0.377128 1.13078 11.4597" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="Directional" id="11601109533259598530" active="true" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
@@ -155,7 +155,7 @@
    </Entity>
   </Entity>
   <Entity name="player_car" id="2411005043703651744" active="true" position="0 1 0" rotation="0 0 0 1" scale="1 1 1" tags="focal_point,player_car,current_car">
-   <prefab file="data/prefabs/ferrari_laferrari.prefab" telemetry="true" camera_follows="false" paint_picker="true" />
+   <prefab file="project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab" telemetry="true" camera_follows="false" paint_picker="true" />
    <car_reset spawn_point_entity_id="2411005043703651745" />
    <Entity name="player_car_spawn" id="2411005043703651745" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
     <spawn_point />
@@ -164,12 +164,12 @@
   <Entity name="tube_right_red" id="12638874799870260081" active="true" position="5.025 1.15 0.0250001" rotation="0 -0.706985 0 0.707228" scale="0.02 2.3 0.02">
    <light flags="5" light_type="3" color_r="1" color_g="0.25" color_b="0.349999994" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.109999999" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_right_red_emitter" material_path="project/ferrari_showcase_resources/tube_right_red_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_right_red_emitter" material_path="project/ferrari_showcase_resources/materials/tube_right_red_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="tube_left_cyan" id="12638874799870260080" active="true" position="-4.95 1.15 0.05" rotation="0 0.707229 0 0.706984" scale="0.02 2.3 0.02">
    <light flags="5" light_type="3" color_r="0.300000012" color_g="0.75" color_b="1" temperature="6500" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_left_cyan_emitter" material_path="project/ferrari_showcase_resources/tube_left_cyan_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_left_cyan_emitter" material_path="project/ferrari_showcase_resources/materials/tube_left_cyan_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-4.63033 1.32895 3.96425" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />

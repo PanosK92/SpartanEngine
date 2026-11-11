@@ -1,44 +1,40 @@
-# Worlds, their scripts and their resources
+# Worlds and their resources
 
-Each world has two homes:
+This directory holds one thing: the `<world>.world` XML files (and this README). It is
+version controlled and flat; the Git ignore rules allow only `*.world` and `README.md`.
 
-- `worlds/` (this directory, version controlled) holds what defines the world as text:
-  the `<world>.world` XML and the world's own Lua scripts. Name the main script
-  `<world>.lua` and the rest `<world>_<part>.lua`, for example `liminal_space.lua`,
-  `liminal_space_stalker.lua` and `liminal_space_soundscape.lua`. Keep the directory
-  flat; the Git ignore rules allow only `*.world`, `*.lua` and this README.
-- `binaries/project/<world>_resources/` holds every asset the world owns: materials,
-  textures, audio, meshes, prefabs, the offline scripts that generate them (under
-  `sources/`) and the engine's `generated_cache/`. For example, `liminal_space`
-  keeps its materials at the root of `liminal_space_resources/`, plus `textures/`,
-  `audio/` and `sources/`. `binaries/` is excluded from Git and distributed through
-  the Dropbox `project.7z` download.
+Everything else a world needs lives in `binaries/project/<world>_resources/`, the folder
+named after the world file plus `_resources` (`plan.world` -> `plan_resources/`):
+its Lua scripts in `scripts/`, engine baked `meshes/`, `materials/` and `textures/`,
+audio, authored areas with their own pipelines, the offline generators under `sources/`
+and the disposable `generated_cache/`. `binaries/` is excluded from Git and distributed
+through the Dropbox `project.7z` download.
 
-Do not put one world's content in shared folders. That means no world assets in
-`project/scripts/`, `project/music/`, `project/mcp/blockout/`, other worlds'
-resource folders, new top-level `project/` folders or `tools/`. `tools/` is for
-engine and project tooling, not for generators of a single world's assets; those
-go in `<world>_resources/sources/`, and authored areas with their own pipeline get
-a subfolder, e.g. `plan_resources/home_garage/` and `plan_resources/exo_chora/`.
-Only content that several worlds or engine code share lives outside a resource
-folder; `binaries/project/README.md` lists those folders, how to clean up safely
-and how to package the project.
+`binaries/project/README.md` is the layout contract: where every kind of file goes, how
+cars are organised (`plan_resources/cars/<car>/` holds the car's preset, model and
+prefab), which folders are shared, how to move or delete assets safely and how to
+publish the package. Read it before touching assets.
 
-MCP tools write to `project/mcp/blockout/` by default (materials, textures,
-screenshots). When something made there becomes part of a world, move it into
-that world's resource folder and update its references. The folder a world uses
-is reported by `world_resource_directory_get`.
+The short version:
 
-The engine runs from `binaries/`, so references in worlds and scripts use paths
-such as `project/liminal_space_resources/audio/door_slam.wav` for assets and
-`../worlds/liminal_space.lua` for world scripts, both in script components and in
-`dofile`. Tools run from the repository root use `binaries/project/...` for the
-same files.
-
-When adding or moving an asset, update its references and any tools that generate
-or load it. Keep assets out of Git, and include them in the Dropbox project
-package when publishing an asset update. A local move does not update that
-download automatically.
+- World scripts are `project/<world>_resources/scripts/<world>.lua` (the companion script,
+  run by the engine on every load) and `<world>_<part>.lua` for the rest, for example
+  `liminal_space.lua`, `liminal_space_stalker.lua` and `liminal_space_soundscape.lua`.
+  Do not put Lua in this directory.
+- Do not put one world's content in shared folders, in another world's folder, in
+  `project/mcp/blockout/`, in new top-level `project/` folders or in `tools/`. `tools/` is
+  for engine and project tooling; generators of a single world's assets go in
+  `<world>_resources/sources/`.
+- MCP tools write to `project/mcp/blockout/` by default. When something made there becomes
+  part of a world, move it into that world's folder and update its references. The folder
+  a world uses is reported by `world_resource_directory_get`.
+- The engine runs from `binaries/`, so references in worlds and scripts use paths such as
+  `project/liminal_space_resources/audio/door_slam.wav` and
+  `project/liminal_space_resources/scripts/liminal_space.lua`, in script components and in
+  `dofile`. Tools run from the repository root use `binaries/project/...` for the same files.
+- When adding or moving an asset, update its references and the tools that generate or load
+  it, then load the world in the engine and check the log. A local change does not reach
+  anyone else until the project package is published again.
 
 Generated world caches use lossless LZ4 compression automatically. Existing raw
 caches are accepted and converted on a successful read; incompressible payloads
@@ -102,4 +98,4 @@ the project assets in SDL's per-user Spartan/Plan directory (on Windows,
 autosaves every 30 simulation seconds and when play stops. Do not package
 these personal saves with the project.
 
-Every car in every world is `data/prefabs/ferrari_laferrari.prefab`: the player cars, the AI racers (`race_driver car_prefab`), the route drivers, the showcase and dyno cars, and the traffic (which skips the lights and effects). The prefab owns the drivable car definition, the metallic paint defaults, the body fit, the headlights, brake lights, exhaust and tire effects. Scene instances only override camera/HUD/dyno behavior and optional paint colors through prefab attributes, and add scene specific parts such as the playground's `car_reset` and spawn point. Run setup after editing source data to refresh `binaries/data`.
+A car's prefab lives in its own folder next to its preset and model, `project/plan_resources/cars/<car>/<car>.prefab`. Every car placed in a world today is `project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab`: the player cars, the AI racers (`race_driver car_prefab`), the route drivers, the showcase and dyno cars, and the traffic (which skips the lights and effects). The prefab owns the drivable car definition, the metallic paint defaults, the body fit, the headlights, brake lights, exhaust and tire effects. Scene instances only override camera/HUD/dyno behavior and optional paint colors through prefab attributes, and add scene specific parts such as the playground's `car_reset` and spawn point.

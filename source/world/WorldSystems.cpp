@@ -110,15 +110,20 @@ namespace spartan::world_systems
             return false;
         }
 
-        // a world's companion script (plan.lua next to plan.world) sets up its optional systems, it runs once on the main
-        // thread with the deferred scripts, before preparation builds the roads, unless an entity's script component runs it
+        // a world's companion script (plan_resources/scripts/plan.lua for plan.world) sets up its optional systems, it runs once
+        // on the main thread with the deferred scripts, before preparation builds the roads, unless an entity's script component runs it
         void queue_companion_script(const pugi::xml_node& world_node)
         {
             const std::string& world_path = World::GetFilePath();
             if (world_path.empty())
                 return;
             const std::string script_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_path) + ".lua";
-            const std::string script_path = FileSystem::GetDirectoryFromFilePath(world_path) + script_name;
+            std::string script_path       = World::GetResourceDirectory() + "scripts/" + script_name;
+            if (!FileSystem::Exists(script_path))
+            {
+                // project packages from before the scripts moved keep it next to the world file
+                script_path = FileSystem::GetDirectoryFromFilePath(world_path) + script_name;
+            }
             if (!FileSystem::Exists(script_path) || references_script(world_node, script_name))
                 return;
             World::AddDeferredScriptInit(-1, [script_path]()

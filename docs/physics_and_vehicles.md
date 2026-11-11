@@ -63,18 +63,18 @@ PhysX then integrates the chassis. Traffic uses a cheaper mode (`VehicleSimMode:
 
 ### Defining a car
 
-Cars are `.car` XML files, loaded by `car::load_car_file` in [`CarPresets.cpp`](../source/car/CarPresets.cpp) and validated by `validate_preset`. They live in `binaries/project/cars/` (part of the downloaded project, not in Git). A `.car` file describes:
+Cars are `.car` XML files, loaded by `car::load_car_file` in [`CarPresets.cpp`](../source/car/CarPresets.cpp) and validated by `validate_preset`. Every car owns a folder, `binaries/project/plan_resources/cars/<car>/`, holding `<car>.car` and, when the car has one, its body model (part of the downloaded project, not in Git). A `.car` file describes:
 
 - `body`: the model, scale, orientation and parts to hide.
 - `wheels`: wheel meshes and materials.
 - Tuning sections for the engine, gearbox, differentials, suspension, tires, brakes, aerodynamics and mass.
 - `packaging`: powertrain layout. When missing, [`data/cars/packaging.xml`](../data/cars/packaging.xml) supplies estimates per car file.
 
-The drivable car, with its paint, lights, exhaust and tire effects, is wrapped in a prefab, [`data/prefabs/ferrari_laferrari.prefab`](../data/prefabs/ferrari_laferrari.prefab). Every car in the bundled worlds is an instance of it with per-scene overrides.
+The drivable car, with its paint, lights, exhaust and tire effects, is wrapped in a prefab that lives in the car's own folder next to its `.car` preset and model, `project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab`. Every car in the bundled worlds is an instance of it with per-scene overrides.
 
 To add a car:
 
-1. Write `project/cars/<car>.car` with its model and tuning.
+1. Write `project/plan_resources/cars/<car>/<car>.car` with its tuning, and put its body model in the same folder.
 2. Add a `packaging` section, or an entry in `data/cars/packaging.xml`.
 3. Make a prefab for it (copy the existing one), or reference the `.car` from `RaceDriver`, `RouteDriver` or `Traffic`.
 4. Validate it through the MCP bridge with `vehicle_validate` and `vehicle_dyno`, then drive it.
@@ -97,7 +97,7 @@ AI driving is [`AiDriver`](../source/car/AiDriver.cpp): racing line following, s
 
 ### Tuning from Lua
 
-The `CarTuning` table and the vehicle methods on `Physics` expose parts, setup, service, wear and telemetry; see [Lua scripting](scripting.md#cartuning). The Plan tune shop ([`worlds/plan_tune_shop.lua`](../worlds/plan_tune_shop.lua)) is the reference.
+The `CarTuning` table and the vehicle methods on `Physics` expose parts, setup, service, wear and telemetry; see [Lua scripting](scripting.md#cartuning). The Plan tune shop (`project/plan_resources/scripts/plan_tune_shop.lua`) is the reference.
 
 ### Tools
 

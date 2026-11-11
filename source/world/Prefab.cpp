@@ -214,10 +214,10 @@ namespace spartan
         for (pugi::xml_node component_node = prefab_node.first_child(); component_node; component_node = component_node.next_sibling())
         {
             string type_name = component_node.name();
-            if (type_name == "Entity")
+            if (type_name == "Entity" || type_name == "prefab_override")
             {
                 continue;
-            } // children are handled below
+            } // children and overrides are handled below
 
             // A file prefab can own a code factory's defaults. Instance attributes
             // customize behavior without duplicating its model and material setup.

@@ -74,7 +74,7 @@ export const output_schemas = {
     duplicate: z.boolean().optional(),
     chars: z.number().optional(),
     limit: z.number().optional(),
-    archived: z.array(z.string()).optional(),
+    dropped: z.array(z.string()).optional(),
   }),
   debug_log: with_error_fields({
     path: z.string().optional(),

@@ -2412,7 +2412,7 @@ void VisualScriptEditor::DrawOpenPopup()
         sort(m_open_candidates.begin(), m_open_candidates.end());
 
         const string resources = World::GetResourceDirectory();
-        m_new_directory        = IsOpen() ? FileSystem::GetDirectoryFromFilePath(m_path) : (resources.empty() ? string("project/scripts") : resources);
+        m_new_directory        = IsOpen() ? FileSystem::GetDirectoryFromFilePath(m_path) : (resources.empty() ? string("project/scripts") : resources + "scripts");
         ImGui::OpenPopup("##visual_script_open");
     }
 

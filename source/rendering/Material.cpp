@@ -177,12 +177,23 @@ namespace spartan
                 }
             }
 
-            const string base = directory + stem + "_packed_slot" + to_string(slot);
-            for (const string& candidate : { base + ".tex_packed" + EXTENSION_TEXTURE, base + EXTENSION_TEXTURE })
+            // a world keeps its materials in materials/ and their packed textures in the sibling textures/
+            vector<string> directories = { directory };
+            const string materials_directory = "materials/";
+            if (directory.size() >= materials_directory.size() && directory.compare(directory.size() - materials_directory.size(), materials_directory.size(), materials_directory) == 0)
             {
-                if (FileSystem::Exists(candidate))
+                directories.push_back(directory.substr(0, directory.size() - materials_directory.size()) + "textures/");
+            }
+
+            for (const string& texture_directory : directories)
+            {
+                const string base = texture_directory + stem + "_packed_slot" + to_string(slot);
+                for (const string& candidate : { base + ".tex_packed" + EXTENSION_TEXTURE, base + EXTENSION_TEXTURE })
                 {
-                    return candidate;
+                    if (FileSystem::Exists(candidate))
+                    {
+                        return candidate;
+                    }
                 }
             }
 

@@ -547,6 +547,38 @@ namespace spartan
             return true;
         }
 
+        // the part of a path below a directory it is within, with forward slashes, empty when it is outside
+        string path_below(
+            const string& path,
+            const string& directory
+        )
+        {
+            if (!path_is_within(path, directory))
+            {
+                return "";
+            }
+
+            const filesystem::path normalized_path = filesystem::absolute(path).lexically_normal();
+            filesystem::path normalized_directory  = filesystem::absolute(directory).lexically_normal();
+            if (normalized_directory.filename().empty() && normalized_directory.has_relative_path())
+            {
+                normalized_directory = normalized_directory.parent_path();
+            }
+
+            auto path_it = normalized_path.begin();
+            for (auto directory_it = normalized_directory.begin(); directory_it != normalized_directory.end(); ++directory_it)
+            {
+                ++path_it;
+            }
+
+            filesystem::path below;
+            for (; path_it != normalized_path.end(); ++path_it)
+            {
+                below /= *path_it;
+            }
+            return below.generic_string();
+        }
+
 
 
     }
@@ -1662,6 +1694,7 @@ namespace spartan
             vector<PendingResourceSave> pending_saves;
             set<string> used_file_names;
             set<string> reserved_file_names;
+            set<string> type_directories;
             for (const auto& resource : resources)
             {
                 if (path_is_within(resource->GetResourceFilePath(), directory))
@@ -1673,7 +1706,8 @@ namespace spartan
                     if (referenced_resources.count(resource.get()) != 0)
                     {
                         used_file_names.insert(key);
-                        const string name = FileSystem::GetFileNameFromFilePath(resource->GetResourceFilePath());
+                        // files in authored subfolders are referenced in place, only the root and its type folders are owned
+                        const string name = path_below(resource->GetResourceFilePath(), directory);
                         if (resource->IsPersistent() && world_resources::IsOwnedFileName(name)) owned_files.insert(name);
                     }
                 }
@@ -1728,31 +1762,45 @@ namespace spartan
                 }
 
                 // Keep existing world-local identities stable regardless of load order. New
-                // resources must not claim a filename already owned by a saved texture/mesh.
+                // resources go into their type folder (meshes/, materials/, textures/) and
+                // must not claim a filename already owned by a saved texture/mesh.
                 string target_path = current_path;
                 if (!path_is_within(current_path, directory))
                 {
+                    const string type_directory = directory + world_resources::GetTypeDirectory(name + ext);
                     string unique_name = name;
                     uint32_t suffix = 2;
                     while (used_file_names.count(to_file_key(unique_name + ext)) != 0 ||
                            reserved_file_names.count(to_file_key(unique_name + ext)) != 0 ||
+                           FileSystem::Exists(type_directory + unique_name + ext) ||
                            FileSystem::Exists(directory + unique_name + ext))
                     {
                         unique_name = name + "_" + to_string(suffix++);
                     }
-                    target_path = directory + unique_name + ext;
+                    target_path = type_directory + unique_name + ext;
+                    type_directories.insert(type_directory);
                 }
                 used_file_names.insert(to_file_key(FileSystem::GetFileNameFromFilePath(target_path)));
 
                 const bool path_changed  = resource->GetResourceFilePath() != FileSystem::GetRelativePath(target_path);
                 resource->SetResourceFilePath(target_path);
                 pending_saves.push_back({ resource.get(), target_path, path_changed });
-                // source files (png, glb) already inside the directory are referenced in place, not owned
-                const string target_name = FileSystem::GetFileNameFromFilePath(target_path);
+                // source files (png, glb) and authored subfolders inside the directory are referenced in place, not owned
+                const string target_name = path_below(target_path, directory);
                 if (world_resources::IsOwnedFileName(target_name))
                 {
                     owned_files.insert(target_name);
                 }
+            }
+
+            if (!type_directories.empty())
+            {
+                writes.push_back([type_directories] {
+                    for (const string& type_directory : type_directories)
+                    {
+                        filesystem::create_directories(type_directory);
+                    }
+                });
             }
 
 
@@ -2160,10 +2208,18 @@ namespace spartan
                     string directory = world_file_path_to_resource_directory(file_path);
 
                     {
-                        // The directory is an index for legacy name-only references,
-                        // not a manifest: old imports and removed assets can remain here.
-                        const vector<string> directory_files = FileSystem::IsDirectory(directory)
+                        // The directory and its type folders are an index for legacy name-only
+                        // references, not a manifest: old imports and removed assets can remain here.
+                        vector<string> directory_files = FileSystem::IsDirectory(directory)
                             ? FileSystem::GetFilesInDirectory(directory) : vector<string>{};
+                        for (const char* type_directory : { "meshes/", "materials/", "textures/" })
+                        {
+                            if (FileSystem::IsDirectory(directory + type_directory))
+                            {
+                                const vector<string> type_files = FileSystem::GetFilesInDirectory(directory + type_directory);
+                                directory_files.insert(directory_files.end(), type_files.begin(), type_files.end());
+                            }
+                        }
                         vector<string> files;
                         unordered_set<string> resource_paths;
                         unordered_multimap<string, string> resources_by_name;

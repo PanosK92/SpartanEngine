@@ -636,6 +636,6 @@ namespace car
     // load one .car file, cached by path, also registers it for the hud preset selector
     const car_definition* load_car_file(const std::string& file_path);
 
-    // load every .car file in a directory
+    // load every .car file of a catalogue, given the catalogue (cars/) or one car's folder inside it (cars/<name>/)
     void load_car_directory(const std::string& directory);
 }

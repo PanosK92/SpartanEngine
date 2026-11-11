@@ -50,7 +50,7 @@ namespace
 
     // world files are versioned in the repository, not in the project package, so they are fetched file by file
     const char* worlds_staging_dir = "cache/worlds_download/";
-    // world scripts reference ../worlds/ relative to the executable, the same layout as a cloned repository
+    // the world launcher looks in ../worlds/ relative to the executable, the same layout as a cloned repository
     const char* worlds_install_dir = "../worlds/";
     const char* worlds_backup_dir  = "../worlds_backup/";
     const char* worlds_manifest    = "settings/spartan_worlds_manifest.xml";

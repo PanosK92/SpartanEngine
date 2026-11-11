@@ -1,31 +1,31 @@
 <?xml version="1.0"?>
 <World name="dreamcore" description="A pastel tile city above an endless ocean, nine dreamlike terraces joined by walkable causeways">
  <OwnedResources>
-  <Resource file="albedo.texture" />
-  <Resource file="butter.xml" />
-  <Resource file="butter_packed_slot0.tex_packed.texture" />
-  <Resource file="dreamcore_glow.xml" />
-  <Resource file="dreamcore_horizon_lilac.xml" />
-  <Resource file="dreamcore_horizon_pearl.xml" />
-  <Resource file="dreamcore_horizon_rose.xml" />
-  <Resource file="dreamcore_moon.xml" />
-  <Resource file="dreamcore_orb_butter.xml" />
-  <Resource file="dreamcore_orb_lilac.xml" />
-  <Resource file="dreamcore_orb_mint.xml" />
-  <Resource file="dreamcore_orb_rose.xml" />
-  <Resource file="dreamcore_pearl.xml" />
-  <Resource file="dreamcore_pool.xml" />
-  <Resource file="dreamcore_portal.xml" />
-  <Resource file="dreamcore_sun.xml" />
-  <Resource file="lilac.xml" />
-  <Resource file="lilac_packed_slot0.tex_packed.texture" />
-  <Resource file="mint.xml" />
-  <Resource file="mint_packed_slot0.tex_packed.texture" />
-  <Resource file="normal.texture" />
-  <Resource file="porcelain.xml" />
-  <Resource file="porcelain_packed_slot0.tex_packed.texture" />
-  <Resource file="rose.xml" />
-  <Resource file="rose_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/albedo.texture" />
+  <Resource file="materials/butter.xml" />
+  <Resource file="textures/butter_packed_slot0.tex_packed.texture" />
+  <Resource file="materials/dreamcore_glow.xml" />
+  <Resource file="materials/dreamcore_horizon_lilac.xml" />
+  <Resource file="materials/dreamcore_horizon_pearl.xml" />
+  <Resource file="materials/dreamcore_horizon_rose.xml" />
+  <Resource file="materials/dreamcore_moon.xml" />
+  <Resource file="materials/dreamcore_orb_butter.xml" />
+  <Resource file="materials/dreamcore_orb_lilac.xml" />
+  <Resource file="materials/dreamcore_orb_mint.xml" />
+  <Resource file="materials/dreamcore_orb_rose.xml" />
+  <Resource file="materials/dreamcore_pearl.xml" />
+  <Resource file="materials/dreamcore_pool.xml" />
+  <Resource file="materials/dreamcore_portal.xml" />
+  <Resource file="materials/dreamcore_sun.xml" />
+  <Resource file="materials/lilac.xml" />
+  <Resource file="textures/lilac_packed_slot0.tex_packed.texture" />
+  <Resource file="materials/mint.xml" />
+  <Resource file="textures/mint_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/normal.texture" />
+  <Resource file="materials/porcelain.xml" />
+  <Resource file="textures/porcelain_packed_slot0.tex_packed.texture" />
+  <Resource file="materials/rose.xml" />
+  <Resource file="textures/rose_packed_slot0.tex_packed.texture" />
  </OwnedResources>
  <Environment utc_days="9665.2506397366524" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0" />
  <ConsoleVariables>
@@ -53,13 +53,13 @@
    </water>
   </Entity>
   <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/ambient/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
+   <audio_source path="project/audio/ambient/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="ambient_music" id="2001000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
+   <audio_source path="project/audio/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="dreamcore_generator" id="2001000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/dreamcore.lua" Initialize="" Tick="" seed="17" />
+   <script file_path="project/dreamcore_resources/scripts/dreamcore.lua" Initialize="" Tick="" seed="17" />
   </Entity>
  </Entities>
 </World>

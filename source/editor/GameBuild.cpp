@@ -55,10 +55,10 @@ namespace game_build
             {
                 { "<terrain",      { "project/materials", "project/models/forest", "project/models/rock_2", "project/models/island_biomes" } },
                 { "<pedestrians",  { "project/models/mannequiny" } },
-                { "<traffic",      { "project/cars/ferrari_laferrari.car", "project/music/cars" } },
-                { "<race_driver",  { "project/cars/ferrari_laferrari.car", "project/music/cars" } },
-                { "<route_driver", { "project/cars/ferrari_laferrari.car", "project/music/cars" } },
-                { "<prefab",       { "project/cars/ferrari_laferrari.car", "project/music/cars" } }
+                { "<traffic",      { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } },
+                { "<race_driver",  { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } },
+                { "<route_driver", { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } },
+                { "<prefab",       { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } }
             };
             return rules;
         }
@@ -592,7 +592,8 @@ namespace game_build
                     plan.start_world = destination;
                 }
 
-                // a <world>.lua beside the world runs on every load without being named anywhere
+                // a <world>.lua runs on every load without being named anywhere, it ships with the resource folder below,
+                // only project packages from before the scripts moved still keep it beside the world
                 fs::path companion = world;
                 companion.replace_extension(".lua");
                 if (fs::is_regular_file(companion, ec))

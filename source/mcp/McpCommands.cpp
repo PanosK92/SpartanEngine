@@ -1659,16 +1659,28 @@ namespace spartan
                 World::GetResourceDirectory(path);
             const std::vector<std::string> previous_cleanup =
                 World::GetLastResourceCleanup();
-            const std::vector<std::string> before =
-                FileSystem::GetFilesInDirectory(directory);
+            // owned resources live in the root (legacy) and in its type folders
+            auto list_owned_locations = [&directory]()
+            {
+                std::vector<std::string> files = FileSystem::GetFilesInDirectory(directory);
+                for (const char* type_directory : { "meshes/", "materials/", "textures/" })
+                {
+                    if (FileSystem::IsDirectory(directory + type_directory))
+                    {
+                        const std::vector<std::string> type_files = FileSystem::GetFilesInDirectory(directory + type_directory);
+                        files.insert(files.end(), type_files.begin(), type_files.end());
+                    }
+                }
+                return files;
+            };
+            const std::vector<std::string> before = list_owned_locations();
             if (!World::SaveToFile(path))
             {
                 return json_error(
                     "failed to save world and clean resources"
                 );
             }
-            const std::vector<std::string> after =
-                FileSystem::GetFilesInDirectory(directory);
+            const std::vector<std::string> after = list_owned_locations();
             const std::vector<std::string>& failures =
                 World::GetLastResourceCleanupFailures();
             std::set<std::string> retained(

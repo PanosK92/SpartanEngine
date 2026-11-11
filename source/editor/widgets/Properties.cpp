@@ -5141,9 +5141,11 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
                     }
                 });
             }
-            if (trailing_button("Save", particle_system->GetEffectPath().empty() ? "Save to project/particles/custom.particle." : "Save over the effect file."))
+            // a new effect belongs to the world it was authored in, <world>_resources/particles/
+            const string new_effect_path = World::GetResourceDirectory() + "particles/custom.particle";
+            if (trailing_button("Save", particle_system->GetEffectPath().empty() ? ("Save to " + new_effect_path + ".").c_str() : "Save over the effect file."))
             {
-                const string path = particle_system->GetEffectPath().empty() ? "project/particles/custom.particle" : particle_system->GetEffectPath();
+                const string path = particle_system->GetEffectPath().empty() ? new_effect_path : particle_system->GetEffectPath();
                 particle_system->SaveEffect(path);
                 particle_system->SetEffectPath(path);
             }

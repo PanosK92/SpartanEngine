@@ -478,9 +478,11 @@ def stage_data(world, shader_cache):
         assets = world_path.with_suffix("")
         if assets.is_dir():
             shutil.copytree(assets, worlds / assets.name)
-        for script in world_path.parent.glob(world_path.stem + "*.lua"):
-            shutil.copy2(script, worlds / script.name)
-        for path in project_references(world_path):
+        # the world's own scripts, the companion <world>.lua among them is not named by the world
+        scripts = ROOT / "binaries" / "project" / (world_path.stem + "_resources") / "scripts"
+        if scripts.is_dir():
+            shutil.copytree(scripts, project / scripts.parent.name / "scripts")
+        for path in project_references(world_path, scripts):
             source_path = ROOT / "binaries" / path
             target_path = BUILD_DIR / path
             if source_path.suffix.lower() in MODEL_EXTENSIONS:
@@ -502,10 +504,10 @@ def stage_data(world, shader_cache):
 MODEL_EXTENSIONS = {".gltf", ".glb", ".obj", ".fbx", ".dae", ".blend", ".mesh"}
 
 
-def project_references(world_path):
+def project_references(world_path, scripts):
     # a world pulls project assets in through its xml and the lua scripts it attaches, those scripts load further assets
     pattern = re.compile(r"project/[A-Za-z0-9_\-./]+\.[A-Za-z0-9]+")
-    found, pending, visited = set(), [world_path], set()
+    found, pending, visited = set(), [world_path] + sorted(scripts.glob("*.lua")), set()
     while pending:
         file = pending.pop()
         if file in visited or not file.is_file():

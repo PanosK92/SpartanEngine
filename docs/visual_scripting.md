@@ -6,12 +6,12 @@ The fastest way to learn it is the tutorial world, [`worlds/visual_scripting.wor
 
 | Station | Graph | Teaches |
 | ------- | ----- | ------- |
-| 1, On Tick | [`visual_scripting_spin.lua`](../worlds/visual_scripting_spin.lua) | Per-frame events and frame-rate independent motion (`speed × delta`) |
-| 2, Variables | [`visual_scripting_bob.lua`](../worlds/visual_scripting_bob.lua) | Variables, On Start, reading and writing the entity's position |
-| 3, Input | [`visual_scripting_input.lua`](../worlds/visual_scripting_input.lua) | On Key and Flip Flop: Space toggles a cube between two sizes (play mode) |
-| 4, Branch | [`visual_scripting_branch.lua`](../worlds/visual_scripting_branch.lua) | Branch (if / else) and reading a component: a lamp blinks |
+| 1, On Tick | `visual_scripting_spin.lua` | Per-frame events and frame-rate independent motion (`speed × delta`) |
+| 2, Variables | `visual_scripting_bob.lua` | Variables, On Start, reading and writing the entity's position |
+| 3, Input | `visual_scripting_input.lua` | On Key and Flip Flop: Space toggles a cube between two sizes (play mode) |
+| 4, Branch | `visual_scripting_branch.lua` | Branch (if / else) and reading a component: a lamp blinks |
 
-Load the world, select an object, find its **Script** component in the inspector and press **Edit graph**. Press play to see the graphs run.
+The graphs ship in the project package, in `binaries/project/visual_scripting_resources/scripts/`. Load the world, select an object, find its **Script** component in the inspector and press **Edit graph**. Press play to see the graphs run.
 
 ## How it works
 

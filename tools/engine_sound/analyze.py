@@ -24,7 +24,7 @@ from scipy.signal import butter, sosfiltfilt, stft
 
 root = Path(__file__).resolve().parent
 repo = root.parent.parent
-cars_dir = repo / "binaries" / "project" / "cars"
+cars_dir = repo / "binaries" / "project" / "plan_resources" / "cars"
 all_scenarios = ["idle", "start", "wot_sweep", "part_sweep", "overrun", "limiter", "blips", "pulls"]
 # in-game captures are usually dyno pulls, only their rising, on-throttle stretches are order analysed
 sweep_scenarios = {"wot_sweep", "part_sweep", "capture"}
@@ -277,7 +277,8 @@ def command_render(args):
         subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"& '{root / 'build.ps1'}' -Name {args.exe}"], check=True)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    cars = sorted(cars_dir.glob("*.car"))
+    # every car owns a folder: cars/<name>/<name>.car
+    cars = sorted(cars_dir.glob("*/*.car"))
     if args.cars:
         wanted = args.cars.split(",")
         cars = [c for c in cars if c.stem in wanted]

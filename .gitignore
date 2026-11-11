@@ -45,10 +45,9 @@ MCP_DEBUG.jsonl*
 /tools/map/cache/
 /worlds/*.world.bak
 
-# World XML only; all supporting assets belong in binaries/project.
+# World XML only; scripts and all supporting assets belong in binaries/project/<world>_resources.
 /worlds/*
 !/worlds/*.world
-!/worlds/*.lua
 !/worlds/README.md
 
 # generated Python bytecode for tools
