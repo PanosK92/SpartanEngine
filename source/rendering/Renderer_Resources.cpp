@@ -352,7 +352,7 @@ namespace spartan
             restir_emissive_tri_initial_capacity, nullptr, false, "restir_pool_remap"
         );
 
-        // 2^19 cells of 4 uints, see common_radiance_cache.hlsl, zeroed once so every cell starts empty
+        // 2^21 uints, common_radiance_cache.hlsl lays 2^18 cells of 6 uints into it, zeroed once so every cell starts empty
         {
             const uint32_t radiance_cache_elements = (1u << 19) * 4u;
             at(buffers, Renderer_Buffer::RadianceCache) = make_shared<RHI_Buffer>(

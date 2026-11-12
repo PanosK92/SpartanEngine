@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 import { parametric_shapes, textured_material_scalar_keys, textured_material_scalars } from "./building_blocks.mjs";
 import http from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -15,14 +16,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
 import { run_vehicle_validation } from "./vehicle_validation.mjs";
-import { find_engine_executable, find_free_port, read_log_lines, spawn_engine, wait_for_bridge, wait_for_exit } from "./headless.mjs";
+import { adopt_engine_process, find_engine_executable, find_free_port, read_log_lines, spawn_engine, wait_for_bridge, wait_for_exit } from "./headless.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
 import { is_zod_schema, json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
-import { agent_memory_note_max_chars, agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
+import { advice_note_max_chars, advice_path, append_advice, ensure_advice, read_advice, resolve_advice } from "./advice_to_maintainers.mjs";
 import { calibrate_existing_light } from "./light_calibration.mjs";
-import { register_agent_toolkit } from "./agent_toolkit.mjs";
+import { png_decode, png_encode_rgb, register_agent_toolkit } from "./agent_toolkit.mjs";
 import { audit_scene_quality } from "./scene_quality.mjs";
 import {
   audit_scene_layout,
@@ -64,7 +65,7 @@ import {
 } from "./world_asset_catalog.mjs";
 
 const project_root = get_project_root();
-await ensure_agent_memory();
+await ensure_advice();
 
 const defaults = {
   host: process.env.SPARTAN_ENGINE_HOST ?? "127.0.0.1",
@@ -112,6 +113,46 @@ const engine = new EngineClient({
   timeout_ms: engine_timeout_ms,
   source: "server",
 });
+
+// a tool call with target_port talks to that instance without moving the shared target other chats use
+const call_target = new AsyncLocalStorage();
+const target_clients = new Map();
+
+function scoped_target()
+{
+  const store = call_target.getStore();
+  return store && store.port !== engine.port ? store : null;
+}
+
+function current_engine()
+{
+  return scoped_target()?.client ?? engine;
+}
+
+function target_client(port)
+{
+  let client = target_clients.get(port);
+  if (!client)
+  {
+    client = new EngineClient({
+      host: engine_host,
+      port,
+      timeout_ms: engine_timeout_ms,
+      source: "server",
+    });
+    target_clients.set(port, client);
+  }
+  return client;
+}
+
+function run_on_target(port, operation)
+{
+  if (port === undefined || port === null)
+  {
+    return operation();
+  }
+  return call_target.run({ port, client: target_client(port), resource_directory: null }, operation);
+}
 void append_debug_log({
   type: "server_started",
   source: "server",
@@ -153,6 +194,13 @@ let resource_directory_lookup = null;
 // awaited rather than re-reading the shared one, which a world change could have cleared in the meantime
 async function acquire_resource_directory()
 {
+  const scoped = scoped_target();
+  if (scoped)
+  {
+    scoped.resource_directory ??= await resolve_active_resource_directory();
+    return scoped.resource_directory;
+  }
+
   if (active_resource_directory)
   {
     return active_resource_directory;
@@ -184,7 +232,7 @@ async function resolve_active_resource_directory(world = null)
   return resolve_world_resource_directory(
     async (command, args) =>
     {
-      return engine.command(
+      return current_engine().command(
         command,
         args,
         engine_timeout_ms,
@@ -195,23 +243,45 @@ async function resolve_active_resource_directory(world = null)
 }
 
 async function send_engine_command(command, args = {}) {
+  let path_rewrite = null;
   if (generated_resource_command(command))
   {
     const directory =
       (await acquire_resource_directory()) ??
       world_resource_directory();
+    const requested_path = args.path;
     args = constrain_generated_resources(
       command,
       args,
       directory,
     );
+    if (typeof requested_path === "string" && requested_path && args.path !== requested_path.replaceAll("\\", "/"))
+    {
+      path_rewrite = {
+        requested: requested_path,
+        written: args.path,
+        reason: `generated resources live in the shared ${world_resource_directory()} library, use the written path in later calls`,
+      };
+    }
   }
-  const result = await engine.command(
+  const result = await current_engine().command(
     command,
     args,
     engine_timeout_ms,
   );
-  if (command === "world_summary" && result.ok)
+  if (path_rewrite && result && typeof result === "object")
+  {
+    result.path_rewritten = path_rewrite;
+  }
+  const scoped = scoped_target();
+  if (scoped)
+  {
+    if (command === "world_load" || command === "world_new")
+    {
+      scoped.resource_directory = null;
+    }
+  }
+  else if (command === "world_summary" && result.ok)
   {
     active_resource_directory =
       await resolve_active_resource_directory(result);
@@ -347,6 +417,7 @@ async function catalog_tool_result(operation)
 
 const tool_registry = new Map();
 const resource_registry = new Map();
+const target_port_schema = z.number().int().min(1024).max(65535).optional().describe("send this call to the engine on this port (e.g. a headless_start port) instead of the server's current target");
 
 function register_local_tool(name, config, handler) {
   if (read_only_mode && config.annotations && !config.annotations.readOnlyHint) {
@@ -356,23 +427,31 @@ function register_local_tool(name, config, handler) {
   // loose so args added to the engine after this server started still reach it instead of being stripped
   const input_schema = is_zod_schema(config.inputSchema)
     ? config.inputSchema
-    : z.looseObject(config.inputSchema ?? {});
+    : z.looseObject({
+      ...(config.inputSchema ?? {}),
+      target_port: target_port_schema,
+    });
   const validated_handler = async (args) => {
     const started_at = Date.now();
     let result;
     try
     {
+      const { target_port, ...tool_args } = args ?? {};
       const parsed = parse_raw_shape(
         input_schema,
-        args,
+        tool_args,
       );
       if (!parsed.ok)
       {
         result = tool_result(parsed.error);
       }
+      else if (target_port !== undefined && !(Number.isInteger(target_port) && target_port >= 1024 && target_port <= 65535))
+      {
+        result = tool_result(structured_error("target_port must be an integer port between 1024 and 65535", { code: "invalid_arguments" }));
+      }
       else
       {
-        result = await handler(parsed.value);
+        result = await run_on_target(target_port, () => handler(parsed.value));
         const output_schema = config.outputSchema;
         if (
           output_schema?.safeParse &&
@@ -669,12 +748,14 @@ const entity_identity_args = {
     z.string().min(1),
   ).max(16).optional(),
 };
+const transform_space = z.enum(["local", "world"]).optional().describe("local (default) is relative to the parent, world places the entity in world space whatever its parent");
 const transform_set_args = {
   id: z.string(),
   position: vector3.optional(),
   rotation: quaternion.optional(),
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
+  space: transform_space,
 };
 const primitive_create_args = {
   mesh: mesh_type.optional(),
@@ -724,7 +805,7 @@ const parametric_mesh_args = {
   radius_top: z.number().min(0).max(1000).optional().describe("frustum/cone top radius; radius is the bottom radius"),
   inner_radius: z.number().min(0).max(1000).optional().describe("arc/ring/tube inner radius; zero produces a solid sector"),
   start_degrees: z.number().min(-3600).max(3600).optional(),
-  sweep_degrees: z.number().positive().max(360).optional().describe("arc sweep, default 90 degrees; ring/tube/disk default 360"),
+  sweep_degrees: z.number().positive().max(360).optional().describe("arc sweep, default 90 degrees; ring/tube/disk/revolved_profile default 360"),
   path: z.string().describe("immutable mesh cache key, use a new path when geometry parameters change"),
   size: vector3.optional().describe("full width, height, and depth in meters"),
   opening_size: vector2.optional().describe("wall opening width and height in meters"),
@@ -801,7 +882,8 @@ const compound_part_args = {
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
   material: z.string().optional(),
-  with_physics: z.boolean().optional(),
+  with_physics: z.boolean().optional().describe("give the part collision, static convex unless body_type or physics_static say otherwise"),
+  collision: z.boolean().optional().describe("same as with_physics"),
   body_type: z.enum([
     "mesh",
     "mesh_convex",
@@ -1358,9 +1440,15 @@ register_local_tool("async_task_start", {
   inputSchema: {
     tool: z.string(),
     args: z.record(z.string(), z.any()).optional(),
+    arguments: z.record(z.string(), z.any()).optional().describe("alias of args"),
   },
   outputSchema: output_schemas.async_task,
-}, async ({ tool: requested_tool, args = {} }) => {
+}, async ({ tool: requested_tool, args: direct_args, arguments: alias_args }) => {
+  if (direct_args && alias_args)
+  {
+    return tool_result(structured_error("pass the tool arguments as args or arguments, not both", { code: "invalid_arguments" }));
+  }
+  const args = direct_args ?? alias_args ?? {};
   const tool = requested_tool.trim();
   if (!tool)
   {
@@ -1613,63 +1701,63 @@ register_local_tool("get_capability_details", {
   }));
 });
 
-register_local_tool("agent_memory_read", {
-  title: "Agent Memory Read",
-  description: "Read the shared Spartan agent memory markdown file. Use this early for project-specific lessons and maintainer advice.",
+register_local_tool("advice_to_maintainers_read", {
+  title: "Advice To Maintainers Read",
+  description: "Read ADVICE_TO_MAINTAINERS.md, the list of engine and MCP bugs and UX improvements that agents have asked the maintainers to fix. Read it before reporting so the same item is not added twice. It is not agent memory and holds no how-tos.",
   inputSchema: {},
-  outputSchema: output_schemas.agent_memory,
+  outputSchema: output_schemas.advice_to_maintainers,
   annotations: read_only,
 }, async () => {
   return tool_result({
     ok: true,
-    path: agent_memory_path,
-    memory: await read_agent_memory(),
+    path: advice_path,
+    advice: await read_advice(),
   });
 });
 
-register_local_tool("agent_memory_append", {
-  title: "Agent Memory Append",
-  description: `Append one durable lesson (under ${agent_memory_note_max_chars} chars) to a named section in the shared Spartan agent memory file. Prefer an existing topic section (Rendering, Worlds, Racing AI, ...) and start the note with its date (YYYY-MM-DD). When the file is full, dated notes are dropped oldest first, then undated topic notes; Engine Facts, Good Agent Strategies, Gotchas and Advice To Maintainers stay. Returns a receipt (chars, limit, dropped), not the whole file.`,
+register_local_tool("advice_to_maintainers_append", {
+  title: "Advice To Maintainers Append",
+  description: `Report one thing you want the maintainers to fix. kind 'bug' is something that behaves wrong (a crash, a wrong result, a misleading receipt, a rendering defect); kind 'ux' is something that made the work harder than it should be (a missing tool or argument, a slow or noisy response, a workflow that needs a workaround). Write one item under ${advice_note_max_chars} chars: where it happens, what goes wrong or is missing, and what would fix it. Today's date is added. Not for lessons, how-tos or session notes. Returns a receipt, not the whole file.`,
   inputSchema: {
-    section: z.string(),
+    kind: z.enum(["bug", "ux"]),
     note: z.string(),
   },
-  outputSchema: output_schemas.agent_memory,
+  outputSchema: output_schemas.advice_to_maintainers,
   annotations: edit_tool,
-}, async ({ section, note }) => {
+}, async ({ kind, note }) => {
   try {
     return tool_result({
       ok: true,
-      path: agent_memory_path,
-      ...(await append_agent_memory(section, note)),
+      path: advice_path,
+      ...(await append_advice(kind, note)),
     });
   } catch (error) {
     return tool_result(structured_error(error.message, {
-      code: "agent_memory_update_failed",
-      suggested_action: "read agent_memory_read, prune or correct the memory text, then retry",
+      code: "advice_to_maintainers_update_failed",
+      suggested_action: "pass kind 'bug' or 'ux' and one short note, then retry",
     }));
   }
 });
 
-register_local_tool("agent_memory_replace", {
-  title: "Agent Memory Replace",
-  description: "Replace the shared Spartan agent memory file after pruning stale or inaccurate notes.",
+register_local_tool("advice_to_maintainers_resolve", {
+  title: "Advice To Maintainers Resolve",
+  description: "Remove one item from ADVICE_TO_MAINTAINERS.md once it is fixed and you have verified the fix. match is text that appears in exactly one item.",
   inputSchema: {
-    memory: z.string(),
+    match: z.string(),
   },
-  outputSchema: output_schemas.agent_memory,
+  outputSchema: output_schemas.advice_to_maintainers,
   annotations: edit_tool,
-}, async ({ memory }) => {
+}, async ({ match }) => {
   try {
     return tool_result({
       ok: true,
-      path: agent_memory_path,
-      memory: await write_agent_memory(memory),
+      path: advice_path,
+      ...(await resolve_advice(match)),
     });
   } catch (error) {
     return tool_result(structured_error(error.message, {
-      code: "agent_memory_update_failed",
-      suggested_action: "keep the memory concise, preserve the title, and retry",
+      code: "advice_to_maintainers_update_failed",
+      suggested_action: "call advice_to_maintainers_read and pass text that appears in exactly one item",
     }));
   }
 });
@@ -1690,6 +1778,8 @@ register_local_tool("engine_command", {
 
 // a headless engine owned by this server, while it runs every engine tool talks to it instead of --port
 const binaries_directory = path.join(project_root, "binaries");
+// the instance outlives a server restart, the next server process with the same --port adopts it from this file
+const headless_state_path = path.join(binaries_directory, "logs", `mcp_headless_${engine_port}.json`);
 let headless = null;
 
 function set_engine_target(port)
@@ -1698,6 +1788,49 @@ function set_engine_target(port)
   engine.port = port;
   active_resource_directory = null;
   resource_directory_generation++;
+}
+
+async function write_headless_state()
+{
+  if (!headless)
+  {
+    await fs.rm(headless_state_path, { force: true });
+    return;
+  }
+  await fs.mkdir(path.dirname(headless_state_path), { recursive: true });
+  await fs.writeFile(headless_state_path, `${JSON.stringify({
+    pid: headless.child.pid,
+    port: headless.port,
+    executable: headless.executable,
+    started_at: headless.started_at,
+    retarget: headless.retarget,
+  }, null, 2)}\n`, "utf8");
+}
+
+async function adopt_headless()
+{
+  let state;
+  try
+  {
+    state = JSON.parse(await fs.readFile(headless_state_path, "utf8"));
+  }
+  catch
+  {
+    return;
+  }
+  const child = adopt_engine_process(state.pid);
+  const status = child.exitCode === null ? await wait_for_bridge(engine_host, state.port, child, 3000) : { ok: false };
+  if (!status.ok)
+  {
+    await fs.rm(headless_state_path, { force: true });
+    return;
+  }
+  headless = { child, port: state.port, executable: state.executable, started_at: state.started_at, retarget: state.retarget !== false, adopted: true };
+  if (headless.retarget)
+  {
+    set_engine_target(state.port);
+  }
+  await append_debug_log({ type: "headless_adopted", source: "server", pid: state.pid, port: state.port });
 }
 
 function headless_summary()
@@ -1713,6 +1846,8 @@ function headless_summary()
     executable: headless.executable,
     started_at: headless.started_at,
     exit_code: headless.child.exitCode,
+    retarget: headless.retarget,
+    adopted: Boolean(headless.adopted),
     target_port: engine.port,
     default_port: engine_port,
     log: path.join(binaries_directory, "logs/log_headless.txt"),
@@ -1746,11 +1881,11 @@ async function stop_headless(timeout_ms = 20000)
     return { ok: true, stopped: false, note: "no headless instance was started by this server" };
   }
 
-  const { child, port } = headless;
+  const { child, port, retarget } = headless;
   let graceful = false;
   if (child.exitCode === null)
   {
-    const quit = await send_engine_command("engine_quit");
+    const quit = await run_on_target(port, () => send_engine_command("engine_quit"));
     graceful = quit.ok && await wait_for_exit(child, timeout_ms);
     if (!graceful && child.exitCode === null)
     {
@@ -1759,30 +1894,29 @@ async function stop_headless(timeout_ms = 20000)
     }
   }
   headless = null;
-  set_engine_target(engine_port);
+  await write_headless_state();
+  if (retarget)
+  {
+    set_engine_target(engine_port);
+  }
   return { ok: true, stopped: true, port, graceful, exit_code: child.exitCode, target_port: engine.port };
 }
 
-process.on("exit", () =>
-{
-  if (headless && headless.child.exitCode === null)
-  {
-    headless.child.kill();
-  }
-});
+await adopt_headless();
 
 register_local_tool("headless_start", {
   title: "Headless Start",
-  description: "Start a private headless Spartan instance (hidden window, no editor ui, no steam, no gamepads, real mouse and keyboard ignored, user settings and log.txt untouched) on a free port and point every engine tool of this MCP server at it until headless_stop. Use it to run something quickly without the user's editor: load a world, set cvars, screenshot_take, input_inject, profiler_snapshot. world is an optional absolute .world path loaded before returning. The newest spartan executable in binaries/ is used unless executable is given. Only one per server; its log is binaries/logs/log_headless.txt.",
+  description: "Start a private headless Spartan instance (hidden window, no editor ui, no steam, no gamepads, real mouse and keyboard ignored, user settings and log.txt untouched) on a free port. By default every engine tool of this MCP server then targets it until headless_stop; this server is shared by every chat of the workspace, so pass retarget false to leave the shared target alone and address the instance with target_port (the returned port) on each call instead. It survives an MCP server restart: the next server process adopts it. Use it to run something quickly without the user's editor: load a world, set cvars, screenshot_take, input_inject, profiler_snapshot. world is an optional absolute .world path loaded before returning. The newest spartan executable in binaries/ is used unless executable is given. Only one per server; its log is binaries/logs/log_headless.txt.",
   inputSchema: {
     world: z.string().min(1).optional(),
     port: z.number().int().min(1024).max(65535).optional(),
     executable: z.string().min(1).optional(),
     timeout_s: z.number().min(5).max(600).optional(),
+    retarget: z.boolean().optional().describe("point this server's engine tools at the instance, default true"),
   },
   outputSchema: output_schemas.generic,
   annotations: edit_tool,
-}, async ({ world, port, executable, timeout_s }) => {
+}, async ({ world, port, executable, timeout_s, retarget = true }) => {
   if (headless && headless.child.exitCode === null)
   {
     return tool_result({ ok: false, error: "a headless instance is already running, call headless_stop first", headless: headless_summary() });
@@ -1806,8 +1940,8 @@ register_local_tool("headless_start", {
   }
 
   const args = ["--headless", "--mcp-control", `--mcp-port=${resolved_port}`, "--no-steam"];
-  const child = spawn_engine(resolved_executable, binaries_directory, args);
-  headless = { child, port: resolved_port, executable: resolved_executable, started_at: new Date().toISOString() };
+  const child = spawn_engine(resolved_executable, binaries_directory, args, { detached: true });
+  headless = { child, port: resolved_port, executable: resolved_executable, started_at: new Date().toISOString(), retarget };
   const status = await wait_for_bridge(engine_host, resolved_port, child, timeout_ms);
   if (!status.ok)
   {
@@ -1819,12 +1953,19 @@ register_local_tool("headless_start", {
     return tool_result({ ...status, log_tail: await read_log_lines(binaries_directory, /error|fail/i, 20) });
   }
 
-  set_engine_target(resolved_port);
+  await write_headless_state();
+  if (retarget)
+  {
+    set_engine_target(resolved_port);
+  }
   let world_result = null;
   if (world)
   {
-    const load = await send_engine_command("world_load", { path: world });
-    world_result = load.ok ? await wait_for_world(world, timeout_ms) : load;
+    world_result = await run_on_target(resolved_port, async () =>
+    {
+      const load = await send_engine_command("world_load", { path: world });
+      return load.ok ? await wait_for_world(world, timeout_ms) : load;
+    });
   }
 
   return tool_result({
@@ -2006,26 +2147,106 @@ register_tool(
 register_tool(
   server,
   "cvar_set",
-  "Set a guarded console variable by name.",
+  "Set a guarded console variable by name. The change lasts for this engine session only: binaries/settings/spartan.xml keeps the value it had before the first MCP change, so nothing needs restoring. Pass persist true only when the user wants the setting kept across launches.",
   {
     name: z.string(),
     value: z.string(),
+    persist: z.boolean().optional(),
   },
   "cvar_set",
   { annotations: edit_tool },
 );
 
-register_tool(
-  server,
-  "shader_reload",
-  "Hot reload shaders without restarting the engine. Recompiles every shader whose .hlsl file or any of its includes changed on disk since it was compiled (edit files under the repo's data/shaders, the path is returned as shader_directory). name filters by file name substring (e.g. g_buffer or common_rain) and force recompiles the matches even if unchanged. Compilation runs in the background: call again until compiling is 0, then read failed and console_read for compiler errors.",
+// per target port, so engine_wait jobs_idle can poll the reload this server started on that instance
+const shader_reloads = new Map();
+
+async function shader_reload_status(port)
+{
+  const reload = shader_reloads.get(port);
+  if (!reload)
   {
+    return null;
+  }
+  const status = await send_engine_command("shader_reload", reload.name ? { name: reload.name } : {});
+  if (status.ok && status.compiling === 0)
+  {
+    shader_reloads.delete(port);
+  }
+  return status;
+}
+
+register_local_tool("shader_reload", {
+  title: "shader reload",
+  description: "Hot reload shaders without restarting the engine. Recompiles every shader whose .hlsl file or any of its includes changed on disk since it was compiled (edit files under the repo's data/shaders, the path is returned as shader_directory). data/shaders is shared by every running instance, so pass name (file name substring, e.g. g_buffer or common_rain) to reload only your own work; force recompiles the matches even if unchanged. Compilation runs in the background: pass wait true to block until compiling is 0 (engine_wait until jobs_idle also waits for it), then read failed and console_read for compiler errors. Returns counts; list true adds the recompiled shader names. Pipelines rebuild after their shaders: wait also waits for engine_status pipelines_compiling to reach 0.",
+  inputSchema: {
     name: z.string().optional(),
     force: z.boolean().optional(),
+    wait: z.boolean().optional(),
+    list: z.boolean().optional(),
+    timeout_s: z.number().min(1).max(900).optional(),
   },
-  "shader_reload",
-  { annotations: edit_tool },
-);
+  outputSchema: output_schemas.generic,
+  annotations: edit_tool,
+  traceLocal: false,
+}, async ({ name, force, wait = false, list = false, timeout_s = 300 }) => {
+  const request = {};
+  if (name !== undefined)
+  {
+    request.name = name;
+  }
+  if (force !== undefined)
+  {
+    request.force = force;
+  }
+  const port = current_engine().port;
+  let result = await send_engine_command("shader_reload", request);
+  if (!result.ok)
+  {
+    return tool_result(result);
+  }
+  const recompiled = result.recompiled ?? [];
+  if (result.compiling > 0)
+  {
+    shader_reloads.set(port, { name });
+  }
+
+  const started  = Date.now();
+  const deadline = started + timeout_s * 1000;
+  let waited = false;
+  while (wait && result.ok && result.compiling > 0 && Date.now() < deadline)
+  {
+    waited = true;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    result = (await shader_reload_status(port)) ?? result;
+  }
+
+  // the passes create their new pipelines on the next frames and those compile in the background
+  let pipelines_compiling;
+  if (wait && recompiled.length > 0 && result.ok && result.compiling === 0)
+  {
+    waited = true;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    while (Date.now() < deadline)
+    {
+      const status = await send_engine_command("engine_status");
+      pipelines_compiling = status.pipelines_compiling;
+      if (!status.ok || !(pipelines_compiling > 0))
+      {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  const { recompiled: _, ...counts } = result;
+  return tool_result({
+    ...counts,
+    recompiled_count: recompiled.length,
+    ...(list ? { recompiled } : {}),
+    ...(pipelines_compiling !== undefined ? { pipelines_compiling } : {}),
+    ...(waited ? { waited_ms: Date.now() - started, timed_out: result.compiling > 0 || pipelines_compiling > 0 } : {}),
+  });
+});
 
 register_tool(
   server,
@@ -2529,6 +2750,7 @@ register_tool(
   "Control sequencer playback. While playing, the event under the playhead drives the render camera. Play stages every drive event car at its start pose once the play boot is done, entering (and unpausing) play mode itself when the sequence has drive events; stop rewinds, hands the cars back and leaves play mode again if play entered it.",
   {
     action: z.enum(["play", "pause", "stop"]),
+    time: sequencer_time.optional().describe("play or pause: move the playhead here first. Camera events follow it; drive event cars are simulated, so they still start from their staged pose"),
   },
   "sequencer_playback",
   { annotations: edit_tool },
@@ -3168,13 +3390,45 @@ register_local_tool("restir_radiance_capture", {
   }));
 });
 
+async function crop_png(buffer, region, source_path)
+{
+  const image  = png_decode(buffer);
+  const x      = Math.min(image.width - 1, Math.floor(region.x * image.width));
+  const y      = Math.min(image.height - 1, Math.floor(region.y * image.height));
+  const width  = Math.max(1, Math.min(image.width - x, Math.round(region.width * image.width)));
+  const height = Math.max(1, Math.min(image.height - y, Math.round(region.height * image.height)));
+  const rgb    = Buffer.alloc(width * height * 3);
+  for (let row = 0; row < height; row++)
+  {
+    for (let column = 0; column < width; column++)
+    {
+      const source      = ((y + row) * image.width + x + column) * 4;
+      const destination = (row * width + column) * 3;
+      rgb[destination]     = image.pixels[source];
+      rgb[destination + 1] = image.pixels[source + 1];
+      rgb[destination + 2] = image.pixels[source + 2];
+    }
+  }
+  const cropped   = png_encode_rgb(width, height, rgb);
+  const crop_path = source_path.replace(/\.png$/i, "") + "_crop.png";
+  await fs.writeFile(crop_path, cropped);
+  return { buffer: cropped, path: crop_path, x, y, width, height };
+}
+
 register_local_tool("screenshot_take", {
   title: "screenshot take",
-  description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content. Pass ui true to capture the whole editor window with its ImGui panels instead of the pre-tonemap scene (same as cvar r.screenshot_ui 1).",
+  description: "Request a renderer screenshot and return the target PNG path. If the async save completes within wait_ms, the PNG is also returned as image content. wait_ms only bounds how long to wait for the file; settle_ms delays the capture itself so a camera move, temporal accumulation or a world load can settle first. Pass ui true to capture the whole editor window with its ImGui panels instead of the pre-tonemap scene (same as cvar r.screenshot_ui 1). crop returns a full resolution region instead of the whole frame (x, y, width, height as 0-1 fractions of the image), saved next to the PNG as <name>_crop.png.",
   inputSchema: {
     path: z.string().optional().describe("png path inside the engine screenshots directory"),
-    wait_ms: z.number().int().min(0).max(10000).optional(),
+    wait_ms: z.number().int().min(0).max(10000).optional().describe("how long to wait for the saved file, default 2500"),
+    settle_ms: z.number().int().min(0).max(30000).optional().describe("delay before the capture is requested"),
     ui: z.boolean().optional().describe("capture the full editor window, ui included"),
+    crop: z.object({
+      x: z.number().min(0).max(1),
+      y: z.number().min(0).max(1),
+      width: z.number().gt(0).max(1),
+      height: z.number().gt(0).max(1),
+    }).optional().describe("region to return, as 0-1 fractions of the image"),
   },
   outputSchema: output_schemas.screenshot_take,
   annotations: edit_tool,
@@ -3183,6 +3437,10 @@ register_local_tool("screenshot_take", {
   if (minimized)
   {
     return tool_result(minimized);
+  }
+  if (args.settle_ms)
+  {
+    await new Promise((resolve) => setTimeout(resolve, args.settle_ms));
   }
   let requested_path = args.path?.replaceAll("\\", "/");
   if (
@@ -3266,9 +3524,24 @@ register_local_tool("screenshot_take", {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
+  let crop = null;
+  if (image_buffer && args.crop)
+  {
+    try
+    {
+      crop = await crop_png(image_buffer, args.crop, result.path);
+      image_buffer = crop.buffer;
+    }
+    catch (error)
+    {
+      crop = { error: `crop failed: ${error.message}` };
+    }
+  }
+
   const normalized = normalize_result({
     ...result,
     ready: Boolean(image_buffer),
+    ...(crop ? { crop: { path: crop.path, x: crop.x, y: crop.y, width: crop.width, height: crop.height, error: crop.error } } : {}),
   });
   const content = [
     {
@@ -3690,7 +3963,7 @@ register_tool(
   "world_set_environment",
   "Set world time of day, wind, puddliness, rain, or description in edit mode. puddliness 0 to 1 pools standing water on terrain and roads, low spots fill first. rain 0 to 1 is stored on the directional light: clouds close in, exposed surfaces soak within seconds, puddles fill over about a minute, drops fall around the camera and rain is heard; covered areas stay dry.",
   {
-    time_of_day: z.number().min(0).max(1).optional(),
+    time_of_day: z.number().min(0).max(1).optional().describe("fraction of the UTC day (0.5 is 12:00 UTC, local solar time is UTC plus longitude / 15 hours); also rotates the directional light"),
     wind: vector3.optional(),
     puddliness: z.number().min(0).max(1).optional(),
     rain: z.number().min(0).max(1).optional(),
@@ -4526,13 +4799,14 @@ register_local_tool(
   "compound_create",
   {
     title: "compound create",
-    description: "Create an editable compound object from parametric or cached mesh parts with per-part materials, transforms, and static convex collision by default. Optionally save the hierarchy as a prefab.",
+    description: "Create an editable compound object from parametric or cached mesh parts with per-part materials and transforms. Parts have no collision unless with_physics (or collision) or body_type is set, then static convex by default. Optionally save the hierarchy as a prefab.",
     inputSchema: {
       name: z.string(),
       parent_id: z.string().optional(),
-      position: vector3.optional(),
+      position: vector3.optional().describe("root position, local to parent_id unless space is world; part positions are always local to the root"),
       rotation_euler: vector3.optional(),
       scale: vector3.optional(),
+      space: transform_space,
       asset_directory: z.string().optional().describe("generated mesh directory, always constrained to project/mcp/blockout/meshes"),
       prefab_path: z.string().optional(),
       parts: z.array(
@@ -4548,6 +4822,7 @@ register_local_tool(
     position,
     rotation_euler,
     scale,
+    space,
     asset_directory = "project/mcp/blockout/meshes",
     prefab_path,
     parts,
@@ -4561,7 +4836,7 @@ register_local_tool(
       return tool_result(root_result);
     }
 
-    const root = root_result.entity;
+    let root = root_result.entity;
     if (position || rotation_euler || scale)
     {
       const transform_result = await send_engine_command(
@@ -4571,6 +4846,7 @@ register_local_tool(
           position,
           rotation_euler,
           scale,
+          space,
         },
       );
       if (!transform_result.ok)
@@ -4581,6 +4857,7 @@ register_local_tool(
           completed_parts: [],
         });
       }
+      root = transform_result.entity ?? root;
     }
 
     const completed_parts = [];
@@ -5694,14 +5971,8 @@ register_tool(
 register_tool(
   server,
   "entity_set_transform",
-  "Set an entity local transform in edit mode.",
-  {
-    id: z.string(),
-    position: vector3.optional(),
-    rotation: quaternion.optional(),
-    rotation_euler: vector3.optional(),
-    scale: vector3.optional(),
-  },
+  "Set an entity transform in edit mode, parent-local by default or in world space with space world.",
+  transform_set_args,
   "entity_set_transform",
   { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
@@ -5710,7 +5981,7 @@ register_local_tool(
   "entity_set_transform_batch",
   {
     title: "entity set transform batch",
-    description: "Set many entity local transforms in edit mode through one native engine batch command.",
+    description: "Set many entity transforms in edit mode through one native engine batch command, parent-local by default or world per item with space world.",
     inputSchema: {
       items: z.array(z.object(transform_set_args)).min(1).max(64),
     },
@@ -6678,10 +6949,10 @@ register_tool(
 register_tool(
   server,
   "vehicle_set_view",
-  "Set or cycle the in-car camera view: chase, hood, wheel, or cycle (same as V).",
+  "Set or cycle the in-car camera view: chase, hood, interior (driver's eye from the .car cockpit, right click drag looks around), wheel, or cycle (same as V).",
   {
     id: z.string().optional(),
-    view: z.enum(["chase", "hood", "wheel", "cycle", "next"]),
+    view: z.enum(["chase", "hood", "interior", "wheel", "cycle", "next"]),
   },
   "vehicle_set_view",
   { annotations: edit_tool },
@@ -6690,10 +6961,11 @@ register_tool(
 register_tool(
   server,
   "vehicle_set_car",
-  "Swap a car to another .car preset in place (like the car picker): car is the catalog name (e.g. Ruba) or the .car file name without extension. The catalog holds every .car next to the cars already loaded.",
+  "Swap a car to another .car preset in place (like the car picker): car is the catalog name (e.g. Ruba) or the .car file name without extension. The catalog holds every .car next to the cars already loaded. Naming the car it already is re-reads the edited .car file from disk; reload true forces that for any car.",
   {
     id: z.string().optional(),
     car: z.string(),
+    reload: z.boolean().optional(),
   },
   "vehicle_set_car",
   { annotations: edit_tool },
@@ -6818,6 +7090,7 @@ const agent_toolkit = register_agent_toolkit({
   find_engine_executable,
   wait_for_bridge,
   headless_running: () => Boolean(headless && headless.child.exitCode === null),
+  shader_reload_status: () => shader_reload_status(current_engine().port),
 });
 
 function register_text_resource(name, uri, title, description, read_text, mime_type = "text/markdown") {
@@ -6930,11 +7203,11 @@ register_text_resource(
 );
 
 register_text_resource(
-  "agent_memory",
-  "spartan://agent/memory",
-  "Spartan Agent Memory",
-  "Shared memory for future Spartan agents, including engine facts, strategies, gotchas, and maintainer advice.",
-  () => read_agent_memory(),
+  "advice_to_maintainers",
+  "spartan://agent/advice-to-maintainers",
+  "Spartan Advice To Maintainers",
+  "Engine and MCP bugs and UX improvements that agents have asked the maintainers to fix.",
+  () => read_advice(),
 );
 
 register_text_resource(
@@ -7028,8 +7301,8 @@ async function read_resource(uri) {
       "The source reader accepts project-relative paths under source/ and tools/mcp/spartan_engine/.",
     ].join("\n");
   }
-  if (uri === "spartan://agent/memory") {
-    return read_agent_memory();
+  if (uri === "spartan://agent/advice-to-maintainers") {
+    return read_advice();
   }
 
   return null;

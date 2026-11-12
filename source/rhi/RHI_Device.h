@@ -106,6 +106,8 @@ namespace spartan
         // pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
         static uint32_t GetPipelineCount();
+        // pipelines still compiling in the background, their passes are skipped until they are ready
+        static uint32_t GetPipelineCompilingCount();
         static void* GetPipelineCache();
 
         // deletion queue

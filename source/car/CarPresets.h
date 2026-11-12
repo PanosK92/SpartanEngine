@@ -635,7 +635,8 @@ namespace car
     inline std::vector<preset_entry> preset_registry;
 
     // load one .car file, cached by path, also registers it for the hud preset selector
-    const car_definition* load_car_file(const std::string& file_path);
+    // reload parses the file again into a new definition that replaces the registry entry, the old one stays valid for cars still using it
+    const car_definition* load_car_file(const std::string& file_path, bool reload = false);
 
     // load every .car file of a catalogue, given the catalogue (cars/) or one car's folder inside it (cars/<name>/)
     void load_car_directory(const std::string& directory);

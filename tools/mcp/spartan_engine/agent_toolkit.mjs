@@ -429,6 +429,7 @@ export function register_agent_toolkit(context)
     find_engine_executable,
     wait_for_bridge,
     headless_running,
+    shader_reload_status,
   } = context;
 
   const vector3          = z.array(z.number()).length(3);
@@ -535,7 +536,12 @@ export function register_agent_toolkit(context)
         let done = last_status.ready ?? !last_status.loading;
         if (done && until === "jobs_idle")
         {
-          done = !last_status.jobs_running;
+          done = !last_status.jobs_running && !(last_status.shaders_compiling > 0) && !(last_status.pipelines_compiling > 0);
+          if (done && last_status.pipelines_compiling === undefined)
+          {
+            const shaders = await shader_reload_status();
+            done = !shaders || !shaders.ok || shaders.compiling === 0;
+          }
         }
         if (done && until === "frames")
         {
@@ -576,9 +582,10 @@ export function register_agent_toolkit(context)
       "summary_only drops step results except ok/error to keep the reply small.",
     ].join(" "),
     inputSchema: {
-      steps: z.array(z.object({
+      steps: z.array(z.strictObject({
         tool: z.string().min(1),
         args: z.record(z.string(), z.any()).optional(),
+        arguments: z.record(z.string(), z.any()).optional().describe("alias of args"),
         label: z.string().regex(/^[A-Za-z_]\w*$/).optional(),
         continue_on_error: z.boolean().optional(),
       })).min(1).max(64),
@@ -604,6 +611,10 @@ export function register_agent_toolkit(context)
       {
         result = structured_error("tool_batch cannot nest itself", { code: "invalid_arguments" });
       }
+      else if (step.args && step.arguments)
+      {
+        result = structured_error("pass the step arguments as args or arguments, not both", { code: "invalid_arguments" });
+      }
       else if (!tool)
       {
         result = structured_error(`unknown tool ${step.tool}`, {
@@ -615,7 +626,7 @@ export function register_agent_toolkit(context)
       {
         try
         {
-          const args     = resolve_references(step.args ?? {}, outputs);
+          const args     = resolve_references(step.args ?? step.arguments ?? {}, outputs);
           const response = await tool.handler(args);
           result = response?.structuredContent ?? { ok: !response?.isError };
           for (const image of images_of(response))
@@ -668,7 +679,7 @@ export function register_agent_toolkit(context)
 
   register_local_tool("engine_wait", {
     title: "engine wait",
-    description: "Block until the engine reaches a state instead of polling by hand. until: 'ready' (bridge answers and no world is loading, default), 'world' (the given absolute world path finished loading), 'jobs_idle' (also no background jobs), 'frames' (at least frames more frames rendered, which proves rendering is not stalled by a minimized window). Returns the final engine_status.",
+    description: "Block until the engine reaches a state instead of polling by hand. until: 'ready' (bridge answers and no world is loading, default), 'world' (the given absolute world path finished loading), 'jobs_idle' (also no background jobs, shader compiles or pipeline compiles), 'frames' (at least frames more frames rendered, which proves rendering is not stalled by a minimized window). Returns the final engine_status.",
     inputSchema: {
       until: z.enum(["ready", "world", "jobs_idle", "frames"]).optional(),
       world: z.string().optional(),

@@ -2944,6 +2944,17 @@ namespace spartan
         return static_cast<uint32_t>(descriptors::pipelines.size());
     }
 
+    uint32_t RHI_Device::GetPipelineCompilingCount()
+    {
+        lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
+        uint32_t count = 0;
+        for (const auto& [hash, cached] : descriptors::pipelines)
+        {
+            count += cached.pipeline && !cached.pipeline->IsReady() ? 1 : 0;
+        }
+        return count;
+    }
+
     void* RHI_Device::GetPipelineCache()
     {
         return static_cast<void*>(descriptors::pipeline_cache);

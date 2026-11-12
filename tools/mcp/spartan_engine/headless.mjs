@@ -74,13 +74,18 @@ export async function find_free_port(host, first, count = 100)
   throw new Error(`no free port in ${first}-${first + count - 1}`);
 }
 
-export function spawn_engine(executable, binaries_directory, args)
+export function spawn_engine(executable, binaries_directory, args, { detached = false } = {})
 {
   const child = spawn(executable, args, {
     cwd: binaries_directory,
     stdio: "ignore",
     windowsHide: true,
+    detached,
   });
+  if (detached)
+  {
+    child.unref();
+  }
   child.exit_code = null;
   child.exited = new Promise((resolve) =>
   {
@@ -95,6 +100,53 @@ export function spawn_engine(executable, binaries_directory, args)
       resolve(null);
     });
   });
+  return child;
+}
+
+function process_alive(pid)
+{
+  try
+  {
+    process.kill(pid, 0);
+    return true;
+  }
+  catch (error)
+  {
+    return error.code === "EPERM";
+  }
+}
+
+// stands in for the ChildProcess of an instance a previous server process spawned, the exit code is not knowable
+export function adopt_engine_process(pid)
+{
+  const child = { pid, exitCode: null, spawn_error: null, adopted: true };
+  child.kill = () =>
+  {
+    try
+    {
+      process.kill(pid);
+    }
+    catch
+    {
+    }
+  };
+  child.exited = new Promise((resolve) =>
+  {
+    const timer = setInterval(() =>
+    {
+      if (!process_alive(pid))
+      {
+        clearInterval(timer);
+        child.exitCode = -1;
+        resolve(-1);
+      }
+    }, 1000);
+    timer.unref();
+  });
+  if (!process_alive(pid))
+  {
+    child.exitCode = -1;
+  }
   return child;
 }
 

@@ -1278,6 +1278,20 @@ namespace editor_mcp
                     return failure("missing action");
                 }
                 const string normalized = to_lower(*action);
+                Sequencer::TimelineRequest timeline;
+                string error;
+                if (!read_time(sequencer, request, "time", timeline.time, error))
+                {
+                    return failure(error);
+                }
+                if (timeline.time && normalized == "stop")
+                {
+                    return failure("stop always rewinds to 0, pass time with play or pause");
+                }
+                if (timeline.time)
+                {
+                    sequencer->SetTimeline(timeline);
+                }
                 if (normalized == "play")
                 {
                     sequencer->SetPlayback(Sequencer::Playback::Play);

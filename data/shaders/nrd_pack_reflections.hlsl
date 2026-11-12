@@ -35,7 +35,7 @@ float4 pack_radiance(uint2 source, uint2 pixel, uint2 resolution, float denoisin
 
     const float2 uv = (pixel + 0.5f) / float2(resolution);
     float view_z    = abs(get_position_view_space(uv).z);
-    if (get_depth(uv) <= 0.0f || view_z >= denoising_range)
+    if (get_depth(uv) <= 0.0f || view_z >= denoising_range || get_rt_reflection_cached(uv) >= 1.0f)
     {
         return 0.0f;
     }
@@ -71,7 +71,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
     float depth  = get_depth(uv);
     float view_z = abs(get_position_view_space(uv).z);
-    if (depth <= 0.0f || view_z >= denoising_range)
+    // a pixel past the roughness cut carries no traced signal, nrd skips it the way it skips the sky
+    if (depth <= 0.0f || view_z >= denoising_range || get_rt_reflection_cached(uv) >= 1.0f)
     {
         tex_uav[thread_id.xy]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
         tex_uav2[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);

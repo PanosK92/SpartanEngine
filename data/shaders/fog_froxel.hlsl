@@ -7,7 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ============
 #include "fog.hlsl"
-#include "sky/clouds.hlsl"
+#include "sky/cloud_shadow.hlsl"
 #include "fog_medium.hlsl"
 #include "light_cluster.hlsl"
 #include "sky/atmosphere.hlsl"
@@ -638,6 +638,11 @@ FogTransport integrate_camera_atmosphere(Surface surface, FogTransport local_end
     float2 uv = render_uv_to_screen_uv(surface.uv);
     float3 sun_direction = normalize(-light_parameters[0].direction);
     bool has_local_transport = any(local_end.transmittance < 1.0f) || any(local_end.scattering > 0.0f);
+    // the moon is 2e-6 of the sun, its in-scatter only shows once the sun reaches the horizon, and a
+    // sun 18 degrees under it leaves no twilight, so each light is integrated only while it counts
+    float moon_scale = night_moon_to_sun * buffer_frame.celestial_moon.w;
+    bool use_sun = sun_direction.y > -0.31f;
+    bool use_moon = moon_scale > 0.0f && sun_direction.y < 0.05f;
     float previous_distance = 0.0f;
     // Resolve the shortest atmospheric density scale. Short gameplay rays do
     // not need the same quadrature count as a multi-kilometre mountain vista.
@@ -657,11 +662,16 @@ FogTransport integrate_camera_atmosphere(Surface surface, FogTransport local_end
         if (!submerged && height >= 0.0f && height < atmosphere_radius - earth_radius)
         {
             extinction = get_extinction(height);
-            source = atmosphere_source(position, direction, sun_direction, tex, tex2,
-                GET_SAMPLER(sampler_bilinear_clamp)) * get_sun_radiance_toa();
-            source += atmosphere_source(position, direction, buffer_frame.celestial_moon.xyz, tex, tex2,
-                GET_SAMPLER(sampler_bilinear_clamp)) * get_sun_radiance_toa()
-                * (night_moon_to_sun * buffer_frame.celestial_moon.w);
+            if (use_sun)
+            {
+                source = atmosphere_source(position, direction, sun_direction, tex, tex2,
+                    GET_SAMPLER(sampler_bilinear_clamp)) * get_sun_radiance_toa();
+            }
+            if (use_moon)
+            {
+                source += atmosphere_source(position, direction, buffer_frame.celestial_moon.xyz, tex, tex2,
+                    GET_SAMPLER(sampler_bilinear_clamp)) * get_sun_radiance_toa() * moon_scale;
+            }
         }
         FogTransport local_next = local_end;
         if (has_local_transport && i + 1u != steps)

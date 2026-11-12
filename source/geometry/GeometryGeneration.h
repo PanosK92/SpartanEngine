@@ -62,7 +62,9 @@ namespace spartan::geometry_generation
         std::vector<RHI_Vertex_PosTexNorTan>* vertices,
         std::vector<uint32_t>* indices,
         const std::vector<math::Vector2>& profile,
-        uint32_t segments
+        uint32_t segments,
+        float start_radians = 0.0f,
+        float sweep_radians = 6.28318530718f
     );
     void generate_torus(
         std::vector<RHI_Vertex_PosTexNorTan>* vertices,

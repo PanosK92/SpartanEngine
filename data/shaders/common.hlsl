@@ -486,24 +486,27 @@ float ocean_foam_noise(float2 p)
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
 }
 
-// carve the crest mask into lacy whitewater, holes and a denser core
+// the open sea draws its foam out along the wind
+float2 ocean_foam_axis()
+{
+    float2 wind = buffer_frame.wind.xz;
+    float speed = length(wind);
+    return speed > 1e-3f ? wind / speed : float2(1.0f, 0.0f);
+}
+
+// carve the coverage into the same bubble raft the surf wears, a dense core that thins into lace and strands
 float shape_ocean_foam(float coverage, float2 grid_xz, float footprint)
 {
-    coverage = saturate(coverage);
-    if (coverage <= 0.0f)
-    {
-        return 0.0f;
-    }
+    return ocean_foam_raft(saturate(coverage), grid_xz, ocean_foam_axis(), footprint);
+}
 
-    // Fade unresolved noise to its mean instead of shimmering at the shoreline.
-    float3 frequencies = float3(1.5f, 5.0f, 14.0f);
-    float3 detail = 1.0f - smoothstep(0.2f, 0.6f, footprint * frequencies);
-    float n = dot(float3(
-        lerp(0.5f, ocean_foam_noise(grid_xz * frequencies.x), detail.x),
-        lerp(0.5f, ocean_foam_noise(grid_xz * frequencies.y), detail.y),
-        lerp(0.5f, ocean_foam_noise(grid_xz * frequencies.z), detail.z)), float3(0.5f, 0.3f, 0.2f));
-    float lace = smoothstep(0.25f, 0.7f, n + coverage * 0.3f);
-    return coverage * lerp(1.0f, lace, detail.x);
+// the fft keeps how recently the water broke, a fresh break is a thick cap, the film it leaves behind has
+// thinned to nothing long before the last of that memory has decayed
+float ocean_whitecap_coverage(float foam, float2 world_xz)
+{
+    float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(world_xz), 0.0f));
+    foam               = saturate(foam);
+    return foam * sqrt(foam) * coastal_fade;
 }
 
 float ocean_foam_footprint(float view_distance)
@@ -523,7 +526,8 @@ float ocean_foam_footprint(float view_distance, float3 water_position)
 
 // Residual whitewater survives in troughs; only production depends on compression.
 // The beach whitewater comes from the breaking surf and its swash, not from a band around the waterline.
-float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity, out OceanShore shore)
+// churn is the unshaped coverage, where the water was broken up whether or not the lace left foam on this pixel
+float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity, out OceanShore shore, out float churn)
 {
     float foam   = 0.0f;
     float depth = get_ocean_water_depth(grid_xz);
@@ -541,11 +545,13 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
     float footprint = ocean_foam_footprint(view_distance, water_position);
     // Offshore crest foam hands over to the wash as waves run onto the beach.
     // Keeping both masks here produces a second white band behind the lip.
-    float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
-    float shaped = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
+    float whitecap = ocean_whitecap_coverage(foam, water_position.xz);
+    float shaped = shape_ocean_foam(whitecap, grid_xz, footprint);
     // whitewater a hull churns up trails behind it until it fades where it was made
-    float wake   = shape_ocean_foam(sample_ocean_wake(water_position.xz).y, water_position.xz, footprint);
+    float wake_coverage = sample_ocean_wake(water_position.xz).y;
+    float wake   = shape_ocean_foam(wake_coverage, water_position.xz, footprint);
     shore = ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f));
+    churn = saturate(max(max(whitecap, wake_coverage), shore.foam));
     return saturate(max(max(shaped, wake), ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
 
@@ -606,8 +612,7 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
     slope += sample_ocean_wake_slope(water_position.xz) * (1.0f - smoothstep(1.0f, 4.0f, pixel_footprint));
     normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
-    float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
-    foam = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
+    foam = shape_ocean_foam(ocean_whitecap_coverage(foam, water_position.xz), grid_xz, footprint);
     foam = max(foam, shape_ocean_foam(sample_ocean_wake(water_position.xz).y, water_position.xz, footprint));
     foam = saturate(max(foam, ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
@@ -1451,15 +1456,50 @@ uint2 reflections_checkerboard_pixel(uint2 packed)
 }
 
 // roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
-float get_rt_reflection_roughness(float2 uv, out float coat)
+float get_rt_reflection_roughness(float2 uv, out float coat, out float metallic)
 {
     uint2  texel            = gbuffer_texel(uv);
     uint   material_packed  = tex_material[texel];
     float4 sample_material  = gbuffer_unpack_material(material_packed);
     uint   material_index   = gbuffer_unpack_material_index(tex_normal[texel], material_packed);
     MaterialParameters mat  = material_parameters[material_index];
-    coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - gbuffer_decal_coverage(sample_material.b, mat)), sample_material.g);
+    metallic                = sample_material.g;
+    coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - gbuffer_decal_coverage(sample_material.b, mat)), metallic);
     return lerp(sample_material.r, mat.clearcoat_roughness, coat);
+}
+
+float get_rt_reflection_roughness(float2 uv, out float coat)
+{
+    float metallic;
+    return get_rt_reflection_roughness(uv, coat, metallic);
+}
+
+// a rough dielectric lobe returns a few percent of its surroundings spread over a wide cone, by day the sky ambient every
+// surface receives buries that, so past the cut such a pixel fires no ray, skips the denoiser and takes the light from the
+// radiance cache cell it stands in, the band below the cut still traces and fades from one to the other so no seam shows,
+// by night that same lobe is the only light a dark surface gets from the lit things around it, the glow of a sign on
+// asphalt, so the cut follows the sun and is gone once it sets, a metal is all reflection and keeps its ray at any
+// roughness, so does anything seen through, returns how much of the reflection the cell provides, 1 is not traced,
+// trace, shade, denoise and apply must agree
+static const float rt_reflection_cut_start = 0.65f;
+static const float rt_reflection_cut_band  = 0.1f;
+float get_rt_reflection_cached(float2 uv)
+{
+    // the directional light colour is the sun as the atmosphere lets it through, black below the horizon
+    LightParameters sun = light_parameters[0];
+    float3 sun_color    = (sun.flags & 1u) != 0u ? sun.color.rgb : 0.0f;
+    float daylight      = saturate(max(max(sun_color.r, sun_color.g), sun_color.b) * saturate(-sun.direction.y) * 4.0f);
+    if (daylight <= 0.0f)
+        return 0.0f;
+
+    float coat;
+    float metallic;
+    float roughness = get_rt_reflection_roughness(uv, coat, metallic);
+    if (tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a < 1.0f)
+        return 0.0f;
+
+    float cut_start = lerp(1.0f, rt_reflection_cut_start, daylight);
+    return smoothstep(cut_start, cut_start + rt_reflection_cut_band, roughness) * (1.0f - smoothstep(0.1f, 0.5f, metallic));
 }
 
 // ggx visible normal distribution sampler, heitz 2018, ve is the view direction expressed in

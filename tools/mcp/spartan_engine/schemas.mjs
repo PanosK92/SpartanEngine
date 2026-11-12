@@ -67,14 +67,15 @@ export const output_schemas = {
     tool: any_object.optional(),
     resource: any_object.optional(),
   }),
-  agent_memory: with_error_fields({
+  advice_to_maintainers: with_error_fields({
     path: z.string().optional(),
-    memory: z.string().optional(),
+    advice: z.string().optional(),
+    kind: z.string().optional(),
     section: z.string().optional(),
+    item: z.string().optional(),
     duplicate: z.boolean().optional(),
-    chars: z.number().optional(),
-    limit: z.number().optional(),
-    dropped: z.array(z.string()).optional(),
+    resolved: z.string().optional(),
+    items: z.number().optional(),
   }),
   debug_log: with_error_fields({
     path: z.string().optional(),

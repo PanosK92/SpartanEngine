@@ -1539,9 +1539,20 @@ namespace spartan
         return false;
     }
 
+    bool Car::HasCockpit() const
+    {
+        return m_definition && m_definition->has_cockpit_eye;
+    }
+
     void Car::CycleView()
     {
-        m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 3);
+        const int view_count = static_cast<int>(CarView::Wheel) + 1;
+        m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % view_count);
+        // a body without a modelled cabin has nothing to sit in
+        if (m_current_view == CarView::Interior && !HasCockpit())
+        {
+            m_current_view = CarView::Wheel;
+        }
         if (IsViewed())
         {
             ConfigureCameraForView();
@@ -1612,11 +1623,18 @@ namespace spartan
         else if (m_current_view == CarView::Hood)
         {
             camera->SetParent(m_body_entity);
-            // the driver's eye when the car has a cabin, otherwise above the hood
             math::Quaternion camera_correction = m_body_entity->GetRotationLocal().Inverse();
-            const bool cockpit = m_definition && m_definition->has_cockpit_eye;
-            camera->SetPositionLocal(cockpit ? to_vector(m_definition->cockpit_eye) : math::Vector3(0.0f, 0.8f, -1.0f));
+            camera->SetPositionLocal(math::Vector3(0.0f, 0.8f, -1.0f));
             camera->SetRotationLocal(camera_correction);
+        }
+        else if (m_current_view == CarView::Interior)
+        {
+            camera->SetParent(m_body_entity);
+            // without a modelled cabin the eye falls back to roughly where a driver's head sits
+            camera->SetPositionLocal(HasCockpit() ? to_vector(m_definition->cockpit_eye) : math::Vector3(0.35f, 0.5f, 0.2f));
+            m_interior_look_yaw   = 0.0f;
+            m_interior_look_pitch = 0.0f;
+            TickInteriorCamera();
         }
         else
         {
@@ -2975,6 +2993,7 @@ namespace spartan
         TickInput();
         TickSounds();
         TickChaseCamera();
+        TickInteriorCamera();
         TickEnterExit();
         TickViewSwitch();
         TickSummon();
@@ -3060,8 +3079,9 @@ namespace spartan
             CarPhysics::Get(*physics).SetVehicleHandbrake(handbrake);
         }
 
-        // camera orbit (mouse right_click drag and or gamepad right thumb stick)
-        if (m_current_view == CarView::Chase)
+        // camera orbit (mouse right_click drag and or gamepad right thumb stick), the interior view turns the driver's head instead
+        const bool interior = m_current_view == CarView::Interior;
+        if (m_current_view == CarView::Chase || interior)
         {
             // mouse right_click drag
             {
@@ -3091,8 +3111,16 @@ namespace spartan
                 if (m_orbit_mouse_active)
                 {
                     math::Vector2 mouse_delta = Input::GetMouseDelta();
-                    AddCameraOrbitYaw(mouse_delta.x * mouse_orbit_sensitivity_yaw);
-                    AddCameraOrbitPitch(mouse_delta.y * mouse_orbit_sensitivity_pitch);
+                    if (interior)
+                    {
+                        m_interior_look_yaw   += mouse_delta.x * mouse_orbit_sensitivity_yaw;
+                        m_interior_look_pitch += mouse_delta.y * mouse_orbit_sensitivity_yaw;
+                    }
+                    else
+                    {
+                        AddCameraOrbitYaw(mouse_delta.x * mouse_orbit_sensitivity_yaw);
+                        AddCameraOrbitPitch(mouse_delta.y * mouse_orbit_sensitivity_pitch);
+                    }
                 }
             }
 
@@ -3103,20 +3131,39 @@ namespace spartan
 
                 if (fabsf(right_stick.x) > 0.3f)
                 {
-                    AddCameraOrbitYaw(right_stick.x * orbit_bias_speed * dt);
+                    if (interior)
+                    {
+                        m_interior_look_yaw += right_stick.x * orbit_bias_speed * dt;
+                    }
+                    else
+                    {
+                        AddCameraOrbitYaw(right_stick.x * orbit_bias_speed * dt);
+                    }
                 }
 
                 if (fabsf(right_stick.y) > 0.3f)
                 {
-                    AddCameraOrbitPitch(right_stick.y * orbit_bias_speed * dt);
+                    if (interior)
+                    {
+                        m_interior_look_pitch += right_stick.y * orbit_bias_speed * dt;
+                    }
+                    else
+                    {
+                        AddCameraOrbitPitch(right_stick.y * orbit_bias_speed * dt);
+                    }
                 }
             }
+
+            m_interior_look_yaw   = std::clamp(m_interior_look_yaw, -interior_look_yaw_max, interior_look_yaw_max);
+            m_interior_look_pitch = std::clamp(m_interior_look_pitch, -interior_look_pitch_up_max, interior_look_pitch_down_max);
 
             // manual recenter, keyboard c or right stick click
             if (Input::GetKeyDown(KeyCode::C) || Input::GetKeyDown(KeyCode::Right_Stick))
             {
                 m_chase_camera.yaw_bias   = 0.0f;
                 m_chase_camera.pitch_bias = 0.0f;
+                m_interior_look_yaw       = 0.0f;
+                m_interior_look_pitch     = 0.0f;
             }
         }
 
@@ -3375,11 +3422,9 @@ namespace spartan
             engine_sound::listener_view view = engine_sound::listener_view::chase;
             if (m_current_view == CarView::Hood)
             {
-                // a modelled cabin puts the hood view at the driver's ears
-                const bool cockpit = m_definition && m_definition->has_cockpit_eye;
-                view = cockpit ? engine_sound::listener_view::cabin : engine_sound::listener_view::hood;
+                view = engine_sound::listener_view::hood;
             }
-            else if (m_current_view == CarView::Wheel)
+            else if (m_current_view == CarView::Interior || m_current_view == CarView::Wheel)
             {
                 view = engine_sound::listener_view::cabin;
             }
@@ -3579,6 +3624,26 @@ namespace spartan
             camera_component->SetFovHorizontalDeg(m_chase_camera.fov_deg);
         const math::Vector3 look_direction = (m_chase_camera.look_at - m_chase_camera.position).Normalized();
         camera->SetRotation(math::Quaternion::FromLookRotation(look_direction, math::Vector3::Up));
+    }
+
+    void Car::TickInteriorCamera()
+    {
+        if (!IsViewed() || m_current_view != CarView::Interior || !m_body_entity)
+        {
+            return;
+        }
+
+        Entity* camera = FindCameraEntity();
+        if (!camera || camera->GetParent() != m_body_entity)
+        {
+            return;
+        }
+
+        // the body is yawed and scaled into the vehicle frame, undo its rotation so the head turns about the car's own axes
+        const math::Quaternion body_correction = m_body_entity->GetRotationLocal().Inverse();
+        const math::Quaternion yaw             = math::Quaternion::FromAxisAngle(math::Vector3::Up, m_interior_look_yaw);
+        const math::Quaternion pitch           = math::Quaternion::FromAxisAngle(math::Vector3::Right, m_interior_look_pitch);
+        camera->SetRotationLocal((body_correction * yaw * pitch).Normalized());
     }
 
     void Car::TickEnterExit()

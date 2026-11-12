@@ -94,12 +94,15 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_frame);
 
+                // the sky lights the ocean foam on every gpu, ray traced misses and hit shading read it too
+                RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
+                m_pcb_pass_cpu.set(pass_reflections_apply::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));
+
                 // glass traces its refraction with the same hit shading the reflections use
                 bool ray_traced_refraction = false;
                 if (RHI_Device::IsSupportedRayTracing())
                 {
-                    RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
                     RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
                     RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
                     RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
@@ -109,7 +112,6 @@ namespace spartan
                         RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
                         ray_traced_refraction = use_ray_traced && !m_pass_state.skip_rt_trace;
                     }
-                    m_pcb_pass_cpu.set(pass_reflections_apply::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));
                 }
                 m_pcb_pass_cpu.set(pass_reflections_apply::ray_traced_refraction, ray_traced_refraction);
                 m_pcb_pass_cpu.set(pass_reflections_apply::light_count, m_count_active_lights);

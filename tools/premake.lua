@@ -25,6 +25,18 @@ newaction {
 }
 
 newoption { trigger = "skip-setup", description = "Generate projects using already staged dependencies" }
+newoption { trigger = "build-tag", value = "NAME", description = "Private build for one agent or experiment: project files and objects under binaries/build/NAME and an executable named spartan_<api>_NAME, so a running instance's exe and the shared .lib, .exp and .pdb stay untouched" }
+
+-- generated project files live here, the repository root unless a build tag asks for a private folder
+PROJECT_DIR = ".."
+BUILD_TAG   = _OPTIONS["build-tag"]
+if BUILD_TAG then
+    if not BUILD_TAG:match("^[%w_]+$") then
+        error("build-tag may only contain letters, digits and underscores")
+    end
+    PROJECT_DIR = "../binaries/build/" .. BUILD_TAG
+    OBJ_DIR     = PROJECT_DIR .. "/obj"
+end
 
 local generation_actions = { vs2026 = true, vs2022 = true, gmake2 = true, gmake = true, codelite = true, xcode4 = true }
 if generation_actions[_ACTION] and not _OPTIONS["skip-setup"] then
@@ -105,7 +117,7 @@ end
 
 function solution_configuration()
     solution(SOLUTION_NAME)
-        location ".."
+        location(PROJECT_DIR)
         language "C++"
         -- development first so visual studio selects it by default
         configurations { "development", "debug", "release" }
@@ -182,7 +194,7 @@ end
 function spartan_project_configuration()
     local executable = EXECUTABLE_NAME
     project(SOLUTION_NAME)
-        location "../"
+        location(PROJECT_DIR)
         objdir(OBJ_DIR .. "/editor/" .. ARG_API_GRAPHICS)
         cppdialect(CPP_VERSION)
         kind "WindowedApp"
@@ -375,14 +387,16 @@ function spartan_project_configuration()
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
 
+        local tag = BUILD_TAG and ("_" .. BUILD_TAG) or ""
+
         filter { "configurations:release" }
-            targetname(executable)
+            targetname(executable .. (BUILD_TAG and (tag .. "_release") or ""))
 
         filter { "configurations:development" }
-            targetname(executable .. "_development")
+            targetname(executable .. (BUILD_TAG and tag or "_development"))
 
         filter { "configurations:debug" }
-            targetname(executable .. "_debug")
+            targetname(executable .. tag .. "_debug")
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
 

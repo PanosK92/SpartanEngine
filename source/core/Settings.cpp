@@ -57,6 +57,8 @@ namespace spartan
     {
         bool m_has_loaded_user_settings = false;
         string file_path                = "settings/spartan.xml";
+        mutex session_mutex;
+        unordered_map<string, string> session_values; // cvar name to the value spartan.xml keeps
 
         void resolve_file_path()
         {
@@ -348,7 +350,14 @@ namespace spartan
                         append_comment(root, comment);
 
                         const bool dynamic_scale = name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>();
-                        const string value       = dynamic_scale ? "1" : cvar_value_to_string(*cvar.m_value_ptr);
+                        string value             = dynamic_scale ? "1" : cvar_value_to_string(*cvar.m_value_ptr);
+                        {
+                            lock_guard<mutex> lock(session_mutex);
+                            if (auto it = session_values.find(string(name)); it != session_values.end())
+                            {
+                                value = it->second;
+                            }
+                        }
                         root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text().set(value.c_str());
                     }
                 }
@@ -497,5 +506,29 @@ namespace spartan
     bool Settings::HasLoadedUserSettingsFromFile()
     {
         return m_has_loaded_user_settings;
+    }
+
+    void Settings::MarkSessionOnly(const string& name)
+    {
+        ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name);
+        if (!cvar)
+        {
+            return;
+        }
+
+        lock_guard<mutex> lock(session_mutex);
+        session_values.try_emplace(name, cvar_value_to_string(*cvar->m_value_ptr));
+    }
+
+    void Settings::ClearSessionOnly(const string& name)
+    {
+        lock_guard<mutex> lock(session_mutex);
+        session_values.erase(name);
+    }
+
+    bool Settings::IsSessionOnly(const string& name)
+    {
+        lock_guard<mutex> lock(session_mutex);
+        return session_values.contains(name);
     }
 }

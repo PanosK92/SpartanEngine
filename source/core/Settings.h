@@ -34,5 +34,11 @@ namespace spartan
         static void Initialize();
         static void Shutdown();
         static bool HasLoadedUserSettingsFromFile();
+
+        // call before changing a cvar for this session only, spartan.xml keeps the value it had before the first such change
+        static void MarkSessionOnly(const std::string& name);
+        // a deliberate persistent change, the current value is saved again
+        static void ClearSessionOnly(const std::string& name);
+        static bool IsSessionOnly(const std::string& name);
     };
 }

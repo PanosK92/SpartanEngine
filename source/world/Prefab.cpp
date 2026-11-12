@@ -137,6 +137,8 @@ namespace spartan
 
         // save children as child entity nodes, a child that is no longer in the
         // world would be a freed pointer so it is compared by address, not by id
+        // children created this frame are still pending and would read as stale
+        World::ProcessPendingAdditions();
         const vector<Entity*>& live_entities = World::GetEntities();
         for (Entity* child : entity->GetChildren())
         {

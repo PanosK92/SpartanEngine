@@ -222,7 +222,7 @@ struct FrameBufferData
     // World-space rigid rotation records, shared by both eyes. IDs match velocity.z.
     SHARED_FLOAT4 radial_blur_hubs[64];          // xyz = current pivot, w = unwrapped radians/frame
     SHARED_FLOAT4 radial_blur_axes[64];          // xyz = world rotation axis, w = object mask ID
-    SHARED_FLOAT4 radial_blur_extents[64];       // x = outer radius, y = half width (world units), w = 1 when measured
+    SHARED_FLOAT4 radial_blur_extents[64];       // x = outer radius (negative for a tire), y = half width, zw = screen uv travel of the pivot, previous minus current
     SHARED_FLOAT4 radial_blur_bounds;            // uv rectangle around every wheel on screen, xy = min, zw = max, empty when none spin
     SHARED_FLOAT  radial_blur_hub_count;
     // UTC fraction of the calendar day; the star catalogue uses the ephemeris transform below.

@@ -1354,11 +1354,22 @@ namespace spartan::mcp_mesh
                         "revolved profile requires a positive radius"
                     );
                 }
+                float start_degrees = 0.0f;
+                float sweep_degrees = 360.0f;
+                const std::optional<std::string> start_arg = get_argument(request, "start_degrees");
+                const std::optional<std::string> sweep_arg = get_argument(request, "sweep_degrees");
+                if ((start_arg && !parse_float(*start_arg, start_degrees)) || (sweep_arg && !parse_float(*sweep_arg, sweep_degrees)) ||
+                    !std::isfinite(start_degrees) || !std::isfinite(sweep_degrees) || sweep_degrees <= 0.0f || sweep_degrees > 360.0f || std::abs(start_degrees) > 3600.0f)
+                {
+                    return json_error("revolved profile requires sweep_degrees in (0, 360] and start_degrees in [-3600, 3600]");
+                }
                 geometry_generation::generate_revolved_profile(
                     &vertices,
                     &indices,
                     profile,
-                    segments
+                    segments,
+                    start_degrees * math::deg_to_rad,
+                    sweep_degrees * math::deg_to_rad
                 );
             }
 

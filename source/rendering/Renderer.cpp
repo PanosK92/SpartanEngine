@@ -2616,172 +2616,261 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        // An object known only by its poses: two poses give its turn modulo a full revolution, so the angular
+        // speed carried over from the previous frame decides how many whole revolutions went by in between.
+        struct PoseSpin
+        {
+            Vector3 axis          = Vector3::Zero;
+            float angular_speed   = 0.0f; // rad/s about axis, signed
+            uint64_t frame        = 0;
+            uint32_t quiet_frames = 0;
+            bool spinning         = false;
+        };
+
+        constexpr float spin_start_angle     = 0.1f;   // rad per frame, slower turns are drawn well by the linear blur
+        constexpr float spin_stop_angle      = 0.025f; // a spinning object keeps spinning down to this, so it cannot flicker
+        constexpr float spin_quiet_angle     = 0.02f;
+        constexpr uint32_t spin_quiet_frames = 4;      // this many nearly still frames and the carried revolutions are dropped
+
+        // the shortest rotation from previous to current, as an angle about a unit axis
+        bool rotation_between(const Matrix& previous, const Matrix& current, Vector3& axis, float& angle)
+        {
+            const Quaternion delta = current.GetRotation() * previous.GetRotation().Inverse();
+            if (!delta.IsFinite())
+                return false;
+
+            axis = Vector3(delta.x, delta.y, delta.z) * (delta.w < 0.0f ? -1.0f : 1.0f);
+            const float sin_half = axis.Length();
+            if (sin_half < 1e-6f)
+                return false;
+
+            axis  = axis / sin_half;
+            angle = 2.0f * atan2f(sin_half, fabsf(delta.w));
+            return true;
+        }
+    }
+
     void Renderer::UpdateFrameCb_RadialBlurHubs()
     {
-        // every spinning wheel in the world is gathered first, traffic alone spins far more than the buffer holds
-        struct HubRecord
+        // Nothing is tagged: every visible object whose pose turned between the last two frames is a candidate,
+        // its motion split into a spin about a pivot and the travel of that pivot.
+        struct SpinRecord
         {
-            Vector4 hub;
-            Vector4 axis;
-            Vector4 extents;
-            Vector4 bounds;        // uv rectangle the wheel can touch, xy = min, zw = max
-            float coverage = 0.0f; // projected size, the largest wheels on screen keep their records
+            Vector3 pivot;
+            Vector3 pivot_previous;
+            Vector3 axis;
+            float angle      = 0.0f; // radians this frame, whole revolutions included
+            float radius     = 0.0f;
+            float half_width = 0.0f;
+            bool tire        = false;
+            uint32_t id      = 0;    // the motion id its pixels carry
+            Vector4 bounds   = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
+            float coverage   = numeric_limits<float>::max();
         };
-        static vector<HubRecord> records;
+        static vector<SpinRecord> records;
+        static unordered_map<uint64_t, PoseSpin> pose_spins;
+        static uint64_t frame = 0;
         records.clear();
-        unordered_map<uint32_t, uint32_t> written_masks;
+        frame++;
+        unordered_map<uint32_t, uint32_t> record_of_id;
+        const float dt = Renderer::view().frame.delta_time;
 
-        // Grows the analytic wheel cylinder (radius, half width) that the shader uses to blur
-        // the gaps between spokes. Face centres of a disc's mesh box lie on its rim and its axis,
-        // so they measure the disc under any spin, unlike the corners or a world-space box.
-        auto expand_extents = [](Render* render, HubRecord& record)
+        // The cylinder a part sweeps. The face centers of its mesh box lie on its rim and on its axis
+        // whatever the spin, unlike the corners or a world box.
+        auto grow_cylinder = [](Render* render, SpinRecord& record)
         {
             const BoundingBox& box = render->GetBoundingBoxMesh();
             if (box.IsInfinite())
                 return;
+
             const Matrix& transform = render->GetEntity()->GetMatrix();
-            const Vector3 box_center = box.GetCenter();
-            const Vector3 box_extents = box.GetExtents();
-            const Vector3 pivot = Vector3(record.hub.x, record.hub.y, record.hub.z);
-            const Vector3 axis = Vector3(record.axis.x, record.axis.y, record.axis.z);
-            Vector4& extents = record.extents;
+            const Vector3 center    = box.GetCenter();
+            const Vector3 extents   = box.GetExtents();
             for (uint32_t face = 0; face < 6; face++)
             {
-                Vector3 offset = Vector3::Zero;
-                const float sign = (face & 1) ? -1.0f : 1.0f;
-                if (face < 2)
-                    offset.x = box_extents.x * sign;
-                else if (face < 4)
-                    offset.y = box_extents.y * sign;
-                else
-                    offset.z = box_extents.z * sign;
-                const Vector3 d = transform * (box_center + offset) - pivot;
-                const float axial = d.Dot(axis);
-                extents.x = max(extents.x, (d - axis * axial).Length());
-                extents.y = max(extents.y, fabsf(axial));
+                const uint32_t axis    = face / 2;
+                const float sign       = (face & 1) ? -1.0f : 1.0f;
+                const Vector3 offset   = Vector3(axis == 0 ? extents.x * sign : 0.0f, axis == 1 ? extents.y * sign : 0.0f, axis == 2 ? extents.z * sign : 0.0f);
+                const Vector3 to_face  = transform * (center + offset) - record.pivot;
+                const float along      = to_face.Dot(record.axis);
+                record.radius          = max(record.radius, (to_face - record.axis * along).Length());
+                record.half_width      = max(record.half_width, fabsf(along));
             }
+        };
+
+        // the spin of an untagged object this frame, false while it turns too slowly to need it
+        auto spin_from_poses = [&](uint64_t id, const Matrix& previous, const Matrix& current, Vector3& axis, float& angle)
+        {
+            PoseSpin& spin        = pose_spins[id];
+            const bool continuous = spin.frame + 1 == frame;
+            if (!continuous)
+            {
+                spin = PoseSpin();
+            }
+            spin.frame = frame;
+
+            if (!rotation_between(previous, current, axis, angle))
+            {
+                axis  = spin.axis;
+                angle = 0.0f;
+            }
+            // the same turn read about the opposite axis
+            if (continuous && axis.Dot(spin.axis) < 0.0f)
+            {
+                axis  = -axis;
+                angle = -angle;
+            }
+
+            spin.quiet_frames = fabsf(angle) < spin_quiet_angle ? spin.quiet_frames + 1 : 0;
+            if (dt > 0.0f)
+            {
+                if (continuous && spin.quiet_frames < spin_quiet_frames)
+                {
+                    angle += math::pi_2 * roundf((spin.angular_speed * dt - angle) / math::pi_2);
+                }
+                spin.angular_speed = angle / dt;
+            }
+            spin.axis     = axis;
+            spin.spinning = fabsf(angle) >= (spin.spinning ? spin_stop_angle : spin_start_angle);
+
+            if (angle < 0.0f)
+            {
+                axis  = -axis;
+                angle = -angle;
+            }
+            return spin.spinning && axis.LengthSquared() > 0.5f;
         };
 
         for (Entity* entity : render_entities())
         {
             Render* render = entity->GetComponent<Render>();
-            if (!render || !render->IsVisible())
+            if (!render || !render->IsVisible() || !render->GetMotionBlurId() || !render->GetMaterial() || render->HasInstancing())
                 continue;
 
-            Material* material = render->GetMaterial();
-            if (!render->GetMotionBlurId() || !material ||
-                (!render->GetMotionBlurGroup() && material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f))
-                continue;
-
-            if (auto written = written_masks.find(render->GetMotionBlurId()); written != written_masks.end())
+            // the parts of a wheel share one id and one record, each widens the cylinder
+            const uint32_t id = render->GetMotionBlurId();
+            if (auto known = record_of_id.find(id); known != record_of_id.end())
             {
-                expand_extents(render, records[written->second]);
+                grow_cylinder(render, records[known->second]);
                 continue;
             }
 
-            Entity* motion_entity = render->GetMotionBlurGroup() ? World::GetEntityById(render->GetMotionBlurGroup()) : entity;
-            if (!motion_entity)
-                continue;
-            const Matrix& current = motion_entity->GetMatrix();
-            const Matrix& previous = motion_entity->GetMatrixPrevious();
-            if (!current.IsFinite() || !previous.IsFinite())
+            Entity* body = render->GetMotionBlurGroup() ? World::GetEntityById(render->GetMotionBlurGroup()) : entity;
+            if (!body)
                 continue;
 
-            Vector3 axis;
-            float angle;
+            const Matrix& current  = body->GetMatrix();
+            const Matrix& previous = body->GetMatrixPrevious();
+            if (!Engine::IsPlayingUnpaused() || current == previous || !current.IsFinite() || !previous.IsFinite())
+                continue;
+
+            SpinRecord record;
+            Vector3 pivot_local;
             if (render->HasMotionBlurAngularVelocity())
             {
-                axis = render->GetMotionBlurAngularVelocity();
-                if (!axis.IsFinite())
+                // physics wheels know their spin, there are no revolutions to infer
+                const Vector3 angular_velocity = render->GetMotionBlurAngularVelocity();
+                const float speed              = angular_velocity.Length();
+                record.angle                   = speed * dt;
+                if (!angular_velocity.IsFinite() || record.angle < 0.0001f)
                     continue;
-                angle = axis.Length() * Renderer::view().frame.delta_time;
+
+                record.axis = angular_velocity / speed;
+                record.tire = true;
+                pivot_local = render->GetMotionBlurPivotLocal();
             }
             else
             {
-                // Generic animated meshes have only pose history; physics wheels supply actual spin.
-                Quaternion delta = current.GetRotation() * previous.GetRotation().Inverse();
-                angle = 2.0f * acosf(min(fabs(delta.w), 1.0f));
-                axis = Vector3(delta.x, delta.y, delta.z) * (delta.w < 0.0f ? -1.0f : 1.0f);
-            }
-            if (!Engine::IsPlayingUnpaused() || angle < 0.0001f || axis.LengthSquared() < 1e-12f)
-                continue;
-            axis.Normalize();
+                if (!spin_from_poses(body->GetObjectId(), previous, current, record.axis, record.angle))
+                    continue;
 
-            // Transform the same local pivot in both frames; world AABB centers drift during rotation.
-            const Vector3 local_center = render->HasMotionBlurAngularVelocity() ? render->GetMotionBlurPivotLocal() : render->GetBoundingBoxMesh().GetCenter();
-            const Vector3 center = current * local_center;
-            HubRecord& record = records.emplace_back();
-            record.hub        = Vector4(center.x, center.y, center.z, angle);
-            record.axis       = Vector4(axis.x, axis.y, axis.z, static_cast<float>(render->GetMotionBlurId()));
-            record.extents    = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-            expand_extents(render, record);
-            written_masks[render->GetMotionBlurId()] = static_cast<uint32_t>(records.size() - 1);
+                // an entity turns about its own origin, so the pivot is the point of that axis nearest the mesh center
+                const Vector3 axis_local = current.GetRotation().Inverse() * record.axis;
+                pivot_local              = axis_local * render->GetBoundingBoxMesh().GetCenter().Dot(axis_local);
+            }
+
+            // one local point seen in both poses: the turn about it is the spin, its displacement the travel
+            record.pivot          = current * pivot_local;
+            record.pivot_previous = previous * pivot_local;
+            record.id             = id;
+            grow_cylinder(render, record);
+            record_of_id[id] = static_cast<uint32_t>(records.size());
+            records.push_back(record);
         }
 
-        // a wheel outside the frame has no pixel to blur, yet every record costs each pixel a test in the motion blur pass
-        // so only wheels that can touch the frame keep a record, and the rectangle around them spares the rest of the screen
-        Camera* camera      = Renderer::GetViewCamera();
-        const Matrix& view_projection = Renderer::view().frame.view_projection_unjittered;
-        const float scale_x = camera ? fabsf(camera->GetProjectionMatrix().m00) : 1.0f;
-        const float scale_y = camera ? fabsf(camera->GetProjectionMatrix().m11) : 1.0f;
-        const float near_z  = Renderer::view().frame.camera_near;
-        // the jittered reprojection and the bilinear footprints reach a few pixels past the projected wheel
+        if ((frame & 255) == 0)
+        {
+            erase_if(pose_spins, [](const auto& entry) { return frame - entry.second.frame > 256; });
+        }
+
+        // every record costs each pixel near it a test, so only parts that reach into the frame keep one
+        Camera* camera                         = Renderer::GetViewCamera();
+        const Matrix& view_projection          = Renderer::view().frame.view_projection_unjittered;
+        const Matrix& view_projection_previous = Renderer::view().frame.view_projection_previous_unjittered;
+        const float scale_x                    = camera ? fabsf(camera->GetProjectionMatrix().m00) : 1.0f;
+        const float scale_y                    = camera ? fabsf(camera->GetProjectionMatrix().m11) : 1.0f;
+        const float near_z                     = Renderer::view().frame.camera_near;
+        // the jittered reprojection and the bilinear footprints reach a few pixels past the projected part
         const float margin_x = 8.0f / max(Renderer::view().frame.resolution_render.x, 1.0f);
         const float margin_y = 8.0f / max(Renderer::view().frame.resolution_render.y, 1.0f);
-        size_t kept = 0;
-        for (size_t i = 0; i < records.size(); i++)
+        erase_if(records, [&](SpinRecord& record)
         {
-            HubRecord& record  = records[i];
-            const float radius = record.extents.x + record.extents.y;
-            const Vector4 clip = Vector4(record.hub.x, record.hub.y, record.hub.z, 1.0f) * view_projection;
+            const float reach_world = record.radius + record.half_width;
+            const Vector4 clip      = Vector4(record.pivot.x, record.pivot.y, record.pivot.z, 1.0f) * view_projection;
+            if (!camera || reach_world <= 0.0f)
+                return false;
 
-            // an unmeasured wheel, or one the camera is next to, can be anywhere on screen
-            record.bounds   = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
-            record.coverage = numeric_limits<float>::max();
-            if (camera && radius > 0.0f && clip.w - radius > near_z)
-            {
-                // a point within radius of the center moves its projection by at most radius * (scale + |ndc|) / (depth - radius)
-                const float ndc_x    = clip.x / clip.w;
-                const float ndc_y    = clip.y / clip.w;
-                const float reach    = radius / (clip.w - radius);
-                const float extent_x = reach * (scale_x + fabsf(ndc_x)) * 0.5f + margin_x;
-                const float extent_y = reach * (scale_y + fabsf(ndc_y)) * 0.5f + margin_y;
-                const float uv_x     = ndc_x * 0.5f + 0.5f;
-                const float uv_y     = ndc_y * -0.5f + 0.5f;
-                record.bounds        = Vector4(uv_x - extent_x, uv_y - extent_y, uv_x + extent_x, uv_y + extent_y);
-                record.coverage      = reach;
-                if (record.bounds.x > 1.0f || record.bounds.y > 1.0f || record.bounds.z < 0.0f || record.bounds.w < 0.0f)
-                {
-                    continue;
-                }
-            }
-            else if (camera && radius > 0.0f && clip.w + radius < near_z)
-            {
-                // entirely behind the camera
-                continue;
-            }
+            if (clip.w + reach_world < near_z)
+                return true; // behind the camera
 
-            records[kept++] = record;
-        }
-        records.resize(kept);
+            if (clip.w - reach_world <= near_z)
+                return false; // around the camera, it can be anywhere on screen
 
+            // a point within reach of the pivot moves its projection by at most reach * (scale + |ndc|) / (depth - reach)
+            const float ndc_x    = clip.x / clip.w;
+            const float ndc_y    = clip.y / clip.w;
+            const float reach    = reach_world / (clip.w - reach_world);
+            const float extent_x = reach * (scale_x + fabsf(ndc_x)) * 0.5f + margin_x;
+            const float extent_y = reach * (scale_y + fabsf(ndc_y)) * 0.5f + margin_y;
+            const float uv_x     = ndc_x * 0.5f + 0.5f;
+            const float uv_y     = ndc_y * -0.5f + 0.5f;
+            record.bounds        = Vector4(uv_x - extent_x, uv_y - extent_y, uv_x + extent_x, uv_y + extent_y);
+            record.coverage      = reach;
+            return record.bounds.x > 1.0f || record.bounds.y > 1.0f || record.bounds.z < 0.0f || record.bounds.w < 0.0f;
+        });
+
+        // the largest on screen win when more spin than the frame buffer holds
         const size_t capacity = size(Renderer::view().frame.radial_blur_hubs);
         if (records.size() > capacity)
         {
-            partial_sort(records.begin(), records.begin() + capacity, records.end(), [](const HubRecord& a, const HubRecord& b) { return a.coverage > b.coverage; });
+            partial_sort(records.begin(), records.begin() + capacity, records.end(), [](const SpinRecord& a, const SpinRecord& b) { return a.coverage > b.coverage; });
             records.resize(capacity);
         }
 
         Vector4 bounds = Vector4(1.0f, 1.0f, 0.0f, 0.0f);
         for (size_t i = 0; i < records.size(); i++)
         {
-            Renderer::view().frame.radial_blur_hubs[i]    = records[i].hub;
-            Renderer::view().frame.radial_blur_axes[i]    = records[i].axis;
-            Renderer::view().frame.radial_blur_extents[i] = records[i].extents;
-            bounds.x = min(bounds.x, records[i].bounds.x);
-            bounds.y = min(bounds.y, records[i].bounds.y);
-            bounds.z = max(bounds.z, records[i].bounds.z);
-            bounds.w = max(bounds.w, records[i].bounds.w);
+            const SpinRecord& record = records[i];
+
+            // screen travel of the pivot, previous minus current like the velocity buffer, so camera motion is included
+            Vector2 travel        = Vector2::Zero;
+            const Vector4 clip    = Vector4(record.pivot.x, record.pivot.y, record.pivot.z, 1.0f) * view_projection;
+            const Vector4 clip_previous = Vector4(record.pivot_previous.x, record.pivot_previous.y, record.pivot_previous.z, 1.0f) * view_projection_previous;
+            if (clip.w > 0.0f && clip_previous.w > 0.0f)
+            {
+                travel.x = 0.5f * (clip_previous.x / clip_previous.w - clip.x / clip.w);
+                travel.y = -0.5f * (clip_previous.y / clip_previous.w - clip.y / clip.w);
+            }
+
+            Renderer::view().frame.radial_blur_hubs[i]    = Vector4(record.pivot.x, record.pivot.y, record.pivot.z, record.angle);
+            Renderer::view().frame.radial_blur_axes[i]    = Vector4(record.axis.x, record.axis.y, record.axis.z, static_cast<float>(record.id));
+            Renderer::view().frame.radial_blur_extents[i] = Vector4(record.tire ? -record.radius : record.radius, record.half_width, travel.x, travel.y);
+            bounds.x = min(bounds.x, record.bounds.x);
+            bounds.y = min(bounds.y, record.bounds.y);
+            bounds.z = max(bounds.z, record.bounds.z);
+            bounds.w = max(bounds.w, record.bounds.w);
         }
         Renderer::view().frame.radial_blur_bounds    = bounds;
         Renderer::view().frame.radial_blur_hub_count = static_cast<float>(records.size());
@@ -7673,6 +7762,18 @@ namespace spartan
             }
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             RHI_CommandList::ClearTexture(rt_output, Color::standard_black);
+
+            // a scene capture needs a camera, kept pending it would block every later request and grab the first frame of the next world
+            if (!secondary_render_root_active)
+            {
+                lock_guard<mutex> lock(screenshot_mutex);
+                if (screenshot.pending && !screenshot.ui)
+                {
+                    SP_LOG_WARNING("Screenshot dropped, there is no camera to render");
+                    screenshot = {};
+                    screenshot_save_failures++;
+                }
+            }
         }
 
         RHI_Device::Bind(RHI_Frame_List::Graphics);

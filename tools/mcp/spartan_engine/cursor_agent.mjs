@@ -11,10 +11,10 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
-  append_agent_memory,
-  read_agent_memory,
-  write_agent_memory,
-} from "./agent_memory.mjs";
+  append_advice,
+  read_advice,
+  resolve_advice,
+} from "./advice_to_maintainers.mjs";
 import {
   append_debug_log,
   read_debug_log,
@@ -91,9 +91,9 @@ const engine_tool_names = new Set([
   "read_source_file",
   "search_capabilities",
   "get_capability_details",
-  "agent_memory_read",
-  "agent_memory_append",
-  "agent_memory_replace",
+  "advice_to_maintainers_read",
+  "advice_to_maintainers_append",
+  "advice_to_maintainers_resolve",
   "debug_log_read",
   "ping",
   "engine_status",
@@ -2416,13 +2416,12 @@ async function dispatch_assistant_command(
     return list_entity_children(run, args);
   }
   if (
-    command === "agent_memory_update" ||
-    command === "agent_memory_write" ||
-    command === "agent_memory_add" ||
-    command === "agent_memory_note"
+    command === "advice_to_maintainers_report" ||
+    command === "advice_to_maintainers_add" ||
+    command === "advice_to_maintainers_note"
   )
   {
-    command = "agent_memory_append";
+    command = "advice_to_maintainers_append";
   }
   if (
     command === "spartan_engine_command" ||
@@ -3256,46 +3255,65 @@ async function dispatch_assistant_command(
       catalog_send,
     );
   }
-  if (command === "agent_memory_read")
+  if (command === "advice_to_maintainers_read")
   {
     return {
       ok: true,
-      text: await read_agent_memory(),
+      text: await read_advice(),
     };
   }
-  if (command === "agent_memory_append")
+  if (command === "advice_to_maintainers_append")
   {
-    // a note without a section is still worth keeping, lessons is where undated notes go
-    const section = String(
-      args.section ?? args.heading ?? "Lessons",
-    ).replace(/^#+\s*/, "").trim() || "Lessons";
+    // a report without a kind is still worth keeping, anything not called a bug is a ux request
+    const kind = /bug/i.test(
+      String(args.kind ?? args.type ?? args.section ?? ""),
+    ) ? "bug" : "ux";
     const note =
       args.note ??
       args.text ??
-      args.lesson ??
-      args.content ??
-      args.memory;
+      args.advice ??
+      args.content;
     if (!note)
     {
       return {
         ok: false,
-        error: "agent_memory_append needs a note, pass {section, note}",
+        error: "advice_to_maintainers_append needs a note, pass {kind, note}",
         code: "invalid_arguments",
       };
     }
-    return {
-      ok: true,
-      ...(await append_agent_memory(section, note)),
-    };
+    try
+    {
+      return {
+        ok: true,
+        ...(await append_advice(kind, note)),
+      };
+    }
+    catch (error)
+    {
+      return {
+        ok: false,
+        error: error.message,
+        code: "advice_to_maintainers_update_failed",
+      };
+    }
   }
-  if (command === "agent_memory_replace")
+  if (command === "advice_to_maintainers_resolve")
   {
-    return {
-      ok: true,
-      memory: await write_agent_memory(
-        args.memory ?? args.text,
-      ),
-    };
+    try
+    {
+      return {
+        ok: true,
+        ...(await resolve_advice(args.match ?? args.text)),
+      };
+    }
+    catch (error)
+    {
+      return {
+        ok: false,
+        error: error.message,
+        code: "advice_to_maintainers_update_failed",
+      };
+    }
   }
   if (command === "spartan_status")
   {
@@ -3387,9 +3405,9 @@ async function dispatch_assistant_command(
       entity_describe: {
         alias_for: "entity_get",
       },
-      agent_memory_update: {
-        alias_for: "agent_memory_append",
-        note: "pass {section, note}, section defaults to Corrections",
+      advice_to_maintainers_report: {
+        alias_for: "advice_to_maintainers_append",
+        note: "pass {kind, note}, kind is bug or ux and defaults to ux",
       },
       spartan_engine_command: {
         required: ["command"],
@@ -5230,7 +5248,6 @@ function build_prompt(
     ...task_kind_prompt_lines(intent, prompt, revision),
     "Use the spartan_engine_command custom tool as the primary live-engine bridge. Pass the native tool name in command and its arguments object in arguments.",
     "The spartan_engine_command tool handles both native and composite scene commands. Do not use shell commands or source-code tools for live scene work.",
-    "Read agent_memory_read early when available, and treat it as project advice rather than absolute truth.",
     "For engine-control requests, use Spartan MCP tools first and group repetitive calls without sacrificing completeness or visual quality.",
     "For source-code questions, use search_codebase first, then read_source_file for focused line ranges.",
     "Use search_capabilities and get_capability_details when you are unsure which engine tool or resource to use.",
@@ -5242,7 +5259,7 @@ function build_prompt(
     "Use entity_create_light for every light. Never hand-roll lights with entity_create_empty + entity_add_component light + component_set; that path leaves weak invisible lights.",
     "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
-    "When you learn a durable lesson, correction, recurring problem, or maintainer improvement idea, update agent memory concisely.",
+    "When an engine or tool bug, a missing tool, or an awkward workflow gets in your way, report it with advice_to_maintainers_append {kind: bug or ux, note}. It is a list of fixes for the maintainers, not a place for lessons.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
 

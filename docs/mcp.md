@@ -54,7 +54,7 @@ Run `npm install` in `tools/mcp/spartan_engine` once. Server options: `--host`, 
 | Headless | `headless_start`, `headless_stop`, `headless_smoke_test` run a private hidden instance |
 | Escape hatch | `engine_command` sends any bridge command by name |
 
-`search_capabilities` finds the right tool for a task. Durable lessons for agents are kept in [`AGENT_MEMORY.md`](../tools/mcp/spartan_engine/AGENT_MEMORY.md) (`agent_memory_read`, `agent_memory_append`).
+`search_capabilities` finds the right tool for a task. Bugs and UX improvements that agents want fixed are collected in [`ADVICE_TO_MAINTAINERS.md`](../tools/mcp/spartan_engine/ADVICE_TO_MAINTAINERS.md) (`advice_to_maintainers_read`, `advice_to_maintainers_append`, `advice_to_maintainers_resolve`).
 
 ### Working rules for agents
 

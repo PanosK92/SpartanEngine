@@ -122,6 +122,11 @@ namespace spartan
             bool     state_changed_this_frame = true;
             float    warmup_blend          = 1.0f;
 
+            // texel the cloud shadow map was last baked around and whether that bake found no shadow at all
+            int32_t  cloud_shadow_anchor_x = INT32_MAX;
+            int32_t  cloud_shadow_anchor_z = INT32_MAX;
+            bool     cloud_shadow_clear    = false;
+
             void Reset() { *this = SkyState(); }
         };
 
@@ -130,6 +135,8 @@ namespace spartan
             bool     environment_dirty   = true;
             uint32_t environment_strip   = 0;
             bool     environment_baking  = false;
+            bool     environment_urgent  = false; // the running bake answers a sky change, its strips run on consecutive frames
+            bool     environment_ready   = false; // a complete bake of the current sky is available
             Light*   light               = nullptr;
             math::Quaternion light_rotation = math::Quaternion::Identity;
             math::Vector3 sky_moon = math::Vector3::Zero;

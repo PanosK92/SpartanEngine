@@ -23,21 +23,18 @@ static const float SHUTTER_CENTER_SCALE     = 0.5f;
 // without snapping to a fixed tile grid (which produces visible square artifacts)
 static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 
-// radial motion blur, adaptive sampling bounds
-static const int MAX_RADIAL_SAMPLES = 128;
-// Half of the swept arc. A 90 degree sweep keeps spokes readable as streaks at any spin;
-// a full turn averages the rim into a featureless disc.
-static const float MAX_RADIAL_ANGLE = 0.785398f;
-
-// gaps between spokes only exist inside the rim, the tire itself is solid
-static const float RADIAL_FILL_RIM_FRACTION = 0.8f;
-
-// The tread and sidewall smear far less than the rim so the tire keeps its shape and lettering:
-// their swept speed is capped, and the streak tails taper instead of ending as a hard box.
-static const float RADIAL_TIRE_SPEED_CAP = 9.5f; // m/s at the swept point
-static const float RADIAL_TIRE_BLEND = 0.12f;    // rim to tire transition, fraction of the rim radius
-static const float RADIAL_TIRE_TAIL_FLOOR = 0.12f;
-static const float RADIAL_TIRE_TAIL_FALLOFF = 0.85f;
+// spinning objects, any whose pose turned this frame (see Renderer::UpdateFrameCb_RadialBlurHubs)
+static const int   SPIN_MAX_TAPS        = 64;        // along the swept arc, close up rims need them all
+static const float SPIN_MAX_HALF_ANGLE  = 0.785398f; // past 45 degrees each way a streak reads the same
+static const float SPIN_RIM_FRACTION    = 0.8f;      // of the radius, where open spokes give way to solid tire
+static const float SPIN_TIRE_FADE       = 0.12f;     // width of that transition, fraction of the rim radius
+// rubber keeps its shape and lettering: it takes color only from the slow part of its sweep and its streaks taper
+static const float SPIN_TIRE_MAX_SPEED  = 9.5f;      // m/s
+static const float SPIN_TIRE_TAIL_MIN   = 0.12f;
+static const float SPIN_TIRE_TAIL_POWER = 0.85f;
+// tread blocks stand past the tire outline by this fraction of the radius, searched for in this many steps
+static const float SPIN_LUG_REACH       = 0.08f;
+static const int   SPIN_LUG_STEPS       = 8;
 
 // soft depth comparison, linear depth larger is farther, returns 1 when depth_a is closer or equal
 float soft_depth_compare(float depth_a, float depth_b)
@@ -272,61 +269,6 @@ float2 compute_sky_velocity(float2 uv)
     return curr_ndc - prev_ndc;
 }
 
-// Object identity selects the rotation record, never screen-space proximity.
-bool find_radial_hub(float mask, out uint index)
-{
-    index = 0;
-    if (mask <= 0.0f)
-        return false;
-    uint id = unpack_material_index(mask);
-    for (uint i = 0; i < (uint)buffer_frame.radial_blur_hub_count; ++i)
-    {
-        if ((uint)buffer_frame.radial_blur_axes[i].w == id)
-        {
-            index = i;
-            return true;
-        }
-    }
-    return false;
-}
-
-// One exact wheel stencil value is shared by tire, rim and brake interior.
-// Different wheel/scene mask values are always excluded.
-bool radial_mask_matches(float mask, uint index)
-{
-    return mask > 0.0f && mask == pack_material_index((uint)buffer_frame.radial_blur_axes[index].w);
-}
-
-// Clip every bilinear footprint tap against the wheel mask, so even subpixel
-// boundary samples cannot bring in asphalt, sky or body paint.
-float radial_masked_color(float2 uv, float2 resolution, uint index, out float4 color)
-{
-    float2 pixel = uv * resolution - 0.5f;
-    float2 base = floor(pixel);
-    float2 f = frac(pixel);
-    color = 0.0f;
-    float coverage = 0.0f;
-    [unroll]
-    for (int y = 0; y < 2; ++y)
-    {
-        [unroll]
-        for (int x = 0; x < 2; ++x)
-        {
-            float2 tap_uv = (base + float2(x, y) + 0.5f) / resolution;
-            if (!is_valid_uv(tap_uv))
-                continue;
-            float mask = tex_velocity.SampleLevel(samplers[sampler_point_clamp], tap_uv * get_render_uv_scale(), 0).z;
-            if (!radial_mask_matches(mask, index))
-                continue;
-            float weight = (x == 0 ? 1.0f - f.x : f.x) * (y == 0 ? 1.0f - f.y : f.y);
-            color += tex.SampleLevel(samplers[sampler_point_clamp], tap_uv, 0) * weight;
-            coverage += weight;
-        }
-    }
-    color /= max(coverage, FLT_MIN);
-    return coverage;
-}
-
 // Validate every color footprint tap, not just its center: bilinear filtering otherwise
 // leaks ground/body colors through an accepted wheel pixel at silhouettes.
 float masked_color(float2 uv, float2 resolution, float mask, out float4 color)
@@ -357,285 +299,475 @@ float masked_color(float2 uv, float2 resolution, float mask, out float4 color)
     return coverage;
 }
 
-float3 radial_scene_position(float2 uv)
+/*------------------------------------------------------------------------------
+    SPINNING OBJECTS
+    A spinning object moves in two ways during the exposure: it turns about its axis and its pivot
+    travels. A pixel is integrated by walking the surface point under it back and forth through both
+    and reading what the current frame shows there. Positions are camera relative, for precision.
+------------------------------------------------------------------------------*/
+struct spinner
 {
-    float depth = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv * get_render_uv_scale(), 0).r;
-    return get_position(depth, uv);
+    float  id;         // velocity.z magnitude of its pixels
+    float3 pivot;
+    float3 axis;
+    float  angle;      // radians this frame
+    float  radius;     // 0 when unmeasured
+    float  half_width;
+    bool   tire;
+    bool   disc;       // flat and turning about its own axis, so its spokes sweep over what shows between them
+    float2 travel_uv;  // screen motion of the pivot, previous minus current
+};
+
+spinner spinner_load(uint index)
+{
+    float4 hub     = buffer_frame.radial_blur_hubs[index];
+    float4 axis    = buffer_frame.radial_blur_axes[index];
+    float4 extents = buffer_frame.radial_blur_extents[index];
+
+    spinner s;
+    s.id         = pack_material_index((uint)axis.w);
+    s.pivot      = hub.xyz - get_camera_position();
+    s.axis       = axis.xyz;
+    s.angle      = hub.w;
+    s.radius     = abs(extents.x);
+    s.half_width = extents.y;
+    s.tire       = extents.x < 0.0f;
+    s.disc       = s.radius > 0.0f && s.half_width <= 0.75f * s.radius;
+    s.travel_uv  = extents.zw;
+    return s;
 }
 
-// The actual surface point, so tread, sidewall and rim each orbit the axis at their own
-// radius and axial offset. A single hub plane would map the tread/sidewall to the wrong
-// radius whenever the wheel is seen at an angle, turning the circles into offset ellipses.
-bool radial_surface_position(float2 uv, out float3 position)
+// every draw writes its motion id, the sign only says whether its material asked for radial blur
+float motion_id(float2 uv)
 {
-    float depth = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv * get_render_uv_scale(), 0).r;
-    position = get_position(depth, uv);
-    return depth > 0.0f && all(isfinite(position));
+    return abs(tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv * get_render_uv_scale(), 0).z);
 }
 
-// Rotate the point rigidly about the wheel axis line, then project it for the current eye.
-// Translation or camera extrapolation here would turn the closed ring into a spiral.
-bool radial_sample_uv(float3 position, uint index, float angle, out float2 uv, out float3 sample_position)
-{
-    float3 pivot = buffer_frame.radial_blur_hubs[index].xyz;
-    float3 axis = buffer_frame.radial_blur_axes[index].xyz;
-    float3 d = position - pivot;
-    float cs, sn;
-    sincos(angle, sn, cs);
-    float3 rotated = d * cs + cross(axis, d) * sn + axis * dot(axis, d) * (1.0f - cs);
-    sample_position = pivot + rotated;
-    matrix vp = pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered;
-    float4 clip = mul(float4(sample_position, 1.0f), vp);
-    uv = 0.0f;
-    if (clip.w <= 0.0001f)
-    {
-        return false;
-    }
-    uv = ndc_to_uv(clip.xy / clip.w + buffer_frame.taa_jitter_current);
-    return is_valid_uv(uv);
-}
-
-bool radial_sample_uv(float3 position, uint index, float angle, out float2 uv)
-{
-    float3 sample_position;
-    return radial_sample_uv(position, index, angle, uv, sample_position);
-}
-
-// 0 when the rotated point went round to the hidden back of the tire, 1 otherwise.
-// Spokes sweeping over brake gaps (and gaps behind spokes) are both what the eye sees
-// during the exposure, so only depth steps comparable to the orbit radius are rejected.
-float radial_visibility(float2 sample_uv, float3 sample_position, float orbit_radius)
-{
-    float3 camera = get_camera_position();
-    float expected = length(sample_position - camera);
-    float visible = length(radial_scene_position(sample_uv) - camera);
-    float tolerance = 0.1f + 0.5f * orbit_radius;
-    return saturate((visible - expected + 2.0f * tolerance) / tolerance);
-}
-
-// 1 when the scene at sample_uv lies behind the swept spoke point, i.e. the spokes left a gap
-// there. Anything in front of that point (fender, body) hides whether a gap exists, so it is 0.
-float radial_gap_visibility(float2 sample_uv, float3 sample_position)
-{
-    float3 camera = get_camera_position();
-    float expected = length(sample_position - camera);
-    float visible = length(radial_scene_position(sample_uv) - camera);
-    return saturate((visible - expected + 0.04f) / 0.02f);
-}
-
-bool radial_has_extents(uint index)
-{
-    return buffer_frame.radial_blur_extents[index].w > 0.5f && buffer_frame.radial_blur_extents[index].x > 0.0f;
-}
-
-float radial_fill_radius(uint index)
-{
-    return radial_has_extents(index) ? buffer_frame.radial_blur_extents[index].x * RADIAL_FILL_RIM_FRACTION : 0.0f;
-}
-
-// A pixel between the spokes shows the caliper or whatever lies behind the wheel, so its own depth
-// says nothing about where the spokes sweep. The spokes sweep the wheel's camera-facing face, so
-// the view ray is intersected with that face, and the pixel counts only if nothing is in front of it.
-// The view ray is the same for every wheel, the caller builds it once.
-bool radial_face_position(float3 camera, float3 direction, float ray_length, uint index, out float3 position, out float ray_t)
-{
-    position = 0.0f;
-    ray_t = 0.0f;
-    if (!radial_has_extents(index))
-        return false;
-
-    float3 pivot = buffer_frame.radial_blur_hubs[index].xyz;
-    float radius = buffer_frame.radial_blur_extents[index].x;
-    float half_width = buffer_frame.radial_blur_extents[index].y;
-
-    // cheap reject, the ray passes outside the wheel's bounding sphere
-    float3 to_pivot = pivot - camera;
-    float3 miss = cross(direction, to_pivot);
-    float bound = radius + half_width;
-    if (dot(miss, miss) > bound * bound)
-        return false;
-
-    // a face seen edge on has no gaps to look through
-    float3 axis = buffer_frame.radial_blur_axes[index].xyz;
-    float facing = dot(direction, axis);
-    if (abs(facing) < 0.05f)
-        return false;
-
-    float side = dot(camera - pivot, axis) >= 0.0f ? 1.0f : -1.0f;
-    float3 face_center = pivot + axis * (half_width * side);
-    ray_t = dot(face_center - camera, axis) / facing;
-    if (ray_t <= 0.0f || ray_length < ray_t - 0.02f)
-        return false;
-
-    position = camera + direction * ray_t;
-    float3 offset = position - pivot;
-    float orbit_radius = length(offset - axis * dot(axis, offset));
-    return orbit_radius < radial_fill_radius(index);
-}
-
-// Non-wheel pixels have no rotation record of their own, so test them against every wheel face.
-bool find_radial_fill_hub(float2 uv, out uint index, out float3 position)
+bool spinner_find(float id, out uint index)
 {
     index = 0;
-    position = 0.0f;
-    float3 surface;
-    if (!radial_surface_position(uv, surface))
+    if (id <= 0.0f)
         return false;
 
-    float3 camera = get_camera_position();
-    float3 ray = surface - camera;
-    float ray_length = length(ray);
-    float3 direction = ray / max(ray_length, FLT_MIN);
-
-    float nearest = 1e30f;
-    bool found = false;
+    uint object = unpack_material_index(id);
     for (uint i = 0; i < (uint)buffer_frame.radial_blur_hub_count; ++i)
     {
-        float3 face_position;
-        float ray_t;
-        if (radial_face_position(camera, direction, ray_length, i, face_position, ray_t) && ray_t < nearest)
+        if ((uint)buffer_frame.radial_blur_axes[i].w == object)
         {
-            nearest = ray_t;
             index = i;
-            position = face_position;
-            found = true;
+            return true;
         }
     }
-    return found;
+    return false;
 }
 
-// is_gap: the destination pixel is not wheel geometry but lies inside the rim, behind the spokes.
-float4 motion_blur_radial_reconstruction(
-    float2 uv, float2 resolution, float shutter_ratio, float noise,
-    float4 center_color, float3 position, uint index, bool is_gap)
+bool spinner_covers(spinner s, float2 uv)
 {
-    float exposure = shutter_ratio * SHUTTER_CENTER_SCALE;
-    if (exposure <= 0.0f)
-        return center_color;
-    float frame_angle = buffer_frame.radial_blur_hubs[index].w;
-    float angle = min(frame_angle * exposure, MAX_RADIAL_ANGLE);
-
-    float3 axis = buffer_frame.radial_blur_axes[index].xyz;
-    float3 offset = position - buffer_frame.radial_blur_hubs[index].xyz;
-    float orbit_radius = length(offset - axis * dot(axis, offset));
-    float fill_radius = radial_fill_radius(index);
-    bool inside_rim = orbit_radius < fill_radius;
-    float tire = 0.0f;
-    if (radial_has_extents(index))
-    {
-        tire = smoothstep(fill_radius, fill_radius * (1.0f + RADIAL_TIRE_BLEND), orbit_radius);
-        float surface_speed = frame_angle / max(buffer_frame.delta_time, MIN_FRAME_TIME) * orbit_radius;
-        angle *= lerp(1.0f, min(1.0f, RADIAL_TIRE_SPEED_CAP / max(surface_speed, FLT_MIN)), tire);
-    }
-
-    float2 end_uv;
-    float path_pixels = 0.0f;
-    // Arc-length estimate at quarter intervals also catches rotations with coincident endpoints.
-    float2 previous_uv = uv;
-    for (int k = 1; k <= 4; ++k)
-    {
-        if (radial_sample_uv(position, index, angle * (float)k * 0.25f, end_uv))
-        {
-            path_pixels += length((end_uv - previous_uv) * resolution);
-            previous_uv = end_uv;
-        }
-    }
-    if (path_pixels < MIN_BLUR_THRESHOLD)
-        return center_color;
-    // Box-filtered shutter integral along the arc actually swept, centered on the current pose.
-    // One sample per arc pixel keeps the rings continuous; the full turn is reached only at high spin.
-    int count = clamp((int)ceil(2.0f * path_pixels), 8, MAX_RADIAL_SAMPLES);
-    float4 sum = 0.0f;
-    float weights = 0.0f;
-    for (int i = 0; i < count; ++i)
-    {
-        float t = ((float)i + noise) / (float)count * 2.0f - 1.0f;
-        float2 sample_uv;
-        float3 sample_position;
-        if (!radial_sample_uv(position, index, t * angle, sample_uv, sample_position))
-            continue;
-        float sample_mask = tex_velocity.SampleLevel(samplers[sampler_point_clamp], sample_uv * get_render_uv_scale(), 0).z;
-        float4 color;
-        float coverage;
-        if (radial_mask_matches(sample_mask, index))
-        {
-            // a spoke covers this pixel at that moment of the exposure
-            coverage = radial_masked_color(sample_uv, resolution, index, color) * radial_visibility(sample_uv, sample_position, orbit_radius);
-        }
-        else if (inside_rim)
-        {
-            // a gap covers this pixel at that moment, so whatever lies behind the spokes shows.
-            // A gap pixel knows exactly what that is (itself, the caliper does not spin); a spoke
-            // pixel hides it, so the content seen through the gap at the swept point stands in.
-            coverage = radial_gap_visibility(sample_uv, sample_position);
-            color = is_gap ? center_color : tex.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0);
-        }
-        else
-        {
-            continue;
-        }
-        float tail = lerp(RADIAL_TIRE_TAIL_FLOOR, 1.0f, pow(saturate(1.0f - abs(t)), RADIAL_TIRE_TAIL_FALLOFF));
-        coverage *= lerp(1.0f, tail, tire);
-        sum += color * coverage;
-        weights += coverage;
-    }
-    float4 result = weights > FLT_MIN ? sum / weights : center_color;
-    result.a = center_color.a;
-    return result;
+    return motion_id(uv) == s.id;
 }
 
-// main reconstruction filter
-float4 motion_blur_reconstruction(
+float depth_raw(float2 uv)
+{
+    return tex_depth.SampleLevel(samplers[sampler_point_clamp], uv * get_render_uv_scale(), 0).r;
+}
+
+float3 view_point(float2 uv, float depth)
+{
+    return get_position(depth, uv) - get_camera_position();
+}
+
+float4 view_clip(float3 position)
+{
+    matrix view_projection = pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered;
+    return mul(float4(position + get_camera_position(), 1.0f), view_projection);
+}
+
+// view_depth is not positive behind the camera
+float2 screen_point(float3 position, out float view_depth)
+{
+    float4 clip = view_clip(position);
+    view_depth  = clip.w;
+    return clip.w > 1e-6f ? ndc_to_uv(clip.xy / clip.w + buffer_frame.taa_jitter_current) : 0.0f;
+}
+
+float3 scene_point(float2 uv)
+{
+    return view_point(uv, depth_raw(uv));
+}
+
+// distance to what the pixel shows, the sky is simply very far
+float scene_range(float2 uv)
+{
+    if (depth_raw(uv) <= 0.0f)
+        return 1e30f;
+
+    float range = length(scene_point(uv));
+    return isfinite(range) ? range : 1e30f;
+}
+
+float3 color_at(float2 uv)
+{
+    return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+}
+
+float axle_distance(spinner s, float3 position)
+{
+    float3 offset = position - s.pivot;
+    return length(offset - s.axis * dot(s.axis, offset));
+}
+
+// how far the exposure turns the spinner to either side, signed like its angle
+float swept_half_angle(spinner s, float exposure)
+{
+    return sign(s.angle) * min(abs(s.angle) * exposure, SPIN_MAX_HALF_ANGLE);
+}
+
+// where a view ray crosses the camera facing side of a disc, if that is inside its rim
+bool face_hit(spinner s, float3 direction, out float t)
+{
+    t = 0.0f;
+    float facing = dot(direction, s.axis);
+    if (!s.disc || abs(facing) < 0.05f)
+        return false; // seen edge on there is nothing to look through
+
+    float side  = dot(s.pivot, s.axis) <= 0.0f ? 1.0f : -1.0f;
+    float plane = dot(s.pivot, s.axis) + s.half_width * side;
+    t = plane / facing;
+    return t > 0.0f && axle_distance(s, direction * t) < s.radius * SPIN_RIM_FRACTION;
+}
+
+// the closest a view ray comes to the axle while it is between the two sides, and where
+float axle_approach(spinner s, float3 direction, out float t)
+{
+    t = 0.0f;
+    float facing = dot(direction, s.axis);
+    float along  = dot(s.pivot, s.axis);
+    float t_min  = 0.0f;
+    float t_max  = 1e30f;
+    if (abs(facing) > 1e-4f)
+    {
+        float t_a = (along - s.half_width) / facing;
+        float t_b = (along + s.half_width) / facing;
+        t_min     = max(min(t_a, t_b), 0.0f);
+        t_max     = max(t_a, t_b);
+    }
+    else if (abs(along) > s.half_width)
+    {
+        return 1e30f;
+    }
+    if (t_max <= t_min)
+        return 1e30f;
+
+    float3 ray_across   = direction - s.axis * facing;
+    float3 pivot_across = s.pivot - s.axis * along;
+    t = clamp(dot(ray_across, pivot_across) / max(dot(ray_across, ray_across), 1e-8f), t_min, t_max);
+    return length(ray_across * t - pivot_across);
+}
+
+// Past the rim the only openings are between the tread blocks of the tire outline. A ray grazing the
+// outline looks through one when tire shows a little further in, and the blocks sweep it at that depth.
+bool lug_hit(spinner s, float3 direction, out float t)
+{
+    float reach   = s.radius * SPIN_LUG_REACH;
+    float closest = axle_approach(s, direction, t);
+    if (closest >= s.radius + reach)
+        return false;
+
+    float3 graze  = direction * t;
+    float3 offset = graze - s.pivot;
+    float3 inward = (s.axis * dot(s.axis, offset) - offset) * (reach / (max(closest, 1e-4f) * SPIN_LUG_STEPS));
+    for (int i = 1; i <= SPIN_LUG_STEPS; ++i)
+    {
+        float view_depth;
+        float2 uv = screen_point(graze + inward * i, view_depth);
+        if (view_depth > 0.0f && is_valid_uv(uv) && spinner_covers(s, uv))
+        {
+            t = dot(scene_point(uv), direction);
+            return true;
+        }
+    }
+    return false;
+}
+
+// The point that turns under a spinner pixel. Inside the rim every pixel turns in the plane of the face,
+// otherwise recessed details would orbit on circles of their own and their outlines would stay sharp.
+float3 spinner_anchor(spinner s, float2 uv)
+{
+    float3 direction = normalize(view_point(uv, 0.5f));
+    float t;
+    return face_hit(s, direction, t) ? direction * t : scene_point(uv);
+}
+
+// The nearest disc whose spokes or tread sweep over a pixel that does not spin itself, and where they
+// cross its view ray. The disc must not be hidden behind what the pixel shows.
+bool spinner_in_front(float2 uv, out spinner nearest, out float3 anchor)
+{
+    nearest = (spinner)0;
+    anchor  = 0.0f;
+    float3 direction = normalize(view_point(uv, 0.5f));
+    float t_nearest  = 1e30f;
+    for (uint i = 0; i < (uint)buffer_frame.radial_blur_hub_count; ++i)
+    {
+        spinner s = spinner_load(i);
+        if (!s.disc)
+            continue;
+
+        float bound = s.radius * (1.0f + SPIN_LUG_REACH) + s.half_width;
+        float3 miss = cross(direction, s.pivot);
+        if (dot(miss, miss) > bound * bound)
+            continue;
+
+        float t;
+        if ((face_hit(s, direction, t) || lug_hit(s, direction, t)) && t < t_nearest)
+        {
+            t_nearest = t;
+            nearest   = s;
+        }
+    }
+    anchor = direction * t_nearest;
+    return t_nearest < 1e30f && scene_range(uv) >= t_nearest - 0.02f;
+}
+
+// the circle a point turns on during the exposure, and how the travel of the spinner shifts it
+struct sweep
+{
+    float3 center;       // on the axle
+    float3 axis;
+    float  half_angle;
+    float3 anchor;       // the point under the pixel now
+    float3 ray;          // a point on the view ray of the pixel
+    float3 anchor_drift; // how far the travel moves the anchor over half the exposure
+    float3 ray_drift;
+};
+
+sweep sweep_create(spinner s, float2 uv, float3 anchor, float2 resolution, float exposure)
+{
+    // no farther than the linear blur lets the body around the spinner travel
+    float2 travel_px = -s.travel_uv * exposure * resolution;
+    travel_px       *= min(1.0f, MAX_BLUR_RADIUS_PIXELS / max(length(travel_px), FLT_MIN));
+    float2 uv_ahead  = uv + travel_px / resolution;
+    float4 clip      = view_clip(anchor);
+    float depth      = clip.z / max(clip.w, 1e-6f);
+
+    sweep w;
+    w.center       = s.pivot + s.axis * dot(s.axis, anchor - s.pivot);
+    w.axis         = s.axis;
+    w.half_angle   = swept_half_angle(s, exposure);
+    w.anchor       = anchor;
+    w.ray          = view_point(uv, 0.5f);
+    w.anchor_drift = view_point(uv_ahead, depth) - view_point(uv, depth);
+    w.ray_drift    = view_point(uv_ahead, 0.5f) - w.ray;
+    return w;
+}
+
+// Where the point that covers the pixel at exposure time t (-1 to 1) is shown in the current frame.
+// Travel is removed before the turn is, so a moving wheel keeps turning about its own axle.
+float3 sweep_point(sweep w, float t)
+{
+    float3 position = w.anchor - w.anchor_drift * t;
+    float3 ray      = w.ray - w.ray_drift * t;
+
+    // under perspective the point stays in the plane of its circle, near edge on a constant depth stands in
+    float facing = dot(ray, w.axis);
+    if (facing * facing > 0.0025f * dot(ray, ray))
+    {
+        float distance = dot(w.center, w.axis) / facing;
+        position = distance > 0.0f ? ray * distance : position;
+    }
+
+    float3 offset = position - w.center;
+    float s, c;
+    sincos(-t * w.half_angle, s, c);
+    return w.center + offset * c + cross(w.axis, offset) * s + w.axis * dot(w.axis, offset) * (1.0f - c);
+}
+
+// on screen length of the longer half of the sweep, the turn and the travel can cancel on one side
+float sweep_length_px(sweep w, float2 uv, float2 resolution)
+{
+    float longest = 0.0f;
+    [unroll]
+    for (int side = -1; side <= 1; side += 2)
+    {
+        float length_px = 0.0f;
+        float2 previous = uv;
+        [unroll]
+        for (int k = 1; k <= 4; ++k)
+        {
+            float view_depth;
+            float2 next = screen_point(sweep_point(w, side * k * 0.25f), view_depth);
+            if (view_depth > 0.0f)
+            {
+                length_px += length((next - previous) * resolution);
+                previous   = next;
+            }
+        }
+        longest = max(longest, length_px);
+    }
+    return longest;
+}
+
+// 0 once the swept point went round to the far side of the spinner. Spokes passing over gaps are real,
+// so only depth steps on the scale of the orbit are rejected.
+float near_side(float behind, float orbit)
+{
+    float tolerance = 0.1f + 0.5f * orbit;
+    return saturate((behind + 2.0f * tolerance) / tolerance);
+}
+
+// how well a tap tells what hides right behind the pixel, never sharper than the tap spacing
+float tap_affinity(float2 tap_uv, float2 uv, float2 resolution, float spacing_sq)
+{
+    float2 offset = (tap_uv - uv) * resolution;
+    float  w      = rcp(spacing_sq + dot(offset, offset));
+    return w * w;
+}
+
+// what lies behind the swept surface, weighted by how close to the pixel each tap saw it
+struct backdrop
+{
+    float3 color;
+    float  affinity;
+    float  weight;
+};
+
+// Integrates a spinner pixel, or a pixel its spokes sweep over (a gap), over the exposure. Each tap finds
+// the surface point that covers the pixel at one moment and looks where it is shown now. It finds that
+// point (it covers the pixel), something behind it (the pixel shows its background at that moment), or
+// something in front of it like a fender or a caliper (nothing can be said and nothing bleeds in).
+// clear_color is what the pixel shows while nothing of the spinner covers it.
+float3 spin_blur(float2 uv, float2 resolution, float exposure, float noise, spinner s, float3 anchor, bool is_gap, float3 clear_color)
+{
+    sweep w = sweep_create(s, uv, anchor, resolution, exposure);
+    float length_px = sweep_length_px(w, uv, resolution);
+    if (length_px < MIN_BLUR_THRESHOLD)
+        return clear_color;
+
+    float3 orbit_offset = anchor - w.center;
+    float  orbit        = length(orbit_offset);
+    // the rim barrel, the spokes and the brake all sit at their own distance behind the anchor
+    float own_behind     = scene_range(uv) - length(anchor);
+    float reveal_behind  = is_gap ? -0.03f : own_behind;
+
+    // rubber, 0 on the rim and 1 on the tread, and the part of the sweep it takes its color from
+    float rubber      = 0.0f;
+    float color_reach = 1.0f;
+    if (s.tire && s.radius > 0.0f)
+    {
+        float rim   = s.radius * SPIN_RIM_FRACTION;
+        rubber      = smoothstep(rim, rim * (1.0f + SPIN_TIRE_FADE), orbit);
+        float speed = abs(s.angle) / max(buffer_frame.delta_time, MIN_FRAME_TIME) * orbit;
+        color_reach = lerp(1.0f, min(1.0f, SPIN_TIRE_MAX_SPEED / max(speed, 1e-6f)), rubber);
+    }
+    // a surface closer to the axle than the view ray ever gets can never cross it
+    float t_closest;
+    float slack = max(orbit - axle_approach(s, normalize(w.ray), t_closest), 0.0f);
+
+    int   taps       = clamp((int)ceil(length_px), 8, SPIN_MAX_TAPS);
+    float tap_step   = rcp((float)taps);
+    float spacing_sq = max(4.0f * length_px * length_px * tap_step * tap_step, 1.0f);
+
+    float3 covered_color  = 0.0f;
+    float  covered_tint   = 0.0f; // weight of the colors, the rubber takes fewer of them than it covers
+    float  covered        = 0.0f;
+    backdrop still        = (backdrop)0; // things that do not turn
+    backdrop deeper       = (backdrop)0; // spinner surfaces further back, the brake disc behind the spokes
+    for (int i = 0; i < taps; ++i)
+    {
+        float  t        = lerp(-1.0f, 1.0f, ((float)i + noise) * tap_step);
+        float3 position = sweep_point(w, t);
+        float  view_depth;
+        float2 tap_uv   = screen_point(position, view_depth);
+        if (view_depth <= 0.0f || !is_valid_uv(tap_uv))
+            continue;
+
+        // what the frame shows along the same view ray, distances along a ray scale with view depth
+        float range     = length(position);
+        float raw       = depth_raw(tap_uv);
+        float scene     = raw > 0.0f ? min(range * linearize_depth(raw) / max(view_depth, 1e-6f), 1e6f) : 1e6f;
+        float behind    = scene - range;
+        float3 surface  = position * (scene / max(range, 1e-6f));
+        float affinity  = tap_affinity(tap_uv, uv, resolution, spacing_sq);
+        float r_tap     = axle_distance(s, position);
+        float r_surface = axle_distance(s, surface);
+
+        if (!spinner_covers(s, tap_uv))
+        {
+            // the road a tire presses into lies inside its circle, the tire yields to it
+            float pressed = saturate((r_tap - r_surface) / 0.02f) * step(abs(dot(s.axis, surface - s.pivot)), s.half_width);
+            float exposed = max(saturate((behind - reveal_behind) / 0.02f + 0.5f), rubber * pressed);
+            still.weight += exposed;
+            if (!is_gap && exposed > 0.0f)
+            {
+                still.color    += color_at(tap_uv) * (exposed * affinity);
+                still.affinity += exposed * affinity;
+            }
+            continue;
+        }
+
+        // the tread between two blocks of the outline never reaches out to the view ray
+        float visible  = near_side(behind, orbit);
+        float coverage = visible * lerp(1.0f, saturate((r_surface - r_tap + slack) / 0.02f + 1.5f), rubber);
+        still.weight  += visible - coverage;
+
+        // a disc turning behind a caliper never covers it, behind a spoke it shows only where nothing still hides it
+        float hidden  = is_gap ? 1.0f - saturate((own_behind - behind) / 0.01f) : saturate((behind - own_behind) / 0.02f - 1.0f);
+        float back    = coverage * hidden;
+        float tail    = lerp(SPIN_TIRE_TAIL_MIN, 1.0f, pow(saturate(1.0f - abs(t) / color_reach), SPIN_TIRE_TAIL_POWER));
+        float tint    = (coverage - back) * max(abs(t) < color_reach ? lerp(1.0f, tail, rubber) : 0.0f, 1e-3f);
+        float3 color  = color_at(tap_uv);
+        covered_color += color * tint;
+        covered_tint  += tint;
+        covered       += coverage - back;
+        deeper.color    += color * back;
+        deeper.affinity += back * affinity;
+        deeper.weight   += back;
+    }
+
+    // what shows just past the tire outline most likely hides between its tread blocks too
+    if (!is_gap && rubber > 0.0f)
+    {
+        float3 beyond = w.center + orbit_offset * (1.0f + s.radius * SPIN_LUG_REACH / max(orbit, 1e-4f));
+        float  view_depth;
+        float2 beyond_uv = screen_point(beyond, view_depth);
+        if (view_depth > 0.0f && is_valid_uv(beyond_uv) && !spinner_covers(s, beyond_uv) && scene_range(beyond_uv) > length(beyond))
+        {
+            float affinity  = tap_affinity(beyond_uv, uv, resolution, spacing_sq);
+            still.color    += color_at(beyond_uv) * affinity;
+            still.affinity += affinity;
+        }
+    }
+
+    // a gap shows itself while uncovered, a spinner pixel whatever the taps nearest to it saw behind it
+    float3 clear  = clear_color;
+    float  opened = still.weight + deeper.weight;
+    if (!is_gap)
+    {
+        float seen = still.affinity + deeper.affinity;
+        float3 still_color  = still.color / max(still.affinity, 1e-30f);
+        float3 deeper_color = deeper.color / max(deeper.weight, 1e-5f);
+        clear  = lerp(deeper_color, still_color, still.affinity / max(seen, 1e-30f));
+        opened = seen > 0.0f ? opened : 0.0f;
+    }
+
+    float total = covered + opened;
+    if (total <= 1e-5f)
+        return clear_color;
+
+    return (covered_color * (covered / max(covered_tint, 1e-8f)) + clear * opened) / total;
+}
+
+// blurs along the motion vectors
+float4 motion_blur_linear(
     float2 uv,
-    float2 pixel_coord,
     float2 resolution,
     float  shutter_ratio,
-    float  noise
+    float  noise,
+    float4 center_color,
+    float4 velocity_sample
 )
 {
     float2 texel_size = 1.0f / resolution;
-
-    // sample center
-    float4 center_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
-    float2 render_uv    = uv * get_render_uv_scale();
-    float4 velocity_sample = tex_velocity.SampleLevel(samplers[sampler_point_clamp], render_uv, 0);
-    bool is_radial = velocity_sample.z > 0.0f;
-
-    uint radial_index = 0;
-    float3 radial_position = 0.0f;
-    bool radial_domain = false;
-    bool radial_gap = false;
-    // wheels cover a sliver of the frame, the rectangle around them spares every other pixel both record searches
-    if (all(uv >= buffer_frame.radial_blur_bounds.xy) && all(uv <= buffer_frame.radial_blur_bounds.zw))
-    {
-        if (is_radial && find_radial_hub(velocity_sample.z, radial_index))
-        {
-            radial_domain = radial_surface_position(uv, radial_position);
-        }
-        else
-        {
-            // Caliper or background seen between the spokes: the spokes sweep over it during the exposure.
-            // Every object carries a motion ID, so only a missing rotation record marks a non-spinning pixel.
-            radial_gap = find_radial_fill_hub(uv, radial_index, radial_position);
-        }
-    }
-
-    // Mode 2: red = radial geometry, green = geometry with a matching rotation record, blue = gap between spokes.
-    if (pass_float(pass_motion_blur::mode) > 1.5f)
-    {
-        float4 debug_color = center_color;
-        if (is_radial)
-            debug_color.rgb = lerp(debug_color.rgb, float3(1.0f, 0.0f, 0.0f), 0.5f);
-        if (radial_domain)
-            debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 1.0f, 0.0f), 0.5f);
-        if (radial_gap)
-            debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 0.3f, 1.0f), 0.6f);
-        return debug_color;
-    }
-
-    if (radial_domain || radial_gap)
-        return motion_blur_radial_reconstruction(uv, resolution, shutter_ratio, noise, center_color, radial_position, radial_index, radial_gap);
-
+    float2 render_uv  = uv * get_render_uv_scale();
     float center_depth = get_linear_depth_point(render_uv);
     float raw_depth = get_depth(render_uv);
     float2 pixel_velocity = velocity_sample.xy;
@@ -830,6 +962,67 @@ float4 motion_blur_reconstruction(
     result.a = center_color.a;
 
     return result;
+}
+
+// main reconstruction filter
+float4 motion_blur_reconstruction(
+    float2 uv,
+    float2 pixel_coord,
+    float2 resolution,
+    float  shutter_ratio,
+    float  noise
+)
+{
+    float4 center_color    = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
+    float4 velocity_sample = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv * get_render_uv_scale(), 0);
+    float  exposure        = shutter_ratio * SHUTTER_CENTER_SCALE;
+
+    spinner s       = (spinner)0;
+    float3 anchor   = 0.0f;
+    bool spinning   = false;
+    bool swept      = false;
+    // spinners cover a sliver of the frame, the rectangle around them spares every other pixel the search
+    if (exposure > 0.0f && all(uv >= buffer_frame.radial_blur_bounds.xy) && all(uv <= buffer_frame.radial_blur_bounds.zw))
+    {
+        uint index;
+        if (spinner_find(abs(velocity_sample.z), index))
+        {
+            s        = spinner_load(index);
+            spinning = abs(swept_half_angle(s, exposure)) >= 1e-4f;
+            anchor   = spinner_anchor(s, uv);
+        }
+        else
+        {
+            // a caliper or the background between the spokes, they pass over it during the exposure
+            swept = spinner_in_front(uv, s, anchor);
+        }
+    }
+
+    // mode 2: red = material asks for radial blur, green = spinning, blue = swept by a spinner in front
+    if (pass_float(pass_motion_blur::mode) > 1.5f)
+    {
+        float4 debug_color = center_color;
+        if (velocity_sample.z > 0.0f)
+            debug_color.rgb = lerp(debug_color.rgb, float3(1.0f, 0.0f, 0.0f), 0.5f);
+        if (spinning)
+            debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 1.0f, 0.0f), 0.5f);
+        if (swept)
+            debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 0.3f, 1.0f), 0.6f);
+        return debug_color;
+    }
+
+    if (spinning)
+    {
+        return float4(spin_blur(uv, resolution, exposure, noise, s, anchor, false, center_color.rgb), center_color.a);
+    }
+
+    // a swept pixel moves with the scene first, the spokes pass over that
+    float4 color = motion_blur_linear(uv, resolution, shutter_ratio, noise, center_color, velocity_sample);
+    if (swept)
+    {
+        color.rgb = spin_blur(uv, resolution, exposure, noise, s, anchor, true, color.rgb);
+    }
+    return color;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

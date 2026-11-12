@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "McpCommands.h"
 #include "McpCommandsCommon.h"
 #include "../commands/console/ConsoleCommands.h"
+#include "../core/Settings.h"
 #include "../logging/Log.h"
 #include "../profiling/Profiler.h"
 #include "../memory/Allocator.h"
@@ -648,12 +649,32 @@ namespace spartan::mcp_diagnostics
                 return json_error("cvar not found");
             }
 
+            // agent changes are session only unless asked, spartan.xml keeps the user's value
+            bool persist = false;
+            if (const std::optional<std::string> persist_arg = get_argument(request, "persist"))
+            {
+                if (!parse_bool(*persist_arg, persist))
+                {
+                    return json_error("persist must be true or false");
+                }
+            }
+            if (persist)
+            {
+                Settings::ClearSessionOnly(*name);
+            }
+            else
+            {
+                Settings::MarkSessionOnly(*name);
+            }
+
             if (!ConsoleRegistry::Get().SetValueFromString(*name, *value))
             {
                 return json_error("failed to set cvar");
             }
 
-            return command_cvar_get(request);
+            std::string json = command_cvar_get(request);
+            json.insert(json.size() - 1, ",\"persisted\":" + json_bool(!Settings::IsSessionOnly(*name)));
+            return json;
         }
 
         std::string shader_stage_name(RHI_Shader_Type stage)

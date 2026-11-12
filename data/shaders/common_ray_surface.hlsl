@@ -15,7 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_ray_hit.hlsl"
 #include "common_radiance_cache.hlsl"
 #include "rt_visibility.hlsl"
-#include "sky/clouds.hlsl"
+#include "sky/cloud_shadow.hlsl"
 //================================
 
 // surfaces met by reflection, bounce and refraction rays, reconstructed from the hit triangle with
@@ -447,26 +447,24 @@ float3 ray_sky_ambient(Texture2D sky, float sky_mip_count, float3 normal)
     return sky.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(normal), sky_mip_count - 1.0f).rgb * 0.3f;
 }
 
-// radiance leaving a secondary hit toward the ray origin, the sun and one sampled local light with
-// shadow rays, the diffuse bounce from the radiance cache and the sky specular it reflects, the
-// cache's darkness relative to open sky stands in for how enclosed the surface is
-float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky, float sky_mip_count, float2 pixel, uint light_count)
+// what the analytic lights deliver to a lambert surface at a hit, as the radiance it multiplies its albedo
+// with, the sun and one sampled local light, each behind a shadow ray
+float3 ray_direct_light(float3 position, float3 normal, float2 pixel, uint light_count)
 {
-    float3 diffuse  = s.albedo * (1.0f - s.metallic);
-    float3 radiance = s.emission;
+    float3 direct = 0.0f;
 
     // the sun, then one local light picked in proportion to what it delivers here, a uniform pick
     // scaled by the light count turns a lamp next to the hit into a blotch hundreds of times too bright
     if (light_count > 0u && (light_parameters[0].flags & 1u) != 0u)
     {
-        float3 incoming = ray_light_irradiance(0u, s.position, s.normal);
+        float3 incoming = ray_light_irradiance(0u, position, normal);
         if (any(incoming > 0.0f))
         {
-            incoming *= ray_trace_shadow(light_parameters[0], s.position, s.normal, pixel);
+            incoming *= ray_trace_shadow(light_parameters[0], position, normal, pixel);
         }
-        radiance += diffuse * INV_PI * incoming;
+        direct += incoming;
     }
-    if (light_count > 1u && any(diffuse > 0.0f))
+    if (light_count > 1u)
     {
         float  random   = frac(ray_spatial_hash_unit(pixel + 17.0f) + (float)buffer_frame.frame * 0.7548777f);
         float  total    = 0.0f;
@@ -477,14 +475,14 @@ float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky,
         {
             LightParameters light_p = light_parameters[i];
             bool is_directional     = (light_p.flags & 1u) != 0u;
-            float3 to_light         = is_directional ? -light_p.direction : light_p.position - s.position;
+            float3 to_light         = is_directional ? -light_p.direction : light_p.position - position;
             if (!is_directional && (light_p.range <= 0.0f || dot(to_light, to_light) > light_p.range * light_p.range))
                 continue;
-            if (dot(s.normal, to_light) <= 0.0f)
+            if (dot(normal, to_light) <= 0.0f)
                 continue;
 
             // a light too faint to show at the hit is not a candidate, its shadow ray would resolve nothing visible
-            float3 incoming = ray_light_irradiance(i, s.position, s.normal);
+            float3 incoming = ray_light_irradiance(i, position, normal);
             float  weight   = luminance(incoming);
             if (weight <= 0.0f || !light_energy_is_visible(incoming))
                 continue;
@@ -509,14 +507,30 @@ float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky,
             LightParameters light_p = light_parameters[index];
             if ((light_p.flags & (1u << 3)) != 0u)
             {
-                chosen *= ray_trace_shadow(light_p, s.position, s.normal, pixel);
+                chosen *= ray_trace_shadow(light_p, position, normal, pixel);
             }
-            radiance += diffuse * INV_PI * chosen * (total / chosen_w);
+            direct += chosen * (total / chosen_w);
         }
+    }
+    return direct * INV_PI;
+}
+
+// radiance leaving a secondary hit toward the ray origin, the sun and one sampled local light with
+// shadow rays, the diffuse bounce from the radiance cache and the sky specular it reflects, the
+// sky openness the cache measured in its cell stands in for how enclosed the surface is
+float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky, float sky_mip_count, float2 pixel, uint light_count)
+{
+    float3 diffuse  = s.albedo * (1.0f - s.metallic);
+    float3 radiance = s.emission;
+    if (any(diffuse > 0.0f))
+    {
+        radiance += diffuse * ray_direct_light(s.position, s.normal, pixel, light_count);
     }
 
     float confidence;
-    float3 cached     = radiance_cache_lookup(s.position, s.normal, 0.0f, confidence);
+    float cell_openness;
+    float3 cell_direct;
+    float3 cached     = radiance_cache_lookup(s.position, s.normal, 0.0f, confidence, cell_openness, cell_direct);
     float3 open_sky   = ray_sky_ambient(sky, sky_mip_count, s.normal);
     float3 indirect   = lerp(open_sky, cached, confidence);
     radiance         += diffuse * indirect;
@@ -526,7 +540,7 @@ float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky,
     float2 env        = ray_env_brdf(s.roughness, n_dot_v);
     float3 reflected  = reflect(-view_dir, s.normal);
     float  horizon    = saturate(1.0f + dot(reflected, s.geometric_normal));
-    float  openness   = lerp(1.0f, saturate(luminance(cached) / max(luminance(open_sky), 1e-4f)), confidence);
+    float  openness   = lerp(1.0f, cell_openness, confidence);
     float3 sky_spec   = sky.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(reflected), s.roughness * s.roughness * (sky_mip_count - 1.0f)).rgb;
     radiance         += sky_spec * (F0 * env.x + env.y) * horizon * horizon * openness;
     return radiance;

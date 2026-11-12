@@ -57,6 +57,13 @@ void ray_gen()
         tex_uav[launch_id] = 0.0f;
         return;
     }
+
+    // a lobe past the roughness cut is not traced, its pixel is lit from the radiance cache instead
+    if (get_rt_reflection_cached(uv) >= 1.0f)
+    {
+        tex_uav[launch_id] = 0.0f;
+        return;
+    }
     float coat;
     float roughness = get_rt_reflection_roughness(uv, coat);
 

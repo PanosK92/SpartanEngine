@@ -90,7 +90,6 @@ Mutating tools are not registered by `server.mjs` in read-only mode. The assista
 
 Use these first:
 
-- `agent_memory_read` to load durable project lessons and maintainer advice.
 - `debug_log_read` after failures to inspect recent prompts, engine commands, arguments, durations, and outputs.
 - `spartan_status` to check bridge, transport, read-only mode, and code index health.
 - `search_capabilities` and `get_capability_details` to discover tools/resources without guessing.
@@ -108,7 +107,9 @@ Use these first:
 - `resource_load`, `resource_reload`, `resource_save`, `resource_remove`, and `material_create` for resource lifecycle work.
 - `camera_set_view` and `viewport_frame` for editor camera positioning and framing.
 - `input_inject` for a virtual keyboard and mouse (held keys, mouse motion spread over a duration, wheel) that never touches the OS cursor. The editor fly camera needs `Click_Right` held, e.g. `keys: ["Click_Right", "W"]`.
-- `headless_start`, `headless_status`, and `headless_stop` for a private headless instance that every engine tool targets until it is stopped, and `headless_smoke_test` for the `-ci_test` suite in a throwaway headless process. The engine flag is `--headless` (hidden window, no editor ui, no steam, no gamepads, real mouse ignored, `spartan.xml`, `editor.ini` and `log.txt` untouched, log in `logs/log_headless.txt`); `engine_quit` closes headless instances only.
+- Every tool takes an optional `target_port` that sends that one call to another instance without moving the server's shared target.
+- `headless_start`, `headless_status`, and `headless_stop` for a private headless instance that every engine tool targets until it is stopped (`retarget: false` leaves the shared target alone, then address it with `target_port`). It survives an MCP server restart: the next server with the same `--port` adopts it from `binaries/logs/mcp_headless_<port>.json`. Also `headless_smoke_test` for the `-ci_test` suite in a throwaway headless process. The engine flag is `--headless` (hidden window, no editor ui, no steam, no gamepads, real mouse ignored, `spartan.xml`, `editor.ini` and `log.txt` untouched, log in `logs/log_headless.txt`); `engine_quit` closes headless instances only.
+- Private engine builds, so a running shared exe stays untouched: `tools\premake5.exe --file=tools/premake.lua --skip-setup --build-tag=<name> vs2026 vulkan` generates `binaries/build/<name>/spartan.slnx` with its own objects, and building its development configuration writes `binaries/spartan_vulkan_<name>.exe`. Pass it to `headless_start` as the executable.
 - `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_event_add`, `sequencer_event_update`, and `sequencer_event_remove` for the editor camera cut timeline, plus `sequencer_spline_add`, `sequencer_spline_update`, and `sequencer_spline_remove` for the spline follower track, `sequencer_drive_add`, `sequencer_drive_update`, and `sequencer_drive_remove` for physically driven cars, and `sequencer_render` for fixed timestep png frame sequences. Camera shots can be animated in world, car mounted or camera car (heading) space, or use the `orbit`, `dolly_zoom` and `path` moves with an optional `blend_in` from the previous shot.
 - Cinematic tracks on the same timeline, all eased key curves that are restored when playback stops: `sequencer_time` (time_scale slow motion and freeze, the camera keeps moving so a freeze under an orbit is bullet time), `sequencer_audio` (per group gains, muffle, a music clip synced to the playhead in live playback, slow motion pitch, peak meters), `sequencer_world` (time of day, rain, clouds, wind, puddles), `sequencer_overlay` (fades, letterbox, title cards) and `sequencer_markers` (bpm grid and named markers). Every sequencer time argument accepts seconds, `beat:N`, `bar:N` or `marker:NAME` with an optional `+/-seconds`.
 - `sequencer_capture`, `sequencer_review` and `sequencer_sample` let an agent see the cut: stills at any times (replayed at a fixed timestep, or scrubbed when there are no drives) returned as a labelled contact sheet, an in/mid/out sheet of every shot with per shot warnings, and track values at times without rendering.
@@ -134,9 +135,9 @@ Use these first:
 - City massing: `city_blockout` / `district_blockout` (market, downtown, park, industrial, residential, parking, plaza, gas_station).
 - City roads: `world_landmarks` + bounding boxes, arterial that skirts districts, spur to edges, `spline_junction`, `spline_decorate`. Use `spline_reroute` to fix existing roads that cut through buildings while keeping lights/cameras. Never triangle through landmark centers / runways.
 - `entity_set_transform_batch` for repositioning many entities in one call.
-- `agent_memory_append` after a durable lesson, correction, recurring problem, or maintainer improvement idea.
+- `advice_to_maintainers_append` when an engine or tool bug, a missing tool, or an awkward workflow gets in the way.
 
-Live scene edits should route through deterministic tools when one matches. If no deterministic operation matches, the assistant falls back to the Cursor agent, which can perform the edit through the engine MCP tools. Recurring gaps worth a dedicated fast path should be appended to `AGENT_MEMORY.md` under `Advice To Maintainers`.
+Live scene edits should route through deterministic tools when one matches. If no deterministic operation matches, the assistant falls back to the Cursor agent, which can perform the edit through the engine MCP tools. Recurring gaps worth a dedicated fast path should be reported with `advice_to_maintainers_append` (kind `ux`).
 
 ## Resources
 
@@ -148,25 +149,25 @@ The server exposes stable MCP resources:
 - `spartan://world/current`
 - `spartan://console/recent`
 - `spartan://source`
-- `spartan://agent/memory`
+- `spartan://agent/advice-to-maintainers`
 - `spartan://agent/debug-log`
 
 Use `read_source_file` for actual source file contents.
 
-## Agent Memory
+## Advice To Maintainers
 
-`AGENT_MEMORY.md` is a curated markdown memory file for future agent runs. The MCP server creates it if it is missing.
+`ADVICE_TO_MAINTAINERS.md` is the list of things agents ask the maintainers to fix. The MCP server creates it if it is missing. It has two sections:
 
-Use it for:
+- `Bugs`: something behaves wrong, such as a crash, a wrong result, a misleading receipt or a rendering defect.
+- `UX Improvements`: something made the work harder than it should be, such as a missing tool or argument, a slow or noisy response, or a workflow that needs a workaround.
 
-- Engine facts learned from previous runs.
-- Good strategies that worked.
-- Gotchas and corrections.
-- Advice to future agents.
-- Advice to maintainers about missing tools, architecture problems, or engine improvements.
-- Problem reports when recurring friction is observed.
+Agents work it with three tools:
 
-Do not use it as a chat transcript. Keep notes short, replace stale entries, and avoid duplicate bullets.
+- `advice_to_maintainers_read` returns the file. Read it before reporting so an item is not added twice.
+- `advice_to_maintainers_append {kind, note}` adds one dated item, `kind` is `bug` or `ux`. An item says where it happens, what goes wrong or is missing, and what would fix it.
+- `advice_to_maintainers_resolve {match}` removes the one item that contains `match`, once the fix is verified.
+
+It is not agent memory: lessons, how-tos and session notes do not belong in it. Maintainers can edit the file by hand; delete an item when it is fixed.
 
 ## Safety Rules
 

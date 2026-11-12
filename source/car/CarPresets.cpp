@@ -915,18 +915,18 @@ namespace car
         }
     }
 
-    const car_definition* load_car_file(const string& file_path)
+    const car_definition* load_car_file(const string& file_path, bool reload)
     {
         lock_guard<mutex> lock(load_mutex);
 
         const string path = normalize_path(file_path);
 
-        // cached by path
-        for (const car_definition& definition : definitions)
+        // cached by path, newest first so a reloaded file wins over the definition it replaced
+        for (auto it = definitions.rbegin(); !reload && it != definitions.rend(); ++it)
         {
-            if (definition.file_path == path)
+            if (it->file_path == path)
             {
-                return &definition;
+                return &*it;
             }
         }
 
@@ -1059,7 +1059,18 @@ namespace car
 
         // register for the hud preset selector
         stored.performance.name = stored.name.c_str();
-        preset_registry.push_back({ stored.name.c_str(), &stored.performance, &stored });
+        auto registered = find_if(preset_registry.begin(), preset_registry.end(), [&path](const preset_entry& entry)
+        {
+            return entry.definition && entry.definition->file_path == path;
+        });
+        if (registered != preset_registry.end())
+        {
+            *registered = { stored.name.c_str(), &stored.performance, &stored };
+        }
+        else
+        {
+            preset_registry.push_back({ stored.name.c_str(), &stored.performance, &stored });
+        }
 
         SP_LOG_INFO("loaded car: %s (%s)", stored.name.c_str(), path.c_str());
         return &stored;

@@ -316,20 +316,17 @@ float ocean_shore_lace(float2 p, float density, int salt)
 // dense whitewater is a solid mass, thinning foam erodes into a net and then into scattered strands
 // unresolved detail fades to its mean so the beach does not shimmer from a distance
 // the result is coverage and opacity in one, the thin walls of a draining net let the water through
-float ocean_shore_foam_shape(OceanShore o, float2 world_xz, float footprint)
+// p is where the foam sits on the water that carries it, along is the axis it is drawn out on, the surf, the
+// whitecaps, the wakes and the foam around objects all share this raft so they read as the same water
+float ocean_foam_raft(float foam, float2 p, float2 along, float footprint)
 {
-    if (o.foam <= 0.0f)
+    if (foam <= 0.0f)
         return 0.0f;
-    // the foam is carried by the water and drawn out along the way the swell runs
-    // the stretch axis must be the same everywhere, rotating world coordinates kilometres from the origin by the
-    // sampled shore direction turns its filtering steps into jumps of the whole pattern
-    float2 p       = world_xz + o.lace_offset;
-    float2 along   = buffer_frame.ocean_shore_swell.xy;
     float2 q       = float2(dot(p, float2(-along.y, along.x)), dot(p, along) * 0.65f);
     float detail_a = 1.0f - smoothstep(0.15f, 0.45f, footprint / 1.2f);
     float detail_b = 1.0f - smoothstep(0.15f, 0.45f, footprint / 0.3f);
     float patches  = ocean_shore_noise(p / 4.0f, 61) * 0.6f + ocean_shore_noise(p / 1.3f, 53) * 0.4f;
-    float density  = saturate(o.foam * 0.95f + (patches - 0.5f) * 0.8f);
+    float density  = saturate(foam * 0.95f + (patches - 0.5f) * 0.8f);
     float net_a    = lerp(saturate(density * 1.1f), ocean_shore_lace(q / 1.2f, density, 0), detail_a);
     float net_b    = lerp(0.55f + 0.45f * density, ocean_shore_lace(q / 0.3f + 17.3f, saturate(density + 0.25f), 100), detail_b);
     // the small bubbles fill the gaps between the big ones, only a draining raft opens the fine holes all the way
@@ -337,7 +334,7 @@ float ocean_shore_foam_shape(OceanShore o, float2 world_xz, float footprint)
     float keep     = smoothstep(0.04f, 0.22f, density);
     // a solid mass of whitewater still clumps, it is never one flat sheet of white
     float clumps   = lerp(0.82f, 1.0f, ocean_shore_noise(q / 0.45f, 83));
-    float solid    = smoothstep(0.5f, 0.9f, o.foam) * smoothstep(0.35f, 0.65f, patches + (o.foam - 0.5f) * 1.5f) * clumps;
+    float solid    = smoothstep(0.5f, 0.9f, foam) * smoothstep(0.35f, 0.65f, patches + (foam - 0.5f) * 1.5f) * clumps;
     float opacity  = lerp(0.5f, 1.0f, smoothstep(0.1f, 0.7f, density));
     // up close the foam is grains of bubbles, each one a bright cap ringed by a darker meniscus
     float detail_c = 1.0f - smoothstep(0.15f, 0.45f, footprint / 0.035f);
@@ -352,6 +349,14 @@ float ocean_shore_foam_shape(OceanShore o, float2 world_xz, float footprint)
     }
     float grain    = lerp(1.0f, lerp(1.0f, 0.86f, bubbles), detail_c);
     return saturate(max(net_a * net_b * keep * opacity, solid) * grain);
+}
+
+float ocean_shore_foam_shape(OceanShore o, float2 world_xz, float footprint)
+{
+    // the foam is carried by the water and drawn out along the way the swell runs
+    // the stretch axis must be the same everywhere, rotating world coordinates kilometres from the origin by the
+    // sampled shore direction turns its filtering steps into jumps of the whole pattern
+    return ocean_foam_raft(o.foam, world_xz + o.lace_offset, buffer_frame.ocean_shore_swell.xy, footprint);
 }
 
 #endif

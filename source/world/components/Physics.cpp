@@ -494,6 +494,51 @@ namespace spartan
         }
     }
 
+    void Physics::SetEntityActive(const bool active)
+    {
+        // controllers, cloth and custom bodies own their scene membership
+        if (m_body_type == BodyType::Controller || m_body_type == BodyType::Cloth || m_has_custom_actor)
+        {
+            return;
+        }
+
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+        if (!PhysicsWorld::GetScene())
+        {
+            return;
+        }
+
+        if (m_actors_active.size() != m_actors.size())
+        {
+            m_actors_active.resize(m_actors.size(), true);
+            m_actors_active_count = static_cast<uint32_t>(std::count(m_actors_active.begin(), m_actors_active.end(), true));
+        }
+
+        const bool streamed = m_is_static && m_distance_streaming;
+        for (size_t i = 0; i < m_actors.size(); i++)
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
+            if (!actor)
+            {
+                continue;
+            }
+
+            if (!active && m_actors_active[i])
+            {
+                PhysicsWorld::RemoveActor(actor);
+                m_actors_active[i] = false;
+                m_actors_active_count--;
+            }
+            else if (active && !m_actors_active[i] && !streamed && !IsInstanceSuppressed(static_cast<uint32_t>(i)))
+            {
+                PhysicsWorld::AddActor(actor);
+                m_actors_active[i] = true;
+                m_actors_active_count++;
+            }
+        }
+        m_activation_valid = false;
+    }
+
     void Physics::SetDistanceStreaming(bool enabled)
     {
         if (m_distance_streaming == enabled)
@@ -1820,9 +1865,18 @@ namespace spartan
     {
         struct ParticipationRefresh
         {
+            Physics* physics;
             Entity* entity;
-            ~ParticipationRefresh() { entity->RefreshPreTickGate(); }
-        } refresh{GetEntity()};
+            ~ParticipationRefresh()
+            {
+                // rebuilt while inactive, the new actors must not collide until the entity is activated
+                if (!entity->GetActive())
+                {
+                    physics->SetEntityActive(false);
+                }
+                entity->RefreshPreTickGate();
+            }
+        } refresh{this, GetEntity()};
         // serializes the whole physx setup, the prefab path runs on loader workers and physx corrupts the scene on concurrent writes
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 

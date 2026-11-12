@@ -1031,7 +1031,9 @@ namespace spartan::geometry_generation
         std::vector<RHI_Vertex_PosTexNorTan>* vertices,
         std::vector<uint32_t>* indices,
         const std::vector<math::Vector2>& profile,
-        uint32_t segments
+        uint32_t segments,
+        float start_radians,
+        float sweep_radians
     )
     {
 
@@ -1045,7 +1047,7 @@ namespace spartan::geometry_generation
         {
             const float u = static_cast<float>(segment) /
                 static_cast<float>(segments);
-            const float angle = u * pi_2;
+            const float angle = start_radians + u * sweep_radians;
             const float cosine = std::cos(angle);
             const float sine = std::sin(angle);
             const Vector3 tangent(-sine, 0, cosine);

@@ -168,7 +168,8 @@ namespace spartan
 
         // four cascades from swells to microwaves, the spectrum is normalized so wind speed alone dictates the sea state
         uint32_t m_cascade_count              = cascade_max;
-        float m_cascade_length[cascade_max]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
+        // the short bands divide the 250 m tile that carries the whitecaps, so the strain they add to it tiles with it
+        float m_cascade_length[cascade_max]   = { 1000.0f, 250.0f, 62.5f, 15.625f };
         float m_amplitude           = 1.0f;
         float m_choppiness          = 1.2f; // automatic crest sharpening
         float m_displacement_scale  = 1.0f;

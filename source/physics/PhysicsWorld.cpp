@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Physics.h"
 #include "../world/components/Ragdoll.h"
 #include "../world/World.h"
+#include "../car/Car.h"
 #include "../commands/console/ConsoleCommands.h"
 #include <thread>
 #include <chrono>
@@ -165,6 +166,19 @@ namespace spartan
                 PxRigidActor* actor = hit.block.actor;
                 if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
                 {
+                    // the car the player sits in or watches is never grabbed, a click from the seat that misses a control would yank the chassis
+                    if (Car* viewed = Car::GetViewed())
+                    {
+                        Entity* car_root = viewed->GetRootEntity();
+                        for (Entity* entity = static_cast<Entity*>(dynamic->userData); entity && car_root; entity = entity->GetParent())
+                        {
+                            if (entity == car_root)
+                            {
+                                return;
+                            }
+                        }
+                    }
+
                     // frozen ragdoll limbs are kinematic, wake them so the pick joint can drag
                     if (Entity* entity = static_cast<Entity*>(dynamic->userData))
                     {
@@ -754,10 +768,12 @@ namespace spartan
                 simulation_thread::queued_step_size = fixed_time_step * step_scale;
             }
             // object picking, skip when right is held so cube shoot does not also grab
+            // a gameplay highlight means a script outlined what the click will use (a door, a stalk), the click is its, not the grab's
             {
                 if (Input::GetKeyDown(KeyCode::Click_Left) &&
                     Input::GetMouseIsInViewport() &&
-                    !Input::GetKey(KeyCode::Click_Right))
+                    !Input::GetKey(KeyCode::Click_Right) &&
+                    !Renderer::GetGameplayHighlight())
                 {
                     picking::PickBody();
                 }

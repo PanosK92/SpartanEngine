@@ -103,6 +103,70 @@ namespace spartan
             return CreateDirectoryW(directory, nullptr) || GetLastError() == ERROR_ALREADY_EXISTS;
         }
 
+        // Full memory dumps are several GB each and a full disk hangs the next session, so only the newest few are kept.
+        constexpr size_t dumps_kept = 2;
+        constexpr ULONGLONG full_dump_min_free_bytes = 32ull * 1024 * 1024 * 1024;
+
+        void prune_old_dumps(const wchar_t* directory)
+        {
+            struct DumpFile
+            {
+                FILETIME written;
+                wchar_t name[MAX_PATH];
+            };
+            DumpFile newest[dumps_kept] = {};
+            size_t newest_count = 0;
+            wchar_t pattern[path_capacity];
+            swprintf_s(pattern, L"%s\\*.dmp", directory);
+
+            // two passes keep this allocation free: find the newest names, then delete everything else
+            WIN32_FIND_DATAW data = {};
+            HANDLE find = FindFirstFileW(pattern, &data);
+            if (find == INVALID_HANDLE_VALUE)
+                return;
+            do
+            {
+                size_t slot = newest_count < dumps_kept ? newest_count++ : dumps_kept;
+                if (slot == dumps_kept)
+                {
+                    size_t oldest = 0;
+                    for (size_t i = 1; i < dumps_kept; ++i)
+                        if (CompareFileTime(&newest[i].written, &newest[oldest].written) < 0) oldest = i;
+                    if (CompareFileTime(&data.ftLastWriteTime, &newest[oldest].written) <= 0)
+                        continue;
+                    slot = oldest;
+                }
+                newest[slot].written = data.ftLastWriteTime;
+                wcscpy_s(newest[slot].name, data.cFileName);
+            } while (FindNextFileW(find, &data));
+            FindClose(find);
+
+            find = FindFirstFileW(pattern, &data);
+            if (find == INVALID_HANDLE_VALUE)
+                return;
+            do
+            {
+                bool keep = false;
+                for (size_t i = 0; i < newest_count && !keep; ++i)
+                    keep = _wcsicmp(newest[i].name, data.cFileName) == 0;
+                if (keep)
+                    continue;
+                wchar_t file[path_capacity];
+                swprintf_s(file, L"%s\\%s", directory, data.cFileName);
+                DeleteFileW(file);
+            } while (FindNextFileW(find, &data));
+            FindClose(find);
+        }
+
+        bool has_room_for_full_dump(const wchar_t* dump_path)
+        {
+            wchar_t directory[path_capacity];
+            wcscpy_s(directory, dump_path);
+            if (wchar_t* slash = wcsrchr(directory, L'\\')) *slash = L'\0';
+            ULARGE_INTEGER free_bytes = {};
+            return GetDiskFreeSpaceExW(directory, &free_bytes, nullptr, nullptr) && free_bytes.QuadPart >= full_dump_min_free_bytes;
+        }
+
         // Try beside the executable first, then a user-writable temporary directory.
         HANDLE create_dump_file(wchar_t* path, size_t capacity, DWORD process_id)
         {
@@ -128,6 +192,7 @@ namespace spartan
                 }
                 if (wcscat_s(directory, L"\\crashes") != 0 || !create_directory(directory))
                     continue;
+                prune_old_dumps(directory);
                 swprintf_s(path, capacity, L"%s\\crash_%04u%02u%02u_%02u%02u%02u_%03u_%lu.dmp", directory,
                     time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, process_id);
                 HANDLE file = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -194,11 +259,16 @@ namespace spartan
         wchar_t dump_path[path_capacity] = {};
         HANDLE file = create_dump_file(dump_path, path_capacity, process_id);
         bool saved = false;
+        bool full_memory = false;
         if (file != INVALID_HANDLE_VALUE && context_read)
         {
             EXCEPTION_POINTERS pointers = { &context.exception, &context.registers };
             MINIDUMP_EXCEPTION_INFORMATION info = { thread_id, &pointers, FALSE };
-            const MINIDUMP_TYPE flags = static_cast<MINIDUMP_TYPE>(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo |
+            // Without room for a full dump keep stacks, locals and referenced heap, which still opens in a debugger.
+            full_memory = has_room_for_full_dump(dump_path);
+            const MINIDUMP_TYPE memory_flags = full_memory ? MiniDumpWithFullMemory :
+                static_cast<MINIDUMP_TYPE>(MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithDataSegs | MiniDumpWithPrivateReadWriteMemory);
+            const MINIDUMP_TYPE flags = static_cast<MINIDUMP_TYPE>(memory_flags | MiniDumpWithFullMemoryInfo |
                 MiniDumpWithHandleData | MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules | MiniDumpIgnoreInaccessibleMemory);
             saved = MiniDumpWriteDump(process, process_id, file, flags, &info, nullptr, nullptr) != FALSE;
             if (!saved) error = GetLastError();
@@ -216,7 +286,7 @@ namespace spartan
         context.reason[sizeof(context.reason) - 1] = '\0';
         snprintf(report, sizeof(report), "Engine crash\nBuild: %s %s\nProcess: %lu\nThread: %lu\nException: 0x%08lx\nAddress: %p\nReason: %s\nDump saved: %s\nWindows error: 0x%08lx\nOpen the .dmp with the matching executable and PDB in Visual Studio or WinDbg.\n",
             __DATE__, __TIME__, process_id, thread_id, context.exception.ExceptionCode, context.exception.ExceptionAddress,
-            context_read ? context.reason : "Could not read the crashing process", saved ? "yes (full memory)" : "no", error);
+            context_read ? context.reason : "Could not read the crashing process", saved ? (full_memory ? "yes (full memory)" : "yes (reduced, low disk space)") : "no", error);
         bool report_saved = false;
         if (dump_path[0])
         {

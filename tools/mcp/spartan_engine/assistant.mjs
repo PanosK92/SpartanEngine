@@ -8,7 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 import net from "node:net";
 import path from "node:path";
-import { append_agent_memory } from "./agent_memory.mjs";
+import { advice_kinds, append_advice } from "./advice_to_maintainers.mjs";
 import { append_debug_log } from "./debug_log.mjs";
 import { EngineClient } from "./engine_client.mjs";
 import { run_cursor_fallback, list_models, dispose_cached_agent } from "./cursor_agent.mjs";
@@ -307,9 +307,10 @@ class AssistantRun {
   async report_capability_gap(detail) {
     const note = capability_gap_note(detail);
     try {
-      await append_agent_memory("Capability Gaps", note);
+      // a tool that does not exist is something the maintainers are asked to add
+      await append_advice("ux", note);
       this.receipt("capability gap logged", {
-        section: "Capability Gaps",
+        section: advice_kinds.ux,
         note,
       });
     } catch (error) {

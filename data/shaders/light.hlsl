@@ -9,7 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
-#include "sky/clouds.hlsl"
+#include "sky/cloud_shadow.hlsl"
 #include "light_cluster.hlsl"
 #include "subsurface_scattering.hlsl"
 #include "rt_visibility.hlsl"

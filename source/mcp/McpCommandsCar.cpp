@@ -45,8 +45,9 @@ namespace spartan
             switch (view)
             {
             case CarView::Chase: return "chase";
-            case CarView::Hood:  return "hood";
-            case CarView::Wheel: return "wheel";
+            case CarView::Hood:     return "hood";
+            case CarView::Interior: return "interior";
+            case CarView::Wheel:    return "wheel";
             }
             return "chase";
         }
@@ -62,6 +63,11 @@ namespace spartan
             if (lower == "hood")
             {
                 view = CarView::Hood;
+                return true;
+            }
+            if (lower == "interior" || lower == "cockpit" || lower == "cabin")
+            {
+                view = CarView::Interior;
                 return true;
             }
             if (lower == "wheel")
@@ -832,7 +838,7 @@ namespace spartan
                 CarView view = CarView::Chase;
                 if (!car_view_from_name(view_name, view))
                 {
-                    return json_error("view must be chase, hood, wheel, or cycle");
+                    return json_error("view must be chase, hood, interior, wheel, or cycle");
                 }
                 car->SetView(view);
             }
@@ -877,8 +883,29 @@ namespace spartan
                 return json_error("unknown car " + *name + ", the catalog lists the .car files next to the loaded cars");
             }
 
+            // asking for the car it already drives means the .car file was edited, parse it again
+            bool reload = definition == car->GetDefinition();
+            if (const std::optional<std::string> reload_arg = get_argument(request, "reload"))
+            {
+                if (!parse_bool(*reload_arg, reload))
+                {
+                    return json_error("reload must be true or false");
+                }
+            }
+            if (reload)
+            {
+                const car::car_definition* reloaded = car::load_car_file(definition->file_path, true);
+                if (!reloaded)
+                {
+                    return json_error("failed to reload " + definition->file_path + ", see console_read for the parse or validation error");
+                }
+                definition = reloaded;
+            }
+
             car->LoadDefinition(definition);
-            return car_status_json(car);
+            std::string json = car_status_json(car);
+            json.insert(json.size() - 1, ",\"reloaded\":" + json_bool(reload));
+            return json;
         }
 
         std::string command_vehicle_openings(const McpRequest& request)

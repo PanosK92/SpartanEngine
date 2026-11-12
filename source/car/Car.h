@@ -38,11 +38,12 @@ namespace spartan
     class AiDriver;
     class CarPhysicsMeshView;
 
-    // view modes for car camera
+    // view modes for car camera, in the order v cycles through them
     enum class CarView
     {
         Chase,
         Hood,
+        Interior, // the driver's eye from the .car cockpit, the head turns with right click drag or the right stick
         Wheel
     };
 
@@ -255,12 +256,14 @@ namespace spartan
         Entity* FindCameraEntity() const;
         void ConfigureCameraForView();
         void ConfigureWheelCamera(Entity* camera);
+        bool HasCockpit() const;
 
         // tick helpers
         void TickInput();
         void TickControllerFeedback(Physics* physics, float dt);
         void TickSounds();
         void TickChaseCamera();
+        void TickInteriorCamera();
         void TickEnterExit();
         void TickViewSwitch();
         void TickSummon();
@@ -286,6 +289,10 @@ namespace spartan
         // mouse orbit (right_click drag) tuning, radians per pixel
         static constexpr float mouse_orbit_sensitivity_yaw   = 0.005f;
         static constexpr float mouse_orbit_sensitivity_pitch = 0.004f;
+        // how far the driver can turn their head in the interior view, radians
+        static constexpr float interior_look_yaw_max       = 2.4f;
+        static constexpr float interior_look_pitch_up_max   = 0.8f;
+        static constexpr float interior_look_pitch_down_max = 1.0f;
 
         // instance state
         const ::car::car_definition* m_definition = nullptr; // loaded from the .car file
@@ -366,6 +373,10 @@ namespace spartan
         // mouse orbit state (right_click drag)
         bool              m_orbit_mouse_active        = false;
         math::Vector2     m_orbit_mouse_last_position = math::Vector2(0.0f, 0.0f);
+
+        // interior view head turn relative to looking straight ahead, positive yaw is right, positive pitch is down
+        float m_interior_look_yaw   = 0.0f;
+        float m_interior_look_pitch = 0.0f;
 
         // sound state
         float m_tire_squeal_volume = 0.0f;

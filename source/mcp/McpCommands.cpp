@@ -907,9 +907,40 @@ namespace spartan
             return std::nullopt;
         }
 
+        std::string normalize_resource_key(const std::string& value)
+        {
+            std::string key = to_lower_copy(value);
+            std::replace(key.begin(), key.end(), '\\', '/');
+            while (key.rfind("./", 0) == 0)
+            {
+                key.erase(0, 2);
+            }
+            return key;
+        }
+
+        // a relative path the agent passed matches the absolute path the cache stores when it is its tail
+        bool resource_path_matches(const std::string& stored, const std::string& wanted)
+        {
+            if (stored.empty() || wanted.empty())
+            {
+                return false;
+            }
+            if (stored == wanted)
+            {
+                return true;
+            }
+            const std::string& longer  = stored.size() > wanted.size() ? stored : wanted;
+            const std::string& shorter = stored.size() > wanted.size() ? wanted : stored;
+            return longer.size() > shorter.size() &&
+                longer.compare(longer.size() - shorter.size(), shorter.size(), shorter) == 0 &&
+                longer[longer.size() - shorter.size() - 1] == '/' &&
+                shorter.find('/') != std::string::npos;
+        }
+
         IResource* get_resource_by_name_or_path(const std::string& name_or_path, ResourceType type)
         {
-            for (const std::shared_ptr<IResource>& resource : ResourceCache::GetResourcesSnapshot())
+            const std::vector<std::shared_ptr<IResource>> resources = ResourceCache::GetResourcesSnapshot();
+            for (const std::shared_ptr<IResource>& resource : resources)
             {
                 if (!resource || (type != ResourceType::Max && resource->GetResourceType() != type))
                 {
@@ -922,7 +953,32 @@ namespace spartan
                 }
             }
 
-            return nullptr;
+            // separators, case, relative vs absolute paths and a name given with its file extension, then the file
+            // name alone when it is unique, the mcp server moves generated files into its library folder
+            const std::string wanted      = normalize_resource_key(name_or_path);
+            const std::string wanted_stem = normalize_resource_key(FileSystem::GetFileNameWithoutExtensionFromFilePath(name_or_path));
+            IResource* name_match         = nullptr;
+            uint32_t name_matches         = 0;
+            for (const std::shared_ptr<IResource>& resource : resources)
+            {
+                if (!resource || (type != ResourceType::Max && resource->GetResourceType() != type))
+                {
+                    continue;
+                }
+
+                if (resource_path_matches(normalize_resource_key(resource->GetResourceFilePath()), wanted))
+                {
+                    return resource.get();
+                }
+
+                if (normalize_resource_key(resource->GetObjectName()) == wanted_stem)
+                {
+                    name_match = resource.get();
+                    name_matches++;
+                }
+            }
+
+            return name_matches == 1 ? name_match : nullptr;
         }
 
         Material* get_material_from_request(const McpRequest& request, std::string& error)
@@ -937,9 +993,16 @@ namespace spartan
             }
 
             Material* material = static_cast<Material*>(get_resource_by_name_or_path(key, ResourceType::Material));
+
+            // a material that exists on disk but is not used by anything yet is not in the cache
+            if (material == nullptr && FileSystem::IsFile(key) && to_lower_copy(FileSystem::GetExtensionFromFilePath(key)) == EXTENSION_MATERIAL)
+            {
+                material = ResourceCache::Load<Material>(key).get();
+            }
+
             if (material == nullptr)
             {
-                error = "material not found";
+                error = "material not found, pass the name or the path material_create returned";
             }
 
             return material;
@@ -1129,6 +1192,13 @@ namespace spartan
             json += ",\"frame_number\":" + std::to_string(Renderer::GetFrameNumber());
             json += ",\"jobs_running\":" + json_bool(ThreadPool::AreTasksRunning());
             json += ",\"working_threads\":" + std::to_string(ThreadPool::GetWorkingThreadCount());
+            uint32_t shaders_compiling = 0;
+            for (const std::shared_ptr<RHI_Shader>& shader : Renderer::GetShaders())
+            {
+                shaders_compiling += shader && (shader->GetCompilationState() == RHI_ShaderCompilationState::Compiling || shader->IsReloading()) ? 1 : 0;
+            }
+            json += ",\"shaders_compiling\":" + std::to_string(shaders_compiling);
+            json += ",\"pipelines_compiling\":" + std::to_string(RHI_Device::GetPipelineCompilingCount());
             json += "}";
             return json;
         }
@@ -1201,6 +1271,14 @@ namespace spartan
                 return json_error("unknown screenshot source");
             if (extension != (radiance ? ".exr" : ".png"))
                 return json_error(radiance ? "radiance path must be an .exr file" : "screenshot path must be a .png file");
+            // with no camera the renderer draws nothing to capture, so the request would never complete
+            const std::optional<std::string> ui_value = ConsoleRegistry::Get().GetValueAsString("r.screenshot_ui");
+            const bool ui_capture = ui_value && std::atof(ui_value->c_str()) > 0.0;
+            if (!ui_capture && (World::GetCamera() == nullptr || World::GetCamera()->GetEntity() == nullptr))
+            {
+                return json_error("no camera to capture, load a world first");
+            }
+
             std::filesystem::create_directories(
                 std::filesystem::path(path).parent_path()
             );
@@ -1821,7 +1899,15 @@ namespace spartan
                     return json_error("invalid time_of_day");
                 }
 
-                World::SetTimeOfDay(parsed);
+                // the clock alone moves the sky, a sun without the day night cycle flag keeps its old rotation
+                if (Light* sun = World::GetDirectionalLight())
+                {
+                    sun->SetTimeOfDay(parsed);
+                }
+                else
+                {
+                    World::SetTimeOfDay(parsed);
+                }
                 changed = true;
             }
 
@@ -7201,6 +7287,13 @@ namespace spartan
 
             bool changed = false;
 
+            const std::string space = get_argument(request, "space").value_or("local");
+            if (space != "local" && space != "world")
+            {
+                return json_error("space must be local or world");
+            }
+            const bool world_space = space == "world";
+
             if (const std::optional<std::string> position = get_argument(request, "position"))
             {
                 math::Vector3 parsed;
@@ -7208,7 +7301,7 @@ namespace spartan
                 {
                     return json_error("invalid position");
                 }
-                entity->SetPositionLocal(parsed);
+                world_space ? entity->SetPosition(parsed) : entity->SetPositionLocal(parsed);
                 changed = true;
             }
 
@@ -7219,7 +7312,7 @@ namespace spartan
                 {
                     return json_error("invalid rotation");
                 }
-                entity->SetRotationLocal(parsed);
+                world_space ? entity->SetRotation(parsed) : entity->SetRotationLocal(parsed);
                 changed = true;
             }
 
@@ -7230,7 +7323,8 @@ namespace spartan
                 {
                     return json_error("invalid rotation_euler");
                 }
-                entity->SetRotationLocal(math::Quaternion::FromEulerAngles(parsed));
+                const math::Quaternion rotation = math::Quaternion::FromEulerAngles(parsed);
+                world_space ? entity->SetRotation(rotation) : entity->SetRotationLocal(rotation);
                 changed = true;
             }
 
@@ -7241,7 +7335,7 @@ namespace spartan
                 {
                     return json_error("invalid scale");
                 }
-                entity->SetScaleLocal(parsed);
+                world_space ? entity->SetScale(parsed) : entity->SetScaleLocal(parsed);
                 changed = true;
             }
 
@@ -7277,7 +7371,8 @@ namespace spartan
                 "position",
                 "rotation",
                 "rotation_euler",
-                "scale"
+                "scale",
+                "space"
             };
 
             std::string updated_json = "[";

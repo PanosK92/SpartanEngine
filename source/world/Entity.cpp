@@ -746,6 +746,7 @@ namespace spartan
         if (m_effective_active.exchange(active) == active) return;
         if (m_pretick_gate) m_pretick_gate->active = active;
         if (Render* render = GetComponent<Render>()) render->SetEntityActive(active);
+        if (Physics* physics = GetComponent<Physics>()) physics->SetEntityActive(active);
         if (active) m_last_transform_time_sec = Timer::GetTimeSec();
         if (!HasChildren()) return;
         const auto traversal = GetHierarchyTraversal();
@@ -754,7 +755,12 @@ namespace spartan
             const bool child_active = entity->m_is_active.load() && (!entity->m_parent || entity->m_parent->GetActive());
             if (entity->m_pretick_gate) entity->m_pretick_gate->active = child_active;
             if (Render* render = entity->GetComponent<Render>()) render->SetEntityActive(child_active);
-            if (entity->m_effective_active.exchange(child_active) != child_active && child_active)
+            const bool child_changed = entity->m_effective_active.exchange(child_active) != child_active;
+            if (child_changed)
+            {
+                if (Physics* physics = entity->GetComponent<Physics>()) physics->SetEntityActive(child_active);
+            }
+            if (child_changed && child_active)
                 entity->m_last_transform_time_sec = Timer::GetTimeSec();
         }
     }

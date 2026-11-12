@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Renderer_Internal.h"
 #include "../world/World.h"
+#include "../world/Entity.h"
 #include "../world/components/Light.h"
 #include "SurfaceWater.h"
 #include "../rhi/RHI_CommandList.h"
@@ -33,16 +34,47 @@ namespace spartan
 
         RHI_CommandList::BeginPass("skysphere");
         {
+            // the periodic refreshes below each own a different frame of a four frame cycle, landing
+            // them all on the same frame made every fourth frame visibly longer than the rest
+            const uint64_t frame         = Renderer::view().frame.frame;
             const bool sky_state_changed =
                 m_pass_state.sky.state_changed_this_frame;
             const bool refresh_sky_view_lut =
                 sky_state_changed ||
                 m_pass_state.sky.warmup_this_frame ||
-                (Renderer::view().frame.frame & 7u) == 0u;
+                (frame & 7u) == 0u;
+
+            // the cloud shadow map is centered on a texel snapped anchor that the shaders derive from
+            // the camera and the sun, see cloud_shadow_plane_uv in cloud_shadow.hlsl. the map has to be
+            // baked again on the frame the anchor moves to another texel, a bake on a fixed cadence
+            // left it one texel (16 m) off for up to three frames every time a moving camera crossed one.
+            // in between the clouds drift a fraction of a texel, so the cadence itself can be slow
+            bool cloud_shadow_anchor_moved = false;
+            bool cloud_shadow_clear        = false;
+            {
+                const float base_altitude = 1500.0f; // cumulus_bottom_alt
+                const float half_extent   = 8000.0f; // cloud_shadow_half_extent
+                const float min_sun_y     = 0.087f;  // cloud_shadow_min_sun_y
+                Light* sun                = World::GetDirectionalLight();
+                const Vector3 sun_dir     = sun && sun->GetEntity() ? -sun->GetEntity()->GetForward() : Vector3(0.0f, 1.0f, 0.0f);
+                const Vector3 camera      = Renderer::view().frame.camera_position;
+                const float texel_size    = 2.0f * half_extent / static_cast<float>(tex_cloud_shadow->GetWidth());
+                const float sun_y         = max(sun_dir.y, min_sun_y);
+                const float lift          = (base_altitude - camera.y) / sun_y;
+                const int32_t anchor_x    = static_cast<int32_t>(floorf((camera.x + sun_dir.x * lift) / texel_size + 0.5f));
+                const int32_t anchor_z    = static_cast<int32_t>(floorf((camera.z + sun_dir.z * lift) / texel_size + 0.5f));
+                cloud_shadow_anchor_moved = anchor_x != m_pass_state.sky.cloud_shadow_anchor_x || anchor_z != m_pass_state.sky.cloud_shadow_anchor_z;
+                m_pass_state.sky.cloud_shadow_anchor_x = anchor_x;
+                m_pass_state.sky.cloud_shadow_anchor_z = anchor_z;
+
+                // a clear sky or a sun below the horizon bakes a map of ones, which only has to be done once
+                cloud_shadow_clear = Renderer::view().frame.cloud_coverage <= 0.0f || sun_dir.y <= 0.0f;
+            }
+            const bool cloud_shadow_stays_clear = cloud_shadow_clear && m_pass_state.sky.cloud_shadow_clear;
             const bool refresh_cloud_shadow =
                 sky_state_changed ||
                 m_pass_state.sky.warmup_this_frame ||
-                (Renderer::view().frame.frame & 3u) == 0u;
+                (!cloud_shadow_stays_clear && (cloud_shadow_anchor_moved || (frame & 7u) == 2u));
 
             // Slot 0 contains the authored sun, the empty editor's default light, or a
             // zero-intensity sentinel when no lights are visible in a loaded world.
@@ -71,6 +103,7 @@ namespace spartan
                     RHI_CommandList::Dispatch(tex_cloud_shadow);
                     if (!RHI_CommandList::IsPipelineReady())
                         m_pass_state.sky.first_frame = true;
+                    m_pass_state.sky.cloud_shadow_clear = cloud_shadow_clear && RHI_CommandList::IsPipelineReady();
 
                     // the raw bake has texel-rate edges that moire against the screen grid, blur and mips remove them
                     Pass_Blur(tex_cloud_shadow, false, 4.0f, 0);
@@ -116,7 +149,7 @@ namespace spartan
             // averaging downsampler every fourth frame, the ggx prefilter below is warmup only since clouds mostly drive diffuse ibl
             {
                 const bool do_downscale = m_pass_state.sky.warmup_this_frame ||
-                                          ((Renderer::view().frame.frame & 3u) == 0u);
+                                          ((frame & 3u) == 1u);
                 if (do_downscale)
                 {
                     Pass_Downscale(tex_skysphere, Renderer_DownsampleFilter::Average);
@@ -152,8 +185,9 @@ namespace spartan
                     }
                 }
 
-                // rebuild l2 sh when the panorama mips are fresh
-                if (do_downscale)
+                // rebuild l2 sh when the panorama mips are fresh, once a cloud environment exists
+                // the sh comes from it instead and is rebuilt at the end of each of its bakes
+                if (do_downscale && !m_pass_state.cloud_environment.environment_ready)
                 {
                     Pass_Skysphere_SH_Project();
                 }
@@ -166,7 +200,9 @@ namespace spartan
 
     void Renderer::Pass_Skysphere_SH_Project()
     {
-        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        // the sky lights the scene through its clouds, the cloud environment is the panorama with
+        // the clouds marched into it, the bare panorama only stands in until its first bake is done
+        RHI_Texture* tex_skysphere = GetRenderTarget(m_pass_state.cloud_environment.environment_ready ? Renderer_RenderTarget::cloud_environment : Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_sky_sh    = GetRenderTarget(Renderer_RenderTarget::sky_sh);
         RHI_Shader* shader         = GetShader(Renderer_Shader::skysphere_sh_project_c);
         if (!tex_skysphere || !tex_sky_sh || !shader || !shader->IsCompiled())
@@ -192,6 +228,7 @@ namespace spartan
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_render_c), "clouds_render");
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_sky_view)); // sky fill on the shaded side and the haze in front of far clouds
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
         RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_raw, rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_distance, rhi_all_mips, 0, eye_layer);
@@ -261,23 +298,35 @@ namespace spartan
                 m_pass_state.cloud_environment.environment_baking = false;
                 m_pass_state.cloud_environment.environment_strip  = 0;
             }
+            m_pass_state.cloud_environment.environment_ready = false;
             return;
         }
 
-        const bool cadence_frame = (Renderer::view().frame.frame & 31u) == 0u;
+        // a sky change is answered at once, one strip a frame. the rolling refresh that follows
+        // the drifting clouds bakes its strips on the frame of the four frame cycle that no
+        // other sky refresh uses, see Pass_Skysphere
+        const uint64_t frame     = Renderer::view().frame.frame;
+        const bool cadence_frame = (frame & 31u) == 3u;
         if (m_pass_state.cloud_environment.environment_dirty)
         {
             m_pass_state.cloud_environment.environment_baking = true;
+            m_pass_state.cloud_environment.environment_urgent = true;
             m_pass_state.cloud_environment.environment_strip  = 0;
             m_pass_state.cloud_environment.environment_dirty  = false;
         }
         else if (cadence_frame && !m_pass_state.cloud_environment.environment_baking)
         {
             m_pass_state.cloud_environment.environment_baking = true;
+            m_pass_state.cloud_environment.environment_urgent = false;
             m_pass_state.cloud_environment.environment_strip  = 0;
         }
 
         if (!m_pass_state.cloud_environment.environment_baking)
+        {
+            return;
+        }
+
+        if (!m_pass_state.cloud_environment.environment_urgent && (frame & 3u) != 3u)
         {
             return;
         }
@@ -310,11 +359,16 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_clouds::environment_row, y0);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_sky_view));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_environment, 0, 1);
             RHI_CommandList::Dispatch((width + 7) / 8, (rows + 7) / 8);
 
-            m_pass_state.cloud_environment.environment_strip++;
+            // a pipeline that is still compiling drew nothing, the strip is tried again next time
+            if (RHI_CommandList::IsPipelineReady())
+            {
+                m_pass_state.cloud_environment.environment_strip++;
+            }
             if (m_pass_state.cloud_environment.environment_strip >= strips)
             {
                 Pass_Downscale(tex_environment, Renderer_DownsampleFilter::Average);
@@ -338,9 +392,16 @@ namespace spartan
 
                 m_pass_state.cloud_environment.environment_baking = false;
                 m_pass_state.cloud_environment.environment_strip  = 0;
+                m_pass_state.cloud_environment.environment_ready  = true;
             }
         }
         RHI_CommandList::EndPass();
+
+        // the bake just finished, the diffuse sky light follows the clouds so project the fresh environment
+        if (!m_pass_state.cloud_environment.environment_baking)
+        {
+            Pass_Skysphere_SH_Project();
+        }
     }
 
     bool Renderer::Pass_Clouds_Prepare(uint32_t eye_layer)

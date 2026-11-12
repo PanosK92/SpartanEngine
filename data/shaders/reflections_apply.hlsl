@@ -47,9 +47,10 @@ static const float g_refraction_max_distance  = 2.0f;   // max refraction distan
 static const float g_refraction_thickness     = 0.1f;   // depth testing thickness
 static const float g_refraction_step_length   = g_refraction_max_distance / (float)g_refraction_max_steps;
 
-// contact foam only where opaque geometry sits within this 3d world distance of the water surface point,
-// vertical clearance alone foams every submerged wall seen through the water, full distance cannot
-static const float contact_foam_radius = 0.45f;
+// how far the wash around an object reaches over the water in a lively sea, in metres, and the taps that search it
+static const float contact_foam_radius = 1.6f;
+static const uint  contact_foam_taps   = 20;
+static const float contact_foam_grain  = 3.0f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -197,48 +198,104 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
 }
 #endif
 
-// Search a projected world-space neighbourhood for geometry at the waterline.
-// Full 3D locality rejects distant silhouettes and deeply submerged walls.
-float ocean_contact_foam(float2 render_uv, float3 water_position, float water_depth, float footprint, float wave_activity)
+// whitewater where the sea works against a pile, a hull or a rock
+// the search walks a disc on the water around the pixel, not a disc on the screen, so the foam keeps its width in
+// metres at any view angle, each tap asks what opaque geometry the camera sees there and keeps it when it stands at
+// the waterline within reach of the pixel, measured sideways and in height on their own, one 3d distance cannot tell
+// a pile half a metre away from a wall half a metre down
+float ocean_contact_foam(float3 water_position, float footprint, float wave_activity)
 {
-    static const float2 offsets[9] = {
-        float2(0, 0), float2(-1, 0), float2(1, 0), float2(0, -1), float2(0, 1),
-        float2(-0.707, -0.707), float2(0.707, -0.707), float2(-0.707, 0.707), float2(0.707, 0.707)
-    };
-    float2 screen_uv = render_uv_to_screen_uv(render_uv);
-    float2 texel = 1.0f / get_render_resolution_active();
-    float3 adjacent = get_position(water_depth, screen_uv + float2(texel.x, 0.0f));
-    float pixel_world = max(length(adjacent - water_position), 0.0001f);
-    float radius_pixels = clamp(contact_foam_radius * 0.5f / pixel_world, 1.0f, 32.0f);
-    float coverage = 0.0f;
-    [unroll] for (uint i = 0; i < 9; ++i)
+    // calm water lies against a wall without breaking
+    float activity = smoothstep(0.01f, 0.06f, wave_activity);
+    if (activity <= 0.0f)
     {
-        float2 sample_uv = screen_uv + offsets[i] * radius_pixels * texel;
-        if (!is_valid_uv(sample_uv)) continue;
-        float depth = tex4.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0.0f).r;
-        if (depth <= 1e-5f) continue;
-        float3 contact_position = get_position(depth, sample_uv);
-        float separation = length(contact_position - water_position);
-        float local = 1.0f - smoothstep(0.05f, contact_foam_radius, separation);
-        float waterline = 1.0f - smoothstep(0.04f, 0.22f, abs(contact_position.y - water_position.y));
-        if (local * waterline <= 0.0f) continue;
-        // Terrain already owns a world-space wash. Do not draw a second,
-        // camera-dependent contact rim on the same beach. Rocks and piers
-        // above the bed still receive object contact foam.
-        float bed_valid;
-        float bed = sample_ocean_terrain_height(contact_position.xz, bed_valid);
-        if (bed_valid > 0.5f && abs(contact_position.y - bed) < 0.15f) continue;
-        coverage = max(coverage, local * waterline);
+        return 0.0f;
     }
-    // Calm water does not spontaneously generate a solid white outline.
-    float activity = smoothstep(0.01f, 0.15f, wave_activity);
-    float2 drift = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
-    // Break up the rim before shaping it; a fully covered search footprint makes
-    // rectangular pillars look surrounded by an inflated white collar.
-    float breakup = ocean_foam_noise((water_position.xz - drift) * 4.0f);
-    breakup = lerp(0.5f, breakup, 1.0f - smoothstep(0.2f, 0.6f, footprint * 4.0f));
-    coverage *= lerp(0.3f, 0.85f, smoothstep(0.25f, 0.75f, breakup));
-    return shape_ocean_foam(coverage * activity, water_position.xz - drift, footprint);
+
+    // a bigger sea throws its wash further, once the reach is under a pixel there is nothing left to resolve
+    float reach    = contact_foam_radius * lerp(0.7f, 1.0f, smoothstep(0.03f, 0.25f, wave_activity));
+    float resolved = smoothstep(0.75f, 2.0f, reach / max(footprint, 1e-4f));
+    if (resolved <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float2 wind_axis = ocean_foam_axis();
+    float nearest    = reach;
+    [loop] for (uint i = 0; i < contact_foam_taps; ++i)
+    {
+        // golden angle spiral, even in area so a thin pile cannot hide between the taps
+        float angle   = (float)i * 2.39996323f;
+        float radius  = reach * sqrt(((float)i + 0.5f) / (float)contact_foam_taps);
+        float3 probe  = water_position + float3(cos(angle), 0.0f, sin(angle)) * radius;
+        float2 tap_uv = world_to_uv(probe);
+        if (!is_valid_uv(tap_uv))
+        {
+            continue;
+        }
+        float depth = tex4.SampleLevel(samplers[sampler_point_clamp], tap_uv, 0.0f).r;
+        if (depth <= 1e-5f)
+        {
+            continue;
+        }
+
+        float3 contact = get_position(depth, tap_uv);
+        float2 away    = contact.xz - water_position.xz;
+        float beside   = length(away);
+        float above    = contact.y - water_position.y;
+        // the shaft above the water and the shaft seen through it both mark where the object stands in the surface
+        float at_surface = above >= 0.0f ? 1.0f - smoothstep(0.25f, 0.7f, above) : 1.0f - smoothstep(0.1f, 0.4f, -above);
+        if (at_surface <= 0.0f || beside >= nearest)
+        {
+            continue;
+        }
+
+        // the terrain already owns a world space wash, a second camera dependent rim does not belong on the same beach
+        float bed_valid;
+        float bed = sample_ocean_terrain_height(contact.xz, bed_valid);
+        if (bed_valid > 0.5f && abs(contact.y - bed) < 0.15f)
+        {
+            continue;
+        }
+
+        // the side the wind drives the sea against throws its wash further than the lee,
+        // geometry that only brushes the waterline band counts as further away
+        float windward = saturate(0.5f + 0.5f * dot(away / max(beside, 1e-3f), wind_axis));
+        nearest        = min(nearest, beside / (at_surface * lerp(0.8f, 1.0f, windward)));
+    }
+    if (nearest >= reach)
+    {
+        return 0.0f;
+    }
+
+    // the wash is thrown out when a crest surges up the object and drains back as the trough pulls away, and it
+    // slides off slowly with the wind, both move the edge of the collar and never thin its core, foam that only
+    // fades in strength leaves a square pile wearing a uniform grey ring
+    float surge   = saturate(0.5f + 0.35f * (water_position.y - buffer_frame.ocean_sea_level) / max(wave_activity, 0.05f));
+    float2 drift  = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
+    float breakup = ocean_foam_noise((water_position.xz - drift) * 1.3f) * 0.6f + ocean_foam_noise((water_position.xz - drift) * 4.0f) * 0.4f;
+    breakup       = lerp(0.5f, breakup, 1.0f - smoothstep(0.2f, 0.6f, footprint * 1.3f));
+    float extent  = reach * lerp(0.7f, 1.0f, surge) * lerp(0.45f, 1.0f, smoothstep(0.15f, 0.8f, breakup));
+    // froth is packed against the object and stays dense over most of the wash, only its last third opens into strands
+    float coverage = pow(1.0f - smoothstep(0.0f, extent, nearest), 0.6f);
+
+    // the collar is a metre wide, the open sea raft has bubbles that size, so it wears the same raft at a finer scale
+    return ocean_foam_raft(saturate(coverage * activity * resolved), (water_position.xz - drift) * contact_foam_grain, wind_axis, footprint * contact_foam_grain);
+}
+
+// what a white cap takes from the whole sky, the sun carries the foam at noon but at dusk and under cloud this is
+// all the light there is, a fill derived from the sun goes black with it and leaves foam darker than the water it floats on
+float3 ocean_foam_sky_light()
+{
+    // a few texels of the sky panorama near the top of its mip chain are the mean radiance of wide patches of sky,
+    // a lambert cap under a uniform sky sends back that radiance times its albedo
+    float mip        = max(pass_float(pass_reflections_apply::mip_count) - 3.0f, 0.0f);
+    float3 radiance  = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)), mip).rgb * 2.0f;
+    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(1.0f, 0.7f, 0.0f))), mip).rgb;
+    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(-1.0f, 0.7f, 0.0f))), mip).rgb;
+    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(0.0f, 0.7f, 1.0f))), mip).rgb;
+    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(0.0f, 0.7f, -1.0f))), mip).rgb;
+    return radiance / 6.0f;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -269,7 +326,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (is_restir_pt_enabled() && restir_coverage(uv) >= 1.0f)
             return;
         float3 reflection = tex[thread_id.xy].rgb;
-        if (dot(reflection, reflection) < 1e-8f)
+        float  cell_share = 0.0f;
+#ifdef RAY_TRACING_ENABLED
+        cell_share        = is_ray_traced_reflections_enabled() ? get_rt_reflection_cached(uv) : 0.0f;
+#endif
+        if (cell_share <= 0.0f && dot(reflection, reflection) < 1e-8f)
         {
             return;
         }
@@ -279,6 +340,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 position            = get_position(depth, render_uv_to_screen_uv(uv));
         float3 camera_to_pixel     = normalize(position - get_camera_position());
         float3 normal              = gbuffer_unpack_normal(normal_packed);
+#ifdef RAY_TRACING_ENABLED
+        if (cell_share > 0.0f)
+        {
+            // a lobe past the roughness cut was not traced, it is wide enough to see what the radiance cache cell under
+            // the pixel gathers from its surroundings over the hemisphere, the lights themselves are already in the frame
+            // as analytic highlights, the jitter dithers the cell edges and the temporal resolve smooths what is left
+            float2 dither = float2(thread_id.xy) + frac((float)(buffer_frame.frame & 63u) * 0.6180339f) * 97.0f;
+            float3 jitter = float3(hash(dither), hash(dither + 31.7f), hash(dither + 73.1f)) - 0.5f;
+            float  cell_confidence;
+            float  cell_openness;
+            float3 cell_direct;
+            float3 cell   = radiance_cache_lookup(position, normal, jitter, cell_confidence, cell_openness, cell_direct);
+            reflection    = cell_share >= 1.0f ? cell * cell_confidence : lerp(reflection, cell, cell_share * cell_confidence);
+        }
+#endif
         float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
         float3 albedo              = sample_albedo.rgb;
         float  metallic            = sample_material.g;
@@ -309,16 +385,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // fft ocean foam, the water color below is built purely from reflection and refraction so the diffuse
     // foam written into the g-buffer never surfaces, it has to be injected here from the same cascade map
     float foam = 0.0f;
+    float foam_churn = 0.0f;
+    float wave_activity = 0.0f;
     OceanShore shore = (OceanShore)0;
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
         // recover the undisplaced fft grid so foam sits on the crest that produced it
         float2 grid_xz = get_ocean_grid_xz(surface.position.xz);
         float view_distance = length(surface.position - get_camera_position());
-        float wave_activity;
-        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity, shore);
-        float2 uv_foam = (thread_id.xy + 0.5f) / resolution_out;
-        foam = max(foam, ocean_contact_foam(uv_foam, surface.position, surface.depth, ocean_foam_footprint(view_distance), wave_activity));
+        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity, shore, foam_churn);
+        float contact = ocean_contact_foam(surface.position, ocean_foam_footprint(view_distance, surface.position), wave_activity);
+        foam = max(foam, contact);
+        foam_churn = max(foam_churn, contact);
     }
 
     // get background color
@@ -562,6 +640,31 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             surface_color   += scatter * kT;
         }
 
+        if (buffer_frame.ocean_enabled > 0.5f)
+        {
+            float3 to_sun    = -light_parameters[0].direction;
+            float visibility = is_ray_traced_shadows_enabled()
+                ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
+            float3 light_in  = get_sun_radiance() * visibility * saturate(to_sun.y + 0.2f) / PI + ocean_foam_sky_light();
+
+            // the open sea glows the same way on a smaller scale, the top of a wind wave is a thin wedge of water, light
+            // that enters its back leaves through the face turned to the camera, brightest looking toward the sun
+            float open_sea = 1.0f - smoothstep(0.05f, 0.5f, shore.height);
+            float lift     = (surface.position.y - buffer_frame.ocean_sea_level) / max(wave_activity, 0.05f);
+            float crest    = smoothstep(0.6f, 2.6f, lift) * smoothstep(0.03f, 0.2f, wave_activity);
+            if (crest * open_sea > 0.0f)
+            {
+                float2 view_flat = view_dir_normalized.xz / max(length(view_dir_normalized.xz), 1e-3f);
+                float face       = smoothstep(0.0f, 0.3f, -dot(surface.normal.xz, view_flat));
+                float forward    = pow(saturate(dot(view_dir_normalized, to_sun) * 0.5f + 0.5f), 3.0f);
+                surface_color   += light_in * float3(0.03f, 0.26f, 0.22f) * (0.35f + 1.6f * forward) * lerp(0.35f, 1.0f, face) * crest * open_sea * kT;
+            }
+
+            // broken water is full of fine bubbles that linger under and around the foam long after the cap has thinned,
+            // they scatter daylight back out and turn the sea milky turquoise in the gaps of the lace
+            surface_color += light_in * float3(0.1f, 0.3f, 0.28f) * (0.55f * smoothstep(0.02f, 0.6f, foam_churn)) * kT;
+        }
+
         // the swash sheet thins to nothing at its front, cut by the terrain facets it would end in straight
         // edges, so its last centimetres fade into the wet sand behind a lobed outline
         float2 edge_uv  = render_uv_to_screen_uv((thread_id.xy + 0.5f) / resolution_out);
@@ -593,14 +696,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float visibility = is_ray_traced_shadows_enabled()
             ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
         sun_diff *= visibility;
-        float3 sky       = get_sky_fill_radiance() * (0.35f / PI);
-        float3 incoming  = sun_diff + sky;
+        float3 incoming  = sun_diff + ocean_foam_sky_light();
 
         // a deep pile of bubbles scatters light many times and goes near white, a thin raft is a few bubble
         // walls over the water, darker and tinted by the sea it lets through, so foam is a veil, not paint
         float  luma       = luminance(incoming);
         float  thickness  = smoothstep(0.15f, 0.9f, foam);
-        float  albedo     = lerp(0.5f, 0.88f, thickness);
+        float  albedo     = lerp(0.5f, 0.85f, thickness);
         float3 tint       = lerp(float3(0.8f, 0.92f, 0.94f), float3(0.97f, 0.98f, 1.0f), thickness);
         float3 foam_color = lerp(incoming, luma.xxx, 0.35f) * tint * albedo;
 
