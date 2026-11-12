@@ -622,7 +622,9 @@ license.)";
             { "Ctrl",         "Crouch"                   },
             { "Shift",        "Sprint / Fast Move"       },
             { "F",            "Toggle Flashlight"        },
-            { "L-Click",      "Shoot physics cube"       }
+            { "L-Click",      "Use outlined part"        },
+            { "Alt+L-Click",  "Grab physics object"      },
+            { "Alt+R-Click+L-Click", "Shoot physics cube" }
         };
 
         static const ControlBinding camera_controls_full[] =
@@ -635,7 +637,9 @@ license.)";
             { "Shift",           "L1",               "Sprint / Fast Move"        },
             { "Space",           "X / Cross",        "Jump"                      },
             { "F",               "Triangle / Y",     "Toggle Flashlight"         },
-            { "L-Click + R-Click", "-",              "Shoot Physics Cube"        }
+            { "L-Click",         "-",                "Use Outlined Part (Doors, Lids, Stalks)" },
+            { "Alt+L-Click",     "-",                "Grab Physics Object (Hold To Drag)" },
+            { "Alt+R-Click+L-Click", "-",            "Shoot Physics Cube"        }
         };
 
         static const ControlBinding car_controls[] =
@@ -647,13 +651,18 @@ license.)";
             { "Space",           "O / Circle",       "Handbrake"                 },
             { "R",               "X / Cross",        "Reset to Spawn"            },
             { "H",               "D-Pad Down",       "Summon Car Here"           },
-            { "V",               "Triangle / Y",     "Cycle Camera View"         },
-            { "Page Down",       "L1",               "Shift Down (Manual)"       },
-            { "Page Up",         "R1",               "Shift Up (Manual)"         },
+            { "N",               "-",                "Nitrous (Hold)"            },
+            { "V",               "Triangle / Y",     "Cycle View (Chase / Hood / Interior / Wheel)" },
+            { "Page Down",       "L1 / Paddle",      "Shift Down (Manual)"       },
+            { "Page Up",         "R1 / Paddle",      "Shift Up (Manual)"         },
             { "-",               "D-Pad Left",       "Toggle Auto / Manual Gearbox" },
-            { "Hold R-Click",    "Right Stick",      "Camera Orbit (Chase View)" },
+            { "Hold R-Click",    "Right Stick",      "Orbit (Chase) / Look Around (Interior)" },
             { "C",               "R3",               "Recenter Camera"           },
+            { "L-Click",         "-",                "Use Outlined Part (Doors, Stalks, Wipers)" },
+            { "Hold R-Click+L-Click", "-",           "Use Part In View Centre (While Looking)" },
+            { "O",               "-",                "Open / Close All Doors & Lids (Parked)" },
             { "F3",              "Touchpad",         "Telemetry / Car Picker"    },
+            { "P",               "-",                "Show / Hide Showroom Paint Panel" },
             { "-",               "Create / Back",    "Toggle Controller Feedback" },
             { "L",               "D-Pad Up",         "Headlights (Off / Low / High)" },
             { "Automatic",       "Automatic",        "Brake Lights (On Brake)"   }
@@ -736,7 +745,7 @@ license.)";
             if (ImGui::BeginTable(str_id, 3, flags, ImVec2(0.0f, -FLT_MIN)))
             {
                 ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Keyboard", ImGuiTableColumnFlags_WidthFixed, 140.0f * spartan::Window::GetDpiScale());
+                ImGui::TableSetupColumn("Keyboard", ImGuiTableColumnFlags_WidthFixed, 200.0f * spartan::Window::GetDpiScale());
                 ImGui::TableSetupColumn("Gamepad", ImGuiTableColumnFlags_WidthFixed, 140.0f * spartan::Window::GetDpiScale());
                 ImGui::TableHeadersRow();
 
@@ -775,7 +784,7 @@ license.)";
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 
             // set a reasonable default size (wider for the three-column layout)
-            ImGui::SetNextWindowSize(ImVec2(600.0f * spartan::Window::GetDpiScale(), 400.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(720.0f * spartan::Window::GetDpiScale(), 480.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
 
             if (ImGui::Begin("Controls & Shortcuts", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking))
             {

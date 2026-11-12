@@ -619,8 +619,9 @@ namespace spartan
         // behavior: flashlight
         update_flashlight();
 
-        // behaviour: shoot (physics boxes for now)
-        if (mouse_click_left_down && mouse_click_right && mouse_in_viewport && is_playing)
+        // behaviour: shoot (physics boxes for now), a physics toy behind alt so clicking while looking around stays free for gameplay
+        const bool button_physics_toy = Input::GetKey(KeyCode::Alt_Left) || Input::GetKey(KeyCode::Alt_Right);
+        if (mouse_click_left_down && mouse_click_right && button_physics_toy && mouse_in_viewport && is_playing)
         {
             // create entity and name it
             Entity* entity = World::CreateEntity();

@@ -767,10 +767,12 @@ namespace spartan
                 }
                 simulation_thread::queued_step_size = fixed_time_step * step_scale;
             }
-            // object picking, skip when right is held so cube shoot does not also grab
-            // a gameplay highlight means a script outlined what the click will use (a door, a stalk), the click is its, not the grab's
+            // object picking, a physics toy behind alt so a plain click stays free for gameplay (doors, stalks, menus)
+            // skip when right is held so cube shoot does not also grab, and when a script outlined what the click will use
             {
+                const bool alt = Input::GetKey(KeyCode::Alt_Left) || Input::GetKey(KeyCode::Alt_Right);
                 if (Input::GetKeyDown(KeyCode::Click_Left) &&
+                    alt &&
                     Input::GetMouseIsInViewport() &&
                     !Input::GetKey(KeyCode::Click_Right) &&
                     !Renderer::GetGameplayHighlight())
