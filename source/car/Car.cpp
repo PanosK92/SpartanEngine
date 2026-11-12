@@ -1041,6 +1041,9 @@ namespace spartan
 
         m_is_occupied = false;
         m_externally_controlled = false;
+        m_camera_scripted = false;
+        m_enter_requested = false;
+        m_exit_requested  = false;
         if (m_vehicle_entity)
         {
             if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
@@ -1172,6 +1175,103 @@ namespace spartan
 
         // stop vibration
         Input::GamepadStopFeedback();
+    }
+
+    void Car::ExitTo(const math::Vector3& eye_position, const math::Vector3& look_direction)
+    {
+        if (!m_is_occupied)
+        {
+            return;
+        }
+
+        Entity* camera = FindCameraEntity();
+        Exit(false);
+
+        if (!default_camera)
+        {
+            return;
+        }
+
+        // the controller's feet sit below the eye by its own height, so the first on foot frame matches the script's last
+        Physics* controller           = default_camera->GetComponent<Physics>();
+        const math::Vector3 eye_local = controller ? controller->GetControllerTopLocal() : math::Vector3::Zero;
+        const math::Vector3 feet      = eye_position - eye_local;
+        if (controller)
+        {
+            controller->SetBodyTransform(feet, math::Quaternion::Identity);
+        }
+        default_camera->SetPosition(feet);
+
+        if (camera)
+        {
+            camera->SetPositionLocal(eye_local);
+            // the on foot camera turns about the world up, a level look keeps it from starting rolled
+            math::Vector3 look = look_direction;
+            look.y             = std::clamp(look.y, -0.9f, 0.9f);
+            camera->SetRotationLocal(math::Quaternion::FromLookRotation(look.Normalized(), math::Vector3::Up));
+        }
+    }
+
+    void Car::SetEntryScripted(bool scripted)
+    {
+        // a script claims entry every tick, only a change drops requests nobody will answer
+        if (scripted == m_entry_scripted)
+        {
+            return;
+        }
+        m_entry_scripted  = scripted;
+        m_enter_requested = false;
+        m_exit_requested  = false;
+    }
+
+    bool Car::ConsumeEnterRequest()
+    {
+        const bool requested = m_enter_requested;
+        m_enter_requested    = false;
+        return requested;
+    }
+
+    bool Car::ConsumeExitRequest()
+    {
+        const bool requested = m_exit_requested;
+        m_exit_requested     = false;
+        return requested;
+    }
+
+    void Car::SetCameraScripted(bool scripted)
+    {
+        if (scripted == m_camera_scripted)
+        {
+            return;
+        }
+
+        if (scripted)
+        {
+            // the camera moves onto the body where it is, the script animates it from there in body space
+            Entity* camera = FindCameraEntity();
+            if (!camera || !m_body_entity)
+            {
+                return;
+            }
+            const math::Vector3 position    = camera->GetPosition();
+            const math::Quaternion rotation = camera->GetRotation();
+            if (Camera* component = camera->GetComponent<Camera>())
+            {
+                CameraController::Get(*component).ResetFpsMotion();
+                component->SetFovHorizontalDeg(car_camera::base_fov_deg);
+            }
+            camera->SetParent(m_body_entity);
+            camera->SetPosition(position);
+            camera->SetRotation(rotation);
+            m_camera_scripted = true;
+            return;
+        }
+
+        m_camera_scripted = false;
+        if (IsViewed())
+        {
+            ConfigureCameraForView();
+        }
     }
 
     void Car::SetThrottle(float value)
@@ -1600,6 +1700,12 @@ namespace spartan
 
     void Car::ConfigureCameraForView()
     {
+        // a script animating the way in or out owns the camera, the view applies once it lets go
+        if (m_camera_scripted)
+        {
+            return;
+        }
+
         Entity* camera = FindCameraEntity();
         if (!camera)
         {
@@ -1944,6 +2050,11 @@ namespace spartan
     {
         m_openings.clear();
         m_steering_wheel_id = 0;
+        // a new body brings a new script, entry stays with e until that script claims it
+        m_entry_scripted  = false;
+        m_enter_requested = false;
+        m_exit_requested  = false;
+        m_camera_scripted = false;
         if (!m_body_entity || !m_definition)
         {
             return;
@@ -3027,6 +3138,19 @@ namespace spartan
             return;
         }
 
+        // climbing in or out the car sits on its handbrake
+        if (m_camera_scripted)
+        {
+            if (driving)
+            {
+                CarPhysics::Get(*physics).SetVehicleThrottle(0.0f);
+                CarPhysics::Get(*physics).SetVehicleBrake(0.0f);
+                CarPhysics::Get(*physics).SetVehicleSteering(0.0f);
+                CarPhysics::Get(*physics).SetVehicleHandbrake(1.0f);
+            }
+            return;
+        }
+
         bool is_gamepad_connected = Input::IsGamepadConnected();
         float dt = static_cast<float>(Timer::GetDeltaTimeSec());
 
@@ -3588,7 +3712,7 @@ namespace spartan
 
     void Car::TickChaseCamera()
     {
-        if (!IsViewed() || m_current_view != CarView::Chase || !m_vehicle_entity || !default_camera)
+        if (!IsViewed() || m_camera_scripted || m_current_view != CarView::Chase || !m_vehicle_entity || !default_camera)
         {
             return;
         }
@@ -3628,7 +3752,7 @@ namespace spartan
 
     void Car::TickInteriorCamera()
     {
-        if (!IsViewed() || m_current_view != CarView::Interior || !m_body_entity)
+        if (!IsViewed() || m_camera_scripted || m_current_view != CarView::Interior || !m_body_entity)
         {
             return;
         }
@@ -3668,7 +3792,8 @@ namespace spartan
         }
 
         // keyboard: E, gamepad: west button (X on xbox, square on playstation)
-        if (Input::GetKeyDown(KeyCode::E) || Input::GetKeyDown(KeyCode::Button_West))
+        // halfway through a scripted way in or out the key waits, a car whose script owns entry only gets asked
+        if (!m_camera_scripted && (Input::GetKeyDown(KeyCode::E) || Input::GetKeyDown(KeyCode::Button_West)))
         {
             if (m_is_occupied)
             {
@@ -3686,18 +3811,32 @@ namespace spartan
                     }
                 }
 
-                Exit();
+                if (m_entry_scripted)
+                {
+                    m_exit_requested = true;
+                }
+                else
+                {
+                    Exit();
+                }
             }
             else if (IsPlayerInRange())
             {
-                Enter();
+                if (m_entry_scripted)
+                {
+                    m_enter_requested = true;
+                }
+                else
+                {
+                    Enter();
+                }
             }
         }
     }
 
     void Car::TickViewSwitch()
     {
-        if (!IsViewed())
+        if (!IsViewed() || m_camera_scripted)
         {
             return;
         }

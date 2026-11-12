@@ -644,7 +644,7 @@ license.)";
 
         static const ControlBinding car_controls[] =
         {
-            { "E",               "Square / X",       "Enter / Exit Vehicle"      },
+            { "E",               "Square / X",       "Enter / Exit Vehicle (Open The Driver's Door First)" },
             { "Arrow Up",        "R2",               "Throttle (Gas)"            },
             { "Arrow Down",      "L2",               "Brake"                     },
             { "Arrow Left/Right","Left Stick X",    "Steering"                  },

@@ -115,6 +115,17 @@ namespace spartan
         // vehicle interaction
         void Enter();
         void Exit(bool position_player = true);
+        // gets out and stands the player with their eyes at eye_position, looking along look_direction, for a script that animated the way out
+        void ExitTo(const math::Vector3& eye_position, const math::Vector3& look_direction);
+
+        // a car script can own getting in and out, e then only raises a request the script answers, so it can check the door and animate the way
+        void SetEntryScripted(bool scripted);
+        bool IsEntryScripted() const { return m_entry_scripted; }
+        bool ConsumeEnterRequest();
+        bool ConsumeExitRequest();
+        // while a script holds the camera it hangs off the body where the script puts it, the car leaves it alone and holds the pedals
+        void SetCameraScripted(bool scripted);
+        bool IsCameraScripted() const { return m_camera_scripted; }
         bool IsOccupied() const { return m_is_occupied; }
         bool IsDrivable() const { return m_is_drivable; }
 
@@ -306,6 +317,10 @@ namespace spartan
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
         bool              m_externally_controlled  = false;    // external control owns vehicle input and interaction
+        bool              m_entry_scripted  = false;
+        bool              m_enter_requested = false;
+        bool              m_exit_requested  = false;
+        bool              m_camera_scripted = false;
         std::unique_ptr<AiDriver> m_ai_driver;
         bool              m_cinematic       = false;
         CarView           m_current_view    = CarView::Chase;

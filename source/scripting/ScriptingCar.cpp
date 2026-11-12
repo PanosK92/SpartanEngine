@@ -249,6 +249,91 @@ namespace spartan::scripting
             return car && car->IsOccupied();
         };
 
+        // getting in and out, for a car script that owns it: e raises a request, the script checks its door, animates the camera and seats the player
+        tuning["SetEntryScripted"] = [](sol::optional<Entity*> entity, bool scripted)
+        {
+            if (Car* car = resolve_car(entity))
+            {
+                car->SetEntryScripted(scripted);
+            }
+        };
+
+        tuning["ConsumeEnterRequest"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->ConsumeEnterRequest();
+        };
+
+        tuning["ConsumeExitRequest"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->ConsumeExitRequest();
+        };
+
+        tuning["Enter"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->Enter();
+            return car->IsOccupied();
+        };
+
+        // stands the player up outside with their eyes at eye_position, looking along look_direction
+        tuning["ExitTo"] = [](sol::optional<Entity*> entity, const math::Vector3& eye_position, const math::Vector3& look_direction)
+        {
+            Car* car = resolve_car(entity);
+            if (!car || !car->IsOccupied())
+            {
+                return false;
+            }
+            car->ExitTo(eye_position, look_direction);
+            return true;
+        };
+
+        // the camera hangs off the body and goes where the script puts it, the car holds its pedals until the script lets go
+        tuning["SetCameraScripted"] = [](sol::optional<Entity*> entity, bool scripted)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            car->SetCameraScripted(scripted);
+            return car->IsCameraScripted() == scripted;
+        };
+
+        tuning["IsCameraScripted"] = [](sol::optional<Entity*> entity)
+        {
+            Car* car = resolve_car(entity);
+            return car && car->IsCameraScripted();
+        };
+
+        // chase, hood, interior or wheel
+        tuning["SetView"] = [](sol::optional<Entity*> entity, const std::string& view)
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return false;
+            }
+            static const std::pair<const char*, CarView> views[] =
+            {
+                { "chase", CarView::Chase }, { "hood", CarView::Hood }, { "interior", CarView::Interior }, { "wheel", CarView::Wheel }
+            };
+            for (const auto& [name, value] : views)
+            {
+                if (view == name)
+                {
+                    car->SetView(value);
+                    return true;
+                }
+            }
+            return false;
+        };
+
         // a shop holds the car while its menu is open: the pedals, getting out, the reset key and the driver hud are off, the handbrake is on
         tuning["SetHeld"] = [](sol::optional<Entity*> entity, bool held)
         {
