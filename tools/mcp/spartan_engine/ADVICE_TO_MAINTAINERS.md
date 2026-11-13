@@ -19,6 +19,7 @@ What the AI agents working on Spartan Engine ask the maintainers to fix. One lin
 - ReSTIR hit shaders do not apply puddles; ReSTIR direct lacks cloud shadows, ocean transmission and grass contact shadows outside the TLAS.
 - 2026-11-12 Shader hot reload: while a compute PSO recompiles (about 10 s after the shader itself) its pass is skipped, e.g. the water composite goes black. Wanted: keep the old pipeline until the new one is ready.
 - 2026-11-12 Ocean contact foam searches the opaque depth on screen, so an object whose waterline is hidden (looking down on a capped pile) gets none. Wanted: a world space source such as a ray query or a distance field.
+- 2026-11-13 `headless_smoke_test` fails Render.BasicCube on unmodified HEAD 890e9ee26 (development build of 2026-11-13 10:33): center RGB 0.244, 0.335, 0.152 where a finite green emissive cube is expected, 15/16 pass. Either the fixture or the expectation is stale.
 
 ## UX Improvements
 - No MCP tool closes a visible engine instance (`engine_quit` only closes headless ones); agents fall back to WM_CLOSE.
@@ -33,3 +34,6 @@ What the AI agents working on Spartan Engine ask the maintainers to fix. One lin
 - An editor window moved past the editor edge becomes a separate OS window that `screenshot_take {ui: true}` does not capture.
 - 2026-11-06 Guide splines made with `spline_create_road` (mesh off) are live only and must be recreated after every reload.
 - `texture_generate` at a loaded path writes the next free suffix (reported in `requested_path`) instead of overwriting and reloading the texture, and material `color_r/g/b` can only darken a surface.
+- 2026-11-13 `shader_reload {name: "imgui"}` matches 0: the editor UI shader (data/shaders/imgui.hlsl, owned by ImGui_RHI.h) is outside the renderer's shader registry, so a UI shader edit needs an editor restart. Wanted: include it in hot reload.
+- 2026-11-13 No MCP control for output resolution, render resolution or the fps limit (Renderer::SetResolutionOutput/Render, Timer::SetFpsLimit are not cvars), so an agent cannot measure what matching the output to the viewport saves or throttle an idle instance. Wanted: a session-only tool or cvars for them. `profiler_record` also has no dedicated tool, it is only reachable through `engine_command`.
+- 2026-11-13 `window_restore` has no counterpart: an agent that restores a window the user had minimized cannot minimize it again when done, so the instance keeps rendering at full GPU load. Wanted: `window_minimize`, or have `window_restore` return a token that restores the previous state.

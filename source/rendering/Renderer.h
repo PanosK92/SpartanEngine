@@ -559,7 +559,7 @@ namespace spartan
         void Pass_AutoExposure(RHI_Texture* tex_in);
         // passes - utility
         void Pass_Blit(RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
-        void Pass_Downscale(RHI_Texture* tex, const Renderer_DownsampleFilter filter);
+        void Pass_Downscale(RHI_Texture* tex, const Renderer_DownsampleFilter filter, RHI_Texture* tex_mip_0 = nullptr);
         void Pass_Blur(RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
         // restir denoising fallback, history clear plus blit raw to denoised
         void Pass_BlitRestirFallback(RHI_Texture* tex_raw, RHI_Texture* tex_denoised);

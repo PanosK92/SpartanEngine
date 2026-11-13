@@ -295,16 +295,28 @@ namespace spartan
 
         if (meter_auto_exposure)
         {
-            RHI_Texture* tex_exposure = tex_in;
+            RHI_Texture* tex_exposure       = tex_in;
+            RHI_Texture* tex_exposure_mip_0 = nullptr;
             if (!tex_exposure->HasPerMipViews())
             {
                 tex_exposure = tex_out->HasPerMipViews() ? tex_out : rt_frame_output;
                 if (tex_exposure != tex_in)
                 {
-                    RHI_CommandList::Blit(tex_in, tex_exposure, false);
+                    // the meter reads a mip of at most 128 pixels (metering_max_dimension in auto_exposure.hlsl), so the chain is
+                    // reduced straight from the frame, copying the whole frame over first is only needed when the meter reads the top mip
+                    const bool same_size      = tex_in->GetWidth() == tex_exposure->GetWidth() && tex_in->GetHeight() == tex_exposure->GetHeight();
+                    const bool meters_top_mip = max(tex_exposure->GetWidth(), tex_exposure->GetHeight()) <= 128 || tex_exposure->GetMipCount() < 2;
+                    if (same_size && !meters_top_mip)
+                    {
+                        tex_exposure_mip_0 = tex_in;
+                    }
+                    else
+                    {
+                        RHI_CommandList::Blit(tex_in, tex_exposure, false);
+                    }
                 }
             }
-            Pass_Downscale(tex_exposure, Renderer_DownsampleFilter::Average);
+            Pass_Downscale(tex_exposure, Renderer_DownsampleFilter::Average, tex_exposure_mip_0);
             Pass_AutoExposure(tex_exposure);
             Renderer::view().exposure.history_reset = false;
         }
@@ -810,12 +822,27 @@ namespace spartan
         Pass_Blit(tex_raw, tex_denoised);
     }
 
-    void Renderer::Pass_Downscale(RHI_Texture* tex, const Renderer_DownsampleFilter filter)
+    void Renderer::Pass_Downscale(RHI_Texture* tex, const Renderer_DownsampleFilter filter, RHI_Texture* tex_mip_0 /*= nullptr*/)
     {
         // amd fidelityfx spd caps at 4096 and 12 mips per dispatch, chain passes and
         // fall back to a 2x2 reduce for any source mip that still exceeds that size
         SP_ASSERT(tex->HasPerMipViews());
         SP_ASSERT(tex->GetMipCount() > 1);
+
+        // tex_mip_0 stands in for the top mip, a same sized texture the chain is reduced from, the top mip of tex is left untouched
+        SP_ASSERT(!tex_mip_0 || (tex_mip_0->GetWidth() == tex->GetWidth() && tex_mip_0->GetHeight() == tex->GetHeight()));
+        auto set_source = [&](const uint32_t mip)
+        {
+            if (mip == 0 && tex_mip_0)
+            {
+                const bool per_mip = tex_mip_0->HasPerMipViews();
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_mip_0, per_mip ? 0 : rhi_all_mips, per_mip ? 1 : 0);
+            }
+            else
+            {
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex, mip, 1);
+            }
+        };
 
         constexpr uint32_t spd_max_size = 4096;
     #if defined(API_GRAPHICS_WEBGPU)
@@ -854,7 +881,7 @@ namespace spartan
                 const uint32_t dst_h = max(height >> 1, 1u);
 
                 RHI_CommandList::SetShader(GetShader(shader_one), "downscale_one_mip");
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex, mip_start, 1);
+                set_source(mip_start);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex, mip_start + 1, 1);
                 constexpr uint32_t thread_group = 8;
                 RHI_CommandList::Dispatch(
@@ -879,7 +906,7 @@ namespace spartan
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::sb_spd, spd_counter);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex, mip_start, 1);
+            set_source(mip_start);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);
             RHI_CommandList::Dispatch(thread_group_x, thread_group_y);
 

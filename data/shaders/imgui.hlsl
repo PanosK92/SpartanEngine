@@ -97,68 +97,74 @@ float4 main_ps(vertex input) : SV_Target
 {
     uint flags = pass_uint(pass_imgui::flags);
 
-    // extract booleans
-    uint channel_r        = (flags & (1 << 0))  != 0 ? 1 : 0;
-    uint channel_g        = (flags & (1 << 1))  != 0 ? 1 : 0;
-    uint channel_b        = (flags & (1 << 2))  != 0 ? 1 : 0;
-    uint channel_a        = (flags & (1 << 3))  != 0 ? 1 : 0;
-    uint gamma_correct    = (flags & (1 << 4))  != 0 ? 1 : 0;
-    uint packed           = (flags & (1 << 5))  != 0 ? 1 : 0;
-    uint boost            = (flags & (1 << 6))  != 0 ? 1 : 0;
-    uint absolute         = (flags & (1 << 7))  != 0 ? 1 : 0;
-    uint point_sampling   = (flags & (1 << 8))  != 0 ? 1 : 0;
-    uint is_visualized    = (flags & (1 << 9))  != 0 ? 1 : 0;
-    uint is_frame_texture = (flags & (1 << 10)) != 0 ? 1 : 0;
-    uint is_sdr_capture   = (flags & (1 << 11)) != 0 ? 1 : 0;
-    uint is_glass         = (flags & (1 << 12)) != 0 ? 1 : 0;
-    uint is_dithered      = (flags & (1 << 13)) != 0 ? 1 : 0;
-
-    float4 channels = float4(channel_r, channel_g, channel_b, channel_a);
-    float2 uv       = input.uv;
+    // the flags come from the push constants, so they are the same for every pixel of a draw and a branch on them costs
+    // nothing, this shader fills the whole editor several times over and only pays for the work a draw asks for
+    bool point_sampling   = (flags & (1u << 8))  != 0;
+    bool is_visualized    = (flags & (1u << 9))  != 0;
+    bool is_frame_texture = (flags & (1u << 10)) != 0;
+    bool is_sdr_capture   = (flags & (1u << 11)) != 0;
+    bool is_glass         = (flags & (1u << 12)) != 0;
+    bool is_dithered      = (flags & (1u << 13)) != 0;
 
     // sample texture
+    float2 uv       = input.uv;
+    float mip_level = pass_float(pass_imgui::mip_level);
     float4 color_texture;
-    float mip_level             = pass_float(pass_imgui::mip_level);
-    float array_level           = pass_float(pass_imgui::array_level);
-    float is_array              = array_level > 0.0f ? 1.0f : 0.0f; // not needed anymore
-    float3 uv_array             = float3(uv, array_level);
-    float4 sample_point_wrap    = tex.SampleLevel(samplers[sampler_point_clamp], uv, mip_level);
-    float4 sample_bilinear_wrap = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, mip_level);
-    color_texture               = lerp(sample_bilinear_wrap, sample_point_wrap, float(point_sampling));
+    [branch]
+    if (point_sampling)
+    {
+        color_texture = tex.SampleLevel(samplers[sampler_point_clamp], uv, mip_level);
+    }
+    else
+    {
+        color_texture = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, mip_level);
+    }
 
-    // visualization
-    float4 color_original = color_texture;
-    uint num_channels     = channel_r + channel_g + channel_b + channel_a;
-    float f_visualized    = float(is_visualized);
-    float val             = dot(color_texture, channels);
-    float3 rgb_single     = val.xxx;
-    float a_single        = 1.0f;
-    float3 rgb_multi      = color_texture.rgb * channels.rgb;
-    float a_multi         = lerp(1.0f, color_texture.a, channels.a);
-    float is_single       = num_channels == 1u ? 1.0f : 0.0f;
-    float3 rgb_vis        = lerp(rgb_multi, rgb_single, is_single);
-    float a_vis           = lerp(a_multi, a_single, is_single);
-    color_texture         = lerp(color_original, float4(rgb_vis, a_vis), f_visualized);
+    // visualization, only the texture viewer asks for it
+    [branch]
+    if (is_visualized)
+    {
+        float4 channels    = float4((flags & (1u << 0)) != 0 ? 1.0f : 0.0f, (flags & (1u << 1)) != 0 ? 1.0f : 0.0f, (flags & (1u << 2)) != 0 ? 1.0f : 0.0f, (flags & (1u << 3)) != 0 ? 1.0f : 0.0f);
+        bool gamma_correct = (flags & (1u << 4)) != 0;
+        bool packed        = (flags & (1u << 5)) != 0;
+        bool boost         = (flags & (1u << 6)) != 0;
+        bool absolute      = (flags & (1u << 7)) != 0;
+        bool is_single     = (channels.r + channels.g + channels.b + channels.a) == 1.0f;
 
-    color_texture      = lerp(color_texture, abs(color_texture), f_visualized * float(absolute));
-    color_texture.rgb  = lerp(color_texture.rgb, pack(color_texture.rgb), f_visualized * float(packed));
-    color_texture.rgb  = lerp(color_texture.rgb, linear_to_srgb(color_texture.rgb), f_visualized * float(gamma_correct));
-    color_texture.rgb *= lerp(1.0f, 10.0f, f_visualized * float(boost));
+        color_texture = is_single ? float4(dot(color_texture, channels).xxx, 1.0f) : float4(color_texture.rgb * channels.rgb, lerp(1.0f, color_texture.a, channels.a));
+        if (absolute)
+        {
+            color_texture = abs(color_texture);
+        }
+        if (packed)
+        {
+            color_texture.rgb = pack(color_texture.rgb);
+        }
+        if (gamma_correct)
+        {
+            color_texture.rgb = linear_to_srgb(color_texture.rgb);
+        }
+        if (boost)
+        {
+            color_texture.rgb *= 10.0f;
+        }
+    }
 
     float4 color = input.color * color_texture;
 
     // hdr encoding, skipped for the frame texture since the output pass already wrote display-encoded values
     // hdr_enabled: 1 = hdr10 pq, 2 = scrgb linear (1.0 = 80 nits)
-    float apply_hdr     = (buffer_frame.hdr_enabled != 0.0f ? 1.0f : 0.0f) * (1.0f - is_frame_texture);
-    float3 color_linear = srgb_to_linear(color.rgb);
-    float ui_nits       = buffer_frame.hdr_sdr_white_nits > 0.0f ? buffer_frame.hdr_sdr_white_nits : 203.0f;
-    float3 color_hdr    = buffer_frame.hdr_enabled > 1.5f
-        ? color_linear * (ui_nits / 80.0f)
-        : linear_to_hdr10(color_linear, ui_nits);
-    color.rgb           = lerp(color.rgb, color_hdr, apply_hdr * (1.0f - float(is_sdr_capture)));
+    float ui_nits = buffer_frame.hdr_sdr_white_nits > 0.0f ? buffer_frame.hdr_sdr_white_nits : 203.0f;
+    [branch]
+    if (buffer_frame.hdr_enabled != 0.0f && !is_frame_texture && !is_sdr_capture)
+    {
+        float3 color_linear = srgb_to_linear(color.rgb);
+        color.rgb           = buffer_frame.hdr_enabled > 1.5f ? color_linear * (ui_nits / 80.0f) : linear_to_hdr10(color_linear, ui_nits);
+    }
 
     // an 8 bit screenshot wants sdr, so the display-encoded frame texture is brought back to srgb
-    if (is_sdr_capture != 0 && is_frame_texture != 0 && buffer_frame.hdr_enabled != 0.0f)
+    [branch]
+    if (is_sdr_capture && is_frame_texture && buffer_frame.hdr_enabled != 0.0f)
     {
         float3 frame_linear = buffer_frame.hdr_enabled > 1.5f
             ? color.rgb * (80.0f / ui_nits)
@@ -168,7 +174,8 @@ float4 main_ps(vertex input) : SV_Target
 
     // frosted glass backdrop, the ui alpha channel it was copied from is meaningless, and a faint grain makes it read as rough glass
     // blurring washes colors toward grey, so they are pushed back out, glass lit by what is behind it rather than fogged by it
-    if (is_glass != 0)
+    [branch]
+    if (is_glass)
     {
         float luma  = dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));
         color.rgb   = max(lerp(luma.xxx, color.rgb, 1.35f), 0.0f);
@@ -181,7 +188,8 @@ float4 main_ps(vertex input) : SV_Target
     // turns the bands of a smooth gradient into grain too fine to see, it has to be per swapchain pixel, noise added
     // to the frame itself is filtered away when the viewport is not the size of the frame
     float levels = buffer_frame.hdr_enabled > 1.5f ? 0.0f : (buffer_frame.hdr_enabled > 0.5f ? 1023.0f : 255.0f);
-    if (is_dithered != 0 && levels > 0.0f)
+    [branch]
+    if (is_dithered && levels > 0.0f)
     {
         // fades out under one step so black stays black
         color.rgb += dither_noise(uint2(input.position.xy), buffer_frame.frame) * saturate(color.rgb * levels) / levels;

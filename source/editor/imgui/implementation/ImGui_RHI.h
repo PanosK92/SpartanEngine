@@ -187,25 +187,47 @@ namespace ImGui::RHI
             return (window->Flags & excluded) == 0 && !window->DockIsActive;
         }
 
-        void thin_vertex(ImU32& color, const float opacity)
+        ImU32 thin_vertex(const ImU32 color, const float opacity)
         {
             const ImU32 alpha      = (color & IM_COL32_A_MASK) >> IM_COL32_A_SHIFT;
             const ImU32 alpha_thin = static_cast<ImU32>(static_cast<float>(alpha) * opacity + 0.5f);
-            color = (color & ~IM_COL32_A_MASK) | (alpha_thin << IM_COL32_A_SHIFT);
+            return (color & ~IM_COL32_A_MASK) | (alpha_thin << IM_COL32_A_SHIFT);
         }
 
-        bool is_frame_fill(const ImU32 color)
+        // the fills imgui frames a window with, resolved once a frame, a style lookup per vertex is far too slow
+        struct FrameFills
         {
-            return color == GetColorU32(ImGuiCol_TitleBg) || color == GetColorU32(ImGuiCol_TitleBgActive) || color == GetColorU32(ImGuiCol_TitleBgCollapsed) || color == GetColorU32(ImGuiCol_MenuBarBg);
-        }
+            ImU32 title           = 0;
+            ImU32 title_active    = 0;
+            ImU32 title_collapsed = 0;
+            ImU32 menu_bar        = 0;
+            ImU32 dock_void       = 0;
+
+            void resolve()
+            {
+                title           = GetColorU32(ImGuiCol_TitleBg);
+                title_active    = GetColorU32(ImGuiCol_TitleBgActive);
+                title_collapsed = GetColorU32(ImGuiCol_TitleBgCollapsed);
+                menu_bar        = GetColorU32(ImGuiCol_MenuBarBg);
+                dock_void       = GetColorU32(ImGuiCol_DockingEmptyBg);
+            }
+
+            bool contains(const ImU32 color) const
+            {
+                return color == title || color == title_active || color == title_collapsed || color == menu_bar;
+            }
+        };
+
+        // the thinning reads imgui's own vertices and only writes to the copy in the vertex buffer, that copy is mapped gpu
+        // memory and reading it back stalls the cpu
 
         // imgui opens a window's draw list with its background, title bar and menu bar fills, thinning them lets the backdrop through
         // a background of 0 takes the first fill as the window background
-        void thin_window_background(ImDrawVert* vertices, const int count, const float opacity, ImU32 background)
+        void thin_window_background(const ImDrawVert* source, ImDrawVert* destination, const int count, const float opacity, ImU32 background, const FrameFills& frame_fills)
         {
             for (int i = 0; i < count; i++)
             {
-                ImU32& color = vertices[i].col;
+                const ImU32 color = source[i].col;
                 if ((color & IM_COL32_A_MASK) == 0)
                 {
                     continue; // anti-aliased fringe
@@ -216,35 +238,34 @@ namespace ImGui::RHI
                     background = color;
                 }
 
-                if (color != background && !is_frame_fill(color))
+                if (color != background && !frame_fills.contains(color))
                 {
                     break;
                 }
 
-                thin_vertex(color, opacity);
+                destination[i].col = thin_vertex(color, opacity);
             }
         }
 
         // a dock host draws the backgrounds and tab strips of all its docked windows, interleaved with tabs and buttons
         // empty nodes fill with the editor void, cleared so they show the same dimmed scene as the gutters
-        void thin_dock_host(ImDrawVert* vertices, const int count, const float opacity, const ImU32* fills, const uint32_t fill_count)
+        void thin_dock_host(const ImDrawVert* source, ImDrawVert* destination, const int count, const float opacity, const ImU32* fills, const uint32_t fill_count, const FrameFills& frame_fills)
         {
-            const ImU32 void_color = GetColorU32(ImGuiCol_DockingEmptyBg);
             for (int i = 0; i < count; i++)
             {
-                ImU32& color = vertices[i].col;
+                const ImU32 color = source[i].col;
                 if ((color & IM_COL32_A_MASK) == 0)
                 {
                     continue;
                 }
 
-                if (color == void_color)
+                if (color == frame_fills.dock_void)
                 {
-                    color &= ~IM_COL32_A_MASK;
+                    destination[i].col = color & ~IM_COL32_A_MASK;
                     continue;
                 }
 
-                bool is_fill = is_frame_fill(color);
+                bool is_fill = frame_fills.contains(color);
                 for (uint32_t f = 0; f < fill_count && !is_fill; f++)
                 {
                     is_fill = color == fills[f];
@@ -252,7 +273,56 @@ namespace ImGui::RHI
 
                 if (is_fill)
                 {
-                    thin_vertex(color, opacity);
+                    destination[i].col = thin_vertex(color, opacity);
+                }
+            }
+        }
+
+        // fills a rectangle except where the holes cover it, for a layer that an opaque quad over each hole would hide anyway
+        // the pieces share the holes' edges, so every pixel belongs either to the fill or to a hole, never to both or neither
+        void glass_add_rect_around(ImDrawList* draw_list, const ImRect& rect, const vector<ImRect>& holes, const ImU32 color)
+        {
+            static vector<float> rows;
+            static vector<const ImRect*> spans;
+            rows.clear();
+            rows.push_back(rect.Min.y);
+            rows.push_back(rect.Max.y);
+            for (const ImRect& hole : holes)
+            {
+                rows.push_back(ImClamp(hole.Min.y, rect.Min.y, rect.Max.y));
+                rows.push_back(ImClamp(hole.Max.y, rect.Min.y, rect.Max.y));
+            }
+            std::sort(rows.begin(), rows.end());
+            rows.erase(std::unique(rows.begin(), rows.end()), rows.end());
+
+            for (size_t row = 0; row + 1 < rows.size(); row++)
+            {
+                const float top    = rows[row];
+                const float bottom = rows[row + 1];
+
+                // every hole either spans this band from top to bottom or misses it, the bands are cut at the holes' edges
+                spans.clear();
+                for (const ImRect& hole : holes)
+                {
+                    if (hole.Min.y <= top && hole.Max.y >= bottom && hole.Max.x > rect.Min.x && hole.Min.x < rect.Max.x)
+                    {
+                        spans.push_back(&hole);
+                    }
+                }
+                std::sort(spans.begin(), spans.end(), [](const ImRect* a, const ImRect* b) { return a->Min.x < b->Min.x; });
+
+                float left = rect.Min.x;
+                for (const ImRect* span : spans)
+                {
+                    if (span->Min.x > left)
+                    {
+                        draw_list->AddRectFilled(ImVec2(left, top), ImVec2(span->Min.x, bottom), color);
+                    }
+                    left = ImMax(left, ImMin(span->Max.x, rect.Max.x));
+                }
+                if (rect.Max.x > left)
+                {
+                    draw_list->AddRectFilled(ImVec2(left, top), ImVec2(rect.Max.x, bottom), color);
                 }
             }
         }
@@ -780,6 +850,7 @@ namespace ImGui::RHI
         static vector<ImGuiWindow*> list_windows;
         static vector<ImGuiDockNode*> glass_nodes;
         static vector<GlassPane> window_panes;
+        static vector<ImRect> node_rects;
         static vector<ImU32> glass_fills;
         static vector<GlassSegment> glass_segments;
         glass_lists.assign(draw_data->CmdListsCount, GlassList());
@@ -814,6 +885,7 @@ namespace ImGui::RHI
         RHI_Texture* frame_output = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
         if (glass_target)
         {
+            spartan::ScopedTimeBlock block("ui_glass_layout");
             if (!g_glass_draw_list)
             {
                 g_glass_draw_list = IM_NEW(ImDrawList)(GetDrawListSharedData());
@@ -959,9 +1031,16 @@ namespace ImGui::RHI
                 index_start = static_cast<uint32_t>(draw_list->IdxBuffer.Size);
                 if (is_dock_root)
                 {
+                    // every panel lays an opaque backdrop over its node next, so the veil only fills what is left between them
+                    node_rects.clear();
+                    for (const ImGuiDockNode* node : glass_nodes)
+                    {
+                        node_rects.push_back(node_rect(node));
+                    }
+
                     ImVec4 veil = GetStyleColorVec4(ImGuiCol_DockingEmptyBg);
                     veil.w      = 0.86f;
-                    draw_list->AddRectFilled(display.Min, display.Max, ColorConvertFloat4ToU32(veil));
+                    glass_add_rect_around(draw_list, display, node_rects, ColorConvertFloat4ToU32(veil));
                 }
                 // registered panes draw their own shadows, borders and fills
                 if (is_floating && window_panes.empty())
@@ -1054,6 +1133,8 @@ namespace ImGui::RHI
 
         // update vertex and index buffers
         {
+            spartan::ScopedTimeBlock block("ui_buffers");
+
             // grow vertex buffer as needed
             if (vertex_buffer->GetElementCount() < vertex_count)
             {
@@ -1087,6 +1168,12 @@ namespace ImGui::RHI
             ImDrawIdx*  idx_dst = static_cast<ImDrawIdx*>(index_buffer->GetMappedData());
             if (vtx_dst && idx_dst)
             {
+                FrameFills frame_fills;
+                if (glass_target)
+                {
+                    frame_fills.resolve();
+                }
+
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
                 {
                     const ImDrawList* imgui_cmd_list = draw_data->CmdLists[i];
@@ -1099,11 +1186,11 @@ namespace ImGui::RHI
                         const GlassList& glass_list = glass_lists[i];
                         if (glass_list.thin == GlassThin::Leading)
                         {
-                            thin_window_background(vtx_dst, imgui_cmd_list->VtxBuffer.Size, glass_list.opacity, glass_list.background);
+                            thin_window_background(imgui_cmd_list->VtxBuffer.Data, vtx_dst, imgui_cmd_list->VtxBuffer.Size, glass_list.opacity, glass_list.background, frame_fills);
                         }
                         else if (glass_list.thin == GlassThin::Host)
                         {
-                            thin_dock_host(vtx_dst, imgui_cmd_list->VtxBuffer.Size, glass_list.opacity, glass_fills.data() + glass_list.fill_begin, glass_list.fill_end - glass_list.fill_begin);
+                            thin_dock_host(imgui_cmd_list->VtxBuffer.Data, vtx_dst, imgui_cmd_list->VtxBuffer.Size, glass_list.opacity, glass_fills.data() + glass_list.fill_begin, glass_list.fill_end - glass_list.fill_begin, frame_fills);
                         }
                     }
 
