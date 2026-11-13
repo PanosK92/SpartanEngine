@@ -31,9 +31,41 @@ Code that must run once per physics step (vehicles, buoyancy, kinematic bodies) 
 | `Heightfield` | Terrain |
 | `Controller` | Kinematic character controller with grounding, crouch and jump |
 | `Custom` | A body provided by a factory; this is how vehicles are created (`BodyType.Vehicle` in Lua) |
-| `Cloth` | Cloth with stiffness, damping and wind |
+| `Cloth` | A deformable sheet made from the entity's `Render` mesh; see [Cloth](#cloth) |
 
 Settings include mass, friction, rolling friction, restitution, static or kinematic, center of mass and per-axis position and rotation locks. Forces and velocities are set through `ApplyForce`, `SetLinearVelocity` and `SetAngularVelocity`. Static colliders far from the camera can be streamed out (`distance_streaming`).
+
+A `Sphere` body takes its radius from the `Render` mesh's bounds, so it matches what is drawn (`standard_sphere` has radius 1 at scale 1).
+
+### Cloth
+
+A `Cloth` body turns the vertices of the entity's `Render` mesh into particles, so any mesh works; a subdivided grid such as the 33 x 33 `cloth_grid_33` used by the demo gives smooth folds. `mass` is the mass of the whole sheet, spread over its particles. [`worlds/cloth_physics_example.world`](../worlds/cloth_physics_example.world) shows every use: flags, curtains to walk through, a trampoline, a hammock, a tablecloth over a vase, a dust sheet over a statue and a laundry line.
+
+| Property | Meaning |
+| -------- | ------- |
+| `cloth_pin_mode` | Which vertices hold still and follow the entity. `Edge` pins the edge furthest along the pin direction (flag, curtain), `OppositeEdges` that edge and the one opposite (hammock), `Border` the whole outline (trampoline), `None` pins nothing so the cloth falls and drapes (tablecloth, dust sheet) |
+| `cloth_pin_direction` | World direction that picks the pinned edge, `0 1 0` pins the top |
+| `cloth_stiffness` | Resistance to stretching. It also sets the slack of the tethers that hold each free particle to its nearest pin, about 2% at 1 and 12% at 0 |
+| `cloth_bending` | Resistance to folding. Around 0.3 for a flag: below about 0.1 a sheet in wind folds over itself |
+| `cloth_damping` | Velocity lost per step |
+| `cloth_iterations` | Solver passes per 1/120 s, scaled to the 200 Hz step |
+| `cloth_wind_enabled` | Whether the world's wind blows it; air drag applies either way |
+| `restitution` | How much of an impact the sheet gives back: 0.75 makes a trampoline, 0.05 a hammock |
+
+Changing the pin mode or direction rebuilds the cloth. `ReleaseCloth` drops the pins and `ResetCloth` returns the sheet to its rest pose; the MCP exposes them as the `cloth_release` and `cloth_reset` component actions.
+
+**Simulation.** `Physics::StepClothAll` runs inside the 200 Hz physics step, before PhysX integrates it, with all cloths in parallel. Each step applies wind and drag per triangle, integrates the particles (Verlet), and then solves stretch, bending and tether constraints and collisions together for several iterations. The main thread only uploads the new vertices. Do not move cloth back to a per-frame tick: bodies would run a frame ahead of the sheet and tunnel through it.
+
+**Collisions.** A cloth collides with every PhysX shape that overlaps its bounds.
+- Static and kinematic shapes push the cloth out.
+- Each dynamic body that touches the cloth gets a proxy that falls inside the step and is pushed by the sheet, weighted by mass and by how taut the sheet is at the contact. The body then receives the velocity change that lands it where its proxy ended up, plus the cloth's `restitution` for impacts faster than 1 m/s.
+- The player's character controller is treated as an 80 kg body (or its own `mass` when that is above 1 kg). It sinks into a trampoline, is thrown back out, counts as grounded while the cloth holds it (so it can jump), and takes the sheet's motion directly instead of adding pushes to its own gravity. Only cloth under its feet pushes back; a curtain gives way when the player walks into it.
+
+**Grabbing.** In play mode, **Alt + left click** grabs the cloth at the point under the cursor, unless a dynamic body is nearer, which is grabbed instead. The nearest free particle follows the cursor and keeps its velocity on release. Pinned cloth cannot be pulled further than its tethers allow.
+
+**Rendering.** The deformed vertices are written into the mesh in place every frame. Meshlet bounds, the LOD bounding box and the entity's bounding box are recomputed from the particles, so culling follows the cloth wherever it moves. The ray tracing acceleration structure is refit rather than rebuilt. A cloth renders with any material; for see-through fabric that bends what is behind it, use a glass material (see [Rendering](rendering.md#materials)).
+
+From Lua, `Physics` has `Get/Set` pairs for `ClothStiffness`, `ClothBending`, `ClothDamping`, `ClothIterations`, `ClothWindEnabled`, `ClothPinDirection` and `ClothPinMode` (`ClothPinMode.Edge`, `OppositeEdges`, `Border`, `None`), plus `ReleaseCloth` and `ResetCloth`.
 
 ### Queries and contacts
 

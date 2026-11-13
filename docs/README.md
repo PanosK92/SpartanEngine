@@ -17,7 +17,7 @@ Spartan was documented by its code for twelve years. These pages are the map: th
 | Page | Covers |
 | ---- | ------ |
 | [Rendering](rendering.md) | Frame pass order, the bindless GPU-driven design, the RHI backends, shaders, lights, cameras and materials |
-| [Physics and vehicles](physics_and_vehicles.md) | PhysX integration, the 200 Hz vehicle simulation, `.car` definitions, AI drivers and input |
+| [Physics and vehicles](physics_and_vehicles.md) | PhysX integration, cloth, the 200 Hz vehicle simulation, `.car` definitions, AI drivers and input |
 | [Engine systems](systems.md) | Animation, audio, navigation, procedural geometry, weather, XR and Steam |
 | [Console variables](console_variables.md) | The cvar system and every registered cvar, grouped by subsystem |
 

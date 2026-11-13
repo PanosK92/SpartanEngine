@@ -205,7 +205,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 | System               | Details                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
 | **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; WebGPU on Windows through Dawn and in the browser through WebAssembly, see **[WebGPU and the web](docs/webgpu.md)** |
-| **Physics**          | PhysX with rigid bodies, character kinematics and vehicle dynamics                                |
+| **Physics**          | PhysX with rigid bodies, character kinematics, vehicle dynamics and two-way cloth                 |
 | **Animation**        | Skeletal animation with keyframed clips, crossfade blending, four-bone skinning and two-bone IK with ground-aware foot planting |
 | **Particles**        | GPU-driven compute emission and simulation, depth-buffer collision and soft blending              |
 | **Weather**          | Rain that soaks exposed surfaces, fills puddles and keeps covered areas dry, feeding tire grip    |
@@ -315,7 +315,7 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
   </tr>
   <tr>
     <td valign="top"><b><a href="docs/rendering.md">Rendering</a></b><br/><sub>Frame pass order, bindless GPU-driven design, RHI, shaders, materials</sub></td>
-    <td valign="top"><b><a href="docs/physics_and_vehicles.md">Physics and vehicles</a></b><br/><sub>PhysX, the 200 Hz car model, <code>.car</code> files, AI, input</sub></td>
+    <td valign="top"><b><a href="docs/physics_and_vehicles.md">Physics and vehicles</a></b><br/><sub>PhysX, cloth, the 200 Hz car model, <code>.car</code> files, AI, input</sub></td>
     <td valign="top"><b><a href="docs/systems.md">Engine systems</a></b><br/><sub>Animation, audio, navigation, terrain, weather, cinematics, XR, Steam</sub></td>
     <td valign="top"><b><a href="docs/console_variables.md">Console variables</a></b><br/><sub>The cvar system and every registered cvar</sub></td>
   </tr>

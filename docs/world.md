@@ -142,6 +142,8 @@ Editable fields are registered as **attributes** (`SP_REGISTER_ATTRIBUTE_*` macr
 
 Edit worlds in the editor or through the [MCP bridge](mcp.md), not by hand: ids, owned resources and component attributes are kept consistent by the serializer.
 
+A floor that a player walks on should not be one `standard_quad` scaled to hundreds of metres, as in the minimal example above. Interpolation across two triangles that large runs out of precision near the camera, and the texture swims and shakes at grazing angles. Use a subdivided plane instead, for example MCP `mesh_generate` with `shape: "plane"`, `size: [1, 0.001, 1]`, `segments: 64`, `uv_projection: "planar"`, `uv_axis: "y"` and `uv_offset: [0.5, 0.5]`, kept at the same entity scale and material tiling. The physics `Plane` body is independent of the render mesh, so collisions do not change.
+
 ### Asset ownership
 
 On save the world records the native assets it references in `OwnedResources` and deletes unreferenced files that were previously recorded there. Files never recorded (shared libraries, sculpt data, caches) are left alone, and older worlds adopt only the assets they reference on their first save. `generated_cache/` is trimmed to 2 GiB, least recently used first.
