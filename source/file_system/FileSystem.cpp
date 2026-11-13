@@ -201,7 +201,7 @@ namespace spartan
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
             SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_TO_STDOUT_BOOLEAN, true);
-            // background processes discard the exit status; redirected stdio already keeps this windowless
+            // background processes discard the exit status; on windows the windowless console attached in main keeps console tools hidden
 
             SDL_Process* process = SDL_CreateProcessWithProperties(props);
             SDL_DestroyProperties(props);
@@ -231,7 +231,6 @@ namespace spartan
         }
 
         // run a process silently (no visible console window) and wait for completion
-        // note: always using STDIO_APP ensures no console window appears on any platform
         void run_silent_process(const vector<string>& args, string* output = nullptr)
         {
             vector<const char*> c_args;
@@ -244,8 +243,8 @@ namespace spartan
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
-            // not a background process, redirected stdio already keeps it windowless and on apple sdl loses
-            // the pid of a background process, so the wait below would never return
+            // not a background process, on apple sdl loses the pid of a background process so the wait below would
+            // never return, on windows the windowless console attached in main keeps it hidden
 
             SDL_Process* process = SDL_CreateProcessWithProperties(props);
             SDL_DestroyProperties(props);

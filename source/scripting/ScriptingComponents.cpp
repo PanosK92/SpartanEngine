@@ -59,7 +59,43 @@ namespace spartan::scripting
                 "GetVertexCount",           &Mesh::GetVertexCount,
                 "GetIndexCount",            &Mesh::GetIndexCount,
                 "GetRootEntity",            &Mesh::GetRootEntity,
-                "GetDefaultFlags",          &Mesh::GetDefaultFlags
+                "GetDefaultFlags",          &Mesh::GetDefaultFlags,
+                // a visual only copy of the root hierarchy that draws its own skinned instance, so several animators can share one model
+                "InstantiateSkinned", [](Mesh& self) -> Entity*
+                {
+                    Entity* template_root = self.GetRootEntity();
+                    if (!template_root)
+                    {
+                        return nullptr;
+                    }
+
+                    std::shared_ptr<Mesh> instance = self.CreateSkinnedInstance();
+                    if (!instance)
+                    {
+                        return nullptr;
+                    }
+
+                    Entity* root = template_root->CloneVisualOnly();
+                    if (!root)
+                    {
+                        return nullptr;
+                    }
+                    instance->SetRootEntity(root);
+
+                    // the renders hold the instance alive from here on
+                    std::vector<Entity*> nodes = { root };
+                    root->GetDescendants(&nodes);
+                    for (Entity* node : nodes)
+                    {
+                        Render* render = node ? node->GetComponent<Render>() : nullptr;
+                        if (render && render->GetMesh() == &self)
+                        {
+                            render->SetMesh(instance.get(), render->GetSubMeshIndex());
+                        }
+                    }
+
+                    return root;
+                }
                 );
         }
 
@@ -553,6 +589,7 @@ namespace spartan::scripting
                 "SetFootIkEnabled",   &Animator::SetFootIkEnabled,
                 "GetFootIkWeight",    &Animator::GetFootIkWeight,
                 "SetFootIkWeight",    &Animator::SetFootIkWeight,
+                "SetBoneEntitiesEnabled", &Animator::SetBoneEntitiesEnabled,
                 "GetFootIkGroundOffset", &Animator::GetFootIkGroundOffset,
                 "HasFootIkSupportGround", &Animator::HasFootIkSupportGround,
                 "GetFootIkSupportGroundY", &Animator::GetFootIkSupportGroundY

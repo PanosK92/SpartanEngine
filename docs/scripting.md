@@ -112,6 +112,8 @@ return plan
 
 Split large worlds into `<world>_<part>.lua` files loaded with `dofile`, as `game.lua` does with `plan_ui.lua`, `plan_main_menu.lua` and the shop scripts. If an entity in the world already uses the companion file as a Script component, it is not loaded a second time.
 
+`project/physics_example_resources/scripts/physics_example.lua` is a small, self-contained companion script to read first. It moves kinematic bodies with `SetPosition` and `SetRotation`, fires a ball with `Physics:SetBodyTransform` and `SetLinearVelocity`, spawns animated ragdoll dummies, and records the dynamic bodies in `Start` so it can put them back later. It also shows how to make something clickable: `World.Pick` finds the podium button under the cursor, `World.SetHighlight` outlines it, and a left click resets and replays that experiment. The world is described in [Physics and vehicles](physics_and_vehicles.md#example-world).
+
 ## API reference
 
 The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table` and `io` are available.
@@ -161,13 +163,15 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `Light` | Type, color, `SetTemperature` (kelvin), intensity in lux or lumens, range, angle, IES profile, area size, shadow and volumetric distances, `LightFlags`, `LightPreset` |
 | `Camera` | FOV, near and far planes, exposure mode and auto-exposure settings, `CameraFlags` |
 | `AudioSource` | `SetAudioClip(path)`, `PlayClip`, `StopClip`, `IsPlaying`, volume, pitch, loop, `SetIs3d`, `SetPlayOnStart`, mute, reverb settings |
-| `Animator` | `Play(clip)`, `Stop`, `Pause`, `Resume`, `IsPlaying`, speed, loop, blend time, foot IK |
-| `Ragdoll` | `Activate`, `Wake`, `IsDead`, `IsFrozen` |
+| `Animator` | `Play(clip)`, `Stop`, `Pause`, `Resume`, `IsPlaying`, speed, loop, blend time, foot IK, `SetBoneEntitiesEnabled(bool)` |
+| `Ragdoll` | `Activate`, `Wake`, `IsDead`, `IsFrozen`, `SetHitBodyEnabled(bool)`, `IsHitBodyEnabled` |
 | `ParticleSystem` | Emission rate, lifetime, size, gravity, direction cone, colors, texture, bursts, effect load and save |
 | `Spline` | `GetPoint(t)`, `GetTangent(t)`, `GetLength`, `GetTAtDistance(d)`, control points, road mesh generation |
 | `Text3D` | Text, font, size, alignment, `GenerateMesh` |
 
 `Material.New()` creates a material: `SetProperty(MaterialProperty.X, value)`, `SetColor(r, g, b, a)`, `SetTexture(MaterialTextureType.X, path)`.
+
+`ResourceCache.LoadMesh(path, flags)` returns a `Mesh`. `Mesh.GetDefaultFlags()` gives the import flags to start from, `GetRootEntity()` is the imported entity hierarchy, and `GetVertexCount` and `GetIndexCount` report its size. For several animated copies of one skinned model, call `mesh:InstantiateSkinned()` once per copy: it returns a new hierarchy that draws its own skinned instance. `Entity:Clone()` copies share one skinning palette and render a broken pose. Deactivate the template root, give each copy an `Animator`, and call `SetBoneEntitiesEnabled(false)` on it, as `physics_example.lua` does for its dummies.
 
 ### Enums
 

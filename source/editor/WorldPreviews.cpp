@@ -104,6 +104,33 @@ namespace
         }
     }
 
+    // a capture taken before the scene presented its first lit frame is pure black and must not stick as the preview
+    bool is_blank_preview(spartan::RHI_Texture* texture)
+    {
+        spartan::RHI_Texture_Mip* mip = texture->GetMip(0, 0);
+        if (!mip || mip->bytes.empty() || texture->GetBitsPerChannel() != 8)
+        {
+            return false;
+        }
+
+        const uint32_t channels = max(texture->GetChannelCount(), 1u);
+        const uint32_t color_channels = min(channels, 3u);
+        const uint8_t* pixels = reinterpret_cast<const uint8_t*>(mip->bytes.data());
+        const size_t pixel_count = mip->bytes.size() / channels;
+        for (size_t i = 0; i < pixel_count; i++)
+        {
+            for (uint32_t c = 0; c < color_channels; c++)
+            {
+                if (pixels[i * channels + c] > 4)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     void clear_request()
     {
         preview_request.type                  = preview_request_type::none;
@@ -219,13 +246,17 @@ namespace
             return nullptr;
         }
 
+        // a kept file that failed is remembered as null so it is not decoded again every frame
         auto invalidate_preview = [&](const string& path)
         {
-            preview_textures.erase(path);
-
-            if (allow_delete && spartan::FileSystem::Exists(path))
+            if (allow_delete)
             {
+                preview_textures.erase(path);
                 spartan::FileSystem::Delete(path);
+            }
+            else
+            {
+                preview_textures[path] = nullptr;
             }
         };
 
@@ -235,7 +266,6 @@ namespace
             shared_ptr<spartan::RHI_Texture> texture = it->second;
             if (!texture)
             {
-                preview_textures.erase(it);
                 return nullptr;
             }
 
@@ -261,7 +291,7 @@ namespace
         shared_ptr<spartan::RHI_Texture> texture = make_shared<spartan::RHI_Texture>();
         texture->SetFlag(spartan::RHI_Texture_DeferUpload);
         texture->LoadFromFile(preview_path);
-        if (texture->GetWidth() == 0 || texture->GetHeight() == 0)
+        if (texture->GetWidth() == 0 || texture->GetHeight() == 0 || is_blank_preview(texture.get()))
         {
             invalidate_preview(preview_path);
             return nullptr;

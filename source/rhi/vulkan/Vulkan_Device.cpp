@@ -1155,6 +1155,11 @@ namespace spartan
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
         atomic<uint64_t> current_frame = 0;
 
+        // the renderer records up to this many frames ahead of the gpu, a frame slot is only reused once its
+        // previous frame completed, so each slot gets its own material texture table and the cpu never rewrites
+        // descriptors an in flight frame is sampling through
+        constexpr uint32_t material_texture_set_count = renderer_draw_data_buffer_count;
+
         const string pipeline_cache_path = "cache/pipeline_cache.bin";
 
         void create_pipeline_cache()
@@ -1215,7 +1220,7 @@ namespace spartan
             static array<VkDescriptorPoolSize, 7> pool_sizes =
             {
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    32 * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              rhi_max_array_size + 32 * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              rhi_max_array_size * material_texture_set_count + 32 * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             32 * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,     32 * rhi_max_descriptor_set_count },
@@ -1515,6 +1520,18 @@ namespace spartan
             array<VkDescriptorSet, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> sets          = {};
             array<VkDescriptorSetLayout, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> layouts = {};
 
+            // material textures, one set per frame slot, all guarded by descriptor_pipeline_mutex
+            struct TextureSet
+            {
+                VkDescriptorSet set = nullptr;
+                uint64_t revision   = 0; // table revision this set was last brought up to
+            };
+            array<TextureSet, material_texture_set_count> texture_sets;
+            uint32_t texture_set_index = 0;
+            vector<VkDescriptorImageInfo> latest_texture_infos; // the table every set converges to
+            vector<uint64_t> slot_revisions;                    // table revision at which each slot last changed
+            uint64_t texture_revision = 0;
+
             uint32_t get_binding(RHI_Device_Bindless_Resource type)
             {
                 const ResourceConfig& cfg = configs[static_cast<uint32_t>(type)];
@@ -1573,12 +1590,29 @@ namespace spartan
                 alloc_info.pSetLayouts        = &layouts[index];
                 alloc_info.pNext              = &count_info;
 
+                if (type == RHI_Device_Bindless_Resource::MaterialTextures)
+                {
+                    for (TextureSet& texture_set : texture_sets)
+                    {
+                        SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &alloc_info, &texture_set.set));
+                        RHI_Device::SetResourceName(static_cast<void*>(texture_set.set), RHI_Resource_Type::DescriptorSet, cfg.name);
+                        texture_set.revision = 0;
+                    }
+                    texture_set_index = 0;
+                    sets[index]       = texture_sets[0].set;
+                    return;
+                }
+
                 SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &alloc_info, &sets[index]));
                 RHI_Device::SetResourceName(static_cast<void*>(sets[index]), RHI_Resource_Type::DescriptorSet, cfg.name);
             }
 
             void initialize()
             {
+                latest_texture_infos.clear();
+                slot_revisions.clear();
+                texture_revision = 0;
+
                 for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max); i++)
                 {
                     create_layout_and_set(static_cast<RHI_Device_Bindless_Resource>(i));
@@ -1588,12 +1622,11 @@ namespace spartan
                 if (!descriptors::descriptor_pools.empty())
                 {
                     descriptors::descriptor_pools.front().allocated +=
-                        static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max);
+                        static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max) + material_texture_set_count - 1;
                 }
             }
 
-            // views last written per slot, guarded by descriptor_pipeline_mutex
-            vector<VkImageView> written_texture_views;
+            void sync_texture_set(TextureSet& texture_set);
 
             void update_textures(const array<RHI_Texture*, rhi_max_array_size>* textures, const bool full)
             {
@@ -1613,50 +1646,71 @@ namespace spartan
                     image_infos[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                 }
 
-                VkWriteDescriptorSet write = {};
-                write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                write.dstSet          = sets[index];
-                write.dstBinding      = get_binding(RHI_Device_Bindless_Resource::MaterialTextures);
-                write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
                 // a destroyed view's handle can be reused by a new view in the same slot, which a
-                // per-slot comparison cannot see, so anything but a residency swap rewrites everything
-                if (full || written_texture_views.size() != cfg.count)
+                // per-slot comparison cannot see, so anything but a residency swap marks every slot
+                const bool rewrite_all = full || latest_texture_infos.size() != cfg.count;
+                if (rewrite_all)
                 {
-                    written_texture_views.resize(cfg.count);
-                    for (uint32_t i = 0; i < cfg.count; ++i)
-                    {
-                        written_texture_views[i] = image_infos[i].imageView;
-                    }
+                    latest_texture_infos.resize(cfg.count);
+                    slot_revisions.resize(cfg.count);
+                }
 
-                    write.dstArrayElement = 0;
-                    write.descriptorCount = cfg.count;
-                    write.pImageInfo      = image_infos.data();
-                    vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
+                const uint64_t next_revision = texture_revision + 1;
+                bool changed                 = false;
+                for (uint32_t i = 0; i < cfg.count; ++i)
+                {
+                    if (rewrite_all || latest_texture_infos[i].imageView != image_infos[i].imageView)
+                    {
+                        latest_texture_infos[i] = image_infos[i];
+                        slot_revisions[i]       = next_revision;
+                        changed                 = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    texture_revision = next_revision;
+                }
+
+                // only the set of the frame being recorded, the sets of in flight frames catch up when their slot comes back
+                sync_texture_set(texture_sets[texture_set_index]);
+            }
+
+            void sync_texture_set(TextureSet& texture_set)
+            {
+                if (!texture_set.set || texture_set.revision == texture_revision)
+                {
                     return;
                 }
 
-                // a residency swap changes a handful of views, write only the runs that differ
+                const uint32_t count = static_cast<uint32_t>(latest_texture_infos.size());
+
+                VkWriteDescriptorSet write = {};
+                write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.dstSet          = texture_set.set;
+                write.dstBinding      = get_binding(RHI_Device_Bindless_Resource::MaterialTextures);
+                write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+                // write the runs of slots that changed since this set was last synced
                 static thread_local vector<VkWriteDescriptorSet> writes;
                 writes.clear();
-                for (uint32_t i = 0; i < cfg.count;)
+                for (uint32_t i = 0; i < count;)
                 {
-                    if (written_texture_views[i] == image_infos[i].imageView)
+                    if (slot_revisions[i] <= texture_set.revision)
                     {
                         ++i;
                         continue;
                     }
 
                     const uint32_t first = i;
-                    while (i < cfg.count && written_texture_views[i] != image_infos[i].imageView)
+                    while (i < count && slot_revisions[i] > texture_set.revision)
                     {
-                        written_texture_views[i] = image_infos[i].imageView;
                         ++i;
                     }
 
                     write.dstArrayElement = first;
                     write.descriptorCount = i - first;
-                    write.pImageInfo      = image_infos.data() + first;
+                    write.pImageInfo      = latest_texture_infos.data() + first;
                     writes.push_back(write);
                 }
 
@@ -1664,6 +1718,16 @@ namespace spartan
                 {
                     vkUpdateDescriptorSets(RHI_Context::device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
                 }
+                texture_set.revision = texture_revision;
+            }
+
+            // called once per frame after the renderer waited for the frame that last used this slot
+            void advance_texture_set(const uint64_t frame)
+            {
+                texture_set_index = static_cast<uint32_t>(frame % material_texture_set_count);
+                TextureSet& texture_set = texture_sets[texture_set_index];
+                sets[static_cast<uint32_t>(RHI_Device_Bindless_Resource::MaterialTextures)] = texture_set.set;
+                sync_texture_set(texture_set);
             }
 
             void update_samplers(RHI_Device_Bindless_Resource type, const shared_ptr<RHI_Sampler>* samplers, uint32_t count)
@@ -1729,6 +1793,10 @@ namespace spartan
             }
             bindless::sets.fill(nullptr);
             bindless::layouts.fill(nullptr);
+            for (bindless::TextureSet& texture_set : bindless::texture_sets)
+            {
+                texture_set = {};
+            }
         }
     }
 
@@ -2467,6 +2535,11 @@ namespace spartan
         vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
 
         descriptors::current_frame.store(frame_count, memory_order_relaxed);
+
+        {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
+            descriptors::bindless::advance_texture_set(frame_count);
+        }
 
         // evict descriptor sets unused for 300+ frames to prevent unbounded growth
         constexpr uint64_t max_unused_frames = 300;

@@ -10,7 +10,7 @@
 - **Skinning**: four bones per vertex, batched across all animators each frame.
 - **Ragdolls**: the `Ragdoll` component drives the skeleton from physics.
 
-[`worlds/character_animation_example.world`](../worlds/character_animation_example.world) is a working example.
+[`worlds/character_animation_example.world`](../worlds/character_animation_example.world) is a working example. The ragdoll station of [`worlds/physics_example.world`](../worlds/physics_example.world) shows animated characters turning into ragdolls when a cannon ball hits them.
 
 ## Audio
 

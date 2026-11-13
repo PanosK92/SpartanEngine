@@ -35,11 +35,29 @@ Code that must run once per physics step (vehicles, buoyancy, kinematic bodies) 
 
 Settings include mass, friction, rolling friction, restitution, static or kinematic, center of mass and per-axis position and rotation locks. Forces and velocities are set through `ApplyForce`, `SetLinearVelocity` and `SetAngularVelocity`. Static colliders far from the camera can be streamed out (`distance_streaming`).
 
+`friction` is the static coefficient, which holds a resting body in place. `friction_rolling` is passed to PhysX as the dynamic coefficient, which applies once the body slides. Set both to the same value for a single coefficient; a body with high `friction` and low `friction_rolling` holds on a slope until something nudges it and then keeps sliding.
+
 A `Sphere` body takes its radius from the `Render` mesh's bounds, so it matches what is drawn (`standard_sphere` has radius 1 at scale 1).
+
+### Example world
+
+[`worlds/physics_example.world`](../worlds/physics_example.world) is a playground with one station per feature. It opens on a plaza with a sign post and a floor map, a coloured path leads to each station, and floating `Text3D` labels say what each exhibit does. Press play and walk around. Every experiment waits in its start pose behind a podium with a red button: look at the button from within 4 m, the podium gets an outline, and a left click plays the experiment. Clicking again resets it and plays it again.
+
+| Station | What it shows |
+| ------- | ------------- |
+| Cloth | Flags, velvet curtains to walk through, a trampoline, a hammock, a tablecloth over a vase and a dust sheet over a statue; see [Cloth](#cloth). The buttons drop crates on the trampoline, a ball in the hammock and the two sheets again, and one unpins the flags, then hangs them back |
+| Bounce and friction | Five balls dropped in front of a height board with `restitution` from 0 to 0.95, and four boxes on 25 degree ramps with friction from 0.02 (ice) to 0.9 (rubber) |
+| Stacks and dominoes | A crate pyramid, a plank tower, and a domino chain that a ball rolling down a ramp sets off |
+| Machines | Kinematic bodies moved by script that push whatever they touch: a rotating sweeper arm and a lift to ride up to a deck, each with a button that starts and stops it. A seesaw launches a light box when a heavy one lands on the other end |
+| Ragdolls | Animated dummies with a `Ragdoll` component on a stage. Each press of the cannon button fires one ball at the next standing dummy, and once all have fallen the next press stands them back up |
+
+In play mode, a plain **left click** presses the button you are looking at, **Alt + left click** grabs a body or a cloth, and holding the right mouse button with **Alt** and left clicking shoots a cube.
+
+The companion script `project/physics_example_resources/scripts/physics_example.lua` (see [World companion scripts](scripting.md#world-companion-scripts)) spawns the dummies, drives the sweeper, the lift and the cannon, and runs the buttons. Its `experiments` table maps each podium under the `buttons` root to the bodies and cloths it owns, matched by name prefix. At the start of play it records the pose of those bodies and makes the ones that would otherwise fall or roll static, so nothing has already happened by the time you arrive. A press puts every body back, makes the held ones dynamic again and calls `ResetCloth` on the sheets. The script finds the button with `World.Pick` along the cursor ray, or the camera centre while the right mouse button is held, and outlines the podium with `World.SetHighlight`. To add an experiment, clone a podium, rename it and its `<podium>_button` child, and add a row to the table.
 
 ### Cloth
 
-A `Cloth` body turns the vertices of the entity's `Render` mesh into particles, so any mesh works; a subdivided grid such as the 33 x 33 `cloth_grid_33` used by the demo gives smooth folds. `mass` is the mass of the whole sheet, spread over its particles. [`worlds/cloth_physics_example.world`](../worlds/cloth_physics_example.world) shows every use: flags, curtains to walk through, a trampoline, a hammock, a tablecloth over a vase, a dust sheet over a statue and a laundry line.
+A `Cloth` body turns the vertices of the entity's `Render` mesh into particles, so any mesh works; a subdivided grid such as the 33 x 33 `cloth_grid_33` used by the example world gives smooth folds. `mass` is the mass of the whole sheet, spread over its particles. The cloth station of the [example world](#example-world) shows every use.
 
 | Property | Meaning |
 | -------- | ------- |

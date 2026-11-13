@@ -77,12 +77,40 @@ static bool initialize_runtime_directories()
 }
 
 #ifdef _WIN32 // windows
+// a gui process has no console, so every console tool it starts (curl, cmd, powershell, git) pops its own
+// window for a moment, a console without a window is inherited by all of them instead
+static void attach_windowless_console()
+{
+    struct alloc_console_options
+    {
+        int  mode;
+        BOOL use_show_window;
+        WORD show_window;
+    };
+    using alloc_console_with_options_fn = HRESULT(WINAPI*)(alloc_console_options*, int*);
+    const int alloc_console_mode_no_window = 2;
+
+    // windows 11 24h2 and later, older systems keep the previous behaviour
+    HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
+    auto alloc_console_with_options = kernel32 ? reinterpret_cast<alloc_console_with_options_fn>(GetProcAddress(kernel32, "AllocConsoleWithOptions")) : nullptr;
+    if (!alloc_console_with_options)
+    {
+        return;
+    }
+
+    alloc_console_options options = {};
+    options.mode = alloc_console_mode_no_window;
+    int result   = 0;
+    alloc_console_with_options(&options, &result);
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     const int reporter_result = spartan::CrashHandler::RunReporterIfRequested(lpCmdLine);
     if (reporter_result >= 0)
         return reporter_result;
     spartan::CrashHandler::Initialize();
+    attach_windowless_console();
     set_working_directory_to_executable();
     if (!initialize_runtime_directories())
     {

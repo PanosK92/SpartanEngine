@@ -54,9 +54,9 @@ The **World Launcher** opens at start-up, after the welcome window. It lists eve
 
 ### Camera
 
-Hold the right mouse button to look, and move with **WASD**, **Q**/**E** for down/up and **Shift** to go faster. In play mode, a camera on a character controller walks: **Space** jumps, **Ctrl** crouches. The player can stand and bounce on cloth such as the trampoline in `cloth_physics_example.world`.
+Hold the right mouse button to look, and move with **WASD**, **Q**/**E** for down/up and **Shift** to go faster. In play mode, a camera on a character controller walks: **Space** jumps, **Ctrl** crouches. The player can stand and bounce on cloth such as the trampoline in `physics_example.world`.
 
-In play mode, the physics toys sit behind **Alt** so a plain click stays free for gameplay. **Alt + left click** grabs a dynamic body or a cloth at the point under the cursor and drags it until the button is released. Holding the right mouse button with **Alt** and left clicking shoots a box.
+In play mode, the physics toys sit behind **Alt** so a plain click stays free for gameplay. **Alt + left click** grabs a dynamic body or a cloth at the point under the cursor and drags it until the button is released. Holding the right mouse button with **Alt** and left clicking shoots a box. [`physics_example.world`](physics_and_vehicles.md#example-world) is built for trying both, and uses the plain click for its experiment buttons.
 
 ## Undo and redo
 

@@ -118,7 +118,7 @@ Materials are XML files ([`Material.cpp`](../source/rendering/Material.cpp)): a 
 **Glass and transparent surfaces.** A material is transparent when its color alpha (`color_a`) is below 1.
 - With `alpha_blend` off, the surface is glass: the background is refracted and gets a Fresnel reflection on top.
   - `ior` sets how strongly light bends: 1.5 for window glass, 1.33 for water.
-  - `thickness` is the glass thickness in metres. Below 0.05 the surface is treated as a thin pane: light passes straight through and only the Fresnel reflection remains, so give anything that should visibly bend light at least 0.05 (the cloth demo's curtains use 0.08).
+  - `thickness` is the glass thickness in metres. Below 0.05 the surface is treated as a thin pane: light passes straight through and only the Fresnel reflection remains, so give anything that should visibly bend light at least 0.05 (the curtains in `physics_example.world` use 0.08).
   - `roughness` frosts what is seen through it, and `absorption` tints it with distance through the glass.
   - The normal map bends the refraction too; keep its strength low (around 0.1) unless a rippled, crinkled look is wanted.
   - A color texture multiplies the tint, so a dark texture makes dark glass.
