@@ -59,7 +59,7 @@ namespace
         }
     }
 
-    // "./project/car_playground_resources/albedo.texture" reads as "car_playground_resources/albedo.texture",
+    // "./project/car_playground_example_resources/albedo.texture" reads as "car_playground_example_resources/albedo.texture",
     // every path starts in the project folder so the prefix carries no information
     string readable_path(const string& path)
     {

@@ -137,6 +137,7 @@ namespace spartan
         static PxRigidDynamic* dummy_actor = nullptr;
         static PxD6Joint* joint            = nullptr;
         static PxReal pick_distance        = 0.0f;
+        static Physics* picked_cloth       = nullptr; // cloth lives outside physx, it is held by a particle instead of a joint
 
         void PickBody()
         {
@@ -161,7 +162,23 @@ namespace spartan
             PxQueryFilterData filter_data(PxQueryFlag::eDYNAMIC); // only pick dynamic bodies - static/kinematic can be moved as per usual from the editor
             PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
             lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
-            if (scene->raycast(origin, direction, 1000.0f, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock)
+            const bool hit_body = scene->raycast(origin, direction, 1000.0f, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock;
+
+            // cloth is tested against its own triangles, it is grabbed at the point the ray hits when nothing simulated is in front of it
+            float cloth_distance = 0.0f;
+            Vector3 cloth_hit    = Vector3::Zero;
+            if (Physics* cloth = Physics::RaycastCloth(picking_ray.GetStart(), Vector3(direction.x, direction.y, direction.z), 1000.0f, cloth_distance, cloth_hit))
+            {
+                if (!hit_body || cloth_distance < hit.block.distance)
+                {
+                    picked_cloth  = cloth;
+                    pick_distance = cloth_distance;
+                    cloth->GrabCloth(cloth_hit);
+                    return;
+                }
+            }
+
+            if (hit_body)
             {
                 PxRigidActor* actor = hit.block.actor;
                 if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
@@ -251,6 +268,15 @@ namespace spartan
 
         void UnpickBody()
         {
+            if (picked_cloth)
+            {
+                if (Physics::IsCloth(picked_cloth))
+                {
+                    picked_cloth->ReleaseClothGrab();
+                }
+                picked_cloth = nullptr;
+            }
+
             if (picked_body && joint)
             {
                 lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
@@ -268,6 +294,20 @@ namespace spartan
 
         void MovePickedBody()
         {
+            if (picked_cloth)
+            {
+                Camera* camera = World::GetCamera();
+                if (!camera || !Physics::IsCloth(picked_cloth))
+                {
+                    picked_cloth = nullptr;
+                    return;
+                }
+
+                const Ray picking_ray = camera->ComputeRay(Input::GetMousePositionRelativeToEditorViewport());
+                picked_cloth->MoveClothGrab(picking_ray.GetStart() + picking_ray.GetDirection().Normalized() * pick_distance);
+                return;
+            }
+
             if (!picked_body || !dummy_actor || !joint)
             {
                 return;

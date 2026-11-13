@@ -222,6 +222,9 @@ namespace spartan::mcp_components
             return std::nullopt;
         }
 
+        // indexed by ClothPinMode
+        const char* const cloth_pin_mode_names[] = { "edge", "opposite_edges", "border", "none" };
+
         std::optional<BodyType> body_type_from_name(const std::string& name)
         {
             if (name == "box")
@@ -1634,6 +1637,17 @@ namespace spartan::mcp_components
                 json += ",\"friction_rolling\":" + std::to_string(physics->GetFrictionRolling());
                 json += ",\"restitution\":" + std::to_string(physics->GetRestitution());
                 json += ",\"center_of_mass\":" + json_vector3(physics->GetCenterOfMass());
+                if (physics->GetBodyType() == BodyType::Cloth)
+                {
+                    json += ",\"cloth_stiffness\":" + std::to_string(physics->GetClothStiffness());
+                    json += ",\"cloth_bending\":" + std::to_string(physics->GetClothBending());
+                    json += ",\"cloth_damping\":" + std::to_string(physics->GetClothDamping());
+                    json += ",\"cloth_iterations\":" + std::to_string(physics->GetClothIterations());
+                    json += ",\"cloth_wind_enabled\":" + json_bool(physics->GetClothWindEnabled());
+                    json += ",\"cloth_pin_direction\":" + json_vector3(physics->GetClothPinDirection());
+                    json += ",\"cloth_pin_mode\":" + json_string(cloth_pin_mode_names[static_cast<uint32_t>(physics->GetClothPinMode())]);
+                    json += ",\"cloth_released\":" + json_bool(physics->IsClothReleased());
+                }
             }
             else if (type == ComponentType::Light)
             {
@@ -1747,7 +1761,7 @@ namespace spartan::mcp_components
             }
             if (type == ComponentType::Physics)
             {
-                return "[\"body_type\",\"static\",\"kinematic\",\"enabled\",\"mass\",\"friction\",\"friction_rolling\",\"restitution\",\"center_of_mass\",\"linear_velocity\",\"angular_velocity\"]";
+                return "[\"body_type\",\"static\",\"kinematic\",\"enabled\",\"mass\",\"friction\",\"friction_rolling\",\"restitution\",\"center_of_mass\",\"linear_velocity\",\"angular_velocity\",\"cloth_stiffness\",\"cloth_bending\",\"cloth_damping\",\"cloth_iterations\",\"cloth_wind_enabled\",\"cloth_pin_direction\",\"cloth_pin_mode\"]";
             }
             if (type == ComponentType::Light)
             {
@@ -1795,7 +1809,7 @@ namespace spartan::mcp_components
             }
             if (type == ComponentType::Physics)
             {
-                return "[\"apply_force\",\"sync_wheel_offsets\",\"reset_tire_wear\",\"shift_up\",\"shift_down\",\"shift_to_neutral\"]";
+                return "[\"apply_force\",\"sync_wheel_offsets\",\"reset_tire_wear\",\"shift_up\",\"shift_down\",\"shift_to_neutral\",\"cloth_release\",\"cloth_reset\"]";
             }
             if (type == ComponentType::AudioSource)
             {
@@ -1853,6 +1867,13 @@ namespace spartan::mcp_components
                 add({ "center_of_mass", "", "vector3", true, "meters local", "", "", { "changes rigid body center of mass" }, "", "[0,0,0]" });
                 add({ "linear_velocity", "", "vector3", true, "meters per second", "", "", { "changes runtime rigid body velocity" }, "", "[0,0,0]" });
                 add({ "angular_velocity", "", "vector3", true, "radians per second", "", "", { "changes runtime rigid body angular velocity" }, "", "[0,0,0]" });
+                add({ "cloth_stiffness", "", "float", true, "normalized", range_json(0.0f, 1.0f), "", { "cloth only, resistance to stretching per solver iteration" }, "", "0.9" });
+                add({ "cloth_bending", "", "float", true, "normalized", range_json(0.0f, 1.0f), "", { "cloth only, resistance to folding, silk low, canvas high" }, "", "0.3" });
+                add({ "cloth_damping", "", "float", true, "normalized", range_json(0.0f, 1.0f), "", { "cloth only, velocity loss per sub-step" }, "", "0.01" });
+                add({ "cloth_iterations", "", "int", true, "", range_json(1.0f, 32.0f), "", { "cloth only, solver passes per sub-step" }, "", "8" });
+                add({ "cloth_wind_enabled", "", "bool", true, "", "", "", { "cloth only, the world wind blows the cloth, air drag applies either way" }, "", "true" });
+                add({ "cloth_pin_direction", "", "vector3", true, "world direction", "", "", { "cloth only, vertices furthest along it are pinned and follow the entity, recreates the cloth" }, "", "[0,1,0]" });
+                add({ "cloth_pin_mode", "", "enum", true, "", "", "[{\"name\":\"edge\",\"value\":\"edge\"},{\"name\":\"opposite_edges\",\"value\":\"opposite_edges\"},{\"name\":\"border\",\"value\":\"border\"},{\"name\":\"none\",\"value\":\"none\"}]", { "cloth only, edge is a flag, opposite_edges a hammock, border a trampoline, none drapes freely, recreates the cloth" }, "", json_string("edge") });
             }
             else if (type == ComponentType::Light)
             {
@@ -2311,6 +2332,68 @@ namespace spartan::mcp_components
                     physics->SetAngularVelocity(parsed);
                 }
                 return true;
+            }
+            if (property == "cloth_stiffness" || property == "cloth_bending" || property == "cloth_damping" || property == "cloth_iterations")
+            {
+                float parsed = 0.0f;
+                if (!parse_float(value, parsed))
+                {
+                    error = "invalid cloth float";
+                    return false;
+                }
+                if (property == "cloth_stiffness")
+                {
+                    physics->SetClothStiffness(parsed);
+                }
+                else if (property == "cloth_bending")
+                {
+                    physics->SetClothBending(parsed);
+                }
+                else if (property == "cloth_damping")
+                {
+                    physics->SetClothDamping(parsed);
+                }
+                else
+                {
+                    physics->SetClothIterations(static_cast<uint32_t>(std::max(parsed, 1.0f)));
+                }
+                return true;
+            }
+            if (property == "cloth_wind_enabled")
+            {
+                bool parsed = false;
+                if (!parse_bool(value, parsed))
+                {
+                    error = "invalid cloth boolean";
+                    return false;
+                }
+                physics->SetClothWindEnabled(parsed);
+                return true;
+            }
+            if (property == "cloth_pin_direction")
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(value, parsed))
+                {
+                    error = "invalid cloth pin direction";
+                    return false;
+                }
+                physics->SetClothPinDirection(parsed);
+                return true;
+            }
+            if (property == "cloth_pin_mode")
+            {
+                const std::string name = to_lower_copy(value);
+                for (uint32_t i = 0; i < static_cast<uint32_t>(ClothPinMode::Max); i++)
+                {
+                    if (name == cloth_pin_mode_names[i] || name == "\"" + std::string(cloth_pin_mode_names[i]) + "\"")
+                    {
+                        physics->SetClothPinMode(static_cast<ClothPinMode>(i));
+                        return true;
+                    }
+                }
+                error = "invalid cloth_pin_mode, expected edge, opposite_edges, border or none";
+                return false;
             }
 
             error = "unsupported physics property";
@@ -3012,7 +3095,7 @@ namespace spartan::mcp_components
 
             const std::string action = to_lower_copy(*action_arg);
             const bool runtime_action =
-                (*type == ComponentType::Physics && (action == "apply_force" || action == "sync_wheel_offsets" || action == "reset_tire_wear" || action == "shift_up" || action == "shift_down" || action == "shift_to_neutral" || action == "draw_debug_visualization")) ||
+                (*type == ComponentType::Physics && (action == "apply_force" || action == "sync_wheel_offsets" || action == "reset_tire_wear" || action == "shift_up" || action == "shift_down" || action == "shift_to_neutral" || action == "draw_debug_visualization" || action == "cloth_release" || action == "cloth_reset")) ||
                 (*type == ComponentType::AudioSource && (action == "play" || action == "stop")) ||
                 (*type == ComponentType::CarService && action == "wash");
 
@@ -3152,6 +3235,14 @@ namespace spartan::mcp_components
                 }
 
                 static_cast<Physics*>(component)->ApplyForce(force, mode);
+            }
+            else if (*type == ComponentType::Physics && action == "cloth_release")
+            {
+                static_cast<Physics*>(component)->ReleaseCloth();
+            }
+            else if (*type == ComponentType::Physics && action == "cloth_reset")
+            {
+                static_cast<Physics*>(component)->ResetCloth();
             }
             else if (*type == ComponentType::Physics && action == "sync_wheel_offsets")
             {

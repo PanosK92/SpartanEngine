@@ -2,7 +2,7 @@
 
 Visual scripts are node graphs that compile to Lua. You build behavior by wiring events, flow control and engine calls together in the editor's **Visual Script** window, and the result runs through the same Script component, with the same speed, as a hand-written [Lua script](scripting.md). There is no graph interpreter at runtime.
 
-The fastest way to learn it is the tutorial world, [`worlds/visual_scripting.world`](../worlds/visual_scripting.world). It has four stations, each an object with a small commented graph:
+The fastest way to learn it is the tutorial world, [`worlds/visual_scripting_example.world`](../worlds/visual_scripting_example.world). It has four stations, each an object with a small commented graph:
 
 | Station | Graph | Teaches |
 | ------- | ----- | ------- |
@@ -11,7 +11,7 @@ The fastest way to learn it is the tutorial world, [`worlds/visual_scripting.wor
 | 3, Input | `visual_scripting_input.lua` | On Key and Flip Flop: Space toggles a cube between two sizes (play mode) |
 | 4, Branch | `visual_scripting_branch.lua` | Branch (if / else) and reading a component: a lamp blinks |
 
-The graphs ship in the project package, in `binaries/project/visual_scripting_resources/scripts/`. Load the world, select an object, find its **Script** component in the inspector and press **Edit graph**. Press play to see the graphs run.
+The graphs ship in the project package, in `binaries/project/visual_scripting_example_resources/scripts/`. Load the world, select an object, find its **Script** component in the inspector and press **Edit graph**. Press play to see the graphs run.
 
 ## How it works
 

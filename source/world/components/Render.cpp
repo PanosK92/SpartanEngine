@@ -154,9 +154,16 @@ namespace spartan
         // mesh, skip procedural meshes as they are not in the resource cache, their owning component regenerates them after load
         const bool is_standard_mesh = m_scene->mesh && m_scene->mesh->GetObjectName().rfind("standard_", 0) == 0;
         const bool is_procedural    = m_scene->mesh && m_scene->mesh->GetObjectName() == "ocean";
-        const bool is_resolvable    = m_scene->mesh && !is_procedural && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_scene->mesh->GetObjectName()) != nullptr);
+        const shared_ptr<Mesh> cached_mesh = m_scene->mesh && !is_procedural && !is_standard_mesh ? ResourceCache::GetByName<Mesh>(m_scene->mesh->GetObjectName()) : nullptr;
+        const bool is_resolvable    = m_scene->mesh && !is_procedural && (is_standard_mesh || cached_mesh != nullptr);
+        // a runtime copy (cloth deforms its own) has no file, the cached original it was made from does
+        string mesh_path = is_resolvable && !is_standard_mesh ? m_scene->mesh->GetResourceFilePath() : "";
+        if (mesh_path.empty() && cached_mesh)
+        {
+            mesh_path = cached_mesh->GetResourceFilePath();
+        }
         node.append_attribute("mesh_name")      = is_resolvable ? m_scene->mesh->GetObjectName().c_str() : "";
-        node.append_attribute("mesh_path")      = is_resolvable && !is_standard_mesh ? m_scene->mesh->GetResourceFilePath().c_str() : "";
+        node.append_attribute("mesh_path")      = mesh_path.c_str();
         node.append_attribute("sub_mesh_index") = m_scene->sub_mesh_index;
 
         // material

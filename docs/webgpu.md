@@ -9,7 +9,7 @@ WebGPU is Spartan's fourth RHI backend, next to DirectX 12, Vulkan and Metal. It
 
 The native build is where the backend is developed and debugged: it compiles shaders, runs the MCP bridge and is fast to iterate on. The browser build runs the same engine and the full editor in a tab, with nothing installed.
 
-The editor and worlds such as `pbr.world` render in both builds; what the backend leaves out is listed under [Limitations](#limitations).
+The editor and worlds such as `pbr_materials_example.world` render in both builds; what the backend leaves out is listed under [Limitations](#limitations).
 
 ## Shaders
 
@@ -82,7 +82,7 @@ From a fresh clone:
 ```powershell
 generate_project_files.bat vs2026 webgpu        # dawn, data and the native project
 # build release or development, then run the exe once (or open a world) so the shader cache fills
-python tools/web_build.py engine --world pbr.world
+python tools/web_build.py engine --world pbr_materials_example.world
 python tools/web_build.py serve
 ```
 
@@ -122,10 +122,10 @@ The release waits on this job like it does on the other platforms.
 
 ## Limitations
 
-- No ray tracing: ReSTIR path tracing, ray-traced shadows and reflections are off. Worlds that rely on path tracing (`light_test.world` sets `r.restir_pt`) render dark.
+- No ray tracing: ReSTIR path tracing, ray-traced shadows and reflections are off. Worlds that rely on path tracing (`lighting_example.world` sets `r.restir_pt`) render dark.
 - Material textures are resampled to 1024² or 512² RGBA8 (see above), so very high-resolution or HDR material textures lose detail and range.
 - No tessellation stage: materials with tessellation draw through the regular path, without displacement.
 - No vendor upscalers: a saved XeSS or DLSS choice falls back to the engine's TAAU for the session, and `spartan.xml` keeps the saved choice for the other backends.
 - The browser build is single-threaded, so CPU-heavy worlds run slower than natively.
-- wasm32 caps the heap at 4 GB; large worlds such as `plan.world` don't fit. Loading a second world in one page has run out of memory.
+- wasm32 caps the heap at 4 GB; large worlds such as `game.world` don't fit. Loading a second world in one page has run out of memory.
 - Pointer warping isn't available in a browser, so camera controls that recentre the mouse log `SetMousePosition` errors.

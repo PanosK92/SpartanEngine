@@ -38,7 +38,7 @@ Some cvars belong to the world rather than the user, and are reset on every worl
 
 - `r.atmosphere.mist_*`: reset to defaults, then set by the world's `ConsoleVariables` and saved with it.
 - `r.fog.debug`: always reset to off.
-- `r.watermark`: reset to off and not saved to `spartan.xml`. Only Plan turns it on, from `project/plan_resources/scripts/plan.lua`.
+- `r.watermark`: reset to off and not saved to `spartan.xml`. Only Plan turns it on, from `project/game_resources/scripts/game.lua`.
 
 ## Reference
 

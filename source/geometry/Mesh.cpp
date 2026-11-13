@@ -1169,7 +1169,7 @@ namespace spartan
         return true;
     }
 
-    bool Mesh::UpdateVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices)
+    bool Mesh::UpdateVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices, const bool invalidate_blas)
     {
         lock_guard lock(m_mutex);
         restore_cpu_geometry_locked();
@@ -1217,7 +1217,10 @@ namespace spartan
         }
         GeometryBuffer::UpdateVertices(m_vertices.data(), m_global_vertex_offset, static_cast<uint32_t>(m_vertices.size()));
         GeometryBuffer::UpdateMeshletBounds(m_meshlets.data(), m_global_meshlet_offset, static_cast<uint32_t>(m_meshlets.size()));
-        InvalidateAllBlas();
+        if (invalidate_blas)
+        {
+            InvalidateAllBlas();
+        }
         return true;
     }
 

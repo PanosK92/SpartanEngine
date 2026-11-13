@@ -68,7 +68,7 @@ Run `npm install` in `tools/mcp/spartan_engine` once. Server options: `--host`, 
 One request per line, one JSON response per line:
 
 ```
-world_load path=C%3A%2Fspartan%2Fworlds%2Fempty.world request_id=7
+world_load path=C%3A%2Fspartan%2Fworlds%2Fempty_example.world request_id=7
 {"ok":true,...,"request_id":"7"}
 ```
 

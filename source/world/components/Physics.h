@@ -46,6 +46,16 @@ namespace spartan
         Max
     };
 
+    // which cloth vertices are held in place, they follow the entity
+    enum class ClothPinMode : uint32_t
+    {
+        Edge,          // the vertices furthest along the pin direction, a flag or a curtain
+        OppositeEdges, // both extremes along the pin direction, a hammock or a banner between two poles
+        Border,        // every open edge, a trampoline or a drum skin
+        None,          // nothing, the cloth falls and drapes over whatever is below it
+        Max
+    };
+
     struct PhysicsSettings
     {
         void Validate();
@@ -54,10 +64,11 @@ namespace spartan
         bool use_convex_hull = false, distance_streaming = true;
         math::Vector3 position_lock, rotation_lock, center_of_mass;
         BodyType body_type = BodyType::Max;
-        float cloth_stiffness = 0.9f, cloth_damping = 0.01f;
+        float cloth_stiffness = 0.9f, cloth_damping = 0.01f, cloth_bending = 0.3f;
         uint32_t cloth_iterations = 8;
         bool cloth_wind_enabled = true;
         math::Vector3 cloth_pin_direction = math::Vector3::Up;
+        ClothPinMode cloth_pin_mode = ClothPinMode::Edge;
     };
 
     // An optional force-model body. The implementation owns its actors; Physics borrows
@@ -174,6 +185,7 @@ namespace spartan
         // dimensional properties
         float GetCapsuleVolume();
         float GetCapsuleRadius();
+        float GetSphereRadius();
         math::Vector3 GetControllerTopLocal() const;
 
         // static
@@ -208,16 +220,31 @@ namespace spartan
         Entity* GetMeshConvexSourceEntity() const { return m_mesh_convex_source; }
 
         // cloth simulation parameters (only applies when body type is Cloth)
+        // mass is the whole cloth's mass, it sets how hard the wind and the air push it around
         float GetClothStiffness() const            { return m_cloth_stiffness; }
         void SetClothStiffness(float stiffness);
         float GetClothDamping() const              { return m_cloth_damping; }
         void SetClothDamping(float damping);
+        float GetClothBending() const              { return m_cloth_bending; }
+        void SetClothBending(float bending);
         uint32_t GetClothIterations() const        { return m_cloth_iterations; }
         void SetClothIterations(uint32_t count);
         bool GetClothWindEnabled() const             { return m_cloth_wind_enabled; }
         void SetClothWindEnabled(bool enabled)       { m_cloth_wind_enabled = enabled; }
         const math::Vector3& GetClothPinDirection() const { return m_cloth_pin_direction; }
         void SetClothPinDirection(const math::Vector3& direction);
+        ClothPinMode GetClothPinMode() const { return m_cloth_pin_mode; }
+        void SetClothPinMode(ClothPinMode mode);
+        // lets go of the pinned edge so the cloth falls, reset puts it back on its pins in its rest shape
+        void ReleaseCloth();
+        void ResetCloth();
+        bool IsClothReleased() const { return m_cloth_released; }
+        // the player can take hold of a cloth at the point a ray hits it and drag that point around
+        static Physics* RaycastCloth(const math::Vector3& origin, const math::Vector3& direction, float max_distance, float& distance, math::Vector3& hit_position);
+        static bool IsCloth(const Physics* physics);
+        void GrabCloth(const math::Vector3& position);
+        void MoveClothGrab(const math::Vector3& target) { m_cloth_grab_target = target; }
+        void ReleaseClothGrab();
 
     private:
         mutable std::unique_ptr<PhysicsBody> m_custom_body;
@@ -228,7 +255,12 @@ namespace spartan
         void* GetGroundActor() const;
         void LiftControllerAboveTerrain();
         void CreateHeightfield();
-        void TickCloth(bool is_playing, float delta_time);
+        void TickCloth(bool is_playing);
+        static void StepClothAll(float dt);
+        void GatherClothColliders(void* colliders);
+        void StepCloth(float dt, void* colliders, uint32_t collider_count);
+        void ApplyClothImpulses(float dt, void* colliders, uint32_t collider_count);
+        void UploadCloth();
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
         void SyncStaticPoses();
@@ -258,6 +290,13 @@ namespace spartan
         BodyType m_body_type           = BodyType::Max;
         bool m_use_convex_hull         = false;
         bool m_controller_was_playing  = false; // tracks the edit to play transition of the character controller
+        // a character controller standing on cloth, the physics steps of a frame move a proxy of it, the next tick takes their result
+        math::Vector3 m_cloth_proxy_velocity  = math::Vector3::Zero; // the proxy's velocity through this frame's steps
+        math::Vector3 m_cloth_proxy_offset    = math::Vector3::Zero; // how far the proxy moved from the capsule during them
+        math::Vector3 m_cloth_proxy_push      = math::Vector3::Zero; // velocity the cloth gave it during them
+        math::Vector3 m_cloth_proxy_step_push = math::Vector3::Zero; // velocity the cloth gave it in the current step
+        bool m_cloth_proxy_started            = false;
+        bool m_cloth_supported                = false; // the cloth held it up last frame, it counts as ground
         void* m_controller               = nullptr;
 
         // the body a controller stands on and its pose last frame, a moving one carries the controller along
@@ -313,7 +352,10 @@ namespace spartan
         {
             math::Vector3 position;
             math::Vector3 previous_position;
-            float inverse_mass = 1.0f; // 0 = pinned
+            math::Vector3 rest_local;           // entity space, scaled, pinned particles follow the entity through it
+            math::Vector3 wind = math::Vector3::Zero; // cached wind sample, refreshed a slice at a time
+            float inverse_mass = 1.0f;          // 0 = pinned or welded duplicate
+            bool pinned        = false;
         };
 
         struct ClothConstraint
@@ -325,16 +367,32 @@ namespace spartan
 
         std::vector<ClothParticle> m_cloth_particles;
         std::vector<ClothConstraint> m_cloth_constraints;
+        std::vector<ClothConstraint> m_cloth_bend_constraints; // across each shared edge, between the two opposite vertices
+        std::vector<ClothConstraint> m_cloth_tethers;          // index_a free particle, index_b its nearest pin, rest_length their rest distance
+        std::vector<uint32_t> m_cloth_particle_tether;         // per particle, its tether or UINT32_MAX
+        std::vector<uint32_t> m_cloth_canonical_triangles;     // welded triangle indices, for the aerodynamic forces
         std::vector<uint32_t> m_cloth_indices;           // triangle indices for normal recalculation
         std::vector<RHI_Vertex_PosTexNorTan> m_cloth_base_vertices; // cached original vertices (for tex/tan preservation)
         std::vector<uint32_t> m_cloth_weld_map;          // maps each vertex to its canonical (lowest-index coincident) vertex
         std::shared_ptr<Mesh> m_cloth_mesh;
         uint32_t m_cloth_global_vertex_offset = 0;       // offset into the global geometry buffer
         uint32_t m_cloth_vertex_count         = 0;
-        float m_cloth_stiffness               = 0.9f;    // constraint stiffness (0-1)
+        uint32_t m_cloth_canonical_count      = 0;
+        uint32_t m_cloth_wind_cursor          = 0;
+        bool m_cloth_released                 = false;
+        bool m_cloth_was_playing              = false;
+        bool m_cloth_stepped                  = false;   // the physics thread moved the particles, the render copy is stale
+        math::Vector3 m_cloth_entity_position = math::Vector3::Zero;  // read on the main thread, the physics thread pins to it
+        math::Quaternion m_cloth_entity_rotation;
+        uint32_t m_cloth_grab_index           = UINT32_MAX; // the particle held by the player
+        float m_cloth_grab_inverse_mass       = 0.0f;
+        math::Vector3 m_cloth_grab_target     = math::Vector3::Zero;
+        float m_cloth_stiffness               = 0.9f;    // stretch stiffness per iteration (0-1)
+        float m_cloth_bending                 = 0.3f;    // bending stiffness per iteration (0-1), silk is low, canvas is high
         float m_cloth_damping                 = 0.01f;   // velocity damping (0-1)
         uint32_t m_cloth_iterations           = 8;       // constraint solver iterations per step
         bool m_cloth_wind_enabled             = true;
         math::Vector3 m_cloth_pin_direction   = math::Vector3::Up;
+        ClothPinMode m_cloth_pin_mode         = ClothPinMode::Edge;
     };
 }

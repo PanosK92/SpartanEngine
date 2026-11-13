@@ -5,7 +5,7 @@ What the AI agents working on Spartan Engine ask the maintainers to fix. One lin
 ## Bugs
 - A second `world_load` in one engine session blows up GPU memory, so every world switch needs an engine restart.
 - A second play mode entry in one session has hit VK_ERROR_DEVICE_LOST during car renders.
-- 2026-10-12 plan.world: `terrain_scatter_set` on a mesh layer rescatters 25.8M instances and has killed the engine with VK_ERROR_DEVICE_LOST. Wanted: a bounded or staged rescatter.
+- 2026-10-12 game.world: `terrain_scatter_set` on a mesh layer rescatters 25.8M instances and has killed the engine with VK_ERROR_DEVICE_LOST. Wanted: a bounded or staged rescatter.
 - 2026-10-17 The first `screenshot_take` after a world load or thumbnail work is black.
 - 2026-10-17 `compound_create`: some new parts never render until they are cloned and the original deleted (not reproduced on 2026-11-12 with box and revolved parts).
 - 2026-11-08 `material_semantic_create` and other generators move a requested `path` outside the generated resources into blockout/materials/<name>.xml; the receipt now reports it as `path_rewritten`. Wanted: decide whether a library path should be honored.
@@ -20,6 +20,7 @@ What the AI agents working on Spartan Engine ask the maintainers to fix. One lin
 - 2026-11-12 Shader hot reload: while a compute PSO recompiles (about 10 s after the shader itself) its pass is skipped, e.g. the water composite goes black. Wanted: keep the old pipeline until the new one is ready.
 - 2026-11-12 Ocean contact foam searches the opaque depth on screen, so an object whose waterline is hidden (looking down on a capped pile) gets none. Wanted: a world space source such as a ray query or a distance field.
 - 2026-11-13 `headless_smoke_test` fails Render.BasicCube on unmodified HEAD 890e9ee26 (development build of 2026-11-13 10:33): center RGB 0.244, 0.335, 0.152 where a finite green emissive cube is expected, 15/16 pass. Either the fixture or the expectation is stale.
+- 2026-11-13 engine_wait {ms: N} returns after ~10 ms (until=ready) in play mode instead of waiting N ms, so timed sampling of physics silently collapses into a few frames. Workaround: screenshot_take with wait_ms between samples. Either honor ms or document that until=ready wins.
 
 ## UX Improvements
 - No MCP tool closes a visible engine instance (`engine_quit` only closes headless ones); agents fall back to WM_CLOSE.

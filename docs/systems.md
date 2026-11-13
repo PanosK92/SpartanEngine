@@ -10,7 +10,7 @@
 - **Skinning**: four bones per vertex, batched across all animators each frame.
 - **Ragdolls**: the `Ragdoll` component drives the skeleton from physics.
 
-[`worlds/animated_character.world`](../worlds/animated_character.world) is a working example.
+[`worlds/character_animation_example.world`](../worlds/character_animation_example.world) is a working example.
 
 ## Audio
 

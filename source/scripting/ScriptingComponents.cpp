@@ -194,6 +194,12 @@ namespace spartan::scripting
                 "Heightfield",  BodyType::Heightfield,
                 "Max",          BodyType::Max);
 
+            visual::enumeration(State, "ClothPinMode",
+                "Edge",          ClothPinMode::Edge,
+                "OppositeEdges", ClothPinMode::OppositeEdges,
+                "Border",        ClothPinMode::Border,
+                "None",          ClothPinMode::None);
+
 
             visual::usertype<Physics>(State, "Physics",
                 sol::base_classes,              sol::bases<Component>(),
@@ -225,6 +231,15 @@ namespace spartan::scripting
                 "SetClothIterations",           &Physics::SetClothIterations,
                 "GetClothWindEnabled",          &Physics::GetClothWindEnabled,
                 "SetClothWindEnabled",          &Physics::SetClothWindEnabled,
+                "GetClothBending",              &Physics::GetClothBending,
+                "SetClothBending",              &Physics::SetClothBending,
+                "GetClothPinDirection",         &Physics::GetClothPinDirection,
+                "SetClothPinDirection",         &Physics::SetClothPinDirection,
+                "GetClothPinMode",              &Physics::GetClothPinMode,
+                "SetClothPinMode",              &Physics::SetClothPinMode,
+                "ReleaseCloth",                 &Physics::ReleaseCloth,
+                "ResetCloth",                   &Physics::ResetCloth,
+                "IsClothReleased",              &Physics::IsClothReleased,
 
                 "IsGrounded",                   &Physics::IsGrounded,
                 "GetGroundEntity",              &Physics::GetGroundEntity,

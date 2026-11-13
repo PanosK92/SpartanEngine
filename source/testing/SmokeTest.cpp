@@ -315,7 +315,7 @@ namespace spartan
         RunTest("Physics.VehicleModeTransitions", [](std::string& error)
         {
             std::lock_guard lock(PhysicsWorld::GetMutex());
-            for (const char* path : {"project/plan_resources/cars/porsche_911_gt3/porsche_911_gt3.car", "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car"})
+            for (const char* path : {"project/game_resources/cars/porsche_911_gt3/porsche_911_gt3.car", "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car"})
             {
                 const auto* definition = car::load_car_file(path);
                 if (!definition) { error = std::string("Missing fixture: ") + path; return false; }
@@ -361,7 +361,7 @@ namespace spartan
         RunTest("Physics.TuningAndMaintenance", [](std::string& error)
         {
             std::lock_guard lock(PhysicsWorld::GetMutex());
-            const auto* definition = car::load_car_file("project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car");
+            const auto* definition = car::load_car_file("project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car");
             if (!definition) { error = "Missing tuning test car"; return false; }
             car::Simulation simulation;
             simulation.load_car(definition->performance);

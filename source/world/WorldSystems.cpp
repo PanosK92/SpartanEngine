@@ -110,7 +110,7 @@ namespace spartan::world_systems
             return false;
         }
 
-        // a world's companion script (plan_resources/scripts/plan.lua for plan.world) sets up its optional systems, it runs once
+        // a world's companion script (game_resources/scripts/game.lua for game.world) sets up its optional systems, it runs once
         // on the main thread with the deferred scripts, before preparation builds the roads, unless an entity's script component runs it
         void queue_companion_script(const pugi::xml_node& world_node)
         {

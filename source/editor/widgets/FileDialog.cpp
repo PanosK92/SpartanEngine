@@ -270,7 +270,7 @@ return MyScript
         return low;
     }
 
-    // splits a name over two lines, breaking after _ - . or a space so "car_playground_resources" reads as words,
+    // splits a name over two lines, breaking after _ - . or a space so "car_playground_example_resources" reads as words,
     // returns where the second line starts, or the end when the name fits on one line
     const char* wrap_break(const char* begin, const char* end, const float width)
     {
@@ -1485,7 +1485,7 @@ void FileDialog::RenderGridView()
             );
         }
 
-        // name, two lines broken at word boundaries, so "car_playground_resources" is read, not guessed from "car_playg..."
+        // name, two lines broken at word boundaries, so "car_playground_example_resources" is read, not guessed from "car_playg..."
         const string& label     = item.GetLabel();
         const float inner_width = card_width - grid_item_padding * 2;
         const float label_y     = card_min.y + grid_item_padding + icon_area + 4;

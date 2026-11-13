@@ -152,7 +152,8 @@ namespace spartan
             std::vector<uint32_t>& indices
         );
         // Single-LOD deformation with unchanged vertex ordering and triangle topology.
-        bool UpdateVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices);
+        // a refittable blas (cloth) passes false and refits it instead of paying for a rebuild every frame
+        bool UpdateVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, bool invalidate_blas = true);
         // write a slice of m_vertices into the global buffer, cloth and live terrain pads
         void UploadVertexRange(uint32_t vertex_offset, uint32_t vertex_count);
         // grow lod aabbs from current verts and max out meshlet radii so raised pads are not culled

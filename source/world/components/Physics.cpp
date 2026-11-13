@@ -106,6 +106,13 @@ namespace spartan
             vector<Physics*> floating_bodies;      // created dynamic bodies eligible for buoyancy
         }
 
+        // every live cloth, stepped together inside the fixed physics steps, guarded by the physx mutex
+        namespace cloth_registry
+        {
+            vector<Physics*> cloths;
+            vector<Physics*> controllers; // character controllers, cloth can carry them
+        }
+
         // TickController carries a controller on whatever it stands on, the sdk riding only follows the contact point
         // and never turns the rider, so it is switched off to not add the motion twice
         namespace controller_ride
@@ -272,6 +279,10 @@ namespace spartan
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
         }
+        {
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+            cloth_registry::controllers.erase(remove(cloth_registry::controllers.begin(), cloth_registry::controllers.end(), this), cloth_registry::controllers.end());
+        }
 
         // release all actors
         // skip if physics world was already shut down (scene is null)
@@ -314,13 +325,33 @@ namespace spartan
         }
 
         // release cloth state
+        if (!m_cloth_particles.empty())
+        {
+            if (Render* render = GetEntity()->GetComponent<Render>())
+            {
+                render->ClearBoundingBoxOverride();
+            }
+        }
         m_cloth_particles.clear();
         m_cloth_constraints.clear();
+        m_cloth_bend_constraints.clear();
+        m_cloth_tethers.clear();
+        m_cloth_particle_tether.clear();
+        m_cloth_canonical_triangles.clear();
         m_cloth_indices.clear();
         m_cloth_base_vertices.clear();
         m_cloth_weld_map.clear();
         m_cloth_vertex_count         = 0;
+        m_cloth_canonical_count      = 0;
         m_cloth_global_vertex_offset = 0;
+        m_cloth_released             = false;
+        m_cloth_stepped              = false;
+        m_cloth_grab_index           = UINT32_MAX;
+        cloth_registry::cloths.erase(remove(cloth_registry::cloths.begin(), cloth_registry::cloths.end(), this), cloth_registry::cloths.end());
+        if (cloth_registry::cloths.empty())
+        {
+            PhysicsWorld::UnregisterStepCallback(&cloth_registry::cloths);
+        }
     }
 
     void Physics::OnInstancesChanged()
@@ -455,7 +486,7 @@ namespace spartan
 
             case BodyType::Cloth:
                 CountWorldWork(WorldWork::physics_cloth_updates);
-                TickCloth(is_playing, delta_time);
+                TickCloth(is_playing);
                 break;
 
             default:
@@ -594,8 +625,28 @@ namespace spartan
             }
             m_controller_was_playing = true;
 
+            // a proxy of this capsule already fell through the last frame's physics steps against the cloth, the capsule takes
+            // its rise and its velocity as they are, adding the pushes on top of its own gravity would pump every bounce higher
+            bool on_cloth    = false;
+            float cloth_rise = 0.0f;
+            {
+                lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+                on_cloth          = m_cloth_proxy_started;
+                m_cloth_supported = on_cloth && m_cloth_proxy_push.y > 0.0f;
+                if (on_cloth)
+                {
+                    m_velocity.y = m_cloth_proxy_velocity.y;
+                    cloth_rise   = m_cloth_proxy_offset.y;
+                }
+                m_cloth_proxy_started = false;
+                m_cloth_proxy_push    = Vector3::Zero;
+            }
+
             // apply gravity
-            m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
+            if (!on_cloth)
+            {
+                m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
+            }
 
             // buoyancy, the fft water pushes the capsule up toward a waterline above its center, drag damps the bob
             {
@@ -654,7 +705,8 @@ namespace spartan
             // move controller
             PxControllerFilters filters;
             filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-            PxControllerCollisionFlags collision_flags = controller->move(ride + PxVec3(0.0f, m_velocity.y * delta_time, 0.0f), 0.001f, delta_time, filters);
+            const float rise = on_cloth ? cloth_rise : m_velocity.y * delta_time;
+            PxControllerCollisionFlags collision_flags = controller->move(ride + PxVec3(0.0f, rise, 0.0f), 0.001f, delta_time, filters);
 
             // reset vertical velocity on ground collision
             if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
@@ -681,6 +733,7 @@ namespace spartan
             Vector3 entity_pos = PhysicsWorld::ToPhysicsPosition(GetEntity()->GetPosition());
             controller->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
             m_velocity               = Vector3::Zero;
+            m_cloth_supported        = false;
             m_controller_was_playing = false;
             m_ground_actor           = nullptr;
             m_ground_yaw             = 0.0f;
@@ -1160,11 +1213,13 @@ namespace spartan
         // cloth parameters
         node.append_attribute("cloth_stiffness")      = m_cloth_stiffness;
         node.append_attribute("cloth_damping")         = m_cloth_damping;
+        node.append_attribute("cloth_bending")         = m_cloth_bending;
         node.append_attribute("cloth_iterations")      = m_cloth_iterations;
         node.append_attribute("cloth_wind_enabled")    = m_cloth_wind_enabled;
         node.append_attribute("cloth_pin_direction_x") = m_cloth_pin_direction.x;
         node.append_attribute("cloth_pin_direction_y") = m_cloth_pin_direction.y;
         node.append_attribute("cloth_pin_direction_z") = m_cloth_pin_direction.z;
+        node.append_attribute("cloth_pin_mode")        = static_cast<uint32_t>(m_cloth_pin_mode);
     }
 
     void Physics::Load(pugi::xml_node& node)
@@ -1192,11 +1247,13 @@ namespace spartan
         // cloth parameters
         settings.cloth_stiffness    = node.attribute("cloth_stiffness").as_float(0.9f);
         settings.cloth_damping      = node.attribute("cloth_damping").as_float(0.01f);
+        settings.cloth_bending      = node.attribute("cloth_bending").as_float(0.3f);
         settings.cloth_iterations   = node.attribute("cloth_iterations").as_uint(8);
         settings.cloth_wind_enabled = node.attribute("cloth_wind_enabled").as_bool(true);
         settings.cloth_pin_direction.x = node.attribute("cloth_pin_direction_x").as_float(0.0f);
         settings.cloth_pin_direction.y = node.attribute("cloth_pin_direction_y").as_float(1.0f);
         settings.cloth_pin_direction.z = node.attribute("cloth_pin_direction_z").as_float(0.0f);
+        settings.cloth_pin_mode        = static_cast<ClothPinMode>(node.attribute("cloth_pin_mode").as_uint(0));
 
         ApplySettings(settings);
     }
@@ -1239,7 +1296,7 @@ namespace spartan
 
         if (m_body_type == BodyType::Cloth)
         {
-            float inverse_mass = 1.0f / m_mass;
+            float inverse_mass = static_cast<float>(max(m_cloth_canonical_count, 1u)) / m_mass;
             for (ClothParticle& particle : m_cloth_particles)
             {
                 if (particle.inverse_mass > 0.0f)
@@ -1563,6 +1620,20 @@ namespace spartan
         }
     }
 
+    void Physics::SetClothPinMode(ClothPinMode mode)
+    {
+        if (mode >= ClothPinMode::Max || m_cloth_pin_mode == mode)
+        {
+            return;
+        }
+
+        m_cloth_pin_mode = mode;
+        if (m_body_type == BodyType::Cloth)
+        {
+            Create();
+        }
+    }
+
     bool Physics::IsGrounded() const
     {
         // only controller bodies support ground queries, avoid spamming a warning for other body types
@@ -1571,7 +1642,7 @@ namespace spartan
             return false;
         }
 
-        return GetGroundEntity() != nullptr; // eCOLLISION_DOWN is not very reliable (it can flicker), so we use raycasting as a fallback
+        return m_cloth_supported || GetGroundEntity() != nullptr; // eCOLLISION_DOWN is not very reliable (it can flicker), so we use raycasting as a fallback
     }
 
     Entity* Physics::GetGroundEntity() const
@@ -1674,8 +1745,7 @@ namespace spartan
             }
             case BodyType::Sphere:
             {
-                // 4/3 pi r cubed, radius is the largest axis halved
-                float radius = max(max(scale.x, scale.y), scale.z) * 0.5f;
+                float radius = GetSphereRadius();
                 return (4.0f / 3.0f) * math::pi * radius * radius * radius;
             }
             case BodyType::Capsule:
@@ -1721,6 +1791,22 @@ namespace spartan
     {
         Vector3 scale = GetEntity()->GetScale();
         return max(scale.x, scale.z) * 0.5f;
+    }
+
+    float Physics::GetSphereRadius()
+    {
+        // the collider has to match the sphere that is drawn, the standard sphere is a unit radius mesh, twice the unit cube
+        Vector3 scale      = GetEntity()->GetScale();
+        float mesh_radius  = 0.5f;
+        if (Render* render = GetEntity()->GetComponent<Render>())
+        {
+            const Vector3 extents = render->GetBoundingBoxMesh().GetExtents();
+            if (extents.x > 0.0f && extents.y > 0.0f && extents.z > 0.0f)
+            {
+                mesh_radius = max(max(extents.x, extents.y), extents.z);
+            }
+        }
+        return max(max(scale.x, scale.y), scale.z) * mesh_radius;
     }
 
     Vector3 Physics::GetControllerTopLocal() const
@@ -2011,6 +2097,14 @@ namespace spartan
         if (cct_actor)
         {
             tag_actor_shapes(cct_actor, 1);
+        }
+
+        {
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+            if (find(cloth_registry::controllers.begin(), cloth_registry::controllers.end(), this) == cloth_registry::controllers.end())
+            {
+                cloth_registry::controllers.push_back(this);
+            }
         }
 
         return true;
@@ -2594,8 +2688,7 @@ namespace spartan
                     break;
                 case BodyType::Sphere:
                 {
-                    float radius = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                    shape->setGeometry(PxSphereGeometry(radius));
+                    shape->setGeometry(PxSphereGeometry(GetSphereRadius()));
                     break;
                 }
                 case BodyType::Capsule:
@@ -2914,9 +3007,7 @@ namespace spartan
                 }
                 case BodyType::Sphere:
                 {
-                    Vector3 scale = GetEntity()->GetScale();
-                    float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                    PxSphereGeometry geometry(radius);
+                    PxSphereGeometry geometry(GetSphereRadius());
                     shape = physics->createShape(geometry, *material);
                     break;
                 }
@@ -3118,7 +3209,10 @@ namespace spartan
 
             m_cloth_particles[i].position          = world_pos;
             m_cloth_particles[i].previous_position = world_pos;
-            m_cloth_particles[i].inverse_mass      = 1.0f / max(m_mass, 0.001f);
+            m_cloth_particles[i].rest_local        = local_pos;
+            m_cloth_particles[i].wind              = Vector3::Zero;
+            m_cloth_particles[i].inverse_mass      = 1.0f;
+            m_cloth_particles[i].pinned            = false;
         }
 
         // imported meshes duplicate vertices at seams and hard edges, weld the coincident ones so the cloth stays connected
@@ -3152,24 +3246,6 @@ namespace spartan
             }
         }
 
-        float max_pin_projection = -FLT_MAX;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
-        {
-            if (m_cloth_weld_map[i] == i)
-            {
-                max_pin_projection = max(max_pin_projection, Vector3::Dot(m_cloth_particles[i].position, m_cloth_pin_direction));
-            }
-        }
-
-        const float pin_threshold = 0.05f;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
-        {
-            if (m_cloth_weld_map[i] == i && Vector3::Dot(m_cloth_particles[i].position, m_cloth_pin_direction) >= max_pin_projection - pin_threshold)
-            {
-                m_cloth_particles[i].inverse_mass = 0.0f;
-            }
-        }
-
         // store triangle indices and original vertices for normal recalculation + tex/tan preservation
         m_cloth_indices = indices;
         m_cloth_base_vertices = vertices;
@@ -3185,38 +3261,168 @@ namespace spartan
             return (static_cast<uint64_t>(a) << 32) | static_cast<uint64_t>(b);
         };
 
-        unordered_set<uint64_t> seen_edges;
-        for (size_t i = 0; i < indices.size(); i += 3)
+        auto add_constraint = [this](vector<ClothConstraint>& constraints, uint32_t a, uint32_t b)
         {
-            uint32_t tri[3] = { indices[i], indices[i + 1], indices[i + 2] };
+            ClothConstraint c;
+            c.index_a     = a;
+            c.index_b     = b;
+            c.rest_length = (m_cloth_particles[a].position - m_cloth_particles[b].position).Length();
+            constraints.push_back(c);
+        };
+
+        // an edge remembers the vertex opposite to it in the first triangle, the second triangle on that edge
+        // links the two opposite vertices, which is what resists folding along the edge
+        unordered_map<uint64_t, uint32_t> edge_opposite;
+        unordered_map<uint64_t, uint32_t> edge_uses;
+        unordered_set<uint64_t> seen_bends;
+        m_cloth_canonical_triangles.reserve(indices.size());
+        for (size_t i = 0; i + 2 < indices.size(); i += 3)
+        {
+            uint32_t tri[3] = { m_cloth_weld_map[indices[i]], m_cloth_weld_map[indices[i + 1]], m_cloth_weld_map[indices[i + 2]] };
+            if (tri[0] == tri[1] || tri[1] == tri[2] || tri[0] == tri[2])
+            {
+                continue;
+            }
+            m_cloth_canonical_triangles.insert(m_cloth_canonical_triangles.end(), { tri[0], tri[1], tri[2] });
+
             for (int e = 0; e < 3; e++)
             {
-                uint32_t a = m_cloth_weld_map[tri[e]];
-                uint32_t b = m_cloth_weld_map[tri[(e + 1) % 3]];
-                if (a == b)
-                {
-                    continue;
-                }
+                uint32_t a        = tri[e];
+                uint32_t b        = tri[(e + 1) % 3];
+                uint32_t opposite = tri[(e + 2) % 3];
 
                 uint64_t key = edge_key(a, b);
-                if (seen_edges.insert(key).second)
+                edge_uses[key]++;
+                auto it = edge_opposite.find(key);
+                if (it == edge_opposite.end())
                 {
-                    ClothConstraint c;
-                    c.index_a     = a;
-                    c.index_b     = b;
-                    c.rest_length = (m_cloth_particles[a].position - m_cloth_particles[b].position).Length();
-                    m_cloth_constraints.push_back(c);
+                    edge_opposite.emplace(key, opposite);
+                    add_constraint(m_cloth_constraints, a, b);
+                }
+                else if (it->second != opposite && seen_bends.insert(edge_key(it->second, opposite)).second)
+                {
+                    add_constraint(m_cloth_bend_constraints, it->second, opposite);
                 }
             }
         }
 
-        uint32_t canonical_count = 0;
+        // pins, edge holds the vertices furthest along the pin direction (a flag's hoist, a curtain's rod), opposite edges
+        // holds both extremes (a hammock), border holds every open edge (a trampoline) and none lets the cloth fall freely
+        auto pin = [this](uint32_t i)
+        {
+            m_cloth_particles[i].inverse_mass = 0.0f;
+            m_cloth_particles[i].pinned       = true;
+        };
+        if (m_cloth_pin_mode == ClothPinMode::Edge || m_cloth_pin_mode == ClothPinMode::OppositeEdges)
+        {
+            float max_pin_projection = -FLT_MAX;
+            float min_pin_projection = FLT_MAX;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                if (m_cloth_weld_map[i] == i)
+                {
+                    float projection   = Vector3::Dot(m_cloth_particles[i].position, m_cloth_pin_direction);
+                    max_pin_projection = max(max_pin_projection, projection);
+                    min_pin_projection = min(min_pin_projection, projection);
+                }
+            }
+
+            const float pin_threshold = 0.05f;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                if (m_cloth_weld_map[i] != i)
+                {
+                    continue;
+                }
+
+                float projection = Vector3::Dot(m_cloth_particles[i].position, m_cloth_pin_direction);
+                if (projection >= max_pin_projection - pin_threshold || (m_cloth_pin_mode == ClothPinMode::OppositeEdges && projection <= min_pin_projection + pin_threshold))
+                {
+                    pin(i);
+                }
+            }
+        }
+        else if (m_cloth_pin_mode == ClothPinMode::Border)
+        {
+            for (const auto& [key, uses] : edge_uses)
+            {
+                if (uses == 1)
+                {
+                    pin(static_cast<uint32_t>(key >> 32));
+                    pin(static_cast<uint32_t>(key & 0xffffffffu));
+                }
+            }
+        }
+
+        // the component mass is the mass of the whole cloth, spread evenly over its particles
+        m_cloth_canonical_count = 0;
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_weld_map.size()); i++)
         {
             if (m_cloth_weld_map[i] == i)
             {
-                canonical_count++;
+                m_cloth_canonical_count++;
             }
+        }
+        const float particle_inverse_mass = static_cast<float>(max(m_cloth_canonical_count, 1u)) / max(m_mass, 0.001f);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            if (m_cloth_weld_map[i] == i && !m_cloth_particles[i].pinned)
+            {
+                m_cloth_particles[i].inverse_mass = particle_inverse_mass;
+            }
+        }
+
+        // long range attachments, a free particle may only drift a little further from its nearest pin than it rests, a few
+        // solver passes cannot carry tension across a whole sheet, so a heavy body would stretch a hammock or a trampoline
+        // into a deep funnel and sling itself back out
+        m_cloth_tethers.clear();
+        m_cloth_particle_tether.assign(m_cloth_particles.size(), UINT32_MAX);
+        {
+            vector<uint32_t> pins;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                if (m_cloth_weld_map[i] == i && m_cloth_particles[i].pinned)
+                {
+                    pins.push_back(i);
+                }
+            }
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()) && !pins.empty(); i++)
+            {
+                if (m_cloth_weld_map[i] != i || m_cloth_particles[i].pinned)
+                {
+                    continue;
+                }
+
+                uint32_t nearest      = pins[0];
+                float nearest_squared = FLT_MAX;
+                for (uint32_t pin_index : pins)
+                {
+                    const float distance_squared = Vector3::DistanceSquared(m_cloth_particles[i].rest_local, m_cloth_particles[pin_index].rest_local);
+                    if (distance_squared < nearest_squared)
+                    {
+                        nearest_squared = distance_squared;
+                        nearest         = pin_index;
+                    }
+                }
+                m_cloth_particle_tether[i] = static_cast<uint32_t>(m_cloth_tethers.size());
+                m_cloth_tethers.push_back({ i, nearest, sqrtf(nearest_squared) });
+            }
+        }
+
+        m_cloth_released         = false;
+        m_cloth_wind_cursor      = 0;
+        m_cloth_entity_position  = GetEntity()->GetPosition();
+        m_cloth_entity_rotation  = GetEntity()->GetRotation();
+        const uint32_t canonical_count = m_cloth_canonical_count;
+
+        {
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+            if (find(cloth_registry::cloths.begin(), cloth_registry::cloths.end(), this) == cloth_registry::cloths.end())
+            {
+                cloth_registry::cloths.push_back(this);
+            }
+            PhysicsWorld::RegisterStepCallback(&cloth_registry::cloths, [](float dt) { Physics::StepClothAll(dt); });
         }
 
         // the renderer may have already built this entity's blas without the update bit,
@@ -3224,126 +3430,805 @@ namespace spartan
         render->SetAllowBlasUpdate(true);
         render->InvalidateAccelerationStructure();
 
-        SP_LOG_INFO("Cloth created: %u particles (%zu vertices, %u welded), %zu constraints, %zu triangles",
+        SP_LOG_INFO("Cloth created: %u particles (%zu vertices, %u welded), %zu stretch and %zu bend constraints, %zu triangles",
             canonical_count, m_cloth_particles.size(), static_cast<uint32_t>(m_cloth_particles.size()) - canonical_count,
-            m_cloth_constraints.size(), indices.size() / 3);
+            m_cloth_constraints.size(), m_cloth_bend_constraints.size(), indices.size() / 3);
     }
 
-    void Physics::TickCloth(bool is_playing, float delta_time)
+    namespace
     {
-        if (!is_playing || m_cloth_particles.empty())
+        struct ClothCollider
+        {
+            PxGeometryHolder geometry;
+            PxTransform pose;
+            PxBounds3 bounds;
+            bool bounded = true;
+            bool is_plane = false;
+            PxVec3 plane_normal  = PxVec3(0.0f, 1.0f, 0.0f);
+            float plane_distance = 0.0f;
+            // a simulated body is solved together with the cloth as a moving proxy, its velocity change is handed back to physx
+            PxRigidDynamic* body = nullptr;
+            Physics* controller  = nullptr; // a character controller, the cloth moves a proxy of it and its next tick follows
+            bool simulated       = false;   // body or controller
+            PxVec3 base_position = PxVec3(0.0f);
+            PxBounds3 base_bounds;
+            PxVec3 offset         = PxVec3(0.0f);
+            PxVec3 step_start     = PxVec3(0.0f);
+            PxVec3 velocity       = PxVec3(0.0f);
+            PxVec3 velocity_start = PxVec3(0.0f);
+            float inverse_mass    = 0.0f;
+            bool gravity          = true;
+            PxVec3 ballistic      = PxVec3(0.0f); // where the proxy would be at the end of the step if no cloth touched it
+            PxVec3 contact_sum    = PxVec3(0.0f);
+            uint32_t contacts     = 0;
+
+            void move_to(const PxVec3& new_offset)
+            {
+                offset     = new_offset;
+                pose.p     = base_position + offset;
+                bounds     = PxBounds3(base_bounds.minimum + offset, base_bounds.maximum + offset);
+            }
+        };
+
+        vector<Physics*> cloth_proxies; // controllers some cloth gathered this step, physics mutex
+
+        constexpr float cloth_thickness        = 0.03f;         // collision radius of each particle
+        constexpr uint32_t cloth_max_colliders = 32;
+        constexpr float cloth_air_density      = 1.225f;        // kg per cubic meter
+        constexpr float cloth_max_air_speed    = 40.0f;         // keeps a near massless cloth from being blown apart
+        constexpr uint32_t cloth_wind_slices   = 8;             // the wind field moves slowly, a slice of particles samples it per tick
+        constexpr float cloth_reference_step   = 1.0f / 120.0f; // the step the iteration count is tuned for, finer steps converge with fewer
+        constexpr float cloth_max_body_dv      = 8.0f;          // meters per second a body can gain from the cloth in one step
+        constexpr float cloth_bounce_min_speed = 1.0f;          // meters per second, slower arrivals settle instead of jittering on the restitution
+        constexpr float cloth_player_mass      = 80.0f;         // kilograms, for a character controller authored without a mass
+        constexpr float cloth_grab_max_step    = 0.1f;          // meters a held point moves per step, a flick of the mouse cannot tear the weave apart
+
+        // two sided, the distance along the ray or a negative value on a miss
+        float ray_triangle(const Vector3& origin, const Vector3& direction, const Vector3& a, const Vector3& b, const Vector3& c)
+        {
+            const Vector3 edge_1 = b - a;
+            const Vector3 edge_2 = c - a;
+            const Vector3 p      = Vector3::Cross(direction, edge_2);
+            const float det      = Vector3::Dot(edge_1, p);
+            if (fabsf(det) < 1e-9f)
+            {
+                return -1.0f;
+            }
+
+            const float inverse_det = 1.0f / det;
+            const Vector3 s         = origin - a;
+            const float u           = Vector3::Dot(s, p) * inverse_det;
+            if (u < 0.0f || u > 1.0f)
+            {
+                return -1.0f;
+            }
+
+            const Vector3 q = Vector3::Cross(s, edge_1);
+            const float v   = Vector3::Dot(direction, q) * inverse_det;
+            if (v < 0.0f || u + v > 1.0f)
+            {
+                return -1.0f;
+            }
+
+            return Vector3::Dot(edge_2, q) * inverse_det;
+        }
+    }
+
+    void Physics::TickCloth(bool is_playing)
+    {
+        if (m_cloth_particles.empty())
         {
             return;
         }
 
-        // sub-step with a fixed maximum dt to prevent simulation explosion from frame spikes
-        // (the synchronous gpu upload in UpdateVertices can stall the cpu, causing large delta_time values)
-        const float max_dt      = 1.0f / 60.0f;
-        const float clamped_dt  = min(delta_time, max_dt);
-        const float dt          = clamped_dt;
-        const float damping     = 1.0f - m_cloth_damping;
-        const Vector3 gravity   = PhysicsWorld::GetGravity();
+        // play starts from the authored shape, where the entity is now, and stopping puts it back for editing and saving
+        if (is_playing != m_cloth_was_playing)
+        {
+            m_cloth_was_playing = is_playing;
+            ResetCloth();
+
+            // back in the editor the cloth is the authored mesh again and its bounds follow the entity transform
+            if (!is_playing)
+            {
+                if (Render* render = GetEntity()->GetComponent<Render>())
+                {
+                    render->ClearBoundingBoxOverride();
+                }
+            }
+        }
+
+        if (!is_playing)
+        {
+            return;
+        }
+
+        // the cloth steps on the physics thread inside the fixed physics steps, it pins to the pose read here and never touches the entity
+        m_cloth_entity_position = GetEntity()->GetPosition();
+        m_cloth_entity_rotation = GetEntity()->GetRotation();
+
+        // refresh a slice of the cached wind samples, the triangles average them
+        {
+            const float time     = static_cast<float>(Timer::GetSimTimeSec());
+            const uint32_t count = static_cast<uint32_t>(m_cloth_particles.size());
+            const uint32_t slice = max(count / cloth_wind_slices, 1u);
+            for (uint32_t n = 0; n < slice; n++)
+            {
+                uint32_t i = (m_cloth_wind_cursor + n) % count;
+                ClothParticle& p = m_cloth_particles[i];
+                p.wind = m_cloth_wind_enabled ? World::SampleWind(p.position, time) : Vector3::Zero;
+            }
+            m_cloth_wind_cursor = (m_cloth_wind_cursor + slice) % count;
+        }
+
+        if (!m_cloth_stepped)
+        {
+            return;
+        }
+        m_cloth_stepped = false;
+
+        // a diverged particle means the state is lost, start over from the rest shape rather than draw garbage
+        for (const ClothParticle& p : m_cloth_particles)
+        {
+            if (!p.position.IsFinite() || fabsf(p.position.x) > 1e5f || fabsf(p.position.y) > 1e5f || fabsf(p.position.z) > 1e5f)
+            {
+                SP_LOG_WARNING("Cloth on %s diverged, resetting it", GetEntity()->GetObjectName().c_str());
+                ResetCloth();
+                return;
+            }
+        }
+
+        SP_PROFILE_CPU_START("cloth_upload");
+        UploadCloth();
+        SP_PROFILE_CPU_END();
+    }
+
+    void Physics::StepClothAll(float dt)
+    {
+        // runs inside every fixed physics step with the physx mutex held, right before physx integrates the same step,
+        // so a body the cloth caught is exactly where the cloth left it when the next step starts
+        static vector<Physics*> active;
+        static vector<vector<ClothCollider>> colliders;
+        active.clear();
+        for (Physics* cloth : cloth_registry::cloths)
+        {
+            if (cloth->m_cloth_was_playing && !cloth->m_cloth_particles.empty())
+            {
+                active.push_back(cloth);
+            }
+        }
+        if (active.empty())
+        {
+            return;
+        }
+
+        const uint32_t count = static_cast<uint32_t>(active.size());
+        if (colliders.size() < count)
+        {
+            colliders.resize(count);
+        }
+
+        SP_PROFILE_CPU_START("cloth_gather");
+        for (uint32_t i = 0; i < count; i++)
+        {
+            active[i]->GatherClothColliders(&colliders[i]);
+        }
+        SP_PROFILE_CPU_END();
+
+        // each cloth only reads physx geometry and writes its own particles and proxies, so they all step side by side
+        SP_PROFILE_CPU_START("cloth_simulate");
+        ThreadPool::ParallelLoop([dt](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                active[i]->StepCloth(dt, colliders[i].data(), static_cast<uint32_t>(colliders[i].size()));
+            }
+        }, count);
+        SP_PROFILE_CPU_END();
+
+        for (uint32_t i = 0; i < count; i++)
+        {
+            active[i]->ApplyClothImpulses(dt, colliders[i].data(), static_cast<uint32_t>(colliders[i].size()));
+            active[i]->m_cloth_stepped = true;
+        }
+
+        // the controller proxies fall and get pushed like the bodies physx integrates, the next controller tick takes the sum
+        const Vector3 gravity_step = PhysicsWorld::GetGravity() * dt;
+        for (Physics* proxy : cloth_proxies)
+        {
+            proxy->m_cloth_proxy_velocity += gravity_step + proxy->m_cloth_proxy_step_push;
+            proxy->m_cloth_proxy_push     += proxy->m_cloth_proxy_step_push;
+            proxy->m_cloth_proxy_offset   += proxy->m_cloth_proxy_velocity * dt;
+            proxy->m_cloth_proxy_step_push = Vector3::Zero;
+        }
+        cloth_proxies.clear();
+    }
+
+    void Physics::GatherClothColliders(void* colliders_data)
+    {
+        // the shapes the cloth can touch this step, the floor, props, the player
+        vector<ClothCollider>& colliders = *static_cast<vector<ClothCollider>*>(colliders_data);
+        colliders.clear();
+
+        PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+        if (!scene)
+        {
+            return;
+        }
+
+        Vector3 bounds_min = Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
+        Vector3 bounds_max = Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            if (m_cloth_weld_map[i] == i)
+            {
+                bounds_min = Vector3::Min(bounds_min, m_cloth_particles[i].position);
+                bounds_max = Vector3::Max(bounds_max, m_cloth_particles[i].position);
+            }
+        }
+
+        // physx keeps its origin near the camera, the cloth lives in world space, so every pose is moved into world space
+        const PxVec3 origin  = to_px_vec3(PhysicsWorld::GetOrigin());
+        const float margin   = 0.5f;
+        const Vector3 center = PhysicsWorld::ToPhysicsPosition((bounds_min + bounds_max) * 0.5f);
+        const Vector3 half   = (bounds_max - bounds_min) * 0.5f + Vector3(margin, margin, margin);
+
+        PxOverlapHit hits[cloth_max_colliders];
+        PxOverlapBuffer buffer(hits, cloth_max_colliders);
+        PxQueryFilterData filter(PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::eNO_BLOCK);
+
+        scene->overlap(PxBoxGeometry(half.x, half.y, half.z), PxTransform(PxVec3(center.x, center.y, center.z)), buffer, filter);
+        for (PxU32 i = 0; i < buffer.nbTouches; i++)
+        {
+            const PxOverlapHit& hit = buffer.getTouch(i);
+            if (!hit.shape || !hit.actor || (hit.shape->getFlags() & PxShapeFlag::eTRIGGER_SHAPE))
+            {
+                continue;
+            }
+
+            ClothCollider& collider = colliders.emplace_back();
+            collider.geometry.storeAny(hit.shape->getGeometry());
+            collider.pose     = PxShapeExt::getGlobalPose(*hit.shape, *hit.actor);
+            collider.pose.p  += origin;
+            collider.is_plane = collider.geometry.getType() == PxGeometryType::ePLANE;
+            collider.bounded  = !collider.is_plane && PxGeometryQuery::computeGeomBounds(collider.bounds, collider.geometry.any(), collider.pose, cloth_thickness);
+            if (collider.is_plane)
+            {
+                // a physx plane is x > 0 in its own frame
+                collider.plane_normal   = collider.pose.q.getBasisVector0();
+                collider.plane_distance = collider.plane_normal.dot(collider.pose.p);
+            }
+            if (PxRigidDynamic* dynamic = hit.actor->is<PxRigidDynamic>())
+            {
+                if (!(dynamic->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC) && collider.bounded && dynamic->getInvMass() > 0.0f)
+                {
+                    collider.body           = dynamic;
+                    collider.simulated      = true;
+                    collider.base_position  = collider.pose.p;
+                    collider.base_bounds    = collider.bounds;
+                    collider.velocity       = dynamic->getLinearVelocity();
+                    collider.velocity_start = collider.velocity;
+                    collider.inverse_mass   = dynamic->getInvMass();
+                    collider.gravity        = !(dynamic->getActorFlags() & PxActorFlag::eDISABLE_GRAVITY);
+                }
+                else if (collider.bounded)
+                {
+                    // the player's capsule is kinematic to physx, to the cloth it is a heavy body, so it can sink into a
+                    // trampoline and be thrown back out, the steps of a frame carry a proxy of it along with its velocity
+                    for (Physics* physics : cloth_registry::controllers)
+                    {
+                        if (!physics->m_controller || !physics->m_enabled || static_cast<PxController*>(physics->m_controller)->getActor() != hit.actor)
+                        {
+                            continue;
+                        }
+
+                        if (!physics->m_cloth_proxy_started)
+                        {
+                            physics->m_cloth_proxy_started   = true;
+                            physics->m_cloth_proxy_velocity  = physics->m_velocity;
+                            physics->m_cloth_proxy_offset    = Vector3::Zero;
+                            physics->m_cloth_proxy_push      = Vector3::Zero;
+                            physics->m_cloth_proxy_step_push = Vector3::Zero;
+                        }
+
+                        const PxVec3 offset     = to_px_vec3(physics->m_cloth_proxy_offset);
+                        collider.pose.p        += offset;
+                        collider.bounds         = PxBounds3(collider.bounds.minimum + offset, collider.bounds.maximum + offset);
+                        collider.controller     = physics;
+                        collider.simulated      = true;
+                        collider.base_position  = collider.pose.p;
+                        collider.base_bounds    = collider.bounds;
+                        collider.velocity       = to_px_vec3(physics->m_cloth_proxy_velocity);
+                        collider.velocity_start = collider.velocity;
+                        collider.inverse_mass   = 1.0f / (physics->m_mass > 1.0f ? physics->m_mass : cloth_player_mass);
+                        collider.gravity        = true;
+                        if (find(cloth_proxies.begin(), cloth_proxies.end(), physics) == cloth_proxies.end())
+                        {
+                            cloth_proxies.push_back(physics);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    void Physics::ApplyClothImpulses(float dt, void* colliders_data, uint32_t collider_count)
+    {
+        // the cloth moved each body proxy out of the weave, the velocity change that lands the body where its proxy ended up
+        // is handed to physx, which integrates it right after, an impact also gets the cloth's restitution back so a
+        // trampoline throws a crate while a hammock just cradles a ball
+        ClothCollider* colliders = static_cast<ClothCollider*>(colliders_data);
+        const PxVec3 origin      = to_px_vec3(PhysicsWorld::GetOrigin());
+        const float restitution  = clamp(m_restitution, 0.0f, 1.0f);
+        for (uint32_t c = 0; c < collider_count; c++)
+        {
+            ClothCollider& collider = colliders[c];
+            if (!collider.simulated || collider.contacts == 0 || (collider.body && !collider.body->getScene()))
+            {
+                continue;
+            }
+
+            PxVec3 delta_velocity = (collider.offset - collider.ballistic) / dt;
+            const float stop      = delta_velocity.magnitude();
+            if (stop > 1e-6f)
+            {
+                const PxVec3 normal  = delta_velocity / stop;
+                // a controller sinks the sheet all the way, its spring back is already the whole bounce
+                const float incoming = -collider.velocity_start.dot(normal);
+                if (!collider.controller && incoming > cloth_bounce_min_speed)
+                {
+                    delta_velocity += normal * (min(stop, incoming) * restitution);
+                }
+            }
+
+            const float speed = delta_velocity.magnitude();
+            if (speed > cloth_max_body_dv)
+            {
+                delta_velocity *= cloth_max_body_dv / speed;
+            }
+
+            if (collider.controller)
+            {
+                collider.controller->m_cloth_proxy_step_push += Vector3(delta_velocity.x, delta_velocity.y, delta_velocity.z);
+                continue;
+            }
+
+            // every push on a sphere points at its center, the averaged contact point would only add spin it never had
+            if (collider.geometry.getType() == PxGeometryType::eSPHERE)
+            {
+                collider.body->addForce(delta_velocity, PxForceMode::eVELOCITY_CHANGE);
+                continue;
+            }
+
+            const PxVec3 point = collider.contact_sum / static_cast<float>(collider.contacts) - origin;
+            PxRigidBodyExt::addForceAtPos(*collider.body, delta_velocity / collider.inverse_mass, point, PxForceMode::eIMPULSE);
+        }
+    }
+
+    void Physics::StepCloth(float dt, void* colliders_data, uint32_t collider_count)
+    {
+        ClothCollider* colliders = static_cast<ClothCollider*>(colliders_data);
+        const float damping            = 1.0f - m_cloth_damping;
+        const Vector3 gravity_step     = PhysicsWorld::GetGravity() * (dt * dt);
+        const uint32_t iterations      = max(2u, static_cast<uint32_t>(ceilf(static_cast<float>(m_cloth_iterations) * dt / cloth_reference_step)));
+
+        // pinned particles ride along with the entity, so moving or spinning it drags the rest of the cloth behind it
+        if (!m_cloth_released)
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                ClothParticle& p = m_cloth_particles[i];
+                if (m_cloth_weld_map[i] == i && p.pinned)
+                {
+                    p.previous_position = p.position;
+                    p.position          = m_cloth_entity_position + m_cloth_entity_rotation * p.rest_local;
+                }
+            }
+        }
 
         // verlet integration
-        for (auto& p : m_cloth_particles)
+        for (ClothParticle& p : m_cloth_particles)
         {
             if (p.inverse_mass == 0.0f)
             {
                 continue;
             }
 
-            Vector3 velocity = (p.position - p.previous_position) * damping;
+            Vector3 velocity    = (p.position - p.previous_position) * damping;
             p.previous_position = p.position;
-            p.position += velocity + gravity * (dt * dt);
+            p.position         += velocity + gravity_step;
         }
 
-        // wind
-        if (m_cloth_wind_enabled)
+        // the point the player holds is carried toward the cursor, the weave follows it through the constraints and keeps
+        // the velocity it had when it is let go, so a cloth can be thrown
+        if (m_cloth_grab_index < m_cloth_particles.size())
         {
-            float time = static_cast<float>(Timer::GetSimTimeSec());
-            for (auto& p : m_cloth_particles)
+            ClothParticle& held    = m_cloth_particles[m_cloth_grab_index];
+            held.previous_position = held.position;
+            Vector3 to_target      = m_cloth_grab_target - held.position;
+            const float length     = to_target.Length();
+            if (length > cloth_grab_max_step)
             {
-                if (p.inverse_mass == 0.0f)
+                to_target *= cloth_grab_max_step / length;
+            }
+            held.position += to_target;
+        }
+
+        // aerodynamics, every triangle is pushed along its normal by the air flowing through it, in proportion to
+        // its area, which is what makes a flag ripple and snap, a sheet billow and a falling cloth float down
+        {
+            const float inverse_dt = 1.0f / dt;
+            const float scale      = 0.25f * cloth_air_density * dt * dt / 3.0f; // half rho, half the cross product, split over 3 vertices
+            for (size_t i = 0; i + 2 < m_cloth_canonical_triangles.size(); i += 3)
+            {
+                ClothParticle& a = m_cloth_particles[m_cloth_canonical_triangles[i]];
+                ClothParticle& b = m_cloth_particles[m_cloth_canonical_triangles[i + 1]];
+                ClothParticle& c = m_cloth_particles[m_cloth_canonical_triangles[i + 2]];
+                if (a.inverse_mass + b.inverse_mass + c.inverse_mass == 0.0f)
                 {
                     continue;
                 }
 
-                Vector3 wind = World::SampleWind(p.position, time);
-                p.position += wind * (p.inverse_mass * dt * dt);
+                Vector3 cross      = Vector3::Cross(b.position - a.position, c.position - a.position);
+                float double_area  = cross.Length();
+                if (double_area < 1e-8f)
+                {
+                    continue;
+                }
+                Vector3 normal = cross / double_area;
+
+                Vector3 velocity = ((a.position - a.previous_position) + (b.position - b.previous_position) + (c.position - c.previous_position)) * (inverse_dt / 3.0f);
+                Vector3 air      = (a.wind + b.wind + c.wind) / 3.0f - velocity;
+                float air_speed  = air.Length();
+                if (air_speed > cloth_max_air_speed)
+                {
+                    air       *= cloth_max_air_speed / air_speed;
+                    air_speed  = cloth_max_air_speed;
+                }
+
+                Vector3 impulse = normal * (Vector3::Dot(normal, air) * air_speed * double_area * scale);
+                a.position += impulse * a.inverse_mass;
+                b.position += impulse * b.inverse_mass;
+                c.position += impulse * c.inverse_mass;
             }
         }
 
-        // constraint projection
-        for (uint32_t iter = 0; iter < m_cloth_iterations; iter++)
+        // constraint projection, stretch keeps the weave together, bending resists folding across each edge
+        auto solve = [this](const vector<ClothConstraint>& constraints, float stiffness)
         {
-            for (const auto& c : m_cloth_constraints)
+            for (const ClothConstraint& c : constraints)
             {
                 ClothParticle& pa = m_cloth_particles[c.index_a];
                 ClothParticle& pb = m_cloth_particles[c.index_b];
 
-                Vector3 delta       = pb.position - pa.position;
-                float current_length = delta.Length();
-                if (current_length < 1e-7f)
-                {
-                    continue;
-                }
-
-                float diff         = (current_length - c.rest_length) / current_length;
                 float total_weight = pa.inverse_mass + pb.inverse_mass;
                 if (total_weight == 0.0f)
                 {
                     continue;
                 }
 
-                Vector3 correction = delta * (diff * m_cloth_stiffness / total_weight);
+                Vector3 delta        = pb.position - pa.position;
+                float current_length = delta.Length();
+                if (current_length < 1e-7f)
+                {
+                    continue;
+                }
+
+                Vector3 correction = delta * ((current_length - c.rest_length) / current_length * stiffness / total_weight);
                 pa.position += correction * pa.inverse_mass;
                 pb.position -= correction * pb.inverse_mass;
             }
+        };
+
+        // each particle is a small sphere pushed all the way out of every shape it sinks into, so cloth never ends up inside
+        // a body however heavy, a simulated body takes the momentum the particle gained back once the step is done, friction
+        // works on the motion relative to the shape so the cloth carries what lies on it and what lies on it stays there
+        const PxSphereGeometry sphere(cloth_thickness);
+        const float friction = clamp(m_friction, 0.0f, 1.0f);
+
+        // a stiffer weave gets less slack, a trampoline gives a hand span under a crate, a flag barely stretches at all
+        const float tether_scale = 1.02f + (1.0f - clamp(m_cloth_stiffness, 0.0f, 1.0f)) * 0.1f;
+        const bool tethered      = !m_cloth_released && !m_cloth_tethers.empty();
+
+        // how far a particle has used up the slack its tether allows, 0 where it rests and 1 where the pins hold it
+        auto tautness = [this, tether_scale, tethered](uint32_t index)
+        {
+            const uint32_t t = tethered ? m_cloth_particle_tether[index] : UINT32_MAX;
+            if (t == UINT32_MAX)
+            {
+                return 0.0f;
+            }
+
+            const ClothConstraint& tether = m_cloth_tethers[t];
+            const float length            = Vector3::Distance(m_cloth_particles[index].position, m_cloth_particles[tether.index_b].position);
+            const float slack             = tether.rest_length * (tether_scale - 1.0f);
+            return slack > 1e-6f ? clamp((length - tether.rest_length) / slack, 0.0f, 1.0f) : 1.0f;
+        };
+
+        // against a simulated body the correction is split by weight, a slack particle is a few grams and yields, a taut one
+        // is backed by the pins and the body gives way instead, so a sheet carries more the deeper it is pressed, the body's
+        // proxy moves at once so every later contact in the step sees where it went
+        auto collide = [&sphere, friction, &tautness](ClothParticle& p, uint32_t index, ClothCollider& collider, bool apply_friction)
+        {
+            const PxVec3 point(p.position.x, p.position.y, p.position.z);
+            if (collider.bounded && !collider.bounds.contains(point))
+            {
+                return;
+            }
+
+            PxVec3 direction;
+            PxF32 depth = 0.0f;
+            if (collider.is_plane)
+            {
+                // a plane is a single dot product, and the floor is in every cloth's list
+                direction = collider.plane_normal;
+                depth     = cloth_thickness - (direction.dot(point) - collider.plane_distance);
+                if (depth <= 0.0f)
+                {
+                    return;
+                }
+            }
+            else if (!PxGeometryQuery::computePenetration(direction, depth, sphere, PxTransform(point), collider.geometry.any(), collider.pose) || depth <= 0.0f)
+            {
+                return;
+            }
+
+            const Vector3 normal(direction.x, direction.y, direction.z);
+            float particle_share = 1.0f;
+            if (collider.simulated)
+            {
+                // a controller only takes the cloth under its feet, it walks where the player steers, a curtain makes way
+                const bool under_feet       = !collider.controller || direction.y < -0.5f;
+                const float particle_weight = p.inverse_mass * (1.0f - tautness(index));
+                particle_share              = under_feet ? particle_weight / (particle_weight + collider.inverse_mass) : 1.0f;
+                collider.move_to(collider.offset - direction * (depth * (1.0f - particle_share)));
+                collider.contact_sum += point;
+                collider.contacts++;
+            }
+            p.position += normal * (depth * particle_share);
+
+            if (apply_friction)
+            {
+                const PxVec3 body_step = collider.simulated ? collider.offset - collider.step_start : PxVec3(0.0f);
+                Vector3 motion         = p.position - p.previous_position - Vector3(body_step.x, body_step.y, body_step.z);
+                float normal_motion    = min(Vector3::Dot(motion, normal), 0.0f);
+                Vector3 tangential     = motion - normal * Vector3::Dot(motion, normal);
+                p.previous_position   += tangential * friction + normal * normal_motion;
+
+                // the body is dragged along by the same weighted share, otherwise a ball sees a frictionless sheet and
+                // creeps off the slightest slope
+                if (collider.simulated)
+                {
+                    collider.move_to(collider.offset + PxVec3(tangential.x, tangential.y, tangential.z) * (friction * (1.0f - particle_share)));
+                }
+            }
+        };
+
+        // simulated bodies fall and fly along with the step, so the cloth has something moving to push against
+        const PxVec3 gravity_velocity = to_px_vec3(PhysicsWorld::GetGravity()) * dt;
+        for (uint32_t c = 0; c < collider_count; c++)
+        {
+            ClothCollider& collider = colliders[c];
+            if (collider.simulated)
+            {
+                if (collider.gravity)
+                {
+                    collider.velocity += gravity_velocity;
+                }
+                collider.step_start = collider.offset;
+                collider.move_to(collider.offset + collider.velocity * dt);
+                collider.ballistic = collider.offset;
+            }
         }
 
-        // sync welded vertices: copy canonical positions to their duplicates
-        if (!m_cloth_weld_map.empty())
+        // particles near a body are solved against it inside every iteration, so the tension the stretch constraints
+        // build up reaches the body and the sheet can hold its weight instead of the body punching through
+        static thread_local vector<pair<uint32_t, uint32_t>> body_pairs;
+        body_pairs.clear();
+        for (uint32_t c = 0; c < collider_count; c++)
         {
+            if (!colliders[c].simulated)
+            {
+                continue;
+            }
+
+            PxBounds3 reach = colliders[c].bounds;
+            reach.fattenFast(0.1f);
             for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
             {
-                uint32_t canonical = m_cloth_weld_map[i];
-                if (canonical != i)
+                const ClothParticle& p = m_cloth_particles[i];
+                if (p.inverse_mass > 0.0f && reach.contains(PxVec3(p.position.x, p.position.y, p.position.z)))
                 {
-                    m_cloth_particles[i].position          = m_cloth_particles[canonical].position;
-                    m_cloth_particles[i].previous_position = m_cloth_particles[canonical].previous_position;
+                    body_pairs.emplace_back(i, c);
                 }
             }
         }
 
-        // ground collision (simple y=0 plane)
-        const float ground_y = 0.0f;
-        for (auto& p : m_cloth_particles)
+        // bending is soft, one pass with the stiffness that the iterations would have compounded to costs a fraction,
+        // it goes first so the stretch iterations after it smooth out the kinks a stiff bend pass leaves in the weave
+        if (m_cloth_bending > 0.0f)
         {
-            if (p.position.y < ground_y)
+            const float bending = 1.0f - powf(1.0f - min(m_cloth_bending, 1.0f), static_cast<float>(iterations));
+            solve(m_cloth_bend_constraints, bending);
+        }
+
+        for (uint32_t iteration = 0; iteration < iterations; iteration++)
+        {
+            solve(m_cloth_constraints, m_cloth_stiffness);
+            if (tethered)
             {
-                p.position.y = ground_y;
+                for (const ClothConstraint& tether : m_cloth_tethers)
+                {
+                    // the point the player holds is tethered too, a pinned cloth cannot be pulled further than it reaches
+                    ClothParticle& p      = m_cloth_particles[tether.index_a];
+                    const Vector3& anchor = m_cloth_particles[tether.index_b].position;
+                    const Vector3 delta   = p.position - anchor;
+                    const float length    = delta.Length();
+                    const float limit     = tether.rest_length * tether_scale;
+                    if (length > limit)
+                    {
+                        p.position = anchor + delta * (limit / length);
+                    }
+                }
+            }
+            for (const auto& [particle, collider] : body_pairs)
+            {
+                collide(m_cloth_particles[particle], particle, colliders[collider], false);
             }
         }
 
-        // clamp particle positions to a sane world-space bound to prevent diverged
-        // particles from producing nan/inf vertex data that crashes the gpu
-        const float position_limit = 10000.0f;
-        for (auto& p : m_cloth_particles)
+        // final contact pass against everything, with friction
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
         {
+            ClothParticle& p = m_cloth_particles[i];
             if (p.inverse_mass == 0.0f)
             {
                 continue;
             }
 
-            p.position.x = clamp(p.position.x, -position_limit, position_limit);
-            p.position.y = clamp(p.position.y, -position_limit, position_limit);
-            p.position.z = clamp(p.position.z, -position_limit, position_limit);
-
-            p.previous_position.x = clamp(p.previous_position.x, -position_limit, position_limit);
-            p.previous_position.y = clamp(p.previous_position.y, -position_limit, position_limit);
-            p.previous_position.z = clamp(p.previous_position.z, -position_limit, position_limit);
+            for (uint32_t c = 0; c < collider_count; c++)
+            {
+                collide(p, i, colliders[c], true);
+            }
         }
 
+        // welded duplicates follow their canonical vertex
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            uint32_t canonical = m_cloth_weld_map[i];
+            if (canonical != i)
+            {
+                m_cloth_particles[i].position          = m_cloth_particles[canonical].position;
+                m_cloth_particles[i].previous_position = m_cloth_particles[canonical].previous_position;
+            }
+        }
+    }
+
+    void Physics::ReleaseCloth()
+    {
+        if (m_cloth_particles.empty() || m_cloth_released)
+        {
+            return;
+        }
+
+        const float inverse_mass = static_cast<float>(max(m_cloth_canonical_count, 1u)) / max(m_mass, 0.001f);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            if (m_cloth_weld_map[i] == i && m_cloth_particles[i].pinned)
+            {
+                m_cloth_particles[i].inverse_mass = inverse_mass;
+            }
+        }
+        m_cloth_released = true;
+    }
+
+    void Physics::ResetCloth()
+    {
+        if (m_cloth_particles.empty())
+        {
+            return;
+        }
+
+        m_cloth_entity_position     = GetEntity()->GetPosition();
+        m_cloth_entity_rotation     = GetEntity()->GetRotation();
+        const float inverse_mass    = static_cast<float>(max(m_cloth_canonical_count, 1u)) / max(m_mass, 0.001f);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            ClothParticle& p    = m_cloth_particles[i];
+            p.position          = m_cloth_entity_position + m_cloth_entity_rotation * p.rest_local;
+            p.previous_position = p.position;
+            p.inverse_mass      = (m_cloth_weld_map[i] == i && !p.pinned) ? inverse_mass : 0.0f;
+        }
+        m_cloth_released   = false;
+        m_cloth_stepped    = false;
+        m_cloth_grab_index = UINT32_MAX;
+        UploadCloth();
+    }
+
+    Physics* Physics::RaycastCloth(const Vector3& origin, const Vector3& direction, float max_distance, float& distance, Vector3& hit_position)
+    {
+        lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+        Physics* closest = nullptr;
+        distance         = max_distance;
+        for (Physics* cloth : cloth_registry::cloths)
+        {
+            if (!cloth->m_cloth_was_playing)
+            {
+                continue;
+            }
+
+            const vector<ClothParticle>& particles = cloth->m_cloth_particles;
+            const vector<uint32_t>& triangles      = cloth->m_cloth_canonical_triangles;
+            for (size_t i = 0; i + 2 < triangles.size(); i += 3)
+            {
+                const float t = ray_triangle(origin, direction, particles[triangles[i]].position, particles[triangles[i + 1]].position, particles[triangles[i + 2]].position);
+                if (t > 0.0f && t < distance)
+                {
+                    distance = t;
+                    closest  = cloth;
+                }
+            }
+        }
+
+        if (closest)
+        {
+            hit_position = origin + direction * distance;
+        }
+        return closest;
+    }
+
+    bool Physics::IsCloth(const Physics* physics)
+    {
+        lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+        return find(cloth_registry::cloths.begin(), cloth_registry::cloths.end(), physics) != cloth_registry::cloths.end();
+    }
+
+    void Physics::GrabCloth(const Vector3& position)
+    {
+        ReleaseClothGrab();
+
+        // the free particle nearest to where the ray hit, pins stay pinned
+        uint32_t closest       = UINT32_MAX;
+        float closest_distance = FLT_MAX;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            const ClothParticle& p = m_cloth_particles[i];
+            if (m_cloth_weld_map[i] != i || p.inverse_mass == 0.0f)
+            {
+                continue;
+            }
+
+            const float distance = Vector3::DistanceSquared(p.position, position);
+            if (distance < closest_distance)
+            {
+                closest_distance = distance;
+                closest          = i;
+            }
+        }
+
+        if (closest == UINT32_MAX)
+        {
+            return;
+        }
+
+        ClothParticle& held       = m_cloth_particles[closest];
+        m_cloth_grab_index        = closest;
+        m_cloth_grab_inverse_mass = held.inverse_mass;
+        m_cloth_grab_target       = held.position;
+        held.inverse_mass         = 0.0f;
+    }
+
+    void Physics::ReleaseClothGrab()
+    {
+        if (m_cloth_grab_index < m_cloth_particles.size())
+        {
+            m_cloth_particles[m_cloth_grab_index].inverse_mass = m_cloth_grab_inverse_mass;
+        }
+        m_cloth_grab_index = UINT32_MAX;
+    }
+
+    void Physics::UploadCloth()
+    {
         // write updated positions back to render vertices and recalculate normals
         if (m_cloth_base_vertices.empty())
         {
@@ -3471,12 +4356,28 @@ namespace spartan
             }
         }
 
-        // push to gpu
-        GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
+        // push to gpu, the mesh refits its lod bounds and meshlet spheres around the deformed shape and drops the normal
+        // cones, culling against the flat rest shape would clip whatever folds or falls outside it at the screen edges
+        if (!m_cloth_mesh || !m_cloth_mesh->UpdateVertices(updated_vertices, false))
+        {
+            GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
+        }
 
-        // signal that the blas needs an in-place refit so ray-traced shadows track the deformed mesh
         if (Render* render = GetEntity()->GetComponent<Render>())
         {
+            // the entity box follows the particles too, the entity transform says nothing about where the cloth went
+            BoundingBox world_box;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                if (m_cloth_weld_map[i] == i)
+                {
+                    const Vector3& position = m_cloth_particles[i].position;
+                    world_box.Merge(BoundingBox(position - Vector3(cloth_thickness), position + Vector3(cloth_thickness)));
+                }
+            }
+            render->SetBoundingBoxOverride(world_box);
+
+            // signal that the blas needs an in-place refit so ray-traced shadows track the deformed mesh
             render->SetNeedsBlasRefit(true);
         }
     }
@@ -3508,9 +4409,11 @@ namespace spartan
         settings.body_type = m_body_type;
         settings.cloth_stiffness = m_cloth_stiffness;
         settings.cloth_damping = m_cloth_damping;
+        settings.cloth_bending = m_cloth_bending;
         settings.cloth_iterations = m_cloth_iterations;
         settings.cloth_wind_enabled = m_cloth_wind_enabled;
         settings.cloth_pin_direction = m_cloth_pin_direction;
+        settings.cloth_pin_mode = m_cloth_pin_mode;
         return settings;
     }
 
@@ -3532,9 +4435,11 @@ namespace spartan
         m_body_type = settings.body_type;
         m_cloth_stiffness = settings.cloth_stiffness;
         m_cloth_damping = settings.cloth_damping;
+        m_cloth_bending = settings.cloth_bending;
         m_cloth_iterations = settings.cloth_iterations;
         m_cloth_wind_enabled = settings.cloth_wind_enabled;
         m_cloth_pin_direction = settings.cloth_pin_direction;
+        m_cloth_pin_mode = settings.cloth_pin_mode;
         // One deferred rebuild after all authored values have been applied.
         m_needs_creation = true;
         GetEntity()->RefreshPreTickGate();
@@ -3554,7 +4459,9 @@ namespace spartan
         if (body_type < BodyType::Box || body_type > BodyType::Max) body_type = BodyType::Max;
         cloth_stiffness = isfinite(cloth_stiffness) ? clamp(cloth_stiffness, 0.0f, 1.0f) : 0.9f;
         cloth_damping = isfinite(cloth_damping) ? clamp(cloth_damping, 0.0f, 1.0f) : 0.01f;
+        cloth_bending = isfinite(cloth_bending) ? clamp(cloth_bending, 0.0f, 1.0f) : 0.3f;
         cloth_iterations = clamp(cloth_iterations, 1u, 32u);
+        if (cloth_pin_mode >= ClothPinMode::Max) cloth_pin_mode = ClothPinMode::Edge;
         cloth_pin_direction = cloth_pin_direction.IsFinite() && cloth_pin_direction.LengthSquared() > 0.0001f ? cloth_pin_direction.Normalized() : Vector3::Up;
     }
     void Physics::SetClothStiffness(float stiffness)
@@ -3570,6 +4477,13 @@ namespace spartan
         settings.cloth_damping = damping;
         settings.Validate();
         m_cloth_damping = settings.cloth_damping;
+    }
+    void Physics::SetClothBending(float bending)
+    {
+        PhysicsSettings settings = GetSettings();
+        settings.cloth_bending = bending;
+        settings.Validate();
+        m_cloth_bending = settings.cloth_bending;
     }
     void Physics::SetClothIterations(uint32_t count)
     {

@@ -25,7 +25,7 @@ from scipy.signal import butter, sosfiltfilt, stft
 
 root = Path(__file__).resolve().parent
 repo = root.parent.parent
-cars_dir = repo / "binaries" / "project" / "plan_resources" / "cars"
+cars_dir = repo / "binaries" / "project" / "game_resources" / "cars"
 all_scenarios = ["idle", "start", "wot_sweep", "part_sweep", "overrun", "limiter", "blips", "pulls"]
 # passed straight through to the renderer when given, hold is the scenario that reads rpm and throttle
 render_options = ("engine_stage", "exhaust_stage", "intake_stage", "turbo_stage", "muffler", "sample_rate", "rpm", "throttle")

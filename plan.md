@@ -9,7 +9,7 @@
 <p align="center"><i>Open roads &nbsp;·&nbsp; open water &nbsp;·&nbsp; your island</i></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/world-worlds%2Fplan.world-e3b341?style=for-the-badge&labelColor=161b22" alt="worlds/plan.world">
+  <img src="https://img.shields.io/badge/world-worlds%2Fgame.world-e3b341?style=for-the-badge&labelColor=161b22" alt="worlds/game.world">
   <img src="https://img.shields.io/badge/target-Steam-1b2838?style=for-the-badge&logo=steam&logoColor=white&labelColor=161b22" alt="Target: Steam">
   <img src="https://img.shields.io/badge/status-in_development-2f81f7?style=for-the-badge&labelColor=161b22" alt="Status: in development">
 </p>
@@ -36,7 +36,7 @@ It is not a tech demo and it is not a trailer. It is a game you buy on Steam, la
 
 **It forces the engine to grow up.** Every gap between "impressive renderer" and "engine you can ship with" shows up the moment real players touch it: loading, saving, menus, input, performance on ordinary hardware, crashes. The game finds the gaps and the engine closes them.
 
-**It is the real deal.** Not a vision board and not a someday. The island already exists in `worlds/plan.world`, it already boots into a main menu, and you can already drive it.
+**It is the real deal.** Not a vision board and not a someday. The island already exists in `worlds/game.world`, it already boots into a main menu, and you can already drive it.
 
 ## Already on the island
 
@@ -116,7 +116,7 @@ The milestones between today's island and a store page. Each one is a slice of t
 
 ## The vision is the task list
 
-Once the game is in your head, you know what needs doing. Boot `plan.world`, drive for ten minutes and compare it with the game you would buy.
+Once the game is in your head, you know what needs doing. Boot `game.world`, drive for ten minutes and compare it with the game you would buy.
 
 > The race feels empty? *Now you know.*
 >
@@ -131,7 +131,7 @@ Nobody needs to assign you a task. The game tells you what's missing, your taste
 ## Get involved
 
 > [!TIP]
-> Open `worlds/plan.world` in the editor and press play. The island's Lua lives next to it: `plan.lua` sets up the world, `plan_main_menu.lua` is the title screen and `plan_tune_shop.lua` is the tune shop.
+> Open `worlds/game.world` in the editor and press play. The island's Lua lives next to it: `game.lua` sets up the world, `plan_main_menu.lua` is the title screen and `plan_tune_shop.lua` is the tune shop.
 
 <p align="center">
   <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/badge/Discord-21262d?style=for-the-badge&logo=discord&logoColor=white" height="34" alt="Discord"></a>&nbsp;

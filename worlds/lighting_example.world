@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="light_test" description="Material ball and a Cornell box lit by an emissive panel">
+<World name="lighting_example" description="Material ball and a Cornell box lit by an emissive panel">
  <ConsoleVariables>
   <Variable name="r.grid" value="0.000000" />
   <Variable name="r.restir_pt" value="1.000000" />
@@ -21,7 +21,7 @@
    </render>
   </Entity>
   <Entity name="builder" id="1002000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/light_test_resources/scripts/light_test.lua" />
+   <script file_path="project/lighting_example_resources/scripts/lighting_example.lua" />
   </Entity>
  </Entities>
 </World>

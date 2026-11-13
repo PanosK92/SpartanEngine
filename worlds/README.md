@@ -4,14 +4,14 @@ This directory holds one thing: the `<world>.world` XML files (and this README).
 version controlled and flat; the Git ignore rules allow only `*.world` and `README.md`.
 
 Everything else a world needs lives in `binaries/project/<world>_resources/`, the folder
-named after the world file plus `_resources` (`plan.world` -> `plan_resources/`):
+named after the world file plus `_resources` (`game.world` -> `game_resources/`):
 its Lua scripts in `scripts/`, engine baked `meshes/`, `materials/` and `textures/`,
 audio, authored areas with their own pipelines, the offline generators under `sources/`
 and the disposable `generated_cache/`. `binaries/` is excluded from Git and distributed
 through the Dropbox `project.7z` download.
 
 `binaries/project/README.md` is the layout contract: where every kind of file goes, how
-cars are organised (`plan_resources/cars/<car>/` holds the car's preset, model and
+cars are organised (`game_resources/cars/<car>/` holds the car's preset, model and
 prefab), which folders are shared, how to move or delete assets safely and how to
 publish the package. Read it before touching assets.
 
@@ -19,7 +19,7 @@ The short version:
 
 - World scripts are `project/<world>_resources/scripts/<world>.lua` (the companion script,
   run by the engine on every load) and `<world>_<part>.lua` for the rest, for example
-  `liminal_space.lua`, `liminal_space_stalker.lua` and `liminal_space_soundscape.lua`.
+  `liminal_space_example.lua`, `liminal_space_stalker.lua` and `liminal_space_soundscape.lua`.
   Do not put Lua in this directory.
 - Do not put one world's content in shared folders, in another world's folder, in
   `project/mcp/blockout/`, in new top-level `project/` folders or in `tools/`. `tools/` is
@@ -29,8 +29,8 @@ The short version:
   part of a world, move it into that world's folder and update its references. The folder
   a world uses is reported by `world_resource_directory_get`.
 - The engine runs from `binaries/`, so references in worlds and scripts use paths such as
-  `project/liminal_space_resources/audio/door_slam.wav` and
-  `project/liminal_space_resources/scripts/liminal_space.lua`, in script components and in
+  `project/liminal_space_example_resources/audio/door_slam.wav` and
+  `project/liminal_space_example_resources/scripts/liminal_space_example.lua`, in script components and in
   `dofile`. Tools run from the repository root use `binaries/project/...` for the same files.
 - When adding or moving an asset, update its references and the tools that generate or load
   it, then load the world in the engine and check the log. A local change does not reach
@@ -98,4 +98,4 @@ the project assets in SDL's per-user Spartan/Plan directory (on Windows,
 autosaves every 30 simulation seconds and when play stops. Do not package
 these personal saves with the project.
 
-A car's prefab lives in its own folder next to its preset and model, `project/plan_resources/cars/<car>/<car>.prefab`. Every car placed in a world today is `project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab`: the player cars, the AI racers (`race_driver car_prefab`), the route drivers, the showcase and dyno cars, and the traffic (which skips the lights and effects). The prefab owns the drivable car definition, the metallic paint defaults, the body fit, the headlights, brake lights, exhaust and tire effects. Scene instances only override camera/HUD/dyno behavior and optional paint colors through prefab attributes, and add scene specific parts such as the playground's `car_reset` and spawn point.
+A car's prefab lives in its own folder next to its preset and model, `project/game_resources/cars/<car>/<car>.prefab`. Every car placed in a world today is `project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab`: the player cars, the AI racers (`race_driver car_prefab`), the route drivers, the showcase and dyno cars, and the traffic (which skips the lights and effects). The prefab owns the drivable car definition, the metallic paint defaults, the body fit, the headlights, brake lights, exhaust and tire effects. Scene instances only override camera/HUD/dyno behavior and optional paint colors through prefab attributes, and add scene specific parts such as the playground's `car_reset` and spawn point.

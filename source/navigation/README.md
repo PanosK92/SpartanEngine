@@ -1,6 +1,6 @@
 # Island navigation
 
-`plan.world` contains a **Navigation** entity with a `Navigation` component. The pedestrian
+`game.world` contains a **Navigation** entity with a `Navigation` component. The pedestrian
 manager enables `use_navigation="true"` and references that entity through
 `navigation_entity_id`. Press Play to
 build nearby navigation tiles and spawn walkers on them. Existing road population sampling

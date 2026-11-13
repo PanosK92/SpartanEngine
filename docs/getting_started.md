@@ -45,7 +45,7 @@ The browser build is the WebGPU backend compiled to WebAssembly by [`tools/web_b
 
 ```powershell
 python tools/web_build.py deps                        # once, wasm32 PhysX, Assimp, FreeImage, Lua, meshoptimizer
-python tools/web_build.py engine --world pbr.world    # binaries/web/spartan.html, .js, .wasm, .data
+python tools/web_build.py engine --world pbr_materials_example.world    # binaries/web/spartan.html, .js, .wasm, .data
 python tools/web_build.py serve                       # http://localhost:8080/spartan.html
 ```
 

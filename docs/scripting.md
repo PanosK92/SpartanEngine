@@ -82,7 +82,7 @@ Every callback runs in protected mode. A Lua error is logged to the console with
 
 ## World companion scripts
 
-The companion script is the one named after the world inside its resource folder: `project/plan_resources/scripts/plan.lua` runs whenever `worlds/plan.world` loads, before the entity scripts and before roads are generated. Top-level code runs at load; if the file returns a table, its callbacks run during play:
+The companion script is the one named after the world inside its resource folder: `project/game_resources/scripts/game.lua` runs whenever `worlds/game.world` loads, before the entity scripts and before roads are generated. Top-level code runs at load; if the file returns a table, its callbacks run during play:
 
 | Callback | When |
 | -------- | ---- |
@@ -99,7 +99,7 @@ WorldSystems.SetRoadDetails(true)
 WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "island")
 
 function plan:Start()
-    main_menu = dofile("project/plan_resources/scripts/plan_main_menu.lua")
+    main_menu = dofile("project/game_resources/scripts/plan_main_menu.lua")
     main_menu.Start()
 end
 
@@ -110,7 +110,7 @@ end
 return plan
 ```
 
-Split large worlds into `<world>_<part>.lua` files loaded with `dofile`, as `plan.lua` does with `plan_ui.lua`, `plan_main_menu.lua` and the shop scripts. If an entity in the world already uses the companion file as a Script component, it is not loaded a second time.
+Split large worlds into `<world>_<part>.lua` files loaded with `dofile`, as `game.lua` does with `plan_ui.lua`, `plan_main_menu.lua` and the shop scripts. If an entity in the world already uses the companion file as a Script component, it is not loaded a second time.
 
 ## API reference
 
@@ -185,11 +185,11 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `Text(text, x, y, size, color, font, align, spacing)` | Returns the drawn width |
 | `TextWidth(text, size, font, spacing)` | Measures text |
 
-`project/plan_resources/scripts/plan_ui.lua` is a full example.
+`project/game_resources/scripts/plan_ui.lua` is a full example.
 
 ### CarTuning
 
-Operates on the player car, or on the entity passed as the first argument: `GetPlayerCar`, `GetName`, `IsOccupied`, `SetHeld`, `PlaceAt`, `GetStage`/`SetStage`/`GetStageMax` per part, `GetSetting`/`SetSetting`/`GetSettings`, `Service`, `GetDirt`, `Wash`, `GetTireWear`, `ReplaceTires`, `SetNitrous`, `GetStats`, `PreviewStats`, `Save`, `Load`, `ResetAll`. See `project/plan_resources/scripts/plan_tune_shop.lua`.
+Operates on the player car, or on the entity passed as the first argument: `GetPlayerCar`, `GetName`, `IsOccupied`, `SetHeld`, `PlaceAt`, `GetStage`/`SetStage`/`GetStageMax` per part, `GetSetting`/`SetSetting`/`GetSettings`, `Service`, `GetDirt`, `Wash`, `GetTireWear`, `ReplaceTires`, `SetNitrous`, `GetStats`, `PreviewStats`, `Save`, `Load`, `ResetAll`. See `project/game_resources/scripts/plan_tune_shop.lua`.
 
 ## Example: a spinning, bobbing pickup
 
@@ -228,7 +228,7 @@ return Pickup
 
 Scripts can also be built as node graphs in the editor's **Visual Script** window. A visual script is an ordinary `.lua` file: the graph is stored as XML in a comment block at the top, and the Lua generated from it follows. The Script component runs it like any other script, with no interpreter at runtime, and its variables show up in the inspector like the values in the example above. Every function in the API reference is also a node.
 
-See **[Visual scripting](visual_scripting.md)** for the editor, the node library, variables and the tutorial world, `worlds/visual_scripting.world`.
+See **[Visual scripting](visual_scripting.md)** for the editor, the node library, variables and the tutorial world, `worlds/visual_scripting_example.world`.
 
 ## Running Lua from tools
 

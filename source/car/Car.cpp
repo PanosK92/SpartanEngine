@@ -237,7 +237,7 @@ namespace spartan
 
         std::string resolve_car_file(const std::string& file)
         {
-            const std::string relative = file.empty() ? "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car" : file;
+            const std::string relative = file.empty() ? "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car" : file;
 
             // paths in world files are relative to the world file directory
             const std::string& world_path = World::GetFilePath();
@@ -2958,7 +2958,7 @@ namespace spartan
             sound->SetParent(parent_entity);
 
             AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project/plan_resources/cars/shared/sounds/car_door.wav");
+            audio_source->SetAudioClip("project/game_resources/cars/shared/sounds/car_door.wav");
             audio_source->SetLoop(false);
             audio_source->SetPlayOnStart(false);
             audio_source->SetGroup(AudioGroup::Vehicle);

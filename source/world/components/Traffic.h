@@ -180,9 +180,9 @@ namespace spartan
         bool m_follow_roads = false;
         math::Vector3 m_bounds_min = math::Vector3(-220.0f, -10.0f, -380.0f);
         math::Vector3 m_bounds_max = math::Vector3(380.0f, 80.0f, 260.0f);
-        std::string m_car_file = "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car";
+        std::string m_car_file = "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car";
         // the car every world uses, traffic takes its car file and body fit but not its lights and effects, there are too many cars for those
-        std::string m_car_prefab = "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab";
+        std::string m_car_prefab = "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab";
         struct PartFit
         {
             std::string path; // below the car root

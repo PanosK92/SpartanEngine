@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="dreamcore" description="A pastel tile city above an endless ocean, nine dreamlike terraces joined by walkable causeways">
+<World name="dreamcore_example" description="A pastel tile city above an endless ocean, nine dreamlike terraces joined by walkable causeways">
  <OwnedResources>
   <Resource file="textures/albedo.texture" />
   <Resource file="materials/butter.xml" />
@@ -59,7 +59,7 @@
    <audio_source path="project/audio/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="dreamcore_generator" id="2001000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/dreamcore_resources/scripts/dreamcore.lua" Initialize="" Tick="" seed="17" />
+   <script file_path="project/dreamcore_example_resources/scripts/dreamcore_example.lua" Initialize="" Tick="" seed="17" />
   </Entity>
  </Entities>
 </World>

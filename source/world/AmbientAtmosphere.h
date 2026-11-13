@@ -251,7 +251,7 @@ namespace spartan::ambient_atmosphere
                 patch.entity->SetTransient(true);
                 patch.entity->SetParent(root);
                 patch.particles = patch.entity->AddComponent<ParticleSystem>();
-                if (!patch.particles->LoadEffect(std::string("project/plan_resources/atmosphere/") + effects[i % KindCount] + ".particle"))
+                if (!patch.particles->LoadEffect(std::string("project/game_resources/atmosphere/") + effects[i % KindCount] + ".particle"))
                 {
                     // Missing packages must never produce the component's default fire.
                     patch.particles->SetMaxParticles(1);

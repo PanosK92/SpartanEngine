@@ -43,7 +43,7 @@ namespace
     namespace compaction
     {
         // one query per blas awaiting its compacted size, a blas that finds the pool exhausted stays uncompacted
-        // the initial burst queues every static blas before the first tlas exists, and plan.world alone has over 8k
+        // the initial burst queues every static blas before the first tlas exists, and game.world alone has over 8k
         constexpr uint32_t query_count = 32768;
         // bounds the transient memory of a burst, the old storage lives until the gpu retires the copy
         constexpr uint32_t copies_per_frame = 256;

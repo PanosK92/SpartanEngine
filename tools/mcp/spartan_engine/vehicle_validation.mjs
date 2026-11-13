@@ -48,7 +48,7 @@ export async function run_vehicle_validation(project_root, { hz = 200, tire_temp
     const options = { cwd: project_root, windowsHide: true, timeout: 300000, maxBuffer: 4 * 1024 * 1024,
       env: { ...process.env, PATHEXT: process.env.PATHEXT || ".COM;.EXE;.BAT;.CMD" } };
     await execute("pwsh.exe", ["-NoProfile", "-File", path.join(project_root, "tools/car_validation/build.ps1"), "-OutputDirectory", build], options);
-    const { stderr } = await execute(path.join(build, "car_validation.exe"), [path.join(project_root, "binaries/project/plan_resources/cars"), output, String(hz), String(tire_temperature_c)], options);
+    const { stderr } = await execute(path.join(build, "car_validation.exe"), [path.join(project_root, "binaries/project/game_resources/cars"), output, String(hz), String(tire_temperature_c)], options);
     const csv = await fs.readFile(path.join(output, "summary.csv"), "utf8");
     const results = parse_summary(csv);
     const references = JSON.parse(await fs.readFile(path.join(project_root, "tools/car_validation/references.json"), "utf8"));

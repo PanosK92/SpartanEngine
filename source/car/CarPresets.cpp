@@ -1015,7 +1015,7 @@ namespace car
 
         if (definition.body_model.empty())
         {
-            definition.body_model          = "project/plan_resources/cars/ferrari_laferrari/scene.gltf";
+            definition.body_model          = "project/game_resources/cars/ferrari_laferrari/scene.gltf";
             definition.body_is_placeholder = true;
             definition.body_scale          = 2.0f;
             definition.body_forward_z      = -1.0f;

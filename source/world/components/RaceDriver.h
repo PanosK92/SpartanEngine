@@ -56,7 +56,7 @@ namespace spartan
 
         // settings
         uint64_t m_track_entity_id = 0; // spline road to race on, 0 uses this entity
-        std::string m_car_file     = "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car";
+        std::string m_car_file     = "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car";
         std::string m_car_prefab;           // optional .prefab holding a car prefab, the race car is built from it (lights, body and wheel fit, effects) instead of the bare car file
         float m_skill              = 1.0f;  // 0 to 1, how much of the measured grip and braking the driver dares to use
         float m_max_speed          = 95.0f; // m/s

@@ -259,7 +259,7 @@ To just try it: download `spartan_web_webgpu_*.zip` from the releases, unzip, ru
 generate_project_files.bat vs2026 webgpu
 # needs emsdk (EMSDK or ~/emsdk), cmake, ninja and git, then open http://localhost:8080/spartan.html in a WebGPU browser
 python tools/web_build.py deps
-python tools/web_build.py engine --world pbr.world
+python tools/web_build.py engine --world pbr_materials_example.world
 python tools/web_build.py serve
 ```
 
@@ -292,7 +292,7 @@ tools/premake5.exe --file=tools/premake.lua --skip-setup vs2026 vulkan
 tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 ```
 
-**Engine and world boundary.** There is no game layer in C++. `source/world/WorldSystems.cpp` installs the world lifecycle hooks: camera controls, vehicle render submissions, breakable trees and the optional world systems (ambient wildlife, ambient atmosphere, road details, layered road surfaces). Vehicle physics and state live under `source/car`, vehicle MCP commands in `source/mcp/McpCommandsCar.cpp`, and traffic, race drivers, route drivers, car resets and skid marks are regular components in `source/world/components`. The optional world systems are off by default; a world turns them on through the `WorldSystems` Lua table from its companion script, the `.lua` with the same name in the world's resource folder (`project/plan_resources/scripts/plan.lua` for `plan.world`), which runs on every load before the roads are built. Worker model imports publish their entity hierarchy through `World::EntityBatch::Commit()` after construction succeeds.
+**Engine and world boundary.** There is no game layer in C++. `source/world/WorldSystems.cpp` installs the world lifecycle hooks: camera controls, vehicle render submissions, breakable trees and the optional world systems (ambient wildlife, ambient atmosphere, road details, layered road surfaces). Vehicle physics and state live under `source/car`, vehicle MCP commands in `source/mcp/McpCommandsCar.cpp`, and traffic, race drivers, route drivers, car resets and skid marks are regular components in `source/world/components`. The optional world systems are off by default; a world turns them on through the `WorldSystems` Lua table from its companion script, the `.lua` with the same name in the world's resource folder (`project/game_resources/scripts/game.lua` for `game.world`), which runs on every load before the roads are built. Worker model imports publish their entity hierarchy through `World::EntityBatch::Commit()` after construction succeeds.
 
 **Physics.** Scene stepping and contact observation use game-independent callbacks; the game installs vehicle contact handling. Vehicle state is opaque to engine consumers, while the existing `Physics` authoring and Lua API remains compatible.
 

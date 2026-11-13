@@ -55,10 +55,10 @@ namespace game_build
             {
                 { "<terrain",      { "project/materials", "project/models/forest", "project/models/rock_2", "project/models/island_biomes" } },
                 { "<pedestrians",  { "project/models/mannequiny" } },
-                { "<traffic",      { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } },
-                { "<race_driver",  { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } },
-                { "<route_driver", { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } },
-                { "<prefab",       { "project/plan_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/plan_resources/cars/shared/sounds" } }
+                { "<traffic",      { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
+                { "<race_driver",  { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
+                { "<route_driver", { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
+                { "<prefab",       { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } }
             };
             return rules;
         }

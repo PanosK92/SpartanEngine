@@ -2018,6 +2018,7 @@ void Properties::ShowPhysics(Physics* body) const
     const bool is_kinematic  = body->IsKinematic();
     const uint32_t motion    = is_static ? 0 : (is_kinematic ? 2 : 1);
     static vector<string> motions = { "Static", "Dynamic", "Kinematic" };
+    static vector<string> cloth_pin_modes = { "Edge", "Two edges", "Border", "None" };
     {
         const uint32_t type_index = ImMin(static_cast<uint32_t>(body_type), static_cast<uint32_t>(body_types.size() - 1));
         char summary[96];
@@ -2151,6 +2152,7 @@ void Properties::ShowPhysics(Physics* body) const
         {
             float cloth_stiffness       = body->GetClothStiffness();
             float cloth_damping         = body->GetClothDamping();
+            float cloth_bending         = body->GetClothBending();
             float cloth_iterations      = static_cast<float>(body->GetClothIterations());
             Vector3 cloth_pin_direction = body->GetClothPinDirection();
             bool cloth_wind             = body->GetClothWindEnabled();
@@ -2160,8 +2162,14 @@ void Properties::ShowPhysics(Physics* body) const
             if (layout::fold("Cloth", true, summary))
             {
                 property_percent("Stiffness", &cloth_stiffness, "how much the fabric resists stretching per iteration, silk is low, canvas is high");
+                property_percent("Bending", &cloth_bending, "how much the fabric resists folding, silk drapes in fine folds, canvas in broad ones");
                 property_slider("Damping", &cloth_damping, 0.0f, 1.0f, "%.3f", "how quickly flapping settles");
                 property_slider("Iterations", &cloth_iterations, 1.0f, 32.0f, "%.0f", "solver passes per step, more is stiffer and more expensive");
+                uint32_t cloth_pin_mode = static_cast<uint32_t>(body->GetClothPinMode());
+                if (property_segmented("Pinned", cloth_pin_modes, &cloth_pin_mode, "edge holds one side like a flag, two edges a hammock, border a trampoline, none lets the cloth fall and drape"))
+                {
+                    body->SetClothPinMode(static_cast<ClothPinMode>(cloth_pin_mode));
+                }
                 property_vector3("Pinned edge", cloth_pin_direction, "direction towards the edge that is held in place, like the top of a flag");
                 if (property_toggle("Wind", &cloth_wind, "let the world wind blow the cloth"))
                 {
@@ -2176,6 +2184,10 @@ void Properties::ShowPhysics(Physics* body) const
             if (cloth_damping != body->GetClothDamping())
             {
                 body->SetClothDamping(cloth_damping);
+            }
+            if (cloth_bending != body->GetClothBending())
+            {
+                body->SetClothBending(cloth_bending);
             }
             if (static_cast<uint32_t>(cloth_iterations) != body->GetClothIterations())
             {
