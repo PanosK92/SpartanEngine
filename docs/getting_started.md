@@ -7,7 +7,7 @@
 | Windows 10/11 x64 | Visual Studio 2026 (2022 also generates), CPU with AVX2 | DirectX 12 or Vulkan |
 | Linux x64 | GCC or Clang with `make`, CPU with AVX2/FMA/F16C | Vulkan |
 | macOS 26.0+ on Apple silicon | Xcode 26, Homebrew `cmake` and `ninja`, [Metal Shader Converter](https://developer.apple.com/metal/shader-converter/) | Metal 4 |
-| Web (WIP) | [Emscripten](https://emscripten.org/) (emsdk), CMake, Ninja, Python; a browser with WebGPU (Chrome, Edge, Brave) | WebGPU, see [WebGPU and the web](webgpu.md) |
+| Web | [Emscripten](https://emscripten.org/) (emsdk), CMake, Ninja, Python; a browser with WebGPU (Chrome, Edge, Brave) | WebGPU, see [WebGPU and the web](webgpu.md) |
 
 Hardware ray tracing is needed for ReSTIR path tracing, ray-traced shadows and ray-traced reflections. The renderer runs without it, with those features off.
 

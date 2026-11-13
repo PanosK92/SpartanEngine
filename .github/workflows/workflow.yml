@@ -572,8 +572,8 @@ jobs:
               { os: 'windows', os_name: 'Windows', api: 'directx', api_name: 'DirectX&nbsp;12', name: 'spartan_windows_d3d12', ext: 'zip', notes: '' },
               { os: 'linux', os_name: 'Linux', api: 'vulkan', api_name: 'Vulkan', name: 'spartan_linux_vulkan', ext: 'tar.gz', notes: 'x64' },
               { os: 'apple', os_name: 'macOS', api: 'metal', api_name: 'Metal', name: 'spartan_macos_metal', ext: 'tar.gz', notes: 'macOS 26+, Apple&nbsp;silicon' },
-              { os: 'windows', os_name: 'Windows', api: 'webgpu', api_name: 'WebGPU', name: 'spartan_windows_webgpu', ext: 'zip', notes: '_Work in progress_' },
-              { os: 'web', os_name: 'Browser', api: 'webgpu', api_name: 'WebGPU', name: 'spartan_web_webgpu', ext: 'zip', notes: '_Work in progress_' }
+              { os: 'windows', os_name: 'Windows', api: 'webgpu', api_name: 'WebGPU', name: 'spartan_windows_webgpu', ext: 'zip', notes: '' },
+              { os: 'web', os_name: 'Browser', api: 'webgpu', api_name: 'WebGPU', name: 'spartan_web_webgpu', ext: 'zip', notes: '' }
             ];
 
             const sha256 = (file) => new Promise((resolve, reject) => {
@@ -653,7 +653,7 @@ jobs:
               '',
               '</details>',
               '',
-              `<details><summary>${icon('web')}&nbsp; <b>Browser</b> &nbsp;<sub>WebGPU, work in progress</sub></summary>`,
+              `<details><summary>${icon('web')}&nbsp; <b>Browser</b> &nbsp;<sub>WebGPU</sub></summary>`,
               '',
               '1. Unzip the archive and run `python serve.py` in that folder.',
               '2. Open the printed address in Chrome, Edge or Brave.',

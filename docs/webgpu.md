@@ -9,7 +9,7 @@ WebGPU is Spartan's fourth RHI backend, next to DirectX 12, Vulkan and Metal. It
 
 The native build is where the backend is developed and debugged: it compiles shaders, runs the MCP bridge and is fast to iterate on. The browser build runs the same engine and the full editor in a tab, with nothing installed.
 
-Both are work in progress. The editor and worlds such as `pbr.world` render in the browser; the gaps are listed under [Limitations](#limitations).
+The editor and worlds such as `pbr.world` render in both builds; what the backend leaves out is listed under [Limitations](#limitations).
 
 ## Shaders
 

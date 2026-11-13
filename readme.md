@@ -42,11 +42,11 @@
     <td align="center" width="95"><img src=".github/images/platforms/windows.svg" height="30" alt=""/><br/><sub>Windows</sub></td>
     <td align="center" width="95"><img src=".github/images/platforms/linux.svg" height="30" alt=""/><br/><sub>Linux</sub></td>
     <td align="center" width="95"><img src=".github/images/platforms/apple.svg" height="30" alt=""/><br/><sub>macOS</sub></td>
-    <td align="center" width="95"><img src=".github/images/platforms/web.svg" height="30" alt=""/><br/><sub>Web (WIP)</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/web.svg" height="30" alt=""/><br/><sub>Web</sub></td>
     <td align="center" width="95"><img src=".github/images/platforms/directx.svg" height="30" alt=""/><br/><sub>DirectX 12</sub></td>
     <td align="center" width="95"><img src=".github/images/platforms/vulkan.svg" height="30" alt=""/><br/><sub>Vulkan</sub></td>
     <td align="center" width="95"><img src=".github/images/platforms/metal.svg" height="30" alt=""/><br/><sub>Metal</sub></td>
-    <td align="center" width="95"><img src=".github/images/platforms/webgpu.svg" height="30" alt=""/><br/><sub>WebGPU (WIP)</sub></td>
+    <td align="center" width="95"><img src=".github/images/platforms/webgpu.svg" height="30" alt=""/><br/><sub>WebGPU</sub></td>
   </tr>
 </table>
 
@@ -204,7 +204,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 | System               | Details                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
-| **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; WebGPU (WIP) on Windows through Dawn and in the browser through WebAssembly, see **[WebGPU and the web](docs/webgpu.md)** |
+| **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; WebGPU on Windows through Dawn and in the browser through WebAssembly, see **[WebGPU and the web](docs/webgpu.md)** |
 | **Physics**          | PhysX with rigid bodies, character kinematics and vehicle dynamics                                |
 | **Animation**        | Skeletal animation with keyframed clips, crossfade blending, four-bone skinning and two-bone IK with ground-aware foot planting |
 | **Particles**        | GPU-driven compute emission and simulation, depth-buffer collision and soft blending              |
@@ -249,7 +249,7 @@ tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make 
 tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 ```
 
-#### <img src=".github/images/platforms/web.svg" height="16" alt=""/>&nbsp; Web &nbsp;<sub>WebGPU, WIP</sub>
+#### <img src=".github/images/platforms/web.svg" height="16" alt=""/>&nbsp; Web &nbsp;<sub>WebGPU</sub>
 
 To just try it: download `spartan_web_webgpu_*.zip` from the releases, unzip, run `python serve.py` and open the printed address in Chrome, Edge or Brave. To build it ([full guide](docs/webgpu.md)):
 
