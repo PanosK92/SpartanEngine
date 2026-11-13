@@ -60,6 +60,15 @@ namespace spartan
         mutex session_mutex;
         unordered_map<string, string> session_values; // cvar name to the value spartan.xml keeps
 
+        // a value this device or display cannot honour is changed by its callback as it loads (ray tracing, dlss, hdr, mesh shaders),
+        // spartan.xml is shared by every backend, so it keeps what the user asked for until the user picks something else
+        struct ClampedValue
+        {
+            string requested;
+            string applied;
+        };
+        unordered_map<string, ClampedValue> clamped_values;
+
         void resolve_file_path()
         {
             // already resolved to an absolute path from a previous call
@@ -351,6 +360,10 @@ namespace spartan
 
                         const bool dynamic_scale = name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>();
                         string value             = dynamic_scale ? "1" : cvar_value_to_string(*cvar.m_value_ptr);
+                        if (auto it = clamped_values.find(string(name)); it != clamped_values.end() && value == it->second.applied)
+                        {
+                            value = it->second.requested;
+                        }
                         {
                             lock_guard<mutex> lock(session_mutex);
                             if (auto it = session_values.find(string(name)); it != session_values.end())
@@ -450,7 +463,13 @@ namespace spartan
                             }
                             else
                             {
-                                ConsoleRegistry::Get().SetValueFromString(string(name).c_str(), child.text().as_string());
+                                const string requested = child.text().as_string();
+                                const bool parsed      = ConsoleRegistry::Get().SetValueFromString(string(name).c_str(), requested);
+                                const string applied   = cvar_value_to_string(*cvar.m_value_ptr);
+                                if (parsed && applied != requested)
+                                {
+                                    clamped_values[string(name)] = { requested, applied };
+                                }
                             }
                         }
                     }

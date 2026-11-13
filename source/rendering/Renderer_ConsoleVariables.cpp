@@ -147,18 +147,14 @@ namespace spartan
         {
             float v = get<float>(value);
 
-            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess())
+            // a vendor upscaler the device lacks (every one of them on webgpu) falls back to the engine's own taau
+            const bool xess_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess();
+            const bool dlss_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::IsSupportedDlss();
+            if (xess_missing || dlss_missing)
             {
-                SP_LOG_WARNING("This GPU doesn't support XeSS");
-                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = 0.0f;
-                return;
-            }
-
-            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::IsSupportedDlss())
-            {
-                SP_LOG_WARNING("This GPU doesn't support DLSS");
-                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = 0.0f;
-                return;
+                SP_LOG_INFO("%s is not available on this device, using TAAU", xess_missing ? "XeSS" : "DLSS");
+                v = static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau);
+                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = v;
             }
 
             if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau) ||

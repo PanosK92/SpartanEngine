@@ -218,6 +218,8 @@ namespace spartan
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
+        // false on a device without hull and domain stages, the surface then draws through the regular path
+        bool IsTessellated() const;
 
         // presets
         void ApplyPaintPreset(MaterialPaintPreset preset, const Color& color, bool save = true);

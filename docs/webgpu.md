@@ -26,7 +26,7 @@ The browser build only reads that cache. A shader missing from it logs `isn't in
 
 The renderer is bindless and keeps buffers persistently mapped. WebGPU has neither, so the backend emulates them.
 
-- **Persistently mapped buffers**: every buffer the engine treats as mapped has a CPU shadow. `GetMappedData()` returns the shadow, and before each submit the backend uploads the changed ranges with `wgpuQueueWriteBuffer`, using tracked dirty ranges or a page compare. Readbacks copy to a staging buffer and wait on `wgpuBufferMapAsync`. See [`WebGPU_Buffer.cpp`](../source/rhi/webgpu/WebGPU_Buffer.cpp).
+- **Persistently mapped buffers**: every buffer the engine treats as mapped has a CPU shadow. `GetMappedData()` returns the shadow, and before each submit the backend uploads the changed ranges with `wgpuQueueWriteBuffer`, using tracked dirty ranges or a page compare. Buffers over 16 MB (draw data, the geometry pools) are compared once per frame, on the frame's first submit; code that writes into one through its pointer later in the frame calls `RHI_Buffer::MarkDirty(offset, size)` so the range goes out with the next submit (a no-op on the other backends). Readbacks copy to a staging buffer and wait on `wgpuBufferMapAsync`. See [`WebGPU_Buffer.cpp`](../source/rhi/webgpu/WebGPU_Buffer.cpp).
 - **Bindless buffers**: the engine's global buffers (materials, lights, geometry, draw data) get fixed slots in bind group 1. Each pipeline builds that group from the bindings its shader reflects, and a generation counter rebuilds it when a buffer is replaced.
 - **Bindless textures**: core WebGPU has no binding arrays, so every material texture is resampled into a layer of one `rgba8unorm` 2D array (binding `t15, space1`), with the layer index equal to the bindless index. Layers are 1024² while there are up to 64 textures and 512² beyond that, with a full mip chain drawn from the source. The array grows by doubling, up to the device's `maxTextureArrayLayers` (at least 256). A layer is redrawn when its texture changes, for example when streaming swaps in more mips. In the shaders, `material_textures[i]` returns a `MaterialTexture2D` wrapper with `Sample`, `SampleLevel`, `SampleGrad` and `GetDimensions`, so material code is the same on every backend. Non-2D or non-filterable sources sample white.
 - **Vertex pulling**: std430 aligns `float3` to 16 bytes, so pulled vertices are read as scalars (`PulledVertexScalars`, `load_pulled_vertex` in `common_resources_bindless.hlsl`).
@@ -62,7 +62,7 @@ Open `spartan.slnx` and build `development` or `release`; the executable is `bin
 
 `--software-gpu` makes Dawn use WARP, the D3D12 software rasterizer that every Windows machine has. On a machine without a GPU, Dawn falls back to WARP on its own. CI uses this together with `--bake-shaders` to compile the browser's shaders. `spartan_webgpu.exe --bake-shaders` is also the fastest way to refresh the cache locally after a shader edit.
 
-The MCP bridge works as on the other backends (`--mcp-control --mcp-port=<port>`). Use `screenshot_take {ui:true}`; the default viewport-cropped capture comes back black on this backend.
+The MCP bridge works as on the other backends (`--mcp-control --mcp-port=<port>`), including both `screenshot_take` modes.
 
 ## Browser build
 
@@ -124,8 +124,8 @@ The release waits on this job like it does on the other platforms.
 
 - No ray tracing: ReSTIR path tracing, ray-traced shadows and reflections are off. Worlds that rely on path tracing (`light_test.world` sets `r.restir_pt`) render dark.
 - Material textures are resampled to 1024² or 512² RGBA8 (see above), so very high-resolution or HDR material textures lose detail and range.
-- No tessellation stage.
-- GPU BC1/BC3 texture compression fails in Tint, so those textures stay uncompressed.
+- No tessellation stage: materials with tessellation draw through the regular path, without displacement.
+- No vendor upscalers: a saved XeSS or DLSS choice falls back to the engine's TAAU for the session, and `spartan.xml` keeps the saved choice for the other backends.
 - The browser build is single-threaded, so CPU-heavy worlds run slower than natively.
 - wasm32 caps the heap at 4 GB; large worlds such as `plan.world` don't fit. Loading a second world in one page has run out of memory.
 - Pointer warping isn't available in a browser, so camera controls that recentre the mouse log `SetMousePosition` errors.

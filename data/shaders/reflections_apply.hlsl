@@ -542,7 +542,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f + glass_dispersion), 0.0f).b;
 
                 // frosted blur from roughness and authored thickness, screen depth is only an upper bound so thin windshields stay sharp
+#if defined(API_WEBGPU)
+                // webgpu can't filter depth textures, and one filtered tap would make every tex4 read in this shader bind a dummy
+                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], render_uv_to_screen_uv(refracted_uv), 0.0f).r);
+#else
                 float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], render_uv_to_screen_uv(refracted_uv), 0.0f).r);
+#endif
                 float screen_thickness = clamp(depth_background - depth_transparent, 0.0f, 4.0f);
                 float blur_metric      = min(max(shell_thickness * 40.0f, screen_thickness * 0.25f), screen_thickness + shell_thickness * 20.0f);
                 float blur_radius      = min(surface.roughness_alpha * blur_metric / max(depth_transparent, 0.5f), 0.03f);

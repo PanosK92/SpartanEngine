@@ -77,6 +77,10 @@ namespace spartan
         void Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size = 0);
         void ResetOffset() { m_offset = 0; first_update = true; }
 
+        // reports a write made through GetMappedData() after the frame's uploads were recorded, real mapped memory needs nothing,
+        // a backend that copies a cpu shadow over (webgpu) sends the range with the next submit instead of a frame later
+        void MarkDirty(uint64_t offset_bytes, uint64_t size_bytes);
+
         // copy data into a sub-region of this buffer (for vertex/index buffers)
         void UploadSubRegion(const void* data, uint64_t offset_bytes, uint64_t size_bytes);
 

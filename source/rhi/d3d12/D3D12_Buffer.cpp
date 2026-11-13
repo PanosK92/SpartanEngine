@@ -344,6 +344,11 @@ namespace spartan
         cmd_list->update_buffer(this, 0, size != 0 ? size : m_stride_unaligned, data_cpu);
     }
 
+    void RHI_Buffer::MarkDirty(const uint64_t offset_bytes, const uint64_t size_bytes)
+    {
+        // mapped memory is the gpu's memory, there is nothing to forward
+    }
+
     void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(m_type == RHI_Buffer_Type::ShaderBindingTable);

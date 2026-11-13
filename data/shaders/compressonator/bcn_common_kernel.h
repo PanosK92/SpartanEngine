@@ -1801,7 +1801,8 @@ static float CMP_RGBBlockError(const CGU_Vec3f src_rgbBlock[BLOCK_SIZE_4X4], con
     return (serr.x + serr.y + serr.z) / 48.0f;
 }
 
-static CGU_FLOAT cpu_bcnComputeBestEndpoints(CGU_FLOAT endpointsOut[NUM_ENDPOINTS],
+// hlsl copies array arguments, without inout the caller keeps its zeroed endpoints and the ramp step folds to 1 / 0
+static CGU_FLOAT cpu_bcnComputeBestEndpoints(CMP_INOUT CGU_FLOAT endpointsOut[NUM_ENDPOINTS],
                                              CGU_FLOAT endpointsIn[NUM_ENDPOINTS],
                                              CGU_FLOAT prj[BLOCK_SIZE_4X4],
                                              CGU_FLOAT prjError[BLOCK_SIZE_4X4],

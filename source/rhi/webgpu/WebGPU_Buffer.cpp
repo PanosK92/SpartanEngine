@@ -33,7 +33,7 @@ namespace spartan
             uint64_t dirty_begin   = UINT64_MAX;
             uint64_t dirty_end     = 0;
             bool tracked           = false;      // written through Update, the dirty range is exact
-            uint64_t flushed_frame = UINT64_MAX; // written by whoever holds the pointer, big buffers are diffed once per frame
+            uint64_t flushed_frame = UINT64_MAX; // written by whoever holds the pointer, big buffers are diffed once per frame and rely on MarkDirty in between
             vector<uint8_t> uploaded;            // what the gpu has, only kept for untracked buffers
         };
 
@@ -76,7 +76,7 @@ namespace spartan
         return shadows.find(buffer) != shadows.end();
     }
 
-    void webgpu::buffer_mark_dirty(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size)
+    void webgpu::buffer_mark_dirty(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const bool exact)
     {
         lock_guard<mutex> lock(mutex_shadows);
         auto it = shadows.find(buffer);
@@ -84,10 +84,15 @@ namespace spartan
             return;
 
         Shadow& shadow     = it->second;
-        shadow.tracked     = true;
         shadow.dirty_begin = min(shadow.dirty_begin, offset);
         shadow.dirty_end   = min(max(shadow.dirty_end, offset + size), shadow.size);
-        shadow.uploaded.clear();
+
+        // a hint names one write into a buffer that is also written through its pointer, so the buffer keeps being compared
+        if (exact)
+        {
+            shadow.tracked = true;
+            shadow.uploaded.clear();
+        }
     }
 
     void webgpu::buffer_flush(RHI_Buffer* buffer, const bool touched)
@@ -100,7 +105,18 @@ namespace spartan
         Shadow& shadow = it->second;
         if (shadow.dirty_end > shadow.dirty_begin)
         {
-            write(buffer, shadow.dirty_begin, shadow.dirty_end);
+            if (shadow.uploaded.size() == shadow.size)
+            {
+                // a hinted range of a compared buffer, the gpu gets what is remembered as uploaded, so a write racing this one shows up in the next comparison
+                const uint64_t begin = shadow.dirty_begin & ~3ull;
+                const uint64_t end   = min((shadow.dirty_end + 3) & ~3ull, shadow.size);
+                memcpy(shadow.uploaded.data() + begin, static_cast<const uint8_t*>(buffer->GetMappedData()) + begin, end - begin);
+                wgpuQueueWriteBuffer(webgpu::queue(), static_cast<WGPUBuffer>(buffer->GetRhiResource()), begin, shadow.uploaded.data() + begin, end - begin);
+            }
+            else
+            {
+                write(buffer, shadow.dirty_begin, shadow.dirty_end);
+            }
             shadow.dirty_begin = UINT64_MAX;
             shadow.dirty_end   = 0;
         }
@@ -338,6 +354,14 @@ namespace spartan
 
         SP_ASSERT(cmd_list);
         cmd_list->update_buffer(this, 0, size != 0 ? size : m_stride_unaligned, data_cpu);
+    }
+
+    void RHI_Buffer::MarkDirty(const uint64_t offset_bytes, const uint64_t size_bytes)
+    {
+        if (m_data_gpu && size_bytes != 0)
+        {
+            webgpu::buffer_mark_dirty(this, offset_bytes, size_bytes, false);
+        }
     }
 
     void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)

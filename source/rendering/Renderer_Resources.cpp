@@ -1555,6 +1555,10 @@ namespace spartan
             {
                 continue;
             }
+            if ((e.stage == RHI_Shader_Type::Hull || e.stage == RHI_Shader_Type::Domain) && !RHI_Device::IsSupportedTessellation())
+            {
+                continue;
+            }
             // the tlas declaration in common_resources.hlsl is gated behind this define so that modules
             // built for devices without ray tracing never carry the spir-v ray query capability
             const bool needs_ray_tracing_define =

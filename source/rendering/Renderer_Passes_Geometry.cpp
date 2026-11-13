@@ -1243,7 +1243,7 @@ namespace spartan
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Render* render                     = draw_call.render;
             Material* material                 = render->GetMaterial();
-            if (!material || material->IsTransparent() || material->GetProperty(MaterialProperty::Tessellation) <= 0.0f || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
+            if (!material || material->IsTransparent() || !material->IsTessellated() || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
             {
                 continue;
             }
@@ -1705,7 +1705,7 @@ namespace spartan
                         {
                             continue;
                         }
-                        if (material->GetProperty(MaterialProperty::Tessellation) <= 0.0f)
+                        if (!material->IsTessellated())
                         {
                             continue;
                         }
@@ -1929,7 +1929,7 @@ namespace spartan
                 continue;
             }
 
-            const bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+            const bool is_tessellated = material->IsTessellated();
             if (is_transparent_pass)
             {
                 if (!material->IsTransparent())

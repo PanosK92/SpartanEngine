@@ -1674,6 +1674,7 @@ namespace spartan
                 // interleaving thousands of small write-combined GPU writes
                 // with pointer chasing and material sorting on the CPU.
                 ThreadPool::ParallelCopy(static_cast<char*>(mapped) + frame_byte_offset, m_draw_data_cpu.data(), upload_size);
+                buffer->MarkDirty(frame_byte_offset, upload_size);
             }
             else
             {
@@ -3953,8 +3954,10 @@ namespace spartan
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
         if (void* mapped = buffer->GetMappedData())
         {
+            // written after the frame's bulk upload (imgui, editor overlays), so the range is reported
             void* dst = static_cast<char*>(mapped) + global_index * sizeof(Sb_DrawData);
             memcpy(dst, &entry, sizeof(Sb_DrawData));
+            buffer->MarkDirty(global_index * sizeof(Sb_DrawData), sizeof(Sb_DrawData));
         }
         else
         {
@@ -4096,7 +4099,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlade)               ? (1U << 11) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsFlower)                   ? (1U << 12) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 13) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
+                properties[count].flags |= material->IsTessellated()                                           ? (1U << 14) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
                 properties[count].flags |= material->IsAlphaTested()                                          ? (1U << 16) : 0;
                 properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Color))    ? (1U << 17) : 0;
@@ -4676,7 +4679,7 @@ namespace spartan
         const bool tessellation_gpu_driven = cvar_tessellation_gpu_driven.GetValueAs<bool>();
         auto is_gpu_culled_tessellated = [tessellation_gpu_driven](const Material* material)
         {
-            return tessellation_gpu_driven && !material->IsTransparent() && material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+            return tessellation_gpu_driven && !material->IsTransparent() && material->IsTessellated();
         };
 
         // Candidates are classified on the workers, so the serial staging below reads one compact list.
@@ -4986,7 +4989,7 @@ namespace spartan
             {
                 return;
             }
-            if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
+            if (material->IsTessellated())
             {
                 return;
             }

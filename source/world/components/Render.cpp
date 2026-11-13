@@ -910,7 +910,7 @@ namespace spartan
         return cvar_foliage_impostors.GetValueAs<bool>() && lod_count > 0 && lod_count < 7 &&
             m_scene->mesh && !m_scene->mesh->IsSkinned() && !HasBoundingBoxOverride() &&
             m_scene->material && !m_scene->material->IsTransparent() &&
-            m_scene->material->GetProperty(MaterialProperty::Tessellation) <= 0.0f && GetImpostor();
+            !m_scene->material->IsTessellated() && GetImpostor();
     }
 
     const MeshImpostor* Render::GetImpostor() const

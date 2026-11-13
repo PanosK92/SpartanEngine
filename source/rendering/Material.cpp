@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Material.h"
 #include "../resource/ResourceCache.h"
 #include "../rhi/RHI_Texture.h"
+#include "../rhi/RHI_Device.h"
 #include "../world/World.h"
 #include "../core/ProgressTracker.h"
 SP_WARNINGS_OFF
@@ -1727,6 +1728,11 @@ namespace spartan
     void Material::SetColor(const Color& color)
     {
         SetColorInternal(color, true);
+    }
+
+    bool Material::IsTessellated() const
+    {
+        return GetProperty(MaterialProperty::Tessellation) > 0.0f && RHI_Device::IsSupportedTessellation();
     }
 
     bool Material::IsAlphaTested()

@@ -1120,9 +1120,10 @@ namespace spartan
         m_shader_group_base_alignment              = 64;
         m_timestamp_period                         = 1.0f;
 
-        // webgpu has neither ray tracing, mesh shaders nor shading rate images
+        // webgpu has neither ray tracing, mesh shaders, hull and domain stages nor shading rate images
         m_is_ray_tracing_supported          = false;
         m_is_mesh_shaders_supported         = false;
+        m_is_tessellation_supported         = false;
         m_is_shading_rate_supported         = false;
         m_is_shader_base_instance_supported = false;
         m_xess_supported                    = false;

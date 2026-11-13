@@ -205,7 +205,8 @@ namespace spartan
         void buffer_register(RHI_Buffer* buffer);
         void buffer_unregister(RHI_Buffer* buffer);
         bool buffer_is_alive(RHI_Buffer* buffer);
-        void buffer_mark_dirty(RHI_Buffer* buffer, uint64_t offset, uint64_t size);
+        // exact means every write to the buffer is reported, so it is never compared against the gpu copy
+        void buffer_mark_dirty(RHI_Buffer* buffer, uint64_t offset, uint64_t size, bool exact = true);
         void buffer_flush(RHI_Buffer* buffer, bool touched);
         // copies what the gpu wrote into the cpu shadow, blocks until the queue is done with it
         void buffer_read_back(RHI_Buffer* buffer);
