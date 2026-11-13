@@ -208,6 +208,28 @@ namespace spartan
             return process;
         }
 
+        // the exit codes a download realistically ends with, in words that say what to check
+        const char* describe_curl_exit_code(int exit_code)
+        {
+            switch (exit_code)
+            {
+                case 5:
+                case 6:  return "the server name could not be resolved, check the internet connection and the dns";
+                case 7:  return "the server could not be connected to, a firewall or a proxy may be blocking it";
+                case 18: return "the connection closed before the file was complete";
+                case 22: return "the server refused the request";
+                case 23: return "the file could not be written, the disk may be full or the folder read-only";
+                case 28: return "the connection timed out or stalled";
+                case 33: return "the server refused to resume the partial download";
+                case 35:
+                case 60: return "the secure connection failed, check the system clock and any antivirus or proxy that inspects https";
+                case 52:
+                case 55:
+                case 56: return "the connection was reset while transferring";
+                default: return "the transfer failed";
+            }
+        }
+
         // run a process silently (no visible console window) and wait for completion
         // note: always using STDIO_APP ensures no console window appears on any platform
         void run_silent_process(const vector<string>& args, string* output = nullptr)
@@ -812,7 +834,7 @@ namespace spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            SP_LOG_ERROR("s, %s", e.what(), path.c_str());
+            SP_LOG_ERROR("%s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -898,10 +920,14 @@ namespace spartan
         return true;
     }
 
-    bool FileSystem::DownloadFile(const string& url, const string& destination, function<void(float)> progress_callback)
+    bool FileSystem::DownloadFile(const string& url, const string& destination, function<void(float)> progress_callback, string* error)
     {
         namespace fs = filesystem;
         error_code ec;
+        const auto megabytes = [](size_t bytes)
+        {
+            return to_string(bytes / (1024 * 1024));
+        };
 
         // ensure destination directory exists
         string dest_dir = GetDirectoryFromFilePath(destination);
@@ -918,6 +944,10 @@ namespace spartan
             if (ec)
             {
                 SP_LOG_ERROR("Failed to inspect download destination: %s", ec.message().c_str());
+                if (error)
+                {
+                    *error = "the partial download " + destination + " could not be read: " + ec.message() + " (error " + to_string(ec.value()) + ")";
+                }
                 return false;
             }
             if (existing_size > 0)
@@ -984,7 +1014,12 @@ namespace spartan
 
         if (!process)
         {
-            SP_LOG_ERROR("Failed to start download: %s", SDL_GetError());
+            const string sdl_error = SDL_GetError();
+            SP_LOG_ERROR("Failed to start download: %s", sdl_error.c_str());
+            if (error)
+            {
+                *error = "curl could not be started, it has to be installed and on the PATH: " + sdl_error;
+            }
             return false;
         }
 
@@ -1047,6 +1082,23 @@ namespace spartan
         {
             // keep partial data so the next attempt can resume a multi-gigabyte archive
             SP_LOG_ERROR("Failed to download: %s (curl exit code %d, %zu bytes retained). %s", url.c_str(), exit_code, final_size, diagnostics.c_str());
+            if (error)
+            {
+                // curl's own last message carries what the exit code alone does not, the http status for instance
+                string curl_message;
+                const size_t message_start = diagnostics.rfind("curl: (");
+                if (message_start != string::npos)
+                {
+                    curl_message = diagnostics.substr(message_start, diagnostics.find_first_of("\r\n", message_start) - message_start);
+                }
+
+                *error  = exit_code == 0 ? "the download finished but the file is empty" : describe_curl_exit_code(exit_code);
+                *error += " (curl exit code " + to_string(exit_code) + ", " + megabytes(final_size) + (expected_size > 0 ? " of " + megabytes(expected_size) : "") + " MB downloaded)";
+                if (!curl_message.empty())
+                {
+                    *error += ", " + curl_message;
+                }
+            }
             return false;
         }
     }
@@ -1073,7 +1125,7 @@ namespace spartan
         return true;
     }
 
-    bool FileSystem::ExtractArchive(const string& archive_path, const string& destination_path)
+    bool FileSystem::ExtractArchive(const string& archive_path, const string& destination_path, string* error)
     {
         if (!Exists(destination_path))
         {
@@ -1082,15 +1134,24 @@ namespace spartan
 
         SP_LOG_INFO("Extracting: %s", archive_path.c_str());
 
-        if (archive_7z_extract(archive_path.c_str(), destination_path.c_str()) != 0)
+        char reason[1024] = {};
+        if (archive_7z_extract(archive_path.c_str(), destination_path.c_str(), reason, static_cast<int>(sizeof(reason))) != 0)
         {
-            SP_LOG_ERROR("Failed to extract archive: %s", archive_path.c_str());
+            SP_LOG_ERROR("Failed to extract archive: %s, %s", archive_path.c_str(), reason);
+            if (error)
+            {
+                *error = reason;
+            }
             return false;
         }
 
         if (IsDirectoryEmpty(destination_path))
         {
             SP_LOG_ERROR("Failed to extract archive: %s (destination empty)", archive_path.c_str());
+            if (error)
+            {
+                *error = "the archive " + archive_path + " holds no files";
+            }
             return false;
         }
 

@@ -1,301 +1,323 @@
-// in-process 7z extract via lzma sdk ansi-c decoder
+// in-process 7z extract via statically linked format7zr
+// the handler streams each file to disk as it decodes, so memory stays near the archive's dictionary size
+// the ansi-c decoder (SzArEx_Extract) is not used, it holds a whole solid block in memory before writing anything,
+// which for a multi-gigabyte solid archive is more memory than many machines can give
+#include "StdAfx.h"
 #include "archive_7z.h"
 
+#include <stdio.h>
 #include <string>
-#include <vector>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#else
-#include <sys/stat.h>
-#endif
+#include "../CPP/Common/MyWindows.h"
+#include "../CPP/Common/Defs.h"
+#include "../CPP/Common/StringConvert.h"
+#include "../CPP/Common/UTFConvert.h"
 
-extern "C" {
-#include "../C/7z.h"
-#include "../C/7zAlloc.h"
-#include "../C/7zBuf.h"
-#include "../C/7zCrc.h"
-#include "../C/7zFile.h"
-#include "../C/CpuArch.h"
-}
+#include "../CPP/Windows/ErrorMsg.h"
+#include "../CPP/Windows/FileDir.h"
+#include "../CPP/Windows/FileIO.h"
+#include "../CPP/Windows/FileName.h"
+#include "../CPP/Windows/PropVariant.h"
+
+#include "../CPP/7zip/Common/FileStreams.h"
+#include "../CPP/7zip/Archive/IArchive.h"
+
+STDAPI CreateObject(const GUID* clsid, const GUID* iid, void** outObject);
+
+extern "C" const GUID CLSID_Format;
+
+using namespace NWindows;
+using namespace NFile;
+using namespace NDir;
 
 namespace
 {
-    const size_t k_input_buf_size = (size_t)1 << 18;
-    const ISzAlloc g_alloc = { SzAlloc, SzFree };
+    // what the decoder may hold while extracting, on top of this it needs the archive's dictionary
+    const UInt64 k_decode_memory_limit = (UInt64)1 << 30;
 
+    static FString utf8_to_fstring(const char* utf8)
+    {
+        FString path = us2fs(GetUnicodeString(utf8, CP_UTF8));
 #ifdef _WIN32
-    std::wstring utf8_to_wide(const char* utf8)
-    {
-        if (!utf8 || !utf8[0])
-        {
-            return std::wstring();
-        }
-        const int len = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
-        if (len <= 0)
-        {
-            return std::wstring();
-        }
-        std::wstring out(static_cast<size_t>(len - 1), L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, utf8, -1, out.data(), len);
-        return out;
-    }
-
-    bool create_dir_wide(const std::wstring& path)
-    {
-        if (path.empty())
-        {
-            return false;
-        }
-        if (CreateDirectoryW(path.c_str(), nullptr) || GetLastError() == ERROR_ALREADY_EXISTS)
-        {
-            return true;
-        }
-        // create parents
-        for (size_t i = 0; i < path.size(); i++)
-        {
-            if (path[i] == L'\\' || path[i] == L'/')
-            {
-                const std::wstring parent = path.substr(0, i);
-                if (!parent.empty() && parent.back() != L':')
-                {
-                    CreateDirectoryW(parent.c_str(), nullptr);
-                }
-            }
-        }
-        return CreateDirectoryW(path.c_str(), nullptr) || GetLastError() == ERROR_ALREADY_EXISTS;
-    }
-#else
-    bool create_dir_utf8(const std::string& path)
-    {
-        if (path.empty())
-        {
-            return false;
-        }
-        std::string cur;
-        for (size_t i = 0; i < path.size(); i++)
-        {
-            cur.push_back(path[i]);
-            if (path[i] == '/' || i + 1 == path.size())
-            {
-                if (cur.empty() || cur == "/")
-                {
-                    continue;
-                }
-                mkdir(cur.c_str(), 0755);
-            }
-        }
-        return true;
-    }
+        // the engine writes paths with forward slashes, the long path form windows needs past 260 chars only takes backslashes
+        path.Replace(FTEXT('/'), FCHAR_PATH_SEPARATOR);
 #endif
-
-    std::string utf16_to_utf8(const UInt16* s)
-    {
-        std::string out;
-        for (size_t i = 0; s[i] != 0; )
-        {
-            UInt32 c = s[i++];
-            if (c >= 0xD800 && c < 0xDC00 && s[i] != 0)
-            {
-                const UInt32 c2 = s[i++];
-                if (c2 >= 0xDC00 && c2 < 0xE000)
-                {
-                    c = 0x10000 + ((c - 0xD800) << 10) + (c2 - 0xDC00);
-                }
-            }
-            if (c < 0x80)
-            {
-                out.push_back(static_cast<char>(c));
-            }
-            else if (c < 0x800)
-            {
-                out.push_back(static_cast<char>(0xC0 | (c >> 6)));
-                out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-            }
-            else if (c < 0x10000)
-            {
-                out.push_back(static_cast<char>(0xE0 | (c >> 12)));
-                out.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
-                out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-            }
-            else
-            {
-                out.push_back(static_cast<char>(0xF0 | (c >> 18)));
-                out.push_back(static_cast<char>(0x80 | ((c >> 12) & 0x3F)));
-                out.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
-                out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-            }
-        }
-        return out;
+        return path;
     }
 
-    void normalize_separators(std::string& path)
+    static std::string to_utf8(const UString& text)
     {
-        for (char& c : path)
+        AString utf8;
+        ConvertUnicodeToUTF8(text, utf8);
+        return std::string(utf8.Ptr());
+    }
+
+    // the system's own wording plus the code, the wording is localized and the code is what can be searched for
+    static std::string hresult_text(HRESULT result)
+    {
+        char code[16];
+        snprintf(code, sizeof(code), "0x%08X", static_cast<unsigned>(result));
+        return to_utf8(NError::MyFormatMessage(result)) + " (" + code + ")";
+    }
+
+    static const char* operation_result_text(Int32 operation_result)
+    {
+        switch (operation_result)
         {
-            if (c == '\\')
+        case NArchive::NExtract::NOperationResult::kUnsupportedMethod: return "unsupported compression method";
+        case NArchive::NExtract::NOperationResult::kDataError:         return "corrupt data";
+        case NArchive::NExtract::NOperationResult::kCRCError:          return "checksum mismatch";
+        case NArchive::NExtract::NOperationResult::kUnavailable:       return "unavailable data";
+        case NArchive::NExtract::NOperationResult::kUnexpectedEnd:     return "unexpected end of the archive";
+        case NArchive::NExtract::NOperationResult::kDataAfterEnd:      return "data after the end of the archive";
+        case NArchive::NExtract::NOperationResult::kIsNotArc:          return "not an archive";
+        case NArchive::NExtract::NOperationResult::kHeadersError:      return "damaged headers";
+        default:                                                       return "decoding error";
+        }
+    }
+
+    class CArchiveExtractCallback Z7_final:
+        public IArchiveExtractCallback,
+        public CMyUnknownImp
+    {
+        Z7_IFACES_IMP_UNK_1(IArchiveExtractCallback)
+        Z7_IFACE_COM7_IMP(IProgress)
+
+    public:
+        IInArchive* Archive;
+        FString DirPrefix;
+        UString ItemPath;  // name inside the archive of the item being extracted
+        std::string Error; // the first failure, empty while everything worked
+        COutFileStream* OutFileStreamSpec;
+        CMyComPtr<ISequentialOutStream> OutFileStream;
+
+        CArchiveExtractCallback() :
+            Archive(nullptr),
+            OutFileStreamSpec(nullptr)
+        {
+        }
+
+        // call right after the failed file system call, before anything else can replace the last error
+        HRESULT FailWithLastError(const char* what, const FString& path)
+        {
+            const HRESULT result = GetLastError_noZero_HRESULT();
+            if (Error.empty())
             {
-                c = '/';
+                Error = std::string(what) + " " + to_utf8(fs2us(path)) + ": " + hresult_text(result);
+            }
+            return E_ABORT;
+        }
+    };
+
+    Z7_COM7F_IMF(CArchiveExtractCallback::SetTotal(UInt64 /* size */))
+    {
+        return S_OK;
+    }
+
+    Z7_COM7F_IMF(CArchiveExtractCallback::SetCompleted(const UInt64* /* completeValue */))
+    {
+        return S_OK;
+    }
+
+    Z7_COM7F_IMF(CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStream** outStream, Int32 askExtractMode))
+    {
+        *outStream = nullptr;
+        OutFileStream.Release();
+        OutFileStreamSpec = nullptr;
+
+        NCOM::CPropVariant path_prop;
+        RINOK(Archive->GetProperty(index, kpidPath, &path_prop))
+        if (path_prop.vt != VT_BSTR)
+        {
+            if (Error.empty())
+            {
+                Error = "an archive entry has no name";
+            }
+            return E_ABORT;
+        }
+        ItemPath = path_prop.bstrVal;
+
+        if (askExtractMode != NArchive::NExtract::NAskMode::kExtract)
+        {
+            return S_OK;
+        }
+
+        NCOM::CPropVariant dir_prop;
+        RINOK(Archive->GetProperty(index, kpidIsDir, &dir_prop))
+        const bool is_dir = dir_prop.vt == VT_BOOL && dir_prop.boolVal != VARIANT_FALSE;
+
+        const FString full_path = DirPrefix + us2fs(ItemPath);
+        if (is_dir)
+        {
+            if (!CreateComplexDir(full_path))
+            {
+                return FailWithLastError("could not create the folder", full_path);
+            }
+            return S_OK;
+        }
+
+        const int slash_pos = ItemPath.ReverseFind_PathSepar();
+        if (slash_pos >= 0)
+        {
+            const FString parent = DirPrefix + us2fs(ItemPath.Left(static_cast<unsigned>(slash_pos)));
+            if (!CreateComplexDir(parent))
+            {
+                return FailWithLastError("could not create the folder", parent);
             }
         }
+
+        OutFileStreamSpec = new COutFileStream;
+        CMyComPtr<ISequentialOutStream> out_stream(OutFileStreamSpec);
+        if (!OutFileStreamSpec->Create_ALWAYS(full_path))
+        {
+            OutFileStreamSpec = nullptr;
+            return FailWithLastError("could not create the file", full_path);
+        }
+        OutFileStream = out_stream;
+        *outStream = out_stream.Detach();
+        return S_OK;
+    }
+
+    Z7_COM7F_IMF(CArchiveExtractCallback::PrepareOperation(Int32 /* askExtractMode */))
+    {
+        return S_OK;
+    }
+
+    Z7_COM7F_IMF(CArchiveExtractCallback::SetOperationResult(Int32 operationResult))
+    {
+        HRESULT close_result = S_OK;
+        if (OutFileStream)
+        {
+            close_result = OutFileStreamSpec->Close();
+        }
+        OutFileStream.Release();
+        OutFileStreamSpec = nullptr;
+
+        // an install must not continue past a file that did not come out right
+        if (operationResult != NArchive::NExtract::NOperationResult::kOK)
+        {
+            if (Error.empty())
+            {
+                Error = std::string(operation_result_text(operationResult)) + " in " + to_utf8(ItemPath);
+            }
+            return E_ABORT;
+        }
+
+        if (close_result != S_OK)
+        {
+            if (Error.empty())
+            {
+                Error = "could not finish writing " + to_utf8(ItemPath) + ": " + hresult_text(close_result);
+            }
+            return E_ABORT;
+        }
+
+        return S_OK;
+    }
+
+    static bool extract(const char* archive_path, const char* destination_path, std::string& error)
+    {
+        if (!archive_path || !archive_path[0] || !destination_path || !destination_path[0])
+        {
+            error = "no archive or no destination was given";
+            return false;
+        }
+
+        const FString archive_name = utf8_to_fstring(archive_path);
+        CInFileStream* file_spec = new CInFileStream;
+        CMyComPtr<IInStream> file(file_spec);
+        if (!file_spec->Open(archive_name))
+        {
+            error = "could not open the archive: " + hresult_text(GetLastError_noZero_HRESULT());
+            return false;
+        }
+
+        CMyComPtr<IInArchive> archive;
+        if (CreateObject(&CLSID_Format, &IID_IInArchive, (void**)&archive) != S_OK)
+        {
+            error = "the 7z reader could not be created";
+            return false;
+        }
+
+        // left alone, the lzma2 decoder buffers a block per cpu thread and allows itself about half of the system's memory,
+        // the cap only costs decoding threads and keeps the extraction small on any machine
+        {
+            CMyComPtr<ISetProperties> set_properties;
+            archive->QueryInterface(IID_ISetProperties, (void**)&set_properties);
+            const wchar_t* names[]       = { L"memuse" };
+            NCOM::CPropVariant values[1] = { k_decode_memory_limit };
+            if (!set_properties || set_properties->SetProperties(names, values, 1) != S_OK)
+            {
+                error = "the 7z reader did not accept its memory limit";
+                return false;
+            }
+        }
+
+        const UInt64 scan_size = 1 << 23;
+        const HRESULT open_result = archive->Open(file, &scan_size, nullptr);
+        if (open_result != S_OK)
+        {
+            error = open_result == S_FALSE ? "the file is not a 7z archive or its headers are damaged" : "could not read the archive: " + hresult_text(open_result);
+            return false;
+        }
+
+        const FString destination = utf8_to_fstring(destination_path);
+        if (!CreateComplexDir(destination))
+        {
+            error = "could not create the folder " + std::string(destination_path) + ": " + hresult_text(GetLastError_noZero_HRESULT());
+            archive->Close();
+            return false;
+        }
+
+        CArchiveExtractCallback* callback_spec = new CArchiveExtractCallback;
+        CMyComPtr<IArchiveExtractCallback> callback(callback_spec);
+        callback_spec->Archive   = archive;
+        callback_spec->DirPrefix = destination;
+        NName::NormalizeDirPathPrefix(callback_spec->DirPrefix);
+
+        const HRESULT result = archive->Extract(nullptr, (UInt32)(Int32)-1, false, callback);
+        archive->Close();
+
+        if (!callback_spec->Error.empty())
+        {
+            error = callback_spec->Error;
+            return false;
+        }
+
+        if (result != S_OK)
+        {
+            // a write that failed half way (a full disk for instance) ends the extraction with the write's own error
+            error = result == S_FALSE ? std::string("corrupt data") : hresult_text(result);
+            if (!callback_spec->ItemPath.IsEmpty())
+            {
+                error += ", while extracting " + to_utf8(callback_spec->ItemPath);
+            }
+            return false;
+        }
+
+        return true;
     }
 }
 
-int archive_7z_extract(const char* archive_path, const char* destination_path)
+int archive_7z_extract(const char* archive_path, const char* destination_path, char* error_out, int error_capacity)
 {
-    if (!archive_path || !destination_path)
+    std::string error;
+    bool success = false;
+    try
     {
-        return 1;
+        success = extract(archive_path, destination_path, error);
+    }
+    catch (...)
+    {
+        // the sdk reports a failed allocation by throwing
+        success = false;
+        error   = "out of memory";
     }
 
-    CFileInStream archive_stream;
-    CLookToRead2 look_stream;
-    CSzArEx db;
-    SRes res = SZ_OK;
-
-    FileInStream_CreateVTable(&archive_stream);
-    archive_stream.wres = 0;
-    LookToRead2_CreateVTable(&look_stream, False);
-    look_stream.buf = nullptr;
-
-#ifdef _WIN32
+    if (error_out && error_capacity > 0)
     {
-        const std::wstring wide = utf8_to_wide(archive_path);
-        if (wide.empty() || InFile_OpenW(&archive_stream.file, wide.c_str()) != 0)
-        {
-            return 1;
-        }
-    }
-    create_dir_wide(utf8_to_wide(destination_path));
-#else
-    if (InFile_Open(&archive_stream.file, archive_path) != 0)
-    {
-        return 1;
-    }
-    create_dir_utf8(destination_path);
-#endif
-
-    look_stream.buf = static_cast<Byte*>(ISzAlloc_Alloc(&g_alloc, k_input_buf_size));
-    if (!look_stream.buf)
-    {
-        File_Close(&archive_stream.file);
-        return 1;
-    }
-    look_stream.bufSize = k_input_buf_size;
-    look_stream.realStream = &archive_stream.vt;
-    LookToRead2_INIT(&look_stream)
-
-    CrcGenerateTable();
-    SzArEx_Init(&db);
-    res = SzArEx_Open(&db, &look_stream.vt, &g_alloc, &g_alloc);
-
-    UInt16* temp = nullptr;
-    size_t temp_size = 0;
-    UInt32 block_index = 0xFFFFFFFF;
-    Byte* out_buffer = nullptr;
-    size_t out_buffer_size = 0;
-
-    if (res == SZ_OK)
-    {
-        for (UInt32 i = 0; i < db.NumFiles; i++)
-        {
-            size_t offset = 0;
-            size_t out_size_processed = 0;
-            const BoolInt is_dir = SzArEx_IsDir(&db, i);
-            size_t len = SzArEx_GetFileNameUtf16(&db, i, nullptr);
-            if (len > temp_size)
-            {
-                SzFree(nullptr, temp);
-                temp_size = len;
-                temp = static_cast<UInt16*>(SzAlloc(nullptr, temp_size * sizeof(UInt16)));
-                if (!temp)
-                {
-                    res = SZ_ERROR_MEM;
-                    break;
-                }
-            }
-
-            SzArEx_GetFileNameUtf16(&db, i, temp);
-            std::string relative = utf16_to_utf8(temp);
-            normalize_separators(relative);
-
-            std::string out_path = destination_path;
-            if (!out_path.empty() && out_path.back() != '/' && out_path.back() != '\\')
-            {
-                out_path.push_back('/');
-            }
-            out_path += relative;
-
-            if (is_dir)
-            {
-#ifdef _WIN32
-                create_dir_wide(utf8_to_wide(out_path.c_str()));
-#else
-                create_dir_utf8(out_path);
-#endif
-                continue;
-            }
-
-            // ensure parent dirs exist
-            {
-                const size_t slash = out_path.find_last_of("/\\");
-                if (slash != std::string::npos)
-                {
-                    const std::string parent = out_path.substr(0, slash);
-#ifdef _WIN32
-                    create_dir_wide(utf8_to_wide(parent.c_str()));
-#else
-                    create_dir_utf8(parent);
-#endif
-                }
-            }
-
-            res = SzArEx_Extract(
-                &db, &look_stream.vt, i,
-                &block_index, &out_buffer, &out_buffer_size,
-                &offset, &out_size_processed,
-                &g_alloc, &g_alloc);
-            if (res != SZ_OK)
-            {
-                break;
-            }
-
-            CSzFile out_file;
-#ifdef _WIN32
-            {
-                const std::wstring wide = utf8_to_wide(out_path.c_str());
-                if (wide.empty() || OutFile_OpenW(&out_file, wide.c_str()) != 0)
-                {
-                    res = SZ_ERROR_FAIL;
-                    break;
-                }
-            }
-#else
-            if (OutFile_Open(&out_file, out_path.c_str()) != 0)
-            {
-                res = SZ_ERROR_FAIL;
-                break;
-            }
-#endif
-            size_t processed = out_size_processed;
-            const WRes wres = File_Write(&out_file, out_buffer + offset, &processed);
-            File_Close(&out_file);
-            if (wres != 0 || processed != out_size_processed)
-            {
-                res = SZ_ERROR_FAIL;
-                break;
-            }
-        }
+        snprintf(error_out, static_cast<size_t>(error_capacity), "%s", success ? "" : error.c_str());
     }
 
-    ISzAlloc_Free(&g_alloc, out_buffer);
-    SzFree(nullptr, temp);
-    SzArEx_Free(&db, &g_alloc);
-    ISzAlloc_Free(&g_alloc, look_stream.buf);
-    File_Close(&archive_stream.file);
-
-    return res == SZ_OK ? 0 : 1;
+    return success ? 0 : 1;
 }

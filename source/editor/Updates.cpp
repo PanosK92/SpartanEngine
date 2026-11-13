@@ -57,6 +57,23 @@ namespace
 
     const float status_duration = 3.0f;
 
+    // why the last install failed, the install worker writes it and the prompts show it, so a failure is never just "failed"
+    mutex install_error_mutex;
+    string install_error;
+
+    void set_install_error(const string& error)
+    {
+        SP_LOG_ERROR("%s", error.c_str());
+        lock_guard<mutex> lock(install_error_mutex);
+        install_error = error;
+    }
+
+    // the message of a system error is localized, the code is what can be looked up
+    string describe_error(const error_code& error)
+    {
+        return error.message() + " (error " + to_string(error.value()) + ")";
+    }
+
     string lowercase_copy(string value)
     {
         transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
@@ -601,8 +618,10 @@ namespace
             }
 
             progress.SetStep("Downloading project", "dropbox.com");
-            if (!spartan::FileSystem::DownloadFile(package.url, archive, [&progress](float fraction) { progress.SetFraction(fraction); }))
+            string reason;
+            if (!spartan::FileSystem::DownloadFile(package.url, archive, [&progress](float fraction) { progress.SetFraction(fraction); }, &reason))
             {
+                set_install_error("The project download failed: " + reason);
                 return false;
             }
 
@@ -611,23 +630,25 @@ namespace
             if (archive_sha.size() != 64)
             {
                 // kept, nothing shows the download to be wrong and the next attempt verifies it again
-                SP_LOG_ERROR("Failed to compute the sha256 of the downloaded project package, it could not be read: %s", archive.c_str());
+                set_install_error("The downloaded project package could not be read back to verify it: " + archive);
                 return false;
             }
 
             if (archive_sha != package.sha256)
             {
-                SP_LOG_ERROR("The downloaded project package has sha256 %s but %s was expected, it was deleted so the next attempt starts over", archive_sha.c_str(), package.sha256.c_str());
+                SP_LOG_ERROR("The downloaded project package has sha256 %s but %s was expected", archive_sha.c_str(), package.sha256.c_str());
                 spartan::FileSystem::Delete(archive);
+                set_install_error("The downloaded project package is not the published one (sha256 " + archive_sha.substr(0, 16) + ", expected " + package.sha256.substr(0, 16) + "), it was deleted so a retry downloads it again");
                 return false;
             }
 
             // extracted next to the live project, so a failure leaves the project as it was
             progress.SetStep("Extracting project");
             spartan::FileSystem::Delete(project_staging_dir);
-            if (!spartan::FileSystem::ExtractArchive(archive, project_staging_dir))
+            if (!spartan::FileSystem::ExtractArchive(archive, project_staging_dir, &reason))
             {
                 spartan::FileSystem::Delete(project_staging_dir);
+                set_install_error("The project extraction failed: " + reason);
                 return false;
             }
 
@@ -640,7 +661,7 @@ namespace
                 filesystem::rename(project_install_dir, project_old_dir, error);
                 if (error)
                 {
-                    SP_LOG_ERROR("Failed to move the old project aside, a file in it may be open: %s", error.message().c_str());
+                    set_install_error("The current project folder could not be moved aside, a file in it may be open in another program: " + describe_error(error));
                     spartan::FileSystem::Delete(project_staging_dir);
                     return false;
                 }
@@ -649,7 +670,7 @@ namespace
             filesystem::rename(project_staging_dir, project_install_dir, error);
             if (error)
             {
-                SP_LOG_ERROR("Failed to move the new project into place: %s", error.message().c_str());
+                set_install_error("The extracted project could not be moved into place: " + describe_error(error));
                 error_code restore_error;
                 filesystem::rename(project_old_dir, project_install_dir, restore_error);
                 spartan::FileSystem::Delete(project_staging_dir);
@@ -901,14 +922,15 @@ namespace
                 const string staged_path = string(worlds_staging_dir) + remote.name;
                 const float file_start   = static_cast<float>(i) / static_cast<float>(files.size());
                 const float file_span    = 1.0f / static_cast<float>(files.size());
+                string reason;
                 const bool downloaded    = spartan::FileSystem::DownloadFile(url, staged_path, [&progress, file_start, file_span](float fraction)
                 {
                     progress.SetFraction(file_start + fraction * file_span);
-                });
+                }, &reason);
 
                 if (!downloaded || git_blob_sha1(staged_path) != remote.sha)
                 {
-                    SP_LOG_ERROR("Failed to download %s, or it does not match GitHub's listing", url.c_str());
+                    set_install_error(downloaded ? "The downloaded world file " + remote.name + " does not match GitHub's listing" : "The download of the world file " + remote.name + " failed: " + reason);
                     spartan::FileSystem::Delete(worlds_staging_dir);
                     return false;
                 }
@@ -935,7 +957,7 @@ namespace
 
                     if (!spartan::FileSystem::CopyFileFromTo(destination, backup_dir + file.remote.name))
                     {
-                        SP_LOG_ERROR("Failed to back up %s, it was left untouched", destination.c_str());
+                        set_install_error("The world file " + destination + " could not be backed up into " + backup_dir + ", it was left untouched");
                         success = false;
                         continue;
                     }
@@ -944,7 +966,7 @@ namespace
 
                 if (!spartan::FileSystem::CopyFileFromTo(staged_path, destination) || git_blob_sha1(destination) != file.remote.sha)
                 {
-                    SP_LOG_ERROR("Failed to install %s", destination.c_str());
+                    set_install_error("The world file " + destination + " could not be written, it may be open in another program or the folder read-only");
                     success = false;
                     continue;
                 }
@@ -974,6 +996,7 @@ namespace
             vector<RemoteFile> remote_files;
             if (!fetch_listing(commit, remote_files))
             {
+                set_install_error("The list of worlds could not be read from GitHub (api.github.com), it may be unreachable, blocked or rate limited");
                 return false;
             }
 
@@ -1028,6 +1051,7 @@ namespace
     bool install_update = false; // an update reports its own failures, a first run reports them to the launcher
     atomic<int> install_outcome{static_cast<int>(Updates::InstallResult::None)};
     Updates::InstallResult launcher_result = Updates::InstallResult::None;
+    string reported_install_error; // the main thread's copy of install_error, taken when the install ends
 
     void start_check(bool manual)
     {
@@ -1090,6 +1114,11 @@ namespace
 
         installing     = true;
         install_update = is_update;
+        reported_install_error.clear();
+        {
+            lock_guard<mutex> lock(install_error_mutex);
+            install_error.clear();
+        }
         spartan::ThreadPool::AddTask([content, install_project, install_worlds]()
         {
             auto progress = spartan::ProgressTracker::Begin(spartan::ProgressType::Download, "Project library", install_project ? "Downloading project" : "Downloading worlds");
@@ -1104,7 +1133,7 @@ namespace
                 project::Package package = content.project;
                 if (package.empty() && !(has_commit && project::remote_package(commit, package)) && !project::local_package(package))
                 {
-                    SP_LOG_ERROR("No project package is known, neither from GitHub nor from %s", package_file_name);
+                    set_install_error(string("Where to download the project from is unknown, GitHub could not be read and the copy in data/") + package_file_name + " is missing or damaged");
                 }
 
                 if (package.empty() || !project::install(package, progress))
@@ -1116,6 +1145,10 @@ namespace
 
             if (install_worlds)
             {
+                if (!has_commit)
+                {
+                    set_install_error("The latest commit could not be read from GitHub (api.github.com), it may be unreachable, blocked or rate limited, so the worlds cannot be listed");
+                }
                 const bool success = has_commit && (content.worlds.empty() ? worlds::install_missing(commit, progress) : worlds::install(commit, content.worlds, progress));
                 if (!success)
                 {
@@ -1168,10 +1201,12 @@ namespace
         const string worlds_text = to_string(added) + " new and " + to_string(changed) + " changed world files";
 
         vector<string> lines;
+        string reason; // shown in full under the first line, a failed update always says what failed
         if (content_update_failed)
         {
             lines.push_back("The update failed.");
-            lines.push_back("See the log for details. Nothing was replaced unless it downloaded fully.");
+            lines.push_back("Nothing was replaced unless it downloaded fully. The full log is logs/log.txt.");
+            reason = reported_install_error.empty() ? "No reason was recorded, see logs/log.txt." : reported_install_error;
         }
         else
         {
@@ -1188,9 +1223,13 @@ namespace
             }
         }
 
-        const float dpi = spartan::Window::GetDpiScale();
+        const float dpi           = spartan::Window::GetDpiScale();
+        const float reason_margin = 28.0f * dpi;
+        const float reason_gap    = 4.0f * dpi;
+        const float reason_width  = 600.0f * dpi - reason_margin * 2.0f;
+        const float reason_height = reason.empty() ? 0.0f : ImGui::CalcTextSize(reason.c_str(), nullptr, false, reason_width).y + ImGui::GetStyle().ItemSpacing.y + reason_gap * 2.0f;
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(600.0f * dpi, (114.0f + 18.0f * static_cast<float>(lines.size())) * dpi), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(600.0f * dpi, (114.0f + 18.0f * static_cast<float>(lines.size())) * dpi + reason_height), ImGuiCond_Always);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f * dpi);
         bool open = true;
@@ -1205,9 +1244,18 @@ namespace
             draw_list->AddRect(position, ImVec2(position.x + size.x, position.y + size.y), ImGui::ColorConvertFloat4ToU32(ImGui::Style::with_alpha(ImGui::Style::lerp(bg_1, bg_2, 0.70f), 0.78f)), 8.0f * dpi);
 
             ImGui::SetCursorPosY(38.0f * dpi);
-            for (const string& line : lines)
+            for (size_t i = 0; i < lines.size(); i++)
             {
-                prompt_text_centered(line);
+                prompt_text_centered(lines[i]);
+                if (i == 0 && !reason.empty())
+                {
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + reason_gap);
+                    ImGui::SetCursorPosX(reason_margin);
+                    ImGui::PushTextWrapPos(reason_margin + reason_width);
+                    ImGui::TextUnformatted(reason.c_str());
+                    ImGui::PopTextWrapPos();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + reason_gap);
+                }
             }
             ImGui::Dummy(ImVec2(0.0f, 18.0f * dpi));
 
@@ -1277,6 +1325,10 @@ namespace
         }
 
         installing = false;
+        {
+            lock_guard<mutex> lock(install_error_mutex);
+            reported_install_error = install_error;
+        }
         if (!install_update)
         {
             launcher_result = outcome;
@@ -1346,6 +1398,11 @@ Updates::InstallResult Updates::TakeInstallResult()
     const InstallResult result = launcher_result;
     launcher_result            = InstallResult::None;
     return result;
+}
+
+const string& Updates::GetInstallError()
+{
+    return reported_install_error;
 }
 
 bool Updates::IsBusy()

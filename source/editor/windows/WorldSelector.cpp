@@ -46,6 +46,7 @@ namespace
     bool downloaded_and_extracted = false;
     bool download_failed          = false;
     bool download_failed_worlds   = false; // the failed step was the worlds, not the project package
+    string download_error;                 // why it failed, shown in the prompt
 
     const float card_rounding      = 8.0f;
     const float panel_rounding     = 8.0f;
@@ -1142,10 +1143,24 @@ namespace
         ImGui::TextDisabled("%s", text);
     }
 
-    void render_prompt_body(const char* body_0, const char* body_1, const char* primary_label, const char* secondary_label, void (*primary_action)(), void (*secondary_action)())
+    // margin on each side of the failure reason, and the gap above and below it
+    const float prompt_reason_margin = 28.0f;
+    const float prompt_reason_gap    = 4.0f;
+
+    void render_prompt_body(const char* body_0, const char* body_1, const string& reason, const char* primary_label, const char* secondary_label, void (*primary_action)(), void (*secondary_action)())
     {
         ImGui::SetCursorPosY(scaled(38.0f));
         prompt_text_centered(body_0);
+        if (!reason.empty())
+        {
+            // in full and in the regular text color, this is what a screenshot of a failed install has to show
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + scaled(prompt_reason_gap));
+            ImGui::SetCursorPosX(scaled(prompt_reason_margin));
+            ImGui::PushTextWrapPos(ImGui::GetWindowWidth() - scaled(prompt_reason_margin));
+            ImGui::TextUnformatted(reason.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + scaled(prompt_reason_gap));
+        }
         prompt_text_centered(body_1);
 
         ImGui::Dummy(ImVec2(0.0f, scaled(18.0f)));
@@ -1187,8 +1202,18 @@ namespace
         }
 
         update_colors();
+
+        // a failed install says why, the prompt grows to fit the reason
+        string reason;
+        float reason_height = 0.0f;
+        if (download_failed)
+        {
+            reason        = download_error.empty() ? "No reason was recorded, see logs/log.txt." : download_error;
+            reason_height = ImGui::CalcTextSize(reason.c_str(), nullptr, false, scaled(500.0f - prompt_reason_margin * 2.0f)).y + ImGui::GetStyle().ItemSpacing.y + scaled(prompt_reason_gap) * 2.0f;
+        }
+
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(scaled_vec(500.0f, 150.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(scaled(500.0f), scaled(150.0f) + reason_height), ImGuiCond_Always);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, scaled(panel_rounding));
         const bool project_failed = download_failed && !download_failed_worlds;
@@ -1201,20 +1226,20 @@ namespace
             const char* body_1 = "Download the project assets and the worlds from GitHub.";
             if (project_failed)
             {
-                body_0 = "The project assets download or extraction failed.";
-                body_1 = "See the log for details. Retry resumes any partial download.";
+                body_0 = "Installing the project assets failed.";
+                body_1 = "Retry resumes any partial download. The full log is logs/log.txt.";
             }
             else if (download_failed)
             {
-                body_0 = "The worlds download from GitHub failed.";
-                body_1 = "See the log for details. Retry fetches only what is missing.";
+                body_0 = "Downloading the worlds from GitHub failed.";
+                body_1 = "Retry fetches only what is missing. The full log is logs/log.txt.";
             }
             else if (prompt_missing_worlds_only)
             {
                 body_0 = "The world files are missing.";
                 body_1 = "Download them from GitHub into ../worlds, like a clone.";
             }
-            render_prompt_body(body_0, body_1, download_failed ? "Retry" : "Download", "Not now", download_and_extract, skip_download_prompt);
+            render_prompt_body(body_0, body_1, reason, download_failed ? "Retry" : "Download", "Not now", download_and_extract, skip_download_prompt);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
@@ -1877,6 +1902,7 @@ void WorldSelector::Tick()
     {
         download_failed          = true;
         download_failed_worlds   = result == Updates::InstallResult::WorldsFailed;
+        download_error           = Updates::GetInstallError();
         downloaded_and_extracted = Updates::IsProjectInstalled();
         visible_download_prompt  = true;
     }

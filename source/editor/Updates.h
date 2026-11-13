@@ -42,6 +42,8 @@ public:
     // first run, the launcher asks for whatever is missing on disk
     static void InstallContent(bool install_project, bool install_worlds);
     static InstallResult TakeInstallResult();
+    // why the last install failed (the step, the file and the system or curl error), empty when it did not fail
+    static const std::string& GetInstallError();
 
     static bool IsBusy();
     static bool IsPromptVisible();

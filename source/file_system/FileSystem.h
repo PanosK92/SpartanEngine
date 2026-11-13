@@ -67,10 +67,10 @@ namespace spartan
         static bool WriteFile(std::string_view path, std::string_view data);
         static bool ReadFile(std::string_view path, std::string& data);
 
-        // internet & archives
-        static bool DownloadFile(const std::string& url, const std::string& destination, std::function<void(float)> progress_callback);
+        // internet & archives, on failure error (when given) receives a one line reason that is specific enough to show the user
+        static bool DownloadFile(const std::string& url, const std::string& destination, std::function<void(float)> progress_callback, std::string* error = nullptr);
         static bool DownloadToString(const std::string& url, std::string& contents);
-        static bool ExtractArchive(const std::string& archive_path, const std::string& destination_path);
+        static bool ExtractArchive(const std::string& archive_path, const std::string& destination_path, std::string* error = nullptr);
         static bool CreateArchive(const std::string& archive_path, const std::vector<std::string>& paths_to_include);
         static std::string ComputeFileSha256(const std::string& path);
         static bool IsExecutableInPath(const std::string& executable);
