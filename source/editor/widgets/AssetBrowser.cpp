@@ -14,7 +14,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../widgets/FileDialog.h"
 #include "Viewport.h"
 #include "VisualScriptEditor.h"
+#include "WorldViewer.h"
 #include "../Editor.h"
+#include "../EditorHistory.h"
 #include "scripting/visual/VisualGraph.h"
 //================================
 
@@ -140,6 +142,37 @@ namespace
         }
     }
     
+    // the importer builds a model's hierarchy only when it decodes the file, a cached model would add nothing,
+    // so a second import copies the first one, sharing its geometry like a duplicate does
+    void import_model(Editor* editor, const string& file_path, const uint32_t flags)
+    {
+        if (shared_ptr<Mesh> cached = ResourceCache::GetByPath<Mesh>(file_path))
+        {
+            const vector<Entity*>& entities = World::GetEntities();
+            Entity* root                    = cached->GetRootEntity();
+            const bool root_alive           = root && find(entities.begin(), entities.end(), root) != entities.end();
+
+            // copies of a skinned model would share one pose
+            if (root_alive && !cached->IsSkinned() && cached->GetFlags() == flags)
+            {
+                Entity* clone = root->Clone();
+                clone->SetActive(true);
+                clone->SetPosition(math::Vector3::Zero);
+                editor_history::Created(clone);
+                editor->GetWidget<WorldViewer>()->SetSelectedEntity(clone);
+                return;
+            }
+
+            // the renders already drawing it keep the old mesh alive, the fresh import takes over the cache entry
+            ResourceCache::Remove(cached);
+        }
+
+        spartan::ThreadPool::AddTask([file_path, flags]()
+        {
+            spartan::ResourceCache::Load<spartan::Mesh>(file_path, flags);
+        });
+    }
+
     static void mesh_import_dialog(Editor* editor)
     {
         if (!mesh_import_dialog_is_visible)
@@ -182,10 +215,7 @@ namespace
             ImGui::EditorUi::push_primary_button();
             if (ImGui::Button("Import", ImVec2(button_width, 0.0f)))
             {
-                spartan::ThreadPool::AddTask([]()
-                {
-                    spartan::ResourceCache::Load<spartan::Mesh>(mesh_import_file_path, mesh_import_dialog_flags);
-                });
+                import_model(editor, mesh_import_file_path, mesh_import_dialog_flags);
                 mesh_import_dialog_is_visible = false;
             }
             ImGui::EditorUi::pop_primary_button();
