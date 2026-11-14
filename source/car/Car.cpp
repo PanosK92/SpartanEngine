@@ -38,6 +38,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/SpawnPoint.h"
 #include "../world/Prefab.h"
 #include "../io/pugixml.hpp"
+#include "../commands/console/ConsoleCommands.h"
+#include "../../data/shaders/shared_lighting.h"
 #include <mutex>
 //==========================================
 
@@ -97,6 +99,65 @@ namespace spartan
                 level = target;
             }
             return true;
+        }
+
+        TConsoleVar<float> cvar_brake_glow("car.brake_glow", 1.0f, "scales the glow of hot brake rotors, 1 is the physical blackbody luminance (visible at dusk and night, faint in daylight like the real thing), 0 turns it off");
+
+        // incandescence of an oxidised cast iron rotor (emissivity 0.85): planck's law integrated against the cie 1931 observer
+        // nits is the luminance, r and g the linear srgb color normalised to unit luminance, blue is zero over this whole range
+        // below 500 c the glow is under 0.003 nits, darker than anything else on screen, a rotor reads red hot from about 650 c
+        struct BrakeGlowSample
+        {
+            float celsius;
+            float nits;
+            float r;
+            float g;
+        };
+        constexpr BrakeGlowSample brake_glow_table[] =
+        {
+            {  500.0f,     0.0026f, 4.704f, 0.000f },
+            {  550.0f,     0.0156f, 4.704f, 0.000f },
+            {  600.0f,     0.0778f, 4.640f, 0.019f },
+            {  650.0f,     0.3287f, 4.502f, 0.060f },
+            {  700.0f,     1.2066f, 4.364f, 0.101f },
+            {  750.0f,     3.9230f, 4.226f, 0.142f },
+            {  800.0f,    11.4847f, 4.093f, 0.182f },
+            {  850.0f,    30.6844f, 3.963f, 0.220f },
+            {  900.0f,    75.6656f, 3.839f, 0.257f },
+            {  950.0f,   173.8516f, 3.720f, 0.292f },
+            { 1000.0f,   375.1868f, 3.607f, 0.326f },
+            { 1100.0f,  1486.7486f, 3.397f, 0.389f },
+            { 1200.0f,  4920.9958f, 3.207f, 0.445f },
+            { 1300.0f, 14064.7893f, 3.037f, 0.495f },
+        };
+        // relative change in luminance worth a material upload, slower drifts are invisible
+        constexpr float brake_glow_update_ratio = 0.02f;
+
+        // luminance in nits and color of a rotor at a temperature, 0 below the table
+        float get_brake_glow(float celsius, float& r, float& g)
+        {
+            constexpr size_t count = sizeof(brake_glow_table) / sizeof(brake_glow_table[0]);
+            r = 0.0f;
+            g = 0.0f;
+            if (!std::isfinite(celsius) || celsius <= brake_glow_table[0].celsius)
+            {
+                return 0.0f;
+            }
+
+            celsius = std::min(celsius, brake_glow_table[count - 1].celsius);
+            size_t upper = 1;
+            while (upper < count - 1 && brake_glow_table[upper].celsius < celsius)
+            {
+                upper++;
+            }
+
+            // luminance grows exponentially with temperature, so it is interpolated in log space
+            const BrakeGlowSample& a = brake_glow_table[upper - 1];
+            const BrakeGlowSample& b = brake_glow_table[upper];
+            const float t = (celsius - a.celsius) / (b.celsius - a.celsius);
+            r = a.r + (b.r - a.r) * t;
+            g = a.g + (b.g - a.g) * t;
+            return expf(logf(a.nits) + (logf(b.nits) - logf(a.nits)) * t);
         }
 
         float get_car_lower_extent(const car::car_preset& preset)
@@ -2046,6 +2107,40 @@ namespace spartan
         }
     }
 
+    void Car::TickBrakeGlow()
+    {
+        // the rotors glow only while the simulation heats them, in edit mode they are cold metal
+        Physics* physics      = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
+        const bool simulated  = physics && Engine::IsFlagSet(EngineMode::Playing) && CarPhysics::Get(*physics).GetVehicleSimulation();
+        const float gain      = std::max(cvar_brake_glow.GetValue(), 0.0f);
+        for (int i = 0; i < 4; i++)
+        {
+            Material* material = m_brake_rotors[i].get();
+            if (!material)
+            {
+                continue;
+            }
+
+            float r = 0.0f;
+            float g = 0.0f;
+            const float celsius = simulated ? CarPhysics::Get(*physics).GetWheelBrakeTemp(static_cast<WheelIndex>(i)) : 0.0f;
+            const float nits    = get_brake_glow(celsius, r, g) * gain;
+            const float applied = m_brake_glow_nits[i];
+            if (nits == applied || (nits > 0.0f && applied > 0.0f && fabsf(nits - applied) < applied * brake_glow_update_ratio))
+            {
+                continue;
+            }
+            m_brake_glow_nits[i] = nits;
+
+            // a flat emissive color is in units of the texture emission scale, zero switches the emission off
+            const float scale = nits / lighting::lighting_emissive_nits_texture;
+            material->SetPropertyRuntime(MaterialProperty::EmissiveColorR, r * scale);
+            material->SetPropertyRuntime(MaterialProperty::EmissiveColorG, g * scale);
+            material->SetPropertyRuntime(MaterialProperty::EmissiveColorB, 0.0f);
+            material->SetPropertyRuntime(MaterialProperty::EmissiveIntensity, 1.0f);
+        }
+    }
+
     void Car::BindBodyParts()
     {
         m_openings.clear();
@@ -2786,6 +2881,32 @@ namespace spartan
         CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
         CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
         CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
+
+        // the wheel clones share the cached rotor material, each rotor gets its own so it can glow with its own brake
+        Entity* wheels[4] = { wheel_fl, wheel_fr, wheel_rl, wheel_rr };
+        for (int i = 0; i < 4; i++)
+        {
+            m_brake_rotors[i]    = nullptr;
+            m_brake_glow_nits[i] = 0.0f;
+
+            std::vector<Entity*> parts = { wheels[i] };
+            wheels[i]->GetDescendants(&parts);
+            for (Entity* part : parts)
+            {
+                Render* render = part->GetComponent<Render>();
+                if (!render || !render->GetMaterial() || to_lower_copy(part->GetObjectName()).find("rotor") == std::string::npos)
+                {
+                    continue;
+                }
+
+                const std::string resource_name = "car_" + std::to_string(vehicle_ent->GetObjectId()) + "_brake_rotor_" + std::to_string(i) + std::string(EXTENSION_MATERIAL);
+                std::shared_ptr<Material> material = render->GetMaterial()->Clone(resource_name);
+                material->SetPersistent(false);
+                render->SetMaterial(material);
+                m_brake_rotors[i] = material;
+                break;
+            }
+        }
     }
 
     void Car::CreatePropWheels(Entity* root, const std::vector<Entity*>& baked_wheel_entities)
@@ -2986,6 +3107,7 @@ namespace spartan
         }
 
         TickLamps();
+        TickBrakeGlow();
 
         if (m_dyno)
         {

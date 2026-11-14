@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+<World name="roads_example" description="A small road network: a ring and four avenues meeting at a junction, with lane markings, Lua traffic that keeps its distance and a SplineFollower bus (Up/Down speed limit, Space stops the red car)">
+ <OwnedResources>
+  <Resource file="materials/material_ground.xml" />
+  <Resource file="materials/material_ground_2.xml" />
+  <Resource file="materials/roads_bus.xml" />
+  <Resource file="materials/roads_example_asphalt.xml" />
+  <Resource file="materials/roads_example_road_paint.xml" />
+  <Resource file="materials/roads_glass.xml" />
+  <Resource file="materials/roads_paint_black.xml" />
+  <Resource file="materials/roads_paint_blue.xml" />
+  <Resource file="materials/roads_paint_red.xml" />
+  <Resource file="materials/roads_paint_teal.xml" />
+  <Resource file="materials/roads_paint_white.xml" />
+  <Resource file="materials/roads_paint_yellow.xml" />
+  <Resource file="materials/roads_tyre.xml" />
+  <Resource file="textures/albedo.texture" />
+  <Resource file="textures/albedo_2.texture" />
+  <Resource file="textures/asphalt_track_diff_4k.texture" />
+  <Resource file="textures/asphalt_track_nor_gl_4k.texture" />
+  <Resource file="textures/material_ground_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/material_ground_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/normal.texture" />
+  <Resource file="textures/normal_2.texture" />
+  <Resource file="textures/roads_example_asphalt_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/roads_example_road_paint_packed_slot0.tex_packed.texture" />
+ </OwnedResources>
+ <Environment utc_days="9664.9499999880791" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="14 2 9" rotation="0 -0.300706 0 0.953717" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.772391 0" rotation="-1.8205e-05 0 0 1" scale="1 1 1">
+    <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.609797 0.0661207 -0.0511589 0.788136" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_ground_2" material_path="./project/roads_example_resources/materials/material_ground_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="roads" id="14249790076624857746" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="ring_road" id="14385047812506819554" active="true" position="70 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="roads_example_asphalt" material_path="./project/roads_example_resources/materials/roads_example_asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <spline show_racing_line="false" closed_loop="true" resolution="20" road_width="9" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+    <Entity name="spline_point_0" id="14384538926606070206" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="14384541792054421146" active="true" position="-5.33 0 17.22" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="14384548393644182678" active="true" position="-20.5 0 31.82" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_3" id="14384545115402028071" active="true" position="-43.21 0 41.57" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_4" id="14384522865577353525" active="true" position="-70 0 45" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_5" id="14384522284178647610" active="true" position="-96.79 0 41.57" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_6" id="14384519715955476253" active="true" position="-119.5 0 31.82" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_7" id="14384509549121497833" active="true" position="-134.67 0 17.22" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_8" id="14384506260507105723" active="true" position="-140 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_9" id="14384527532021101802" active="true" position="-134.67 0 -17.22" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_10" id="14384527074449730029" active="true" position="-119.5 0 -31.82" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_11" id="14384517040847639099" active="true" position="-96.79 0 -41.57" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_12" id="14384515924872695221" active="true" position="-70 0 -45" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_13" id="14384531070864707766" active="true" position="-43.21 0 -41.57" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_14" id="14385000833287225111" active="true" position="-20.5 0 -31.82" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_15" id="14384999791398987318" active="true" position="-5.33 0 -17.22" rotation="0 0 0 1" scale="1 1 1" />
+   </Entity>
+   <Entity name="avenue_north" id="2887081386161154254" active="true" position="0 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="roads_example_asphalt" material_path="./project/roads_example_resources/materials/roads_example_asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <spline show_racing_line="false" closed_loop="false" resolution="20" road_width="9" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+    <Entity name="spline_point_0" id="3240244479221536267" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="3240263503250830107" active="true" position="0 0 20" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="3240238343568313001" active="true" position="0 0 40.5" rotation="0 0 0 1" scale="1 1 1" />
+   </Entity>
+   <Entity name="avenue_south" id="2958523462838231189" active="true" position="0 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="roads_example_asphalt" material_path="./project/roads_example_resources/materials/roads_example_asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <spline show_racing_line="false" closed_loop="false" resolution="20" road_width="9" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+    <Entity name="spline_point_0" id="3276404737559753736" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="3276406798595499466" active="true" position="0 0 -20" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="3276409569777309437" active="true" position="0 0 -40.5" rotation="0 0 0 1" scale="1 1 1" />
+   </Entity>
+   <Entity name="avenue_east" id="3362196084930921122" active="true" position="0 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="roads_example_asphalt" material_path="./project/roads_example_resources/materials/roads_example_asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <spline show_racing_line="false" closed_loop="false" resolution="20" road_width="9" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+    <Entity name="spline_point_0" id="3278526061962469428" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="3278749162069939536" active="true" position="20 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="3278751852606855173" active="true" position="40 0 6" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_3" id="3278747617082414873" active="true" position="65.5 0 0" rotation="0 0 0 1" scale="1 1 1" />
+   </Entity>
+   <Entity name="avenue_west" id="3394992099768022532" active="true" position="0 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="roads_example_asphalt" material_path="./project/roads_example_resources/materials/roads_example_asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <spline show_racing_line="false" closed_loop="false" resolution="20" road_width="9" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+    <Entity name="spline_point_0" id="3268604385254571539" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="3268601064430059908" active="true" position="-20 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="3268606463940825291" active="true" position="-40 0 -6" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_3" id="3268609139257714132" active="true" position="-65.5 0 0" rotation="0 0 0 1" scale="1 1 1" />
+   </Entity>
+  </Entity>
+  <Entity name="traffic" id="15872411030304859518" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="car_1" id="15931926634800807947" active="true" position="70 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body" id="922414235481681203" active="true" position="0 0.62 0" rotation="0 0 0 1" scale="1.8 0.62 4.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_red" material_path="project/roads_example_resources/materials/roads_paint_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="923277320922626968" active="true" position="0 1.15 -0.25" rotation="0 0 0 1" scale="1.62 0.44 2.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof" id="923189786915275889" active="true" position="0 1.41 -0.25" rotation="0 0 0 1" scale="1.56 0.08 1.96">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_red" material_path="project/roads_example_resources/materials/roads_paint_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="923243285280414099" active="true" position="0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="923531867229037790" active="true" position="-0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="923394633593018542" active="true" position="0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="922940974352241892" active="true" position="-0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="car_2" id="15652898375778554628" active="true" position="64 0.12 77" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body" id="922885797381262261" active="true" position="0 0.62 0" rotation="0 0 0 1" scale="1.8 0.62 4.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_blue" material_path="project/roads_example_resources/materials/roads_paint_blue.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="922901689665201010" active="true" position="0 1.15 -0.25" rotation="0 0 0 1" scale="1.62 0.44 2.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof" id="923131448379625554" active="true" position="0 1.41 -0.25" rotation="0 0 0 1" scale="1.56 0.08 1.96">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_blue" material_path="project/roads_example_resources/materials/roads_paint_blue.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="923155828261203281" active="true" position="0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="923096651880872614" active="true" position="-0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912860602059019503" active="true" position="0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912886033585373624" active="true" position="-0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="car_3" id="15716150691227375789" active="true" position="49 0.12 92" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body" id="912757050755515709" active="true" position="0 0.62 0" rotation="0 0 0 1" scale="1.8 0.62 4.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_white" material_path="project/roads_example_resources/materials/roads_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="912821917217473960" active="true" position="0 1.15 -0.25" rotation="0 0 0 1" scale="1.62 0.44 2.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof" id="913081547214606011" active="true" position="0 1.41 -0.25" rotation="0 0 0 1" scale="1.56 0.08 1.96">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_white" material_path="project/roads_example_resources/materials/roads_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912959989789815173" active="true" position="0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912989092828466141" active="true" position="-0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912536211287466264" active="true" position="0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912530022155196865" active="true" position="-0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="car_4" id="15781812019513323942" active="true" position="-70 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body" id="912435605686102294" active="true" position="0 0.62 0" rotation="0 0 0 1" scale="1.8 0.62 4.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_yellow" material_path="project/roads_example_resources/materials/roads_paint_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="912675924110092706" active="true" position="0 1.15 -0.25" rotation="0 0 0 1" scale="1.62 0.44 2.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof" id="912700675516936257" active="true" position="0 1.41 -0.25" rotation="0 0 0 1" scale="1.56 0.08 1.96">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_yellow" material_path="project/roads_example_resources/materials/roads_paint_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912591765420538088" active="true" position="0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="912618361389309413" active="true" position="-0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913550887589489715" active="true" position="0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913582285811408506" active="true" position="-0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="car_5" id="13359855999944838153" active="true" position="-64 0.12 43" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body" id="913514100241043767" active="true" position="0 0.62 0" rotation="0 0 0 1" scale="1.8 0.62 4.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_teal" material_path="project/roads_example_resources/materials/roads_paint_teal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="913726336635680475" active="true" position="0 1.15 -0.25" rotation="0 0 0 1" scale="1.62 0.44 2.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof" id="913773419751805231" active="true" position="0 1.41 -0.25" rotation="0 0 0 1" scale="1.56 0.08 1.96">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_teal" material_path="project/roads_example_resources/materials/roads_paint_teal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913660208762686458" active="true" position="0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913676586967036183" active="true" position="-0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913178500581264289" active="true" position="0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913242439174126376" active="true" position="-0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="car_6" id="13385377729838258109" active="true" position="-49 0.12 28" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body" id="913105630985877069" active="true" position="0 0.62 0" rotation="0 0 0 1" scale="1.8 0.62 4.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_black" material_path="project/roads_example_resources/materials/roads_paint_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="913142669555011579" active="true" position="0 1.15 -0.25" rotation="0 0 0 1" scale="1.62 0.44 2.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof" id="913423623739142444" active="true" position="0 1.41 -0.25" rotation="0 0 0 1" scale="1.56 0.08 1.96">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_paint_black" material_path="project/roads_example_resources/materials/roads_paint_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913263269655283593" active="true" position="0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913317624967183115" active="true" position="-0.84 0.33 1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="914239281739984525" active="true" position="0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="914177044894587380" active="true" position="-0.84 0.33 -1.35" rotation="0 0 0.707107 0.707107" scale="0.66 0.26 0.66">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="bus" id="13490471908496343401" active="true" position="20 0.12 60" rotation="0 0 0 1" scale="1 1 1">
+    <spline_follower spline_entity_id="3362196084930921122" speed="7" follow_mode="2" align_to_spline="true" flip_forward="false" animate_wheels="true" wheel_radius="0.5" max_steer_angle="35" />
+    <Entity name="body" id="914196829050281211" active="true" position="0 1.75 0" rotation="0 0 0 1" scale="2.5 2.5 11">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_bus" material_path="project/roads_example_resources/materials/roads_bus.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="windows" id="914423923649840542" active="true" position="0 2.2 0.1" rotation="0 0 0 1" scale="2.52 0.85 10.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="roads_glass" material_path="project/roads_example_resources/materials/roads_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="914468734971436996" active="true" position="1.15 0.5 3.8" rotation="0 0 0.707107 0.707107" scale="1 0.32 1">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="914372945496240474" active="true" position="-1.15 0.5 3.8" rotation="0 0 0.707107 0.707107" scale="1 0.32 1">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="914388980642863813" active="true" position="1.15 0.5 -3.6" rotation="0 0 0.707107 0.707107" scale="1 0.32 1">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wheel" id="913958392224482444" active="true" position="-1.15 0.5 -3.6" rotation="0 0 0.707107 0.707107" scale="1 0.32 1">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="roads_tyre" material_path="project/roads_example_resources/materials/roads_tyre.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+  </Entity>
+ </Entities>
+</World>

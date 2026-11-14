@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<World name="ui_example" description="Game UI from Lua: a Hud health bar with a damage trail, prompts and a Tab menu, Text3D signs and a score board, and a training dummy with a world space health bar (E hits it)">
+ <OwnedResources>
+  <Resource file="materials/material_ground.xml" />
+  <Resource file="materials/ui_bar.xml" />
+  <Resource file="materials/ui_dark.xml" />
+  <Resource file="materials/ui_dummy.xml" />
+  <Resource file="materials/ui_pad_heal.xml" />
+  <Resource file="materials/ui_pad_hurt.xml" />
+  <Resource file="materials/ui_stone.xml" />
+  <Resource file="materials/ui_text.xml" />
+  <Resource file="textures/albedo.texture" />
+  <Resource file="textures/material_ground_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/normal.texture" />
+ </OwnedResources>
+ <Environment utc_days="9664.9499999880791" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2 -4" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
+    <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.609797 0.0661207 -0.0511589 0.788136" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_ground" material_path="./project/ui_example_resources/materials/material_ground.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="arena" id="14744929231328674169" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="plaza" id="16132656676601142086" active="true" position="0 0.13 2" rotation="0 0 0 1" scale="26 0.04 26">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ui_stone" material_path="project/ui_example_resources/materials/ui_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="heal_pad" id="16133342282552159209" active="true" position="-4.5 0.16 0.5" rotation="0 0 0 1" scale="3.2 0.04 3.2">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ui_pad_heal" material_path="project/ui_example_resources/materials/ui_pad_heal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hurt_pad" id="16133620046176525456" active="true" position="4.5 0.16 0.5" rotation="0 0 0 1" scale="3.2 0.04 3.2">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ui_pad_hurt" material_path="project/ui_example_resources/materials/ui_pad_hurt.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="heal_post" id="16134101145123520646" active="true" position="-4.5 1 2.5" rotation="0 0 0 1" scale="0.1 1.7 0.1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="heal_sign" id="16133595614407263914" active="true" position="-4.5 2.05 2.5" rotation="0 0 0 1" scale="2 0.6 0.08">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hurt_post" id="16133543835054897553" active="true" position="4.5 1 2.5" rotation="0 0 0 1" scale="0.1 1.7 0.1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hurt_sign" id="16133046957194149974" active="true" position="4.5 2.05 2.5" rotation="0 0 0 1" scale="2 0.6 0.08">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dummy_base" id="16133063392237772373" active="true" position="0 0.25 6" rotation="0 0 0 1" scale="1.1 0.2 1.1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dummy_body" id="16133425950106494579" active="true" position="0 1.1 6" rotation="0 0 0 1" scale="0.7 1.5 0.7">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ui_dummy" material_path="project/ui_example_resources/materials/ui_dummy.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dummy_arms" id="16133458304002929871" active="true" position="0 1.55 6" rotation="0 0 0 1" scale="1.7 0.18 0.18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dummy" material_path="project/ui_example_resources/materials/ui_dummy.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dummy_head" id="16134188587396912341" active="true" position="0 2.15 6" rotation="0 0 0 1" scale="0.6 0.6 0.6">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ui_dummy" material_path="project/ui_example_resources/materials/ui_dummy.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dummy_bar_back" id="16134339531109992567" active="true" position="0 2.8 6" rotation="0 0 0 1" scale="1.5 0.18 0.04">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dummy_bar_fill" id="16134216459013418686" active="true" position="0 2.8 5.97" rotation="0 0 0 1" scale="1.4 0.1 0.04">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_bar" material_path="project/ui_example_resources/materials/ui_bar.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="board" id="16134637615711223787" active="true" position="0 4.9 12" rotation="0 0 0 1" scale="5.4 1.6 0.2">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="board_post_left" id="16134697639177305550" active="true" position="-2.4 2.1 12.05" rotation="0 0 0 1" scale="0.18 4.2 0.18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="board_post_right" id="16133943706881647410" active="true" position="2.4 2.1 12.05" rotation="0 0 0 1" scale="0.18 4.2 0.18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ui_dark" material_path="project/ui_example_resources/materials/ui_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="label_heal" id="17601010952656286196" active="true" position="-4.5 2.05 2.44" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ui_text" material_path="project/ui_example_resources/materials/ui_text.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="HEAL" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.400000006" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="label_hurt" id="3960088487640737418" active="true" position="4.5 2.05 2.44" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ui_text" material_path="project/ui_example_resources/materials/ui_text.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="HURT" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.400000006" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="board_title" id="4445390111929569536" active="true" position="0 5.2 11.88" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ui_text" material_path="project/ui_example_resources/materials/ui_text.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="SCORE" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.400000006" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="board_text" id="4515679747205024956" active="true" position="0 4.55 11.88" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ui_text" material_path="project/ui_example_resources/materials/ui_text.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="HITS 0   KNOCKDOWNS 0" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.340000004" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+  </Entity>
+ </Entities>
+</World>

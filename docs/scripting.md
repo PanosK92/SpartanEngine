@@ -118,6 +118,15 @@ Split large worlds into `<world>_<part>.lua` files loaded with `dofile`, as `gam
 
 `project/multiplayer_example_resources/scripts/multiplayer_example.lua` drives [`multiplayer_example.world`](../worlds/multiplayer_example.world), a server and client in one script. Run two instances and press play in both: H calls `Network.Host`, J calls `Network.Connect`. The server spawns a player for each `connected` event from `Network.Poll` and tells everyone with reliable `"spawn|id|x|z"` messages. Every peer clones the player template and adds a `NetworkSync` whose owner is that player's id. The owner moves its player with WASD and everyone else receives the transform. Space sends a pulse that the server relays to the other clients with `Network.Broadcast(data, true, peer)`. See [Networking](../source/network/README.md).
 
+A few more small worlds each show one system from Lua, with the keys listed at the top of their scripts:
+
+- [`ui_example.world`](../worlds/ui_example.world): game UI. `Hud` draws a health bar with a damage trail, prompts, a death screen and a Tab menu driven by the arrow keys. `Text3D:SetText` rewrites a score board, `Entity:SetActive` hides the 3D labels, and the training dummy's health bar is a cube scaled from one end.
+- [`cinematic_example.world`](../worlds/cinematic_example.world): `Sequencer.Play`, `Stop`, `IsPlaying`, `GetTime` and `GetDuration` around a five-shot cutscene.
+- [`roads_example.world`](../worlds/roads_example.world): `WorldSystems.SetLayeredRoads` at the top level of the script, and traffic placed with `Spline:GetTAtDistance`, `GetPoint` and `GetTangent`.
+- [`weather_example.world`](../worlds/weather_example.world): eases `World` time of day, rain, clouds and wind between presets, and restores them in `Stop`.
+- [`audio_example.world`](../worlds/audio_example.world): `AudioSource` playback, a moving source with Doppler pitch and a reverb `Volume`.
+- [`particles_example.world`](../worlds/particles_example.world): `ParticleSystem:SetEmissionRate` fades and burst pulses.
+
 ## API reference
 
 The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table` and `io` are available.

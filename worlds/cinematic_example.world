@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<World name="cinematic_example" description="A dusk monument and a glider on a spline, filmed by a five shot sequencer cutscene that the companion script plays from Lua (Enter replays, Backspace stops)">
+ <OwnedResources>
+  <Resource file="materials/cin_bronze.xml" />
+  <Resource file="materials/cin_glider.xml" />
+  <Resource file="materials/cin_lamp.xml" />
+  <Resource file="materials/cin_stone_dark.xml" />
+  <Resource file="materials/cin_stone_light.xml" />
+  <Resource file="materials/material_ground.xml" />
+  <Resource file="textures/albedo.texture" />
+  <Resource file="textures/material_ground_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/normal.texture" />
+ </OwnedResources>
+ <Environment utc_days="9665.2506397366524" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2 -10" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
+    <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="-0.00090951 0.870061 0.00160532 0.492941" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <script file_path="project/scripts/sun.lua" rot_pitch="0" rot_roll="0" override_rotation="false" Initialize="" rot_yaw="0" volumetric="false" preset="dusk" />
+  </Entity>
+  <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_ground" material_path="./project/cinematic_example_resources/materials/material_ground.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="monument" id="2947485786999230901" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="plaza" id="13449167380946966077" active="true" position="0 0.2 0" rotation="0 0 0 1" scale="34 0.2 34">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="terrace" id="13448891695840208440" active="true" position="0 0.45 0" rotation="0 0 0 1" scale="24 0.3 24">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth" id="13448939124175539638" active="true" position="0 0.9 0" rotation="0 0 0 1" scale="5 0.6 5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="obelisk" id="13449819381569773329" active="true" position="0 7.2 0" rotation="0 0 0 1" scale="1.6 12 1.6">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pyramidion" id="13449941285560440705" active="true" position="0 13.9 0" rotation="0 0 0 1" scale="1.6 1.4 1.6">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cin_bronze" material_path="project/cinematic_example_resources/materials/cin_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_1" id="13450248406527220008" active="true" position="9.239 3.6 3.827" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_1" id="13450230529580569380" active="true" position="9.239 6.8 3.827" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_1" id="13450179477052864572" active="true" position="9.239 7.25 3.827" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_2" id="13449497993372135450" active="true" position="3.827 3.6 9.239" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_2" id="13449585278932250331" active="true" position="3.827 6.8 9.239" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_2" id="13449984573948946015" active="true" position="3.827 7.25 9.239" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_3" id="13449443787180724954" active="true" position="-3.827 3.6 9.239" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_3" id="13450733404182646663" active="true" position="-3.827 6.8 9.239" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_3" id="13450393833321570248" active="true" position="-3.827 7.25 9.239" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_4" id="13450365459935730609" active="true" position="-9.239 3.6 3.827" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_4" id="13450647659373486039" active="true" position="-9.239 6.8 3.827" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_4" id="13450793917874537970" active="true" position="-9.239 7.25 3.827" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_5" id="13450603949311607622" active="true" position="-9.239 3.6 -3.827" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_5" id="13450466119877434777" active="true" position="-9.239 6.8 -3.827" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_5" id="13450024660144124792" active="true" position="-9.239 7.25 -3.827" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_6" id="13450114827122418948" active="true" position="-3.827 3.6 -9.239" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_6" id="13450345018907609235" active="true" position="-3.827 6.8 -9.239" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_6" id="13450561374946435982" active="true" position="-3.827 7.25 -9.239" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_7" id="13450513106147383468" active="true" position="3.827 3.6 -9.239" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_7" id="13451177811700523505" active="true" position="3.827 6.8 -9.239" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_7" id="13451366266368128518" active="true" position="3.827 7.25 -9.239" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_8" id="13451172721023410504" active="true" position="9.239 3.6 -3.827" rotation="0 0 0 1" scale="0.9 6 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cin_stone_light" material_path="project/cinematic_example_resources/materials/cin_stone_light.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="capital_8" id="13451562273617837114" active="true" position="9.239 6.8 -3.827" rotation="0 0 0 1" scale="1.3 0.4 1.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_stone_dark" material_path="project/cinematic_example_resources/materials/cin_stone_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_8" id="13451645186408036462" active="true" position="9.239 7.25 -3.827" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lamp_light_1" id="15350722137326614388" active="true" position="9.239 7.9 3.827" rotation="0 0 0 1" scale="1 1 1">
+    <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="2500" range="14" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+   <Entity name="lamp_light_2" id="15350572378154567164" active="true" position="-3.827 7.9 9.239" rotation="0 0 0 1" scale="1 1 1">
+    <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="2500" range="14" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+   <Entity name="lamp_light_3" id="15350571929645682147" active="true" position="-9.239 7.9 -3.827" rotation="0 0 0 1" scale="1 1 1">
+    <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="2500" range="14" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+   <Entity name="lamp_light_4" id="15351853328342926356" active="true" position="3.827 7.9 -9.239" rotation="0 0 0 1" scale="1 1 1">
+    <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="2500" range="14" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+  </Entity>
+  <Entity name="flight_path" id="16406165178796981551" active="true" position="16 8 0" rotation="0 0 0 1" scale="1 1 1">
+   <spline show_racing_line="false" closed_loop="true" resolution="20" road_width="8" curve_alpha="0.5" mesh_enabled="false" has_road_mesh="false" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+   <Entity name="spline_point_0" id="16406195783418148604" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_1" id="16406241213952010304" active="true" position="-2.14 2.6 8" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_2" id="16406237678012398030" active="true" position="-8 2.6 13.86" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_3" id="16406235659911252409" active="true" position="-16 0 16" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_4" id="16406248835894034303" active="true" position="-24 -2.6 13.86" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_5" id="16406254022574541275" active="true" position="-29.86 -2.6 8" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_6" id="16406246516723621543" active="true" position="-32 0 0" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_7" id="16406244115346856796" active="true" position="-29.86 2.6 -8" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_8" id="16406548884871760074" active="true" position="-24 2.6 -13.86" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_9" id="16406547729871485536" active="true" position="-16 0 -16" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_10" id="16406556008450876615" active="true" position="-8 -2.6 -13.86" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_11" id="16406546185043541144" active="true" position="-2.14 -2.6 -8" rotation="0 0 0 1" scale="1 1 1" />
+  </Entity>
+  <Entity name="glider" id="16115540639489345084" active="true" position="-9.31614 10.7964 -12.9866" rotation="0.0206421 0.892268 -0.0410056 0.449166" scale="1 1 1">
+   <spline_follower spline_entity_id="16406165178796981551" speed="9" follow_mode="1" align_to_spline="true" flip_forward="false" animate_wheels="false" wheel_radius="0" max_steer_angle="35" />
+   <Entity name="fuselage" id="16185762104308859380" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.5 0.4 1.8">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_glider" material_path="project/cinematic_example_resources/materials/cin_glider.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wing" id="16185618290384890666" active="true" position="0 0.05 0.15" rotation="0 0 0 1" scale="4.2 0.06 0.7">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_glider" material_path="project/cinematic_example_resources/materials/cin_glider.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="tailplane" id="16185160299509230079" active="true" position="0 0.05 -0.85" rotation="0 0 0 1" scale="1.3 0.05 0.35">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_glider" material_path="project/cinematic_example_resources/materials/cin_glider.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="fin" id="16175006641991290375" active="true" position="0 0.3 -0.85" rotation="0 0 0 1" scale="0.05 0.5 0.35">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cin_bronze" material_path="project/cinematic_example_resources/materials/cin_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beacon" id="16175026214213607796" active="true" position="0 -0.22 0.2" rotation="0 0 0 1" scale="0.14 0.14 0.14">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cin_lamp" material_path="project/cinematic_example_resources/materials/cin_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="sequencer_camera" id="5046773156177107982" active="true" position="29.5442 9 -5.20944" rotation="0.0254924 -0.642432 0.0213906 0.76562" scale="1 1 1">
+   <camera flags="0" preset="0" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="2" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.08210409" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+  </Entity>
+ </Entities>
+</World>

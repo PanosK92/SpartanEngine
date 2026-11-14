@@ -23,6 +23,8 @@ Audio runs on SDL3. Playback is the [`AudioSource`](../source/world/components/A
 
 `audio.ambience_volume` scales ambient sources.
 
+[`worlds/audio_example.world`](../worlds/audio_example.world) is a sound garden: a looping 3D fountain, a drone that flies past with Doppler, the same bell outside and inside a reverb `Volume`, and a 2D birdsong bed.
+
 ## Navigation
 
 A streamed Recast/Detour navigation mesh around the camera: 64 m tiles in an 11×11 window, built from terrain and static geometry, with DetourCrowd for pedestrian avoidance. Add a `Navigation` component; `Pedestrians` can use it. `Refresh()` rebuilds installed tiles in place after static geometry moves, such as a door opening. Lua scripts can query paths and drive crowd agents, see [`navigation_example.world`](../worlds/navigation_example.world). Details in [`source/navigation/README.md`](../source/navigation/README.md).
@@ -50,6 +52,8 @@ There is no lobby, NAT traversal, encryption, prediction or physics replication.
 
 The [`Spline`](../source/world/components/Spline.h) component is a Catmull-Rom spline that can extrude a profile into a road, wall or tube, conform to terrain, form junctions and place instanced props. `SplineFollower` moves an entity along a spline. Layered road materials and road details (markings, props) are optional world systems enabled from the companion script. The MCP bridge can author roads (`spline_create_road`, `spline_connect`, `spline_junction`, `spline_decorate`) and block out districts and cities.
 
+[`worlds/roads_example.world`](../worlds/roads_example.world) is a ring road and four avenues meeting at a junction. Its companion script enables layered asphalt and markings with `WorldSystems.SetLayeredRoads("roads", "project/materials/island_roads/", "roads_example")`, which applies to every spline under the `roads` entity. Lua cars drive the ring with `Spline:GetTAtDistance`, `GetPoint` and `GetTangent` and keep their distance, and a bus runs on a `SplineFollower` with no script.
+
 ## Terrain and vegetation
 
 The [`Terrain`](../source/world/components/Terrain.h) component builds a heightfield with sculpt layers, a physics heightfield, and GPU-scattered vegetation (grass, flowers, trees with impostors). The **Terrain** editor panel sculpts and paints. Tires deform soft terrain (`terrain.deformation*` cvars), and vehicles push vegetation aside.
@@ -58,9 +62,13 @@ The [`Terrain`](../source/world/components/Terrain.h) component builds a heightf
 
 The world's `Environment` holds date, latitude and longitude (which position the sun), time of day, clouds, rain, wind and puddles. Rain wets exposed surfaces, fills puddles, keeps covered areas dry and lowers tire grip. Atmospheric scattering, volumetric clouds and froxel fog render it; `r.atmosphere.mist_*` cvars add mist per world. The FFT ocean is part of the renderer and reacts to wind; boats and cars leave wakes (`ocean.wake*`). Ambient wildlife and atmosphere (birds, insects, dust) are optional world systems.
 
+[`worlds/weather_example.world`](../worlds/weather_example.world) is a small island with a shelter: number keys ease between clear, overcast, rain and storm, the arrows scrub the time of day and the wind, and the floor under the shelter stays dry.
+
 ## Particles
 
 The `ParticleSystem` component simulates and emits on the GPU, collides with the depth buffer, blends softly and supports flipbooks, bursts, turbulence and vortices. Effects can be saved and loaded as files.
+
+[`worlds/particles_example.world`](../worlds/particles_example.world) is a gallery of the built-in presets, one per pedestal. The companion script fades emitters on and off with `SetEmissionRate` and fires bursts as a short pulse of a high rate.
 
 ## Cinematics
 
@@ -71,7 +79,9 @@ The editor's **Sequencer** ([`source/editor/widgets/Sequencer.h`](../source/edit
 - **Channels** animate time scale, mixer gains, time of day, rain, clouds, wind, puddles, fades and letterboxing.
 - **Capture** renders frame sequences offline at a fixed timestep.
 
-Sequences are saved as `project/sequencer_<name>.xml` and played from Lua with `Sequencer.Play(name, entity)`; Plan uses this for shop entrances.
+Sequences are saved as `project/sequencer_<name>.xml` and played from Lua with `Sequencer.Play(name, entity)`; Plan uses this for shop entrances. The sequencer lives in the editor, so `Sequencer.IsAvailable()` is false in builds without it.
+
+[`worlds/cinematic_example.world`](../worlds/cinematic_example.world) is a five-shot cutscene around a dusk monument: a crane in, an orbit, a chase behind a glider on a `SplineFollower`, a shallow depth of field tilt up and a crane out. Its companion script plays `sequencer_cinematic_example.xml` shortly after play starts.
 
 ## XR
 

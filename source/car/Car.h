@@ -288,6 +288,8 @@ namespace spartan
         void ApplyLamps();
         void SwitchLamps();
         void TickLamps();
+        // drives the incandescence of each brake rotor from its simulated temperature
+        void TickBrakeGlow();
         // finds the opening and steering wheel parts in a freshly created body
         void BindBodyParts();
         void TickBodyParts();
@@ -356,6 +358,10 @@ namespace spartan
         float m_stop_flash_hold   = 0.0f;  // seconds the stop lamps keep flashing after the abs last worked
         float m_stop_flash_phase  = 0.0f;
         float m_steering_request  = 0.0f;
+
+        // every wheel owns its rotor material so each one glows with its own brake temperature
+        std::shared_ptr<Material> m_brake_rotors[4];
+        float m_brake_glow_nits[4] = {}; // last luminance applied to each rotor
 
         struct OpeningState
         {
