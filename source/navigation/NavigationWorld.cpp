@@ -54,9 +54,13 @@ namespace spartan
         std::vector<Source> sources;
         std::set<TileKey> installed;
         std::set<TileKey> failed;
+        std::set<TileKey> stale;
+        uint32_t generation = 0;
         struct Build
         {
             std::atomic<bool> done = false;
+            uint32_t generation = 0;
+            TileKey key{};
             navigation::TileData result;
         };
         std::shared_ptr<Build> pending;
@@ -158,14 +162,18 @@ namespace spartan
             }
             return true;
         }
+
+        void Scan();
     };
 
-    NavigationWorld::NavigationWorld() : m_impl(std::make_unique<Impl>())
+    void NavigationWorld::Impl::Scan()
     {
+        terrains.clear();
+        sources.clear();
         for (Entity* entity : World::GetEntities())
         {
             if (!entity || !entity->IsActive()) continue;
-            if (entity->GetComponent<Terrain>()) m_impl->terrains.push_back(entity->GetObjectId());
+            if (entity->GetComponent<Terrain>()) terrains.push_back(entity->GetObjectId());
             Render* render = entity->GetComponent<Render>();
             if (!render || !render->GetMesh() || Terrain::ParseTileIndex(entity) >= 0) continue;
             Physics* physics = nullptr;
@@ -178,8 +186,13 @@ namespace spartan
             if (moving || entity->IsDynamic() || !physics || !physics->IsStatic() || !physics->IsEnabled() || physics->IsKinematic() ||
                 physics->GetBodyType() == BodyType::Heightfield || physics->GetBodyType() == BodyType::Controller ||
                 physics->GetBodyType() == BodyType::Custom || physics->GetBodyType() == BodyType::Cloth) continue;
-            m_impl->sources.push_back({entity->GetObjectId(), render->GetBoundingBox()});
+            sources.push_back({entity->GetObjectId(), render->GetBoundingBox()});
         }
+    }
+
+    NavigationWorld::NavigationWorld() : m_impl(std::make_unique<Impl>())
+    {
+        m_impl->Scan();
         if (!m_impl->mesh.IsReady()) SP_LOG_ERROR("Navigation: could not initialize Detour");
         SP_LOG_INFO("Navigation: streaming island tiles, %u terrains and %u static mesh sources",
             static_cast<uint32_t>(m_impl->terrains.size()), static_cast<uint32_t>(m_impl->sources.size()));
@@ -196,6 +209,15 @@ namespace spartan
         return true;
     }
 
+    void NavigationWorld::Refresh()
+    {
+        m_impl->Scan();
+        m_impl->generation++;
+        m_impl->stale = m_impl->installed;
+        if (m_impl->pending) m_impl->stale.insert(m_impl->pending->key);
+        m_impl->failed.clear();
+    }
+
     void NavigationWorld::Tick(const Vector3& focus, float delta_time, bool debug_draw)
     {
         auto& s = *m_impl;
@@ -210,9 +232,12 @@ namespace spartan
                 if (s.mesh.Install(tile)) s.installed.insert({tile.x, tile.z});
                 else
                 {
+                    s.installed.erase({tile.x, tile.z});
                     s.failed.insert({tile.x, tile.z});
                     SP_LOG_ERROR("Navigation: tile %d, %d failed to build/install", tile.x, tile.z);
                 }
+                // A build gathered before the last Refresh still holds the old geometry.
+                if (s.pending->generation == s.generation) s.stale.erase({tile.x, tile.z});
                 s.debug_dirty = true;
             }
             s.pending.reset();
@@ -222,6 +247,7 @@ namespace spartan
             if (std::abs(it->first - cx) > retain_radius || std::abs(it->second - cz) > retain_radius)
             {
                 s.mesh.Remove(it->first, it->second);
+                s.stale.erase(*it);
                 it = s.installed.erase(it);
                 s.debug_dirty = true;
             }
@@ -240,12 +266,24 @@ namespace spartan
                 const int distance = (x - cx) * (x - cx) + (z - cz) * (z - cz);
                 if (!s.installed.count(key) && !s.failed.count(key) && distance < best) { next = key; best = distance; }
             }
+            // Then rebuild what a Refresh marked stale, closest first, while the old tiles stay in use.
+            if (best == std::numeric_limits<int>::max())
+            {
+                for (const TileKey& key : s.stale)
+                {
+                    if (std::abs(key.first - cx) > active_radius || std::abs(key.second - cz) > active_radius) continue;
+                    const int distance = (key.first - cx) * (key.first - cx) + (key.second - cz) * (key.second - cz);
+                    if (distance < best) { next = key; best = distance; }
+                }
+            }
             if (best != std::numeric_limits<int>::max())
             {
                 navigation::TileInput input;
                 if (s.Gather(next.first, next.second, input))
                 {
                     s.pending = std::make_shared<Impl::Build>();
+                    s.pending->generation = s.generation;
+                    s.pending->key = next;
                     const auto build = s.pending;
                     ThreadPool::AddTask([build, input = std::move(input)]()
                     {

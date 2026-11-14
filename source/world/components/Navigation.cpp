@@ -45,6 +45,65 @@ namespace spartan
             m_world = std::make_shared<NavigationWorld>();
     }
 
+    void Navigation::Refresh()
+    {
+        if (std::shared_ptr<NavigationWorld> world = GetWorld()) world->Refresh();
+    }
+
+    bool Navigation::ProjectPoint(math::Vector3& position) const
+    {
+        std::shared_ptr<NavigationWorld> world = GetWorld();
+        return world && world->Project(position);
+    }
+
+    bool Navigation::FindPath(const math::Vector3& from, const math::Vector3& to, std::vector<math::Vector3>& points) const
+    {
+        points.clear();
+        std::shared_ptr<NavigationWorld> world = GetWorld();
+        std::vector<navigation::Point> corners;
+        if (!world || !world->GetMesh().FindPath({from.x, from.y, from.z}, {to.x, to.y, to.z}, corners)) return false;
+        for (const navigation::Point& corner : corners) points.emplace_back(corner[0], corner[1], corner[2]);
+        return true;
+    }
+
+    int Navigation::AddAgent(const math::Vector3& position, float speed)
+    {
+        std::shared_ptr<NavigationWorld> world = GetWorld();
+        return world ? world->GetMesh().AddAgent({position.x, position.y, position.z}, speed) : -1;
+    }
+
+    void Navigation::RemoveAgent(int agent)
+    {
+        if (std::shared_ptr<NavigationWorld> world = GetWorld()) world->GetMesh().RemoveAgent(agent);
+    }
+
+    bool Navigation::MoveAgent(int agent, const math::Vector3& target)
+    {
+        std::shared_ptr<NavigationWorld> world = GetWorld();
+        return world && world->GetMesh().MoveTo(agent, {target.x, target.y, target.z});
+    }
+
+    bool Navigation::WanderAgent(int agent, float radius)
+    {
+        std::shared_ptr<NavigationWorld> world = GetWorld();
+        return world && world->GetMesh().Wander(agent, radius);
+    }
+
+    void Navigation::SetAgentSpeed(int agent, float speed)
+    {
+        if (std::shared_ptr<NavigationWorld> world = GetWorld()) world->GetMesh().SetAgentSpeed(agent, speed);
+    }
+
+    bool Navigation::GetAgent(int agent, math::Vector3& position, math::Vector3& velocity) const
+    {
+        std::shared_ptr<NavigationWorld> world = GetWorld();
+        navigation::Point p, v;
+        if (!world || !world->GetMesh().GetAgent(agent, p, v)) return false;
+        position = math::Vector3(p[0], p[1], p[2]);
+        velocity = math::Vector3(v[0], v[1], v[2]);
+        return true;
+    }
+
     void Navigation::Tick()
     {
         if (!m_enabled || World::IsLoadingFromFile() || World::IsPreparing()) return;

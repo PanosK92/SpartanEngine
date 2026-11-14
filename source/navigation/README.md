@@ -29,7 +29,11 @@ default light blue, at 35% opacity and 15 cm above its actual height to avoid z-
 The overlay respects scene occlusion and works in edit mode, during play and while paused.
 Edit-mode preview builds the nearby tiles without simulating agents. With Follow Camera disabled, the entity's world position
 is the tile streaming focus. **Rebuild Navmesh** discards the old runtime and resnapshots
-static geometry during play or debug preview. There is no persistent bake cache or automatic obstacle rebuild.
+static geometry during play or debug preview. `Navigation::Refresh()` (Lua `nav:Refresh()`) is the lighter
+option: it resnapshots sources and rebuilds installed tiles in place, nearest first, while crowd agents keep
+their slots and replan. There is no persistent bake cache and no automatic change detection; call `Refresh`
+after moving static geometry. Lua also gets `FindPath`, `ProjectPoint` and crowd agent control, see
+`worlds/navigation_example.world`.
 
 Navigation is registered with the component factory, XML serialization, cloning/undo attribute
 system and **Add Component > Gameplay > Navigation**. Its Start/Stop/Tick lifecycle owns tile

@@ -16,6 +16,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Animator.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Light.h"
+#include "../world/components/Navigation.h"
 #include "../world/components/ParticleSystem.h"
 #include "../world/components/Physics.h"
 #include "../world/components/Ragdoll.h"
@@ -609,6 +610,67 @@ namespace spartan::scripting
             );
         }
 
+        void register_navigation(sol::state_view state)
+        {
+            visual::usertype<Navigation>(state, "Navigation",
+                sol::base_classes, sol::bases<Component>(),
+                "GetEnabled",    &Navigation::GetEnabled,
+                "SetEnabled",    &Navigation::SetEnabled,
+                "GetDebugDraw",  &Navigation::GetDebugDraw,
+                "SetDebugDraw",  &Navigation::SetDebugDraw,
+                "Refresh",       &Navigation::Refresh,
+                "RemoveAgent",   &Navigation::RemoveAgent,
+                "MoveAgent",     &Navigation::MoveAgent,
+                "WanderAgent",   &Navigation::WanderAgent,
+                "SetAgentSpeed", &Navigation::SetAgentSpeed,
+                // agent id, or -1 when there is no navmesh under the position yet
+                "AddAgent",      [](Navigation& self, const Vector3& position, sol::optional<float> speed) { return self.AddAgent(position, speed.value_or(3.5f)); },
+                // the nearest walkable point, or nil
+                "ProjectPoint",  [](Navigation& self, Vector3 position) -> sol::optional<Vector3>
+                {
+                    if (!self.ProjectPoint(position))
+                    {
+                        return sol::nullopt;
+                    }
+                    return position;
+                },
+                "GetAgentPosition", [](Navigation& self, int agent) -> sol::optional<Vector3>
+                {
+                    Vector3 position, velocity;
+                    if (!self.GetAgent(agent, position, velocity))
+                    {
+                        return sol::nullopt;
+                    }
+                    return position;
+                },
+                "GetAgentVelocity", [](Navigation& self, int agent) -> sol::optional<Vector3>
+                {
+                    Vector3 position, velocity;
+                    if (!self.GetAgent(agent, position, velocity))
+                    {
+                        return sol::nullopt;
+                    }
+                    return velocity;
+                },
+                // the corners of the shortest path as a list of Vector3, or nil when unreachable
+                "FindPath",      [](Navigation& self, const Vector3& from, const Vector3& to) -> sol::object
+                {
+                    vector<Vector3> points;
+                    if (!self.FindPath(from, to, points))
+                    {
+                        return sol::lua_nil;
+                    }
+                    sol::state_view lua = get_state();
+                    sol::table result   = lua.create_table(static_cast<int>(points.size()), 0);
+                    for (size_t i = 0; i < points.size(); i++)
+                    {
+                        result[i + 1] = points[i];
+                    }
+                    return result;
+                }
+            );
+        }
+
         void register_camera(sol::state_view state)
         {
             visual::enumeration(state, "CameraExposureMode",
@@ -654,6 +716,7 @@ namespace spartan::scripting
         register_text_3d(state);
         register_animator(state);
         register_ragdoll(state);
+        register_navigation(state);
         register_camera(state);
     }
 
@@ -670,6 +733,7 @@ namespace spartan::scripting
             case ComponentType::Animator:       return sol::make_object(state, static_cast<Animator*>(component));
             case ComponentType::Camera:         return sol::make_object(state, static_cast<Camera*>(component));
             case ComponentType::Light:          return sol::make_object(state, static_cast<Light*>(component));
+            case ComponentType::Navigation:     return sol::make_object(state, static_cast<Navigation*>(component));
             case ComponentType::ParticleSystem: return sol::make_object(state, static_cast<ParticleSystem*>(component));
             case ComponentType::Physics:        return sol::make_object(state, static_cast<Physics*>(component));
             case ComponentType::Ragdoll:        return sol::make_object(state, static_cast<Ragdoll*>(component));

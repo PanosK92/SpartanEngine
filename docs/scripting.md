@@ -114,6 +114,8 @@ Split large worlds into `<world>_<part>.lua` files loaded with `dofile`, as `gam
 
 `project/physics_example_resources/scripts/physics_example.lua` is a small, self-contained companion script to read first. It moves kinematic bodies with `SetPosition` and `SetRotation`, fires a ball with `Physics:SetBodyTransform` and `SetLinearVelocity`, spawns animated ragdoll dummies, and records the dynamic bodies in `Start` so it can put them back later. It also shows how to make something clickable: `World.Pick` finds the podium button under the cursor, `World.SetHighlight` outlines it, and a left click resets and replays that experiment. The world is described in [Physics and vehicles](physics_and_vehicles.md#example-world).
 
+`project/navigation_example_resources/scripts/navigation_example.lua` drives [`navigation_example.world`](../worlds/navigation_example.world), a top-down arena. It fixes the view with `World.SetActiveCamera`, spawns crowd agents with `Navigation:AddAgent` and lets them wander. A click on the floor sends every agent there and draws their `FindPath` routes with `Debug.DrawTriangle`. A click on an orange door opens or closes it and calls `Navigation:Refresh`, so the agents reroute. C releases a chaser that hunts the others, N toggles the navmesh overlay and R respawns.
+
 ## API reference
 
 The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table` and `io` are available.
@@ -140,6 +142,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `ResourceCache` | `LoadMesh(path, flags)` |
 | `Sequencer` | `IsAvailable`, `Play(name, entity)`, `Stop`, `IsPlaying`, `GetTime`, `GetDuration` (editor builds) |
 | `Hud` | Screen-space drawing, see below |
+| `Debug` | `DrawLine`, `DrawTriangle`, `DrawCircle`: world-space overlays for one frame, see [Components](#components) |
 | `CarTuning` | Player car, parts, setup, service, wear, save and load, see below |
 
 ### Entity
@@ -152,7 +155,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | State | `IsActive`, `GetActive`, `SetActive`, `IsDynamic` |
 | Components | `GetComponent(ComponentType.X)`, `AddComponent(ComponentType.X)`, `RemoveComponent(ComponentType.X)`, `GetAllComponents`, `GetComponentCount` |
 
-`ComponentType` values reachable from Lua: `AudioSource`, `Camera`, `Light`, `Physics`, `Render`, `Terrain`, `Volume`, `Script`, `ParticleSystem`, `Spline`, `Text3D`, `Animator`, `Ragdoll`. `GetComponent` returns the typed component or `nil`.
+`ComponentType` values reachable from Lua: `AudioSource`, `Camera`, `Light`, `Physics`, `Render`, `Terrain`, `Volume`, `Script`, `ParticleSystem`, `Spline`, `Text3D`, `Animator`, `Ragdoll`, `Navigation`. `GetComponent` returns the typed component or `nil`.
 
 ### Components
 
@@ -168,6 +171,9 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `ParticleSystem` | Emission rate, lifetime, size, gravity, direction cone, colors, texture, bursts, effect load and save |
 | `Spline` | `GetPoint(t)`, `GetTangent(t)`, `GetLength`, `GetTAtDistance(d)`, control points, road mesh generation |
 | `Text3D` | Text, font, size, alignment, `GenerateMesh` |
+| `Navigation` | `Get/SetEnabled`, `Get/SetDebugDraw`, `Refresh`, `ProjectPoint(pos)`, `FindPath(from, to)` (table of points or `nil`), crowd agents: `AddAgent(pos, speed)` returns an id or -1, `RemoveAgent`, `MoveAgent(id, pos)`, `WanderAgent`, `SetAgentSpeed`, `GetAgentPosition`, `GetAgentVelocity` |
+
+`Debug.DrawLine(from, to, color)`, `Debug.DrawTriangle(a, b, c, color)` and `Debug.DrawCircle(center, radius, color)` draw world-space overlays for one frame, in edit and play. Colors are `Vector4`. Lift them slightly above surfaces or the depth test hides them. `navigation_example.lua` uses all of the above.
 
 `Material.New()` creates a material: `SetProperty(MaterialProperty.X, value)`, `SetColor(r, g, b, a)`, `SetTexture(MaterialTextureType.X, path)`.
 

@@ -25,7 +25,7 @@ Audio runs on SDL3. Playback is the [`AudioSource`](../source/world/components/A
 
 ## Navigation
 
-A streamed Recast/Detour navigation mesh around the camera: 64 m tiles in an 11×11 window, built from terrain and static geometry, with DetourCrowd for pedestrian avoidance. Add a `Navigation` component; `Pedestrians` can use it. Details in [`source/navigation/README.md`](../source/navigation/README.md).
+A streamed Recast/Detour navigation mesh around the camera: 64 m tiles in an 11×11 window, built from terrain and static geometry, with DetourCrowd for pedestrian avoidance. Add a `Navigation` component; `Pedestrians` can use it. `Refresh()` rebuilds installed tiles in place after static geometry moves, such as a door opening. Lua scripts can query paths and drive crowd agents, see [`navigation_example.world`](../worlds/navigation_example.world). Details in [`source/navigation/README.md`](../source/navigation/README.md).
 
 ## Procedural geometry
 

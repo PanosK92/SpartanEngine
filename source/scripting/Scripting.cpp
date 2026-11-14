@@ -125,7 +125,8 @@ namespace spartan::scripting
             "Spline",                   ComponentType::Spline,
             "Text3D",                   ComponentType::Text3D,
             "Animator",                 ComponentType::Animator,
-            "Ragdoll",                  ComponentType::Ragdoll
+            "Ragdoll",                  ComponentType::Ragdoll,
+            "Navigation",               ComponentType::Navigation
         );
 
         visual::enumeration(state_view, "KeyCode",

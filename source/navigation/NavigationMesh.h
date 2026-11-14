@@ -54,12 +54,14 @@ namespace spartan::navigation
         int AddAgent(const Point& position, float speed);
         void RemoveAgent(int agent);
         bool GetAgent(int agent, Point& position, Point& velocity) const;
+        void SetAgentSpeed(int agent, float speed);
+        bool MoveTo(int agent, const Point& destination);
         bool Wander(int agent, float radius);
+        bool FindPath(const Point& start, const Point& end, std::vector<Point>& points) const;
         void Update(float delta_time);
         void GetDebugTriangles(std::vector<Point>& triangles) const;
 
     private:
-        bool MoveTo(int agent, const Point& destination);
         struct Impl;
         std::unique_ptr<Impl> m_impl;
     };

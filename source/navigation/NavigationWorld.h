@@ -19,6 +19,8 @@ namespace spartan
         ~NavigationWorld();
         void Tick(const math::Vector3& focus, float delta_time, bool debug_draw);
         bool Project(math::Vector3& position) const;
+        // Re-snapshots static geometry and rebuilds the installed tiles in place, crowd agents keep running.
+        void Refresh();
         navigation::NavigationMesh& GetMesh();
 
     private:

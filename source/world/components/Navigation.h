@@ -5,7 +5,9 @@
 #pragma once
 
 #include "Component.h"
+#include "../../math/Vector3.h"
 #include <memory>
+#include <vector>
 
 namespace spartan
 {
@@ -32,7 +34,19 @@ namespace spartan
         bool GetFollowCamera() const { return m_follow_camera; }
         void SetFollowCamera(bool enabled) { m_follow_camera = enabled; }
         void Rebuild();
+        // rebuilds the tiles from the current static geometry without dropping agents, e.g. after a wall is toggled
+        void Refresh();
         std::shared_ptr<NavigationWorld> GetWorld() const;
+
+        // queries and crowd agents, they fail until the tiles under the given point are built
+        bool ProjectPoint(math::Vector3& position) const;
+        bool FindPath(const math::Vector3& from, const math::Vector3& to, std::vector<math::Vector3>& points) const;
+        int AddAgent(const math::Vector3& position, float speed);
+        void RemoveAgent(int agent);
+        bool MoveAgent(int agent, const math::Vector3& target);
+        bool WanderAgent(int agent, float radius);
+        void SetAgentSpeed(int agent, float speed);
+        bool GetAgent(int agent, math::Vector3& position, math::Vector3& velocity) const;
 
     private:
         bool m_debug_draw = false;

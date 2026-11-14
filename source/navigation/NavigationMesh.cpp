@@ -129,6 +129,8 @@ namespace spartan::navigation
     bool NavigationMesh::Install(const TileData& tile)
     {
         if (!IsReady() || !tile.succeeded) return false;
+        // A rebuilt tile replaces the old one in place; DetourCrowd replans agents whose polygons it invalidates.
+        Remove(tile.x, tile.z);
         if (tile.bytes.empty()) return true;
         auto* data = static_cast<unsigned char*>(dtAlloc(tile.bytes.size(), DT_ALLOC_PERM));
         if (!data) return false;
@@ -184,6 +186,16 @@ namespace spartan::navigation
         return true;
     }
 
+    void NavigationMesh::SetAgentSpeed(int agent, float speed)
+    {
+        if (!IsReady() || agent < 0 || agent >= m_impl->crowd->getAgentCount()) return;
+        const dtCrowdAgent* a = m_impl->crowd->getAgent(agent);
+        if (!a || !a->active) return;
+        dtCrowdAgentParams params = a->params;
+        params.maxSpeed = std::clamp(speed, 0.0f, 8.0f);
+        m_impl->crowd->updateAgentParameters(agent, &params);
+    }
+
     bool NavigationMesh::Wander(int agent, float radius)
     {
         Point position, velocity;
@@ -222,6 +234,28 @@ namespace spartan::navigation
         if (dtStatusFailed(status) || dtStatusDetail(status, DT_PARTIAL_RESULT) || dtStatusDetail(status, DT_BUFFER_TOO_SMALL) ||
             dtStatusDetail(status, DT_OUT_OF_NODES) || count == 0 || path[count - 1] != target) return false;
         return m_impl->crowd->requestMoveTarget(agent, target, goal.data());
+    }
+
+    bool NavigationMesh::FindPath(const Point& start, const Point& end, std::vector<Point>& points) const
+    {
+        points.clear();
+        if (!IsReady()) return false;
+        const float extents[] = {2.0f, 4.0f, 2.0f};
+        dtQueryFilter filter;
+        dtPolyRef start_ref = 0, end_ref = 0;
+        Point from, to;
+        if (dtStatusFailed(m_impl->query->findNearestPoly(start.data(), extents, &filter, &start_ref, from.data())) || !start_ref) return false;
+        if (dtStatusFailed(m_impl->query->findNearestPoly(end.data(), extents, &filter, &end_ref, to.data())) || !end_ref) return false;
+        dtPolyRef path[256];
+        int count = 0;
+        const dtStatus status = m_impl->query->findPath(start_ref, end_ref, from.data(), to.data(), &filter, path, &count, 256);
+        if (dtStatusFailed(status) || dtStatusDetail(status, DT_PARTIAL_RESULT) || dtStatusDetail(status, DT_BUFFER_TOO_SMALL) ||
+            dtStatusDetail(status, DT_OUT_OF_NODES) || count == 0 || path[count - 1] != end_ref) return false;
+        float corners[256 * 3];
+        int corner_count = 0;
+        if (dtStatusFailed(m_impl->query->findStraightPath(from.data(), to.data(), path, count, corners, nullptr, nullptr, &corner_count, 256))) return false;
+        for (int i = 0; i < corner_count; ++i) points.push_back({corners[i * 3], corners[i * 3 + 1], corners[i * 3 + 2]});
+        return !points.empty();
     }
 
     void NavigationMesh::Update(float delta_time)

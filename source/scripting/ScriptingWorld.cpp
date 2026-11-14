@@ -469,6 +469,22 @@ namespace spartan::scripting
         {
             Renderer::SetGameplayHighlight(entity && entity.value() ? entity.value()->GetObjectId() : 0);
         };
+
+        // shapes drawn over the scene for one frame, call them every tick
+        visual::table DebugTable(state, "Debug");
+        DebugTable["DrawLine"] = [](const Vector3& from, const Vector3& to, const Vector4& color)
+        {
+            const Color c(color.x, color.y, color.z, color.w);
+            Renderer::DrawLine(from, to, c, c);
+        };
+        DebugTable["DrawTriangle"] = [](const Vector3& a, const Vector3& b, const Vector3& c, const Vector4& color)
+        {
+            Renderer::DrawTriangleFilled(a, b, c, Color(color.x, color.y, color.z, color.w));
+        };
+        DebugTable["DrawCircle"] = [](const Vector3& center, float radius, const Vector4& color)
+        {
+            Renderer::DrawCircle(center, Vector3::Up, radius, 32, Color(color.x, color.y, color.z, color.w));
+        };
     }
 
     void register_world_systems(sol::state_view lua)
