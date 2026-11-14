@@ -19,19 +19,31 @@
   <Resource file="materials/material_ground.xml" />
   <Resource file="materials/negro.xml" />
   <Resource file="materials/negro_2.xml" />
+  <Resource file="materials/pe_chain_steel.xml" />
   <Resource file="materials/pe_dark.xml" />
+  <Resource file="materials/pe_green.xml" />
   <Resource file="materials/pe_ice.xml" />
   <Resource file="materials/pe_label.xml" />
   <Resource file="materials/pe_orange.xml" />
   <Resource file="materials/pe_plaza.xml" />
   <Resource file="materials/pe_red.xml" />
+  <Resource file="materials/pe_rope.xml" />
   <Resource file="materials/pe_rubber.xml" />
   <Resource file="materials/pe_teal.xml" />
   <Resource file="materials/pe_violet.xml" />
   <Resource file="materials/pe_yellow.xml" />
+  <Resource file="meshes/chain_link_00_0_side_left_ae1fc23b.mesh" />
+  <Resource file="meshes/chain_link_00_1_side_right_ae1fc23b.mesh" />
+  <Resource file="meshes/chain_link_00_2_end_top_ed559c35.mesh" />
+  <Resource file="meshes/chain_link_00_3_end_bottom_ed559c35.mesh" />
+  <Resource file="meshes/chain_link_00_4_corner_0_a83ee493.mesh" />
+  <Resource file="meshes/chain_link_00_5_corner_1_a83ee493.mesh" />
+  <Resource file="meshes/chain_link_00_6_corner_2_a83ee493.mesh" />
+  <Resource file="meshes/chain_link_00_7_corner_3_a83ee493.mesh" />
   <Resource file="meshes/cloth_demo_floor_plane_64.mesh" />
   <Resource file="meshes/mannequiny.mesh" />
   <Resource file="meshes/mannequiny_2.mesh" />
+  <Resource file="meshes/rope_tube_60.mesh" />
   <Resource file="textures/cloth_banner_spartan_packed_slot0.tex_packed.texture" />
   <Resource file="textures/cloth_banner_spartan_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/cloth_canvas_trampoline_packed_slot0.tex_packed.texture" />
@@ -65,13 +77,13 @@
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0.455778 2.15336 41.5937" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0.000108386 0.999542 -0.0300517 0.00360499" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0.000108383 0.999542 -0.0300518 0.0036049" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
   <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="-0.00090951 0.870061 0.00160532 0.492941" scale="1 1 1">
    <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <script file_path="project/scripts/sun.lua" rot_pitch="0" Initialize="" rot_yaw="0" rot_roll="0" preset="dusk" volumetric="false" override_rotation="false" />
+   <script file_path="project/scripts/sun.lua" rot_roll="0" preset="dusk" rot_pitch="0" Initialize="" volumetric="false" override_rotation="false" rot_yaw="0" />
   </Entity>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
@@ -187,15 +199,15 @@
     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_steel" material_path="project/physics_example_resources/materials/cloth_demo_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="trampoline_crate_0" id="12877540223408832774" active="true" position="0.1 3 -1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
-    <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="trampoline_crate_1" id="12877439887581586655" active="true" position="0.4 4.4 -0.7" rotation="0.190791 0.280577 0.0298408 0.940205" scale="0.4 0.4 0.4">
-    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="trampoline_ball" id="12877391824623781206" active="true" position="-0.6 7 -1.3" rotation="0 0 0 1" scale="0.4 0.4 0.4">
-    <physics mass="3" friction="0.400000006" friction_rolling="0.400000006" restitution="0.300000012" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="3" friction="0.400000006" friction_rolling="0.400000006" restitution="0.300000012" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_steel" material_path="project/physics_example_resources/materials/cloth_demo_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="trampoline_sheet" id="11250126336867122739" active="true" position="0 1 -1" rotation="0 0 0 1" scale="3.2 1 3.2">
@@ -213,7 +225,7 @@
     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hammock_ball" id="12877181268587968920" active="true" position="6 2.6 -2.5" rotation="0 0 0 1" scale="0.38 0.38 0.38">
-    <physics mass="10" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="10" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="cloth_gingham" material_path="project/physics_example_resources/materials/cloth_gingham.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hammock_bed" id="10721047939387193243" active="true" position="6 1.5 -2.5" rotation="0 0 0 1" scale="3.2 1 1.4">
@@ -336,6 +348,16 @@
    <Entity name="plaza_rim" id="2570759493568944889" active="true" position="0 0.02 22" rotation="0 0 0 1" scale="14.8 0.04 14.8">
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_dark" material_path="project/physics_example_resources/materials/pe_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
+   <Entity name="path_rope_chain" id="6225606504973207326" active="true" position="9.6 0.02 10.5" rotation="0 -0.34202 0 0.939693" scale="2 0.04 16">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_green" material_path="project/physics_example_resources/materials/pe_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sign_post_rope_chain" id="6381685125003329752" active="true" position="6 1.25 17.4" rotation="0 0 0 1" scale="0.07 2.5 0.07">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_yellow" material_path="project/physics_example_resources/materials/pe_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="map_rope_chain" id="6359462982504035716" active="true" position="0.96 0.96 17.47" rotation="0 0 0 1" scale="0.6 0.12 0.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_green" material_path="project/physics_example_resources/materials/pe_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
   </Entity>
   <Entity name="station_bounce_friction" id="9945392670829104359" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="bounce_board" id="5123601459230126490" active="true" position="34.5 3.5 18" rotation="0 0 0 1" scale="0.2 7 10">
@@ -361,23 +383,23 @@
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bounce_ball_0" id="5127471855190676020" active="true" position="33.5 6.5 14.5" rotation="0 0 0 1" scale="0.35 0.35 0.35">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bounce_ball_25" id="5127480978261900951" active="true" position="33.5 6.5 16.25" rotation="0 0 0 1" scale="0.35 0.35 0.35">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.25" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.25" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bounce_ball_50" id="5127651163023516871" active="true" position="33.5 6.5 18" rotation="0 0 0 1" scale="0.35 0.35 0.35">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.5" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.5" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bounce_ball_75" id="5127820686220627099" active="true" position="33.5 6.5 19.75" rotation="0 0 0 1" scale="0.35 0.35 0.35">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.75" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.75" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bounce_ball_95" id="5127880250678095222" active="true" position="33.5 6.5 21.5" rotation="0 0 0 1" scale="0.35 0.35 0.35">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.949999988" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.949999988" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="friction_ramp_ice" id="5125122242085075161" active="true" position="29 1.38 25" rotation="0 0 0.21644 0.976296" scale="6 0.2 1.8">
@@ -397,19 +419,19 @@
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_rubber" material_path="project/physics_example_resources/materials/pe_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="friction_box_ice" id="5125692239324135301" active="true" position="30.64 2.59 25" rotation="0 0 0.21644 0.976296" scale="0.6 0.6 0.6">
-    <physics mass="5" friction="0.0199999996" friction_rolling="0.0199999996" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="5" friction="0.0199999996" friction_rolling="0.0199999996" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="friction_box_low" id="5125869377561584956" active="true" position="30.64 2.59 27.6" rotation="0 0 0.21644 0.976296" scale="0.6 0.6 0.6">
-    <physics mass="5" friction="0.200000003" friction_rolling="0.200000003" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="5" friction="0.200000003" friction_rolling="0.200000003" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="friction_box_mid" id="5125973948707416094" active="true" position="30.64 2.59 30.2" rotation="0 0 0.21644 0.976296" scale="0.6 0.6 0.6">
-    <physics mass="5" friction="0.349999994" friction_rolling="0.349999994" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="5" friction="0.349999994" friction_rolling="0.349999994" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="friction_box_rubber" id="5126126103753372412" active="true" position="30.64 2.59 32.8" rotation="0 0 0.21644 0.976296" scale="0.6 0.6 0.6">
-    <physics mass="5" friction="0.899999976" friction_rolling="0.899999976" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="5" friction="0.899999976" friction_rolling="0.899999976" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_orange" material_path="project/physics_example_resources/materials/pe_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
@@ -427,7 +449,7 @@
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_dark" material_path="project/physics_example_resources/materials/pe_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="domino_trigger_ball" id="764003492206454049" active="true" position="-26 2.67 8.68" rotation="0 0 0 1" scale="0.3 0.3 0.3">
-    <physics mass="3" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="3" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_rubber" material_path="project/physics_example_resources/materials/pe_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="domino_00" id="761436570699621941" active="true" position="-26 0.6 14" rotation="0 0 0 1" scale="0.6 1.2 0.15">
@@ -812,7 +834,7 @@
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_plaza" material_path="project/physics_example_resources/materials/pe_plaza.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="seesaw_heavy_box" id="5207641526731756254" active="true" position="10.5 6 53" rotation="0 0 0 1" scale="0.8 0.8 0.8">
-    <physics mass="40" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <physics mass="40" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_rubber" material_path="project/physics_example_resources/materials/pe_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
@@ -1000,6 +1022,26 @@
    <Entity name="label_ragdolls_cannon" id="12041788078397987630" active="true" position="-21.9 1.6 40.5" rotation="0 -0.34038 0 0.940288" scale="1 1 1">
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Cannon" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.300000012" depth="0.0399999991" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="label_title_rope_chain" id="6756266913367025950" active="true" position="20.5 6.5 -1.2" rotation="0 1 0 -6.22985e-08" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="ROPE &amp; CHAIN" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.699999988" depth="0.100000001" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="label_sub_rope_chain" id="6911830669253833378" active="true" position="20.5 5.85 -1.2" rotation="0 1 0 -6.22985e-08" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="one rope of cloth particles, one chain of rigid links that only touch" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.219999999" depth="0.0399999991" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="label_rope_chain_rope" id="6888249913458536116" active="true" position="18.5 0.75 -0.6" rotation="0 1 0 -6.22985e-08" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="Rope: a cloth tube pinned at the top" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.159999996" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="label_rope_chain_chain" id="6866567677781629408" active="true" position="22.6 0.75 -0.6" rotation="0 1 0 -6.22985e-08" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="Chain: 12 interlocked links, no joints" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.159999996" depth="0.0299999993" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="label_sign_rope_chain" id="6845983496961601836" active="true" position="6 2.85 17.4" rotation="0 0.896873 0 0.442289" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="ROPE &amp; CHAIN" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.360000014" depth="0.0500000007" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
    </Entity>
   </Entity>
   <Entity name="buttons" id="8639396041871902428" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
@@ -1267,6 +1309,439 @@
     <Entity name="podium_cannon_label" id="4911954512501024176" active="true" position="0 1.4 0" rotation="0 0 0 1" scale="1 1 1">
      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <text_3d text="Fire the cannon" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+    </Entity>
+   </Entity>
+   <Entity name="podium_chain" id="1472943726462546399" active="true" position="22.3 0 1.7" rotation="0 1 -0 -6.22985e-08" scale="1 1 1">
+    <Entity name="podium_chain_base" id="1472856086704938803" active="true" position="0 0.45 0" rotation="0 0 0 1" scale="0.45 0.9 0.45">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_dark" material_path="project/physics_example_resources/materials/pe_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_chain_plate" id="1472716492989019628" active="true" position="0 0.93 0" rotation="0 0 0 1" scale="0.55 0.06 0.55">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_violet" material_path="project/physics_example_resources/materials/pe_violet.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_chain_ring" id="1472702096885580207" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="0.16 0.02 0.16">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_chain_button" id="1472668053686172654" active="true" position="0 1.015 0" rotation="0 0 0 1" scale="0.11 0.07 0.11">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_red" material_path="project/physics_example_resources/materials/pe_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_chain_label" id="1472674286697784192" active="true" position="0 1.4 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="Swing the ball" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+    </Entity>
+   </Entity>
+   <Entity name="podium_rope" id="1409626544828602656" active="true" position="18.3 0 1.7" rotation="0 1 -0 -6.22985e-08" scale="1 1 1">
+    <Entity name="podium_rope_base" id="1409532863058814724" active="true" position="0 0.45 0" rotation="0 0 0 1" scale="0.45 0.9 0.45">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_dark" material_path="project/physics_example_resources/materials/pe_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_rope_plate" id="1409372219830477050" active="true" position="0 0.93 0" rotation="0 0 0 1" scale="0.55 0.06 0.55">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="pe_violet" material_path="project/physics_example_resources/materials/pe_violet.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_rope_ring" id="1409339850718463806" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="0.16 0.02 0.16">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_rope_button" id="1409246171286474223" active="true" position="0 1.015 0" rotation="0 0 0 1" scale="0.11 0.07 0.11">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_red" material_path="project/physics_example_resources/materials/pe_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_rope_label" id="1409280262857983374" active="true" position="0 1.4 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="pe_label" material_path="project/physics_example_resources/materials/pe_label.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="Drop the rope" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.150000006" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="station_rope_chain" id="8449689545759334185" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="rope_chain_pad" id="8421617771049170201" active="true" position="20.5 0.025 -1" rotation="0 0 0 1" scale="5.2 0.05 5.2">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_dark" material_path="project/physics_example_resources/materials/pe_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_post_left" id="8426037580670890660" active="true" position="16.6 2.45 -1" rotation="0 0 0 1" scale="0.3 4.9 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_post_right" id="8426452224115692736" active="true" position="24.4 2.45 -1" rotation="0 0 0 1" scale="0.3 4.9 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_beam" id="8426282518669158653" active="true" position="20.5 4.75 -1" rotation="0 0 0 1" scale="8.4 0.3 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_brace_left" id="8426365565429314673" active="true" position="17.15 4.2 -1" rotation="0 0 -0.382683 0.92388" scale="0.14 1.13 0.14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_brace_right" id="8426108431889703747" active="true" position="23.85 4.2 -1" rotation="0 0 0.382683 0.92388" scale="0.14 1.13 0.14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_foot_left" id="8426901800567010569" active="true" position="16.6 0.1 -1" rotation="0 0 0 1" scale="0.9 0.2 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_steel" material_path="project/physics_example_resources/materials/cloth_demo_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="gantry_foot_right" id="8426771802123077672" active="true" position="24.4 0.1 -1" rotation="0 0 0 1" scale="0.9 0.2 0.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_steel" material_path="project/physics_example_resources/materials/cloth_demo_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rope_collar" id="8426575913336644631" active="true" position="18.5 4.55 -1" rotation="0 0 0 1" scale="0.05 0.1 0.05">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_0" id="8431557781639842121" active="true" position="21.25 0.25 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_1" id="8429748686301314974" active="true" position="21.75 0.25 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_2" id="8430149650006150272" active="true" position="21.25 0.75 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_3" id="8430672655338035714" active="true" position="21.75 0.75 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_4" id="8430542013663223135" active="true" position="21.25 1.25 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_5" id="8430372415870551938" active="true" position="21.75 1.25 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wreck_crate_6" id="8430891036872704580" active="true" position="21.5 1.75 -3.1" rotation="0 0 0 1" scale="0.5 0.5 0.5">
+    <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cloth_demo_wood" material_path="project/physics_example_resources/materials/cloth_demo_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rope" id="8408037147964551729" active="true" position="18.5 4.6 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="2.5" friction="0.800000012" friction_rolling="0.800000012" restitution="0.0500000007" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="8" cloth_stiffness="1" cloth_damping="0.0199999996" cloth_bending="0.899999976" cloth_iterations="12" cloth_wind_enabled="false" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rope_tube_60" mesh_path="project/physics_example_resources/meshes/rope_tube_60.mesh" sub_mesh_index="0" material_name="pe_rope" material_path="project/physics_example_resources/materials/pe_rope.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="chain_link_00" id="14698471993444670741" active="true" position="21.5 4.42 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="17175119148830465932" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="17010495381163617699" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="16177584782323734032" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13150674045176968282" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="12260389009969099546" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="11967614131690345429" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="14641161137653415181" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13741354505197867097" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_01" id="13764783622399860818" active="true" position="21.5 4.155 -1" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13764794425071144087" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13764912000736954318" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13764751116421439742" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13764961295478033960" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13764930037242246575" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13764924093884930704" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13764850538326660222" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13764836908296261184" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_02" id="13894305839136202120" active="true" position="21.5 3.89 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13894272435488358320" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13894373259699313847" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13894314997245516314" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13894342569161517356" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13894415178560540726" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13894418583274145807" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13894392208264232412" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13894397580100361748" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_03" id="13851981333596088755" active="true" position="21.5 3.625 -1" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13852034360825056303" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13852126449484142710" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13849717933723973597" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13849727142838110494" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13849810886607716744" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13849700733635254867" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13849783277908134719" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13849798474034554946" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_04" id="13987195054508197888" active="true" position="21.5 3.36 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13987208002327892479" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13987308064820768770" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13987286980752558205" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13946176270482248972" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13945722635081953003" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13945795699619445144" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13945864705970092043" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13945887445100262488" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_05" id="13936806043069329818" active="true" position="21.5 3.095 -1" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13936846520183984724" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13936813769661140045" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13936914649930251982" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13936933874943240356" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13936885020016866053" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13936394985227384105" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13937478880301197225" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13937004713862387974" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_06" id="14073573656202893383" active="true" position="21.5 2.83 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="14073553476674256180" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="14073645906052592952" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="14073744427631194965" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="14073685329768100418" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="14073709044451381474" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="14073312169870269704" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="14073186399906421986" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="14073287606106150748" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_07" id="14030079425727799726" active="true" position="21.5 2.565 -1" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="14030662674671875609" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="14030663423472308079" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="14030166198641075822" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="14030124391775845198" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="14030145350951685439" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="14030238725434706075" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="14030247307152132221" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="14030329863845143602" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_08" id="13448122927322505572" active="true" position="21.5 2.3 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13448158868938585562" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13448165243730995447" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13448245134513654660" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13448075012096478644" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13448272901032998919" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13448627387227235793" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13448602227855152074" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13448610136368756543" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_09" id="13396112609784391225" active="true" position="21.5 2.035 -1" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13395771093678404479" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13396796540412848814" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13396768116100296754" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13396688748085721421" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13396695205861055027" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13396328583592802830" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13396322749695710177" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13396714309230674523" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_10" id="13532343464955914881" active="true" position="21.5 1.77 -1" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13532370991017367516" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13531924482153717299" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13531962957544339650" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13531952775336537154" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13532139707623641584" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13532058896401992605" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13532171126052660440" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13529686020527830606" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="chain_link_11" id="13484489717790117323" active="true" position="21.5 1.505 -1" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="6" friction="0.300000012" friction_rolling="0.300000012" restitution="0.0500000007" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <Entity name="side_left" id="13484527944645319763" active="true" position="-0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_0_side_left_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_0_side_left_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="side_right" id="13484161949302016096" active="true" position="0.0775 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_1_side_right_ae1fc23b" mesh_path="project/physics_example_resources/meshes/chain_link_00_1_side_right_ae1fc23b.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_top" id="13485067299634923190" active="true" position="0 0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_2_end_top_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_2_end_top_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="end_bottom" id="13485045282178163973" active="true" position="0 -0.1575 0" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+     <render mesh_name="chain_link_00_3_end_bottom_ed559c35" mesh_path="project/physics_example_resources/meshes/chain_link_00_3_end_bottom_ed559c35.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_0" id="13485174810971059854" active="true" position="-0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_4_corner_0_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_4_corner_0_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_1" id="13485096042016601523" active="true" position="0.0775 0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_5_corner_1_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_5_corner_1_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_2" id="13485082366005482987" active="true" position="-0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_6_corner_2_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_6_corner_2_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="corner_3" id="13484720494399651908" active="true" position="0.0775 -0.1575 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="chain_link_00_7_corner_3_a83ee493" mesh_path="project/physics_example_resources/meshes/chain_link_00_7_corner_3_a83ee493.mesh" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="wrecking_ball" id="13702435043958416891" active="true" position="0 -0.38 0" rotation="0 0 0 1" scale="0.2 0.2 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="pe_chain_steel" material_path="project/physics_example_resources/materials/pe_chain_steel.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
    </Entity>
   </Entity>

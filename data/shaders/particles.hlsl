@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common.hlsl"
 #include "fog_volume.hlsl"
 #include "common_rain.hlsl"
+#include "common_particle_fluid.hlsl"
 #ifdef RENDER
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
@@ -283,6 +284,10 @@ static const float entrainment_rate      = 0.06;
 // diameter gained per second once a parcel has stalled, real smoke keeps spreading by turbulent
 // diffusion after it has given up its momentum, and that slow thinning is what dissipates a trail
 static const float entrainment_diffusion = 0.12;
+// how quickly smoke inside the fluid grid takes up the velocity of the air around it, per second
+static const float fluid_tracer_rate       = 14.0;
+// the share of the curl noise a tracer keeps, the grid supplies every eddy larger than its cells
+static const float fluid_tracer_turbulence = 0.35;
 
 // curl noise
 //
@@ -1247,13 +1252,33 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float3 body_flow = body_wake_velocity(p.position, emitter);
 
+    // the solved air around the car, where there is any. everything light enough to be carried feels it
+    // through its drag, and smoke that also lives in the grid goes further and rides it as a tracer, so
+    // the analytic stand ins for that same air further down are faded out by the same weight
+    float  fluid_zone        = emitter.rain_occluded == 0u ? fluid_weight(p.position) : 0.0;
+    float4 fluid_air         = fluid_zone > 0.0 ? fluid_sample_air(p.position) : 0.0;
+    float3 fluid_velocity    = fluid_air.xyz;
+    // the cells inside a body or a tire hold the speed of that surface, which is no air to be carried by,
+    // a parcel born under the tread starts in one, and it coasts on what it was launched with until it
+    // is out, riding the surface instead would take it along with the car and let it out at the nose
+    float  fluid_weight_here = fluid_zone * saturate(1.0 - fluid_air.w * 1.5);
+    float  tracer            = emitter.fluid_tracer != 0u ? fluid_weight_here : 0.0;
+    float  tracer_zone       = emitter.fluid_tracer != 0u ? fluid_zone : 0.0;
+    body_flow               *= 1.0 - tracer_zone;
+
     // integrate gravity
     p.velocity.y += emitter.gravity_modifier * 9.81 * dt;
 
     // Drag approaches the surrounding air velocity instead of accelerating with wind forever.
     // Exponential relaxation gives the same damping at different frame rates.
-    float3 air_velocity = buffer_frame.wind * emitter.wind_influence + body_flow;
+    float3 wind_velocity = buffer_frame.wind * emitter.wind_influence;
+    float3 air_velocity  = lerp(wind_velocity + body_flow, fluid_velocity, fluid_weight_here);
     p.velocity = lerp(air_velocity, p.velocity, exp(-emitter.drag * dt));
+    if (tracer > 0.0)
+    {
+        // a parcel of smoke has next to no inertia of its own, it is wherever the air took it
+        p.velocity = lerp(p.velocity, fluid_velocity, tracer * (1.0 - exp(-fluid_tracer_rate * dt)));
+    }
 
     // entrainment
     //
@@ -1270,7 +1295,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     bool entrains = p.end_size > p.start_size;
     if (entrains)
     {
-        float3 relative = p.velocity - buffer_frame.wind * emitter.wind_influence;
+        // the air the parcel moves through, the solved one where it is carried by it, so a parcel riding
+        // the flow entrains by how fast it slips through that flow rather than by how fast the flow goes
+        float3 still    = lerp(wind_velocity, fluid_velocity, fluid_weight_here);
+        float3 relative = p.velocity - still;
         float  size_old = max(p.size, 0.0001);
         float  size_new = size_old + (entrainment_rate * length(relative) + entrainment_diffusion) * dt;
 
@@ -1284,16 +1312,22 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // divergence free turbulence, the plume shears and folds instead of inflating
     // the clock is wrapped because the drift offset is multiplied by the octave frequency and an
     // unwrapped one runs out of fractional precision after a while and the field starts to quantise
+    // the fluid carries the eddies it can resolve, only what is finer than its cells is left to the noise
     float ts = fmod((float)buffer_frame.time, 600.0f);
-    p.velocity += curl_turbulence(p.position, p.size, ts) * emitter.turbulence_strength * dt;
+    p.velocity += curl_turbulence(p.position, p.size, ts) * emitter.turbulence_strength * dt * lerp(1.0, fluid_tracer_turbulence, tracer);
 
     float age_for_collision = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));
     float age_seconds = max(p.max_lifetime - p.lifetime, 0.0);
-    float3 wake_velocity = apply_tire_aerodynamics(p, emitter, age_seconds);
+
+    // the tread vortex, the rollup, the thermal and the shoulder pair are formulas for what the fluid
+    // solves for real, smoke that lives in the grid takes none of them anywhere inside it
+    float3 velocity_free = p.velocity;
+    float3 wake_velocity = apply_tire_aerodynamics(p, emitter, age_seconds) * (1.0 - tracer_zone);
+    p.velocity = lerp(p.velocity, velocity_free, tracer_zone);
 
     // the shoulder pair already models this wake properly, the generic radial push would double it
     // rain follows the camera, it must not be shoved aside by it
-    if (p.wake_origin.w <= 0.0 && emitter.rain_occluded == 0u)
+    if (p.wake_origin.w <= 0.0 && emitter.rain_occluded == 0u && tracer_zone < 0.5)
     {
         apply_moving_emitter_push(p, emitter);
     }

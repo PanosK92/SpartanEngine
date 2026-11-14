@@ -28,6 +28,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../mcp/McpServer.h"
 #endif
 #include "../steam/Steam.h"
+#include "../network/Network.h"
 #include "../resource/IconAtlas.h"
 #include "Settings.h"
 #include "GameManifest.h"
@@ -202,6 +203,7 @@ namespace spartan
             FontImporter::Shutdown();
             return;
         }
+        Network::Shutdown();
         Steam::Shutdown();
 #ifndef SP_RUNTIME
         McpServer::Shutdown();
@@ -272,9 +274,11 @@ namespace spartan
         Window::Tick();
         Input::Tick();
         SP_FIRE_EVENT(EventType::InputTicked);
+        Network::Tick();
         PhysicsWorld::Tick();
         World::Tick();
         SP_FIRE_EVENT(EventType::WorldTicked);
+        Network::PostTick();
         PhysicsWorld::DrawDebugVisualization();
         // the physics thread steps while the frame renders, nothing after the join may see a batch in flight
         PhysicsWorld::Simulate();

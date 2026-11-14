@@ -18,6 +18,7 @@ Spartan is a single C++20 executable. Everything lives in `namespace spartan`, m
 | [`animation`](../source/animation) | Skeletons, clips, pose evaluation, IK |
 | [`audio`](../source/audio) | Audio mixer groups (playback lives in the `AudioSource` component) |
 | [`navigation`](../source/navigation) | Recast/Detour streamed navigation mesh |
+| [`network`](../source/network) | UDP client/server sessions, messages and transform replication |
 | [`input`](../source/input) | Keyboard, mouse, gamepad, steering wheel, input injection |
 | [`editor`](../source/editor) | ImGui editor, widgets, game builder, editor-only MCP commands |
 | [`mcp`](../source/mcp) | In-engine TCP command bridge |
@@ -78,9 +79,9 @@ while window is open
 | ---- | ---- |
 | 1 | `Input::PreTick`, `McpServer::Tick` (runs queued bridge commands on the main thread), `Steam::Tick` |
 | 2 | Global keys: **F12** screenshot, **Ctrl+0** toggles OpenXR |
-| 3 | `Window::Tick`, `Input::Tick`, fire `InputTicked` |
+| 3 | `Window::Tick`, `Input::Tick`, fire `InputTicked`, then `Network::Tick` receives packets and applies replicated transforms |
 | 4 | `PhysicsWorld::Tick` decides how many 5 ms physics steps this frame needs |
-| 5 | `World::Tick` runs entities and components, then fires `WorldTicked` |
+| 5 | `World::Tick` runs entities and components, fires `WorldTicked`, then `Network::PostTick` sends transform snapshots |
 | 6 | `PhysicsWorld::Simulate` starts the physics steps on a worker |
 | 7 | `Xr::Tick`, `Renderer::Tick` render while physics runs |
 | 8 | `PhysicsWorld::WaitForSimulation`, `Allocator::Tick` |
@@ -89,7 +90,7 @@ Physics overlapping rendering is the reason component state written in `Tick` is
 
 ### Shutdown
 
-Reverse dependency order: Steam, MCP, profiler, flush the thread pool, `World`, thread pool, default resources, physics, XR, renderer, events, window, importers, and finally `Settings::Shutdown()`, which saves cvars to `settings/spartan.xml` (skipped when headless).
+Reverse dependency order: network, Steam, MCP, profiler, flush the thread pool, `World`, thread pool, default resources, physics, XR, renderer, events, window, importers, and finally `Settings::Shutdown()`, which saves cvars to `settings/spartan.xml` (skipped when headless).
 
 ## Engine modes
 

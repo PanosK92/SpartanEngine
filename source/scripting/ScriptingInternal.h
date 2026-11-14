@@ -18,6 +18,7 @@ namespace spartan::scripting
     void register_world(sol::state_view state);
     void register_world_systems(sol::state_view state);
     void register_hud(sol::state_view state);
+    void register_network(sol::state_view state);
     void register_car_tuning(sol::state_view state);
     // extends the Physics usertype and the BodyType enum, so it runs after register_components
     void register_car_physics(sol::state_view state);

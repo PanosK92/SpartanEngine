@@ -316,7 +316,7 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
   <tr>
     <td valign="top"><b><a href="docs/rendering.md">Rendering</a></b><br/><sub>Frame pass order, bindless GPU-driven design, RHI, shaders, materials</sub></td>
     <td valign="top"><b><a href="docs/physics_and_vehicles.md">Physics and vehicles</a></b><br/><sub>PhysX, cloth, the 200 Hz car model, <code>.car</code> files, AI, input</sub></td>
-    <td valign="top"><b><a href="docs/systems.md">Engine systems</a></b><br/><sub>Animation, audio, navigation, terrain, weather, cinematics, XR, Steam</sub></td>
+    <td valign="top"><b><a href="docs/systems.md">Engine systems</a></b><br/><sub>Animation, audio, navigation, networking, terrain, weather, cinematics, XR, Steam</sub></td>
     <td valign="top"><b><a href="docs/console_variables.md">Console variables</a></b><br/><sub>The cvar system and every registered cvar</sub></td>
   </tr>
   <tr>

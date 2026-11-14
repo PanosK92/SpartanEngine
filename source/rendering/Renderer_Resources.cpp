@@ -600,12 +600,32 @@ namespace spartan
                 );
                 m_pass_state.ssao_history.Reset();
             }
+            if (!at(view_targets(), Renderer_RenderTarget::ssao_packed))
+            {
+                // cortao packed linear depth and normal, it samples at most 8 mips
+                uint32_t mip_count = 1;
+                while (mip_count < 8 && (max(width, height) >> mip_count) > 0)
+                {
+                    mip_count++;
+                }
+                at(view_targets(), Renderer_RenderTarget::ssao_packed) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    mip_count,
+                    RHI_Format::R32_Float,
+                    flags | RHI_Texture_PerMipViews,
+                    "ssao_packed"
+                );
+            }
         }
         else if (at(view_targets(), Renderer_RenderTarget::ssao))
         {
             at(view_targets(), Renderer_RenderTarget::ssao)           = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_0) = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_1) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_packed)    = nullptr;
             m_pass_state.ssao_history.Reset();
         }
         
@@ -830,6 +850,7 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::ssao)                        = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_0)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_1)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_packed)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::reflections)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position)= nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
@@ -1442,6 +1463,7 @@ namespace spartan
             { Renderer_Shader::output_c,                              RHI_Shader_Type::Compute, "output.hlsl"                                                                },
             { Renderer_Shader::motion_blur_c,                         RHI_Shader_Type::Compute, "motion_blur.hlsl"                                                           },
             { Renderer_Shader::ssao_c,                                RHI_Shader_Type::Compute, "ssao.hlsl"                                                                  },
+            { Renderer_Shader::ssao_prepass_c,                        RHI_Shader_Type::Compute, "ssao.hlsl",                                  RHI_Vertex_Type::Max, "SSAO_PREPASS" },
             { Renderer_Shader::sss_c_bend,                            RHI_Shader_Type::Compute, "screen_space_shadows/bend_sss.hlsl"                                         },
             { Renderer_Shader::depth_of_field_focus_c,                RHI_Shader_Type::Compute, "depth_of_field.hlsl", RHI_Vertex_Type::Max, "DOF_FOCUS" },
             { Renderer_Shader::depth_of_field_c,                      RHI_Shader_Type::Compute, "depth_of_field.hlsl"                                                        },
@@ -1528,6 +1550,12 @@ namespace spartan
             { Renderer_Shader::particle_volume_splat_c,                RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_SPLAT"                   },
             { Renderer_Shader::particle_volume_resolve_c,              RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_RESOLVE"                 },
             { Renderer_Shader::particle_volume_composite_c,            RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_COMPOSITE"               },
+            { Renderer_Shader::particle_fluid_advect_c,               RHI_Shader_Type::Compute, "particles_fluid.hlsl",                       RHI_Vertex_Type::Max, "FLUID_ADVECT"                   },
+            { Renderer_Shader::particle_fluid_vorticity_c,            RHI_Shader_Type::Compute, "particles_fluid.hlsl",                       RHI_Vertex_Type::Max, "FLUID_VORTICITY"                },
+            { Renderer_Shader::particle_fluid_confine_c,              RHI_Shader_Type::Compute, "particles_fluid.hlsl",                       RHI_Vertex_Type::Max, "FLUID_CONFINE"                  },
+            { Renderer_Shader::particle_fluid_divergence_c,           RHI_Shader_Type::Compute, "particles_fluid.hlsl",                       RHI_Vertex_Type::Max, "FLUID_DIVERGENCE"               },
+            { Renderer_Shader::particle_fluid_pressure_c,             RHI_Shader_Type::Compute, "particles_fluid.hlsl",                       RHI_Vertex_Type::Max, "FLUID_PRESSURE"                 },
+            { Renderer_Shader::particle_fluid_project_c,              RHI_Shader_Type::Compute, "particles_fluid.hlsl",                       RHI_Vertex_Type::Max, "FLUID_PROJECT"                  },
 
             // gpu procedural grass
             { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },
@@ -1829,6 +1857,40 @@ namespace spartan
             else
             {
                 SP_LOG_WARNING("night sky catalog missing or empty (%s)", stars_path.c_str());
+            }
+        }
+
+        // cortao ambient occlusion tables for 16 rays, both hold raw integer bits behind unorm formats
+        {
+            auto load_table = [&dir_shaders](const char* file_name, size_t size)
+            {
+                vector<std::byte> bytes(size, std::byte{0});
+                const string path = dir_shaders + "cortao/" + file_name;
+                ifstream file(path, ios::binary);
+                if (!file.is_open() || !file.read(reinterpret_cast<char*>(bytes.data()), static_cast<streamsize>(size)))
+                {
+                    SP_LOG_ERROR("cortao lookup table missing or truncated (%s), ambient occlusion will be absent", path.c_str());
+                    fill(bytes.begin(), bytes.end(), std::byte{0});
+                }
+                return bytes;
+            };
+
+            // occluder ray masks per tangent space direction and radius, 24x24x16 r16
+            {
+                vector<RHI_Texture_Mip> mips     = { RHI_Texture_Mip{ load_table("occluder_lut_24x24x16_16_rays.bin", 24u * 24u * 16u * 2u) } };
+                vector<RHI_Texture_Slice> slices = { RHI_Texture_Slice{ move(mips) } };
+                at(standard_textures, Renderer_StandardTexture::Cortao_occluder_lut) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type3D, 24, 24, 16, 1,
+                    RHI_Format::R16_Unorm, RHI_Texture_Srv, "cortao_occluder_lut", slices);
+            }
+
+            // tangent space bent normal xy as snorm bytes for each of the 65536 ray masks
+            {
+                vector<RHI_Texture_Mip> mips     = { RHI_Texture_Mip{ load_table("bent_normal_lut_16_rays.bin", 256u * 256u * 2u) } };
+                vector<RHI_Texture_Slice> slices = { RHI_Texture_Slice{ move(mips) } };
+                at(standard_textures, Renderer_StandardTexture::Cortao_bent_normal_lut) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D, 256, 256, 1, 1,
+                    RHI_Format::R8G8_Unorm, RHI_Texture_Srv, "cortao_bent_normal_lut", slices);
             }
         }
     }

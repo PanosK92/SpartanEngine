@@ -1,5 +1,6 @@
 // Copyright(c) 2015-2026 Panos Karabelas
 // Licensed under the Spartan Engine License. See license.md in the repository root.
+
 #pragma once
 #include "../car/Car.h"
 #include "../core/Engine.h"

@@ -1,0 +1,101 @@
+<?xml version="1.0"?>
+<World name="multiplayer_example" description="A small arena for a server and its clients. Run two Spartan instances and press play in both: H hosts, J joins 127.0.0.1, WASD moves your player, Space sends a pulse, L leaves. Players and the orb replicate through NetworkSync components.">
+ <OwnedResources>
+  <Resource file="materials/arena_floor.xml" />
+  <Resource file="materials/arena_line.xml" />
+  <Resource file="materials/arena_wall.xml" />
+  <Resource file="materials/material_ground.xml" />
+  <Resource file="materials/orb.xml" />
+  <Resource file="materials/player_body.xml" />
+  <Resource file="materials/player_visor.xml" />
+  <Resource file="textures/albedo.texture" />
+  <Resource file="textures/material_ground_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/normal.texture" />
+ </OwnedResources>
+ <Environment utc_days="9665.2506397366524" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2 -10" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 17.4998 -9" rotation="0.381572 0 0 0.924339" scale="1 1 1">
+    <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="-0.00090951 0.870061 0.00160532 0.492941" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <script file_path="project/scripts/sun.lua" override_rotation="false" Initialize="" rot_yaw="0" rot_roll="0" volumetric="false" preset="dusk" rot_pitch="0" />
+  </Entity>
+  <Entity name="floor" id="1001000000000000004" active="true" position="0 -0.15 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_ground" material_path="./project/multiplayer_example_resources/materials/material_ground.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="arena" id="6759654791836220277" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="arena_floor" id="14942680317823273100" active="true" position="0 0.02 0" rotation="0 0 0 1" scale="28.6 0.04 18.6">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="arena_floor" material_path="project/multiplayer_example_resources/materials/arena_floor.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_north" id="14942483685330659004" active="true" position="0 0.3 9.15" rotation="0 0 0 1" scale="28.6 0.6 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="arena_wall" material_path="project/multiplayer_example_resources/materials/arena_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_south" id="14942537046688366517" active="true" position="0 0.3 -9.15" rotation="0 0 0 1" scale="28.6 0.6 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="arena_wall" material_path="project/multiplayer_example_resources/materials/arena_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_east" id="14943712482784232957" active="true" position="14.15 0.3 0" rotation="0 0 0 1" scale="0.3 0.6 18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="arena_wall" material_path="project/multiplayer_example_resources/materials/arena_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_west" id="14943611709783103647" active="true" position="-14.15 0.3 0" rotation="0 0 0 1" scale="0.3 0.6 18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="arena_wall" material_path="project/multiplayer_example_resources/materials/arena_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="line_center" id="14943779753888342488" active="true" position="0 0.042 0" rotation="0 0 0 1" scale="0.1 0.005 18">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="arena_line" material_path="project/multiplayer_example_resources/materials/arena_line.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="spot_center" id="14943268904786096718" active="true" position="0 0.042 0" rotation="0 0 0 1" scale="0.6 0.006 0.6">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="arena_line" material_path="project/multiplayer_example_resources/materials/arena_line.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="post_ne" id="14943333757080702467" active="true" position="14.15 0.6 9.15" rotation="0 0 0 1" scale="0.3 1.2 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="arena_line" material_path="project/multiplayer_example_resources/materials/arena_line.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="post_nw" id="14943482676589335780" active="true" position="-14.15 0.6 9.15" rotation="0 0 0 1" scale="0.3 1.2 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="arena_line" material_path="project/multiplayer_example_resources/materials/arena_line.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="post_se" id="14942975489500398471" active="true" position="14.15 0.6 -9.15" rotation="0 0 0 1" scale="0.3 1.2 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="arena_line" material_path="project/multiplayer_example_resources/materials/arena_line.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="post_sw" id="14943033840187847410" active="true" position="-14.15 0.6 -9.15" rotation="0 0 0 1" scale="0.3 1.2 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="arena_line" material_path="project/multiplayer_example_resources/materials/arena_line.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="player_template" id="6716327544782817479" active="false" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="player_body" id="14943074552842045314" active="true" position="0 0.8 0" rotation="0 0 0 1" scale="0.55 1.6 0.55">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="player_body" material_path="project/multiplayer_example_resources/materials/player_body.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="player_visor" id="14944522068997959986" active="true" position="0 1.25 0.5" rotation="0 0 0 1" scale="0.7 0.26 0.3">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="player_visor" material_path="project/multiplayer_example_resources/materials/player_visor.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="orb" id="14944614726714748955" active="true" position="6 1.2 0" rotation="0 0 0 1" scale="0.7 0.7 0.7">
+   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="orb" material_path="project/multiplayer_example_resources/materials/orb.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <network_sync network_id="0" owner="0" interpolate="true" />
+   <Entity name="orb_light" id="10118887716413966058" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <light flags="0" light_type="1" color_r="1" color_g="0.550000012" color_b="0.200000003" temperature="3200" intensity="8" intensity_photometric="9000" range="9" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+  </Entity>
+  <Entity name="arena_camera" id="14878202194976903125" active="true" position="0 19.5 -19" rotation="0.390731 0 0 0.920505" scale="1 1 1">
+   <camera flags="16" preset="0" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.2566371" aspect_ratio_override="0" near_plane="0.100000001" far_plane="100000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+  </Entity>
+ </Entities>
+</World>

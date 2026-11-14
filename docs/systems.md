@@ -27,6 +27,16 @@ Audio runs on SDL3. Playback is the [`AudioSource`](../source/world/components/A
 
 A streamed Recast/Detour navigation mesh around the camera: 64 m tiles in an 11×11 window, built from terrain and static geometry, with DetourCrowd for pedestrian avoidance. Add a `Navigation` component; `Pedestrians` can use it. `Refresh()` rebuilds installed tiles in place after static geometry moves, such as a door opening. Lua scripts can query paths and drive crowd agents, see [`navigation_example.world`](../worlds/navigation_example.world). Details in [`source/navigation/README.md`](../source/navigation/README.md).
 
+## Networking
+
+[`source/network`](../source/network) is a small UDP layer with no dependencies: one server and its clients (8 by default), on a LAN or the same machine. Sessions exist only while playing and close when play stops.
+
+- **Sessions**: `Network.Host(port, max_clients)` and `Network.Connect(address, port)` from Lua. The server is peer 0 and clients get ids from 1. Peers that go quiet for 5 seconds time out.
+- **Messages**: strings of up to 1024 bytes, reliable and ordered by default, or unreliable. `Send` targets one peer and `Broadcast` targets everyone. `Network.Poll()` returns connect, disconnect, failure and message events.
+- **Replication**: a [`NetworkSync`](../source/world/components/NetworkSync.h) component replicates its entity's transform. Its owner (0 for the server, or a client id) sends 20 snapshots a second. The server relays client-owned entities to the other clients, and receivers interpolate 100 ms behind. Each peer creates its own entities, so matching objects need the same network id on every peer.
+
+There is no lobby, NAT traversal, encryption, prediction or physics replication. [`worlds/multiplayer_example.world`](../worlds/multiplayer_example.world) is a working server and client: run two instances. Details in [`source/network/README.md`](../source/network/README.md).
+
 ## Procedural geometry
 
 [`source/geometry`](../source/geometry):

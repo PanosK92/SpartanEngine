@@ -295,3 +295,53 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
     
     return Fr;
 }
+
+/*------------------------------------------------------------------------------
+    SPECULAR OCCLUSION
+------------------------------------------------------------------------------*/
+
+float3 get_dominant_specular_direction(float3 normal, float3 view_dir, float roughness)
+{
+    // frostbite/epic dominant direction - biases toward normal as roughness increases
+    // this better represents where most specular energy comes from for rough surfaces
+    float3 reflection = reflect(-view_dir, normal);
+    float smoothness  = 1.0f - roughness;
+    float factor      = smoothness * (sqrt(smoothness) + roughness);
+    return normalize(lerp(normal, reflection, factor));
+}
+
+// solid angle shared by two spherical caps over 2pi, oat and sander 2007 with the jimenez 2016 smoothstep fit
+float spherical_caps_intersection(float cos_cap1, float cos_cap2, float cos_distance)
+{
+    float r1 = fast_acos(cos_cap1);
+    float r2 = fast_acos(cos_cap2);
+    float d  = fast_acos(cos_distance);
+
+    if (min(r1, r2) <= max(r1, r2) - d)
+        return 1.0f - max(cos_cap1, cos_cap2);
+
+    if (r1 + r2 <= d)
+        return 0.0f;
+
+    float delta = abs(r1 - r2);
+    float x     = 1.0f - saturate((d - delta) / max(r1 + r2 - delta, 1e-4f));
+    return x * x * (3.0f - 2.0f * x) * (1.0f - max(cos_cap1, cos_cap2));
+}
+
+// jimenez 2016 gtso, the fraction of the reflection lobe cone that falls inside the bent normal visibility cone
+float specular_occlusion_cones(float3 bent_normal, float visibility, float3 reflection, float roughness_alpha)
+{
+    float cos_visibility = sqrt(saturate(1.0f - visibility));
+    float cos_specular   = exp2(-3.321928f * roughness_alpha * roughness_alpha);
+    float cos_distance   = dot(bent_normal, reflection);
+    return saturate(spherical_caps_intersection(cos_visibility, cos_specular, cos_distance) / max(1.0f - cos_specular, 1e-4f));
+}
+
+// a near mirror lobe is thinner than the visibility cone is accurate, the cone test turns binary
+// and aliases there, so it hands over to lagarde 2014 which only needs the ao
+float specular_occlusion_bent(float3 bent_normal, float visibility, float3 reflection, float n_dot_v, float roughness, float roughness_alpha)
+{
+    float specular_occlusion_cone = specular_occlusion_cones(bent_normal, visibility, reflection, roughness_alpha);
+    float specular_occlusion_ao   = saturate(pow(n_dot_v + visibility, exp2(-16.0f * roughness - 1.0f)) - 1.0f + visibility);
+    return lerp(specular_occlusion_ao, specular_occlusion_cone, smoothstep(0.01f, 0.09f, roughness_alpha));
+}

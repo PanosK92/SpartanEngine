@@ -51,7 +51,8 @@ namespace spartan
     X(CarReset, car_reset) \
     X(RaceDriver, race_driver) \
     X(RouteDriver, route_driver) \
-    X(CarService, car_service)
+    X(CarService, car_service) \
+    X(NetworkSync, network_sync)
 
 #define SP_COMPONENT_LIST SP_ENGINE_COMPONENT_LIST
 

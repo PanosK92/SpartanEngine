@@ -268,7 +268,9 @@ void evaluate_light(
         angular_info.Build(light, surface);
 
         // chan 2018 microshadowing, ao driven terminator darkening, occlusion 1 means no effect
-        micro_shadow = microw_shadowing_cod(angular_info.n_dot_l, surface.occlusion);
+        // the aperture is centred on the bent normal, so light from the open side of a crevice is kept
+        float bent_n_dot_l = saturate(dot(surface.bent_normal, -light.to_pixel));
+        micro_shadow       = microw_shadowing_cod(bent_n_dot_l, surface.occlusion);
 
         // area lights widen specular roughness so the highlight matches the light's angular extent
         float original_roughness       = surface.roughness;

@@ -775,11 +775,8 @@ namespace spartan
 
     void Physics::TickDynamicBodies(bool is_playing)
     {
+        // a mesh convex compound can sit on an entity without a render, its meshes live on the children
         Render* render = GetEntity()->GetComponent<Render>();
-        if (!render)
-        {
-            return;
-        }
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
         {
@@ -794,7 +791,7 @@ namespace spartan
             // get transform (from instance or entity)
             auto get_transform = [&]() -> math::Matrix
             {
-                if (render->HasInstancing() && i < render->GetInstanceCount())
+                if (render && render->HasInstancing() && i < render->GetInstanceCount())
                 {
                     return render->GetInstance(i, true);
                 }

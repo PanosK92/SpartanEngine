@@ -102,6 +102,7 @@ Editable fields are registered as **attributes** (`SP_REGISTER_ATTRIBUTE_*` macr
 | `Text3D` | `text_3d` | World-space text |
 | `SpawnPoint` | `spawn_point` | Player spawn location |
 | `Navigation` | `navigation` | Streamed navigation mesh and crowd ([README](../source/navigation/README.md)) |
+| `NetworkSync` | `network_sync` | Replicates the entity's transform in a multiplayer session ([README](../source/network/README.md)) |
 | `Pedestrians` | `pedestrians` | Ambient walkers |
 | `Traffic` | `traffic` | Ambient road traffic |
 | `RaceDriver` | `race_driver` | AI racers on a closed circuit |

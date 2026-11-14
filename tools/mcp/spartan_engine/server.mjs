@@ -737,6 +737,7 @@ const component_type = z.enum([
   "race_driver",
   "route_driver",
   "car_service",
+  "network_sync",
 ]);
 const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_array]);
 const light_type = z.enum(["directional", "point", "spot", "area"]);

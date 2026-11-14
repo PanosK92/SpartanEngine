@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "fog.hlsl"
 #include "shadow_mapping.hlsl"
 #include "light_cluster.hlsl"
+#include "common_particle_fluid.hlsl"
 
 static const uint particle_render_billboard   = 0u;
 static const uint particle_render_volumetric  = 1u;
@@ -420,6 +421,17 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float mass_scale = (want_x * want_y * want_d) / max(radius_x * radius_y * radius_d, 0.0001f);
     mass_scale = min(mass_scale, 3.0f);
 
+    // smoke that also lives in the fluid grid is already there as density, inside the grid its particles
+    // are only tracers waiting to carry the trail on past the faces, so they come in as the grid goes out
+    if (emitter.fluid_tracer != 0u)
+    {
+        mass_scale *= 1.0f - fluid_weight(particle.position);
+        if (mass_scale <= 0.0f)
+        {
+            return;
+        }
+    }
+
     int3 radius = int3((int)ceil(radius_x), (int)ceil(radius_y), (int)ceil(radius_d));
     int3 c = int3(floor(center));
 
@@ -537,6 +549,26 @@ float3 volume_uv_from_world(float3 world_position)
     return float3(uv, volume_distance_to_slice(distance(world_position, get_camera_position())));
 }
 
+// the medium at a point, r = shade, g = age, a = density
+//
+// two fields hold it. the froxel grid is what the particles were splatted into, and the fluid grid is the
+// smoke the solver carries around the car, which is where the shape of a burnout actually lives. the
+// two never hold the same smoke, the splat fades its particles out exactly where the fluid fades in, so
+// they add, and the shade and the age come out as the density weighted mean of the two
+float4 volume_medium(float3 uvw, float3 world_position)
+{
+    float4 medium = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0);
+    float4 fluid  = fluid_sample_medium(world_position);
+    if (fluid.a > 0.0f)
+    {
+        float total = medium.a + fluid.a;
+        medium.rg   = (medium.rg * medium.a + fluid.rg * fluid.a) / max(total, 0.0001f);
+        medium.a    = total;
+    }
+
+    return medium;
+}
+
 // how much of the beam survives the medium between this point and the light, without this every voxel
 // is lit as if it were on the surface of the plume and the whole thing reads as an evenly bright cloud
 // with no interior, which is the single biggest reason smoke fails to look like smoke
@@ -552,7 +584,7 @@ float volume_self_shadow(float3 position, float3 light_dir, float time)
         float3 uvw = volume_uv_from_world(p);
         // the grid carries the mean parcel age alongside the density, so each tap gets the noise phase
         // belonging to the smoke actually standing there rather than the phase of the sample we came from
-        float4 s = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0);
+        float4 s = volume_medium(uvw, p);
         optical_depth += volume_carve_density_coarse(s.a, p, time, s.g) * step_length;
     }
 
@@ -693,7 +725,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             break;
         }
 
-        float4 sample = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), float3(uv, volume_distance_to_slice(t)), 0);
+        float3 sample_pos = get_camera_position() + ray_direction * t;
+        float4 sample = volume_medium(float3(uv, volume_distance_to_slice(t)), sample_pos);
         if (sample.a <= enter_density)
         {
             t += coarse_step;
@@ -705,7 +738,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         // dissipating fringe. Range still controls the step through the grid spacing.
         float slice_fraction = lerp(1.2f, 0.5f, saturate(sample.a * 2.0f));
         float fine_step = clamp(volume_slice_thickness(t) * slice_fraction, 0.05f, 0.5f);
-        float3 sample_pos = get_camera_position() + ray_direction * t;
         float density = volume_carve_density(sample.a, sample_pos, time, sample.g);
 
         if (density > 0.0001f)

@@ -116,6 +116,8 @@ Split large worlds into `<world>_<part>.lua` files loaded with `dofile`, as `gam
 
 `project/navigation_example_resources/scripts/navigation_example.lua` drives [`navigation_example.world`](../worlds/navigation_example.world), a top-down arena. It fixes the view with `World.SetActiveCamera`, spawns crowd agents with `Navigation:AddAgent` and lets them wander. A click on the floor sends every agent there and draws their `FindPath` routes with `Debug.DrawTriangle`. A click on an orange door opens or closes it and calls `Navigation:Refresh`, so the agents reroute. C releases a chaser that hunts the others, N toggles the navmesh overlay and R respawns.
 
+`project/multiplayer_example_resources/scripts/multiplayer_example.lua` drives [`multiplayer_example.world`](../worlds/multiplayer_example.world), a server and client in one script. Run two instances and press play in both: H calls `Network.Host`, J calls `Network.Connect`. The server spawns a player for each `connected` event from `Network.Poll` and tells everyone with reliable `"spawn|id|x|z"` messages. Every peer clones the player template and adds a `NetworkSync` whose owner is that player's id. The owner moves its player with WASD and everyone else receives the transform. Space sends a pulse that the server relays to the other clients with `Network.Broadcast(data, true, peer)`. See [Networking](../source/network/README.md).
+
 ## API reference
 
 The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table` and `io` are available.
@@ -143,6 +145,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `Sequencer` | `IsAvailable`, `Play(name, entity)`, `Stop`, `IsPlaying`, `GetTime`, `GetDuration` (editor builds) |
 | `Hud` | Screen-space drawing, see below |
 | `Debug` | `DrawLine`, `DrawTriangle`, `DrawCircle`: world-space overlays for one frame, see [Components](#components) |
+| `Network` | `Host(port, max_clients)`, `Connect(address, port)`, `Disconnect`, `IsServer`, `IsClient`, `IsConnected`, `GetLocalId` (-1 offline, 0 server), `GetPeers`, `GetPingMs(peer)`, `Send(peer, message, reliable)`, `Broadcast(message, reliable, except)`, `Poll()` returning `{ type, peer, data }` events (`"connected"`, `"disconnected"`, `"failed"`, `"message"`), `ServerPeer` (0). Play mode only, see [Networking](../source/network/README.md) |
 | `CarTuning` | Player car, parts, setup, service, wear, save and load, see below |
 
 ### Entity
@@ -155,7 +158,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | State | `IsActive`, `GetActive`, `SetActive`, `IsDynamic` |
 | Components | `GetComponent(ComponentType.X)`, `AddComponent(ComponentType.X)`, `RemoveComponent(ComponentType.X)`, `GetAllComponents`, `GetComponentCount` |
 
-`ComponentType` values reachable from Lua: `AudioSource`, `Camera`, `Light`, `Physics`, `Render`, `Terrain`, `Volume`, `Script`, `ParticleSystem`, `Spline`, `Text3D`, `Animator`, `Ragdoll`, `Navigation`. `GetComponent` returns the typed component or `nil`.
+`ComponentType` values reachable from Lua: `AudioSource`, `Camera`, `Light`, `Physics`, `Render`, `Terrain`, `Volume`, `Script`, `ParticleSystem`, `Spline`, `Text3D`, `Animator`, `Ragdoll`, `Navigation`, `NetworkSync`. `GetComponent` returns the typed component or `nil`.
 
 ### Components
 
@@ -172,6 +175,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | `Spline` | `GetPoint(t)`, `GetTangent(t)`, `GetLength`, `GetTAtDistance(d)`, control points, road mesh generation |
 | `Text3D` | Text, font, size, alignment, `GenerateMesh` |
 | `Navigation` | `Get/SetEnabled`, `Get/SetDebugDraw`, `Refresh`, `ProjectPoint(pos)`, `FindPath(from, to)` (table of points or `nil`), crowd agents: `AddAgent(pos, speed)` returns an id or -1, `RemoveAgent`, `MoveAgent(id, pos)`, `WanderAgent`, `SetAgentSpeed`, `GetAgentPosition`, `GetAgentVelocity` |
+| `NetworkSync` | `Get/SetNetworkId` (0 derives one from the entity id), `Get/SetOwner` (peer id, 0 is the server), `Get/SetInterpolate`, `IsLocallyOwned` |
 
 `Debug.DrawLine(from, to, color)`, `Debug.DrawTriangle(a, b, c, color)` and `Debug.DrawCircle(center, radius, color)` draw world-space overlays for one frame, in edit and play. Colors are `Vector4`. Lift them slightly above surfaces or the depth test hides them. `navigation_example.lua` uses all of the above.
 

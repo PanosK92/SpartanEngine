@@ -17,6 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Camera.h"
 #include "../world/components/Light.h"
 #include "../world/components/Navigation.h"
+#include "../world/components/NetworkSync.h"
 #include "../world/components/ParticleSystem.h"
 #include "../world/components/Physics.h"
 #include "../world/components/Ragdoll.h"
@@ -671,6 +672,20 @@ namespace spartan::scripting
             );
         }
 
+        void register_network_sync(sol::state_view state)
+        {
+            visual::usertype<NetworkSync>(state, "NetworkSync",
+                sol::base_classes, sol::bases<Component>(),
+                "GetNetworkId",   &NetworkSync::GetNetworkId,
+                "SetNetworkId",   &NetworkSync::SetNetworkId,
+                "GetOwner",       &NetworkSync::GetOwner,
+                "SetOwner",       &NetworkSync::SetOwner,
+                "GetInterpolate", &NetworkSync::GetInterpolate,
+                "SetInterpolate", &NetworkSync::SetInterpolate,
+                "IsLocallyOwned", &NetworkSync::IsLocallyOwned
+            );
+        }
+
         void register_camera(sol::state_view state)
         {
             visual::enumeration(state, "CameraExposureMode",
@@ -717,6 +732,7 @@ namespace spartan::scripting
         register_animator(state);
         register_ragdoll(state);
         register_navigation(state);
+        register_network_sync(state);
         register_camera(state);
     }
 
@@ -734,6 +750,7 @@ namespace spartan::scripting
             case ComponentType::Camera:         return sol::make_object(state, static_cast<Camera*>(component));
             case ComponentType::Light:          return sol::make_object(state, static_cast<Light*>(component));
             case ComponentType::Navigation:     return sol::make_object(state, static_cast<Navigation*>(component));
+            case ComponentType::NetworkSync:    return sol::make_object(state, static_cast<NetworkSync*>(component));
             case ComponentType::ParticleSystem: return sol::make_object(state, static_cast<ParticleSystem*>(component));
             case ComponentType::Physics:        return sol::make_object(state, static_cast<Physics*>(component));
             case ComponentType::Ragdoll:        return sol::make_object(state, static_cast<Ragdoll*>(component));

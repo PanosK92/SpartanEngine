@@ -33,6 +33,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/components/SplineFollower.h"
 #include "../../world/components/Pedestrians.h"
 #include "world/components/Navigation.h"
+#include "world/components/NetworkSync.h"
 #include "world/components/Terrain.h"
 #include "world/WorldHelpers.h"
 #include "world/Weather.h"
@@ -1119,6 +1120,7 @@ void Properties::OnTickVisible()
             ShowSplineFollower(entity->GetComponent<SplineFollower>());
             ShowPedestrians(entity->GetComponent<Pedestrians>());
             ShowNavigation(entity->GetComponent<Navigation>());
+            ShowNetworkSync(entity->GetComponent<NetworkSync>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
             ShowText3D(entity->GetComponent<Text3D>());
 
@@ -4141,6 +4143,49 @@ void Properties::ShowPedestrians(spartan::Pedestrians* pedestrians) const
     component_end();
 }
 
+void Properties::ShowNetworkSync(spartan::NetworkSync* sync) const
+{
+    if (!sync)
+    {
+        return;
+    }
+
+    {
+        char summary[96];
+        snprintf(summary, sizeof(summary), "id %u \xC2\xB7 %s", sync->GetNetworkId(), sync->GetOwner() == 0 ? "server owned" : "client owned");
+        component_summary(summary);
+    }
+
+    if (component_begin("Network Sync", design::accent_spline_follower(), sync))
+    {
+        uint32_t id          = static_cast<uint32_t>(sync->GetNetworkId() & 0x7FFFFFFFu);
+        const bool derived   = sync->GetNetworkId() & 0x80000000u;
+        uint32_t authored_id = derived ? 0 : id;
+        if (property_uint("Network id", &authored_id, 1.0f, 0, 0x7FFFFFFF, "The id peers use to match this entity. 0 derives one from the entity id, which matches across peers that loaded the same world. Give spawned entities an id."))
+        {
+            sync->SetNetworkId(authored_id);
+        }
+
+        uint32_t owner = static_cast<uint32_t>(sync->GetOwner());
+        if (property_uint("Owner", &owner, 1.0f, 0, 255, "The peer that moves this entity, 0 is the server and clients count from 1. Everyone else receives its transform."))
+        {
+            sync->SetOwner(static_cast<int>(owner));
+        }
+
+        bool interpolate = sync->GetInterpolate();
+        if (property_toggle("Interpolate", &interpolate, "Blends between received transforms, 100 ms behind, instead of snapping to the newest."))
+        {
+            sync->SetInterpolate(interpolate);
+        }
+
+        if (derived)
+        {
+            layout::note("Using the id derived from this entity.", ImGui::Style::color_text_muted);
+        }
+    }
+    component_end();
+}
+
 void Properties::ShowNavigation(spartan::Navigation* navigation) const
 {
     if (!navigation)
@@ -5658,6 +5703,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Navigation"))
             {
                 entity->AddComponent<Navigation>();
+            }
+
+            if (ImGui::MenuItem("Network Sync"))
+            {
+                entity->AddComponent<NetworkSync>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

@@ -110,6 +110,7 @@ namespace spartan::scripting
         register_components(state_view);
         register_world_helpers(state_view);
         register_hud(state_view);
+        register_network(state_view);
         register_car_tuning(state_view);
 
         visual::enumeration(state_view, "ComponentType",
@@ -126,7 +127,8 @@ namespace spartan::scripting
             "Text3D",                   ComponentType::Text3D,
             "Animator",                 ComponentType::Animator,
             "Ragdoll",                  ComponentType::Ragdoll,
-            "Navigation",               ComponentType::Navigation
+            "Navigation",               ComponentType::Navigation,
+            "NetworkSync",              ComponentType::NetworkSync
         );
 
         visual::enumeration(state_view, "KeyCode",

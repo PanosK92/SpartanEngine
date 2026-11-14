@@ -340,9 +340,27 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 position            = get_position(depth, render_uv_to_screen_uv(uv));
         float3 camera_to_pixel     = normalize(position - get_camera_position());
         float3 normal              = gbuffer_unpack_normal(normal_packed);
+        float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
 #ifdef RAY_TRACING_ENABLED
         if (cell_share > 0.0f)
         {
+            // a cache cell is metres wide and blind to the crevice the pixel sits in, the traced share already
+            // stops at real occluders, so only the cell is attenuated by the bent normal visibility cone
+            float3 bent_normal = normal;
+            float  visibility  = sample_material.a;
+            if (is_ssao_enabled() && alpha >= 0.999f)
+            {
+                float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+                if (!any(isnan(ssao_sample.rgb)) && dot(ssao_sample.rgb, ssao_sample.rgb) > 1e-6f)
+                {
+                    bent_normal = normalize(ssao_sample.rgb);
+                }
+                visibility = min(visibility, ssao_sample.a);
+            }
+            float  roughness          = sample_material.r;
+            float3 dominant_direction = get_dominant_specular_direction(normal, -camera_to_pixel, roughness);
+            float  cell_occlusion     = specular_occlusion_bent(bent_normal, visibility, dominant_direction, n_dot_v, roughness, roughness * roughness);
+
             // a lobe past the roughness cut was not traced, it is wide enough to see what the radiance cache cell under
             // the pixel gathers from its surroundings over the hemisphere, the lights themselves are already in the frame
             // as analytic highlights, the jitter dithers the cell edges and the temporal resolve smooths what is left
@@ -351,11 +369,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float  cell_confidence;
             float  cell_openness;
             float3 cell_direct;
-            float3 cell   = radiance_cache_lookup(position, normal, jitter, cell_confidence, cell_openness, cell_direct);
+            float3 cell   = radiance_cache_lookup(position, normal, jitter, cell_confidence, cell_openness, cell_direct) * cell_occlusion;
             reflection    = cell_share >= 1.0f ? cell * cell_confidence : lerp(reflection, cell, cell_share * cell_confidence);
         }
 #endif
-        float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
         float3 albedo              = sample_albedo.rgb;
         float  metallic            = sample_material.g;
         float3 F0                  = lerp(0.04f, albedo, metallic);

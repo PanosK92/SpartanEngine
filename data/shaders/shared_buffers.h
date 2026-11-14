@@ -619,6 +619,7 @@ namespace pass_ocean
 namespace pass_ssao
 {
     static const SHARED_UINT reset_history = 0; // bool
+    static const SHARED_UINT mip_count     = 1; // uint, packed depth and normal mips the cortao prepass writes
 }
 
 namespace pass_depth_of_field
@@ -728,6 +729,21 @@ namespace pass_particles
 namespace pass_particles_volumetric
 {
     static const SHARED_UINT reset_history = 0; // bool
+}
+
+// particles_fluid.hlsl, and every particle kernel that samples the fluid grid through common_particle_fluid.hlsl
+// the grid mapping keeps its slots clear of the two tables above, a zero cell size means the fluid is not running
+namespace pass_particles_fluid
+{
+    static const SHARED_UINT origin          = 4;  // float3, world position of the grid's minimum corner
+    static const SHARED_UINT cell_size       = 7;  // float, metres
+    static const SHARED_UINT origin_previous = 8;  // float3, solver kernels only from here on
+    static const SHARED_UINT delta_time      = 11; // float
+    static const SHARED_UINT ground_plane    = 12; // float4, cells below it are solid
+    static const SHARED_UINT history_valid   = 16; // bool
+    static const SHARED_UINT body_count      = 17; // uint
+    static const SHARED_UINT wheel_count     = 18; // uint
+    static const SHARED_UINT source_count    = 19; // uint
 }
 
 namespace pass_icon
@@ -1396,7 +1412,9 @@ struct EmitterParams
     SHARED_UINT   rain_occluded SHARED_DEFAULT(0);
     // leaf litter may be laid in view, set for the moments after a camera cut
     SHARED_UINT   seed_visible  SHARED_DEFAULT(0);
-    SHARED_UINT   padding_seed_0 SHARED_DEFAULT(0);
+    // set for smoke that also lives in the fluid grid, inside the grid its particles ride the solved flow
+    // as tracers and stay out of the volume, the grid density stands in for them until they leave it
+    SHARED_UINT   fluid_tracer   SHARED_DEFAULT(0);
     SHARED_UINT   padding_seed_1 SHARED_DEFAULT(0);
     SHARED_UINT   padding_seed_2 SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_low  SHARED_DEFAULT(0);
@@ -1409,6 +1427,19 @@ struct ParticleWakeSample
     SHARED_FLOAT4 center_strength;
     SHARED_FLOAT4 axis_length;
     SHARED_FLOAT4 shape; // half width, vortex radius, age, reserved
+};
+
+// one entry of the fluid scene, what the four vectors hold depends on the kind, see particles_fluid.hlsl
+// body, two records: centre | right, half width | up, half height | forward, half length
+//                    linear velocity | angular velocity | pivot | unused
+// wheel:             hub, radius | axle, half width | hub velocity, spin in rad/s | unused
+// source:            position, radius | velocity, density per second | heat, shade, jet rate | previous position
+struct ParticleFluidRecord
+{
+    SHARED_FLOAT4 a;
+    SHARED_FLOAT4 b;
+    SHARED_FLOAT4 c;
+    SHARED_FLOAT4 d;
 };
 
 // c++ backward compatibility aliases
@@ -1441,6 +1472,8 @@ namespace spartan
     using Sb_Particle         = Particle;
     using Sb_EmitterParams    = EmitterParams;
     using Sb_ParticleWake     = ParticleWakeSample;
+    using Sb_ParticleFluidRecord = ParticleFluidRecord;
+    static_assert(sizeof(Sb_ParticleFluidRecord) == 64);
     using Sb_GrassInstance    = GrassInstance;
     static_assert(sizeof(LensDrop) == 48);
 

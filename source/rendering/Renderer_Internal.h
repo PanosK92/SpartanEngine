@@ -22,6 +22,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/TerrainDeformation.h"
 #include "../world/OceanWake.h"
 #include <initializer_list>
+#include <unordered_map>
 #include <type_traits>
 #include <tuple>
 //==============================================
@@ -277,6 +278,25 @@ namespace spartan
                 bool dispatch = false;
                 bool writing = false; // the field is a uav, the global srv slots must not see it
             } vegetation_interaction;
+
+            // the air around the watched car solved as a fluid, smoke particles ride its velocity and the
+            // volume march reads its density, a world space box that scrolls in whole cells
+            struct ParticleFluid
+            {
+                std::shared_ptr<RHI_Texture> velocity[2];
+                std::shared_ptr<RHI_Texture> scalar[2];
+                std::shared_ptr<RHI_Texture> pressure[2];
+                std::shared_ptr<RHI_Texture> aux;
+                std::shared_ptr<RHI_Texture> idle; // one texel, bound in place of the grid until something smokes
+                std::shared_ptr<RHI_Buffer> scene;
+                math::Vector3 origin   = math::Vector3::Zero;
+                float cell_size        = 0.0f; // zero while the fluid is not running
+                uint32_t current       = 0;    // which velocity and scalar pair holds the latest step
+                bool valid             = false;
+                float quiet_time       = 0.0f; // seconds since an emitter last fed it
+                // where each emitter was when it last fed the fluid, so a fast one deposits along its path
+                std::unordered_map<uint64_t, math::Vector3> source_positions;
+            } particle_fluid;
 
             // tire ruts, the cpu field in TerrainDeformation is the source, this is its gpu mirror
             struct TerrainDeformationState

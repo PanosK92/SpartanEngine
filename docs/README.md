@@ -18,7 +18,7 @@ Spartan was documented by its code for twelve years. These pages are the map: th
 | ---- | ------ |
 | [Rendering](rendering.md) | Frame pass order, the bindless GPU-driven design, the RHI backends, shaders, lights, cameras and materials |
 | [Physics and vehicles](physics_and_vehicles.md) | PhysX integration, the physics example world, cloth, the 200 Hz vehicle simulation, `.car` definitions, AI drivers and input |
-| [Engine systems](systems.md) | Animation, audio, navigation, procedural geometry, weather, XR and Steam |
+| [Engine systems](systems.md) | Animation, audio, navigation, networking, procedural geometry, weather, XR and Steam |
 | [Console variables](console_variables.md) | The cvar system and every registered cvar, grouped by subsystem |
 
 ## Tools and workflow
@@ -34,6 +34,7 @@ Spartan was documented by its code for twelve years. These pages are the map: th
 
 - [`worlds/README.md`](../worlds/README.md): where a world's files and assets live, and the rules for keeping them separate.
 - [`source/navigation/README.md`](../source/navigation/README.md): the streamed navigation mesh.
+- [`source/network/README.md`](../source/network/README.md): UDP sessions, messages and transform replication.
 - [`source/rendering/Decals.md`](../source/rendering/Decals.md): surface decals, vehicle dirt and paint scratches.
 - [`tools/mcp/spartan_engine/README.md`](../tools/mcp/spartan_engine/README.md): the Node MCP server in full detail.
 - [`plan.md`](../plan.md): the game being built on the engine.

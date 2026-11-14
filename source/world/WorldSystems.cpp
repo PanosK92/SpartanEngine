@@ -21,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../car/CarRender.h"
 #include "../car/CarWeather.h"
 #include "../car/CarParticleWake.h"
+#include "../car/CarParticleFluid.h"
 #include "../physics/PhysicsCollisionPolicy.h"
 #include "../scripting/Scripting.h"
 #include <sol/sol.hpp>
@@ -181,6 +182,7 @@ namespace spartan::world_systems
         callbacks.before_entities_destroyed = [] { companion_clear(); Car::ShutdownAll(); };
         callbacks.after_entities_destroyed = [] {
             vehicle_particle_wake::Clear();
+            vehicle_particle_fluid::Clear();
             ambient_wildlife::Clear(false);
             ambient_atmosphere::Clear(false);
             road_details::Clear();
@@ -194,6 +196,7 @@ namespace spartan::world_systems
             breakable_trees::RestoreAll();
             vegetation_interaction::Clear();
             vehicle_particle_wake::Clear();
+            vehicle_particle_fluid::Clear();
             ambient_wildlife::Clear(true);
             ambient_atmosphere::Clear(true);
             for (Car* car : Car::GetAll())
@@ -217,6 +220,9 @@ namespace spartan::world_systems
             }
             SP_PROFILE_CPU_START("vehicle_particle_wake_tick");
             vehicle_particle_wake::Tick(dt);
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("vehicle_particle_fluid_tick");
+            vehicle_particle_fluid::Tick();
             SP_PROFILE_CPU_END();
             Car::TickShowroomPanel();
         };

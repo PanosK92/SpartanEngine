@@ -25,6 +25,7 @@ namespace spartan
     class SplineFollower;
     class Pedestrians;
     class Navigation;
+    class NetworkSync;
     class Volume;
     class Script;
     class Component;
@@ -62,6 +63,7 @@ private:
     void ShowSplineFollower(spartan::SplineFollower* follower) const;
     void ShowPedestrians(spartan::Pedestrians* pedestrians) const;
     void ShowNavigation(spartan::Navigation* navigation) const;
+    void ShowNetworkSync(spartan::NetworkSync* sync) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
     void ShowVolume(spartan::Volume* volume) const;
     void ShowParticleSystem(spartan::ParticleSystem* particle_system) const;

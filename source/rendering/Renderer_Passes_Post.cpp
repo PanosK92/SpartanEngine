@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Camera.h"
 #include "../world/components/ParticleSystem.h"
 #include "../world/ParticleWake.h"
+#include "../world/ParticleFluid.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Queue.h"
 #include "../rhi/RHI_AccelerationStructure.h"
@@ -83,10 +84,11 @@ namespace spartan
             return;
         }
 
-        RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
+        RHI_Texture* tex_ssao   = GetRenderTarget(Renderer_RenderTarget::ssao);
         RHI_Texture* tex_hist_0 = GetRenderTarget(Renderer_RenderTarget::ssao_history_0);
         RHI_Texture* tex_hist_1 = GetRenderTarget(Renderer_RenderTarget::ssao_history_1);
-        if (!tex_ssao || !tex_hist_0 || !tex_hist_1)
+        RHI_Texture* tex_packed = GetRenderTarget(Renderer_RenderTarget::ssao_packed);
+        if (!tex_ssao || !tex_hist_0 || !tex_hist_1 || !tex_packed)
         {
             return;
         }
@@ -99,15 +101,28 @@ namespace spartan
         RHI_CommandList::BeginPass("screen_space_ambient_occlusion");
         SetCommonTextures(rhi_all_mips, false);
         {
+            // cortao prepass, linear depth with a coarse normal packed into every mip in one dispatch
+            const uint32_t packed_mip_count = tex_packed->GetMipCount();
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_prepass_c));
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_spd, tex_packed, 0, packed_mip_count);
+            m_pcb_pass_cpu.set(pass_ssao::mip_count, packed_mip_count);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch(tex_packed, GetResolutionScale());
+
+            // cortao main pass and temporal accumulation
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_c));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_history_read);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_packed);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetStandardTexture(Renderer_StandardTexture::Cortao_bent_normal_lut));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetStandardTexture(Renderer_StandardTexture::Cortao_occluder_lut));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_ssao);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_history_write);
             // history resets on the first frame or after rt recreate, a secondary view has none of its own,
             // it only writes the slot the primary overwrites next, so the primary's history survives it
             const bool secondary_view = IsSecondaryViewActive();
             m_pcb_pass_cpu.set(pass_ssao::reset_history, !m_pass_state.ssao_history.valid || secondary_view);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(tex_ssao, GetResolutionScale());
 
             if (!secondary_view)
@@ -960,6 +975,290 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
+    namespace Renderer
+    {
+        namespace
+        {
+            // the smoke fluid, see particles_fluid.hlsl
+            constexpr float particle_fluid_cell_size = 0.14f; // metres, the box comes out about twenty across and under seven tall
+            // odd, so the relaxation ends in the texture the projection and the next warm start read
+            constexpr uint32_t particle_fluid_pressure_iterations = 13;
+            // seconds without an emitter feeding it before the air is left alone, long enough for the smoke to thin out
+            constexpr float particle_fluid_quiet_limit = 30.0f;
+            // matches the record layout in particles_fluid.hlsl
+            constexpr uint32_t particle_fluid_box_offset      = 0;
+            constexpr uint32_t particle_fluid_wheel_offset    = 16;
+            constexpr uint32_t particle_fluid_source_offset   = 32;
+            constexpr uint32_t particle_fluid_source_capacity = 16;
+            constexpr uint32_t particle_fluid_record_count    = 48;
+            static_assert(particle_fluid::box_capacity * 2 <= particle_fluid_wheel_offset - particle_fluid_box_offset);
+            static_assert(particle_fluid::wheel_capacity <= particle_fluid_source_offset - particle_fluid_wheel_offset);
+
+            // one emitter as the fluid sees it
+            struct ParticleFluidSource
+            {
+                uint64_t id = 0;
+                Vector3 position;
+                Vector3 velocity;
+                float radius       = 0.0f;
+                float density_rate = 0.0f; // density times cubic metres per second
+                float heat         = 0.0f; // the lift it gives, metres per second squared
+                float shade        = 1.0f;
+            };
+
+            // steps the air around the watched car by one frame, returns false while the fluid is not running
+            bool step_particle_fluid(const vector<ParticleFluidSource>& sources, const float delta_time)
+            {
+                auto& state = m_pass_state.particle_fluid;
+                const particle_fluid::Scene& scene = particle_fluid::scene;
+
+                const Renderer_Shader kernels[] =
+                {
+                    Renderer_Shader::particle_fluid_advect_c,
+                    Renderer_Shader::particle_fluid_vorticity_c,
+                    Renderer_Shader::particle_fluid_confine_c,
+                    Renderer_Shader::particle_fluid_divergence_c,
+                    Renderer_Shader::particle_fluid_pressure_c,
+                    Renderer_Shader::particle_fluid_project_c
+                };
+                bool ready = true;
+                for (const Renderer_Shader kernel : kernels)
+                {
+                    RHI_Shader* shader = GetShader(kernel);
+                    ready = ready && shader && shader->IsCompiled();
+                }
+
+                // a paused game still renders, and the cars in it still report the speed they were frozen at,
+                // stepping the air then would blow the smoke along a car that is not going anywhere
+                const bool frozen = delta_time <= 0.0f;
+
+                // nothing has fed it for a while, or there is nobody to follow
+                if (!frozen)
+                {
+                    state.quiet_time = sources.empty() ? state.quiet_time + delta_time : 0.0f;
+                }
+                const bool wanted = ready && scene.valid && (!sources.empty() || (state.valid && state.quiet_time < particle_fluid_quiet_limit));
+                if (!wanted)
+                {
+                    state.valid     = false;
+                    state.cell_size = 0.0f;
+                    state.source_positions.clear();
+                    return false;
+                }
+
+                const uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+                const uint32_t width  = renderer_particle_fluid_width;
+                const uint32_t height = renderer_particle_fluid_height;
+                const uint32_t depth  = renderer_particle_fluid_depth;
+                if (!state.velocity[0] || state.velocity[0]->GetWidth() != width)
+                {
+                    for (uint32_t i = 0; i < 2; ++i)
+                    {
+                        state.velocity[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R16G16B16A16_Float, flags, i == 0 ? "particle_fluid_velocity_a" : "particle_fluid_velocity_b");
+                        state.scalar[i]   = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R16G16B16A16_Float, flags, i == 0 ? "particle_fluid_scalar_a" : "particle_fluid_scalar_b");
+                        // the pressure gradient is a difference of large neighbouring values, half floats would turn it into noise
+                        state.pressure[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R32_Float, flags, i == 0 ? "particle_fluid_pressure_a" : "particle_fluid_pressure_b");
+                    }
+                    state.aux   = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R16G16B16A16_Float, flags, "particle_fluid_aux");
+                    state.valid = false;
+                }
+                if (!state.scene)
+                {
+                    state.scene = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, sizeof(Sb_ParticleFluidRecord), particle_fluid_record_count, nullptr, false, "particle_fluid_scene");
+                }
+
+                // the air holds still and stays readable
+                if (frozen)
+                {
+                    return state.valid;
+                }
+
+                // the box sits on the ground under the focus and trails a moving car, since behind it is where its smoke is,
+                // it moves in whole cells so nothing in it has to be resampled when it does
+                const float cell = particle_fluid_cell_size;
+                const Vector3 size(width * cell, height * cell, depth * cell);
+                Vector3 center = scene.focus;
+                Vector3 travel(scene.focus_velocity.x, 0.0f, scene.focus_velocity.z);
+                const float speed = travel.Length();
+                if (speed > 1.0f)
+                {
+                    center -= travel / speed * min(speed * 0.22f, size.x * 0.24f);
+                }
+                // low enough to hold the ground across the whole footprint, a slope drops away from the focus
+                const Vector3 normal(scene.ground_plane.x, scene.ground_plane.y, scene.ground_plane.z);
+                const float slope = normal.y > 0.2f ? (fabsf(normal.x) + fabsf(normal.z)) / normal.y * size.x * 0.5f : 0.0f;
+                const float floor_y = scene.focus.y - clamp(slope, 0.0f, 1.4f) - cell * 2.5f;
+                const Vector3 origin(floorf((center.x - size.x * 0.5f) / cell) * cell, floorf(floor_y / cell) * cell, floorf((center.z - size.z * 0.5f) / cell) * cell);
+
+                // a teleport leaves nothing in common with the previous box
+                const bool history = state.valid && (origin - state.origin).LengthSquared() < size.x * size.x * 0.25f;
+
+                array<Sb_ParticleFluidRecord, particle_fluid_record_count> records{};
+                for (uint32_t i = 0; i < scene.box_count; ++i)
+                {
+                    const particle_fluid::Box& box = scene.boxes[i];
+                    Sb_ParticleFluidRecord& shape  = records[particle_fluid_box_offset + i * 2];
+                    Sb_ParticleFluidRecord& motion = records[particle_fluid_box_offset + i * 2 + 1];
+                    shape.a  = Vector4(box.center.x, box.center.y, box.center.z, 0.0f);
+                    shape.b  = Vector4(box.right.x, box.right.y, box.right.z, box.extents.x);
+                    shape.c  = Vector4(box.up.x, box.up.y, box.up.z, box.extents.y);
+                    shape.d  = Vector4(box.forward.x, box.forward.y, box.forward.z, box.extents.z);
+                    motion.a = Vector4(box.velocity.x, box.velocity.y, box.velocity.z, 0.0f);
+                    motion.b = Vector4(box.angular_velocity.x, box.angular_velocity.y, box.angular_velocity.z, 0.0f);
+                    motion.c = Vector4(box.pivot.x, box.pivot.y, box.pivot.z, 0.0f);
+                }
+                for (uint32_t i = 0; i < scene.wheel_count; ++i)
+                {
+                    const particle_fluid::Wheel& wheel = scene.wheels[i];
+                    Sb_ParticleFluidRecord& record = records[particle_fluid_wheel_offset + i];
+                    record.a = Vector4(wheel.center.x, wheel.center.y, wheel.center.z, wheel.radius);
+                    record.b = Vector4(wheel.axis.x, wheel.axis.y, wheel.axis.z, wheel.half_width);
+                    record.c = Vector4(wheel.velocity.x, wheel.velocity.y, wheel.velocity.z, wheel.spin);
+                }
+                const uint32_t source_count = min(static_cast<uint32_t>(sources.size()), particle_fluid_source_capacity);
+                unordered_map<uint64_t, Vector3> source_positions;
+                for (uint32_t i = 0; i < source_count; ++i)
+                {
+                    const ParticleFluidSource& source = sources[i];
+                    // where it fed the fluid last frame, a first sighting or a jump has no path to deposit along
+                    Vector3 previous = source.position;
+                    if (const auto it = state.source_positions.find(source.id); it != state.source_positions.end())
+                    {
+                        if ((it->second - source.position).LengthSquared() < 9.0f)
+                        {
+                            previous = it->second;
+                        }
+                    }
+                    source_positions[source.id] = source.position;
+
+                    // a kernel narrower than a cell would land in one cell or another as the emitter moves
+                    const float radius = max(source.radius, cell * 1.15f);
+                    Sb_ParticleFluidRecord& record = records[particle_fluid_source_offset + i];
+                    record.a = Vector4(source.position.x, source.position.y, source.position.z, radius);
+                    record.b = Vector4(source.velocity.x, source.velocity.y, source.velocity.z, source.density_rate);
+                    record.c = Vector4(source.heat, source.shade, 18.0f, 0.0f);
+                    record.d = Vector4(previous.x, previous.y, previous.z, 0.0f);
+                }
+                state.source_positions = move(source_positions);
+
+                const uint32_t read  = state.current;
+                const uint32_t write = 1 - read;
+                const uint32_t groups_x = (width + 7) / 8;
+                const uint32_t groups_y = (height + 7) / 8;
+                const uint32_t groups_z = (depth + 3) / 4;
+
+                m_pcb_pass_cpu = {};
+                m_pcb_pass_cpu.set(pass_particles_fluid::origin, origin);
+                m_pcb_pass_cpu.set(pass_particles_fluid::cell_size, cell);
+                m_pcb_pass_cpu.set(pass_particles_fluid::origin_previous, history ? state.origin : origin);
+                // long frames are stepped short, the air then runs a little slow rather than blowing up
+                m_pcb_pass_cpu.set(pass_particles_fluid::delta_time, min(delta_time, 1.0f / 30.0f));
+                m_pcb_pass_cpu.set(pass_particles_fluid::ground_plane, scene.ground_plane);
+                m_pcb_pass_cpu.set(pass_particles_fluid::history_valid, history);
+                m_pcb_pass_cpu.set(pass_particles_fluid::body_count, scene.box_count);
+                m_pcb_pass_cpu.set(pass_particles_fluid::wheel_count, scene.wheel_count);
+                m_pcb_pass_cpu.set(pass_particles_fluid::source_count, source_count);
+
+                RHI_CommandList::BeginPass("particle_fluid_advect");
+                {
+                    RHI_CommandList::UpdateBuffer(state.scene.get(), 0, sizeof(Sb_ParticleFluidRecord) * particle_fluid_record_count, records.data(), false);
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::particle_fluid_advect_c), "particle_fluid_advect");
+                    RHI_CommandList::SetBuffer("particle_fluid_scene", state.scene.get());
+                    RHI_CommandList::SetTexture("tex_fluid_velocity", state.velocity[read].get());
+                    RHI_CommandList::SetTexture("tex_fluid_scalar", state.scalar[read].get());
+                    RHI_CommandList::SetTexture("tex_fluid_velocity_uav", state.velocity[write].get());
+                    RHI_CommandList::SetTexture("tex_fluid_scalar_uav", state.scalar[write].get());
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                }
+                RHI_CommandList::EndPass();
+
+                RHI_CommandList::BeginPass("particle_fluid_vorticity");
+                {
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::particle_fluid_vorticity_c), "particle_fluid_vorticity");
+                    RHI_CommandList::SetTexture("tex_fluid_velocity", state.velocity[write].get());
+                    RHI_CommandList::SetTexture("tex_fluid_aux_uav", state.aux.get());
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                }
+                RHI_CommandList::EndPass();
+
+                RHI_CommandList::BeginPass("particle_fluid_confine");
+                {
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::particle_fluid_confine_c), "particle_fluid_confine");
+                    RHI_CommandList::SetTexture("tex_fluid_velocity", state.velocity[write].get());
+                    RHI_CommandList::SetTexture("tex_fluid_aux", state.aux.get());
+                    RHI_CommandList::SetTexture("tex_fluid_velocity_uav", state.velocity[read].get());
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                }
+                RHI_CommandList::EndPass();
+
+                RHI_CommandList::BeginPass("particle_fluid_divergence");
+                {
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::particle_fluid_divergence_c), "particle_fluid_divergence");
+                    RHI_CommandList::SetTexture("tex_fluid_velocity", state.velocity[read].get());
+                    RHI_CommandList::SetTexture("tex_fluid_pressure", state.pressure[0].get());
+                    RHI_CommandList::SetTexture("tex_fluid_aux_uav", state.aux.get());
+                    RHI_CommandList::SetTexture("tex_fluid_pressure_uav", state.pressure[1].get());
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                }
+                RHI_CommandList::EndPass();
+
+                RHI_CommandList::BeginPass("particle_fluid_pressure");
+                for (uint32_t i = 0; i < particle_fluid_pressure_iterations; ++i)
+                {
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::particle_fluid_pressure_c), "particle_fluid_pressure");
+                    RHI_CommandList::SetTexture("tex_fluid_aux", state.aux.get());
+                    RHI_CommandList::SetTexture("tex_fluid_pressure", state.pressure[1 - (i & 1)].get());
+                    RHI_CommandList::SetTexture("tex_fluid_pressure_uav", state.pressure[i & 1].get());
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                }
+                RHI_CommandList::EndPass();
+
+                RHI_CommandList::BeginPass("particle_fluid_project");
+                {
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::particle_fluid_project_c), "particle_fluid_project");
+                    RHI_CommandList::SetTexture("tex_fluid_velocity", state.velocity[read].get());
+                    RHI_CommandList::SetTexture("tex_fluid_aux", state.aux.get());
+                    RHI_CommandList::SetTexture("tex_fluid_pressure", state.pressure[0].get());
+                    RHI_CommandList::SetTexture("tex_fluid_velocity_uav", state.velocity[write].get());
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                }
+                RHI_CommandList::EndPass();
+
+                state.current   = write;
+                state.origin    = origin;
+                state.cell_size = cell;
+                state.valid     = true;
+                return true;
+            }
+
+            // the fluid grid for a kernel that samples it, the textures have to be bound even while it is not running
+            void bind_particle_fluid()
+            {
+                auto& state = m_pass_state.particle_fluid;
+                if (!state.velocity[0])
+                {
+                    // nothing has smoked yet, a single texel stands in so no kernel is left with an empty slot
+                    const uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+                    if (!state.idle)
+                    {
+                        state.idle = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 1, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "particle_fluid_idle");
+                    }
+                    RHI_CommandList::SetTexture("tex_fluid_velocity", state.idle.get());
+                    RHI_CommandList::SetTexture("tex_fluid_scalar", state.idle.get());
+                    return;
+                }
+                RHI_CommandList::SetTexture("tex_fluid_velocity", state.velocity[state.current].get());
+                RHI_CommandList::SetTexture("tex_fluid_scalar", state.scalar[state.current].get());
+            }
+        }
+    }
+
     void Renderer::Pass_Particles()
     {
         // gather every active emitter, cached at world resolve
@@ -1095,7 +1394,11 @@ namespace spartan
 
         // a spawn hitch can hand us a multi hundred millisecond frame, every other simulation in the
         // engine clamps to 0.1 and the particle sim has to match or it integrates one huge step
-        const float delta_time = std::clamp(Renderer::view().frame.delta_time, 0.0f, 0.1f);
+        //
+        // a paused game holds its particles where they are, like everything else it simulates, the air they
+        // ride is frozen with the cars that stir it and smoke left running would stream away from a statue
+        const bool paused      = Engine::IsFlagSet(EngineMode::Paused);
+        const float delta_time = paused ? 0.0f : std::clamp(Renderer::view().frame.delta_time, 0.0f, 0.1f);
 
         // one params entry per emitter, the ring size and frame data are shared so every entry carries the same copy
         vector<Sb_EmitterParams> emitter_params(emitter_count);
@@ -1110,8 +1413,11 @@ namespace spartan
         {
             ParticleSystem* emitter = emitters[i];
             math::Vector3 position = emitter->GetEntity()->GetPosition();
-            emitter->UpdateRuntime(position, delta_time);
-            emit_counts[i]      = std::min(emitter->ConsumeEmissionCount(delta_time), range_counts[i]);
+            if (!paused)
+            {
+                emitter->UpdateRuntime(position, delta_time);
+                emit_counts[i] = std::min(emitter->ConsumeEmissionCount(delta_time), range_counts[i]);
+            }
             emitter_distance[i] = math::Vector3::Distance(position, camera_position);
 
             Sb_EmitterParams& params    = emitter_params[i];
@@ -1165,11 +1471,16 @@ namespace spartan
             params.ground_plane         = emitter->GetGroundPlane();
             params.rain_occluded        = emitter->GetRainOccluded() ? 1u : 0u;
             params.seed_visible         = emitter->GetSeedVisible() ? 1u : 0u;
+            // decided by what the effect was authored as, a plume demoted to billboards below still rides the fluid
+            params.fluid_tracer         = emitter->GetRenderMode() == ParticleRenderMode::Volumetric ? 1u : 0u;
             const uint64_t owner_id     = emitter->GetEntity()->GetObjectId();
             params.owner_id_low         = static_cast<uint32_t>(owner_id);
             params.owner_id_high        = static_cast<uint32_t>(owner_id >> 32u);
             static_assert(sizeof(Sb_EmitterParams) % 16 == 0);
         }
+
+        // what the volumetric emitters pour into the smoke fluid this frame
+        vector<ParticleFluidSource> fluid_sources;
 
         // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray
         // march every frame, and that cost is the same whether one emitter is smoking or forty are, a
@@ -1247,6 +1558,40 @@ namespace spartan
             {
                 emitter_params[index].volume_splat_stride = splat_stride;
             }
+
+            // the same emitters feed the fluid, as much smoke per second as their particles carry between them
+            for (uint32_t index : candidates)
+            {
+                const Sb_EmitterParams& params = emitter_params[index];
+                if (emit_counts[index] == 0 || delta_time <= 0.0f)
+                {
+                    continue;
+                }
+
+                // what one parcel holds averaged over its life, in the units the volume splat deposits, the
+                // peak density of a splat times the volume of its kernel, a parcel that entrains air grows
+                // and thins on the way and the powers below are that ramp integrated
+                const float alpha = max(params.start_color.a, 0.0f) * max(params.volume_density, 0.0f);
+                float parcel      = alpha * 0.69f * powf(max(params.start_size, 0.0f) * 0.5f, 3.0f);
+                if (params.end_size > params.start_size && params.start_size > 0.0f)
+                {
+                    const float size_mean = params.start_size + (params.end_size - params.start_size) * 0.6f;
+                    parcel = alpha * 0.69f * 0.75f * powf(params.start_size, 0.65f) * powf(size_mean, 2.35f) * 0.125f;
+                }
+
+                // smoke comes out of the wedge behind the contact patch, not from under the middle of the tire,
+                // and a cell above the road, where there is air to put it in
+                const Vector3 direction(params.emission_direction.x, 0.0f, params.emission_direction.z);
+                ParticleFluidSource source;
+                source.id           = emitters[index]->GetEntity()->GetObjectId();
+                source.position     = params.position + direction * (params.vortex_radius * 0.45f) + Vector3(0.0f, particle_fluid_cell_size * 0.6f, 0.0f);
+                source.velocity     = params.emission_direction * params.start_speed + params.emitter_velocity * params.velocity_inheritance;
+                source.radius       = params.radius;
+                source.density_rate = static_cast<float>(emit_counts[index]) / delta_time * parcel;
+                source.heat         = max(params.thermal_strength, 0.0f);
+                source.shade        = clamp(params.start_color.r * 0.2126f + params.start_color.g * 0.7152f + params.start_color.b * 0.0722f, 0.0f, 1.0f);
+                fluid_sources.push_back(source);
+            }
         }
 
         // the depth buffer only ever knew about the front layer of what was on screen, so a particle
@@ -1284,6 +1629,15 @@ namespace spartan
 
         RHI_CommandList::BeginPass("particles");
 
+        // the air moves first, so the particles ride this frame's flow and the march reads this frame's smoke
+        const bool fluid_running = step_particle_fluid(fluid_sources, delta_time);
+        const auto& fluid        = m_pass_state.particle_fluid;
+        m_pcb_pass_cpu = {};
+        m_pcb_pass_cpu.set(pass_particles_fluid::origin, fluid_running ? fluid.origin : Vector3::Zero);
+        m_pcb_pass_cpu.set(pass_particles_fluid::cell_size, fluid_running ? fluid.cell_size : 0.0f);
+        // smoke left standing in the fluid is still there to draw after the last particle is gone
+        volume_present = volume_present || fluid_running;
+
         // emit, one dispatch per emitter so each spawns from its own position and rate
         RHI_CommandList::BeginPass("particle_emit");
         RHI_CommandList::SetShader(shader_emit, "particle_emit");
@@ -1319,6 +1673,8 @@ namespace spartan
                 RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
+            bind_particle_fluid();
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
         RHI_CommandList::EndPass();
@@ -1413,6 +1769,7 @@ namespace spartan
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
             }
             RHI_CommandList::EndPass();
@@ -1448,6 +1805,8 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                bind_particle_fluid();
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch(tex_render, GetResolutionScale());
             }
             RHI_CommandList::EndPass();

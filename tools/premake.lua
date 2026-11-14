@@ -315,7 +315,7 @@ function spartan_project_configuration()
             links { "Ws2_32", "oleaut32", "ole32", "d3d12", "dxgi" }
             buildoptions { "/bigobj" }
             symbolspath(TARGET_DIR .. "/build/%{cfg.buildtarget.basename}.pdb")
-            linkoptions { "/IMPLIB:binaries/build/%{cfg.buildtarget.basename}.lib" }
+            linkoptions { "/IMPLIB:\"" .. path.getabsolute(TARGET_DIR) .. "/build/%{cfg.buildtarget.basename}.lib\"" }
 
             if ARG_API_GRAPHICS == "vulkan" then
                 includedirs { "../third_party/spirv_cross", "../third_party/vulkan", "../third_party/vulkan_memory_allocator" }

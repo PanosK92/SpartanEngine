@@ -168,6 +168,10 @@ namespace spartan
     const uint32_t renderer_particle_volume_width   = 160;
     const uint32_t renderer_particle_volume_height  = 90;
     const uint32_t renderer_particle_volume_depth   = 128;
+    // keep in sync with fluid_resolution in common_particle_fluid.hlsl
+    const uint32_t renderer_particle_fluid_width    = 144;
+    const uint32_t renderer_particle_fluid_height   = 48;
+    const uint32_t renderer_particle_fluid_depth    = 144;
     // Shared CPU/HLSL dimensions, integrated volumes contain depth + 1 boundaries.
     const uint32_t renderer_fog_volume_width        = fog::fog_width;
     const uint32_t renderer_fog_volume_height       = fog::fog_height;
@@ -428,6 +432,7 @@ namespace spartan
         font_v,
         font_p,
         ssao_c,
+        ssao_prepass_c,
         sss_c_bend,
         skysphere_c,
         skysphere_sh_project_c,
@@ -527,6 +532,13 @@ namespace spartan
         particle_volume_splat_c,
         particle_volume_resolve_c,
         particle_volume_composite_c,
+        // the smoke fluid the particles ride and the volume march reads
+        particle_fluid_advect_c,
+        particle_fluid_vorticity_c,
+        particle_fluid_confine_c,
+        particle_fluid_divergence_c,
+        particle_fluid_pressure_c,
+        particle_fluid_project_c,
         // gpu procedural grass
         grass_populate_c,
         grass_indirect_args_c,
@@ -595,6 +607,7 @@ namespace spartan
         ssao,
         ssao_history_0,
         ssao_history_1,
+        ssao_packed,
         reflections,
         gbuffer_reflections_position,
         gbuffer_reflections_normal,
@@ -820,6 +833,8 @@ namespace spartan
         Gizmo_ragdoll,
         Sky_stars,
         Sky_star_grid,
+        Cortao_occluder_lut,
+        Cortao_bent_normal_lut,
         Black,
         White,
         Max
