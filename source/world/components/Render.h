@@ -77,7 +77,8 @@ namespace spartan
         std::vector<Instance> instances;
         uint64_t visibility_tick = UINT64_MAX;
     };
-    static_assert(sizeof(RenderSceneData) == 128, "Keep render scene data within two cache lines");
+    // msvc's debug iterators grow std::vector past three pointers, the budget only holds for release containers
+    static_assert(sizeof(RenderSceneData) == 128 || sizeof(std::vector<Instance>) > 3 * sizeof(void*), "Keep render scene data within two cache lines");
 
     // makes an entity drawable, it owns the mesh, the material and the per-frame lod and visibility state
     class Render : public Component
