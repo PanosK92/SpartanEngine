@@ -63,6 +63,10 @@ namespace spartan
                 case MaterialProperty::SheenColorB:                return "sheen_color_b";
                 case MaterialProperty::SheenRoughness:             return "sheen_roughness";
                 case MaterialProperty::SubsurfaceScattering:       return "subsurface_scattering";
+                case MaterialProperty::SubsurfaceRadius:           return "subsurface_radius";
+                case MaterialProperty::SubsurfaceColorR:           return "subsurface_color_r";
+                case MaterialProperty::SubsurfaceColorG:           return "subsurface_color_g";
+                case MaterialProperty::SubsurfaceColorB:           return "subsurface_color_b";
                 case MaterialProperty::FlakeStrength:              return "flake_strength";
                 case MaterialProperty::FlakeScale:                 return "flake_scale";
                 case MaterialProperty::PearlStrength:              return "pearl_strength";
@@ -747,6 +751,10 @@ namespace spartan
         SetProperty(MaterialProperty::CoatTintR,      1.0f);
         SetProperty(MaterialProperty::CoatTintG,      1.0f);
         SetProperty(MaterialProperty::CoatTintB,      1.0f);
+        // red travels furthest under skin, the radius stays 0 so nothing diffuses until a material asks for it
+        SetProperty(MaterialProperty::SubsurfaceColorR, 1.0f);
+        SetProperty(MaterialProperty::SubsurfaceColorG, 0.35f);
+        SetProperty(MaterialProperty::SubsurfaceColorB, 0.18f);
         SetProperty(MaterialProperty::IridescenceThickness, 400.0f);
         SetProperty(MaterialProperty::Ior,            EnumToIor(MaterialIor::Glass));
         SetProperty(MaterialProperty::ThinWalled,     1.0f);
@@ -1689,6 +1697,10 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::SheenColorB,          0.0f, false);
         SetPropertyInternal(MaterialProperty::SheenRoughness,       0.0f, false);
         SetPropertyInternal(MaterialProperty::SubsurfaceScattering, 0.0f, false);
+        SetPropertyInternal(MaterialProperty::SubsurfaceRadius,     0.0f, false);
+        SetPropertyInternal(MaterialProperty::SubsurfaceColorR,     1.0f, false);
+        SetPropertyInternal(MaterialProperty::SubsurfaceColorG,     0.35f, false);
+        SetPropertyInternal(MaterialProperty::SubsurfaceColorB,     0.18f, false);
         SetPropertyInternal(MaterialProperty::FlakeStrength,        0.0f, false);
         SetPropertyInternal(MaterialProperty::FlakeScale,           12000.0f, false);
         SetPropertyInternal(MaterialProperty::PearlStrength,        0.0f, false);

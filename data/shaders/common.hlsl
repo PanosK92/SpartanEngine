@@ -780,6 +780,19 @@ float2 get_render_resolution_active()
     return max(floor(buffer_frame.resolution_render * buffer_frame.resolution_scale), float2(1.0f, 1.0f));
 }
 
+// true when the ndc bounds of a triangle hold no pixel center, such a triangle draws nothing
+// size alone cannot tell, a triangle far smaller than a pixel still owns the pixel whose center it covers,
+// rejecting those by size opens holes in meshes that are denser than the pixel grid
+bool triangle_misses_pixel_centers(float2 ndc_min, float2 ndc_max)
+{
+    // the rasterizer snaps vertices to 1/256 of a pixel, the guard keeps a triangle that only reaches a center after the snap
+    const float guard = 1.0f / 128.0f;
+    float2 resolution = get_render_resolution_active();
+    float2 px_min     = (ndc_min * 0.5f + 0.5f) * resolution - guard;
+    float2 px_max     = (ndc_max * 0.5f + 0.5f) * resolution + guard;
+    return any(round(px_min) == round(px_max));
+}
+
 float2 get_render_uv_scale()
 {
     return get_render_resolution_active() / max(buffer_frame.resolution_render, float2(1.0f, 1.0f));

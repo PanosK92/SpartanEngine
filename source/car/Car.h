@@ -126,6 +126,10 @@ namespace spartan
         // while a script holds the camera it hangs off the body where the script puts it, the car leaves it alone and holds the pedals
         void SetCameraScripted(bool scripted);
         bool IsCameraScripted() const { return m_camera_scripted; }
+        // where the car wants a part of its driver (seat, wheel, hand_left, foot_right, ...), an entity on the body or on the
+        // part it rides, declared in the .car <driver> element. null when the car does not declare that anchor
+        Entity* GetDriverAnchor(const std::string& name) const;
+        CarView GetView() const { return m_current_view; }
         bool IsOccupied() const { return m_is_occupied; }
         bool IsDrivable() const { return m_is_drivable; }
 

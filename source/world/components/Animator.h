@@ -25,6 +25,16 @@ namespace spartan
     struct Skeleton;
     struct AnimationClip;
 
+    // limbs a script can pin to a target, a hand on a steering wheel or a foot on a pedal
+    enum class IkLimb : uint8_t
+    {
+        HandLeft,
+        HandRight,
+        FootLeft,
+        FootRight,
+        Count
+    };
+
     class Animator : public Component
     {
     public:
@@ -46,6 +56,10 @@ namespace spartan
 
         float GetSpeed() const { return m_speed; }
         void SetSpeed(float speed) { m_speed = speed; }
+        // the playing clip's clock, a script that sets it every frame with the speed at zero drives the clip by hand
+        float GetTime() const { return m_time; }
+        void SetTime(float seconds);
+        float GetClipDuration(const std::string& name);
 
         bool GetLoop() const { return m_loop; }
         void SetLoop(bool loop) { m_loop = loop; }
@@ -73,6 +87,19 @@ namespace spartan
         // world y under the lowest planted foot, root should follow this not a center ray
         bool HasFootIkSupportGround() const { return m_foot_ik_has_support; }
         float GetFootIkSupportGroundY() const { return m_foot_ik_support_ground_y; }
+
+        // limb ik: the hand or foot goes to a position and takes a rotation given in this entity's space, the
+        // space the skeleton lives in, so a character parented to a moving car reaches for things on it without
+        // a frame of lag. the rotation is the end joint's own. a target holds until it is set again, weight 0
+        // hands the limb back to the clip, and without a pole the elbow or knee keeps the clip's bend plane
+        void SetLimbIk(IkLimb limb, const math::Vector3& position, const math::Quaternion& rotation, float weight);
+        void SetLimbIkPole(IkLimb limb, const math::Vector3& pole);
+        void ClearLimbIk();
+        float GetLimbIkWeight(IkLimb limb) const { return m_limb_ik[static_cast<size_t>(limb)].weight; }
+
+        // a joint of the pose last evaluated, in this entity's space, the bind pose before anything played
+        math::Vector3 GetJointPosition(const std::string& name);
+        math::Quaternion GetJointRotation(const std::string& name);
 
         // ragdoll / external drivers push local matrices and keep skinning alive
         const Skeleton* GetSkeleton() const;
@@ -122,6 +149,17 @@ namespace spartan
             bool ground_hit = false;
             bool has_smooth = false;
         };
+        struct LimbIk
+        {
+            int32_t upper = -1;
+            int32_t lower = -1;
+            int32_t end   = -1;
+            math::Vector3 position    = math::Vector3::Zero;
+            math::Quaternion rotation = math::Quaternion::Identity;
+            math::Vector3 pole        = math::Vector3::Zero;
+            float weight  = 0.0f;
+            bool has_pole = false;
+        };
         struct BindEntityPose
         {
             math::Vector3 position = math::Vector3::Zero;
@@ -144,6 +182,7 @@ namespace spartan
         void RestoreBindEntityPoses();
         void EnsureDynamicBlas(Mesh* mesh);
         void MarkBlasNeedsRefit(Mesh* mesh);
+        void PublishPoseBounds(Mesh* mesh);
         const std::vector<Render*>& ResolveSkinRenders(Mesh* mesh);
         bool IsSkinDue(Mesh* mesh);
         void ApplyHierarchy(
@@ -173,6 +212,12 @@ namespace spartan
             const std::vector<math::Matrix>& globals,
             FootIkLeg& leg
         );
+        void ResolveLimbIkJoints(const Skeleton& skeleton);
+        void ApplyLimbIk(
+            const Skeleton& skeleton,
+            std::vector<math::Matrix>& local_matrices
+        );
+        bool ResolveJointGlobal(const std::string& name, math::Matrix& out_global);
         int32_t FindJointIndex(const Skeleton& skeleton, const std::string& name) const;
         Mesh* ResolveMesh();
         Entity* FindJointEntity(Entity* parent, const std::string& name) const;
@@ -221,6 +266,8 @@ namespace spartan
         bool m_foot_ik_has_support = false;
         FootIkLeg m_foot_ik_l;
         FootIkLeg m_foot_ik_r;
+        LimbIk m_limb_ik[static_cast<size_t>(IkLimb::Count)];
+        bool m_limb_ik_resolved = false;
         std::vector<math::Matrix> m_last_local_matrices;
         // animation layer only, sampled and inertialized but before foot ik. transitions blend this
         // layer, ik is a post process with its own smoothing and re-applies every frame, so folding

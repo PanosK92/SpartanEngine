@@ -1702,12 +1702,46 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
     
+    void Renderer::Pass_Light_Subsurface(uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        m_pass_state.subsurface_scattered = false;
+
+        // a full screen dispatch, skipped unless some material in the world diffuses light under its surface
+        if (!cvar_subsurface_scattering.GetValueAs<bool>() || !m_pass_state.subsurface_profiles_present)
+        {
+            return;
+        }
+
+        RHI_Shader* shader_c           = GetShader(Renderer_Shader::light_subsurface_c);
+        RHI_Texture* tex_light_diffuse = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* tex_out           = GetRenderTarget(Renderer_RenderTarget::light_diffuse_scattered);
+        if (!shader_c || !shader_c->IsCompiled() || !tex_light_diffuse || !tex_out)
+        {
+            return;
+        }
+
+        RHI_CommandList::BeginPass("light_subsurface");
+        SetCommonTextures(eye_layer);
+        {
+            RHI_CommandList::SetShader(shader_c);
+            m_pcb_pass_cpu.is_transparent = 0;
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_light_diffuse);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+            RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
+        }
+        RHI_CommandList::EndPass();
+
+        m_pass_state.subsurface_scattered = true;
+    }
+
     void Renderer::Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Shader* shader_c           = GetShader(Renderer_Shader::light_composition_c);
         RHI_Texture* tex_out           = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_skysphere     = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_light_diffuse = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        // opaque diffuse may have been spread under the surface, transparents are lit after that pass and stay as they are
+        const bool scattered           = !is_transparent_pass && m_pass_state.subsurface_scattered;
+        RHI_Texture* tex_light_diffuse = GetRenderTarget(scattered ? Renderer_RenderTarget::light_diffuse_scattered : Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
 
         RHI_CommandList::BeginPass(is_transparent_pass ? "light_composition_transparent" : "light_composition");

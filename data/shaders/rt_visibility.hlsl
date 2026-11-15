@@ -108,5 +108,12 @@ float rt_trace_foliage_shadow(float3 origin, float3 direction, float t_max)
     return query.CommittedStatus() == COMMITTED_NOTHING ? -1.0f : query.CommittedRayT();
 }
 
+// distance to the nearest surface along the ray, negative when it is clear, a ray started
+// just under a closed surface measures how much of the solid lies between it and the far side
+float rt_trace_nearest(float3 origin, float3 direction, float t_max)
+{
+    return rt_trace_foliage_shadow(origin, direction, t_max);
+}
+
 #endif
 #endif

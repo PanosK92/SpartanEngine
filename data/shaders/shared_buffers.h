@@ -880,9 +880,11 @@ struct MaterialParameters
 
     // Dielectric interface classification is independent of estimated shell thickness.
     SHARED_UINT dielectric_flags SHARED_DEFAULT(0); // bit 0: thin surface, no interior medium, bit 1: normal map green points up (gltf)
-    SHARED_FLOAT3 dielectric_padding SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    // burley diffusion distance per color channel in meters, zero means the material has no diffusion profile
+    SHARED_FLOAT3 subsurface_radius SHARED_DEFAULT(spartan::math::Vector3::Zero);
 
 #ifndef __cplusplus
+    bool has_subsurface_profile() { return subsurface_scattering > 0.0f && max(max(subsurface_radius.x, subsurface_radius.y), subsurface_radius.z) > 0.0f; }
     bool is_thin_walled()        { return (dielectric_flags & 1u) != 0; }
     // the left handed import mirrors the tangent frame, so the bitangent rebuilt from cross(n, t) points down the texture
     bool is_normal_green_up()    { return (dielectric_flags & 2u) != 0; }

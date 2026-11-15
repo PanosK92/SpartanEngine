@@ -222,6 +222,18 @@ float2 aperture_sample_offset(float t, float angle, float aperture_fstop)
 }
 
 /*------------------------------------------------------------------------------
+    nearest depth of the four texels around a point
+    the color of a silhouette is antialiased into pixels whose depth already is the
+    background, reading the nearest depth keeps those pixels with the subject, a
+    blurred background then neither picks them up nor blurs the edge away
+------------------------------------------------------------------------------*/
+float get_nearest_linear_depth(float2 uv)
+{
+    float4 depths = tex_depth.GatherRed(samplers[sampler_point_clamp], uv * get_render_uv_scale());
+    return linearize_depth(max(max(depths.x, depths.y), max(depths.z, depths.w))); // reverse z, the largest is the nearest
+}
+
+/*------------------------------------------------------------------------------
     main bokeh blur with gather sampling
 ------------------------------------------------------------------------------*/
 float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens, float2 texel_size, float2 resolution)
@@ -252,11 +264,14 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
             continue;
 
         float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb;
-        float  sample_depth = get_linear_depth(sample_uv * get_render_uv_scale());
+        // read a little further out than the sample, temporal antialiasing spreads a silhouette about a texel past its depth
+        float  sample_depth = get_nearest_linear_depth(sample_uv + normalize(disk) * texel_size * 0.75f);
         float  sample_coc   = compute_coc_signed(sample_depth, lens);
         float  abs_sample_coc = abs(sample_coc);
 
-        float effective_coc = max(abs_sample_coc, blur_radius);
+        // a sample in front of this pixel only reaches it through its own blur, borrowing this pixel's radius
+        // smears a sharp subject over the defocused background behind it as a halo around its silhouette
+        float effective_coc = sample_depth < center_depth ? abs_sample_coc : max(abs_sample_coc, blur_radius);
         float coverage      = saturate(1.0f - r / max(effective_coc, FLT_MIN));
         float depth_weight  = (sample_depth > center_depth && center_is_fg) ? BG_LEAK_PREVENTION : 1.0f;
         float scatter       = lerp(0.35f, 1.0f, saturate(abs_sample_coc * INV_SCATTER_NORM));
@@ -321,7 +336,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
 
     lens_t lens        = gs_lens;
     float2 uv          = (thread_id.xy + 0.5f) / resolution;
-    float  depth       = get_linear_depth(uv * get_render_uv_scale());
+    float2 texel_half  = 0.5f / resolution;
+    float  depth       = min(get_nearest_linear_depth(uv - texel_half), get_nearest_linear_depth(uv + texel_half));
     float  coc         = compute_coc_signed(depth, lens);
     float  blur_radius = abs(coc);
 

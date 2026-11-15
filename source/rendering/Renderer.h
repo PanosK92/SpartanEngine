@@ -82,6 +82,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_ground_mist;
     extern TConsoleVar<float> cvar_mist_variation;
     extern TConsoleVar<float> cvar_ssao;
+    extern TConsoleVar<float> cvar_subsurface_scattering;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_ray_traced_shadows;
     extern TConsoleVar<float> cvar_path_tracing;
@@ -510,6 +511,7 @@ namespace spartan
         void Pass_Fog(uint32_t eye, uint32_t eye_layer = rhi_all_mips);
         void Pass_Fog_Composite(uint32_t eye_layer = rhi_all_mips);
         void Pass_Light(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
+        void Pass_Light_Subsurface(uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Ibl(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         bool Pass_Lut_BrdfSpecular();

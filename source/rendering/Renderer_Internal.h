@@ -220,6 +220,10 @@ namespace spartan
             RHI_Texture* vrs_last_cleared_texture = nullptr;
 
             bool                  bindless_materials_dirty = true;
+            // a material in the bindless table carries a diffusion profile, the subsurface pass is skipped without one
+            bool                  subsurface_profiles_present = false;
+            // the subsurface pass ran for this eye, the opaque composition reads its output instead of light_diffuse
+            bool                  subsurface_scattered = false;
 
             // one gpu scatter slot, slot 0 is grass and the rest are micro detail, they all share the
             // instance pool and the populate pass, only the mesh, the material and the rules differ

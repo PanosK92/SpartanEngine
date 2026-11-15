@@ -573,8 +573,20 @@ namespace spartan::scripting
 
         void register_animator(sol::state_view state)
         {
+            visual::enumeration(state, "IkLimb",
+                "HandLeft",  IkLimb::HandLeft,
+                "HandRight", IkLimb::HandRight,
+                "FootLeft",  IkLimb::FootLeft,
+                "FootRight", IkLimb::FootRight);
+
             visual::usertype<Animator>(state, "Animator",
                 sol::base_classes, sol::bases<Component>(),
+                "SetLimbIk",          &Animator::SetLimbIk,
+                "SetLimbIkPole",      &Animator::SetLimbIkPole,
+                "ClearLimbIk",        &Animator::ClearLimbIk,
+                "GetLimbIkWeight",    &Animator::GetLimbIkWeight,
+                "GetJointPosition",   &Animator::GetJointPosition,
+                "GetJointRotation",   &Animator::GetJointRotation,
                 "Play",               &Animator::Play,
                 "Stop",               &Animator::Stop,
                 "Pause",              &Animator::Pause,
@@ -582,6 +594,9 @@ namespace spartan::scripting
                 "IsPlaying",          &Animator::IsPlaying,
                 "GetSpeed",           &Animator::GetSpeed,
                 "SetSpeed",           &Animator::SetSpeed,
+                "GetTime",            &Animator::GetTime,
+                "SetTime",            &Animator::SetTime,
+                "GetClipDuration",    &Animator::GetClipDuration,
                 "GetLoop",            &Animator::GetLoop,
                 "SetLoop",            &Animator::SetLoop,
                 "GetBlendDuration",   &Animator::GetBlendDuration,

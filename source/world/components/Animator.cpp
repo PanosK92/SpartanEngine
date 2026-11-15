@@ -264,6 +264,7 @@ namespace spartan
             GeometryBuffer::UpdateVertices(vertices.data(), job.mesh->GetGlobalVertexOffset(),
                 static_cast<uint32_t>(vertices.size()), true);
             animator->MarkBlasNeedsRefit(job.mesh.get());
+            animator->PublishPoseBounds(job.mesh.get());
         }
         skinning_jobs.clear();
         SP_PROFILE_CPU_END();
@@ -275,6 +276,14 @@ namespace spartan
         // Stop can queue the bind pose while a world animation batch is open.
         skinning_jobs.erase(remove_if(skinning_jobs.begin(), skinning_jobs.end(),
             [this](const SkinningJob& job) { return job.animator == this; }), skinning_jobs.end());
+        // the renders go back to the box of their own mesh, nothing poses them from here on
+        if (m_mesh && m_skin_published)
+        {
+            for (Render* render : ResolveSkinRenders(m_mesh))
+            {
+                render->ClearBoundingBoxOverride();
+            }
+        }
         m_mesh = nullptr;
         m_skin_published = false;
         m_skin_render_ids.clear();
@@ -304,6 +313,11 @@ namespace spartan
         m_foot_ik_has_support = false;
         m_foot_ik_l = {};
         m_foot_ik_r = {};
+        for (LimbIk& target : m_limb_ik)
+        {
+            target = {};
+        }
+        m_limb_ik_resolved = false;
     }
 
     Mesh* Animator::ResolveMesh()
@@ -1046,6 +1060,195 @@ namespace spartan
         SolveFootIkLeg(skeleton, local_matrices, m_ik_globals, m_foot_ik_r);
     }
 
+    void Animator::SetLimbIk(IkLimb limb, const Vector3& position, const Quaternion& rotation, float weight)
+    {
+        if (limb >= IkLimb::Count)
+        {
+            return;
+        }
+
+        LimbIk& target  = m_limb_ik[static_cast<size_t>(limb)];
+        target.position = position;
+        target.rotation = rotation;
+        target.weight   = clamp(weight, 0.0f, 1.0f);
+    }
+
+    float Animator::GetClipDuration(const string& name)
+    {
+        Mesh* mesh = ResolveMesh();
+        if (!mesh)
+        {
+            return 0.0f;
+        }
+        for (const AnimationClip& clip : mesh->GetAnimationClips())
+        {
+            if (clip.name == name)
+            {
+                return clip.duration_seconds;
+            }
+        }
+        return 0.0f;
+    }
+
+    void Animator::SetTime(float seconds)
+    {
+        float duration = 0.0f;
+        Mesh* mesh     = ResolveMesh();
+        if (mesh && m_clip_index >= 0 && m_clip_index < static_cast<int32_t>(mesh->GetAnimationClipCount()))
+        {
+            duration = mesh->GetAnimationClips()[m_clip_index].duration_seconds;
+        }
+        // a one shot stops when it reaches its end, a scrubbed clip has to stay alive on its last frame
+        const float last = m_loop ? duration : max(duration - 1.0e-4f, 0.0f);
+        m_time           = duration > 0.0f ? clamp(seconds, 0.0f, last) : max(seconds, 0.0f);
+    }
+
+    void Animator::SetLimbIkPole(IkLimb limb, const Vector3& pole)
+    {
+        if (limb >= IkLimb::Count)
+        {
+            return;
+        }
+
+        LimbIk& target  = m_limb_ik[static_cast<size_t>(limb)];
+        target.pole     = pole;
+        target.has_pole = true;
+    }
+
+    void Animator::ClearLimbIk()
+    {
+        for (LimbIk& target : m_limb_ik)
+        {
+            target.weight   = 0.0f;
+            target.has_pole = false;
+        }
+    }
+
+    void Animator::ResolveLimbIkJoints(const Skeleton& skeleton)
+    {
+        m_limb_ik_resolved = true;
+
+        // twist and roll joints share the limb's name, fingers hang off the hand and carry its side tag
+        static const vector<const char*> upper_words = { "upperarm", "uparm", "shoulder", "arm" };
+        static const vector<const char*> lower_words = { "lowerarm", "forearm", "elbow" };
+        static const vector<const char*> hand_words  = { "hand", "wrist" };
+        static const vector<const char*> no_upper    = { "twist", "roll", "lower", "fore", "clavicle", "collar" };
+        static const vector<const char*> no_lower    = { "twist", "roll" };
+        static const vector<const char*> no_finger   = { "twist", "roll", "thumb", "index", "middle", "ring", "pinky", "finger", "end" };
+
+        for (const bool left : { true, false })
+        {
+            LimbIk& arm = m_limb_ik[static_cast<size_t>(left ? IkLimb::HandLeft : IkLimb::HandRight)];
+            arm.upper   = find_joint_by_role(skeleton, upper_words, no_upper, left);
+            arm.lower   = find_joint_by_role(skeleton, lower_words, no_lower, left);
+            arm.end     = find_joint_by_role(skeleton, hand_words, no_finger, left);
+        }
+
+        // the legs are the ones the foot ik already found
+        if (!m_foot_ik_resolved)
+        {
+            ResolveFootIkJoints(skeleton);
+        }
+        LimbIk& leg_l = m_limb_ik[static_cast<size_t>(IkLimb::FootLeft)];
+        LimbIk& leg_r = m_limb_ik[static_cast<size_t>(IkLimb::FootRight)];
+        leg_l.upper   = m_foot_ik_l.thigh;
+        leg_l.lower   = m_foot_ik_l.calf;
+        leg_l.end     = m_foot_ik_l.foot;
+        leg_r.upper   = m_foot_ik_r.thigh;
+        leg_r.lower   = m_foot_ik_r.calf;
+        leg_r.end     = m_foot_ik_r.foot;
+    }
+
+    void Animator::ApplyLimbIk(const Skeleton& skeleton, vector<Matrix>& local_matrices)
+    {
+        bool any = false;
+        for (const LimbIk& target : m_limb_ik)
+        {
+            any = any || target.weight > 0.001f;
+        }
+        if (!any || local_matrices.size() != skeleton.joint_count)
+        {
+            return;
+        }
+
+        if (!m_limb_ik_resolved)
+        {
+            ResolveLimbIkJoints(skeleton);
+        }
+
+        m_ik_globals.resize(skeleton.joint_count);
+        for (const LimbIk& target : m_limb_ik)
+        {
+            if (target.weight <= 0.001f || target.upper < 0 || target.lower < 0 || target.end < 0)
+            {
+                continue;
+            }
+
+            const uint32_t upper = static_cast<uint32_t>(target.upper);
+            const uint32_t lower = static_cast<uint32_t>(target.lower);
+            const uint32_t end   = static_cast<uint32_t>(target.end);
+
+            // the limbs are separate chains, but a hand's parents can be another limb's joints on odd rigs, so each
+            // solve reads the pose the one before it left
+            skeleton.ComputeGlobalPose(local_matrices, m_ik_globals);
+
+            // the clip's own elbow or knee is the pole unless the script names one, so the limb bends the way it was animated
+            const Vector3 pole = target.has_pole ? target.pole : m_ik_globals[lower].GetTranslation();
+            animation_ik::SolveTwoBone(skeleton, local_matrices, upper, lower, end, target.position, pole, target.weight);
+
+            // the chain put the end joint in place, its rotation is the target's whatever the forearm or shin did
+            skeleton.ComputeGlobalPose(local_matrices, m_ik_globals);
+            const int16_t parent        = skeleton.parent_indices[end];
+            const Matrix parent_global  = parent < 0 ? Matrix::Identity : m_ik_globals[static_cast<uint32_t>(parent)];
+            const Quaternion rotation   = Quaternion::Lerp(m_ik_globals[end].GetRotation(), target.rotation, target.weight);
+            const Matrix end_global     = Matrix(m_ik_globals[end].GetTranslation(), rotation, m_ik_globals[end].GetScale());
+            local_matrices[end]         = end_global * parent_global.Inverted();
+        }
+    }
+
+    bool Animator::ResolveJointGlobal(const string& name, Matrix& out_global)
+    {
+        Mesh* mesh = ResolveMesh();
+        const Skeleton* skeleton = mesh ? mesh->GetSkeleton().get() : nullptr;
+        if (!skeleton)
+        {
+            return false;
+        }
+
+        const int32_t index = FindJointIndex(*skeleton, name);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        const vector<Matrix>& locals = m_last_local_matrices.size() == skeleton->joint_count ? m_last_local_matrices : skeleton->bind_local_matrices;
+        if (locals.size() != skeleton->joint_count)
+        {
+            return false;
+        }
+
+        // walk up the parents, a script asks for a joint or two a frame and the whole pose is not worth computing for that
+        Matrix global = locals[static_cast<uint32_t>(index)];
+        for (int16_t parent = skeleton->parent_indices[static_cast<uint32_t>(index)]; parent >= 0; parent = skeleton->parent_indices[static_cast<uint32_t>(parent)])
+        {
+            global = global * locals[static_cast<uint32_t>(parent)];
+        }
+        out_global = global;
+        return true;
+    }
+
+    Vector3 Animator::GetJointPosition(const string& name)
+    {
+        Matrix global;
+        return ResolveJointGlobal(name, global) ? global.GetTranslation() : Vector3::Zero;
+    }
+
+    Quaternion Animator::GetJointRotation(const string& name)
+    {
+        Matrix global;
+        return ResolveJointGlobal(name, global) ? global.GetRotation() : Quaternion::Identity;
+    }
+
     bool Animator::AttachHand(Entity* hand, Entity* arm, HandAttach& out_attach)
     {
         if (!hand || !arm)
@@ -1306,6 +1509,39 @@ namespace spartan
             {
                 render->SetNeedsBlasRefit(true);
             }
+        }
+    }
+
+    void Animator::PublishPoseBounds(Mesh* mesh)
+    {
+        if (!mesh || m_global_matrices.empty())
+        {
+            return;
+        }
+
+        // a skinned mesh is culled by a box, and the box of its bind pose does not hold a pose that sits, reaches or lies down,
+        // so the box follows the joints: a seated driver's arms and legs stay drawn when the standing box falls behind the camera
+        const Matrix model_to_world = GetEntity()->GetMatrix();
+        Vector3 box_min = Vector3::Infinity;
+        Vector3 box_max = Vector3::InfinityNeg;
+        for (const Matrix& global : m_global_matrices)
+        {
+            const Vector3 joint = model_to_world * global.GetTranslation();
+            box_min = Vector3::Min(box_min, joint);
+            box_max = Vector3::Max(box_max, joint);
+        }
+        if (!box_min.IsFinite() || !box_max.IsFinite())
+        {
+            return;
+        }
+
+        // the flesh around the outermost joints: a skull over the head joint, a palm past the wrist, a toe past the ball
+        const Vector3 scale  = GetEntity()->GetScale().Abs();
+        const Vector3 margin = Vector3(0.3f * max(scale.x, max(scale.y, scale.z)));
+        const BoundingBox box(box_min - margin, box_max + margin);
+        for (Render* render : ResolveSkinRenders(mesh))
+        {
+            render->SetBoundingBoxOverride(box);
         }
     }
 
@@ -1729,6 +1965,7 @@ namespace spartan
             );
 
             MarkBlasNeedsRefit(mesh);
+            PublishPoseBounds(mesh);
         }
         SP_PROFILE_CPU_END();
     }
@@ -1845,6 +2082,7 @@ namespace spartan
         m_anim_pose = local_matrices;
 
         ApplyFootIk(*skeleton, local_matrices);
+        ApplyLimbIk(*skeleton, local_matrices);
         m_last_local_matrices = local_matrices;
         if (!batch_skinning || IsSkinDue(mesh))
         {

@@ -586,6 +586,18 @@ namespace car
         float       angle    = 0.0f;               // degrees at fully open
     };
 
+    // where the car wants a part of its driver, in body model space with the body at rest: the seat, the rim of the
+    // steering wheel, a pedal. the car owns these, a character only reads them, so one body fits every cabin.
+    // forward and up orient the anchor, what they mean depends on the anchor and is listed in docs/physics_and_vehicles.md
+    struct driver_anchor
+    {
+        std::string name;                             // seat, wheel, hand_left, hand_right, foot_left, foot_right, ...
+        std::string part;                             // the body part the anchor rides on, empty for the body itself
+        float       position[3] = { 0.0f, 0.0f, 0.0f };
+        float       forward[3]  = { 0.0f, 0.0f, -1.0f };
+        float       up[3]       = { 0.0f, 1.0f, 0.0f };
+    };
+
     // a complete car described by a .car xml file: visuals, geometry and performance
     struct car_definition
     {
@@ -608,6 +620,7 @@ namespace car
         float       steering_wheel_axis[3] = { 0.0f, 0.0f, 1.0f }; // column axis in the wheel's parent space
         float       steering_wheel_lock    = 0.0f;                  // degrees of wheel rotation at full steering input
         std::vector<body_opening> body_openings;
+        std::vector<driver_anchor> driver_anchors; // where the driver's body goes, each becomes a driver_<name> entity on the body
         std::vector<std::string>  body_scripts;    // lua that brings the body to life, each runs on its own child of the body
 
         // wheel visual

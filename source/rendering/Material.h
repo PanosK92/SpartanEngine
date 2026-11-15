@@ -65,6 +65,10 @@ namespace spartan
         SheenColorB,                // sheen color blue
         SheenRoughness,             // sheen roughness, used with a sheen color (gltf sheenRoughnessFactor)
         SubsurfaceScattering,       // light scattering through surface
+        SubsurfaceRadius,           // how far light travels under the surface in meters, 0 keeps the cheap wrapped diffuse
+        SubsurfaceColorR,           // red travel distance as a fraction of the radius, skin is around 1.0, 0.35, 0.18
+        SubsurfaceColorG,           // green travel distance as a fraction of the radius
+        SubsurfaceColorB,           // blue travel distance as a fraction of the radius
         FlakeStrength,              // automotive metallic flake intensity
         FlakeScale,                 // automotive metallic flake density
         PearlStrength,              // view dependent pearl color shift

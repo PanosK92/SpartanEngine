@@ -208,6 +208,7 @@ namespace spartan
     TConsoleVar<float> cvar_ground_mist                    ("r.atmosphere.ground_mist",         1.0f,   "ground mist relative to mist density, strongest in sheltered valleys");
     TConsoleVar<float> cvar_mist_variation                 ("r.atmosphere.mist_variation",      0.65f,  "wind driven variation in additional mist, 0 to 1");
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,   "screen space ambient occlusion, unavailable while path tracing is enabled", on_ssao_change);
+    TConsoleVar<float> cvar_subsurface_scattering          ("r.subsurface_scattering",          1.0f,   "screen space subsurface scattering for materials with a subsurface radius (skin, wax, marble), 0 falls back to wrapped diffuse");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections", on_ray_traced_reflections_change);
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights", on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_path_tracing                   ("r.path_tracing",                   0.0f,   "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);

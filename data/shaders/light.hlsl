@@ -143,6 +143,54 @@ float3 subsurface_scattering(Surface surface, Light light)
     return light.radiance * subsurface_diffuse_response(dot(surface.normal, L));
 }
 
+#ifdef RAY_TRACING_ENABLED
+// Light that entered the far side of a thin part of a scattering solid and leaves towards the
+// viewer, an ear or a nostril lit from behind. One ray from just under the surface measures the
+// solid on the way to the light, a second one checks the light reaches the point where it entered.
+// light.radiance carries the unshadowed energy without n_dot_l, the result is demodulated diffuse.
+float3 subsurface_transmission(Surface surface, Light light)
+{
+    // the far side is not shaded here, its normal is taken as the reverse of this one, the
+    // offset lets the glow start a little before the terminator instead of at a hard line
+    float3 l    = -light.to_pixel;
+    float entry = saturate(0.3f - dot(surface.normal, l));
+    if (entry <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float distance_max = 1000.0f;
+    if (!light.is_directional())
+    {
+        float3 target = light.is_area() ? light.compute_closest_point_on_area(surface.position) : light.position;
+        distance_max  = length(target - surface.position);
+        l             = (target - surface.position) / max(distance_max, 1e-4f);
+    }
+
+    // past this the reddest channel is under half a percent, most of a head ends here
+    float radius_max    = max(max(surface.subsurface_radius.x, surface.subsurface_radius.y), surface.subsurface_radius.z);
+    float thickness_max = radius_max * 16.0f;
+    const float inset   = 0.0005f;
+    float3 origin       = surface.position - surface.normal * inset;
+    float exit          = rt_trace_nearest(origin, l, min(distance_max, thickness_max));
+    if (exit < 0.0f)
+    {
+        return 0.0f;
+    }
+
+    // stop before the fixture around the emitter, like the shadow rays
+    float emitter_safety = light.is_area() ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f : 0.01f;
+    float thickness      = exit + inset;
+    float clearance      = distance_max - exit - emitter_safety;
+    if (clearance > 0.002f && rt_trace_visibility(origin + l * (exit + 0.001f), l, clearance) <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    return light.radiance * entry * INV_PI * subsurface_burley_transmittance(thickness, surface.subsurface_radius);
+}
+#endif
+
 // evaluates a single light against the surface, accumulates into the out parameters
 // surface is taken by value so per light tweaks do not leak
 void evaluate_light(
@@ -166,16 +214,31 @@ void evaluate_light(
     float3 L_diffuse_term  = 0.0f;
     float3 L_subsurface    = 0.0f;
     float  micro_shadow    = 1.0f;
-    float  scattering_fraction = saturate(surface.subsurface_scattering);
+    // a diffusion profile keeps the whole lambert lobe here, the subsurface pass spreads it afterwards,
+    // the wrapped lobe below is the cheap stand in for materials without one
+    bool   has_profile         = surface.has_subsurface_profile() && surface.metallic < 1.0f;
+    float  scattering_fraction = has_profile ? 0.0f : saturate(surface.subsurface_scattering);
 
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
     // cull the inverse square tail clustering cannot, skip when the exposed contribution is sub perceptual
     bool light_can_contribute       = light.can_contribute();
     bool has_brdf                   = any(light.radiance > 0.0f);
     bool has_sss                    = scattering_fraction > 0.0f && surface.metallic < 1.0f;
+    // back lit thin parts need rays through the solid, without a tlas they simply stay dark
+    bool has_transmission           = has_profile && !is_transparent && is_ray_traced_shadows_enabled();
 
-    if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss))
+    if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss || has_transmission))
     {
+    #ifdef RAY_TRACING_ENABLED
+        if (has_transmission)
+        {
+            // the light enters on the far side, this pixel's own shadow says nothing about it
+            Light light_transmitted    = light;
+            light_transmitted.radiance = light_radiance_raw;
+            L_subsurface += subsurface_transmission(surface, light_transmitted) * saturate(surface.subsurface_scattering);
+        }
+    #endif
+
         float L_shadow_primary = 1.0f;
         float L_shadow_contact = 1.0f;
 
@@ -427,6 +490,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,  1.0f));
+    // alpha marks the pixels whose diffuse light the subsurface pass spreads, their neighbours only gather from marked ones
+    float diffuses = pass_is_opaque() && surface.is_opaque() && surface.has_subsurface_profile() && surface.metallic < 1.0f ? 1.0f : 0.0f;
+    tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,  diffuses));
     tex_uav2[thread_id.xy] = validate_output(float4(out_specular, 1.0f));
 }

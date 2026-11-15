@@ -2540,6 +2540,7 @@ namespace spartan
         Renderer::view().frame.set_bit(cvar_ssao.GetValueAs<bool>() && !IsStereoView(),                     1 << 1);
         Renderer::view().frame.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
         Renderer::view().frame.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
+        Renderer::view().frame.set_bit(cvar_subsurface_scattering.GetValueAs<bool>(),                       1 << 5);
 
         // the reservoirs hold a different integrand with and without direct light, so switching
         // ownership must drop history instead of letting stale samples resolve into the new one, a secondary
@@ -4072,6 +4073,12 @@ namespace spartan
                 properties[count].alpha_cutoff          = material->GetProperty(MaterialProperty::AlphaCutoff);
                 properties[count].alpha_blend           = material->GetProperty(MaterialProperty::AlphaBlend);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                {
+                    const float radius = std::max(material->GetProperty(MaterialProperty::SubsurfaceRadius), 0.0f);
+                    properties[count].subsurface_radius.x = radius * std::max(material->GetProperty(MaterialProperty::SubsurfaceColorR), 0.0f);
+                    properties[count].subsurface_radius.y = radius * std::max(material->GetProperty(MaterialProperty::SubsurfaceColorG), 0.0f);
+                    properties[count].subsurface_radius.z = radius * std::max(material->GetProperty(MaterialProperty::SubsurfaceColorB), 0.0f);
+                }
                 properties[count].terrain_blend         = material->GetProperty(MaterialProperty::TerrainBlend);
                 properties[count].terrain_blend_sharpness =
                     material->GetProperty(MaterialProperty::TerrainBlendSharpness);
@@ -4118,6 +4125,18 @@ namespace spartan
             }
         };
 
+        // the subsurface pass is a full screen dispatch, it only runs while some uploaded material diffuses light
+        auto refresh_subsurface_profiles = [](const uint32_t material_count)
+        {
+            bool present = false;
+            for (uint32_t i = 0; i < material_count && !present; i++)
+            {
+                const Sb_Material& entry = properties[i];
+                present = entry.subsurface_scattering > 0.0f && max(max(entry.subsurface_radius.x, entry.subsurface_radius.y), entry.subsurface_radius.z) > 0.0f;
+            }
+            m_pass_state.subsurface_profiles_present = present;
+        };
+
         // a brake lamp easing or a paint edit moves numbers inside entries that already exist, the slots and the textures
         // stand as the last full upload left them, so only those entries are written, runs of neighbours go up in one copy
         if (!material_values_to_upload.empty())
@@ -4144,6 +4163,7 @@ namespace spartan
                 RHI_CommandList::UpdateBuffer(buffer, indices[first] * stride, (indices[last] - indices[first] + 1) * stride, &properties[indices[first]]);
                 first = last + 1;
             }
+            refresh_subsurface_profiles(previous_count);
             return;
         }
 
@@ -4335,6 +4355,7 @@ namespace spartan
         }
 
         previous_count = count;
+        refresh_subsurface_profiles(count);
         RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
         RHI_CommandList::UpdateBuffer(buffer, 0, buffer->GetStride() * max(count, 1u), &properties[0]);
     }
@@ -7210,6 +7231,7 @@ namespace spartan
     void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early)
     {
         Pass_Light(false, eye_layer);
+        Pass_Light_Subsurface(eye_layer);
         Pass_Light_Composition(false, eye_layer);
         // the refraction background is copied below, so opaque ambient has to be in it already,
         // otherwise anything behind glass that is not in direct light reads as black

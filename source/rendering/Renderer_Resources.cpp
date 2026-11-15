@@ -834,6 +834,7 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
             at(view_targets(), Renderer_RenderTarget::light_diffuse)               = nullptr;
             at(view_targets(), Renderer_RenderTarget::light_specular)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::light_diffuse_scattered)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::particle_volume)             = nullptr;
             at(view_targets(), Renderer_RenderTarget::particle_volume_history)     = nullptr;
             at(view_targets(), Renderer_RenderTarget::cloud_raw)                   = nullptr;
@@ -1014,6 +1015,8 @@ namespace spartan
             uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
             at(view_targets(), Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_diffuse");
             at(view_targets(), Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_specular");
+            // the diffuse light after it has travelled under the surface, written only while a diffusion profile is on screen
+            at(view_targets(), Renderer_RenderTarget::light_diffuse_scattered) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_diffuse_scattered");
 
             at(view_targets(), Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
             at(view_targets(), Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
@@ -1398,6 +1401,7 @@ namespace spartan
             { Renderer_Shader::light_flare_v,                         RHI_Shader_Type::Vertex,  "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_flare_p,                         RHI_Shader_Type::Pixel,   "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_composition_c,                   RHI_Shader_Type::Compute, "light_composition.hlsl"                                                     },
+            { Renderer_Shader::light_subsurface_c,                    RHI_Shader_Type::Compute, "light_subsurface.hlsl"                                                      },
             { Renderer_Shader::fog_sky_visibility_c,                  RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_SKY_VISIBILITY" },
             { Renderer_Shader::fog_inject_c,                          RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INJECT"    },
             { Renderer_Shader::fog_integrate_c,                       RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INTEGRATE" },

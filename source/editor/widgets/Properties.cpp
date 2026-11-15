@@ -2705,6 +2705,30 @@ void Properties::ShowMaterial(Material* material, Render* render) const
                 {
                     material->SetProperty(MaterialProperty::SubsurfaceScattering, value);
                 }
+                if (subsurface > 0.0f)
+                {
+                    float millimeters = material->GetProperty(MaterialProperty::SubsurfaceRadius) * 1000.0f;
+                    if (property_slider("Scatter radius", &millimeters, 0.0f, 20.0f, "%.2f mm", "How far light travels under the surface before it comes back out, skin is around 1 mm. Zero keeps the cheap approximation, anything above it blurs the lighting across the surface and lets thin parts glow when lit from behind.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
+                    {
+                        material->SetProperty(MaterialProperty::SubsurfaceRadius, millimeters / 1000.0f);
+                    }
+                    if (millimeters > 0.0f)
+                    {
+                        float scatter_color[3] =
+                        {
+                            material->GetProperty(MaterialProperty::SubsurfaceColorR),
+                            material->GetProperty(MaterialProperty::SubsurfaceColorG),
+                            material->GetProperty(MaterialProperty::SubsurfaceColorB)
+                        };
+                        layout::begin_property("Scatter color", "How far each color travels relative to the radius, the color shadow edges and thin parts take. Skin carries red furthest.");
+                        if (ImGui::ColorEdit3("##subsurface_color", scatter_color, ImGuiColorEditFlags_NoInputs))
+                        {
+                            material->SetProperty(MaterialProperty::SubsurfaceColorR, scatter_color[0]);
+                            material->SetProperty(MaterialProperty::SubsurfaceColorG, scatter_color[1]);
+                            material->SetProperty(MaterialProperty::SubsurfaceColorB, scatter_color[2]);
+                        }
+                    }
+                }
             }
         }
 

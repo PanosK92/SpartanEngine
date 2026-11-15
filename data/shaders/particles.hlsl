@@ -1638,6 +1638,7 @@ Surface build_particle_surface(float3 position_world, float3 albedo, uint2 pixel
     surface.sheen_color            = 0.0f;
     surface.sheen_roughness        = 0.0f;
     surface.subsurface_scattering  = 0.0;
+    surface.subsurface_radius      = 0.0;
     surface.flake_weight           = 0.0;
     surface.occlusion              = 1.0;
     surface.emissive               = 0.0;

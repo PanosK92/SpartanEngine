@@ -1273,6 +1273,11 @@ namespace spartan
         }
     }
 
+    Entity* Car::GetDriverAnchor(const std::string& name) const
+    {
+        return m_body_entity ? m_body_entity->GetDescendantByName("driver_" + name) : nullptr;
+    }
+
     void Car::SetEntryScripted(bool scripted)
     {
         // a script claims entry every tick, only a change drops requests nobody will answer
@@ -2214,6 +2219,37 @@ namespace spartan
             else
             {
                 SP_LOG_WARNING("car steering wheel part '%s' not found", m_definition->steering_wheel_part.c_str());
+            }
+        }
+
+        // driver anchors are written in body model space with the body at rest, which is how it stands right now, so each
+        // one is placed in that space and then handed to the part it rides, a grip on the rim turns with the wheel from here on
+        for (const car::driver_anchor& anchor : m_definition->driver_anchors)
+        {
+            Entity* parent = m_body_entity;
+            if (!anchor.part.empty())
+            {
+                parent = find_part(anchor.part);
+                if (!parent)
+                {
+                    SP_LOG_WARNING("car driver anchor '%s' has no part named '%s'", anchor.name.c_str(), anchor.part.c_str());
+                    parent = m_body_entity;
+                }
+            }
+
+            Entity* entity = World::CreateEntity();
+            entity->SetObjectName("driver_" + anchor.name);
+            entity->SetTransient(true);
+            entity->SetParent(m_body_entity);
+            entity->SetPositionLocal(to_vector(anchor.position));
+            entity->SetRotationLocal(math::Quaternion::FromLookRotation(to_vector(anchor.forward), to_vector(anchor.up)));
+            if (parent != m_body_entity)
+            {
+                const math::Vector3 position    = entity->GetPosition();
+                const math::Quaternion rotation = entity->GetRotation();
+                entity->SetParent(parent);
+                entity->SetPosition(position);
+                entity->SetRotation(rotation);
             }
         }
 

@@ -1003,6 +1003,20 @@ namespace car
                 }
             }
 
+            for (pugi::xml_node anchor_node : body.child("driver").children("anchor"))
+            {
+                driver_anchor anchor;
+                anchor.name = anchor_node.attribute("name").as_string("");
+                anchor.part = anchor_node.attribute("part").as_string("");
+                read_vector(anchor_node, "position", anchor.position);
+                read_vector(anchor_node, "forward", anchor.forward);
+                read_vector(anchor_node, "up", anchor.up);
+                if (!anchor.name.empty())
+                {
+                    definition.driver_anchors.push_back(anchor);
+                }
+            }
+
             for (pugi::xml_node script_node : body.children("script"))
             {
                 const std::string file = script_node.attribute("file").as_string("");

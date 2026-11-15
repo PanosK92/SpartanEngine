@@ -24,6 +24,7 @@ publish the package. Read it before touching assets.
 | `sponza_example.world` | The Sponza atrium, a rendering reference |
 | `lighting_example.world` | Lighting under ReSTIR path tracing, with a material test sphere |
 | `pbr_materials_example.world` | Material models side by side; also the WebGPU test world |
+| `human_example.world` | A photoscanned head (Lee Perry-Smith, Infinite Realities, CC BY 3.0) in a dark studio; the skin rendering reference |
 | `ferrari_showroom_example.world` | A studio showroom with a car on a turntable and emissive light tubes |
 | `car_playground_example.world` | A test pad for driving and tuning cars; loads in seconds |
 | `physics_example.world` | One station per physics feature: bodies, joints, cloth, ragdolls, buttons that replay each experiment |

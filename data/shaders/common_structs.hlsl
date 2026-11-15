@@ -30,6 +30,7 @@ struct Surface
     float  sheen_roughness;
     float  alpha_blend;
     float  subsurface_scattering;
+    float3 subsurface_radius; // burley diffusion distance per channel in meters, zero without a diffusion profile
     float  flake_strength;
     float  flake_scale;
     float  pearl_strength;
@@ -80,6 +81,9 @@ struct Surface
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
     bool is_alpha_blended()              { return is_transparent() && alpha_blend > 0.0f; }
     bool is_glass()                      { return is_transparent() && alpha_blend <= 0.0f; }
+    // the light pass leaves these a plain diffuse lobe and the subsurface pass spreads it under the surface,
+    // leaves and blades are thin sheets and keep their own transmission path
+    bool has_subsurface_profile()        { return is_subsurface_diffusion_enabled() && subsurface_scattering > 0.0f && max(max(subsurface_radius.x, subsurface_radius.y), subsurface_radius.z) > 0.0f && !is_foliage(); }
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
@@ -120,6 +124,7 @@ struct Surface
         sheen_roughness       = material.sheen_color.w;
         alpha_blend           = material.alpha_blend;
         subsurface_scattering = material.subsurface_scattering;
+        subsurface_radius     = material.subsurface_radius;
         flake_strength        = material.flake_strength;
         flake_scale           = material.flake_scale;
         pearl_strength        = material.pearl_strength;

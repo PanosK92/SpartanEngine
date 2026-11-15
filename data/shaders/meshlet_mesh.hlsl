@@ -165,8 +165,7 @@ void main_ms(
             float2 n2 = p2.xy;
             float2 ndc_min = min(n0, min(n1, n2));
             float2 ndc_max = max(n0, max(n1, n2));
-            float2 extent  = (ndc_max - ndc_min) * get_render_resolution_active() * 0.5f;
-            cull = max(extent.x, extent.y) < 0.5f;
+            cull = triangle_misses_pixel_centers(ndc_min, ndc_max);
         }
 
         MeshPrimitive prim;

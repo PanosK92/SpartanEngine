@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =====================
 #include "Widget.h"
+#include <atomic>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -94,6 +95,7 @@ private:
     };
 
     void load_library();
+    void start_download();
     std::shared_ptr<doc::page> get_page(const std::string& path);
     void navigate(const std::string& path, const std::string& anchor, bool push_history, int block = -1);
     void go_back();
@@ -104,8 +106,11 @@ private:
     void draw_sidebar();
     void draw_page();
 
-    std::string m_root; // repository root, absolute with a trailing slash, empty when the docs are not on disk
+    std::string m_root; // repository root, absolute with a trailing slash, or the local copy of the online docs
     bool m_library_loaded = false;
+    bool m_remote         = false; // no repository next to binaries/, the pages come from github
+    bool m_download_ran   = false;
+    std::shared_ptr<std::atomic<int>> m_download_state = std::make_shared<std::atomic<int>>(0);
     std::vector<std::shared_ptr<doc::page>> m_library;
     std::unordered_map<std::string, std::shared_ptr<doc::page>> m_pages;
     std::shared_ptr<doc::page> m_page;

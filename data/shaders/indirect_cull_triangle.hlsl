@@ -126,10 +126,12 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
                     float2 s2 = p2_clip.xy / p2_clip.w;
                     float2 min_ndc = min(s0, min(s1, s2));
                     float2 max_ndc = max(s0, max(s1, s2));
-                    float2 px      = get_render_resolution_active() * 0.5f;
-                    int2   min_px  = int2(floor(min_ndc * px));
-                    int2   max_px  = int2(floor(max_ndc * px));
-                    if (all(min_px == max_px))
+                    // these positions come from absolute world space and can sit a fraction of a pixel off the camera relative ones
+                    // the rasterizer gets, so only a triangle inside a single pixel is tested against the pixel center
+                    float2 px     = get_render_resolution_active() * 0.5f;
+                    int2   min_px = int2(floor(min_ndc * px));
+                    int2   max_px = int2(floor(max_ndc * px));
+                    if (all(min_px == max_px) && triangle_misses_pixel_centers(min_ndc, max_ndc))
                         keep = false;
                 }
             }

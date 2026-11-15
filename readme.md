@@ -66,7 +66,7 @@ Spartan is a **complete C++ game engine**. Path-traced global illumination, hard
   </tr>
 </table>
 
-The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors and a car showroom. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
+The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors, a car showroom and a photoscanned human head. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
 
 > [!IMPORTANT]
 > **Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is [documentation](docs/README.md), a [Lua scripting guide](docs/scripting.md) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
@@ -75,36 +75,37 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
 
 <table>
   <tr>
+    <td colspan="2"><img src=".github/images/showcase_human_close.jpg" alt="Skin close-up: subsurface scattering under path-traced light, with pores, stubble and light glowing through the ear"/></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; subsurface scattering under path-traced light, down to the pores, the stubble and the glow through an ear</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/images/showcase_human.jpg" alt="Human: a photoscanned head in a dark studio, lit by soft area lights"/></td>
+    <td width="50%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a turntable, lit by three emissive tubes through volumetric fog"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>HUMAN</b> &nbsp;·&nbsp; a photoscanned head in a dark studio, lit by soft area lights</sub></td>
+    <td align="center"><sub><b>SHOWROOM</b> &nbsp;·&nbsp; LaFerrari lit by three emissive tubes through volumetric fog</sub></td>
+  </tr>
+  <tr>
+    <td><img src=".github/images/showcase_sponza.jpg" alt="Sponza: ReSTIR path tracing, no light probes, no bake"/></td>
+    <td><img src=".github/images/showcase_liminal.jpg" alt="Liminal space: procedural and streamed, lit by path-traced global illumination"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>SPONZA</b> &nbsp;·&nbsp; ReSTIR path tracing, no light probes, no bake</sub></td>
+    <td align="center"><sub><b>LIMINAL OFFICE</b> &nbsp;·&nbsp; procedural and streamed, path traced, no bake</sub></td>
+  </tr>
+  <tr>
     <td colspan="2"><img src=".github/images/showcase_island_town.jpg" alt="Zakynthos: an open island some 30 km across, with towns, an airport, more than 200 spline roads, instanced forests and an FFT ocean"/></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; an island some 30 km across with towns, an airport, 200+ spline roads, instanced forests and an FFT ocean</sub></td>
   </tr>
-  <tr>
-    <td width="50%"><img src=".github/images/showcase_island_coast.jpg" alt="Island coast: dynamic time of day, atmospheric scattering and shallow-water caustics"/></td>
-    <td width="50%"><img src=".github/images/showcase_sponza.jpg" alt="Sponza: ReSTIR path tracing, no light probes, no bake"/></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>ISLAND COAST</b> &nbsp;·&nbsp; dynamic time of day, atmospheric scattering, shallow-water caustics</sub></td>
-    <td align="center"><sub><b>SPONZA</b> &nbsp;·&nbsp; ReSTIR path tracing, no light probes, no bake</sub></td>
-  </tr>
-  <tr>
-    <td><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a turntable, lit by three emissive tubes through volumetric fog"/></td>
-    <td><img src=".github/images/showcase_ferrari_close.jpg" alt="Showroom: layered car paint with clearcoat and ray-traced reflections"/></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>SHOWROOM</b> &nbsp;·&nbsp; LaFerrari lit by three emissive tubes through volumetric fog</sub></td>
-    <td align="center"><sub><b>CAR PAINT</b> &nbsp;·&nbsp; layered clearcoat and ray-traced reflections</sub></td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src=".github/images/showcase_liminal.jpg" alt="Liminal space: procedural and streamed, lit by path-traced global illumination"/></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><sub><b>LIMINAL OFFICE</b> &nbsp;·&nbsp; procedural and streamed, path traced, no bake</sub></td>
-  </tr>
 </table>
 
 <p align="center"><sub>All real-time captures. Every world is fully simulated: walkable, interactive and drivable.</sub></p>
+<p align="center"><sub>Head scan by Lee Perry-Smith, Infinite Realities, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</sub></p>
 
 ## Features
 
@@ -119,7 +120,7 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
 <p align="center"><sub>Expand a section for the full breakdown.</sub></p>
 
 <details>
-<summary><b>Lighting and global illumination</b> &nbsp;·&nbsp; <sub>ReSTIR, ray tracing, IES profiles, clouds, fog, FFT ocean</sub></summary>
+<summary><b>Lighting and global illumination</b> &nbsp;·&nbsp; <sub>ReSTIR, ray tracing, subsurface scattering, IES profiles, clouds, fog, FFT ocean</sub></summary>
 
 <br/>
 
@@ -127,6 +128,7 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
 - **Clustered deferred shading** with a GPU-built logarithmic-Z grid and cone-vs-AABB culling for spots, so many local lights cost near-constant time per pixel
 - **IES photometric light profiles** (LM-63): spot lights emit the measured beam of a real fixture, from car headlights with regulation cut-offs to architectural downlights, with correct lumens and candela across direct lighting, volumetric fog and path tracing. A feature usually reserved for the big commercial engines
 - **Hardware ray-traced reflections and shadows** via ray queries
+- **Subsurface scattering** for skin: a Burley diffusion profile with a per-channel radius softens and reddens the light under the surface, and ray-traced transmission lets it glow through thin parts such as ears
 - **Atmospheric scattering** and image-based lighting with bent normals
 - **Volumetric clouds** (Nubis-style) baked into the sky panorama, with cumulus and cirrus layers, multi-scatter lighting and aerial perspective
 - **Froxel volumetric fog**: one view-aligned volume for height and distance fog, sun shafts and underwater caustic shafts, with temporal reprojection and shadowing

@@ -600,6 +600,14 @@ namespace spartan
                 return "sheen_roughness";
             case MaterialProperty::SubsurfaceScattering:
                 return "subsurface_scattering";
+            case MaterialProperty::SubsurfaceRadius:
+                return "subsurface_radius";
+            case MaterialProperty::SubsurfaceColorR:
+                return "subsurface_color_r";
+            case MaterialProperty::SubsurfaceColorG:
+                return "subsurface_color_g";
+            case MaterialProperty::SubsurfaceColorB:
+                return "subsurface_color_b";
             case MaterialProperty::FlakeStrength:
                 return "flake_strength";
             case MaterialProperty::FlakeScale:

@@ -11,9 +11,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../Editor.h"
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Style.h"
+#include "core/ThreadPool.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <sstream>
 //==============================
 
@@ -29,6 +31,18 @@ namespace
     namespace fs = std::filesystem;
 
     const char* online_docs = "https://github.com/PanosK92/SpartanEngine/tree/master/docs";
+    const char* raw_url     = "https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/";
+    const char* blob_url    = "https://github.com/PanosK92/SpartanEngine/blob/master/";
+    const char* listing_url = "https://api.github.com/repos/PanosK92/SpartanEngine/contents/docs?ref=master";
+    const char* cache_dir   = "cache/docs/"; // mirrors the repository layout, so relative links resolve as they do in a clone
+
+    enum download_state : int
+    {
+        download_idle,
+        download_running,
+        download_done,
+        download_failed
+    };
 
     float scaled(const float value)
     {
@@ -129,7 +143,7 @@ namespace
     string spans_text(const spans& content)
     {
         string text;
-        for (const span& s : content)
+        for (const doc::span& s : content)
         {
             text += s.text;
         }
@@ -699,6 +713,136 @@ namespace
         return result;
     }
 
+    void for_each_link(const page& p, const function<void(const string&)>& callback)
+    {
+        auto visit = [&](const spans& content)
+        {
+            for (const doc::span& s : content)
+            {
+                if (!s.link.empty() && !is_external(s.link))
+                {
+                    callback(s.link);
+                }
+            }
+        };
+
+        for (const block& b : p.blocks)
+        {
+            visit(b.content);
+            for (const vector<spans>& row : b.rows)
+            {
+                for (const spans& cell : row)
+                {
+                    visit(cell);
+                }
+            }
+        }
+    }
+
+    // a link in the page at repository path from, as a repository path, empty when it leaves the repository
+    string resolve_repository_path(const string& from, const string& link)
+    {
+        string target = url_decode(link.substr(0, link.find('#')));
+        if (target.empty())
+        {
+            return "";
+        }
+
+        const bool rooted = target[0] == '/';
+        const fs::path base = rooted ? fs::path() : fs::path(from).parent_path();
+        const string path   = (base / (rooted ? target.substr(1) : target)).lexically_normal().generic_string();
+        return starts_with(path, "..") ? "" : path;
+    }
+
+    bool write_file(const string& path, const string& contents)
+    {
+        error_code error;
+        fs::create_directories(fs::path(path).parent_path(), error);
+
+        // written aside and renamed, so a reader never sees half a page
+        const string staged = path + ".download";
+        {
+            ofstream file(staged, ios::binary | ios::trunc);
+            file << contents;
+            if (!file)
+            {
+                return false;
+            }
+        }
+
+        fs::rename(staged, path, error);
+        return !error;
+    }
+
+    bool download_page(const string& relative, const string& root)
+    {
+        string contents;
+        if (!FileSystem::DownloadToString(string(raw_url) + relative, contents))
+        {
+            SP_LOG_WARNING("Failed to download the documentation page %s", relative.c_str());
+            return false;
+        }
+
+        return write_file(root + relative, contents);
+    }
+
+    // every page in docs/ from github's listing, the root readme, then the markdown they link to elsewhere in the repository
+    bool download_docs(const string& root)
+    {
+        vector<string> pages = { "docs/README.md" };
+        string listing;
+        if (FileSystem::DownloadToString(listing_url, listing))
+        {
+            size_t at = 0;
+            while ((at = listing.find("\"name\"", at)) != string::npos)
+            {
+                const size_t open  = listing.find('"', listing.find(':', at) + 1);
+                const size_t close = open == string::npos ? string::npos : listing.find('"', open + 1);
+                if (close == string::npos)
+                {
+                    break;
+                }
+
+                const string path = "docs/" + listing.substr(open + 1, close - open - 1);
+                if (is_markdown(path) && find(pages.begin(), pages.end(), path) == pages.end())
+                {
+                    pages.push_back(path);
+                }
+                at = close;
+            }
+        }
+        pages.push_back("readme.md");
+
+        size_t downloaded = 0;
+        vector<string> linked;
+        for (const string& relative : pages)
+        {
+            if (!download_page(relative, root))
+            {
+                continue;
+            }
+            downloaded++;
+
+            const shared_ptr<page> p = parse_page(root + relative, read_file(root + relative));
+            for_each_link(*p, [&](const string& link)
+            {
+                const string target = resolve_repository_path(relative, link);
+                if (is_markdown(target) && find(pages.begin(), pages.end(), target) == pages.end() && find(linked.begin(), linked.end(), target) == linked.end())
+                {
+                    linked.push_back(target);
+                }
+            });
+        }
+
+        for (const string& relative : linked)
+        {
+            download_page(relative, root);
+        }
+
+        SP_LOG_INFO("Downloaded %zu documentation pages into %s", downloaded + linked.size(), root.c_str());
+        return downloaded > 0;
+    }
+
     struct draw_context
     {
         const vector<string>* tokens = nullptr;
@@ -743,7 +887,7 @@ namespace
     {
         struct piece
         {
-            const span* source;
+            const doc::span* source;
             size_t begin;
             size_t end;
             float width;
@@ -786,7 +930,7 @@ namespace
             current.first = pieces.size();
         };
 
-        for (const span& s : content)
+        for (const doc::span& s : content)
         {
             const bool code  = s.style & span_code;
             ImFont* font     = code ? font_code() : ((s.style & span_bold) ? font_strong() : font_text);
@@ -835,7 +979,7 @@ namespace
             for (size_t k = w.first; k < w.first + w.count; k++)
             {
                 const piece& pc     = pieces[k];
-                const span& s       = *pc.source;
+                const doc::span& s       = *pc.source;
                 const bool code     = s.style & span_code;
                 const ImVec2 cell_min(origin.x + x, origin.y + y);
                 const ImVec2 cell_max(origin.x + x + pc.width, origin.y + y + line_h);
@@ -1039,6 +1183,7 @@ void Documentation::load_library()
     m_library.clear();
     m_pages.clear();
     m_root.clear();
+    m_remote = false;
 
     // the engine runs from binaries/, the docs ship with the repository one level up
     for (const char* candidate : { "../", "./", "../../" })
@@ -1054,9 +1199,20 @@ void Documentation::load_library()
         }
     }
 
+    // without a repository the pages come from github, the copy from an earlier session shows while this one refreshes it
     if (m_root.empty())
     {
-        return;
+        m_remote = true;
+        m_root   = normalize_path(cache_dir);
+        if (m_root.back() != '/')
+        {
+            m_root += '/';
+        }
+
+        if (!m_download_ran)
+        {
+            start_download();
+        }
     }
 
     auto add = [this](const string& path)
@@ -1073,34 +1229,14 @@ void Documentation::load_library()
     const string docs = m_root + "docs/";
     if (shared_ptr<page> index = add(docs + "README.md"))
     {
-        auto add_links = [&](const spans& content)
+        for_each_link(*index, [&](const string& link)
         {
-            for (const span& s : content)
+            const string target = resolve_repository_path("docs/README.md", link);
+            if (is_markdown(target))
             {
-                if (s.link.empty() || is_external(s.link))
-                {
-                    continue;
-                }
-
-                const string target = s.link.substr(0, s.link.find('#'));
-                if (is_markdown(target))
-                {
-                    add(normalize_path(fs::path(docs) / url_decode(target)));
-                }
+                add(m_root + target);
             }
-        };
-
-        for (const block& b : index->blocks)
-        {
-            add_links(b.content);
-            for (const vector<spans>& row : b.rows)
-            {
-                for (const spans& cell : row)
-                {
-                    add_links(cell);
-                }
-            }
-        }
+        });
     }
 
     vector<string> remaining;
@@ -1124,6 +1260,25 @@ void Documentation::load_library()
     }
 }
 
+void Documentation::start_download()
+{
+    if (m_download_state->load() == download_running)
+    {
+        return;
+    }
+
+    m_download_ran = true;
+    m_download_state->store(download_running);
+
+    // the task owns everything it touches, the widget may be gone by the time github answers
+    shared_ptr<atomic<int>> state = m_download_state;
+    const string root             = m_root;
+    ThreadPool::AddTask([state, root]()
+    {
+        state->store(download_docs(root) ? download_done : download_failed);
+    });
+}
+
 shared_ptr<page> Documentation::get_page(const string& path)
 {
     const string full = normalize_path(path);
@@ -1132,6 +1287,12 @@ shared_ptr<page> Documentation::get_page(const string& path)
     if (it != m_pages.end())
     {
         return it->second;
+    }
+
+    // pages linked from outside docs/ that the download did not reach are fetched when opened
+    if (!fs::is_regular_file(full) && m_remote && is_markdown(full) && starts_with(key, to_lower(m_root).c_str()))
+    {
+        download_page(full.substr(m_root.size()), m_root);
     }
 
     if (!fs::is_regular_file(full))
@@ -1254,13 +1415,17 @@ void Documentation::follow_link(const string& url)
         full = normalize_path(fs::path(full) / "README.md");
     }
 
-    if (is_markdown(full) && fs::is_regular_file(full))
+    if (is_markdown(full) && get_page(full))
     {
         navigate(full, anchor, true);
     }
     else if (fs::exists(full))
     {
         FileSystem::OpenUrl(full);
+    }
+    else if (m_remote && starts_with(full, m_root.c_str()))
+    {
+        FileSystem::OpenUrl(string(blob_url) + full.substr(m_root.size()));
     }
     else
     {
@@ -1372,8 +1537,12 @@ void Documentation::draw_toolbar()
         }
         m_scroll_restore = m_scroll;
         run_search();
+        if (m_remote)
+        {
+            start_download();
+        }
     }
-    ImGui::SetItemTooltip("Read the markdown files again, for edits made while the editor runs");
+    ImGui::SetItemTooltip(m_remote ? "Download the latest documentation from GitHub" : "Read the markdown files again, for edits made while the editor runs");
 
     ImGui::SameLine();
     if (ImGui::Button("Open online"))
@@ -1387,6 +1556,13 @@ void Documentation::draw_toolbar()
         const string relative = starts_with(m_page->path, m_root.c_str()) ? m_page->path.substr(m_root.size()) : m_page->path;
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImGui::Style::color_text_faint, "%s", relative.c_str());
+    }
+
+    if (m_remote)
+    {
+        ImGui::SameLine();
+        const int state = m_download_state->load();
+        ImGui::TextColored(ImGui::Style::color_text_muted, state == download_running ? "(updating from GitHub...)" : state == download_failed ? "(saved copy, GitHub unreachable)" : "(downloaded from GitHub)");
     }
 }
 
@@ -1645,17 +1821,46 @@ void Documentation::OnTickVisible()
         load_library();
     }
 
+    // a finished download swaps the fresh pages in where the reader is
+    const int download = m_download_state->load();
+    if (download == download_done)
+    {
+        m_download_state->store(download_idle);
+        const string current = m_page ? m_page->path : "";
+        const float scroll   = m_scroll;
+        m_page               = nullptr;
+        load_library();
+        if (!current.empty())
+        {
+            navigate(current, "", false);
+            m_scroll_restore = scroll;
+        }
+        run_search();
+    }
+
     if (!m_page && !m_library.empty())
     {
         navigate(m_library[0]->path, "", false);
     }
 
-    if (m_root.empty())
+    if (m_library.empty())
     {
-        ImGui::TextWrapped("The documentation was not found. It ships with the repository in docs/, next to binaries/.");
-        if (ImGui::Button("Open the documentation online"))
+        if (download == download_running)
         {
-            FileSystem::OpenUrl(online_docs);
+            ImGui::TextWrapped("There is no repository next to binaries/, downloading the documentation from GitHub...");
+        }
+        else
+        {
+            ImGui::TextWrapped("There is no repository next to binaries/ and the documentation could not be downloaded from GitHub.");
+            if (ImGui::Button("Retry"))
+            {
+                start_download();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Open the documentation online"))
+            {
+                FileSystem::OpenUrl(online_docs);
+            }
         }
         return;
     }

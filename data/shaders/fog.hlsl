@@ -236,6 +236,7 @@ Surface fog_build_surface(float3 position, float3 ray_direction, uint2 pixel, fl
     surface.sheen_color            = 0.0f;
     surface.sheen_roughness        = 0.0f;
     surface.subsurface_scattering  = 0.0f;
+    surface.subsurface_radius      = 0.0f;
     surface.flake_strength         = 0.0f;
     surface.flake_scale            = 0.0f;
     surface.pearl_strength         = 0.0f;

@@ -249,6 +249,52 @@ namespace spartan::scripting
             return car && car->IsOccupied();
         };
 
+        // the car a player sits in, nil on foot
+        tuning["GetOccupiedCar"] = []() -> Entity*
+        {
+            for (Car* car : Car::GetAll())
+            {
+                if (car && car->IsOccupied())
+                {
+                    return car->GetRootEntity();
+                }
+            }
+            return nullptr;
+        };
+
+        // the body model entity, what the cabin, its parts and the driver anchors hang off
+        tuning["GetBody"] = [](sol::optional<Entity*> entity) -> Entity*
+        {
+            Car* car = resolve_car(entity);
+            return car ? car->GetBodyEntity() : nullptr;
+        };
+
+        // where the car wants a part of its driver: seat, wheel, hand_left, hand_right, foot_left, foot_right, ... declared in the
+        // .car <driver> element. an entity on the body or on the part it rides, nil when the car does not declare it
+        tuning["GetDriverAnchor"] = [](sol::optional<Entity*> entity, const std::string& name) -> Entity*
+        {
+            Car* car = resolve_car(entity);
+            return car ? car->GetDriverAnchor(name) : nullptr;
+        };
+
+        // chase, hood, interior or wheel, empty without a car
+        tuning["GetView"] = [](sol::optional<Entity*> entity) -> std::string
+        {
+            Car* car = resolve_car(entity);
+            if (!car)
+            {
+                return std::string();
+            }
+            switch (car->GetView())
+            {
+                case CarView::Chase:    return "chase";
+                case CarView::Hood:     return "hood";
+                case CarView::Interior: return "interior";
+                case CarView::Wheel:    return "wheel";
+                default:                return std::string();
+            }
+        };
+
         // getting in and out, for a car script that owns it: e raises a request, the script checks its door, animates the camera and seats the player
         tuning["SetEntryScripted"] = [](sol::optional<Entity*> entity, bool scripted)
         {
