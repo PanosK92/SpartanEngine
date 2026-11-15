@@ -473,6 +473,15 @@ namespace spartan
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
             renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_indirect_args"
         );
+        // the mesh shader grass draws, one entry per draw list like grass_indirect_args, see grass_mesh_layout.hlsl
+        at(buffers, Renderer_Buffer::GrassMeshGeometry) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 4),
+            renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_mesh_geometry"
+        );
+        at(buffers, Renderer_Buffer::GrassMeshArgs) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 4),
+            renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_mesh_args"
+        );
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -1486,6 +1495,7 @@ namespace spartan
             { Renderer_Shader::depth_prepass_mesh_alpha_p,            RHI_Shader_Type::Pixel,   "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "ALPHA_TEST_INDIRECT", true, false, "DEPTH_MESH_ALPHA", true },
             { Renderer_Shader::meshlet_mesh_m,                        RHI_Shader_Type::MeshShader,    "meshlet_mesh.hlsl",                          RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_alpha_m,                  RHI_Shader_Type::MeshShader,    "meshlet_mesh.hlsl",                          RHI_Vertex_Type::Max, "GBUFFER_ALPHA", true, false, nullptr, true },
+            { Renderer_Shader::grass_mesh_m,                          RHI_Shader_Type::MeshShader,    "grass_mesh.hlsl",                            RHI_Vertex_Type::Max, "GRASS_INSTANCED", true, false, "GRASS_SPECIALIZED", true },
             { Renderer_Shader::meshlet_mesh_depth_m,                  RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_alpha_m,            RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_late_m,             RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_LATE", true, false, nullptr, true },

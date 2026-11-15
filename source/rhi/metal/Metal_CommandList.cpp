@@ -561,12 +561,13 @@ namespace spartan
         allocator->reset();
         static_cast<MTL4::CommandBuffer*>(m_rhi_resource)->beginCommandBuffer(allocator);
 
-        ResetTrackedResources();
-
-        // the previous recording's timestamps are final, take them before the slots are reused
+        // the previous recording's timestamps are final, take them before the slots are reused, and before
+        // ResetTrackedResources reserves the next timeline value, after it the previous work never reads as complete
         ReadbackTimestampsForProfiler();
         m_timestamp_sample.reset();
         m_timestamp_index = 0;
+
+        ResetTrackedResources();
 
         // the gpu is done with the previous recording, so its bindings and upload memory are free
         metal_encoder::State& state = get_state(m_rhi_state);

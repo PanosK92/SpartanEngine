@@ -524,6 +524,7 @@ namespace spartan
         meshlet_mesh_depth_alpha_late_m,
         meshlet_visualize_v,
         meshlet_visualize_p,
+        grass_mesh_m,
         // gpu-driven particles
         particle_emit_c,
         particle_simulate_c,
@@ -791,6 +792,8 @@ namespace spartan
         GrassLodParameters,        // per-slot screen error and protected vehicle region
         GrassCount,                // one uint per slot per lod, bumped atomically by the populate shader
         GrassIndirectArgs,         // one DrawIndexedIndirect entry per slot per lod, written by the args build shader
+        GrassMeshGeometry,         // blade lod of every grass draw list for the mesh shader path, see grass_mesh_layout.hlsl
+        GrassMeshArgs,             // mesh draw of every grass draw list, written by the args build shader
         // gpu-driven shadow maps, created and grown on demand by Pass_ShadowMaps
         ShadowCasters,             // one ShadowCaster per shadow casting draw, uploaded per frame
         ShadowTasks,               // (caster, first instance) per 64 instances, uploaded per frame

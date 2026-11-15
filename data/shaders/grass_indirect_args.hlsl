@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =========
 #include "common.hlsl"
 #include "grass_lod_allocation.hlsl"
+#include "grass_mesh_layout.hlsl"
 //====================
 
 // gpu procedural grass indirect args builder
@@ -26,6 +27,19 @@ Commercial use requires written permission and negotiated payment terms.
 //                   per-lod cap that the cpu pushed into values[0].w of grass_populate.hlsl)
 //   values[0].w   = lod_count
 //   draw_index    = the first args entry of this slot
+
+// the mesh draw of a section, enough groups to cover its blades, on a 2d grid once they pass MESH_GRID_WIDTH
+void write_mesh_args(uint section, uint blade_count)
+{
+    uint blades_per_group = grass_mesh_blades_per_group(grass_mesh_geometry[section]);
+    uint group_count      = (blade_count + blades_per_group - 1u) / blades_per_group;
+    grass_mesh_args[section] = uint4(
+        min(group_count, MESH_GRID_WIDTH),
+        (group_count + MESH_GRID_WIDTH - 1u) / MESH_GRID_WIDTH,
+        1u,
+        blade_count
+    );
+}
 
 [numthreads(8, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
@@ -49,4 +63,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // only the instance_count is dynamic, the rest of the args stay frozen at the values the cpu wrote
     grass_indirect_args[entry].instance_count = counts.x;
     grass_indirect_args[entry + grass_ring_count].instance_count = counts.y;
+
+    // the same counts sized for the mesh shader draw, devices without mesh shaders never read them
+    write_mesh_args(entry, counts.x);
+    write_mesh_args(entry + grass_ring_count, counts.y);
 }
