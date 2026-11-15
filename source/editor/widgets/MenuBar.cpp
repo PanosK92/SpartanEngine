@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "MenuBar.h"
 #include "FileDialog.h"
 #include "GameBuilder.h"
+#include "Documentation.h"
 #include "Viewport.h"
 #include "Style.h"
 #include "../Editor.h"
@@ -369,6 +370,16 @@ namespace
         {
             if (begin_menu("Help"))
             {
+                if (Documentation* documentation = editor->GetWidget<Documentation>())
+                {
+                    bool& documentation_visible = documentation->GetVisible();
+                    if (ImGui::MenuItem("Documentation", "F1", documentation_visible))
+                    {
+                        documentation_visible = !documentation_visible;
+                    }
+                    ImGui::Separator();
+                }
+
                 bool* about_visible = GeneralWindows::GetVisibilityWindowAbout();
                 if (ImGui::MenuItem("About", nullptr, *about_visible))
                 {

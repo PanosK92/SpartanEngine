@@ -28,6 +28,9 @@ All panels dock and are listed under **View**. They are registered in [`EditorWi
 | **Tree Creator** | Procedural tree species |
 | **Build Game** | The game builder |
 | **Spartan AI** | In-editor assistant over the [MCP bridge](mcp.md) |
+| **Documentation** | These docs inside the editor (**F1** or **Help > Documentation**): search, links between pages, back and forward |
+
+The **Documentation** panel reads the markdown in the repository's `docs/` folder (`../docs/` from the executable), starting at `docs/README.md` and following its links, plus the root `readme.md`. The sidebar lists the pages and the open page's sections. The search box (**Ctrl+F**) matches every word typed across all pages, lists each paragraph it finds and highlights the words on the page. Links to other markdown files open in the panel, `#anchor` links scroll to the heading, web links open in the browser, and links to source files open them with the system's default program. **Alt+Left** / **Alt+Right** or the mouse side buttons go back and forward, **Reload** picks up edits to the files, and code blocks have a **Copy** button. Without a repository next to `binaries/`, the panel offers the online docs instead.
 
 The **World Launcher** opens at start-up, after the welcome window. It lists every `.world` in `project/` and in the repository's `worlds/` folder (`../worlds/` from the executable). If the project assets or the world files are missing, as in a fresh release download, it offers to download them: the assets come from the project package and the worlds from GitHub, placed in `../worlds/` exactly as a clone would have them.
 
@@ -37,6 +40,7 @@ The **World Launcher** opens at start-up, after the welcome window. It lists eve
 
 | Shortcut | Action |
 | -------- | ------ |
+| **F1** | Documentation |
 | **F5** / **F6** | Play / pause |
 | **Ctrl+S** / **Ctrl+Shift+S** | Save world / save as |
 | **Ctrl+O** | Load world |

@@ -133,6 +133,8 @@ To add a car:
 
 The player enters and exits cars in play mode; `CarReset` returns the player car to its spawn point. Cameras (`CarView`): chase (GT7-inspired, speed-dependent), hood and wheel. The driving HUD and telemetry panels are in [`CarHud.cpp`](../source/car/CarHud.cpp); **F3** (or the gamepad touchpad) toggles the telemetry HUD.
 
+Hot brake rotors glow. `Car::TickBrakeGlow` gives each wheel its own copy of the rotor material and sets its emission from that wheel's simulated brake temperature, using the blackbody output of oxidised cast iron: nothing below 500 °C, a dull red around 650 °C (about 1 nit at 700 °C) and orange-red past 850 °C (about 75 nits at 900 °C). At physical brightness the glow is clear at dusk and night and faint in daylight. `car.brake_glow` scales it, 0 turns it off. Repeated hard stops rarely get past 450 °C; holding the brakes against full throttle does.
+
 Engine sound is synthesized procedurally ([`CarEngineSoundSynthesis.cpp`](../source/car/CarEngineSoundSynthesis.cpp)), as is tire squeal. Rain beads on the paint, dirt and scratches accumulate on the body, and the camera lens gets wet ([`CarRain.cpp`](../source/car/CarRain.cpp), [`CarDirt.cpp`](../source/car/CarDirt.cpp), [`CarLens.cpp`](../source/car/CarLens.cpp)). Wet roads feed tire grip.
 
 ### AI

@@ -32,7 +32,7 @@ Spartan was documented by its code for twelve years. These pages are the map: th
 
 ## Elsewhere in the repository
 
-- [`worlds/README.md`](../worlds/README.md): where a world's files and assets live, and the rules for keeping them separate.
+- [`worlds/README.md`](../worlds/README.md): every bundled world and what it shows, where a world's files and assets live, and the rules for keeping them separate.
 - [`source/navigation/README.md`](../source/navigation/README.md): the streamed navigation mesh.
 - [`source/network/README.md`](../source/network/README.md): UDP sessions, messages and transform replication.
 - [`source/rendering/Decals.md`](../source/rendering/Decals.md): surface decals, vehicle dirt and paint scratches.

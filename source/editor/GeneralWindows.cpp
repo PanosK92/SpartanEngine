@@ -598,6 +598,7 @@ license.)";
         static const Shortcut editor_shortcuts[] =
         {
             { "Ctrl+P",       "Toggle this window"       },
+            { "F1",           "Documentation"            },
             { "Ctrl+S",       "Save world"               },
             { "Ctrl+L",       "Load world"               },
             { "Ctrl+Z",       "Undo"                     },

@@ -102,6 +102,7 @@ Grouped by subsystem. Each cvar's description string, shown in the console and t
 | `ocean.wake`, `ocean.wake_strength`, `ocean.wake_damping`, `ocean.wake_depth` | `world/OceanWake.cpp` |
 | `audio.ambience_volume` | `world/components/AudioSource.cpp` |
 | `car.dirt`, `car.dirt_moisture`, `car.dirt_airspeed`, `car.scratch` | `car/CarDirt.cpp`, `car/CarWeather.cpp` |
+| `car.brake_glow` | `car/Car.cpp` |
 | `game.tree_respawn_distance`, `game.tree_strength_scale` | `world/BreakableTrees.h` |
 | `showroom.turntable_speed` | `car/CarHud.cpp` |
 

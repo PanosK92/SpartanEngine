@@ -30,7 +30,7 @@ BUILD_DIR = ROOT / "binaries" / "build" / "web"
 OUT_DIR   = ROOT / "binaries" / "web"
 
 PHYSX_REPO     = "https://github.com/NVIDIA-Omniverse/PhysX.git"
-PHYSX_REF      = "main" # 5.12, matches third_party/physx
+PHYSX_REF      = "b97365c6ddb32fda8469bc788ec18024862b0368" # 5.12, the commit third_party/physx headers come from
 ASSIMP_REPO    = "https://github.com/assimp/assimp.git"
 ASSIMP_REF     = "v6.0.5"
 LUA_REPO       = "https://github.com/lua/lua.git"
@@ -96,7 +96,10 @@ def run(command, cwd=None):
 def git_checkout(repo, ref, destination):
     if destination.is_dir():
         return
-    run(["git", "clone", "--depth", "1", "--branch", ref, repo, destination])
+    # init and fetch instead of clone so ref can be a commit as well as a tag or branch
+    run(["git", "init", "--quiet", destination])
+    run(["git", "-C", destination, "fetch", "--depth", "1", repo, ref])
+    run(["git", "-C", destination, "checkout", "--quiet", "FETCH_HEAD"])
 
 
 def download_freeimage():
