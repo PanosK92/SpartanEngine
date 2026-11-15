@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="human_example" description="Human rendering showcase: a photoscanned head (Infinite Realities, Lee Perry-Smith, CC BY 3.0) on a pedestal in a dark studio, lit by a warm softbox key, a soft fill and two cool rim lights. Skin uses subsurface scattering, a 4K scanned albedo and a normal map baked from the 6K scan displacement.">
+<World name="human_example" description="A photoscanned head in a dark studio, the skin rendering showcase. Scan by Lee Perry-Smith, Infinite Realities, CC BY 3.0">
  <OwnedResources>
   <Resource file="materials/material_ground.xml" />
   <Resource file="materials/pedestal_black.xml" />

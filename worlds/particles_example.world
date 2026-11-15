@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="particles_example" description="A particle gallery at dusk: keys 1-9 toggle fire, smoke, steam, sparks, embers, magic, fireflies, snow and a waterfall, Space fires an explosion and confetti">
+<World name="particles_example" description="A particle gallery at dusk: fire, smoke, sparks, snow, a waterfall and more">
  <OwnedResources>
   <Resource file="materials/material_ground.xml" />
   <Resource file="materials/particles_label.xml" />

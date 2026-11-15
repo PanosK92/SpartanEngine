@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="sponza_example" description="The classic Sponza atrium with curtains and ivy">
+<World name="sponza_example" description="The classic Sponza atrium, with curtains and ivy">
  <Environment utc_days="9664.8498409092426" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="0" wind_y="0.0199999996" wind_z="0.100000001" />
  <ConsoleVariables>
   <Variable name="r.atmosphere.mist_density" value="1.000000" />

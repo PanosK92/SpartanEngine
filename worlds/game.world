@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="game" description="Zakynthos island racing world in clear summer daylight, with an international airport and a private player garage, workshop, lounge and garden">
+<World name="game" description="The island of Zakynthos: open roads, traffic, races and your own garage">
  <OwnedResources>
   <Resource file="meshes/aircraft_engine_v1.mesh" />
   <Resource file="meshes/aircraft_fuselage_v1.mesh" />

@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="audio_example" description="A sound garden: a 3D fountain, a drone flying past for Doppler, and the same bell outside and inside a reverb hall (keys 1-4, Up/Down)">
+<World name="audio_example" description="A sound garden: a fountain in 3D, a drone flying past and a bell in a reverb hall">
  <OwnedResources>
   <Resource file="materials/audio_brass.xml" />
   <Resource file="materials/audio_drone.xml" />

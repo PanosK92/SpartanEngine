@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="liminal_space_example" description="One endless building that keeps changing: backrooms, offices, hotels, schools, parking decks, malls and pool rooms. Follow the light; the building keeps going.">
+<World name="liminal_space_example" description="One endless building that keeps changing: backrooms, offices, malls and pool rooms">
  <ConsoleVariables>
   <Variable name="r.atmosphere.mist_density" value="1.400000" />
   <Variable name="r.vhs" value="0.000000" />

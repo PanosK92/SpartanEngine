@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="ferrari_showroom_example" description="Ferrari laferrari rotating on a lit turntable">
+<World name="ferrari_showroom_example" description="A LaFerrari turning on a lit showroom turntable">
  <OwnedResources>
   <Resource file="textures/albedo.texture" />
   <Resource file="materials/apex_game_caliper.xml" />

@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="pbr_materials_example" description="PBR conformance gallery: Khronos glTF sample assets (core metal/rough, clearcoat, sheen, anisotropy, transmission, IOR, volume, showcase)">
+<World name="pbr_materials_example" description="A gallery of glTF sample assets, one for each material feature">
  <OwnedResources>
   <Resource file="textures/albedo.texture" />
   <Resource file="materials/aniso_tan_rotation.xml" />

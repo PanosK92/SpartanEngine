@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="navigation_example" description="A top-down arena where crowd agents walk a Recast/Detour navigation mesh. Press play, click the floor to send everyone there, click an orange door to open or close it, C releases a chaser, N shows the navmesh.">
+<World name="navigation_example" description="A crowd that finds its way: click the floor to send it, click a door to block it">
  <OwnedResources>
   <Resource file="materials/material_ground.xml" />
   <Resource file="materials/nav_agent.xml" />

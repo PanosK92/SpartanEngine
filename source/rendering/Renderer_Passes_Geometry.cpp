@@ -41,14 +41,20 @@ namespace spartan
     {
         TConsoleVar<bool> cvar_grass_specialized("r.grass_specialized", true,
             "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
+        TConsoleVar<bool> cvar_gbuffer_scatter_first("r.gbuffer_scatter_first", true,
+            "rasterize gpu scatter before the opaque g-buffer so the ground it hides is never shaded; disable for comparison");
         TConsoleVar<float> cvar_grass_lod_pixels("r.grass_lod_pixels", 1.0f,
             "estimated blade simplification error in output pixels; zero keeps authored mesh detail");
+        TConsoleVar<float> cvar_grass_thin_distance("r.grass_thin_distance", 10.0f,
+            "distance in metres past which a grass blade ring thins out towards the density of the ring after it, every blade nearer than that is kept; 0 keeps every blade");
         TConsoleVar<float> cvar_grass_impostor_distance("r.grass_impostor_distance", 8000.0f,
             "reach in metres of the outer grass ring, which draws tuft impostor cards instead of blades; 0 keeps blades there");
         TConsoleVar<float> cvar_grass_impostor_thin("r.grass_impostor_thin", 300.0f,
             "distance in metres past which impostor cards thin out with the square of distance and widen to keep the same coverage; 0 keeps every card");
         TConsoleVar<float> cvar_grass_impostor_start("r.grass_impostor_start", 90.0f,
             "distance in metres where tuft impostor cards take over from blades, the blade ring before them shrinks to meet it at the same density");
+        TConsoleVar<float> cvar_scatter_blend_distance("r.scatter_blend_distance", 8.0f,
+            "distance in metres past which scattered detail such as pebbles sinks to its dirt line instead of blending with the ground, handed over chip by chip up to twice as far; 0 blends every chip");
         // 12.5 cm cells retain tire detail across a much larger history field (32 MiB total).
         constexpr uint32_t grass_interaction_resolution = 1024;
         constexpr float grass_interaction_size = 128.0f;
@@ -293,6 +299,11 @@ namespace spartan
         // has to match grass_max_boost in grass_populate.hlsl, this is what bounds the dispatch
         const float gpu_scatter_max_boost = 12.0f;
 
+        // distance thinning of a blade ring starts no nearer than this many times the height of the camera over the ground
+        const float gpu_scatter_thin_clearance_reach = 2.5f;
+        // steepest fall of the share of blades a thinned ring keeps, as a power of the distance
+        const float gpu_scatter_thin_exponent_max = 4.0f;
+
         // mirrors grass_patch_density_boost in grass_populate.hlsl, the two decide the same thing from
         // opposite ends, this one sizes dispatch z and the shader one sizes the keep probability, so a
         // disagreement shows up as a ring that is either starved or clipped by its own atomic
@@ -357,6 +368,85 @@ namespace spartan
             const float inner        = min(state.params.ring_radii_m[lod - 1], authored);
             const float area_ratio   = (radius * radius - inner * inner) / max(authored * authored - inner * inner, 1.0f);
             return max(1u, static_cast<uint32_t>(static_cast<float>(cap) * clamp(area_ratio, 0.0f, 1.0f)));
+        }
+
+        // height of the camera over the lowest ground the blades of a ring can stand on, the ground right under it is not
+        // enough, from the top of a cliff the meadow below is seen from above as well. reach is the outer radius of the
+        // ring and height_floor the lowest height the layer grows at, the sea bed next to a beach is not a place grass can be
+        float gpu_scatter_camera_clearance(const Vector3& eye, const float reach, const float height_floor)
+        {
+            const Terrain* terrain = Terrain::FindActive();
+            float lowest           = 0.0f;
+            if (!terrain || !terrain->SampleHeight(eye.x, eye.z, lowest))
+            {
+                return 0.0f;
+            }
+
+            const uint32_t directions = 8;
+            const uint32_t steps      = 3;
+            for (uint32_t direction = 0; direction < directions; direction++)
+            {
+                const float angle = math::pi_2 * static_cast<float>(direction) / static_cast<float>(directions);
+                for (uint32_t step = 1; step <= steps; step++)
+                {
+                    const float radius = reach * static_cast<float>(step) / static_cast<float>(steps);
+                    float height       = 0.0f;
+                    if (terrain->SampleHeight(eye.x + cosf(angle) * radius, eye.z + sinf(angle) * radius, height))
+                    {
+                        lowest = min(lowest, height);
+                    }
+                }
+            }
+
+            return max(eye.y - max(lowest, height_floor), 0.0f);
+        }
+
+        // a blade ring is authored at one density from its inner edge to its outer one and the ring after it is far sparser,
+        // while a blade only gets smaller with distance, so the far part of a ring stacks many times the blades behind a
+        // pixel that its near part needs to look as full. past the thinning distance populate keeps a share of the blades
+        // that falls off as a power of the distance, picked so the ring reaches its outer edge at the density of the ring
+        // that takes over there. nothing changes up close and nothing changes past the ring, the cliff between the two
+        // authored densities becomes a slope. x is the distance the slope starts at and y its exponent, zero leaves the
+        // ring alone. only the grass slot places its blades with a progressive sequence, which is what lets a cell drop
+        // the tail of its candidates and stay evenly covered, and a ring of cards thins itself.
+        // blades hide the ground by standing in front of each other, which only works along the ground, seen from above
+        // every one of them is on its own and a thinned meadow shows its soil. so the slope starts no nearer than a few
+        // times the height of the camera over the ground, a camera that climbs gets its blades back and one high enough
+        // to look down on the whole ring keeps all of them
+        Vector2 gpu_scatter_thin(const Renderer::PassState::GpuScatterSlot& state, const uint32_t slot, const uint32_t lod, const Vector3& eye)
+        {
+            const uint32_t next = lod + 1;
+            if (slot != 0 || next >= renderer_max_gpu_scatter_lods || gpu_scatter_card_ring(state, lod) || gpu_scatter_card_ring(state, next))
+            {
+                return Vector2(0.0f, 0.0f);
+            }
+
+            const float outer = gpu_scatter_ring_radius(state, lod);
+            const float inner = lod == 0 ? 0.0f : min(gpu_scatter_ring_radius(state, lod - 1), outer);
+            const float after = gpu_scatter_ring_radius(state, next);
+            const float base  = max(cvar_grass_thin_distance.GetValue(), inner);
+            if (cvar_grass_thin_distance.GetValue() <= 0.0f || base >= outer || after <= outer || state.params.cell_size_m[next] <= 0.0f)
+            {
+                return Vector2(0.0f, 0.0f);
+            }
+
+            // the cap of a ring spread over its area, the boosts and margins the dispatch applies are shared by every ring of the slot
+            const float density       = static_cast<float>(gpu_scatter_slot_cap(state, slot, lod)) / max(outer * outer - inner * inner, 1.0f);
+            const float density_after = static_cast<float>(gpu_scatter_slot_cap(state, slot, next)) / max(after * after - outer * outer, 1.0f);
+            if (density <= density_after)
+            {
+                return Vector2(0.0f, 0.0f);
+            }
+
+            const float start = max(base, gpu_scatter_camera_clearance(eye, outer, state.params.height_min) * gpu_scatter_thin_clearance_reach);
+            if (start >= outer)
+            {
+                return Vector2(0.0f, 0.0f);
+            }
+
+            // a slope that starts close to the outer edge would have to be a wall to get there, the cap leaves part of the
+            // authored step in place instead and lets the thinning fade out as the start reaches the edge
+            return Vector2(start, min(logf(density / density_after) / logf(outer / start), gpu_scatter_thin_exponent_max));
         }
 
         // compose_instance_transform unpacks the instance scale logarithmically over 0.01 to 100, so a
@@ -1752,7 +1842,7 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
-    void Renderer::Pass_GBuffer_Indirect()
+    void Renderer::Pass_GBuffer_Indirect(const bool clear_targets)
     {
         RHI_CommandList::BeginPass("g_buffer_indirect");
 
@@ -1801,11 +1891,13 @@ namespace spartan
         pso.SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
         pso.is_multiview                     = xr_multiview;
         // the opaque draw clears the g-buffer, the alpha draw loads it so it does not wipe the opaque output
-        pso.clear_color[0]                   = Color::standard_transparent;
-        pso.clear_color[1]                   = Color::standard_transparent;
-        pso.clear_color[2]                   = Color::standard_transparent;
-        pso.clear_color[3]                   = Color::standard_transparent;
-        pso.clear_color[4]                   = Color::standard_transparent;
+        // when the scatter draw ran first it did the clear, and its output has to survive this pass
+        const Color clear_color              = clear_targets ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[0]                   = clear_color;
+        pso.clear_color[1]                   = clear_color;
+        pso.clear_color[2]                   = clear_color;
+        pso.clear_color[3]                   = clear_color;
+        pso.clear_color[4]                   = clear_color;
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
         m_pcb_pass_cpu.is_transparent = 0;
@@ -2066,7 +2158,12 @@ namespace spartan
         {
             if (!is_transparent_pass)
             {
-                Pass_GBuffer_Indirect();
+                // scatter that is already populated rasterizes first, it tests against the prepass depth and writes its own,
+                // so the opaque pass after it fails the depth test under every blade and chip and never shades the ground
+                // they hide, the terrain shader is the most expensive one in the g-buffer and a meadow covers most of it
+                const bool scatter_first   = !submit_before_scatter && cvar_gbuffer_scatter_first.GetValue();
+                const bool scatter_cleared = scatter_first && Pass_Grass_Draw(true);
+                Pass_GBuffer_Indirect(!scatter_cleared);
                 if (submit_before_scatter)
                 {
                     // the meshlet g-buffer never reads procedural scatter, submitting it here lets it overlap the
@@ -2076,8 +2173,11 @@ namespace spartan
                     RHI_Device::Bind(RHI_Frame_List::Graphics);
                     RHI_CommandList::BeginPass("g_buffer_scatter");
                 }
-                // procedural grass runs after the indirect path, the draw call binds its own pipeline that reads grass_instances directly
-                Pass_Grass_Draw();
+                if (!scatter_first)
+                {
+                    // the populate compute is still running on its own queue, so the draw that reads grass_instances goes last
+                    Pass_Grass_Draw();
+                }
             }
 
             Pass_GBuffer_TessellatedAndTransparent(is_transparent_pass);
@@ -2289,9 +2389,14 @@ namespace spartan
                 }
             }
 
+            // z and w are the distance past which the blades of that ring thin out and the exponent they do it with
             for (uint32_t arg = 0; arg < renderer_max_gpu_scatter_args; arg++)
             {
-                detail_parameters[renderer_max_gpu_scatter_slots + 1 + arg] = Vector4(static_cast<float>(cell_windows[arg][0]), static_cast<float>(cell_windows[arg][1]), 0.0f, 0.0f);
+                const uint32_t slot                    = arg / renderer_max_gpu_scatter_lods;
+                const uint32_t lod                     = arg % renderer_max_gpu_scatter_lods;
+                const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+                const Vector2 thin                     = gpu_scatter_ready(state) ? gpu_scatter_thin(state, slot, lod, eye) : Vector2(0.0f, 0.0f);
+                detail_parameters[renderer_max_gpu_scatter_slots + 1 + arg] = Vector4(static_cast<float>(cell_windows[arg][0]), static_cast<float>(cell_windows[arg][1]), thin.x, thin.y);
             }
 
             // past the thinning distance a card cell survives with 1 / scale^2, so the card ring runs in distance bands whose
@@ -2873,7 +2978,7 @@ namespace spartan
         state.valid   = true;
     }
 
-    void Renderer::Pass_Grass_Draw()
+    bool Renderer::Pass_Grass_Draw(const bool clear_targets)
     {
         // gpu scatter raster, one DrawIndexedIndirect per slot per lod ring, runs once inside the
         // g-buffer pass, shares the geometry stage render pass and sets its own vertex shader that
@@ -2882,7 +2987,7 @@ namespace spartan
         // the instances were populated around the primary camera and belong to no preview subtree
         if (IsSecondaryViewActive())
         {
-            return;
+            return false;
         }
 
         bool any_ready = false;
@@ -2897,13 +3002,13 @@ namespace spartan
         }
         if (!any_ready)
         {
-            return;
+            return false;
         }
 
         // wait for the geometry buffer and the bindless material index, a zero index reads another render's textures
         if (!GeometryBuffer::GetInstanceBuffer())
         {
-            return;
+            return false;
         }
 
         // pso, matches the rest of the geometry stage so the draw lands in the same render pass
@@ -2971,6 +3076,10 @@ namespace spartan
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
 
+        // when this draw opens the g-buffer, the first pipeline it binds carries the clear, every one after it loads
+        bool clear_pending = clear_targets;
+        bool cleared       = false;
+
         for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
         {
             const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
@@ -3004,7 +3113,15 @@ namespace spartan
                 }
                 pso.shaders[RHI_Shader_Type::Vertex] = shader_vertex;
                 pso.shaders[RHI_Shader_Type::Pixel]  = shader_pixel;
+                const Color clear_color              = clear_pending ? Color::standard_transparent : rhi_color_load;
+                pso.clear_color[0]                   = clear_color;
+                pso.clear_color[1]                   = clear_color;
+                pso.clear_color[2]                   = clear_color;
+                pso.clear_color[3]                   = clear_color;
+                pso.clear_color[4]                   = clear_color;
                 RHI_CommandList::SetPipelineState(pso);
+                cleared       = cleared || clear_pending;
+                clear_pending = false;
                 RHI_CommandList::SetCullMode(RHI_CullMode::None);
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
                 RHI_CommandList::SetBuffer("grass_bodies", tracks.bodies.get());
@@ -3024,6 +3141,7 @@ namespace spartan
                 const bool card_ring = grass_specialized && gpu_scatter_card_ring(state, lod);
                 m_pcb_pass_cpu.set(pass_grass_draw::card_width, card_ring ? state.params.cell_size_m[lod] * gpu_scatter_card_cells : 0.0f);
                 m_pcb_pass_cpu.set(pass_grass_draw::card_thin, card_ring ? gpu_scatter_card_thin() : 0.0f);
+                m_pcb_pass_cpu.set(pass_grass_draw::blend_reach, max(cvar_scatter_blend_distance.GetValue(), 0.0f));
                 for (uint32_t frame = 0; frame < 2; ++frame)
                 {
                     const Vector2 origin = tracks.origins[frame == 0 ? tracks.current : 1 - tracks.current];
@@ -3047,6 +3165,8 @@ namespace spartan
         }
 
         RHI_CommandList::EndPass();
+
+        return cleared;
     }
 
     void Renderer::Pass_MeshletVisualize()

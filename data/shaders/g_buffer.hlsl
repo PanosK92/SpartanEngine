@@ -49,6 +49,10 @@ static const uint  POM_REFINE_ITERATIONS = 6;
 static const float POM_FADE_START        = 25.0f;
 static const float POM_FADE_END          = 50.0f;
 static const float POM_HEIGHT_SCALE      = 0.04f;
+// scatter detail, a chip swaps the ground blend for sinking to its dirt line somewhere between the blend reach and this many times it
+static const float scatter_blend_hand_over = 2.0f;
+// height of the dirt line in bands, terrain_blend_weights puts the middle of the fade half way up
+static const float scatter_blend_dirt_line = 0.5f;
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index)
 {
@@ -378,6 +382,22 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
             float(h & 0xFFFFu),
             float((h >> 16) & 0xFFFFu)
         ) * (1.0f / 65535.0f) * (1.0f - uv_patch);
+
+        // the ground blend shades the whole terrain material on every pixel of a chip, and from a few metres away all
+        // that is left to see of it is the part of the chip below the dirt line going missing. a far chip sinks to that
+        // line and opts out instead, each one at its own distance so no edge sweeps across the field with the camera
+        float blend_reach = pass_float(pass_grass_draw::blend_reach);
+        float band        = buffer_frame.terrain_blend_height * material_parameters[buffer_pass.material_index].terrain_blend;
+        if (blend_reach > 0.0f && band > 0.0f)
+        {
+            float3 to_chip   = float3(gi.pos_x, gi.pos_y, gi.pos_z) - buffer_frame.camera_position;
+            float  hand_over = blend_reach * lerp(1.0f, scatter_blend_hand_over, float((h * 0x9e3779b9u) >> 8) * (1.0f / 16777215.0f));
+            if (dot(to_chip, to_chip) > hand_over * hand_over)
+            {
+                input.instance_transform[3].y -= band * scatter_blend_dirt_line;
+                _draw.flags                   |= 1u << 6;
+            }
+        }
     }
 #else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)

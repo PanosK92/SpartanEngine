@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="physics_example" description="Physics playground: a signposted plaza with floating labels leads to five stations. Cloth (flags, curtains, trampoline, hammock, tablecloth and dust sheet), bounce and friction lanes, stacks and a domino chain, scripted machines (sweeper, lift, seesaw) and ragdoll dummies with a cannon. Every experiment waits behind a podium with a red button: click it to play, click again to replay. Alt + left click grabs, Alt + right mouse held + left click shoots cubes.">
+<World name="physics_example" description="Cloth, stacks, machines and ragdolls: press a red button to run each experiment">
  <OwnedResources>
   <Resource file="materials/azul.xml" />
   <Resource file="materials/azul_2.xml" />

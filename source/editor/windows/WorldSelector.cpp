@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
 #include "../imgui/source/imgui_stdlib.h"
+#include "../widgets/Documentation.h"
 #include "../widgets/Viewport.h"
 #include "core/ProgressTracker.h"
 #include "core/ThreadPool.h"
@@ -53,7 +54,8 @@ namespace
     const float card_padding       = 12.0f;
     const float card_spacing       = 12.0f;
     const float card_width_base    = 230.0f;
-    const float card_height_base   = 252.0f;
+    const float card_height_base   = 272.0f;
+    const float card_image_share   = 0.54f; // of the card height, the rest is the title, description and chip
     const float section_spacing    = 14.0f;
     const float details_width_base = 370.0f;
 
@@ -197,6 +199,75 @@ namespace
         draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), bg_col, size.y * 0.5f);
         draw->AddText(ImVec2(pos.x + scaled(8.0f), pos.y + scaled(3.0f)), text_col, text);
         ImGui::Dummy(size);
+    }
+
+    void open_documentation()
+    {
+        if (Documentation* documentation = editor->GetWidget<Documentation>())
+        {
+            documentation->SetVisible(true);
+        }
+    }
+
+    // wraps to at most max_lines and ends the last one in an ellipsis, a clip rect would cut a line in half
+    void draw_text_clamped(ImDrawList* draw_list, ImFont* font, float size, ImVec2 position, float width, int max_lines, ImU32 color, const char* text)
+    {
+        const char* text_end    = text + strlen(text);
+        const char* line        = text;
+        const float line_height = size + scaled(2.0f);
+
+        for (int i = 0; i < max_lines && line < text_end; i++)
+        {
+            const char* newline  = static_cast<const char*>(memchr(line, '\n', text_end - line));
+            const char* limit    = newline ? newline : text_end;
+            const char* line_end = font->CalcWordWrapPosition(size, line, limit, width);
+            if (line_end == line && line < limit)
+            {
+                // a word wider than the card still has to advance
+                line_end++;
+                while (line_end < limit && (*line_end & 0xC0) == 0x80)
+                {
+                    line_end++;
+                }
+            }
+
+            const char* next = line_end;
+            while (next < text_end && (*next == ' ' || *next == '\n'))
+            {
+                next++;
+            }
+
+            if (i == max_lines - 1 && next < text_end)
+            {
+                string clipped(line, line_end);
+                const float ellipsis_width = font->CalcTextSizeA(size, FLT_MAX, 0.0f, "...").x;
+                while (!clipped.empty() && font->CalcTextSizeA(size, FLT_MAX, 0.0f, clipped.c_str()).x + ellipsis_width > width)
+                {
+                    // one whole utf8 character at a time
+                    while (!clipped.empty() && (clipped.back() & 0xC0) == 0x80)
+                    {
+                        clipped.pop_back();
+                    }
+                    if (!clipped.empty())
+                    {
+                        clipped.pop_back();
+                    }
+                }
+                while (!clipped.empty() && (clipped.back() == ' ' || clipped.back() == ',' || clipped.back() == '.' || clipped.back() == ':'))
+                {
+                    clipped.pop_back();
+                }
+                clipped += "...";
+                draw_list->AddText(font, size, position, color, clipped.c_str());
+            }
+            else
+            {
+                draw_list->AddText(font, size, position, color, line, line_end);
+            }
+
+            position.y += line_height;
+            line        = next;
+        }
     }
 
     string lowercase_copy(string value)
@@ -1384,7 +1455,7 @@ namespace
 
         float pad       = scaled(card_padding);
         ImVec2 image_min = ImVec2(card_min.x + pad, card_min.y + pad);
-        ImVec2 image_max = ImVec2(card_max.x - pad, card_min.y + card_h * 0.58f);
+        ImVec2 image_max = ImVec2(card_max.x - pad, card_min.y + card_h * card_image_share);
         draw_world_preview(world, image_min, image_max, scaled(6.0f));
 
         ImVec2 text_min = ImVec2(card_min.x + pad, image_max.y + scaled(12.0f));
@@ -1446,15 +1517,17 @@ namespace
             );
         }
 
-        float desc_y = title_y + ImGui::GetTextLineHeightWithSpacing();
-        const char* description = world.description.empty() ? "No description available." : world.description.c_str();
-        ImVec4 description_clip = ImVec4(text_min.x, desc_y, text_max.x, text_max.y - scaled(28.0f));
-        draw_list->AddText(ImGui::GetFont(), body_size, ImVec2(text_min.x, desc_y), colors.text_muted, description, nullptr, text_max.x - text_min.x, &description_clip);
-
         string source = source_label(world.file_path);
         ImVec2 source_size = ImGui::CalcTextSize(source.c_str());
         ImVec2 chip_min    = ImVec2(text_min.x, text_max.y - source_size.y - scaled(6.0f));
         ImVec2 chip_max    = ImVec2(chip_min.x + source_size.x + scaled(14.0f), text_max.y);
+
+        // as many whole lines as fit between the title and the chip, the details panel has the full text
+        float desc_y = title_y + ImGui::GetTextLineHeightWithSpacing();
+        const char* description = world.description.empty() ? "No description yet" : world.description.c_str();
+        const int description_lines = max(1, static_cast<int>((chip_min.y - scaled(6.0f) - desc_y) / (body_size + scaled(2.0f))));
+        draw_text_clamped(draw_list, ImGui::GetFont(), body_size, ImVec2(text_min.x, desc_y), text_max.x - text_min.x, description_lines, colors.text_muted, description);
+
         draw_list->AddRectFilled(chip_min, chip_max, colors.chip_bg, (chip_max.y - chip_min.y) * 0.5f);
         draw_list->AddText(ImGui::GetFont(), path_size, ImVec2(chip_min.x + scaled(7.0f), chip_min.y + scaled(3.0f)), colors.text_muted, source.c_str());
 
@@ -1530,6 +1603,7 @@ namespace
     void draw_header(float content_w)
     {
         const float start_x = ImGui::GetCursorPosX();
+        const float start_y = ImGui::GetCursorPosY();
         ImGui::EditorUi::micro_label("Spartan Engine", ImGui::Style::color_accent_1, Editor::font_bold);
         if (Editor::font_bold)
         {
@@ -1540,7 +1614,22 @@ namespace
         {
             ImGui::PopFont();
         }
-        ImGui::TextDisabled("Open a scene to explore, build and refine.");
+        ImGui::TextDisabled("Double click a world to open it. New here? Press F1 for the documentation.");
+        const float after_y = ImGui::GetCursorPosY();
+
+        // top right, level with the title, the first thing a newcomer should find
+        const char* docs_label = "Documentation (F1)";
+        const float docs_w     = ImGui::CalcTextSize(docs_label).x + scaled(36.0f);
+        ImGui::SetCursorPos(ImVec2(start_x + content_w - docs_w, start_y + scaled(6.0f)));
+        if (launcher_button(docs_label, ImVec2(docs_w, 0.0f)))
+        {
+            open_documentation();
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Guides for the editor, worlds, terrain, scripting and more, readable inside the engine.");
+        }
+        ImGui::SetCursorPos(ImVec2(start_x, after_y));
 
         string count = search_filter.IsActive() ? to_string(visible_indices.size()) + " of " + to_string(world_files.size()) + " worlds" : to_string(world_files.size()) + " worlds";
         float count_w        = ImGui::CalcTextSize(count.c_str()).x + scaled(16.0f);
@@ -1666,7 +1755,7 @@ namespace
         }
         else
         {
-            ImGui::TextDisabled("No description available");
+            ImGui::TextDisabled("No description yet");
         }
 
         ImGui::Dummy(ImVec2(0.0f, scaled(14.0f)));
@@ -1676,6 +1765,12 @@ namespace
         ImGui::TextColored(ImGui::Style::color_text_muted, "%s", world->file_path.c_str());
         ImGui::PopFont();
         ImGui::PopTextWrapPos();
+
+        ImGui::Dummy(ImVec2(0.0f, scaled(14.0f)));
+        ImGui::EditorUi::micro_label("Shortcuts", ImGui::Style::color_text_faint, Editor::font_bold);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(colors.text_muted));
+        ImGui::TextWrapped("Enter opens, F2 renames, Del deletes, right click for more. F1 opens the documentation.");
+        ImGui::PopStyleColor();
 
         ImGui::EndChild();
 

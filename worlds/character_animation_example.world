@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="character_animation_example" description="Third person animated character, wasd move, shift run, space jump, foot ik on steps">
+<World name="character_animation_example" description="A third person character: WASD to walk, Shift to run, Space to jump">
  <ConsoleVariables>
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>

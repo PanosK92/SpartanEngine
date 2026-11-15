@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="ui_example" description="Game UI from Lua: a Hud health bar with a damage trail, prompts and a Tab menu, Text3D signs and a score board, and a training dummy with a world space health bar (E hits it)">
+<World name="ui_example" description="Game UI from Lua: a health bar, prompts, a menu and floating 3D text">
  <OwnedResources>
   <Resource file="materials/material_ground.xml" />
   <Resource file="materials/ui_bar.xml" />

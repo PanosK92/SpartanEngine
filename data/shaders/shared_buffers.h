@@ -372,6 +372,7 @@ namespace pass_grass_draw
     static const SHARED_UINT body            = 11; // float4, active, center xz, contact radius
     static const SHARED_UINT card_width      = 15; // float, metres, 0 draws blades, otherwise every instance is a tuft impostor card
     static const SHARED_UINT card_thin       = 16; // float, metres, cards past it widen with distance, 0 keeps them at card_width
+    static const SHARED_UINT blend_reach     = 17; // float, metres, detail past it sinks to its dirt line instead of blending with the ground, 0 blends all of it
 }
 
 namespace pass_grass_populate

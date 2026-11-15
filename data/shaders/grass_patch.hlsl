@@ -83,6 +83,20 @@ static const float grass_slope_fade = 0.07f;
 // terrain_layer_max, the dominant layer index in the mask alpha can never exceed this
 static const uint grass_ground_layer_max = 8u;
 
+// a blade on its way out is down to this share of its size, over the last share of the blades still in line
+static const float grass_thin_exit_scale = 0.4f;
+static const float grass_thin_exit_share = 0.3f;
+
+// share of a cell's blades that survive at a distance. the screen area a patch of ground takes falls with
+// the square of distance while the blades standing on it stay as many, so a meadow that is right up close
+// stacks dozens of blades on every pixel further out. past thin_start the share falls off as a power of the
+// distance, the cpu picks the exponent that lands the ring on the density of the next one at its outer edge,
+// a thin_start of zero keeps every blade
+float grass_distance_keep(float distance_sq, float thin_start, float thin_exponent)
+{
+    return thin_start > 0.0f ? saturate(pow(thin_start * thin_start / max(distance_sq, 1e-4f), 0.5f * thin_exponent)) : 1.0f;
+}
+
 // four octaves, the fewest that still reads as an organic outline rather than a blob
 float grass_fbm(float2 p, uint seed)
 {

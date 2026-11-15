@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="multiplayer_example" description="A small arena for a server and its clients. Run two Spartan instances and press play in both: H hosts, J joins 127.0.0.1, WASD moves your player, Space sends a pulse, L leaves. Players and the orb replicate through NetworkSync components.">
+<World name="multiplayer_example" description="A small arena for two engine instances: H hosts in one, J joins from the other">
  <OwnedResources>
   <Resource file="materials/arena_floor.xml" />
   <Resource file="materials/arena_line.xml" />

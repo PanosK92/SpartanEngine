@@ -482,7 +482,7 @@ namespace spartan
         void Pass_Depth_Prepass(bool late);
         void Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter = false);
         void Pass_SkidMarks();
-        void Pass_GBuffer_Indirect();
+        void Pass_GBuffer_Indirect(const bool clear_targets = true);
         void Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass);
         void Pass_MeshletVisualize();
         void Pass_ScreenSpaceAmbientOcclusion();
@@ -527,7 +527,8 @@ namespace spartan
         // runs the placement compute + indirect args build, the draw is folded into the g-buffer pass via Pass_Grass_Draw
         void Pass_Grass_Populate();
         void Pass_Grass_Interaction();
-        void Pass_Grass_Draw();
+        // returns true when it cleared the g-buffer, which it only does when asked to and at least one slot drew
+        bool Pass_Grass_Draw(const bool clear_targets = false);
         // passes - transient deflection of grass, shrubs and low branches by cars, people and any other interactor
         void Pass_Vegetation_Interaction();
         // passes - tire ruts, uploads the cpu field the terrain tessellation and the g-buffer read

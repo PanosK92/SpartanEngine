@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="weather_example" description="An island by the sea for the weather: 1-4 switch clear, overcast, rain and storm, arrows change the time and wind, T runs a time lapse">
+<World name="weather_example" description="An island where you change the weather, the time of day and the wind">
  <OwnedResources>
   <Resource file="materials/weather_crate.xml" />
   <Resource file="materials/weather_grass.xml" />

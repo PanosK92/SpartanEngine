@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="cinematic_example" description="A dusk monument and a glider on a spline, filmed by a five shot sequencer cutscene that the companion script plays from Lua (Enter replays, Backspace stops)">
+<World name="cinematic_example" description="A five shot cutscene of a glider at dusk, made with the sequencer">
  <OwnedResources>
   <Resource file="materials/cin_bronze.xml" />
   <Resource file="materials/cin_glider.xml" />

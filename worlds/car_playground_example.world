@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="car_playground_example" description="Car playground: flat test pad with the LaFerrari, ramps, jumps, slalom cones, speed bumps and a skidpad for quick handling and suspension tests">
+<World name="car_playground_example" description="A test pad for driving: ramps, jumps, slalom cones and a skidpad">
  <OwnedResources>
   <Resource file="textures/albedo.texture" />
   <Resource file="textures/albedo_2.texture" />

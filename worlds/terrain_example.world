@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="terrain_example" description="Learn the Terrain tool: an island sculpted from a flat square, with signs that explain every step">
+<World name="terrain_example" description="Learn the Terrain tool on an island sculpted from a flat square">
  <OwnedResources>
   <Resource file="materials/angular_stone_rock_09.xml" />
   <Resource file="materials/broadleaf_card_foliage.xml" />

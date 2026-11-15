@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="roads_example" description="A small road network: a ring and four avenues meeting at a junction, with lane markings, Lua traffic that keeps its distance and a SplineFollower bus (Up/Down speed limit, Space stops the red car)">
+<World name="roads_example" description="A ring road and a junction, with lane markings, traffic and a bus">
  <OwnedResources>
   <Resource file="materials/material_ground.xml" />
   <Resource file="materials/material_ground_2.xml" />

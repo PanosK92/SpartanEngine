@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="dreamcore_example" description="A pastel tile city above an endless ocean, nine dreamlike terraces joined by walkable causeways">
+<World name="dreamcore_example" description="A pastel tile city above an endless ocean, joined by walkable causeways">
  <OwnedResources>
   <Resource file="textures/albedo.texture" />
   <Resource file="materials/butter.xml" />

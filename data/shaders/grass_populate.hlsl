@@ -367,6 +367,21 @@ void populate_cell(uint2 cell_id, uint blade_index, float band_min, float band_m
     int world_cell_x = (int)floor(camera_xz_anchor.x / cell_size) + cell_x_s;
     int world_cell_z = (int)floor(camera_xz_anchor.y / cell_size) + cell_z_s;
 
+    // distance thinning of the blade rings, the cpu hands every ring the distance it starts at and its exponent.
+    // the stratified sequence below is progressive, its first n candidates cover the cell evenly for any n, so
+    // a cell keeps the leading share of its candidates and the same blades stay as the camera backs away. the
+    // nearest point of the cell bounds the share of every candidate in it, which rejects most of a far cell's
+    // threads before they hash anything
+    float thin_start    = grass_lod_parameters[4u + count_index].z;
+    float thin_exponent = grass_lod_parameters[4u + count_index].w;
+    if (thin_start > 0.0f)
+    {
+        float2 cell_min     = float2(world_cell_x, world_cell_z) * cell_size;
+        float2 cell_nearest = clamp(camera_xz_anchor, cell_min, cell_min + cell_size) - camera_xz_anchor;
+        if (float(blade_index) >= grass_distance_keep(dot(cell_nearest, cell_nearest), thin_start, thin_exponent) * float(blades_per_cell))
+            return;
+    }
+
     // hash combines the cell coordinates, the blade index inside the cell, and the lod seed,
     // each (cell, blade) pair gets stable random dimensions, yaw and position jitter
     // the slot is part of the seed, otherwise every slot would stack its instances on the exact same
@@ -459,6 +474,20 @@ void populate_cell(uint2 cell_id, uint blade_index, float band_min, float band_m
     if (valid < 0.5f || world_y < height_min || world_y > height_max)
     {
         return;
+    }
+
+    // the exact share, from the distance to the root itself, height included.
+    // the last blades in line are the first to go, they shrink on the way out and grow on the way in
+    float thin_grow = 1.0f;
+    if (thin_start > 0.0f)
+    {
+        float  camera_dy = world_y - get_camera_position().y;
+        float  keep      = grass_distance_keep(dist2 + camera_dy * camera_dy, thin_start, thin_exponent);
+        float  rank      = (float(blade_index) + 0.5f) / float(blades_per_cell);
+        if (rank >= keep)
+            return;
+
+        thin_grow = saturate((keep - rank) / (keep * grass_thin_exit_share));
     }
 
     // visibility cull, frustum + occluder hi-z on a conservative blade sphere, only blades the camera
@@ -633,6 +662,10 @@ void populate_cell(uint2 cell_id, uint blade_index, float band_min, float band_m
     // toward the small end of the range. the packed scale is logarithmic, so this interpolates the
     // exponent and the blades shrink geometrically, which is how a tuft actually thins out
     scale_01 = lerp(scale_01_min, scale_01, saturate(patch * 1.4f));
+
+    // a blade about to be thinned out is already down to a fraction of its height, so it leaves and
+    // arrives among taller neighbours instead of popping at full size, the packed scale is logarithmic
+    scale_01 += log2(lerp(grass_thin_exit_scale, 1.0f, thin_grow)) / (2.0f * 6.643856f);
 
     // a stone that has come to rest is not flat on the ground. the lean goes on after the slope gate so
     // it cannot smuggle an instance onto a cliff, and the mesh sits low enough that the raised edge
