@@ -30,6 +30,7 @@ bool is_restir_pt_enabled()              { return buffer_frame.options & uint(1U
 bool is_restir_pt_direct_enabled()       { return buffer_frame.options & uint(1U << 4); }
 bool is_subsurface_diffusion_enabled()   { return buffer_frame.options & uint(1U << 5); }
 bool is_frame_without_transparency()     { return buffer_frame.options & uint(1U << 6); }
+bool is_restir_subsurface_enabled()      { return buffer_frame.options & uint(1U << 7); }
 
 // per-draw data is stored in a static so both vertex and pixel shaders can access it
 // vertex shaders populate this from the appropriate buffer (draw_data for cpu-driven, indirect_draw_data via MeshletInstance for gpu-driven)

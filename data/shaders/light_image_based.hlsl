@@ -265,6 +265,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             // missing. Restoring the untraced sky here lights shadowed edges
             // and normal-map creases wherever the surface gates reject taps.
             restir_gi = history_valid ? restir_gi : 0.0f;
+            // a surface with a diffusion profile took this light in the lighting pass, where the subsurface pass could spread it
+            if (is_restir_subsurface_enabled() && pass_is_opaque() && surface.is_opaque() && surface.has_subsurface_profile() && surface.metallic < 1.0f)
+            {
+                restir_gi = 0.0f;
+            }
             float3 restir_ibl =
                 restir_gi *
                 restir_gi_demodulator(surface.albedo.rgb) *

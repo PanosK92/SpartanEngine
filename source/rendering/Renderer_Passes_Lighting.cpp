@@ -1684,6 +1684,9 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::rt_shadows_local, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            // the restir light of surfaces with a diffusion profile is composited here, ahead of the subsurface pass
+            RHI_Texture* tex_restir = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_restir ? tex_restir : GetStandardTexture(Renderer_StandardTexture::Black));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, light_diffuse);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, light_specular);
 

@@ -2555,6 +2555,12 @@ namespace spartan
         // nothing transparent is drawn this frame, a pass that keeps work only for what transparency reads can drop it,
         // the bit is set when it is safe so a shader running against an older executable keeps doing the work
         Renderer::view().frame.set_bit(!m_transparents_present, 1 << 6);
+
+        // the restir light of a surface with a diffusion profile is composited by the lighting pass instead of the image based
+        // one, so the subsurface pass that follows spreads the path traced diffuse the way it spreads the raster one. the async
+        // gi is still being traced when the lighting pass runs, so that mode keeps the image based composition
+        const bool restir_subsurface = cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready && cvar_subsurface_scattering.GetValueAs<bool>() && m_pass_state.subsurface_profiles_present && !cvar_restir_pt_async.GetValueAs<bool>();
+        Renderer::view().frame.set_bit(restir_subsurface, 1 << 7);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()
