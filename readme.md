@@ -75,7 +75,7 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
 
 <table>
   <tr>
-    <td colspan="2"><img src=".github/images/showcase_human_close.jpg" alt="Skin close-up: subsurface scattering under path-traced light, with pores, stubble and light glowing through the ear"/></td>
+    <td colspan="2"><img src=".github/images/showcase_human_close.jpg" width="100%" alt="Skin close-up: subsurface scattering under path-traced light, with pores, stubble and light glowing through the ear"/></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; subsurface scattering under path-traced light, down to the pores, the stubble and the glow through an ear</sub></td>
