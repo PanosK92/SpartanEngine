@@ -189,6 +189,19 @@ void ray_gen()
     bool has_scattering = material.subsurface_scattering > 0.0f;
     bool thin_foliage = has_scattering && receiver.is_foliage();
 
+    // unified restir carries the direct light of an opaque surface, the lighting pass scales its own direct terms by one
+    // minus the restir coverage, so under full coverage no mask is read and no ray is worth tracing. two readers remain,
+    // wrapped subsurface stays in the lighting pass and is shadowed there, and a transparent surface reads the mask of
+    // what is behind it. a diffusion profile needs no mask, its transmission enters on the far side of the solid
+    receiver.subsurface_scattering = material.subsurface_scattering;
+    receiver.subsurface_radius     = material.subsurface_radius;
+    bool wrapped_subsurface        = has_scattering && !receiver.has_subsurface_profile();
+    if (is_restir_pt_direct_enabled() && is_frame_without_transparency() && !receiver.is_water() && !wrapped_subsurface && restir_coverage(uv) >= 1.0f)
+    {
+        tex_uav[launch_id] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        return;
+    }
+
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.01f + camera_distance * 0.0001f;
 
@@ -199,9 +212,17 @@ void ray_gen()
 
     // directional sun, 1 spp jittered disk, sigma reconstructs the penumbra
     {
-        float3 light_dir = normalize(-light_parameters[0].direction);
-        float n_dot_l    = dot(normal_ws, light_dir);
-        if (n_dot_l <= 0.0f && !has_scattering)
+        // slot 0 holds a local light when the world has no sun, and a sun that is off, dark or shadowless is never
+        // shadowed by the lighting pass, the denoise makes the same call from the same entry
+        LightParameters sun = light_parameters[0];
+        bool sun_casts      = (sun.flags & (1u << 0)) != 0u && (sun.flags & (1u << 3)) != 0u && sun.intensity > 0.0f;
+        float3 light_dir    = normalize(-sun.direction);
+        float n_dot_l       = dot(normal_ws, light_dir);
+        if (!sun_casts)
+        {
+            tex_uav[launch_id] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        }
+        else if (n_dot_l <= 0.0f && !has_scattering)
         {
             tex_uav[launch_id] = float4(0.0f, 0.0f, 0.0f, 1.0f);
         }

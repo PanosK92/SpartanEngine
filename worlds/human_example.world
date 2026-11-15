@@ -25,7 +25,7 @@
     <camera flags="17" preset="3" exposure_mode="0" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="0.52359879" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
-  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="-0.0401059 -0.959192 -0.215762 0.178295" scale="1 1 1">
+  <Entity name="light_directional" id="1001000000000000003" active="false" position="0 2 0" rotation="-0.0401059 -0.959192 -0.215762 0.178295" scale="1 1 1">
    <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">

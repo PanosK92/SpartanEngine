@@ -574,11 +574,18 @@ namespace spartan
             }
         }
 
-        RHI_CommandList::BeginMarker("nrd_sun");
+        // the trace writes a fully lit mask for a sun that is off, dark or shadowless, and for a world without one,
+        // where slot 0 holds a local light, it makes the same call from the same entry and there is nothing to denoise
+        const uint32_t sun_flags = m_bindless_lights[0].flags;
+        const bool sun_casts     = (sun_flags & (1u << 0)) != 0 && (sun_flags & (1u << 3)) != 0 && m_bindless_lights[0].intensity > 0.0f;
+        if (sun_casts)
         {
-            denoise_sigma(tan_light_angular_radius, 0, false, light_direction, 0);
+            RHI_CommandList::BeginMarker("nrd_sun");
+            {
+                denoise_sigma(tan_light_angular_radius, 0, false, light_direction, 0);
+            }
+            RHI_CommandList::EndMarker();
         }
-        RHI_CommandList::EndMarker();
 
         // nrd needs lightDirection only for the sun, local lights pass zero
         const Vector3 local_direction = Vector3::Zero;
@@ -1270,7 +1277,7 @@ namespace spartan
 
         // nothing writes the target when no light qualifies, and the lighting pass still samples it for
         // any light whose flags claim contact shadows, so the last frame that did write would keep being
-        // applied. clear to lit and leave
+        // applied. clear to lit and leave. an inactive light is uploaded with zero intensity and lights nothing
         bool any_light = false;
         const auto& lights = GetViewLightEntities();
         for (Entity* entity : lights)
@@ -1278,6 +1285,7 @@ namespace spartan
             Light* light = entity->GetComponent<Light>();
             any_light    = any_light ||
                            (light                                           &&
+                            entity->GetActive()                             &&
                             light->GetLightType() == LightType::Directional &&
                             light->GetFlag(LightFlags::Shadows)             &&
                             light->GetFlag(LightFlags::ShadowsScreenSpace)  &&

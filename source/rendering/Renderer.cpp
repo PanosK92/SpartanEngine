@@ -2551,6 +2551,10 @@ namespace spartan
             m_pass_state.restir.history_invalid    = true;
         }
         Renderer::view().frame.set_bit(restir_direct, 1 << 4);
+
+        // nothing transparent is drawn this frame, a pass that keeps work only for what transparency reads can drop it,
+        // the bit is set when it is safe so a shader running against an older executable keeps doing the work
+        Renderer::view().frame.set_bit(!m_transparents_present, 1 << 6);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()
