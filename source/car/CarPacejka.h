@@ -93,6 +93,17 @@ namespace car
         float stiffness_lat     = 0.0f; // n per unit practical slip
     };
 
+    // the aligning moment twists the carcass against the rim, which steers the patch out of the slip angle,
+    // the moment is cornering stiffness times trail so it grows with the cube of the patch length while the
+    // stiffness itself only grows with the square, and that is why a real tire stops gaining cornering
+    // stiffness with load. twist is the share of the slip angle the carcass gives up at the reference
+    // load, normalised there so the authored stiffness still holds at that load
+    inline float carcass_twist_factor(float twist, float patch_ratio_cubed)
+    {
+        float share = PxClamp(twist, 0.0f, 2.0f);
+        return (1.0f + share) / (1.0f + share * PxMax(patch_ratio_cubed, 0.0f));
+    }
+
     inline brush_tire_params evaluate_brush_params(const car_preset& preset, float wheel_radius, float tread_width, float tire_load, float stiffness_scale, float pressure_bar = -1.0f)
     {
         brush_tire_params params;
@@ -103,8 +114,10 @@ namespace car
         params.patch_half_length = PxMax(sqrtf(radius * deflection), 0.005f);
         float area = params.patch_half_length * params.patch_half_length * PxMax(tread_width, 0.05f) * 2.0f;
         float scale = PxMax(stiffness_scale, 0.05f);
+        float reference_deflection = tire_spring_deflection(preset.load_reference, PxMax(preset.tire_vertical_stiffness, 1.0f), preset.tire_vertical_stiffness, radius);
+        float patch_ratio = params.patch_half_length / PxMax(sqrtf(radius * reference_deflection), 0.005f);
         params.stiffness_long = PxMax(preset.tread_stiffness_long * area * scale, 1.0f);
-        params.stiffness_lat  = PxMax(preset.tread_stiffness_lat  * area * scale, 1.0f);
+        params.stiffness_lat  = PxMax(preset.tread_stiffness_lat  * area * scale * carcass_twist_factor(preset.tire_carcass_twist, patch_ratio * patch_ratio * patch_ratio), 1.0f);
         return params;
     }
 
@@ -185,10 +198,14 @@ namespace car
     }
 
     // lateral force builds from the leading edge backwards, so its centroid sits behind the patch
-    // centre by a third of the half length and walks forward to zero as the patch saturates
+    // centre by a third of the half length. integrating the parabolic pressure brush gives a moment of
+    // x (1 - x)^3 over a force of 3x - 3x^2 + x^3, so the trail collapses well before the force peaks
+    // and the steering goes light while there is still grip left, which is the warning a driver feels
     inline float evaluate_brush_trail(float patch_half_length, float saturation)
     {
-        return patch_half_length / 3.0f * PxClamp(1.0f - saturation, 0.0f, 1.0f);
+        float adhesion = PxClamp(1.0f - saturation, 0.0f, 1.0f);
+        float sliding = 1.0f - adhesion;
+        return patch_half_length * adhesion * adhesion * adhesion / (3.0f - 3.0f * sliding + sliding * sliding);
     }
 
     inline float evaluate_pneumatic_trail(const car_preset& preset, float slip_angle, float tire_load, float stiffness_scale, float pressure_bar = -1.0f)

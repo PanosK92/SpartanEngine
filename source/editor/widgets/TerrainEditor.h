@@ -95,7 +95,8 @@ private:
     uint64_t m_sculpt_epoch = 0;
     bool m_sculpt_enabled       = false;
     bool m_heights_dirty        = false;
-    uint32_t m_flat_resolution  = 128;
+    uint32_t m_flat_resolution  = 256;
+    uint32_t m_flat_scale       = 2; // meters between samples of a new flat terrain
     float m_strength_per_second = 20.0f;
     float m_rebuild_timer       = 0.0f;
 

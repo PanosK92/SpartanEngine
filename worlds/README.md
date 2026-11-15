@@ -34,6 +34,7 @@ publish the package. Read it before touching assets.
 | `visual_scripting_example.world` | The visual scripting tutorial, four stations with commented graphs |
 | `liminal_space_example.world` | An infinite procedural floor of buildings streamed in chunks, with a stalker and a soundscape |
 | `dreamcore_example.world` | A procedural walkable tile city over the ocean |
+| `terrain_example.world` | An island sculpted from a flat terrain, with signs that explain the Terrain tool step by step |
 | `weather_example.world` | Time of day, rain, clouds and wind eased between presets |
 | `audio_example.world` | 3D sources, Doppler, a reverb volume and a 2D bed |
 | `particles_example.world` | Every built-in particle preset, with fades and bursts |
@@ -41,7 +42,7 @@ publish the package. Read it before touching assets.
 | `cinematic_example.world` | A five-shot sequencer cutscene played from Lua |
 | `ui_example.world` | HUD health bar, prompts, a menu and `Text3D` labels |
 
-Each one is covered in more depth in the docs: [scripting](../docs/scripting.md#world-companion-scripts), [systems](../docs/systems.md), [physics and vehicles](../docs/physics_and_vehicles.md#example-world) and [networking](../source/network/README.md).
+Each one is covered in more depth in the docs: [scripting](../docs/scripting.md#world-companion-scripts), [systems](../docs/systems.md), [terrain](../docs/terrain.md), [physics and vehicles](../docs/physics_and_vehicles.md#example-world) and [networking](../source/network/README.md).
 
 The short version:
 

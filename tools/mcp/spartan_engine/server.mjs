@@ -2251,6 +2251,56 @@ register_local_tool("shader_reload", {
 
 register_tool(
   server,
+  "terrain_create",
+  "Create a flat terrain in edit mode, the same start as Create flat terrain in the Terrain panel: a Terrain entity centered on the origin with resolution samples per axis, scale meters apart (size = (resolution - 1) * scale), at sea_level. Set scale, density and tile_count here, they only apply when the surface is built. The default scatter layers plant trees, rocks and grass over the whole surface, pass spawn_props false for bare ground. Fails when the world already has a terrain unless replace is true, which starts it over flat and drops its sculpt layer. The surface builds in the background (the first one loads every scatter mesh, about half a minute): poll terrain_get until has_heightfield is true and generating is false, then shape it with terrain_sculpt.",
+  {
+    resolution: z.number().int().min(2).max(4096).optional().describe("samples per axis, default 128"),
+    scale: z.number().int().min(1).max(1000).optional().describe("meters between samples, default 25"),
+    density: z.number().int().min(1).max(16).optional(),
+    tile_count: z.number().int().min(1).max(64).optional().describe("tiles per axis, default 16"),
+    sea_level: z.number().optional(),
+    spawn_props: z.boolean().optional(),
+    replace: z.boolean().optional(),
+    name: z.string().optional(),
+  },
+  "terrain_create",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "terrain_get",
+  "Read the terrain state: whether it has a surface or is still generating, samples per axis, scale, density, tile_count, size in meters, sea level and how many sculpt tiles carry brush work. id is optional when the world has one terrain.",
+  {
+    id: z.string().optional(),
+  },
+  "terrain_get",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "terrain_sculpt",
+  "Sculpt the terrain in edit mode with the brush of the Terrain panel, one dab per point. points is a flat world space x,z list. mode raise or lower moves the ground by amount meters at the center of each dab, flatten pulls it to target_height (amount 10 is all the way, less is partial), smooth averages neighbours (amount 0 to 1, use repeat for more). radius is in meters and should span several samples (see scale in the result), falloff 0 is a hard stamp and 1 fades to the center. repeat applies the whole list again. The strokes land in the sculpt layer, which world_save writes next to the world. Returns the height at each point afterwards.",
+  {
+    id: z.string().optional(),
+    mode: z.enum(["raise", "lower", "smooth", "flatten"]).optional(),
+    points: z.array(z.number()).min(2).max(4096),
+    radius: z.number().positive().optional().describe("meters, default 50"),
+    amount: z.number().optional().describe("default 5"),
+    falloff: z.number().min(0).max(1).optional().describe("default 0.5"),
+    target_height: z.number().optional(),
+    repeat: z.number().int().min(1).max(256).optional(),
+  },
+  "terrain_sculpt",
+  {
+    annotations: edit_tool,
+    map_args: (args) => ({ ...args, points: args.points.join(",") }),
+  },
+);
+
+register_tool(
+  server,
   "terrain_scatter_get",
   "Read the terrain scatter layers (vegetation, rocks, grass: up to 12 slots) with every attribute exactly as the world file stores them in <terrain><scatter><layer>, plus instance_count and coverage from the last scatter. kind 0 mesh (placed entities), 1 grass and 2 detail (gpu rings). id is optional when the world has one terrain.",
   {

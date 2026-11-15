@@ -396,8 +396,7 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
     ImGui::EndDisabled();
     ImGuiSp::tooltip(
         can_build
-            ? "rebuild the surface from the height map on a worker thread, this clears sculpt edits "
-              "and respawns the props when it lands"
+            ? "rebuild the surface on a worker thread, sculpt edits are kept and the props respawn when it lands"
             : "assign a height map in shape first, or create a flat terrain"
     );
 
@@ -470,7 +469,7 @@ void TerrainEditor::DrawOpacity(const float width)
 
 void TerrainEditor::DrawNoTerrain()
 {
-    card_begin("No terrain", "This world has no terrain component yet. Start from a flat grid and sculpt it, or add the component to an entity and assign a height map.");
+    card_begin("No terrain", "This world has no terrain yet. Create a flat one, then press Sculpt and paint hills onto it in the viewport with the left mouse button.");
     {
         property_uint(
             "Flat resolution",
@@ -478,8 +477,21 @@ void TerrainEditor::DrawNoTerrain()
             1.0f,
             2,
             4096,
-            "samples per axis of the starting grid, scale turns that into meters"
+            "samples per axis of the starting grid, more samples is a bigger terrain"
         );
+        property_uint(
+            "Cell size",
+            &m_flat_scale,
+            1.0f,
+            1,
+            1000,
+            "meters between samples, small cells sculpt fine detail, large cells cover kilometers"
+        );
+
+        char line[160];
+        const uint32_t size = (max(m_flat_resolution, 2u) - 1) * max(m_flat_scale, 1u);
+        snprintf(line, sizeof(line), "%u x %u m, centered on the world origin at height 0, a floor at that height would cover it", size, size);
+        layout::caption(line);
 
         if (primary_button("Create flat terrain", ImVec2(-1.0f, 0.0f)))
         {
@@ -488,11 +500,18 @@ void TerrainEditor::DrawNoTerrain()
 
             if (Terrain* terrain = entity->AddComponent<Terrain>())
             {
-                terrain->CreateFlat(max(m_flat_resolution, 2u), max(m_flat_resolution, 2u));
+                terrain->SetScale(max(m_flat_scale, 1u));
                 editor_history::Created(entity);
+
+                // the first surface also loads every scatter mesh, on the main thread that froze the editor for half a minute
+                const uint32_t resolution = max(m_flat_resolution, 2u);
+                ThreadPool::AddTask([terrain, resolution]()
+                {
+                    terrain->CreateFlat(resolution, resolution);
+                });
             }
         }
-        ImGuiSp::tooltip("spawns a terrain entity with a flat heightfield at sea level, ready to sculpt");
+        ImGuiSp::tooltip("spawns a terrain entity with a flat heightfield at sea level, ready to sculpt, the first one takes a moment while the vegetation loads");
     }
     card_end();
 }
@@ -800,6 +819,17 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
             }
 
             property_float("Radius", &m_brush.radius, 0.5f, 1.0f, 2000.0f, "brush footprint on the ground", "%.0f m");
+
+            // a brush that fits between two samples moves nothing, which reads as a broken tool
+            const float cell = static_cast<float>(terrain->GetScale()) / static_cast<float>(max(terrain->GetDensity(), 1u));
+            if (m_brush.radius < cell * 1.5f)
+            {
+                char warning[128];
+                snprintf(warning, sizeof(warning), "the brush is smaller than a terrain cell (%.0f m), raise the radius", cell);
+                ImGui::PushStyleColor(ImGuiCol_Text, design::warning());
+                ImGui::TextUnformatted(warning);
+                ImGui::PopStyleColor();
+            }
             property_float("Strength", &m_strength_per_second, 0.1f, 0.1f, 200.0f, "meters moved per second of holding the button", "%.1f");
             property_float("Falloff", &m_brush.falloff, 0.01f, 0.0f, 1.0f, "0 is a hard edged stamp, 1 fades all the way to the center", "%.2f");
             property_float("Target Height", &m_brush.target_height, 0.1f, -1000.0f, 1000.0f, "the height flatten pulls towards", "%.0f m");

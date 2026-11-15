@@ -183,6 +183,10 @@ namespace car
             brake_specific_heat = 500.0f;
             tire_pressure_reference_temp = 20.0f;
             tire_carcass_stiffness_fraction = 0.35f;
+            // at 0.2 the cornering stiffness per newton of load falls about a tenth between 0.7 and 1.1 times the
+            // reference load, which is what a low profile performance tire measures, a tall soft sidewall is nearer 0.3
+            tire_carcass_twist = 0.2f;
+            center_diff_coupling = 600.0f;
             tire_damage_energy = 2000000.0f;
             tire_damage_temp = 180.0f;
             tire_hydroplaning_speed = 28.0f;
@@ -505,6 +509,7 @@ namespace car
         float rear_toe;
         float tire_vertical_stiffness; // N/m at tire_pressure_optimal
         float tire_carcass_stiffness_fraction; // estimated pressure-independent fraction
+        float tire_carcass_twist;              // share of the slip angle the carcass twists away at load_reference, bends cornering stiffness over with load
         float lsd_viscous;
         float abs_load_sensitivity;
 
@@ -516,6 +521,7 @@ namespace car
         // drivetrain layout (0 = rwd, 1 = fwd, 2 = awd)
         int   drivetrain_type;
         float torque_split_front;   // awd only: 0.0 = full rear, 1.0 = full front
+        float center_diff_coupling; // awd only: N m per rad/s of axle speed difference, 0 = open centre diff, thousands = locked transfer case
 
         // differential (0 = open, 1 = locked, 2 = lsd)
         float lsd_preload;

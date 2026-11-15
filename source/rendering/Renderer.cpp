@@ -153,13 +153,36 @@ namespace spartan
     {
         const uint8_t  swap_chain_buffer_count    = 2;
 
+        // the hdr frame and the sdr tonemap of it, read back on the frame they were rendered, the pair an hdr jpeg is built from
+        struct screenshot_hdr_pair
+        {
+            shared_ptr<RHI_Buffer> frame;
+            shared_ptr<RHI_Buffer> sdr;
+            uint32_t width            = 0;
+            uint32_t height           = 0;
+            uint32_t bits_per_channel = 0;
+            // the size the frame is saved at, the frame resized to the shape of the viewport it is shown in
+            uint32_t save_width       = 0;
+            uint32_t save_height      = 0;
+            bool staged               = false;
+        };
+
         struct screenshot_request
         {
             string file_path;
             string png_path;
             string exr_path;
-            ImageColorSpace exr_color_space = ImageColorSpace::LinearRec709;
+            string hdr_path;
+            // how the frame on screen is encoded
+            ImageColorSpace frame_color_space = ImageColorSpace::LinearRec709;
             bool save_exr = false;
+            // an hdr frame is also saved as a jpeg with a gain map, next to the sdr png
+            bool save_hdr = false;
+            // luminance the frame on screen puts sdr white at, zero when that frame is sdr
+            float hdr_white_nits = 0.0f;
+            // screenshot_sdr holds this request's frame tonemapped for sdr
+            bool sdr_frame_rendered = false;
+            screenshot_hdr_pair hdr_pair;
             bool restir_radiance = false;
             bool restir_specular = false;
             bool pending  = false;
@@ -172,8 +195,18 @@ namespace spartan
             uint32_t crop_y      = 0;
             uint32_t crop_width  = 0;
             uint32_t crop_height = 0;
+            // the editor took the ui target for a replay over the viewport and has not recorded it yet
+            bool viewport_ui_owed = false;
+            // frames the editor has tried to replay its ui, a replay drops its draws while its pipeline compiles
+            uint32_t ui_replay_attempts = 0;
             uint64_t secondary_generation = 0;
         };
+
+        // a replay that still has not landed after this many frames is given up on, so a pipeline that never compiles cannot hold every later capture
+        const uint32_t screenshot_ui_replay_attempts_max = 300;
+
+        // luminance the gran turismo 7 tonemapper puts sdr white at in an hdr frame, gt7_sdr_paper_white in output.hlsl
+        const float screenshot_gt7_white_nits = 250.0f;
 
         mutex screenshot_mutex;
         screenshot_request screenshot;
@@ -597,11 +630,77 @@ namespace spartan
                 {
                     void* exr_data = exr_staging->GetMappedData();
 
-                    SP_LOG_INFO("Saving HDR screenshot to '%s'...", request.exr_path.c_str());
-                    ImageImporter::Save(request.exr_path, exr_width, exr_height, exr_channel_count, exr_bits_per_channel, exr_data, request.exr_color_space);
-                    SP_LOG_INFO("HDR screenshot saved as '%s'", request.exr_path.c_str());
+                    SP_LOG_INFO("Saving EXR screenshot to '%s'...", request.exr_path.c_str());
+                    ImageImporter::Save(request.exr_path, exr_width, exr_height, exr_channel_count, exr_bits_per_channel, exr_data, request.frame_color_space);
+                    SP_LOG_INFO("EXR screenshot saved as '%s'", request.exr_path.c_str());
                 });
             }
+        }
+
+        bool wants_hdr_pair(const screenshot_request& request)
+        {
+            return request.save_hdr && request.hdr_white_nits > 0.0f && request.sdr_frame_rendered && !request.ui && !request.secondary_view && !request.restir_radiance && !Xr::IsSessionRunning();
+        }
+
+        screenshot_hdr_pair stage_hdr_pair()
+        {
+            screenshot_hdr_pair pair;
+            pair.staged = true;
+
+            // the jpeg lays one over the other pixel for pixel
+            RHI_Texture* tex_frame = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
+            RHI_Texture* tex_sdr   = Renderer::GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+            if (!tex_frame || !tex_sdr || tex_frame->GetWidth() != tex_sdr->GetWidth() || tex_frame->GetHeight() != tex_sdr->GetHeight())
+            {
+                return pair;
+            }
+
+            if (tex_frame->GetChannelCount() != 4 || tex_sdr->GetChannelCount() != 4 || tex_sdr->GetBitsPerChannel() != 16)
+            {
+                return pair;
+            }
+
+            pair.frame            = copy_texture_to_staging(tex_frame);
+            pair.sdr              = copy_texture_to_staging(tex_sdr);
+            pair.width            = tex_frame->GetWidth();
+            pair.height           = tex_frame->GetHeight();
+            pair.bits_per_channel = tex_frame->GetBitsPerChannel();
+
+            // the camera projects for the viewport's shape and the frame fills the output resolution whatever that shape is,
+            // one axis keeps its pixels and the other shrinks until the shape is that of the viewport
+            const RHI_Viewport& viewport = Renderer::GetViewport();
+            const float aspect           = viewport.width > 0.0f && viewport.height > 0.0f ? viewport.width / viewport.height : static_cast<float>(pair.width) / static_cast<float>(pair.height);
+            pair.save_width              = pair.width;
+            pair.save_height             = static_cast<uint32_t>(round(static_cast<float>(pair.width) / aspect));
+            if (pair.save_height > pair.height)
+            {
+                pair.save_width  = static_cast<uint32_t>(round(static_cast<float>(pair.height) * aspect));
+                pair.save_height = pair.height;
+            }
+            pair.save_width  = clamp(pair.save_width, 1u, pair.width);
+            pair.save_height = clamp(pair.save_height, 1u, pair.height);
+            return pair;
+        }
+
+        void save_hdr_screenshot_async(const screenshot_request& request, const screenshot_hdr_pair& pair)
+        {
+            if (!pair.frame || !pair.sdr || !pair.frame->GetMappedData() || !pair.sdr->GetMappedData())
+            {
+                return;
+            }
+
+            screenshot_saves_in_flight++;
+            ThreadPool::AddTask([path = request.hdr_path, color_space = request.frame_color_space, white_nits = request.hdr_white_nits, pair]()
+            {
+                struct in_flight_guard
+                {
+                    ~in_flight_guard() { screenshot_saves_in_flight--; }
+                } guard;
+
+                SP_LOG_INFO("Saving HDR screenshot to '%s'...", path.c_str());
+                ImageImporter::SaveHdrJpeg(path, pair.width, pair.height, pair.save_width, pair.save_height, pair.sdr->GetMappedData(), pair.frame->GetMappedData(), pair.bits_per_channel, color_space, white_nits);
+                SP_LOG_INFO("HDR screenshot saved as '%s'", path.c_str());
+            });
         }
 
         screenshot_request make_screenshot_request(
@@ -625,9 +724,16 @@ namespace spartan
                 return request;
             }
 
-            uint32_t index  = screenshot_index++;
-            request.save_exr = !request.ui;
+            // the numbering restarts with every session, numbers an earlier one used are skipped rather than overwritten
+            uint32_t index = screenshot_index++;
+            while (FileSystem::Exists("screenshot_" + to_string(index) + ".png"))
+            {
+                index = screenshot_index++;
+            }
+            request.save_exr = !request.ui && cvar_screenshot_exr.GetValueAs<bool>();
+            request.save_hdr = !request.ui;
             request.exr_path = "screenshot_" + to_string(index) + ".exr";
+            request.hdr_path = "screenshot_" + to_string(index) + "_hdr.jpg";
             request.png_path = "screenshot_" + to_string(index) + ".png";
             return request;
         }
@@ -6459,7 +6565,21 @@ namespace spartan
             );
         }
 
-        return screenshot_ui_target->GetRhiResource() ? screenshot_ui_target.get() : nullptr;
+        if (!screenshot_ui_target->GetRhiResource())
+        {
+            return nullptr;
+        }
+
+        // the request stays pending until the editor records a complete replay, there is no other image to fall back to
+        if (++screenshot.ui_replay_attempts > screenshot_ui_replay_attempts_max)
+        {
+            SP_LOG_ERROR("Screenshot dropped, the editor ui could not be replayed");
+            screenshot = {};
+            screenshot_save_failures++;
+            return nullptr;
+        }
+
+        return screenshot_ui_target.get();
     }
 
     void Renderer::SetUiScreenshotRecorded()
@@ -6467,7 +6587,7 @@ namespace spartan
         lock_guard<mutex> lock(screenshot_mutex);
         if (screenshot.pending && screenshot.ui)
         {
-            screenshot.exr_color_space = ImageColorSpace::Srgb;
+            screenshot.frame_color_space = ImageColorSpace::Srgb;
             screenshot.pending         = false;
             screenshot.ready           = true;
         }
@@ -6499,7 +6619,19 @@ namespace spartan
             );
         }
 
-        return screenshot_ui_target->GetRhiResource() ? screenshot_ui_target.get() : nullptr;
+        if (!screenshot_ui_target->GetRhiResource())
+        {
+            return nullptr;
+        }
+
+        // the readback holds the capture until the replay is recorded, past the limit the plain render capture stands
+        if (++screenshot.ui_replay_attempts > screenshot_ui_replay_attempts_max)
+        {
+            return nullptr;
+        }
+
+        screenshot.viewport_ui_owed = true;
+        return screenshot_ui_target.get();
     }
 
     void Renderer::SetViewportUiScreenshotRecorded(const math::Rectangle& rect)
@@ -6509,6 +6641,8 @@ namespace spartan
         {
             return;
         }
+
+        screenshot.viewport_ui_owed = false;
 
         const float target_width  = static_cast<float>(screenshot_ui_target->GetWidth());
         const float target_height = static_cast<float>(screenshot_ui_target->GetHeight());
@@ -6530,12 +6664,14 @@ namespace spartan
 
     void Renderer::Pass_Screenshot(RHI_Texture* tex_pre_tonemap)
     {
+        // a whole window capture is the editor's to record, but an hdr frame is display encoded, so it gets the
+        // sdr tonemap of the frame here for the editor to show in its place
+        bool ui_capture = false;
         {
             lock_guard<mutex> lock(screenshot_mutex);
             if (
                 !screenshot.pending ||
                 screenshot.ready ||
-                screenshot.ui ||
                 secondary_render_root_active ||
                 !tex_pre_tonemap
             )
@@ -6546,6 +6682,11 @@ namespace spartan
             {
                 screenshot.pending = false;
                 screenshot.ready = true;
+                return;
+            }
+            ui_capture = screenshot.ui;
+            if (ui_capture && Renderer::view().frame.hdr_enabled == 0.0f)
+            {
                 return;
             }
         }
@@ -6595,11 +6736,35 @@ namespace spartan
         if (screenshot.pending)
         {
             // Snapshot the encoding of this frame before another view changes constants.
-            screenshot.exr_color_space = Renderer::view().frame.hdr_enabled > 1.5f ? ImageColorSpace::LinearRec709 :
-                (Renderer::view().frame.hdr_enabled > 0.0f ? ImageColorSpace::Hdr10 : ImageColorSpace::Srgb);
-            screenshot.pending = false;
-            screenshot.ready   = true;
+            const float hdr_mode         = Renderer::view().frame.hdr_enabled;
+            screenshot.frame_color_space = hdr_mode > 1.5f ? ImageColorSpace::LinearRec709 : (hdr_mode > 0.0f ? ImageColorSpace::Hdr10 : ImageColorSpace::Srgb);
+
+            // gran turismo 7 writes absolute nits around its own paper white, the other tonemappers scale their sdr output to the desktop's sdr white
+            const float sdr_white_nits    = Renderer::view().frame.hdr_sdr_white_nits > 0.0f ? Renderer::view().frame.hdr_sdr_white_nits : 203.0f;
+            const bool is_gt7             = cvar_tonemapping.GetValueAs<uint32_t>() == static_cast<uint32_t>(Renderer_Tonemapping::GranTurismo7);
+            screenshot.hdr_white_nits     = hdr_mode > 0.0f ? (is_gt7 ? screenshot_gt7_white_nits : sdr_white_nits) : 0.0f;
+            screenshot.sdr_frame_rendered = true;
+
+            // a whole window capture stays pending until the editor records it
+            if (!ui_capture)
+            {
+                screenshot.pending = false;
+                screenshot.ready   = true;
+            }
         }
+    }
+
+    RHI_Texture* Renderer::GetScreenshotSdrFrame()
+    {
+        // the tonemap is only needed in place of an hdr frame, an sdr frame is shown as it is
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (!screenshot.sdr_frame_rendered || screenshot.hdr_white_nits <= 0.0f)
+        {
+            return nullptr;
+        }
+
+        RHI_Texture* tex_sdr = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        return tex_sdr && tex_sdr->GetRhiResource() ? tex_sdr : nullptr;
     }
 
     void Renderer::Pass_ScreenshotXr()
@@ -6685,9 +6850,17 @@ namespace spartan
     {
         array<screenshot_request, 2> requests;
         uint32_t request_count = 0;
+        bool stage_held        = false;
         {
             lock_guard<mutex> lock(screenshot_mutex);
-            if (screenshot.ready)
+            if (screenshot.ready && screenshot.viewport_ui_owed)
+            {
+                // the editor took the ui target but its replay was incomplete (its pipeline is still compiling) and the
+                // target is black, the capture waits for the next frame's replay instead of saving that
+                screenshot.viewport_ui_owed = false;
+                stage_held                  = wants_hdr_pair(screenshot) && !screenshot.hdr_pair.staged;
+            }
+            else if (screenshot.ready)
             {
                 requests[request_count++] = screenshot;
                 screenshot = {};
@@ -6698,13 +6871,24 @@ namespace spartan
                 secondary_capture = {};
             }
         }
-        if (request_count == 0)
+        if (request_count == 0 && !stage_held)
         {
             return;
         }
 
         // present submitted the capture work, wait once so every readback sees finished pixels
         RHI_Device::QueueWaitAll(true);
+
+        if (stage_held)
+        {
+            // by the time the replay lands the frame has moved on from the tonemap it was captured with, so the pair is read back now
+            const screenshot_hdr_pair pair = stage_hdr_pair();
+            lock_guard<mutex> lock(screenshot_mutex);
+            if (screenshot.ready)
+            {
+                screenshot.hdr_pair = pair;
+            }
+        }
 
         for (uint32_t i = 0; i < request_count; i++)
         {
@@ -6778,6 +6962,11 @@ namespace spartan
                 tex_exr ? tex_exr->GetChannelCount() : 0,
                 tex_exr ? tex_exr->GetBitsPerChannel() : 0
             );
+
+            if (wants_hdr_pair(request))
+            {
+                save_hdr_screenshot_async(request, request.hdr_pair.staged ? request.hdr_pair : stage_hdr_pair());
+            }
         }
     }
 

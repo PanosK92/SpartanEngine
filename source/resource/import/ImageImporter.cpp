@@ -526,6 +526,158 @@ namespace spartan
             return saved;
         }
 
+        // decodes a display encoded rgba frame to linear Rec.709 in scRGB units, 1 is 80 nits
+        vector<float> decode_to_scrgb(const void* data, const uint32_t width, const uint32_t height, const uint32_t bits_per_channel, const ImageColorSpace color_space)
+        {
+            const uint16_t* src_half = static_cast<const uint16_t*>(data);
+            const float* src_float   = static_cast<const float*>(data);
+
+            vector<float> converted(static_cast<size_t>(width) * height * 4);
+            ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
+            {
+                for (uint32_t y = row_start; y < row_end; y++)
+                {
+                    for (uint32_t x = 0; x < width; x++)
+                    {
+                        const size_t index = (static_cast<size_t>(y) * width + x) * 4;
+
+                        converted[index + 0] = bits_per_channel == 16 ? half_to_float(src_half[index + 0]) : src_float[index + 0];
+                        converted[index + 1] = bits_per_channel == 16 ? half_to_float(src_half[index + 1]) : src_float[index + 1];
+                        converted[index + 2] = bits_per_channel == 16 ? half_to_float(src_half[index + 2]) : src_float[index + 2];
+                        converted[index + 3] = bits_per_channel == 16 ? half_to_float(src_half[index + 3]) : src_float[index + 3];
+
+                        float* rgb = converted.data() + index;
+                        if (color_space == ImageColorSpace::Srgb)
+                        {
+                            for (uint32_t c = 0; c < 3; c++)
+                            {
+                                rgb[c] = rgb[c] <= 0.04045f ? rgb[c] / 12.92f : pow((rgb[c] + 0.055f) / 1.055f, 2.4f);
+                            }
+                        }
+                        else if (color_space == ImageColorSpace::Hdr10)
+                        {
+                            // ST.2084 to linear Rec.2020, expressed in scRGB units.
+                            for (uint32_t c = 0; c < 3; c++)
+                            {
+                                const float p = pow(saturate_float(rgb[c]), 1.0f / 78.84375f);
+                                rgb[c] = pow(max(p - 0.8359375f, 0.0f) / (18.8515625f - 18.6875f * p), 1.0f / 0.1593017578125f) * 125.0f;
+                            }
+                            const float r = rgb[0], g = rgb[1], b = rgb[2];
+                            // Retain negative and >1 values: they carry HDR/wide gamut.
+                            rgb[0] =  1.6604910f * r - 0.5876411f * g - 0.0728499f * b;
+                            rgb[1] = -0.1245505f * r + 1.1328999f * g - 0.0083494f * b;
+                            rgb[2] = -0.0181508f * r - 0.1005789f * g + 1.1187297f * b;
+                        }
+                    }
+                }
+            }, height);
+
+            return converted;
+        }
+
+        bool save_jpeg_to_memory(FIBITMAP* bitmap, vector<uint8_t>& jpeg)
+        {
+            FIMEMORY* memory = FreeImage_OpenMemory();
+            if (!memory)
+            {
+                return false;
+            }
+
+            // no chroma subsampling, it smears the edges of saturated highlights and a gain map is not chroma at all
+            BYTE* bytes      = nullptr;
+            DWORD size       = 0;
+            const bool saved = FreeImage_SaveToMemory(FIF_JPEG, bitmap, memory, 95 | JPEG_SUBSAMPLING_444 | JPEG_OPTIMIZE) && FreeImage_AcquireMemory(memory, &bytes, &size) && size > 4;
+            if (saved)
+            {
+                jpeg.assign(bytes, bytes + size);
+            }
+            FreeImage_CloseMemory(memory);
+            return saved;
+        }
+
+        // where further app segments go, past the soi marker and the jfif header that has to follow it
+        size_t get_jpeg_metadata_offset(const vector<uint8_t>& jpeg)
+        {
+            size_t offset = 2;
+            if (jpeg.size() > 6 && jpeg[2] == 0xFF && jpeg[3] == 0xE0)
+            {
+                offset += 2 + ((static_cast<size_t>(jpeg[4]) << 8) | jpeg[5]);
+            }
+            return min(offset, jpeg.size());
+        }
+
+        void append_big_endian(vector<uint8_t>& bytes, const uint32_t value, const uint32_t byte_count)
+        {
+            for (uint32_t i = 0; i < byte_count; i++)
+            {
+                bytes.push_back(static_cast<uint8_t>(value >> ((byte_count - 1 - i) * 8)));
+            }
+        }
+
+        // an app1 segment holding an xmp packet
+        vector<uint8_t> make_jpeg_xmp_segment(const string& xmp)
+        {
+            static constexpr char xmp_namespace[] = "http://ns.adobe.com/xap/1.0/";
+
+            vector<uint8_t> segment = { 0xFF, 0xE1 };
+            append_big_endian(segment, static_cast<uint32_t>(2 + sizeof(xmp_namespace) + xmp.size()), 2);
+            segment.insert(segment.end(), xmp_namespace, xmp_namespace + sizeof(xmp_namespace));
+            segment.insert(segment.end(), xmp.begin(), xmp.end());
+            return segment;
+        }
+
+        // marker 2, length 2, signature 4, byte order mark 4, ifd offset 4, tag count 2, three tags 36, next ifd offset 4, two entries 32
+        const uint32_t jpeg_mpf_segment_size = 90;
+
+        // an app2 multi picture format segment that indexes a primary image and the one image appended after it
+        // segment_offset is where this segment starts in the file, mpf offsets count from its byte order mark
+        vector<uint8_t> make_jpeg_mpf_segment(const uint32_t segment_offset, const uint32_t primary_size, const uint32_t secondary_size)
+        {
+            const uint32_t entry_offset = 50; // from the byte order mark, past the ifd
+
+            vector<uint8_t> segment = { 0xFF, 0xE2 };
+            append_big_endian(segment, jpeg_mpf_segment_size - 2, 2);
+            segment.insert(segment.end(), { 'M', 'P', 'F', 0 });
+            const uint32_t byte_order_offset = segment_offset + static_cast<uint32_t>(segment.size());
+            segment.insert(segment.end(), { 'M', 'M', 0, 0x2A });
+            append_big_endian(segment, 8, 4); // offset of the first ifd
+            append_big_endian(segment, 3, 2); // tag count
+
+            // version
+            append_big_endian(segment, 0xB000, 2);
+            append_big_endian(segment, 7, 2);
+            append_big_endian(segment, 4, 4);
+            segment.insert(segment.end(), { '0', '1', '0', '0' });
+
+            // number of images
+            append_big_endian(segment, 0xB001, 2);
+            append_big_endian(segment, 4, 2);
+            append_big_endian(segment, 1, 4);
+            append_big_endian(segment, 2, 4);
+
+            // entries, 16 bytes per image
+            append_big_endian(segment, 0xB002, 2);
+            append_big_endian(segment, 7, 2);
+            append_big_endian(segment, 32, 4);
+            append_big_endian(segment, entry_offset, 4);
+
+            append_big_endian(segment, 0, 4); // no further ifd
+
+            // the primary image, a baseline jpeg at the start of the file
+            append_big_endian(segment, 0x030000, 4);
+            append_big_endian(segment, primary_size, 4);
+            append_big_endian(segment, 0, 4);
+            append_big_endian(segment, 0, 4);
+
+            // the image that follows it
+            append_big_endian(segment, 0, 4);
+            append_big_endian(segment, secondary_size, 4);
+            append_big_endian(segment, primary_size - byte_order_offset, 4);
+            append_big_endian(segment, 0, 4);
+
+            SP_ASSERT(segment.size() == jpeg_mpf_segment_size);
+            return segment;
+        }
     }
 
     void ImageImporter::Initialize()
@@ -733,49 +885,7 @@ namespace spartan
             return;
         }
 
-        const uint16_t* src_half = static_cast<const uint16_t*>(data);
-        const float* src_float = static_cast<const float*>(data);
-        const size_t pixel_count = static_cast<size_t>(width) * height;
-
-        std::vector<float> converted(pixel_count * 4);
-        ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
-        {
-            for (uint32_t y = row_start; y < row_end; y++)
-            {
-                for (uint32_t x = 0; x < width; x++)
-                {
-                    const size_t pixel_index = static_cast<size_t>(y) * width + x;
-                    const size_t src_index   = pixel_index * 4;
-                    const size_t dst_index   = pixel_index * 4;
-
-                    converted[dst_index + 0] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 0]) : src_float[src_index + 0];
-                    converted[dst_index + 1] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 1]) : src_float[src_index + 1];
-                    converted[dst_index + 2] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 2]) : src_float[src_index + 2];
-                    converted[dst_index + 3] = bits_per_channel == 16 ? half_to_float(src_half[src_index + 3]) : src_float[src_index + 3];
-
-                    float* rgb = converted.data() + dst_index;
-                    if (color_space == ImageColorSpace::Srgb)
-                    {
-                        for (uint32_t c = 0; c < 3; c++)
-                            rgb[c] = rgb[c] <= 0.04045f ? rgb[c] / 12.92f : pow((rgb[c] + 0.055f) / 1.055f, 2.4f);
-                    }
-                    else if (color_space == ImageColorSpace::Hdr10)
-                    {
-                        // ST.2084 to linear Rec.2020, expressed in scRGB units.
-                        for (uint32_t c = 0; c < 3; c++)
-                        {
-                            const float p = pow(saturate_float(rgb[c]), 1.0f / 78.84375f);
-                            rgb[c] = pow(max(p - 0.8359375f, 0.0f) / (18.8515625f - 18.6875f * p), 1.0f / 0.1593017578125f) * 125.0f;
-                        }
-                        const float r = rgb[0], g = rgb[1], b = rgb[2];
-                        // Retain negative and >1 values: they carry HDR/wide gamut.
-                        rgb[0] =  1.6604910f * r - 0.5876411f * g - 0.0728499f * b;
-                        rgb[1] = -0.1245505f * r + 1.1328999f * g - 0.0083494f * b;
-                        rgb[2] = -0.0181508f * r - 0.1005789f * g + 1.1187297f * b;
-                    }
-                }
-            }
-        }, height);
+        const vector<float> converted = decode_to_scrgb(data, width, height, bits_per_channel, color_space);
 
         FIBITMAP* bitmap = FreeImage_AllocateT(FIT_RGBAF, width, height, 128);
         if (!bitmap)
@@ -802,6 +912,290 @@ namespace spartan
         if (!saved)
         {
             SP_LOG_ERROR("Failed to save HDR EXR to %s", file_path.c_str());
+        }
+    }
+
+    void ImageImporter::SaveHdrJpeg(const string& file_path, const uint32_t frame_width, const uint32_t frame_height, const uint32_t width, const uint32_t height, const void* sdr_data, const void* hdr_data, const uint32_t hdr_bits_per_channel, const ImageColorSpace hdr_color_space, const float hdr_white_nits)
+    {
+        if (frame_width == 0 || frame_height == 0 || width == 0 || height == 0 || !sdr_data || !hdr_data || !(hdr_white_nits > 0.0f))
+        {
+            return;
+        }
+
+        if (hdr_bits_per_channel != 16 && hdr_bits_per_channel != 32)
+        {
+            SP_LOG_ERROR("HDR JPEG export expects RGBA half or full float data");
+            return;
+        }
+
+        // freeimage keeps 24 bit pixels in this order
+        static constexpr uint32_t channels[3] = { FI_RGBA_RED, FI_RGBA_GREEN, FI_RGBA_BLUE };
+
+        // the frame is rendered at the output resolution whatever shape the viewport has, so it is resized to the shape it is shown at
+        const bool resize = width != frame_width || height != frame_height;
+        auto resized = [&](FIBITMAP* bitmap)
+        {
+            if (!resize || !bitmap)
+            {
+                return bitmap;
+            }
+
+            // a triangle filter, sharper ones ring around highlights that are many times brighter than what surrounds them
+            FIBITMAP* scaled = FreeImage_Rescale(bitmap, width, height, FILTER_BILINEAR);
+            FreeImage_Unload(bitmap);
+            return scaled;
+        };
+
+        // the sdr image, what a viewer that knows nothing about gain maps shows
+        vector<uint8_t> base_jpeg;
+        {
+            FIBITMAP* bitmap = FreeImage_Allocate(frame_width, frame_height, 24);
+            if (!bitmap)
+            {
+                SP_LOG_ERROR("Failed to allocate FreeImage SDR bitmap");
+                return;
+            }
+
+            const uint16_t* sdr_half = static_cast<const uint16_t*>(sdr_data);
+            ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
+            {
+                for (uint32_t y = row_start; y < row_end; y++)
+                {
+                    const uint16_t* src_row = sdr_half + static_cast<size_t>(y) * frame_width * 4;
+                    BYTE* dst_row           = FreeImage_GetScanLine(bitmap, frame_height - 1 - y);
+                    for (uint32_t x = 0; x < frame_width; x++)
+                    {
+                        for (uint32_t c = 0; c < 3; c++)
+                        {
+                            dst_row[x * 3 + channels[c]] = static_cast<BYTE>(saturate_float(half_to_float(src_row[x * 4 + c])) * 255.0f + 0.5f);
+                        }
+                    }
+                }
+            }, frame_height);
+
+            bitmap = resized(bitmap);
+            if (!bitmap)
+            {
+                SP_LOG_ERROR("Failed to resize the SDR image of %s", file_path.c_str());
+                return;
+            }
+
+            const bool encoded = save_jpeg_to_memory(bitmap, base_jpeg);
+            FreeImage_Unload(bitmap);
+            if (!encoded)
+            {
+                SP_LOG_ERROR("Failed to encode the SDR image of %s", file_path.c_str());
+                return;
+            }
+        }
+
+        // the gain map is measured against the base as a viewer decodes it, so what the encode did to the base cancels out
+        FIMEMORY* base_memory = FreeImage_OpenMemory(base_jpeg.data(), static_cast<DWORD>(base_jpeg.size()));
+        FIBITMAP* base        = base_memory ? FreeImage_LoadFromMemory(FIF_JPEG, base_memory, JPEG_ACCURATE) : nullptr;
+        if (base_memory)
+        {
+            FreeImage_CloseMemory(base_memory);
+        }
+        if (!base || FreeImage_GetBPP(base) != 24 || FreeImage_GetWidth(base) != width || FreeImage_GetHeight(base) != height)
+        {
+            if (base)
+            {
+                FreeImage_Unload(base);
+            }
+            SP_LOG_ERROR("Failed to decode the SDR image of %s", file_path.c_str());
+            return;
+        }
+
+        static const array<float, 256> srgb_to_linear = []()
+        {
+            array<float, 256> values = {};
+            for (uint32_t i = 0; i < static_cast<uint32_t>(values.size()); i++)
+            {
+                const float encoded = static_cast<float>(i) / 255.0f;
+                values[i]           = encoded <= 0.04045f ? encoded / 12.92f : pow((encoded + 0.055f) / 1.055f, 2.4f);
+            }
+            return values;
+        }();
+
+        // per channel, log2 of how much brighter the hdr frame is than the base, both in multiples of sdr white
+        // the offsets keep the ratio stable near black, the buffer is reused, the decoded frame goes in and the gain comes out
+        const float offset    = 1.0f / 64.0f;
+        const float hdr_scale = 80.0f / hdr_white_nits;
+        const float hdr_limit = 10000.0f / hdr_white_nits;
+        vector<float> gain    = decode_to_scrgb(hdr_data, frame_width, frame_height, hdr_bits_per_channel, hdr_color_space);
+        if (resize)
+        {
+            // resized as light, not as the encoded signal, the rows keep their order both ways since the filter is symmetric
+            FIBITMAP* bitmap = FreeImage_AllocateT(FIT_RGBAF, frame_width, frame_height, 128);
+            if (bitmap)
+            {
+                for (uint32_t y = 0; y < frame_height; y++)
+                {
+                    memcpy(FreeImage_GetScanLine(bitmap, y), gain.data() + static_cast<size_t>(y) * frame_width * 4, static_cast<size_t>(frame_width) * 4 * sizeof(float));
+                }
+                bitmap = resized(bitmap);
+            }
+            if (!bitmap)
+            {
+                FreeImage_Unload(base);
+                SP_LOG_ERROR("Failed to resize the HDR image of %s", file_path.c_str());
+                return;
+            }
+
+            gain.resize(static_cast<size_t>(width) * height * 4);
+            for (uint32_t y = 0; y < height; y++)
+            {
+                memcpy(gain.data() + static_cast<size_t>(y) * width * 4, FreeImage_GetScanLine(bitmap, y), static_cast<size_t>(width) * 4 * sizeof(float));
+            }
+            FreeImage_Unload(bitmap);
+        }
+        float gain_min        = numeric_limits<float>::max();
+        float gain_max        = numeric_limits<float>::lowest();
+        float hdr_peak        = 0.0f;
+        mutex range_mutex;
+        ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
+        {
+            float range_min  = numeric_limits<float>::max();
+            float range_max  = numeric_limits<float>::lowest();
+            float range_peak = 0.0f;
+            for (uint32_t y = row_start; y < row_end; y++)
+            {
+                const BYTE* base_row = FreeImage_GetScanLine(base, height - 1 - y);
+                float* row           = gain.data() + static_cast<size_t>(y) * width * 4;
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    for (uint32_t c = 0; c < 3; c++)
+                    {
+                        // the base is srgb, colors outside its gamut are clipped to it, and a nan reads as black
+                        float hdr         = row[x * 4 + c] * hdr_scale;
+                        hdr               = hdr > 0.0f ? min(hdr, hdr_limit) : 0.0f;
+                        const float sdr   = srgb_to_linear[base_row[x * 3 + channels[c]]];
+                        const float value = log2((hdr + offset) / (sdr + offset));
+                        row[x * 4 + c]    = value;
+                        range_min         = min(range_min, value);
+                        range_max         = max(range_max, value);
+                        range_peak        = max(range_peak, hdr);
+                    }
+                }
+            }
+
+            lock_guard<mutex> lock(range_mutex);
+            gain_min = min(gain_min, range_min);
+            gain_max = max(gain_max, range_max);
+            hdr_peak = max(hdr_peak, range_peak);
+        }, height);
+        FreeImage_Unload(base);
+
+        // a flat map still needs a range to be stored over
+        gain_max = max(gain_max, gain_min + 0.01f);
+
+        // a display applies the whole map once it can go as far over sdr white as the frame does, and less of it below that
+        const float capacity_max = max(log2(max(hdr_peak, 1.0f)), 0.01f);
+
+        vector<uint8_t> gain_map_jpeg;
+        {
+            FIBITMAP* bitmap = FreeImage_Allocate(width, height, 24);
+            if (!bitmap)
+            {
+                SP_LOG_ERROR("Failed to allocate FreeImage gain map bitmap");
+                return;
+            }
+
+            ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
+            {
+                for (uint32_t y = row_start; y < row_end; y++)
+                {
+                    const float* src_row = gain.data() + static_cast<size_t>(y) * width * 4;
+                    BYTE* dst_row        = FreeImage_GetScanLine(bitmap, height - 1 - y);
+                    for (uint32_t x = 0; x < width; x++)
+                    {
+                        for (uint32_t c = 0; c < 3; c++)
+                        {
+                            dst_row[x * 3 + channels[c]] = static_cast<BYTE>(saturate_float((src_row[x * 4 + c] - gain_min) / (gain_max - gain_min)) * 255.0f + 0.5f);
+                        }
+                    }
+                }
+            }, height);
+
+            const bool encoded = save_jpeg_to_memory(bitmap, gain_map_jpeg);
+            FreeImage_Unload(bitmap);
+            if (!encoded)
+            {
+                SP_LOG_ERROR("Failed to encode the gain map of %s", file_path.c_str());
+                return;
+            }
+        }
+
+        // the layout and metadata are those of ultra hdr: the base image names the gain map appended after it, through an xmp
+        // container directory and a multi picture index, and the gain map carries the hdrgm values that say how to apply it
+        auto to_text = [](const float value)
+        {
+            ostringstream stream;
+            stream.imbue(locale::classic());
+            stream << fixed << setprecision(6) << value;
+            return stream.str();
+        };
+
+        const string gain_map_xmp =
+            "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\" x:xmptk=\"Adobe XMP Core 5.1.2\">"
+            "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">"
+            "<rdf:Description rdf:about=\"\" xmlns:hdrgm=\"http://ns.adobe.com/hdr-gain-map/1.0/\""
+            " hdrgm:Version=\"1.0\""
+            " hdrgm:GainMapMin=\"" + to_text(gain_min) + "\""
+            " hdrgm:GainMapMax=\"" + to_text(gain_max) + "\""
+            " hdrgm:Gamma=\"1.000000\""
+            " hdrgm:OffsetSDR=\"" + to_text(offset) + "\""
+            " hdrgm:OffsetHDR=\"" + to_text(offset) + "\""
+            " hdrgm:HDRCapacityMin=\"0.000000\""
+            " hdrgm:HDRCapacityMax=\"" + to_text(capacity_max) + "\""
+            " hdrgm:BaseRenditionIsHDR=\"False\"/>"
+            "</rdf:RDF>"
+            "</x:xmpmeta>";
+
+        const vector<uint8_t> gain_map_xmp_segment = make_jpeg_xmp_segment(gain_map_xmp);
+        const size_t gain_map_insert               = get_jpeg_metadata_offset(gain_map_jpeg);
+        const size_t gain_map_size                 = gain_map_jpeg.size() + gain_map_xmp_segment.size();
+
+        const string base_xmp =
+            "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\" x:xmptk=\"Adobe XMP Core 5.1.2\">"
+            "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">"
+            "<rdf:Description rdf:about=\"\""
+            " xmlns:Container=\"http://ns.google.com/photos/1.0/container/\""
+            " xmlns:Item=\"http://ns.google.com/photos/1.0/container/item/\""
+            " xmlns:hdrgm=\"http://ns.adobe.com/hdr-gain-map/1.0/\""
+            " hdrgm:Version=\"1.0\">"
+            "<Container:Directory>"
+            "<rdf:Seq>"
+            "<rdf:li rdf:parseType=\"Resource\"><Container:Item Item:Semantic=\"Primary\" Item:Mime=\"image/jpeg\"/></rdf:li>"
+            "<rdf:li rdf:parseType=\"Resource\"><Container:Item Item:Semantic=\"GainMap\" Item:Mime=\"image/jpeg\" Item:Length=\"" + to_string(gain_map_size) + "\"/></rdf:li>"
+            "</rdf:Seq>"
+            "</Container:Directory>"
+            "</rdf:Description>"
+            "</rdf:RDF>"
+            "</x:xmpmeta>";
+
+        const vector<uint8_t> base_xmp_segment = make_jpeg_xmp_segment(base_xmp);
+        const size_t base_insert               = get_jpeg_metadata_offset(base_jpeg);
+        const size_t base_size                 = base_jpeg.size() + base_xmp_segment.size() + jpeg_mpf_segment_size;
+        const vector<uint8_t> mpf_segment      = make_jpeg_mpf_segment(static_cast<uint32_t>(base_insert + base_xmp_segment.size()), static_cast<uint32_t>(base_size), static_cast<uint32_t>(gain_map_size));
+
+        ofstream file(file_path, ios::binary | ios::trunc);
+        auto write = [&file](const vector<uint8_t>& bytes, const size_t begin, const size_t end)
+        {
+            file.write(reinterpret_cast<const char*>(bytes.data() + begin), static_cast<streamsize>(end - begin));
+        };
+        write(base_jpeg, 0, base_insert);
+        write(base_xmp_segment, 0, base_xmp_segment.size());
+        write(mpf_segment, 0, mpf_segment.size());
+        write(base_jpeg, base_insert, base_jpeg.size());
+        write(gain_map_jpeg, 0, gain_map_insert);
+        write(gain_map_xmp_segment, 0, gain_map_xmp_segment.size());
+        write(gain_map_jpeg, gain_map_insert, gain_map_jpeg.size());
+        file.close();
+
+        if (file.fail())
+        {
+            SP_LOG_ERROR("Failed to save HDR JPEG to %s", file_path.c_str());
         }
     }
 

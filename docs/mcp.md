@@ -46,6 +46,7 @@ Run `npm install` in `tools/mcp/spartan_engine` once. Server options: `--host`, 
 | Entities and components | `entity_find`, `entity_resolve`, `entity_create_primitive`, `entity_set_transform_batch`, `component_get`, `component_set` |
 | Content | `mesh_generate`, `compound_create`, `material_textured_create`, `texture_generate`, `entity_create_light`, `prefab_save`, `prefab_load` |
 | Roads and layout | `spline_create_road`, `spline_connect`, `spline_junction`, `district_blockout`, `city_blockout` |
+| Terrain | `terrain_create` (flat terrain, built on a worker), `terrain_get`, `terrain_sculpt` (raise, lower, smooth or flatten at world points), `terrain_scatter_get`, `terrain_scatter_set` |
 | Seeing | `camera_set_view`, `screenshot_take`, `screenshot_compare`, `viewpoint_save`, `viewpoint_capture`, `scene_visual_review` |
 | Vehicles | `vehicle_list`, `vehicle_enter`, `vehicle_set_input`, `vehicle_telemetry`, `vehicle_validate`, `vehicle_dyno` |
 | Cinematics | `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_render` |

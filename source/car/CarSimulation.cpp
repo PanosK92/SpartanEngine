@@ -748,20 +748,28 @@ namespace car
     {
             tire_condition_modifiers modifiers;
             float temperature_range = PxMax(spec.tire_temp_range, 1.0f);
-            float core_deviation = PxClamp(fabsf(core_temperature - spec.tire_optimal_temp) / temperature_range, 0.0f, 1.5f);
+            float core_offset = PxClamp((core_temperature - spec.tire_optimal_temp) / temperature_range, -1.5f, 1.5f);
             float pressure_ratio = PxClamp(hot_tire_pressure(spec, core_temperature, 0, ambient_pressure / 100000.0f) / PxMax(spec.tire_pressure_optimal, 0.1f), 0.6f, 1.4f);
             float pressure_error = pressure_ratio - 1.0f;
             float pressure_grip = PxClamp(1.0f - pressure_error * pressure_error * 0.45f, 0.75f, 1.0f);
             float pressure_stiffness = powf(pressure_ratio, 0.55f);
-            float temperature_stiffness = PxClamp(1.0f - core_deviation * core_deviation * 0.22f, 0.55f, 1.0f);
+            // the shear modulus of tread rubber falls as it warms, so a cold tire is stiffer and sharper even
+            // though it grips less, and an overheated one goes soft and lazy, grip keeps its own bell curve
+            float temperature_stiffness = PxClamp(1.0f - core_offset * 0.22f, 0.70f, 1.33f);
             float wear_clamped = PxClamp(wear, 0.0f, 1.0f);
             modifiers.temperature_grip = get_tire_temp_grip_factor(surface_temperature);
             modifiers.wear_grip = PxClamp(1.0f - wear_clamped * spec.tire_grip_wear_loss, 0.20f, 1.0f);
-            float wear_stiffness = 1.0f - wear_clamped * 0.18f;
-            float load_ratio = PxClamp(load / PxMax(spec.load_reference, 1.0f), 0.25f, 3.0f);
+            // worn tread blocks are shorter so they bend less for the same shear, a shaved tire is stiffer
+            float wear_stiffness = 1.0f + wear_clamped * 0.18f;
+            float tread_stiffness = temperature_stiffness * wear_stiffness;
+            float load_ratio = PxClamp(load / PxMax(spec.load_reference, 1.0f), 0.1f, 3.0f);
             modifiers.peak_grip = PxClamp(modifiers.temperature_grip * pressure_grip * modifiers.wear_grip, 0.15f, 1.0f);
-            modifiers.stiffness = PxClamp(temperature_stiffness * pressure_stiffness * wear_stiffness, 0.55f, 1.30f);
-            modifiers.relaxation = PxClamp(powf(load_ratio, 0.12f) * (1.0f + wear_clamped * 0.20f) / modifiers.stiffness, 0.65f, 1.80f);
+            modifiers.stiffness = PxClamp(tread_stiffness * pressure_stiffness, 0.55f, 1.50f);
+            // the carcass has to lean sideways by force over its own stiffness before the tread sees the slip,
+            // so the lag distance is cornering stiffness over carcass stiffness, it follows the same load curve
+            // as the cornering stiffness, a stiffer tread lengthens it and a harder inflated carcass shortens it
+            float load_relaxation = load_ratio * carcass_twist_factor(spec.tire_carcass_twist, load_ratio * sqrtf(load_ratio));
+            modifiers.relaxation = PxClamp(load_relaxation * tread_stiffness / pressure_stiffness, 0.30f, 1.80f);
             return modifiers;
     }
 
@@ -1785,6 +1793,9 @@ namespace car
             corner.wheel_body->setMassSpaceInertiaTensor(PxVec3(wheel_inertia, wheel_inertia * 0.65f, wheel_inertia * 0.65f));
             // the physx default angular limit prevents high gear upshifts
             corner.wheel_body->setMaxAngularVelocity(500.0f);
+            // without this physx integrates angular velocity as if the inertia were a sphere, so steering or
+            // cambering a spinning wheel returns no precession torque into the upright and the rack
+            corner.wheel_body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_GYROSCOPIC_FORCES, true);
             // guard recovery is capped so deep contacts cannot launch the chassis
             corner.wheel_body->setMaxDepenetrationVelocity(2.0f);
             PxVec3 rim_points[32];
@@ -3876,6 +3887,22 @@ namespace car
                 // awd - center diff torque split
                 float front_torque = total_torque * spec.torque_split_front;
                 float rear_torque  = total_torque * (1.0f - spec.torque_split_front);
+
+                // an open centre diff sends the same split no matter what, so one spinning axle wastes the lot,
+                // every real awd couples the two prop shafts with a viscous unit, a clutch pack or a locked
+                // transfer case that drags torque from the faster axle to the slower one
+                float front_speed = (wheels[front_left].angular_velocity + wheels[front_right].angular_velocity) * 0.5f;
+                float rear_speed  = (wheels[rear_left].angular_velocity + wheels[rear_right].angular_velocity) * 0.5f;
+                float delta_speed = front_speed - rear_speed;
+                float front_inertia = PxMax(wheel_moi[front_left] + wheel_moi[front_right], 0.1f);
+                float rear_inertia  = PxMax(wheel_moi[rear_left] + wheel_moi[rear_right], 0.1f);
+                // more torque than this would swap which axle is faster inside one step
+                float non_reversing_torque = fabsf(delta_speed) / (PxMax(dt, 0.001f) * (1.0f / front_inertia + 1.0f / rear_inertia));
+                float coupling_torque = PxMin(fabsf(delta_speed) * PxMax(spec.center_diff_coupling, 0.0f), non_reversing_torque * 0.8f);
+                coupling_torque = copysignf(coupling_torque, delta_speed);
+                front_torque -= coupling_torque;
+                rear_torque  += coupling_torque;
+
                 apply_axle_diff(front_left, front_right, front_torque, dt);
                 apply_axle_diff(rear_left,  rear_right,  rear_torque, dt);
             }

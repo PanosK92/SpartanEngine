@@ -90,7 +90,7 @@ Grouped by subsystem. Each cvar's description string, shown in the console and t
 
 ### Editor overlays and debug views
 
-`r.grid`, `r.transform_handle`, `r.transform_snap`, `r.transform_snap_translate`, `r.transform_snap_rotate`, `r.transform_snap_scale`, `r.selection_outline`, `r.entity_icons`, `r.volumes`, `r.performance_metrics`, `r.screenshot_ui`, `r.aabb`, `r.picking_ray`, `r.physics`, `r.ragdoll`, `r.wireframe`, `r.meshlet_visualize`, `r.cluster_visualize`, `r.cluster_visualize_cap`.
+`r.grid`, `r.transform_handle`, `r.transform_snap`, `r.transform_snap_translate`, `r.transform_snap_rotate`, `r.transform_snap_scale`, `r.selection_outline`, `r.entity_icons`, `r.volumes`, `r.performance_metrics`, `r.screenshot_ui`, `r.screenshot_exr`, `r.aabb`, `r.picking_ray`, `r.physics`, `r.ragdoll`, `r.wireframe`, `r.meshlet_visualize`, `r.cluster_visualize`, `r.cluster_visualize_cap`.
 
 ### World, physics, audio and game
 

@@ -102,8 +102,8 @@ A vehicle is an entity with a `Physics` component of type `Custom`, backed by [`
 
 1. **Input**: smoothed throttle, brake, steering and handbrake; assists.
 2. **Suspension**: tread contact by convex sweeps, spring-damper, anti-roll bars, bump stops, bump steer, camber and toe.
-3. **Drivetrain**: engine torque curve, turbo, clutch, gearbox (manual or automatic with rev-match), differentials (open, locked, limited-slip, AWD split).
-4. **Tires**: Pacejka MF 5.2 with combined slip ([`CarPacejka.h`](../source/car/CarPacejka.h)), optionally sub-stepped.
+3. **Drivetrain**: engine torque curve, turbo, clutch, gearbox (manual or automatic with rev-match), differentials (open, locked, limited-slip, AWD split with a centre coupling, `center_diff_coupling`, that drags torque from the faster axle to the slower one).
+4. **Tires**: a physical brush model by default, Pacejka MF 5.2 with combined slip as the alternative ([`CarPacejka.h`](../source/car/CarPacejka.h)), sub-stepped. Cornering stiffness comes from tread stiffness and patch geometry and bends over with load through carcass twist (`tire_carcass_twist`). Tread rubber softens as it warms, so a cold tire is stiffer but grips less. The relaxation length follows the same load curve as the cornering stiffness. The pneumatic trail is the exact brush result, so the steering goes light before the grip peak.
 5. **Chassis**: self-aligning torque, aerodynamic drag and downforce, ground effect, DRS, rolling resistance.
 6. **Assists**: ABS, traction control, stability control.
 7. **Condition**: tire and brake temperatures, tire wear and pressure, brake fade, oil and chassis condition.

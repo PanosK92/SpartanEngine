@@ -1242,6 +1242,7 @@ namespace ImGui::RHI
         // a replay into the ui screenshot target must not run user callbacks, they record external passes
         // frame_only replays just the 3d view draws, the frame generation hudless image
         // glass is the texture the pass draws into, null when glass windows are drawn without a backdrop
+        // returns false when a capture is missing draws, a pipeline that is still compiling drops them and the target stays black
         auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture, const bool frame_only, RHI_Texture* glass)
         {
             RHI_CommandList::BeginPass(name, gpu_timing);
@@ -1262,6 +1263,10 @@ namespace ImGui::RHI
             rhi_resources->push_constant_buffer_pass.draw_index = draw_index;
             RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
 
+            // an hdr frame is display encoded, a capture shows the sdr tonemap the renderer made of it instead, which needs no decoding
+            RHI_Texture* frame_sdr = sdr_capture ? Renderer::GetScreenshotSdrFrame() : nullptr;
+
+            bool complete              = draw_index != numeric_limits<uint32_t>::max();
             uint32_t global_vtx_offset = 0;
             uint32_t global_idx_offset = 0;
             RHI_Texture* texture_last  = nullptr;
@@ -1310,8 +1315,8 @@ namespace ImGui::RHI
                 }
                 else if (segment.step == GlassStep::Ambient)
                 {
-                    texture = frame_output;
-                    flags   = (1u << 10) | (sdr_capture ? (1u << 11) : (cvar_dithering.GetValueAs<bool>() ? (1u << 13) : 0u));
+                    texture = frame_sdr ? frame_sdr : frame_output;
+                    flags   = (frame_sdr ? 0u : (1u << 10)) | (sdr_capture ? (1u << 11) : (cvar_dithering.GetValueAs<bool>() ? (1u << 13) : 0u));
                 }
                 if (!texture)
                 {
@@ -1328,6 +1333,7 @@ namespace ImGui::RHI
                 rhi_resources->push_constant_buffer_pass.set(pass_imgui::array_level, 0.0f);
                 RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
                 RHI_CommandList::DrawIndexed(segment.index_count, draw_data->TotalIdxCount + segment.index_offset, draw_data->TotalVtxCount);
+                complete = complete && (!sdr_capture || RHI_CommandList::IsPipelineReady());
                 glass_dirty.Add(segment.bounds);
                 state_valid = false;
             };
@@ -1436,6 +1442,11 @@ namespace ImGui::RHI
 
                                         // keep the same viewport transform and display encoding, but exclude engine text and overlays
                                         texture_bound = frame_only ? RHI_FrameGeneration::GetScene() : texture;
+                                        if (is_frame_texture && frame_sdr)
+                                        {
+                                            texture_bound    = frame_sdr;
+                                            is_frame_texture = false;
+                                        }
                                     }
                                 }
                             }
@@ -1484,6 +1495,7 @@ namespace ImGui::RHI
                         }
 
                         RHI_CommandList::DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                        complete = complete && (!sdr_capture || RHI_CommandList::IsPipelineReady());
                     }
                 }
 
@@ -1501,6 +1513,7 @@ namespace ImGui::RHI
             }
 
             RHI_CommandList::EndPass();
+            return complete;
         };
 
         // with a glass window up the ui goes through a texture so the backdrop can be read back, then lands in the swapchain
@@ -1553,9 +1566,14 @@ namespace ImGui::RHI
                 pso.render_target_swapchain         = nullptr;
                 pso.render_target_color_textures[0] = capture;
                 pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_screenshot", false, false, true, false, glass_target ? capture : nullptr);
+                const bool recorded                 = draw_pass("imgui_screenshot", false, false, true, false, glass_target ? capture : nullptr);
                 pso.render_target_color_textures[0] = nullptr;
-                Renderer::SetUiScreenshotRecorded();
+
+                // an incomplete replay is not recorded, the request stays pending and the next frame replays it
+                if (recorded)
+                {
+                    Renderer::SetUiScreenshotRecorded();
+                }
             }
             else if (RHI_Texture* capture = frame_rect.width > 0.0f && frame_rect.height > 0.0f ? Renderer::GetViewportUiScreenshotTarget(swapchain->GetWidth(), swapchain->GetHeight()) : nullptr)
             {
@@ -1564,9 +1582,14 @@ namespace ImGui::RHI
                 pso.render_target_swapchain         = nullptr;
                 pso.render_target_color_textures[0] = capture;
                 pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_screenshot_viewport", false, false, true, false, glass_target ? capture : nullptr);
+                const bool recorded                 = draw_pass("imgui_screenshot_viewport", false, false, true, false, glass_target ? capture : nullptr);
                 pso.render_target_color_textures[0] = nullptr;
-                Renderer::SetViewportUiScreenshotRecorded(frame_rect);
+
+                // an incomplete replay is not recorded, the renderer holds the capture and the next frame replays it
+                if (recorded)
+                {
+                    Renderer::SetViewportUiScreenshotRecorded(frame_rect);
+                }
             }
         }
 

@@ -58,6 +58,8 @@ The [`Spline`](../source/world/components/Spline.h) component is a Catmull-Rom s
 
 The [`Terrain`](../source/world/components/Terrain.h) component builds a heightfield with sculpt layers, a physics heightfield, and GPU-scattered vegetation (grass, flowers, trees with impostors). The **Terrain** editor panel sculpts and paints. Tires deform soft terrain (`terrain.deformation*` cvars), and vehicles push vegetation aside.
 
+[Terrain](terrain.md) is the full guide: creating a flat terrain, the brush, what to check when nothing seems to happen, and the Shape, Ground, Life and Analysis tabs. [`worlds/terrain_example.world`](../worlds/terrain_example.world) is an island made this way from a flat square: a raised hill, a pond dug below sea level, a flattened plateau and rough bumps next to smoothed ones, with signs that explain each step in plain language.
+
 ## Environment and weather
 
 The world's `Environment` holds date, latitude and longitude (which position the sun), time of day, clouds, rain, wind and puddles. Rain wets exposed surfaces, fills puddles, keeps covered areas dry and lowers tire grip. Atmospheric scattering, volumetric clouds and froxel fog render it; `r.atmosphere.mist_*` cvars add mist per world. The FFT ocean is part of the renderer and reacts to wind; boats and cars leave wakes (`ocean.wake*`). Ambient wildlife and atmosphere (birds, insects, dust) are optional world systems.

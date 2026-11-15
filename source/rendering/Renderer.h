@@ -68,6 +68,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_entity_icons;
     extern TConsoleVar<float> cvar_performance_metrics;
     extern TConsoleVar<float> cvar_screenshot_ui;
+    extern TConsoleVar<float> cvar_screenshot_exr;
     extern TConsoleVar<float> cvar_watermark;
     extern TConsoleVar<float> cvar_watermark_interval;
     extern TConsoleVar<float> cvar_physics;
@@ -305,6 +306,9 @@ namespace spartan
         RHI_Texture* GetViewportUiScreenshotTarget(uint32_t width, uint32_t height);
         // rect is the viewport area of the target in pixels, the saved image is cropped to it
         void SetViewportUiScreenshotRecorded(const math::Rectangle& rect);
+        // the sdr tonemap of the frame a pending screenshot captured, srgb encoded, the editor shows it in place of an hdr frame
+        // when it replays its ui for the capture, null when the frame on screen is sdr already
+        RHI_Texture* GetScreenshotSdrFrame();
 
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
         // is_ui grants access to reserved entries so scene/outline draws cannot starve presentation

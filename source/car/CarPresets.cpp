@@ -350,6 +350,8 @@ namespace car
             require(finite_range(preset.load_reference, 100.0f, 20000.0f), "load_reference");
             require(finite_range(preset.tire_temp_range, 1.0f, 300.0f), "tire_temp_range");
             require(finite_range(preset.tire_carcass_stiffness_fraction, 0.05f, 1.0f), "tire_carcass_stiffness_fraction");
+            require(finite_range(preset.tire_carcass_twist, 0.0f, 2.0f), "tire_carcass_twist");
+            require(finite_range(preset.center_diff_coupling, 0.0f, 100000.0f), "center_diff_coupling");
             require(finite_range(preset.tire_vertical_stiffness, 10000.0f, 1000000.0f), "tire_vertical_stiffness");
             require(finite_range(preset.tire_relaxation_length, 0.01f, 5.0f), "tire_relaxation_length");
             require(finite_range(preset.tire_pressure, 0.5f, 6.0f) && finite_range(preset.tire_pressure_optimal, 0.5f, 6.0f), "tire_pressure");
@@ -812,6 +814,7 @@ namespace car
             READ_FLOAT(rear_toe);
             READ_FLOAT(tire_vertical_stiffness);
             READ_FLOAT(tire_carcass_stiffness_fraction);
+            READ_FLOAT(tire_carcass_twist);
             READ_FLOAT(lsd_viscous);
             READ_FLOAT(abs_load_sensitivity);
 
@@ -821,6 +824,7 @@ namespace car
 
             READ_INT(drivetrain_type);
             READ_FLOAT(torque_split_front);
+            READ_FLOAT(center_diff_coupling);
             READ_FLOAT(lsd_preload);
             READ_FLOAT(lsd_lock_ratio_accel);
             READ_FLOAT(lsd_lock_ratio_decel);

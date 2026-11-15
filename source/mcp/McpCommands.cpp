@@ -1604,6 +1604,283 @@ namespace spartan
             return json;
         }
 
+        std::string terrain_state_json(Terrain* terrain)
+        {
+            const float size_x = static_cast<float>((terrain->GetWidth() > 0 ? terrain->GetWidth() - 1 : 0) * terrain->GetScale());
+            const float size_z = static_cast<float>((terrain->GetHeight() > 0 ? terrain->GetHeight() - 1 : 0) * terrain->GetScale());
+
+            std::string json = "\"terrain_id\":" + json_string(std::to_string(terrain->GetEntity()->GetObjectId()));
+            json += ",\"has_heightfield\":" + json_bool(terrain->HasHeightfield());
+            json += ",\"generating\":" + json_bool(terrain->IsGenerating());
+            json += ",\"samples\":[" + std::to_string(terrain->GetWidth()) + "," + std::to_string(terrain->GetHeight()) + "]";
+            json += ",\"scale\":" + std::to_string(terrain->GetScale());
+            json += ",\"density\":" + std::to_string(terrain->GetDensity());
+            json += ",\"tile_count\":" + std::to_string(terrain->GetTileCountAxis());
+            json += ",\"size_m\":[" + json_number(size_x) + "," + json_number(size_z) + "]";
+            json += ",\"sea_level\":" + json_number(terrain->GetSeaLevel());
+            json += ",\"sculpt_tiles\":" + std::to_string(terrain->GetSculptLayer().GetTileCount());
+            json += ",\"spawn_props\":" + json_bool(terrain->GetSpawnBiomeProps());
+            return json;
+        }
+
+        // the same flat start the terrain panel offers, sized in one call
+        std::string command_terrain_create(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("terrain edits require edit mode");
+            }
+
+            auto read_uint = [&request](const char* name, uint64_t min_value, uint64_t max_value, uint64_t& value, std::string& error)
+            {
+                const std::optional<std::string> arg = get_argument(request, name);
+                if (!arg)
+                {
+                    return false;
+                }
+                if (!parse_uint64(*arg, value) || value < min_value || value > max_value)
+                {
+                    error = std::string(name) + " must be between " + std::to_string(min_value) + " and " + std::to_string(max_value);
+                }
+                return true;
+            };
+
+            std::string error;
+            uint64_t resolution = 128;
+            uint64_t scale      = 0;
+            uint64_t density    = 0;
+            uint64_t tile_count = 0;
+            read_uint("resolution", 2, 4096, resolution, error);
+            const bool has_scale   = read_uint("scale", 1, 1000, scale, error);
+            const bool has_density = read_uint("density", 1, 16, density, error);
+            const bool has_tiles   = read_uint("tile_count", 1, 64, tile_count, error);
+            if (!error.empty())
+            {
+                return json_error(error);
+            }
+
+            bool replace = false;
+            if (const std::optional<std::string> arg = get_argument(request, "replace"))
+            {
+                if (!parse_bool(*arg, replace))
+                {
+                    return json_error("replace must be true or false");
+                }
+            }
+
+            Terrain* terrain = nullptr;
+            for (Entity* entity : World::GetEntities())
+            {
+                if (entity && entity->GetComponent<Terrain>())
+                {
+                    terrain = entity->GetComponent<Terrain>();
+                    break;
+                }
+            }
+
+            if (terrain && !replace)
+            {
+                return json_error("the world already has a terrain, pass replace true to start it over as a flat grid, this drops its sculpt layer");
+            }
+            if (terrain && terrain->IsGenerating())
+            {
+                return json_error("the terrain is generating, try again when it finishes");
+            }
+
+            if (!terrain)
+            {
+                Entity* entity = World::CreateEntity();
+                entity->SetObjectName(get_argument(request, "name").value_or("Terrain"));
+                terrain = entity->AddComponent<Terrain>();
+                if (!terrain)
+                {
+                    return json_error("failed to add the terrain component");
+                }
+            }
+            else
+            {
+                terrain->ClearSculptLayer();
+            }
+
+            if (has_scale)
+            {
+                terrain->SetScale(static_cast<uint32_t>(scale));
+            }
+            if (has_density)
+            {
+                terrain->SetDensity(static_cast<uint32_t>(density));
+            }
+            if (has_tiles)
+            {
+                terrain->SetTileCountAxis(static_cast<uint32_t>(tile_count));
+            }
+            if (const std::optional<std::string> arg = get_argument(request, "spawn_props"))
+            {
+                bool spawn_props = true;
+                if (!parse_bool(*arg, spawn_props))
+                {
+                    return json_error("spawn_props must be true or false");
+                }
+                terrain->SetSpawnBiomeProps(spawn_props);
+            }
+            if (const std::optional<std::string> arg = get_argument(request, "sea_level"))
+            {
+                float sea_level = 0.0f;
+                if (!parse_float(*arg, sea_level))
+                {
+                    return json_error("invalid sea_level");
+                }
+                terrain->SetSeaLevel(sea_level);
+            }
+
+            // the first surface loads every scatter mesh, far longer than a bridge call may block the frame
+            const uint32_t samples = static_cast<uint32_t>(resolution);
+            ThreadPool::AddTask([terrain, samples]()
+            {
+                terrain->CreateFlat(samples, samples);
+            });
+
+            std::string json = "{\"ok\":true,\"started\":true";
+            json += ",\"note\":" + json_string("the surface builds in the background, poll terrain_get until has_heightfield is true and generating is false");
+            json += ",\"terrain_id\":" + json_string(std::to_string(terrain->GetEntity()->GetObjectId())) + "}";
+            return json;
+        }
+
+        std::string command_terrain_get(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+
+            return "{\"ok\":true," + terrain_state_json(terrain) + "}";
+        }
+
+        // brush dabs through the path the terrain panel paints with, so the strokes land in the sculpt layer
+        std::string command_terrain_sculpt(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("terrain edits require edit mode");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+            if (!terrain->HasHeightfield())
+            {
+                return json_error("the terrain has no surface yet, call terrain_create or generate it first");
+            }
+
+            TerrainBrush brush;
+            const std::string mode = to_lower_copy(get_argument(request, "mode").value_or("raise"));
+            if (mode == "raise")
+            {
+                brush.mode = TerrainBrushMode::Raise;
+            }
+            else if (mode == "lower")
+            {
+                brush.mode = TerrainBrushMode::Lower;
+            }
+            else if (mode == "smooth")
+            {
+                brush.mode = TerrainBrushMode::Smooth;
+            }
+            else if (mode == "flatten")
+            {
+                brush.mode = TerrainBrushMode::Flatten;
+            }
+            else
+            {
+                return json_error("mode must be raise, lower, smooth or flatten");
+            }
+
+            auto read_float = [&request, &error](const char* name, float& value)
+            {
+                const std::optional<std::string> arg = get_argument(request, name);
+                if (arg && !parse_float(*arg, value))
+                {
+                    error = std::string("invalid ") + name;
+                }
+            };
+            read_float("radius", brush.radius);
+            read_float("amount", brush.strength);
+            read_float("falloff", brush.falloff);
+            read_float("target_height", brush.target_height);
+            if (!error.empty())
+            {
+                return json_error(error);
+            }
+            if (brush.radius <= 0.0f)
+            {
+                return json_error("radius must be above 0");
+            }
+            brush.falloff = std::clamp(brush.falloff, 0.0f, 1.0f);
+
+            uint64_t repeat = 1;
+            if (const std::optional<std::string> arg = get_argument(request, "repeat"))
+            {
+                if (!parse_uint64(*arg, repeat) || repeat == 0 || repeat > 256)
+                {
+                    return json_error("repeat must be between 1 and 256");
+                }
+            }
+
+            std::vector<float> points;
+            const std::optional<std::string> points_arg = get_argument(request, "points");
+            if (!points_arg || !parse_float_array(*points_arg, points, 4096) || points.size() % 2 != 0)
+            {
+                return json_error("points must be a flat world space x,z list, e.g. 0,0,10,5");
+            }
+
+            uint32_t applied = 0;
+            for (uint64_t pass = 0; pass < repeat; pass++)
+            {
+                for (size_t i = 0; i + 1 < points.size(); i += 2)
+                {
+                    float height = 0.0f;
+                    if (!terrain->SampleHeight(points[i], points[i + 1], height))
+                    {
+                        continue;
+                    }
+                    terrain->ApplyBrush(math::Vector3(points[i], height, points[i + 1]), brush);
+                    applied++;
+                }
+            }
+
+            terrain->FlushHeightEdits(true);
+            terrain->FlushPendingProps();
+
+            std::string json = "{\"ok\":true,\"dabs\":" + std::to_string(applied);
+            json += ",\"heights\":[";
+            for (size_t i = 0; i + 1 < points.size(); i += 2)
+            {
+                float height = 0.0f;
+                terrain->SampleHeight(points[i], points[i + 1], height);
+                json += (i == 0 ? "" : ",") + json_number(height);
+            }
+            json += "]," + terrain_state_json(terrain) + "}";
+            return json;
+        }
+
         std::string command_world_summary()
         {
             if (ProgressTracker::IsLoading())
@@ -7594,6 +7871,9 @@ namespace spartan
             { "undo_redo",                     command_undo_redo },
             { "terrain_scatter_get",           command_terrain_scatter_get },
             { "terrain_scatter_set",           command_terrain_scatter_set },
+            { "terrain_create",                command_terrain_create },
+            { "terrain_get",                   command_terrain_get },
+            { "terrain_sculpt",                command_terrain_sculpt },
             { "world_summary",                 [](const McpRequest&) { return command_world_summary(); } },
             { "world_load",                    command_world_load },
             { "world_save",                    command_world_save },
