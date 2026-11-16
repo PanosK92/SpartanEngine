@@ -189,6 +189,10 @@ float rt_trace_transmittance(float3 origin, float3 direction, float t_max)
         }
     }
 
+    // TODO: rgb shadows, the transmittance is rgb but the shadow masks have one channel, so colored glass casts a grey
+    // shadow. the sun mask has a free channel (b), the local light slices are full (visibility, blocker distance,
+    // distance to light, light size) and need a second target, sigma translucency takes rgb as well
+    // TODO: also return the distance to the nearest glass hit, sigma needs it, see nrd_pack_shadows.hlsl
     return blocked ? 0.0f : dot(transmittance, float3(0.2126f, 0.7152f, 0.0722f));
 }
 

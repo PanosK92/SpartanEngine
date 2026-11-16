@@ -88,6 +88,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // A pixel dimmed only by glass has visibility below one but no blocker distance. SIGMA builds the
     // shadow from the distance alone, distance zero would read as a blocker touching the surface and turn
     // the glass shadow black, so it's sent as lit. The glass shadow shows where the raw mask is used.
+    //
+    // TODO: glass shadows on vulkan and d3d12, sigma has a variant for this, SIGMA_SHADOW_TRANSLUCENCY (NRDDescs.h)
+    // 1. rt_trace_transmittance (rt_visibility.hlsl) also returns the distance to the nearest glass hit, the trace writes
+    //    it as the blocker distance of a glass only pixel, so sigma can size the penumbra of the glass shadow
+    // 2. here, drop the blocker_dist <= 0 test, a glass only pixel is packed as blocked at the glass distance, and write
+    //    SIGMA_FrontEnd_PackTranslucency(distance_to_occluder, transmittance) to a new IN_TRANSLUCENCY target,
+    //    transmittance is 0 behind an opaque blocker and the glass transmittance otherwise
+    // 3. create the shadow denoisers as SIGMA_SHADOW_TRANSLUCENCY and pass IN_TRANSLUCENCY (Vulkan/D3D12_VendorTechnology.cpp)
+    // 4. nrd_unpack_shadows.hlsl reads the translucent shadow, .yzw, instead of the opaque one, .x
     float distance_to_occluder = visibility >= 0.99f || blocker_dist <= 0.0f
         ? NRD_FP16_MAX
         : max(blocker_dist, 0.0f);

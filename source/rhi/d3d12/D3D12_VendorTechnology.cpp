@@ -685,6 +685,7 @@ namespace spartan
             }
             else if (preset == Nrd_Preset::Shadows)
             {
+                // TODO: SIGMA_SHADOW_TRANSLUCENCY with an IN_TRANSLUCENCY input for glass shadows, see nrd_pack_shadows.hlsl
                 denoisers[0] = { nrd_common::id_shadows, nrd::Denoiser::SIGMA_SHADOW };
                 denoisers[1] = { nrd_common::id_shadows_local0, nrd::Denoiser::SIGMA_SHADOW };
                 denoisers[2] = { nrd_common::id_shadows_local0 + 1, nrd::Denoiser::SIGMA_SHADOW };

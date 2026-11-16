@@ -478,6 +478,7 @@ namespace spartan
         shadows_ray_generation_r,
         shadows_ray_miss_r,
         shadows_ray_hit_r,
+        ray_traced_shadows_fill_c,
         nrd_pack_shadows_c,
         nrd_unpack_shadows_c,
         path_tracing_c,

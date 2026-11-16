@@ -43,6 +43,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
+    // TODO: read .yzw with SIGMA_SHADOW_TRANSLUCENCY so glass shadows survive denoising, see nrd_pack_shadows.hlsl
     float visibility = saturate(SIGMA_BackEnd_UnpackShadow(tex[thread_id.xy]).x);
     if (is_local)
     {

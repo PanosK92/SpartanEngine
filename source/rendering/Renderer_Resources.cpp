@@ -1561,6 +1561,7 @@ namespace spartan
             { Renderer_Shader::shadows_ray_generation_r,              RHI_Shader_Type::RayGeneration, "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_miss_r,                    RHI_Shader_Type::RayMiss,       "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_hit_r,                     RHI_Shader_Type::RayHit,        "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::ray_traced_shadows_fill_c,             RHI_Shader_Type::Compute,       "ray_traced_shadows_fill.hlsl",         RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::nrd_pack_shadows_c,                    RHI_Shader_Type::Compute,       "nrd_pack_shadows.hlsl",                RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::nrd_unpack_shadows_c,                  RHI_Shader_Type::Compute,       "nrd_unpack_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::path_tracing_sky_c,                  RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_SKY_ONLY",       true,  true },

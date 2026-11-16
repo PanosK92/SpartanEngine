@@ -38,6 +38,9 @@ namespace spartan
         TConsoleVar<bool> cvar_rt_light_culling("r.rt_light_culling", true,
             "Skip zero-contribution lights in reflections and back-facing local shadow rays");
 
+        TConsoleVar<bool> cvar_ray_traced_shadows_checkerboard("r.ray_traced_shadows_checkerboard", true,
+            "Trace half the shadow pixels in a checkerboard, a depth and normal aware fill reconstructs the rest");
+
         TConsoleVar<bool> cvar_ray_traced_reflections_checkerboard("r.ray_traced_reflections_checkerboard", true,
             "Trace and shade half the reflection pixels in a checkerboard, nrd reconstructs the rest");
 
@@ -433,6 +436,7 @@ namespace spartan
         // as a single chunk in the profiler, the sub stages below are plain gpu markers
         RHI_CommandList::BeginPass("ray_traced_shadows");
         {
+            bool checkerboard = false;
             RHI_CommandList::BeginMarker("trace");
             {
                 SetCommonTextures();
@@ -462,11 +466,31 @@ namespace spartan
                 }
                 m_pcb_pass_cpu.set(pass_ray_traced_shadows::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
 
-                uint32_t width  = tex_shadows->GetWidth();
-                uint32_t height = tex_shadows->GetHeight();
-                RHI_CommandList::TraceRays(width, height);
+                // the ray generation shader detects checkerboard from a launch narrower than its targets
+                RHI_Shader* shader_fill = GetShader(Renderer_Shader::ray_traced_shadows_fill_c);
+                checkerboard            = cvar_ray_traced_shadows_checkerboard.GetValueAs<bool>() && tex_shadows_local && shader_fill && shader_fill->IsCompiled();
+                uint32_t width          = tex_shadows->GetWidth();
+                uint32_t height         = tex_shadows->GetHeight();
+                RHI_CommandList::TraceRays(checkerboard ? (width + 1) / 2 : width, height);
             }
             RHI_CommandList::EndMarker();
+
+            // the pixels the checkerboard skipped, from their four traced neighbours
+            if (checkerboard)
+            {
+                RHI_CommandList::BeginMarker("checkerboard_fill");
+                {
+                    const uint32_t thread_group_size = 8;
+                    const uint32_t packed_width      = (tex_shadows->GetWidth() + 1) / 2;
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::ray_traced_shadows_fill_c), "ray_traced_shadows_fill");
+                    SetCommonTextures();
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu); // the slot table the trace used
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
+                    RHI_CommandList::Dispatch((packed_width + thread_group_size - 1) / thread_group_size, (tex_shadows->GetHeight() + thread_group_size - 1) / thread_group_size);
+                }
+                RHI_CommandList::EndMarker();
+            }
 
             Pass_Denoise_RayTracedShadows();
         }
