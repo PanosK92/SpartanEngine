@@ -198,6 +198,9 @@ namespace spartan
         // layers
         const std::array<TerrainLayerRule, terrain_layer_max>& GetLayerRules() const { return m_layer_rules; }
         std::array<TerrainLayerRule, terrain_layer_max>& GetLayerRules()             { return m_layer_rules; }
+        // one surface rule as the <layer> attributes the world file uses, a missing attribute keeps what the rule holds
+        static void SaveLayerRule(pugi::xml_node& node, const TerrainLayerRule& rule);
+        static void LoadLayerRule(const pugi::xml_node& node, TerrainLayerRule& rule);
         Material* GetLayerMaterial(uint32_t index) const;
         bool IsLayerEnabled(uint32_t index) const;
         // how many of the highest weighted layers get sampled per pixel, 1 to 4
@@ -423,6 +426,8 @@ namespace spartan
         float GetEntityY() const;
         // true for any thread other than the generating worker while it is rebuilding the arrays
         bool IsHeightfieldUnsafe() const;
+        // SampleSurface without the worker guard, for the scatter pool the worker itself waits on
+        bool SampleSurfaceUnguarded(float world_x, float world_z, TerrainSurfaceSample& sample_out) const;
         // the local mapping shifted into world xz, for every sampler that is handed world coordinates
         math::Vector4 GetMappingWorld() const;
         bool ApplyShorelineLock();

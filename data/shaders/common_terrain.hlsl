@@ -81,6 +81,28 @@ static const float terrain_blend_fade     = 1400.0f;
 // that, planar plus macro variation covers the repeat past this range
 static const float terrain_hex_distance = 1200.0f;
 static const float terrain_hex_fade     = 1000.0f;
+// the lattice also stands down right around the camera, a tile is several metres across so the few that fit
+// in the near field cannot read as a repeat, while the three way blend costs every map three taps and smears
+// the texels that are actually being looked at, the plain projection is sharper, a third of the fetches, and
+// it is the one height field the parallax march can walk, the lattice fades in past the reach of the march
+static const float terrain_hex_near_start = 30.0f;
+static const float terrain_hex_near_end   = 60.0f;
+
+// parallax, the march runs out before the lattice comes in so the two never disagree about where a stone is
+static const float terrain_parallax_fade_start = 14.0f;
+static const float terrain_parallax_fade_end   = 28.0f;
+// a layer only joins the march while it is one of the two leading picks, its share is its lead over the third
+// one, so a layer entering or leaving the pair does so at zero and the height field never steps
+static const float terrain_parallax_share_min  = 0.02f;
+
+// bare ground between the grass pockets, the layer flagged for it scores this much in the heart of a clearing
+// whatever its own rule says, and the cover that would have grown there gives up this share of its score
+static const float terrain_clearing_score    = 2.5f;
+static const float terrain_clearing_takeover = 0.85f;
+
+// how hard the height maps steer a blend, in octaves of weight across the whole height range at a contrast of
+// one, the taller texels of each layer win the interface so stones stand through soil instead of fading into it
+static const float terrain_height_blend_gain = 6.0f;
 
 // debug views, must match TerrainDebugView in TerrainLayer.h
 static const uint terrain_debug_off        = 0;
@@ -388,24 +410,43 @@ void terrain_sand_detail(float3 position_world, float3 dpdx, float3 dpdy, float 
     float sorting  = terrain_sand_noise(p / 0.35f) * 0.6f + terrain_sand_noise(p / 1.7f) * 0.4f;
     albedo        *= lerp(1.0f, lerp(0.86f, 1.08f, sorting), sand);
 
-    // wind ripples, a gentle windward back and a steep lee face, crests across the wind, sinuous and broken
+    // wind ripples, crests across the wind with a gentle windward back and a steeper lee face
     float2 wind     = buffer_frame.wind.xz;
     float  wind_len = length(wind);
     float2 along    = wind_len > 0.01f ? wind / wind_len : float2(0.89f, 0.45f);
-    float  ripple_fade = (1.0f - smoothstep(0.012f, 0.03f, footprint)) * dry * sand;
+    float  ripple_fade = (1.0f - smoothstep(0.015f, 0.04f, footprint)) * dry * sand;
     if (ripple_fade > 0.0f)
     {
-        static const float wavelength = 0.085f;
-        float  phase   = dot(p, along) / wavelength + (terrain_sand_noise(p / 0.5f) - 0.5f) * 2.2f + terrain_sand_noise(p / 2.3f) * 3.0f;
-        float  t       = frac(phase);
-        float  slope   = t < 0.72f ? 1.0f / 0.72f : -1.0f / 0.28f;
-        float  rounded = t < 0.72f ? smoothstep(0.0f, 0.12f, t) * (1.0f - smoothstep(0.6f, 0.72f, t)) : smoothstep(0.72f, 0.78f, t) * (1.0f - smoothstep(0.94f, 1.0f, t));
-        // the crests fade in and out along their length, the ripple field is never a perfect grid
-        float  amplitude = 0.004f * smoothstep(0.25f, 0.6f, terrain_sand_noise(p / 0.9f + 3.1f));
-        float  dh        = slope * rounded * amplitude / wavelength;
-        gradient        += float3(along.x, 0.0f, along.y) * dh * ripple_fade;
+        // three trains a few degrees and a few millimetres of wavelength apart, a single train draws
+        // endless parallel lines that read as tyre tracks, where three drift out of step the crests
+        // pinch out and fork, spread them much wider than this and the field turns into cross hatching
+        static const float3 angle      = float3(-0.07f, 0.0f, 0.09f);     // radians off the wind
+        static const float3 wavelength = float3(0.124f, 0.133f, 0.145f);  // metres
+        static const float3 share      = float3(0.4f, 0.35f, 0.25f);
+        static const float  skew       = 0.45f;   // how far the crest leans downwind
+        static const float  amplitude  = 0.0055f; // metres either side of the mean
+
+        // the trains share one slow phase wander, under a cycle over a couple of metres, so the crests meander
+        float  wander  = (terrain_sand_noise(p / 0.9f) - 0.5f) * 2.0f + (terrain_sand_noise(p / 2.7f) - 0.5f) * 3.0f;
+        float  height  = 0.0f;
+        float2 slope   = 0.0f;
+        for (uint i = 0; i < 3; i++)
+        {
+            float  s, c;
+            sincos(angle[i], s, c);
+            float2 direction = float2(along.x * c - along.y * s, along.x * s + along.y * c);
+            float  k         = PI2 / wavelength[i];
+            float  phase     = dot(p, direction) * k + wander + i * 2.1f;
+            float  skewed    = phase - skew * sin(phase);
+            height          += share[i] * sin(skewed);
+            slope           += direction * (share[i] * cos(skewed) * (1.0f - skew * cos(phase)) * k);
+        }
+
+        // the wind leaves some of the beach combed and some of it smooth
+        float  combed = lerp(0.25f, 1.0f, smoothstep(0.25f, 0.65f, terrain_sand_noise(p / 2.1f + 3.1f))) * ripple_fade;
+        gradient     += float3(slope.x, 0.0f, slope.y) * amplitude * combed;
         // finer sand settles in the troughs, the coarse grains ride the crests
-        albedo          *= lerp(1.0f, lerp(0.94f, 1.04f, t), ripple_fade);
+        albedo       *= lerp(1.0f, lerp(0.93f, 1.04f, height * 0.5f + 0.5f), combed);
     }
 
     // single grains, about 3 mm, resolved only up close
@@ -438,12 +479,15 @@ struct TerrainLayerPick
 
 // score every layer, keep the highest weighted few and renormalize, the layers that lost their
 // place hand their weight to the winners which is what makes a missing folder harmless
+// clearing is how deep the point sits in the bare ground between grass pockets, only the raster pass knows
+// the pocket field, every other caller passes zero and gets the rules alone
 TerrainLayerPick terrain_pick_layers(
     MaterialParameters surface,
     TerrainAnalysis    analysis,
     float3             position_world,
     float3             normal_world,
-    float              slope_radians
+    float              slope_radians,
+    float              clearing
 )
 {
     TerrainLayerPick pick;
@@ -464,6 +508,12 @@ TerrainLayerPick terrain_pick_layers(
 
     uint  keep   = clamp(surface.terrain_layer_quality(), 1u, terrain_layer_pick_max);
     float jitter = terrain_jitter(position_world, 0.0f);
+
+    // snow lies over a clearing like it lies over everything else
+    if (clearing > 0.0f)
+    {
+        clearing *= 1.0f - saturate(terrain_snow_weight(surface, analysis, position_world, normal_world, jitter) * 4.0f);
+    }
 
     // Keep the sorted winners as each score is produced. Constant-index slots
     // avoid repeatedly scanning and dynamically indexing the full score array.
@@ -489,6 +539,15 @@ TerrainLayerPick terrain_pick_layers(
             slope_radians,
             jitter
         );
+
+        // the soil layer takes the clearing over its own rule and the cover that would have grown there steps
+        // back, the field is the grass slot's own so the ground turns bare exactly where the blades stop
+        if (clearing > 0.0f && !layer.terrain_layer_snow())
+        {
+            score = layer.terrain_layer_clearing()
+                ? max(score, clearing * terrain_clearing_score * layer.terrain_weight_bias)
+                : score * (1.0f - clearing * terrain_clearing_takeover);
+        }
 
         // per layer noise so the isoline grows fingers instead of tracing a slope contour
         if (score > 0.0f)
@@ -552,6 +611,17 @@ TerrainLayerPick terrain_pick_layers(
     }
 
     return pick;
+}
+
+TerrainLayerPick terrain_pick_layers(
+    MaterialParameters surface,
+    TerrainAnalysis    analysis,
+    float3             position_world,
+    float3             normal_world,
+    float              slope_radians
+)
+{
+    return terrain_pick_layers(surface, analysis, position_world, normal_world, slope_radians, 0.0f);
 }
 
 //= hex tiling ===================================================================================
@@ -830,11 +900,88 @@ struct TerrainSurface
     float  sand;      // weight of layers flagged as sand
 };
 
-// parallax amplitude of the dominant pick, zero when that layer does not ask for it or has no height map
-float terrain_pom_height_scale(TerrainLayerPick pick)
+// the height field the parallax march walks, the two leading picks blended into one surface
+// each layer says how many metres its height map spans, so the blend is done in metres and then normalized,
+// a pebble bed meeting bedrock ramps from one relief to the other instead of tearing along the boundary
+struct TerrainParallax
 {
-    MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
-    return (dominant.terrain_layer_pom() && dominant.has_texture_height()) ? dominant.height : 0.0f;
+    uint  texture_index[2]; // packed map of each layer, alpha carries height
+    float tiling[2];        // layer uv per terrain uv
+    float share[2];         // weight of each layer in the normalized height, they sum to one
+    float depth;            // metres between the lowest and the highest point of the blended field
+};
+
+float terrain_parallax_layer_depth(MaterialParameters layer)
+{
+    return (layer.terrain_layer_pom() && layer.has_texture_height()) ? layer.height : 0.0f;
+}
+
+TerrainParallax terrain_parallax_setup(TerrainLayerPick pick, float3 normal_world)
+{
+    TerrainParallax parallax;
+    parallax.texture_index[0] = 0;
+    parallax.texture_index[1] = 0;
+    parallax.tiling[0]        = 1.0f;
+    parallax.tiling[1]        = 1.0f;
+    parallax.share[0]         = 1.0f;
+    parallax.share[1]         = 0.0f;
+    parallax.depth            = 0.0f;
+
+    if (pick.count == 0)
+    {
+        return parallax;
+    }
+
+    MaterialParameters layer0 = material_parameters[NonUniformResourceIndex(pick.index[0])];
+    MaterialParameters layer1 = material_parameters[NonUniformResourceIndex(pick.index[1])];
+
+    // the picks are sorted, so the lead over the third one is never negative
+    float third   = pick.count > 2 ? pick.weight[2] : 0.0f;
+    float weight0 = max(pick.weight[0] - third, 0.0f);
+    float weight1 = pick.count > 1 ? max(pick.weight[1] - third, 0.0f) : 0.0f;
+
+    float metres0 = weight0 * terrain_parallax_layer_depth(layer0);
+    float metres1 = weight1 * terrain_parallax_layer_depth(layer1);
+    float metres  = metres0 + metres1;
+    if (metres <= 0.0f)
+    {
+        return parallax;
+    }
+
+    parallax.texture_index[0] = get_material_texture_index(pick.index[0], material_texture_index_packed);
+    parallax.texture_index[1] = get_material_texture_index(pick.index[1], material_texture_index_packed);
+    parallax.tiling[0]        = layer0.terrain_tiling_scale;
+    parallax.tiling[1]        = layer1.terrain_tiling_scale;
+    parallax.share[0]         = metres0 / metres;
+    parallax.share[1]         = metres1 / metres;
+
+    // the ground projection looks straight down, on a face steep enough for the biplanar switch that
+    // projection is stretched and the height map no longer describes the surface being drawn
+    float ground = smoothstep(
+        terrain_biplanar_threshold - terrain_biplanar_feather,
+        terrain_biplanar_threshold + terrain_biplanar_feather,
+        abs(normal_world.y)
+    );
+    parallax.depth = metres / max(weight0 + weight1, 1e-5f) * ground;
+
+    return parallax;
+}
+
+// normalized height of the blended field at a terrain uv, the second layer is only fetched while it has a say
+float terrain_parallax_height(TerrainParallax parallax, float2 uv, float2 duvdx, float2 duvdy)
+{
+    float height = 0.0f;
+    if (parallax.share[0] > terrain_parallax_share_min)
+    {
+        height += parallax.share[0] * material_textures[NonUniformResourceIndex(parallax.texture_index[0])]
+            .SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv * parallax.tiling[0], duvdx * parallax.tiling[0], duvdy * parallax.tiling[0]).a;
+    }
+    if (parallax.share[1] > terrain_parallax_share_min)
+    {
+        height += parallax.share[1] * material_textures[NonUniformResourceIndex(parallax.texture_index[1])]
+            .SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv * parallax.tiling[1], duvdx * parallax.tiling[1], duvdy * parallax.tiling[1]).a;
+    }
+    return height;
 }
 
 // one layer resolved into albedo, a world space gradient and orm
@@ -1108,6 +1255,7 @@ TerrainSurface terrain_evaluate(
     float detail_weight = terrain_lod_weight(distance_to_camera, terrain_detail_distance, terrain_detail_fade, lod_noise * terrain_detail_fade * 0.75f);
     float blend_weight  = terrain_lod_weight(distance_to_camera, terrain_blend_distance,  terrain_blend_fade,  lod_noise * terrain_blend_fade  * 0.75f);
     float hex_weight    = terrain_lod_weight(distance_to_camera, terrain_hex_distance,    terrain_hex_fade,    lod_noise * terrain_hex_fade    * 0.75f);
+    hex_weight         *= saturate((distance_to_camera - terrain_hex_near_start) / (terrain_hex_near_end - terrain_hex_near_start));
 
     // two layers stay in play at every distance, dropping to one is the hard split, the third and
     // fourth pick collapse over the blend range rather than at the detail range
@@ -1152,7 +1300,7 @@ TerrainSurface terrain_evaluate(
         MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[r])];
         float bias = layer.terrain_deposition_influence > 0.0f ? deposition_bias : 0.0f;
         float contrast = layer.terrain_blend_contrast * detail_weight;
-        float height_mod = lerp(1.0f, sample.height + 0.5f, contrast);
+        float height_mod = exp2((sample.height - 0.5f) * contrast * terrain_height_blend_gain);
         float w = pick.weight[r] * (1.0f + bias * 0.5f) * height_mod;
         if (r >= 2u) w *= blend_weight;
         resolved[r] = w;
@@ -1223,11 +1371,14 @@ TerrainSurface terrain_evaluate(
     // flow is the channel most prone to plateauing, and at one it darkens albedo to a fifth and
     // drops roughness to 0.06, so a saturated basin reads as a slab of dark glass rather than damp
     // ground, the artist control is left free to go all the way up
-    float wet  = saturate(analysis.flow * 1.4f - 0.35f) * 0.7f;
-    wet        = max(wet, surface.terrain_wetness);
-    float pool = saturate(analysis.curvature) * saturate(analysis.flow * 1.6f - 0.4f) * pow(saturate(geometric_normal.y), 8.0f);
-    wet        = saturate(max(wet, pool));
-    float damp = saturate(max(coastal, wet * 0.5f));
+    // the wetness index peaks on every flat plateau (slope in the denominator), without rain it only
+    // means moist soil, darker and slightly smoother, standing water and the glossy film need the
+    // weather wetness, otherwise a sunny meadow reads as a wet sheet at grazing angles
+    float moist = saturate(analysis.flow * 1.4f - 0.35f) * 0.25f;
+    float wet   = max(moist, surface.terrain_wetness);
+    float pool  = saturate(analysis.curvature) * saturate(analysis.flow * 1.6f - 0.4f) * pow(saturate(geometric_normal.y), 8.0f) * surface.terrain_wetness;
+    wet         = saturate(max(wet, pool));
+    float damp  = saturate(max(coastal, wet * 0.5f));
 
     wet = max(wet, coastal * 0.8f);
     pool *= 1.0f - coastal;
@@ -1807,9 +1958,10 @@ TerrainBlend terrain_coating_evaluate(
 
 //= tessellation =================================================================================
 
-// meters of displacement at a layer height of one, the tessellated grid is far coarser than the
-// texel grid so anything larger than this pops between lod rings
-static const float terrain_displacement_scale = 0.5f;
+// a layer's height is the metres of relief its height map spans, the same number the parallax march carves,
+// so tessellated geometry and the march agree, the tessellated grid is far coarser than the texel grid and
+// anything much larger than this pops between lod rings
+static const float terrain_displacement_scale = 1.0f;
 
 // range of the hull tessellation ramp, the displacement fade shares it so the amplitude tracks how much
 // geometry is actually there to carry it, the shadow vertex shader uses the same fade to stay in step

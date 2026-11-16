@@ -19,8 +19,12 @@ struct FogSkyProbe
 {
     float3 sun;
     float3 zenith;
+    float3 isotropic;
     float3 light_dir;
 };
+
+// mean albedo of what lies under the haze, land and sea together
+static const float3 fog_ground_albedo = float3(0.15f, 0.15f, 0.13f);
 
 groupshared FogSkyProbe fog_group_sky;
 static const uint fog_light_mask_words = 8u;
@@ -112,13 +116,46 @@ FogSkyProbe fog_build_sky_probe()
     const float sky_color_max = 50.0f;
     probe.sun    = min(probe.sun, sky_color_max);
     probe.zenith = min(probe.zenith, sky_color_max);
+
+    // haze scatters the whole dome above and the lit ground below, the zenith alone is the
+    // darkest part of a clear sky and left the mist at half the horizon it covers, so the upper
+    // hemisphere is averaged over four elevation bands by solid angle and by cosine (for the
+    // irradiance the ground receives), and the ground sends back its albedo of sun plus sky
+    static const float band_elevation[3] = { 0.1745f, 0.5585f, 0.9948f }; // 10, 32, 57 degrees
+    static const float band_solid[4]     = { 0.342f, 0.365f, 0.233f, 0.060f };
+    static const float band_cosine[4]    = { 0.117f, 0.383f, 0.383f, 0.117f };
+    float3 sky_mean     = probe.zenith * band_solid[3];
+    float3 sky_cos_mean = probe.zenith * band_cosine[3];
+    [unroll]
+    for (uint band = 0u; band < 3u; band++)
+    {
+        float3 ring = 0.0f;
+        [unroll]
+        for (uint i = 0u; i < 6u; i++)
+        {
+            float azimuth = (float(i) + 0.5f * float(band)) * (PI2 / 6.0f);
+            float3 dir    = float3(cos(azimuth) * cos(band_elevation[band]), sin(band_elevation[band]), sin(azimuth) * cos(band_elevation[band]));
+            ring         += min(tex.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(dir), sky_mip).rgb, sky_color_max);
+        }
+        ring         /= 6.0f;
+        sky_mean     += ring * band_solid[band];
+        sky_cos_mean += ring * band_cosine[band];
+    }
+
+    float3 ground_irradiance = PI * sky_cos_mean;
+    if (has_sun)
+    {
+        ground_irradiance += light_parameters[0].color.rgb * light_parameters[0].intensity * saturate(probe.light_dir.y);
+    }
+    float3 ground = fog_ground_albedo * ground_irradiance / PI;
+    probe.isotropic = 0.5f * (sky_mean + ground);
     return probe;
 }
 
-float3 fog_sky_ambient(FogSkyProbe probe, float2 uv, float distance, float3 ray_direction)
+float3 fog_sky_ambient(FogSkyProbe probe, float2 uv, float distance, float3 ray_direction, bool in_water)
 {
     float3 sky_sun = probe.sun;
-    float3 sky_zenith = probe.zenith;
+    float3 sky_zenith = in_water ? probe.zenith : probe.isotropic;
     float sun_lobe = pow(saturate(dot(ray_direction, probe.light_dir)), 4.0f);
 
     // These low-frequency sky probes also need visibility. Without it every enclosed
@@ -262,7 +299,7 @@ float3 fog_ambient_medium(FogSkyProbe probe, float2 uv, float distance, float3 s
         ambient_transmission = exp(-get_ocean_extinction() * depth);
     }
     return any(ambient_transmission > 1e-5f)
-        ? fog_sky_ambient(probe, uv, distance, ray_direction) * ambient_transmission : 0.0f;
+        ? fog_sky_ambient(probe, uv, distance, ray_direction, in_water) * ambient_transmission : 0.0f;
 }
 
 // light parameters do not depend on the sample, build each light once per cell

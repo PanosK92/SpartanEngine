@@ -956,7 +956,8 @@ namespace spartan
                     layer->SetResourceName("terrain_layer_" + rule.name + EXTENSION_MATERIAL);
                     layer->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                     // a fresh material defaults both of these to zero, which would flatten every layer
-                    // normal and disable the parallax march, the layer rule carries the artistic control
+                    // normal, the renderer replaces them with the rule's normal strength and parallax depth
+                    // when it uploads the layer, these only cover a path that reads the material directly
                     layer->SetProperty(MaterialProperty::Normal, 1.0f);
                     layer->SetProperty(MaterialProperty::Height, 1.0f);
 
@@ -1019,6 +1020,90 @@ namespace spartan
         }
 
         Renderer::SetTerrain(params);
+    }
+
+    void Terrain::SaveLayerRule(pugi::xml_node& rule_node, const TerrainLayerRule& rule)
+    {
+        rule_node.append_attribute("name")            = rule.name.c_str();
+        rule_node.append_attribute("slope_min")       = rule.slope_min;
+        rule_node.append_attribute("slope_max")       = rule.slope_max;
+        rule_node.append_attribute("height_min")      = rule.height_min;
+        rule_node.append_attribute("height_max")      = rule.height_max;
+        rule_node.append_attribute("curvature")       = rule.curvature_influence;
+        rule_node.append_attribute("flow")            = rule.flow_influence;
+        rule_node.append_attribute("occlusion")       = rule.occlusion_influence;
+        rule_node.append_attribute("insolation")      = rule.insolation_influence;
+        rule_node.append_attribute("wear")            = rule.wear_influence;
+        rule_node.append_attribute("deposition")      = rule.deposition_influence;
+        rule_node.append_attribute("talus")           = rule.talus_influence;
+        rule_node.append_attribute("tiling_scale")    = rule.tiling_scale;
+        rule_node.append_attribute("blend_contrast")  = rule.blend_contrast;
+        rule_node.append_attribute("porosity")        = rule.porosity;
+        rule_node.append_attribute("macro_strength")  = rule.macro_strength;
+        rule_node.append_attribute("weight_bias")     = rule.weight_bias;
+        rule_node.append_attribute("flags")           = rule.flags;
+        rule_node.append_attribute("surface_cover")   = rule.surface_cover;
+        rule_node.append_attribute("sand")            = rule.sand;
+        rule_node.append_attribute("clearing")        = rule.clearing;
+        rule_node.append_attribute("parallax")        = rule.parallax;
+        rule_node.append_attribute("normal_strength") = rule.normal_strength;
+    }
+
+    void Terrain::LoadLayerRule(const pugi::xml_node& rule_node, TerrainLayerRule& rule)
+    {
+        const string name_before = rule.name;
+
+        rule.name                 = rule_node.attribute("name").as_string(rule.name.c_str());
+        rule.slope_min            = rule_node.attribute("slope_min").as_float(rule.slope_min);
+        rule.slope_max            = rule_node.attribute("slope_max").as_float(rule.slope_max);
+        rule.height_min           = rule_node.attribute("height_min").as_float(rule.height_min);
+        rule.height_max           = rule_node.attribute("height_max").as_float(rule.height_max);
+        rule.curvature_influence  = rule_node.attribute("curvature").as_float(rule.curvature_influence);
+        rule.flow_influence       = rule_node.attribute("flow").as_float(rule.flow_influence);
+        rule.occlusion_influence  = rule_node.attribute("occlusion").as_float(rule.occlusion_influence);
+        rule.insolation_influence = rule_node.attribute("insolation").as_float(rule.insolation_influence);
+        rule.wear_influence       = rule_node.attribute("wear").as_float(rule.wear_influence);
+        rule.deposition_influence = rule_node.attribute("deposition").as_float(rule.deposition_influence);
+        rule.talus_influence      = rule_node.attribute("talus").as_float(rule.talus_influence);
+        rule.tiling_scale         = rule_node.attribute("tiling_scale").as_float(rule.tiling_scale);
+        rule.blend_contrast       = rule_node.attribute("blend_contrast").as_float(rule.blend_contrast);
+        rule.porosity             = rule_node.attribute("porosity").as_float(rule.porosity);
+        rule.macro_strength       = rule_node.attribute("macro_strength").as_float(rule.macro_strength);
+        rule.weight_bias          = rule_node.attribute("weight_bias").as_float(rule.weight_bias);
+        rule.flags                = rule_node.attribute("flags").as_uint(rule.flags) & ~static_cast<uint32_t>(TerrainLayerFlags_Pom);
+
+        // the look of a material belongs to the material, not to the slot it happens to sit in, so a world
+        // saved before one of these existed picks it up from the default rule of the same name
+        // a rule that kept its name keeps what it already holds, that is the path a live edit takes
+        bool cover_default      = rule.surface_cover;
+        bool sand_default       = rule.sand;
+        bool clearing_default   = rule.clearing;
+        float parallax_default  = rule.parallax;
+        float normal_default    = rule.normal_strength;
+        if (rule.name != name_before)
+        {
+            cover_default    = false;
+            sand_default     = false;
+            clearing_default = false;
+            parallax_default = 0.0f;
+            normal_default   = 1.0f;
+            for (const TerrainLayerRule& defaults : TerrainLayerDefaults::Get())
+            {
+                if (defaults.name == rule.name)
+                {
+                    cover_default    = defaults.surface_cover;
+                    sand_default     = defaults.sand;
+                    clearing_default = defaults.clearing;
+                    parallax_default = defaults.parallax;
+                    normal_default   = defaults.normal_strength;
+                }
+            }
+        }
+        rule.surface_cover   = rule_node.attribute("surface_cover").as_bool(cover_default);
+        rule.sand            = rule_node.attribute("sand").as_bool(sand_default);
+        rule.clearing        = rule_node.attribute("clearing").as_bool(clearing_default);
+        rule.parallax        = clamp(rule_node.attribute("parallax").as_float(parallax_default), 0.0f, 0.5f);
+        rule.normal_strength = clamp(rule_node.attribute("normal_strength").as_float(normal_default), 0.0f, 4.0f);
     }
 
     void Terrain::SaveScatterLayer(pugi::xml_node& layer_node, const TerrainScatterLayer& layer)
@@ -1211,26 +1296,7 @@ namespace spartan
         {
             pugi::xml_node rule_node = layers_node.append_child("layer");
 
-            rule_node.append_attribute("name")           = rule.name.c_str();
-            rule_node.append_attribute("slope_min")      = rule.slope_min;
-            rule_node.append_attribute("slope_max")      = rule.slope_max;
-            rule_node.append_attribute("height_min")     = rule.height_min;
-            rule_node.append_attribute("height_max")     = rule.height_max;
-            rule_node.append_attribute("curvature")      = rule.curvature_influence;
-            rule_node.append_attribute("flow")           = rule.flow_influence;
-            rule_node.append_attribute("occlusion")      = rule.occlusion_influence;
-            rule_node.append_attribute("insolation")     = rule.insolation_influence;
-            rule_node.append_attribute("wear")           = rule.wear_influence;
-            rule_node.append_attribute("deposition")     = rule.deposition_influence;
-            rule_node.append_attribute("talus")          = rule.talus_influence;
-            rule_node.append_attribute("tiling_scale")   = rule.tiling_scale;
-            rule_node.append_attribute("blend_contrast") = rule.blend_contrast;
-            rule_node.append_attribute("porosity")       = rule.porosity;
-            rule_node.append_attribute("macro_strength") = rule.macro_strength;
-            rule_node.append_attribute("weight_bias")    = rule.weight_bias;
-            rule_node.append_attribute("flags")          = rule.flags;
-            rule_node.append_attribute("surface_cover")  = rule.surface_cover;
-            rule_node.append_attribute("sand")           = rule.sand;
+            SaveLayerRule(rule_node, rule);
         }
 
         // scatter layers, the whole prop rule set travels with the world
@@ -1336,38 +1402,7 @@ namespace spartan
                  rule_node && rule_index < terrain_layer_max;
                  rule_node = rule_node.next_sibling("layer"), rule_index++)
             {
-                TerrainLayerRule& rule = m_layer_rules[rule_index];
-
-                rule.name                 = rule_node.attribute("name").as_string(rule.name.c_str());
-                rule.slope_min            = rule_node.attribute("slope_min").as_float(rule.slope_min);
-                rule.slope_max            = rule_node.attribute("slope_max").as_float(rule.slope_max);
-                rule.height_min           = rule_node.attribute("height_min").as_float(rule.height_min);
-                rule.height_max           = rule_node.attribute("height_max").as_float(rule.height_max);
-                rule.curvature_influence  = rule_node.attribute("curvature").as_float(rule.curvature_influence);
-                rule.flow_influence       = rule_node.attribute("flow").as_float(rule.flow_influence);
-                rule.occlusion_influence  = rule_node.attribute("occlusion").as_float(rule.occlusion_influence);
-                rule.insolation_influence = rule_node.attribute("insolation").as_float(rule.insolation_influence);
-                rule.wear_influence       = rule_node.attribute("wear").as_float(rule.wear_influence);
-                rule.deposition_influence = rule_node.attribute("deposition").as_float(rule.deposition_influence);
-                rule.talus_influence      = rule_node.attribute("talus").as_float(rule.talus_influence);
-                rule.tiling_scale         = rule_node.attribute("tiling_scale").as_float(rule.tiling_scale);
-                rule.blend_contrast       = rule_node.attribute("blend_contrast").as_float(rule.blend_contrast);
-                rule.porosity             = rule_node.attribute("porosity").as_float(rule.porosity);
-                rule.macro_strength       = rule_node.attribute("macro_strength").as_float(rule.macro_strength);
-                rule.weight_bias          = rule_node.attribute("weight_bias").as_float(rule.weight_bias);
-                rule.flags                = rule_node.attribute("flags").as_uint(rule.flags);
-                bool cover_default = false;
-                bool sand_default  = false;
-                for (const TerrainLayerRule& defaults : TerrainLayerDefaults::Get())
-                {
-                    if (defaults.name == rule.name)
-                    {
-                        cover_default = defaults.surface_cover;
-                        sand_default  = defaults.sand;
-                    }
-                }
-                rule.surface_cover = rule_node.attribute("surface_cover").as_bool(cover_default);
-                rule.sand          = rule_node.attribute("sand").as_bool(sand_default);
+                LoadLayerRule(rule_node, m_layer_rules[rule_index]);
             }
         }
 
@@ -1662,7 +1697,17 @@ namespace spartan
 
     bool Terrain::SampleSurface(float world_x, float world_z, TerrainSurfaceSample& sample_out) const
     {
-        if (IsHeightfieldUnsafe() || m_positions.empty() || !GetEntity() || m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        if (IsHeightfieldUnsafe())
+        {
+            return false;
+        }
+
+        return SampleSurfaceUnguarded(world_x, world_z, sample_out);
+    }
+
+    bool Terrain::SampleSurfaceUnguarded(float world_x, float world_z, TerrainSurfaceSample& sample_out) const
+    {
+        if (m_positions.empty() || !GetEntity() || m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
         {
             return false;
         }
@@ -1724,7 +1769,7 @@ namespace spartan
     uint64_t Terrain::GetScatterCacheKey(uint32_t tile_index, const TerrainScatterLayer& layer, const BoundingBox* bounds) const
     {
         generated_cache::Hash hash;
-        hash.Add(uint32_t(2)); // placement and habitat algorithms
+        hash.Add(uint32_t(3)); // placement and habitat algorithms
         hash.Add(tile_index); hash.Add(m_tile_count); hash.Add(m_dense_width); hash.Add(m_dense_height);
         hash.Add(m_density); hash.Add(m_scale); hash.Add(GetSeaLevelLocal());
         hash.Add(GetEntity()->GetMatrix()); hash.Add(m_world_mapping);
@@ -1862,9 +1907,11 @@ namespace spartan
         {
             translation = entity->GetMatrix().GetTranslation();
         }
+        // the load worker blocks on this pool while it places, so the guard would reject every sample
+        // and bake an empty scatter into the cache, like sample_ground above it reads unguarded
         context.sample_surface = [this, translation](float x, float z, TerrainSurfaceSample& out) -> bool
         {
-            return SampleSurface(x + translation.x, z + translation.z, out);
+            return SampleSurfaceUnguarded(x + translation.x, z + translation.z, out);
         };
 
         placement::find_transforms(layer, context, tile_index, transforms_out, m_triangle_data, coverage_out);

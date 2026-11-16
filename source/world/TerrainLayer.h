@@ -24,14 +24,15 @@ namespace spartan
     {
         TerrainLayerFlags_None      = 0,
         TerrainLayerFlags_Biplanar  = 1u << 0, // project on the two dominant axes, kills cliff stretching
-        TerrainLayerFlags_Pom       = 1u << 1, // parallax occlusion march when this layer dominates up close
+        TerrainLayerFlags_Pom       = 1u << 1, // parallax occlusion march up close, set at upload from TerrainLayerRule::parallax, never serialized
         TerrainLayerFlags_Snow      = 1u << 2, // driven by the snow accumulation model instead of the generic rule
         TerrainLayerFlags_BelowSea  = 1u << 3, // height range is measured against sea level, not absolute world y
         TerrainLayerFlags_HasMaps   = 1u << 4, // set on the surface material once the analysis maps are baked
         TerrainLayerFlags_Cover     = 1u << 5, // may accumulate on upward-facing prop ledges
         TerrainLayerFlags_Woodland  = 1u << 6, // shared terrain-derived woodland footprint
         TerrainLayerFlags_Open      = 1u << 7, // meadow cover recedes inside woodland
-        TerrainLayerFlags_Sand      = 1u << 16 // loose grains, set from TerrainLayerRule::sand, bits 8 to 15 belong to the surface material
+        TerrainLayerFlags_Sand      = 1u << 16, // loose grains, set from TerrainLayerRule::sand, bits 8 to 15 belong to the surface material
+        TerrainLayerFlags_Clearing  = 1u << 17  // bare ground between the grass pockets, set from TerrainLayerRule::clearing
     };
 
     // viewport debug views, packed into bits 12 to 15 of the surface material's terrain_flags
@@ -82,8 +83,14 @@ namespace spartan
         float porosity       = 0.5f; // wet darkening amount
         float macro_strength = 1.0f; // large scale colour breakup amount
         float weight_bias    = 1.0f; // overall priority against the other layers
+        // relief up close, the height map spans this many metres from its darkest to its brightest texel and
+        // the parallax march carves exactly that, so a pebble bed is a few centimetres and bedrock a decimetre,
+        // 0 skips the march, which is right for a layer whose height map carries no shapes
+        float parallax        = 0.0f;
+        float normal_strength = 1.0f; // multiplies the normal map slope, above one deepens the grain
         bool surface_cover   = false;
         bool sand            = false; // loose grains: glints, swash wetness, soft ground that takes deep ruts and footprints
+        bool clearing        = false; // takes the bare ground the grass pockets leave open, whatever the slope and height bands say
 
         uint32_t flags = TerrainLayerFlags_None;
     };

@@ -115,6 +115,44 @@ float grass_gaussian_cdf(float x)
     return saturate(1.0f / (1.0f + exp(-1.702f * x)));
 }
 
+// the pocket field itself, uniform on 0 to 1, high in the heart of a pocket and low in the heart of the bare
+// ground between them, the terrain reads it directly to know how deep into a clearing a point sits
+float grass_patch_field(float2 world_xz, float patch_size)
+{
+    float inv = 1.0f / patch_size;
+
+    // domain warp. thresholding a plain fbm gives rounded blobs with a smooth outline, pushing the
+    // sample point around with a second low frequency field is what frays the boundary into
+    // something that reads as grown rather than stamped
+    float2 warp = float2(
+        grass_value_noise(world_xz * inv * 0.61f, grass_patch_seed + 811u),
+        grass_value_noise(world_xz * inv * 0.61f, grass_patch_seed + 977u)
+    );
+    float2 p = world_xz * inv + warp * 0.55f;
+
+    return grass_gaussian_cdf(
+        grass_fbm(p, grass_patch_seed) / grass_patch_sigma
+    );
+}
+
+float grass_patch_threshold(float u, float coverage, float edge, bool invert)
+{
+    // u is uniform, so thresholding at 1 - coverage passes exactly that fraction of the ground and
+    // the feather either side costs nothing on average, it only turns the boundary into a fringe.
+    // an inverted slot asks for the complement first and flips, which lands it on the same threshold
+    // as the slot it mirrors, so the two tile the ground with no gap and no overlap
+    float share = invert ? (1.0f - coverage) : coverage;
+    float t     = 1.0f - share;
+    float e     = max(edge * grass_patch_fringe, 1e-3f);
+    float w     = smoothstep(t - e, t + e, u);
+    if (invert)
+    {
+        w = 1.0f - w;
+    }
+
+    return w;
+}
+
 // fraction of this point's budget the patch structure keeps, 1 deep inside a pocket and 0 on bare
 // ground, with a fringe in between. coverage means the same thing whether the slot is inverted or
 // not, it is always the share of ground this slot ends up taking
@@ -132,35 +170,7 @@ float grass_patch_weight(
         return 1.0f;
     }
 
-    float inv = 1.0f / patch_size;
-
-    // domain warp. thresholding a plain fbm gives rounded blobs with a smooth outline, pushing the
-    // sample point around with a second low frequency field is what frays the boundary into
-    // something that reads as grown rather than stamped
-    float2 warp = float2(
-        grass_value_noise(world_xz * inv * 0.61f, grass_patch_seed + 811u),
-        grass_value_noise(world_xz * inv * 0.61f, grass_patch_seed + 977u)
-    );
-    float2 p = world_xz * inv + warp * 0.55f;
-
-    float u = grass_gaussian_cdf(
-        grass_fbm(p, grass_patch_seed) / grass_patch_sigma
-    );
-
-    // u is uniform, so thresholding at 1 - coverage passes exactly that fraction of the ground and
-    // the feather either side costs nothing on average, it only turns the boundary into a fringe.
-    // an inverted slot asks for the complement first and flips, which lands it on the same threshold
-    // as the slot it mirrors, so the two tile the ground with no gap and no overlap
-    float share = invert ? (1.0f - coverage) : coverage;
-    float t     = 1.0f - share;
-    float e     = max(edge * grass_patch_fringe, 1e-3f);
-    float w     = smoothstep(t - e, t + e, u);
-    if (invert)
-    {
-        w = 1.0f - w;
-    }
-
-    return w;
+    return grass_patch_threshold(grass_patch_field(world_xz, patch_size), coverage, edge, invert);
 }
 
 #endif

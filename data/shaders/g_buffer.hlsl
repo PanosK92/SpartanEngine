@@ -28,27 +28,43 @@ struct gbuffer
 // constants
 // Multipliers preserve each species' authored reflectance and leaf detail.
 // Adding a constant colour lifts dark foliage and washes out the texture.
-static const float3 vegetation_greener  = float3(0.92f, 1.02f, 0.92f);
-static const float3 vegetation_yellower = float3(1.06f, 0.98f, 0.84f);
-static const float3 vegetation_browner  = float3(0.92f, 0.85f, 0.76f);
-// Linear albedo: muted greens with olive and occasional dry straw, rather than
-// saturated lime tips. Sunlight and transmission supply the brightness naturally.
-static const float3 grass_base          = float3(0.016f, 0.027f, 0.012f);
-static const float3 grass_mature         = float3(0.040f, 0.062f, 0.025f);
-static const float3 grass_fresh          = float3(0.054f, 0.087f, 0.038f);
-static const float3 grass_olive          = float3(0.075f, 0.079f, 0.036f);
-static const float3 grass_straw          = float3(0.145f, 0.116f, 0.058f);
+// Photographed crowns sit at 1.1 to 1.25 times as much green as red, leaf atlases are usually painted greener,
+// so the spread leans olive and yellow instead of adding more green.
+static const float3 vegetation_greener  = float3(0.98f, 1.00f, 0.90f);
+static const float3 vegetation_yellower = float3(1.10f, 0.98f, 0.80f);
+static const float3 vegetation_browner  = float3(1.00f, 0.88f, 0.74f);
+// Linear albedo, measured leaf reflectance rather than a painted green: a living blade reflects about a tenth of
+// the light (the foliage patch of a colour chart is 0.095, 0.150, 0.056) and its green is only 1.2 to 1.5 times
+// its red, lime tips with twice as much green as red are what reads as nuclear once the blade is lit properly.
+// The root is thatch, the colour of the ground the blade grows out of.
+static const float3 grass_base          = float3(0.050f, 0.056f, 0.020f);
+static const float3 grass_mature         = float3(0.064f, 0.092f, 0.024f);
+static const float3 grass_fresh          = float3(0.078f, 0.118f, 0.029f);
+static const float3 grass_olive          = float3(0.098f, 0.112f, 0.036f);
+static const float3 grass_straw          = float3(0.200f, 0.165f, 0.075f);
+static const float  grass_normal_lean    = 0.4f;
 static const float3 flower_base         = float3(0.05f, 0.07f, 0.03f);
 static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
 static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
-// parallax occlusion mapping
-static const uint  POM_MAX_STEPS         = 40;
-static const uint  POM_MIN_STEPS         = 12;
-static const uint  POM_REFINE_ITERATIONS = 6;
-static const float POM_FADE_START        = 25.0f;
-static const float POM_FADE_END          = 50.0f;
-static const float POM_HEIGHT_SCALE      = 0.04f;
+// contact refinement parallax mapping, a coarse march finds the slice the ray enters the relief in and a second
+// march walks that one slice in finer steps, so the surface is resolved at coarse times refine slices for the
+// price of coarse plus refine fetches
+static const uint  POM_MAX_STEPS    = 32;
+static const uint  POM_MIN_STEPS    = 10;
+static const uint  POM_REFINE_STEPS = 8;
+static const float POM_FADE_START   = 25.0f;
+static const float POM_FADE_END     = 50.0f;
+static const float POM_HEIGHT_SCALE = 0.04f;
+
+// terrain relief, the depth is authored per layer in metres so a handful of steps resolves it
+static const float TERRAIN_POM_MAX_STEPS       = 12.0f;
+static const float TERRAIN_POM_MIN_STEPS       = 4.0f;
+static const uint  TERRAIN_POM_REFINE_STEPS    = 5;
+static const float TERRAIN_POM_MIN_COSINE      = 0.3f;  // caps the shift at about three times the relief
+static const uint  TERRAIN_POM_SHADOW_STEPS    = 5;
+static const float TERRAIN_POM_SHADOW_HARDNESS = 3.0f;
+static const float TERRAIN_RELIEF_SHADOW       = 0.75f; // how much occlusion a fully buried texel loses
 // scatter detail, a chip swaps the ground blend for sinking to its dirt line somewhere between the blend reach and this many times it
 static const float scatter_blend_hand_over = 2.0f;
 // height of the dirt line in bands, terrain_blend_weights puts the middle of the fade half way up
@@ -98,7 +114,7 @@ float parallax_sample_height(uint texture_index, float2 uv, float2 dx, float2 dy
     return material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv, dx, dy).a;
 }
 
-// steep parallax march with a binary refinement and an analytic final intersection, texture_index is
+// contact refinement parallax march with an analytic final intersection, texture_index is
 // the absolute bindless index of the packed map whose alpha carries height
 float2 parallax_occlusion_uv(
     uint   texture_index,
@@ -134,7 +150,7 @@ float2 parallax_occlusion_uv(
         cur_samp   = parallax_sample_height(texture_index, cur_uv, dx, dy);
     }
 
-    // steep parallax linear search
+    // coarse search, stops at the first slice whose far side is under the surface
     [loop]
     while (cur_layer > cur_samp && cur_layer > 0.0f)
     {
@@ -147,29 +163,157 @@ float2 parallax_occlusion_uv(
         cur_samp   = parallax_sample_height(texture_index, cur_uv, dx, dy);
     }
 
-    // binary search refinement, narrows the bracket while preserving the above/below invariant
-    [unroll(POM_REFINE_ITERATIONS)]
-    for (uint i = 0; i < POM_REFINE_ITERATIONS; ++i)
+    // contact refinement, step back to the last sample above the surface and walk the slice again in finer
+    // steps, unlike a binary search this stops at the first crossing, so a thin ridge inside the slice is hit
+    // on its near side instead of being skipped for whatever lies behind it
+    float2 fine_uv    = (cur_uv - prev_uv) / (float)POM_REFINE_STEPS;
+    float  fine_layer = (cur_layer - prev_layer) / (float)POM_REFINE_STEPS;
+    if (fine_layer < 0.0f)
     {
-        float2 mid_uv    = (cur_uv + prev_uv)       * 0.5f;
-        float  mid_layer = (cur_layer + prev_layer) * 0.5f;
-        float  mid_samp  = parallax_sample_height(texture_index, mid_uv, dx, dy);
-        bool   above     = mid_layer > mid_samp;
+        [loop]
+        for (uint i = 1; i < POM_REFINE_STEPS; i++)
+        {
+            float2 step_uv    = prev_uv + fine_uv;
+            float  step_layer = prev_layer + fine_layer;
+            float  step_samp  = parallax_sample_height(texture_index, step_uv, dx, dy);
+            if (step_layer <= step_samp)
+            {
+                cur_uv    = step_uv;
+                cur_layer = step_layer;
+                cur_samp  = step_samp;
+                break;
+            }
 
-        cur_uv     = above ? mid_uv     : cur_uv;
-        cur_layer  = above ? mid_layer  : cur_layer;
-        cur_samp   = above ? mid_samp   : cur_samp;
-        prev_uv    = above ? prev_uv    : mid_uv;
-        prev_layer = above ? prev_layer : mid_layer;
-        prev_samp  = above ? prev_samp  : mid_samp;
+            prev_uv    = step_uv;
+            prev_layer = step_layer;
+            prev_samp  = step_samp;
+        }
     }
 
     // analytical intersection between the ray and the linear segment connecting the two samples,
-    // this is what eliminates the staircase that pure binary search leaves behind
+    // this is what eliminates the staircase the fine steps would leave behind
     float h_above_prev = max(prev_layer - prev_samp, 0.0f);
     float h_below_cur  = max(cur_samp   - cur_layer, 0.0f);
     float t            = h_above_prev / max(h_above_prev + h_below_cur, 1e-5f);
     return lerp(prev_uv, cur_uv, t);
+}
+
+// terrain relief dies off a little later at grazing angles than a wall does, the ground is nearly always seen
+// at a shallow angle and a fade tuned for facing surfaces would leave it flat past a few metres
+float terrain_parallax_fade(float distance, float n_dot_v)
+{
+    float distance_fade = saturate((terrain_parallax_fade_end - distance) / (terrain_parallax_fade_end - terrain_parallax_fade_start));
+    float grazing_fade  = smoothstep(0.04f, 0.2f, n_dot_v);
+    return distance_fade * grazing_fade;
+}
+
+// march the blended terrain height field, depth_uv is the relief in terrain uv
+// unlike the offset limited march above this one follows the real ray, the shift grows with the tangent of
+// the view angle, which is what makes a stone slide over the ground behind it, the tangent is capped so a
+// grazing ray cannot run across a whole tile
+// shadow comes back as how much of the sun the relief around the hit hides, 0 lit to 1 buried
+float2 terrain_parallax_uv(
+    TerrainParallax parallax,
+    float2 uv,
+    float2 duvdx,
+    float2 duvdy,
+    float3 v_tangent,
+    float3 l_tangent,
+    float  depth_uv,
+    float2 position_screen,
+    out float shadow
+)
+{
+    shadow = 0.0f;
+    terrain_limit_aniso(duvdx, duvdy);
+
+    float n_dot_v  = saturate(v_tangent.z);
+    uint num_steps = (uint)lerp(TERRAIN_POM_MAX_STEPS, TERRAIN_POM_MIN_STEPS, n_dot_v);
+
+    float2 delta_uv  = v_tangent.xy / max(v_tangent.z, TERRAIN_POM_MIN_COSINE) * depth_uv / num_steps;
+    float  layer_h   = 1.0f / num_steps;
+    float2 cur_uv    = uv;
+    float  cur_layer = 1.0f;
+
+    // the bracket opens at the undisplaced surface, so a texel that is already a peak resolves between
+    // there and the first slice instead of snapping to the slice
+    float2 prev_uv    = cur_uv;
+    float  prev_layer = cur_layer;
+
+    // shift the layer grid by a fraction of a step, taa averages the moving slices away
+    if (is_taa_enabled())
+    {
+        float dither = noise_interleaved_gradient(position_screen, false);
+        cur_uv      -= delta_uv * dither;
+        cur_layer   -= layer_h * dither;
+    }
+    float cur_samp  = terrain_parallax_height(parallax, cur_uv, duvdx, duvdy);
+    float prev_samp = cur_samp;
+
+    [loop]
+    while (cur_layer > cur_samp && cur_layer > 0.0f)
+    {
+        prev_uv    = cur_uv;
+        prev_layer = cur_layer;
+        prev_samp  = cur_samp;
+
+        cur_uv    -= delta_uv;
+        cur_layer -= layer_h;
+        cur_samp   = terrain_parallax_height(parallax, cur_uv, duvdx, duvdy);
+    }
+
+    // contact refinement, the coarse march only says which slice the ray enters the relief in, walking that
+    // slice again in finer steps from its near side finds the first crossing inside it, so a pebble thinner
+    // than a coarse slice keeps its near edge and the field is resolved at coarse times refine slices
+    float2 fine_uv    = (cur_uv - prev_uv) / (float)TERRAIN_POM_REFINE_STEPS;
+    float  fine_layer = (cur_layer - prev_layer) / (float)TERRAIN_POM_REFINE_STEPS;
+    if (fine_layer < 0.0f)
+    {
+        [loop]
+        for (uint i = 1; i < TERRAIN_POM_REFINE_STEPS; i++)
+        {
+            float2 step_uv    = prev_uv + fine_uv;
+            float  step_layer = prev_layer + fine_layer;
+            float  step_samp  = terrain_parallax_height(parallax, step_uv, duvdx, duvdy);
+            if (step_layer <= step_samp)
+            {
+                cur_uv    = step_uv;
+                cur_layer = step_layer;
+                cur_samp  = step_samp;
+                break;
+            }
+
+            prev_uv    = step_uv;
+            prev_layer = step_layer;
+            prev_samp  = step_samp;
+        }
+    }
+
+    // the ray crossed the surface between the last two samples, intersect it with the segment joining them
+    float h_above_prev = max(prev_layer - prev_samp, 0.0f);
+    float h_below_cur  = max(cur_samp   - cur_layer, 0.0f);
+    float t            = h_above_prev / max(h_above_prev + h_below_cur, 1e-5f);
+    float2 hit_uv      = lerp(prev_uv, cur_uv, t);
+    float  hit_height  = lerp(prev_samp, cur_samp, t);
+
+    // walk from the hit toward the sun until the ray clears the top of the relief, anything standing above
+    // it on the way is a blocker, how far it stands above over how far away it is gives the penumbra
+    if (l_tangent.z > 0.02f)
+    {
+        float2 light_uv = l_tangent.xy / max(l_tangent.z, TERRAIN_POM_MIN_COSINE) * depth_uv * (1.0f - hit_height);
+        float  dither   = is_taa_enabled() ? noise_interleaved_gradient(position_screen, true) : 0.5f;
+        [unroll(TERRAIN_POM_SHADOW_STEPS)]
+        for (uint i = 0; i < TERRAIN_POM_SHADOW_STEPS; i++)
+        {
+            float s      = ((float)i + 0.25f + 0.75f * dither) / (float)TERRAIN_POM_SHADOW_STEPS;
+            float ray    = lerp(hit_height, 1.0f, s);
+            float height = terrain_parallax_height(parallax, hit_uv + light_uv * s, duvdx, duvdy);
+            shadow       = max(shadow, (height - ray) / s);
+        }
+        shadow = saturate(shadow * TERRAIN_POM_SHADOW_HARDNESS) * saturate(l_tangent.z * 8.0f);
+    }
+
+    return hit_uv;
 }
 
 // compute grass blade color with variation
@@ -238,31 +382,43 @@ static const float grass_far_undercoat  = 0.45f; // share of the carpet laid und
 static const float grass_far_top_cover  = 0.6f;  // fraction of the ground a full meadow hides seen from straight above
 static const float grass_far_brightness = 1.0f;  // opaque ground has no transmission, this stands in for the light blades let through
 
-float grass_far_cover(float3 position_world, float3 normal_world, float3 view_direction, float distance, float footprint)
+// the clearing is the heart of the bare ground between pockets, as fractions of the pocket threshold in the
+// uniform patch space, fully bare below inner and gone by outer, the ground between outer and the pocket edge
+// keeps its own layer, the layer scoring is not linear in this so the share of soil on screen has to be looked at
+static const float grass_clearing_inner = 0.1f;
+static const float grass_clearing_outer = 0.28f;
+
+struct GrassGround
 {
+    float density;  // how thick the grass slot stands here, biome, slope and pocket together
+    float clearing; // 1 in the heart of the bare ground between pockets, 0 under a pocket and where no grass could grow anyway
+};
+
+// where the grass slot grows and where it leaves the ground open, the same gates the populate pass runs
+GrassGround grass_ground_evaluate(float3 position_world, float3 normal_world, float footprint)
+{
+    GrassGround ground;
+    ground.density  = 0.0f;
+    ground.clearing = 0.0f;
+
     if (buffer_frame.grass_far_tint.w <= 0.0f)
     {
-        return 0.0f;
+        return ground;
     }
 
     float4 fade = buffer_frame.grass_far_fade;
     float4 gate = buffer_frame.grass_far_gate;
-    float ring  = lerp(grass_far_undercoat * smoothstep(fade.x, fade.y, distance), 1.0f, smoothstep(fade.y, fade.z, distance));
-    if (ring <= 0.0f)
-    {
-        return 0.0f;
-    }
 
     float slope_fit = saturate((acos(saturate(gate.y)) - acos(saturate(normal_world.y))) / grass_slope_fade);
     if (slope_fit <= 0.0f)
     {
-        return 0.0f;
+        return ground;
     }
 
     float2 normalized = (position_world.xz - buffer_frame.terrain_height_mapping.xy) * buffer_frame.terrain_height_mapping.zw;
     if (any(normalized < 0.0f) || any(normalized > 1.0f))
     {
-        return 0.0f;
+        return ground;
     }
 
     uint mask_w;
@@ -278,7 +434,7 @@ float grass_far_cover(float3 position_world, float3 normal_world, float3 view_di
         uint dominant = min((uint)(index_a * 255.0f + 0.5f), grass_ground_layer_max - 1u);
         if ((ground_mask & (1u << dominant)) == 0u)
         {
-            return 0.0f;
+            return ground;
         }
     }
 
@@ -295,12 +451,49 @@ float grass_far_cover(float3 position_world, float3 normal_world, float3 view_di
     // ground the patches take on average
     float patch_size     = abs(fade.w);
     float patch_coverage = saturate(buffer_frame.grass_far_patch.x);
-    float patch          = grass_patch_weight(position_world.xz, patch_size, patch_coverage, buffer_frame.grass_far_patch.y, fade.w < 0.0f);
-    float patch_mean     = patch_size > 0.0f ? patch_coverage : 1.0f;
-    patch                = lerp(patch, patch_mean, saturate(footprint * 6.0f / max(patch_size, 0.01f)));
+    bool  invert         = fade.w < 0.0f;
+    float patch          = 1.0f;
+    float patch_mean     = 1.0f;
+    float clearing       = 0.0f;
+    if (patch_size > 0.0f && patch_coverage < 1.0f)
+    {
+        float u    = grass_patch_field(position_world.xz, patch_size);
+        patch      = grass_patch_threshold(u, patch_coverage, buffer_frame.grass_far_patch.y, invert);
+        patch_mean = patch_coverage;
+
+        // an inverted slot grows on the bare ground itself, it leaves no clearing behind
+        if (!invert)
+        {
+            float threshold = 1.0f - patch_coverage;
+            clearing        = 1.0f - smoothstep(threshold * grass_clearing_inner, threshold * grass_clearing_outer, u);
+        }
+    }
+    // the pocket settles into its mean, the clearing settles into nothing, a constant share of soil over every
+    // far hillside would tint the whole meadow instead of marking where the blades stop
+    float settle = saturate(footprint * 6.0f / max(patch_size, 0.01f));
+    patch        = lerp(patch, patch_mean, settle);
+    clearing    *= 1.0f - settle;
+
+    ground.density  = biome * slope_fit * patch;
+    ground.clearing = biome * slope_fit * clearing;
+    return ground;
+}
+
+float grass_far_cover(float3 normal_world, float3 view_direction, float distance, float density)
+{
+    if (buffer_frame.grass_far_tint.w <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float4 fade = buffer_frame.grass_far_fade;
+    float ring  = lerp(grass_far_undercoat * smoothstep(fade.x, fade.y, distance), 1.0f, smoothstep(fade.y, fade.z, distance));
+    if (ring <= 0.0f)
+    {
+        return 0.0f;
+    }
 
     // a meadow hides more of the ground the flatter it is seen, beer lambert through the blade layer
-    float density = biome * slope_fit * patch;
     float n_dot_v = saturate(abs(dot(normal_world, view_direction)));
     float opacity = 1.0f - pow(saturate(1.0f - grass_far_top_cover * density), 1.0f / max(n_dot_v, 0.15f));
     return opacity * ring;
@@ -571,12 +764,18 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float analysis_lod = 0.0f;
         TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
         float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
-        TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians);
 
-        // parallax on the dominant layer height map, the offset uv then feeds every pick so the layers
-        // stay registered with each other, a face pointing along world x has no planar frame so it is skipped
-        float pom_height_scale = terrain_pom_height_scale(pick);
-        if (pom_height_scale > 0.0f && abs(vertex.normal.x) < 0.95f)
+        // the grass slot's own pocket field, the layers read it so soil shows exactly where the blades stop
+        GrassGround grass_ground = grass_ground_evaluate(position_world, vertex.normal, max(length(dpdx), length(dpdy)));
+        TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians, grass_ground.clearing);
+
+        // parallax, the two leading layers are marched as one height field in metres and the offset uv then
+        // feeds every pick so the layers stay registered with each other, the layers decide the relief so a
+        // world with none switched on pays nothing, a face pointing along world x has no planar frame
+        float relief_shadow      = 0.0f;
+        float3 position_shaded   = position_world;
+        TerrainParallax parallax = terrain_parallax_setup(pick, vertex.normal);
+        if (parallax.depth > 0.0f && abs(vertex.normal.x) < 0.95f)
         {
             // planar uv runs along world x and z, so the frame is built from those rather than the mesh tangent
             float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, float3(1.0f, 0.0f, 0.0f));
@@ -584,28 +783,26 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             v_tangent.y               = -v_tangent.y; // the bitangent of that frame points down world z, planar v runs up it
 
             float n_dot_v = saturate(v_tangent.z);
-            float fade    = parallax_fade(distance, n_dot_v);
+            float fade    = terrain_parallax_fade(distance, n_dot_v);
             if (fade > 0.0f)
             {
-                MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
-                float layer_scale           = dominant.terrain_tiling_scale;
-                float2 layer_uv             = parallax_occlusion_uv(
-                    get_material_texture_index(pick.index[0], material_texture_index_packed),
-                    uv * layer_scale,
-                    duvdx * layer_scale,
-                    duvdy * layer_scale,
-                    v_tangent,
-                    n_dot_v,
-                    pom_height_scale * POM_HEIGHT_SCALE * fade,
-                    vertex.position.xy
+                float3 l_tangent = mul(normalize(-light_parameters[0].direction), world_to_tangent);
+                l_tangent.y      = -l_tangent.y;
+
+                float2 uv_surface = uv;
+                uv = terrain_parallax_uv(
+                    parallax, uv, duvdx, duvdy, v_tangent, l_tangent, parallax.depth * fade * tiling.x, vertex.position.xy, relief_shadow
                 );
-                uv                = layer_uv / max(layer_scale, 1e-4f);
+                relief_shadow    *= fade;
                 vertex.uv_misc.xy = uv;
+
+                // everything keyed off world xz, the sand ripples above all, has to slide with the texels
+                position_shaded.xz += (uv - uv_surface) / tiling;
             }
         }
 
         terrain = terrain_evaluate(
-            material, pick, analysis, position_world, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance
+            material, pick, analysis, position_shaded, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance
         );
 
         // the layer albedo already carries the layer colour, the path tracer does the same
@@ -613,7 +810,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         normal          = terrain.normal;
         roughness       = terrain.roughness;
         metalness       = terrain.metalness;
-        occlusion       = terrain.occlusion;
+        // the relief shades itself, the lighting pass turns low occlusion into a darker terminator on direct
+        // light, which is as close to a shadow as a deferred surface gets without a channel of its own
+        occlusion       = terrain.occlusion * (1.0f - relief_shadow * TERRAIN_RELIEF_SHADOW);
         terrain_sand    = terrain.sand;
         terrain_shaded  = true;
 
@@ -622,7 +821,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float rut_bare   = saturate(abs(rut_offset) / 0.01f);
 
         // past the blades the meadow is still there, it just has to be drawn as the carpet colour
-        float grass_cover = grass_far_cover(position_world, vertex.normal, -camera_to_pixel / max(distance, 1e-4f), distance, max(length(dpdx), length(dpdy)));
+        float grass_cover = grass_far_cover(vertex.normal, -camera_to_pixel / max(distance, 1e-4f), distance, grass_ground.density);
         grass_cover      *= 1.0f - rut_bare;
         if (grass_cover > 0.0f)
         {
@@ -690,10 +889,12 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // wind sheen: blades laid over by a gust turn their pale, glossy flank to the light,
         // so fronts read as bright waves rolling across the field, strongest at the tips
         float gust  = wind_gust(position_world.xz, (float)buffer_frame.time);
-        float sheen = smoothstep(0.3f, 0.85f, gust) * grass_wind_response();
+        // the flank is the same leaf seen at a flatter angle, a few tens of percent brighter, an 80 percent
+        // lift lit hard edged bands that read as a pattern sliding over the grass
+        float sheen = smoothstep(0.45f, 1.0f, gust) * grass_wind_response();
         sheen      *= smoothstep(0.1f, 0.9f, height_percent);
-        float3 flank = lerp(albedo.rgb, luminance(albedo.rgb) * float3(1.08f, 1.04f, 0.78f), 0.4f) * 1.8f;
-        albedo.rgb   = lerp(albedo.rgb, flank, sheen * 0.85f);
+        float3 flank = lerp(albedo.rgb, luminance(albedo.rgb) * float3(1.08f, 1.04f, 0.78f), 0.3f) * 1.3f;
+        albedo.rgb   = lerp(albedo.rgb, flank, sheen * 0.6f);
         roughness    = lerp(roughness, roughness * 0.72f, sheen);
     }
     else if (surface.is_flower())
@@ -778,6 +979,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float face_sign  = is_front_face * 2.0f - 1.0f;
         normal          *= face_sign;
         vertex.tangent  *= face_sign;
+
+        // a blade stands on end, so its face meets a high sun at a far steeper angle than the ground does and a
+        // meadow lit from above comes out several times darker than the soil it grows on. real blades arch over
+        // and a canopy returns light the way the ground under it does, leaning the shading normal up carries
+        // that, the blade keeps enough of its own facing for the roll across its width and for a low sun to
+        // still light it through its back
+        if (surface.is_grass_blade())
+        {
+            normal = normalize(lerp(normal, float3(0.0f, 1.0f, 0.0f), grass_normal_lean));
+        }
     }
     
     // packed material texture (occlusion, roughness, metalness)

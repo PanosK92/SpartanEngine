@@ -1767,6 +1767,308 @@ namespace spartan
             return "{\"ok\":true," + terrain_state_json(terrain) + "}";
         }
 
+        // must match TerrainDebugView in TerrainLayer.h
+        const char* const terrain_debug_view_names[] =
+        {
+            "off", "weights", "dominant_layer", "curvature", "flow", "occlusion", "insolation", "deposition", "wear", "talus", "wetness"
+        };
+
+        std::string layer_rule_json(Terrain* terrain, uint32_t index)
+        {
+            pugi::xml_document document;
+            pugi::xml_node node = document.append_child("layer");
+            Terrain::SaveLayerRule(node, terrain->GetLayerRules()[index]);
+
+            std::string json = "{\"index\":" + std::to_string(index);
+            json += ",\"enabled\":" + json_bool(terrain->IsLayerEnabled(index));
+            json += ",\"attributes\":{";
+            bool first = true;
+            for (const pugi::xml_attribute& attribute : node.attributes())
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(attribute.name()) + ":" + xml_attribute_to_json(attribute);
+            }
+            json += "}}";
+            return json;
+        }
+
+        std::string terrain_surface_state_json(Terrain* terrain)
+        {
+            const uint32_t view = std::min(static_cast<uint32_t>(terrain->GetDebugView()), static_cast<uint32_t>(TerrainDebugView::Max) - 1u);
+
+            std::string json = "\"terrain_id\":" + json_string(std::to_string(terrain->GetEntity()->GetObjectId()));
+            json += ",\"debug_view\":" + json_string(terrain_debug_view_names[view]);
+            json += ",\"layer_quality\":" + std::to_string(terrain->GetLayerQuality());
+            json += ",\"snow_amount\":" + json_number(terrain->GetSnowAmount());
+            json += ",\"wetness\":" + json_number(terrain->GetWetness());
+            json += ",\"blend_height\":" + json_number(terrain->GetBlendHeight());
+            return json;
+        }
+
+        std::string command_terrain_layers_get(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+
+            std::string json = "{\"ok\":true," + terrain_surface_state_json(terrain);
+            json += ",\"flag_bits\":{\"biplanar\":1,\"snow\":4,\"below_sea\":8,\"woodland\":64,\"open\":128}";
+            json += ",\"layers\":[";
+            for (uint32_t i = 0; i < terrain_layer_max; i++)
+            {
+                if (i != 0)
+                {
+                    json += ",";
+                }
+                json += layer_rule_json(terrain, i);
+            }
+            json += "]}";
+            return json;
+        }
+
+        // layer picks one rule to edit through its world file attributes, the terrain wide look values and the
+        // debug view ride along as plain arguments, either half is optional
+        std::string command_terrain_layers_set(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> layer_arg = get_argument(request, "layer");
+            const std::optional<std::string> view_arg  = get_argument(request, "debug_view");
+            const bool edits_state = layer_arg || get_argument(request, "layer_quality") || get_argument(request, "snow_amount") ||
+                                     get_argument(request, "wetness") || get_argument(request, "blend_height");
+            if (edits_state && !is_edit_mode())
+            {
+                return json_error("terrain layer edits require edit mode, only debug_view works outside it");
+            }
+
+            bool reload_materials = false;
+            uint32_t index        = terrain_layer_max;
+            if (layer_arg)
+            {
+                auto& rules           = terrain->GetLayerRules();
+                uint64_t parsed_index = 0;
+                if (parse_uint64(*layer_arg, parsed_index))
+                {
+                    index = parsed_index < terrain_layer_max ? static_cast<uint32_t>(parsed_index) : terrain_layer_max;
+                }
+                else
+                {
+                    for (uint32_t i = 0; i < terrain_layer_max; i++)
+                    {
+                        if (rules[i].name == *layer_arg)
+                        {
+                            index = i;
+                            break;
+                        }
+                    }
+                }
+                if (index >= terrain_layer_max)
+                {
+                    return json_error("no surface layer matches '" + *layer_arg + "', call terrain_layers_get for names and indices");
+                }
+
+                uint64_t count = 0;
+                const std::optional<std::string> count_arg = get_argument(request, "count");
+                if (!count_arg || !parse_uint64(*count_arg, count) || count == 0 || count > 32)
+                {
+                    return json_error("count must be between 1 and 32");
+                }
+
+                pugi::xml_document document;
+                pugi::xml_node node = document.append_child("layer");
+                Terrain::SaveLayerRule(node, rules[index]);
+                for (uint64_t i = 0; i < count; i++)
+                {
+                    const std::optional<std::string> name  = get_argument(request, "attribute_" + std::to_string(i));
+                    const std::optional<std::string> value = get_argument(request, "value_" + std::to_string(i));
+                    if (!name || !value)
+                    {
+                        return json_error("missing attribute or value at index " + std::to_string(i));
+                    }
+                    pugi::xml_attribute attribute = node.attribute(name->c_str());
+                    if (!attribute)
+                    {
+                        return json_error("unknown layer attribute '" + *name + "', call terrain_layers_get for the attribute names");
+                    }
+                    attribute.set_value(value->c_str());
+                }
+
+                TerrainLayerRule updated = rules[index];
+                Terrain::LoadLayerRule(node, updated);
+                reload_materials = updated.name != rules[index].name;
+                rules[index]     = updated;
+            }
+
+            auto read_float = [&request, &error](const char* name, float& value) -> bool
+            {
+                const std::optional<std::string> arg = get_argument(request, name);
+                if (!arg)
+                {
+                    return false;
+                }
+                if (!parse_float(*arg, value))
+                {
+                    error = std::string("invalid ") + name;
+                    return false;
+                }
+                return true;
+            };
+            float value = 0.0f;
+            if (read_float("snow_amount", value))
+            {
+                terrain->SetSnowAmount(std::clamp(value, 0.0f, 4.0f));
+            }
+            if (read_float("wetness", value))
+            {
+                terrain->SetWetness(std::clamp(value, 0.0f, 1.0f));
+            }
+            if (read_float("blend_height", value))
+            {
+                terrain->SetBlendHeight(std::clamp(value, 0.0f, 10.0f));
+            }
+            if (!error.empty())
+            {
+                return json_error(error);
+            }
+            if (const std::optional<std::string> quality_arg = get_argument(request, "layer_quality"))
+            {
+                uint64_t quality = 0;
+                if (!parse_uint64(*quality_arg, quality) || quality < 1 || quality > 4)
+                {
+                    return json_error("layer_quality must be between 1 and 4");
+                }
+                terrain->SetLayerQuality(static_cast<uint32_t>(quality));
+            }
+
+            if (view_arg)
+            {
+                const uint32_t view_count = static_cast<uint32_t>(TerrainDebugView::Max);
+                uint32_t view             = view_count;
+                uint64_t parsed_view      = 0;
+                const std::string wanted  = to_lower_copy(*view_arg);
+                if (parse_uint64(wanted, parsed_view))
+                {
+                    view = parsed_view < view_count ? static_cast<uint32_t>(parsed_view) : view_count;
+                }
+                else
+                {
+                    for (uint32_t i = 0; i < view_count; i++)
+                    {
+                        if (wanted == terrain_debug_view_names[i])
+                        {
+                            view = i;
+                            break;
+                        }
+                    }
+                }
+                if (view >= view_count)
+                {
+                    return json_error("debug_view must be off, weights, dominant_layer, curvature, flow, occlusion, insolation, deposition, wear, talus or wetness");
+                }
+                terrain->SetDebugView(static_cast<TerrainDebugView>(view));
+            }
+
+            // a renamed rule points at another folder, everything else is a rule value the shader reads this frame
+            if (reload_materials)
+            {
+                terrain->RefreshLayers();
+            }
+            else
+            {
+                terrain->PushToRenderer();
+            }
+
+            std::string json = "{\"ok\":true," + terrain_surface_state_json(terrain);
+            json += ",\"note\":" + json_string("the surface reacts this frame, scattered props keep their old placement until the next scatter; world_save persists the rules, the debug view is never saved");
+            if (index < terrain_layer_max)
+            {
+                json += ",\"layer\":" + layer_rule_json(terrain, index);
+            }
+            json += "}";
+            return json;
+        }
+
+        // what the baked analysis and the layer rules say about a point, the cpu mirror of what the surface shader picks
+        std::string command_terrain_surface_sample(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+
+            std::vector<float> points;
+            const std::optional<std::string> points_arg = get_argument(request, "points");
+            if (!points_arg || !parse_float_array(*points_arg, points, 512) || points.empty() || points.size() % 2 != 0)
+            {
+                return json_error("points must be a flat world space x,z list, e.g. 0,0,10,5");
+            }
+
+            const auto& rules = terrain->GetLayerRules();
+            std::string json  = "{\"ok\":true,\"terrain_id\":" + json_string(std::to_string(terrain->GetEntity()->GetObjectId()));
+            json += ",\"sea_level\":" + json_number(terrain->ResolveSeaLevelWorld());
+            json += ",\"samples\":[";
+            for (size_t i = 0; i + 1 < points.size(); i += 2)
+            {
+                json += i == 0 ? "{" : ",{";
+                json += "\"x\":" + json_number(points[i]) + ",\"z\":" + json_number(points[i + 1]);
+
+                float height = 0.0f;
+                TerrainSurfaceSample sample;
+                const bool on_terrain = terrain->SampleHeight(points[i], points[i + 1], height) && terrain->SampleSurface(points[i], points[i + 1], sample);
+                json += ",\"on_terrain\":" + json_bool(on_terrain);
+                if (on_terrain)
+                {
+                    const uint32_t dominant = std::min(sample.dominant_layer, terrain_layer_max - 1u);
+                    json += ",\"height\":" + json_number(height);
+                    json += ",\"dominant_layer\":" + std::to_string(dominant);
+                    json += ",\"dominant_name\":" + json_string(rules[dominant].name);
+                    json += ",\"curvature\":" + json_number(sample.curvature);
+                    json += ",\"flow\":" + json_number(sample.flow);
+                    json += ",\"occlusion\":" + json_number(sample.occlusion);
+                    json += ",\"deposition\":" + json_number(sample.deposition);
+                    json += ",\"wear\":" + json_number(sample.wear);
+                    json += ",\"insolation\":" + json_number(sample.insolation);
+                    json += ",\"talus\":" + json_number(sample.talus);
+                    json += ",\"woodland\":" + json_number(sample.woodland);
+                    json += ",\"mask_grass\":" + json_number(sample.mask_grass);
+                    json += ",\"mask_trees\":" + json_number(sample.mask_trees);
+                    json += ",\"mask_rocks\":" + json_number(sample.mask_rocks);
+                }
+                json += "}";
+            }
+            json += "]}";
+            return json;
+        }
+
         // brush dabs through the path the terrain panel paints with, so the strokes land in the sculpt layer
         std::string command_terrain_sculpt(const McpRequest& request)
         {
@@ -7873,6 +8175,9 @@ namespace spartan
             { "terrain_scatter_set",           command_terrain_scatter_set },
             { "terrain_create",                command_terrain_create },
             { "terrain_get",                   command_terrain_get },
+            { "terrain_layers_get",            command_terrain_layers_get },
+            { "terrain_layers_set",            command_terrain_layers_set },
+            { "terrain_surface_sample",        command_terrain_surface_sample },
             { "terrain_sculpt",                command_terrain_sculpt },
             { "world_summary",                 [](const McpRequest&) { return command_world_summary(); } },
             { "world_load",                    command_world_load },

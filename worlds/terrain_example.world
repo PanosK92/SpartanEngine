@@ -1,158 +1,14 @@
 <?xml version="1.0"?>
 <World name="terrain_example" description="Learn the Terrain tool on an island sculpted from a flat square">
  <OwnedResources>
-  <Resource file="materials/angular_stone_rock_09.xml" />
-  <Resource file="materials/broadleaf_card_foliage.xml" />
-  <Resource file="materials/fir_card_foliage.xml" />
-  <Resource file="materials/fir_tree_01_bark.xml" />
-  <Resource file="materials/fir_tree_01_dead_branches.xml" />
-  <Resource file="materials/fir_tree_01_trunk_a.xml" />
-  <Resource file="materials/fir_tree_01_trunk_b.xml" />
-  <Resource file="materials/fir_tree_01_trunk_c.xml" />
-  <Resource file="materials/island_tree_01.xml" />
-  <Resource file="materials/island_tree_01_branches.xml" />
-  <Resource file="materials/island_tree_02.xml" />
-  <Resource file="materials/island_tree_02_branches.xml" />
-  <Resource file="materials/island_tree_03.xml" />
-  <Resource file="materials/island_tree_03_branches.xml" />
-  <Resource file="materials/lentisk_card_foliage.xml" />
-  <Resource file="materials/limestone_boulder_boulder_01.xml" />
-  <Resource file="materials/limestone_slab_coast_land_rocks_02.xml" />
-  <Resource file="materials/mastic_card_foliage.xml" />
-  <Resource file="materials/material_ground.xml" />
-  <Resource file="materials/myrtle_card_foliage.xml" />
-  <Resource file="materials/olive_card_foliage.xml" />
-  <Resource file="materials/othonna_cerarioides.xml" />
-  <Resource file="materials/pine_card_foliage.xml" />
-  <Resource file="materials/pine_tree_01_bark.xml" />
-  <Resource file="materials/pine_tree_01_dead_branches.xml" />
-  <Resource file="materials/pine_tree_01_trunk_a.xml" />
-  <Resource file="materials/pine_tree_01_trunk_b.xml" />
-  <Resource file="materials/pine_tree_01_trunk_c.xml" />
-  <Resource file="materials/searsia_burchellii.xml" />
-  <Resource file="materials/searsia_lucida.xml" />
   <Resource file="materials/sign_heading.xml" />
   <Resource file="materials/sign_panel.xml" />
   <Resource file="materials/sign_text.xml" />
   <Resource file="materials/terrain.xml" />
-  <Resource file="materials/terrain_2.xml" />
-  <Resource file="materials/tree_small_02_branches.xml" />
-  <Resource file="materials/tree_small_02_trunk.xml" />
-  <Resource file="materials/weathered_stone_rock_07.xml" />
-  <Resource file="meshes/angular_stone.mesh" />
-  <Resource file="meshes/broadleaf_a.mesh" />
-  <Resource file="meshes/broadleaf_b.mesh" />
-  <Resource file="meshes/broadleaf_c.mesh" />
-  <Resource file="meshes/fir_a.mesh" />
-  <Resource file="meshes/fir_b.mesh" />
-  <Resource file="meshes/fir_c.mesh" />
-  <Resource file="meshes/lentisk_a.mesh" />
-  <Resource file="meshes/lentisk_b.mesh" />
-  <Resource file="meshes/lentisk_c.mesh" />
-  <Resource file="meshes/lentisk_d.mesh" />
-  <Resource file="meshes/limestone_boulder.mesh" />
-  <Resource file="meshes/limestone_slab.mesh" />
-  <Resource file="meshes/mastic_b.mesh" />
-  <Resource file="meshes/mastic_c.mesh" />
-  <Resource file="meshes/myrtle_a.mesh" />
-  <Resource file="meshes/myrtle_b.mesh" />
-  <Resource file="meshes/myrtle_c.mesh" />
-  <Resource file="meshes/myrtle_d.mesh" />
-  <Resource file="meshes/olive_a.mesh" />
-  <Resource file="meshes/olive_b.mesh" />
-  <Resource file="meshes/olive_c.mesh" />
-  <Resource file="meshes/pine_a.mesh" />
-  <Resource file="meshes/pine_b.mesh" />
-  <Resource file="meshes/pine_c.mesh" />
-  <Resource file="meshes/weathered_stone.mesh" />
-  <Resource file="textures/albedo.texture" />
-  <Resource file="textures/angular_stone_rock_09_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/boulder_01_diff_1k.texture" />
-  <Resource file="textures/boulder_01_nor_gl_1k.texture" />
-  <Resource file="textures/broadleaf_cards_color.texture" />
-  <Resource file="textures/broadleaf_cards_normal.texture" />
-  <Resource file="textures/coast_land_rocks_02_diff_1k.texture" />
-  <Resource file="textures/coast_land_rocks_02_nor_gl_1k.texture" />
-  <Resource file="textures/fir_cards_color.texture" />
-  <Resource file="textures/fir_cards_normal.texture" />
-  <Resource file="textures/fir_tree_01_bark_diff_2k.texture" />
-  <Resource file="textures/fir_tree_01_bark_nor_gl_2k.texture" />
-  <Resource file="textures/fir_tree_01_bark_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/fir_tree_01_dead_branches_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/fir_tree_01_trunk_a_diff_2k.texture" />
-  <Resource file="textures/fir_tree_01_trunk_a_nor_gl_2k.texture" />
-  <Resource file="textures/fir_tree_01_trunk_a_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/fir_tree_01_trunk_b_diff_2k.texture" />
-  <Resource file="textures/fir_tree_01_trunk_b_nor_gl_2k.texture" />
-  <Resource file="textures/fir_tree_01_trunk_b_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/fir_tree_01_trunk_c_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/island_tree_01_branches_diff_2k.texture" />
-  <Resource file="textures/island_tree_01_branches_nor_gl_2k.texture" />
-  <Resource file="textures/island_tree_01_branches_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/island_tree_01_diff_2k.texture" />
-  <Resource file="textures/island_tree_01_nor_gl_2k.texture" />
-  <Resource file="textures/island_tree_01_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/island_tree_02_branches_diff_2k.texture" />
-  <Resource file="textures/island_tree_02_branches_nor_gl_2k.texture" />
-  <Resource file="textures/island_tree_02_branches_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/island_tree_02_diff_2k.texture" />
-  <Resource file="textures/island_tree_02_nor_gl_2k.texture" />
-  <Resource file="textures/island_tree_02_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/island_tree_03_branches_diff_2k.texture" />
-  <Resource file="textures/island_tree_03_branches_nor_gl_2k.texture" />
-  <Resource file="textures/island_tree_03_branches_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/island_tree_03_diff_2k.texture" />
-  <Resource file="textures/island_tree_03_nor_gl_2k.texture" />
-  <Resource file="textures/island_tree_03_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/lentisk_cards_color.texture" />
-  <Resource file="textures/lentisk_cards_normal.texture" />
-  <Resource file="textures/limestone_boulder_boulder_01_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/limestone_slab_coast_land_rocks_02_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/mastic_cards_color.texture" />
-  <Resource file="textures/mastic_cards_normal.texture" />
-  <Resource file="textures/material_ground_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/myrtle_cards_color.texture" />
-  <Resource file="textures/myrtle_cards_normal.texture" />
-  <Resource file="textures/normal.texture" />
-  <Resource file="textures/olive_cards_color.texture" />
-  <Resource file="textures/olive_cards_normal.texture" />
-  <Resource file="textures/othonna_cerarioides_color_2k.texture" />
-  <Resource file="textures/othonna_cerarioides_nor_gl_2k.texture" />
-  <Resource file="textures/othonna_cerarioides_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/pine_cards_color.texture" />
-  <Resource file="textures/pine_cards_normal.texture" />
-  <Resource file="textures/pine_tree_01_bark_diff_2k.texture" />
-  <Resource file="textures/pine_tree_01_bark_nor_gl_2k.texture" />
-  <Resource file="textures/pine_tree_01_bark_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/pine_tree_01_dead_branches_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/pine_tree_01_trunk_a_diff_2k.texture" />
-  <Resource file="textures/pine_tree_01_trunk_a_nor_gl_2k.texture" />
-  <Resource file="textures/pine_tree_01_trunk_a_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/pine_tree_01_trunk_b_diff_2k.texture" />
-  <Resource file="textures/pine_tree_01_trunk_b_nor_gl_2k.texture" />
-  <Resource file="textures/pine_tree_01_trunk_b_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/pine_tree_01_trunk_c_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/rock_07_diff_1k.texture" />
-  <Resource file="textures/rock_07_nor_gl_1k.texture" />
-  <Resource file="textures/rock_09_diff_1k.texture" />
-  <Resource file="textures/rock_09_nor_gl_1k.texture" />
-  <Resource file="textures/searsia_burchellii_color_2k.texture" />
-  <Resource file="textures/searsia_burchellii_nor_gl_2k.texture" />
-  <Resource file="textures/searsia_burchellii_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/searsia_lucida_color_2k.texture" />
-  <Resource file="textures/searsia_lucida_nor_gl_2k.texture" />
-  <Resource file="textures/searsia_lucida_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/tree_small_02_branch_diff_2k.texture" />
-  <Resource file="textures/tree_small_02_branch_nor_gl_2k.texture" />
-  <Resource file="textures/tree_small_02_branches_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/tree_small_02_diff_2k.texture" />
-  <Resource file="textures/tree_small_02_nor_gl_2k.texture" />
-  <Resource file="textures/tree_small_02_trunk_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/weathered_stone_rock_07_packed_slot0.tex_packed.texture" />
  </OwnedResources>
- <Environment utc_days="9664.919999986887" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <Environment utc_days="9664.919999986887" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.5" />
  <ConsoleVariables>
-  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_density" value="0.300000" />
   <Variable name="r.atmosphere.mist_height" value="300.000000" />
   <Variable name="r.atmosphere.ground_mist" value="1.000000" />
   <Variable name="r.atmosphere.mist_variation" value="0.650000" />
@@ -161,7 +17,7 @@
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 6.95 -105" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 -0 1" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
@@ -171,24 +27,24 @@
   <Entity name="Terrain" id="7725451716388804012" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <terrain min_y="0" max_y="755" level_sea="0" level_snow="400" shore_width="2000" smoothing="0" density="1" scale="2" tile_count="16" create_border="false" spawn_biome_props="true" layer_quality="3" snow_amount="1" wetness="0" blend_height="0.349999994" flat_width="256" flat_height="256">
     <layers>
-     <layer name="whispy_grass_meadow" slope_min="0" slope_max="38" height_min="1" height_max="100000" curvature="-0.100000001" flow="0" occlusion="-0.150000006" insolation="0.25" wear="0" deposition="0.200000003" talus="0" tiling_scale="1" blend_contrast="0.449999988" porosity="0.699999988" macro_strength="1" weight_bias="1.10000002" flags="136" surface_cover="true" sand="false" />
-     <layer name="rock" slope_min="28" slope_max="90" height_min="-100000" height_max="100000" curvature="-0.349999994" flow="0" occlusion="0" insolation="0" wear="0.349999994" deposition="-0.300000012" talus="0" tiling_scale="0.600000024" blend_contrast="0.400000006" porosity="0.25" macro_strength="0.600000024" weight_bias="1.29999995" flags="1" surface_cover="false" sand="false" />
-     <layer name="sand" slope_min="0" slope_max="30" height_min="-100000" height_max="4" curvature="0" flow="0.150000006" occlusion="0" insolation="0" wear="0" deposition="0.349999994" talus="0" tiling_scale="1.39999998" blend_contrast="0.300000012" porosity="0.899999976" macro_strength="0.5" weight_bias="1.10000002" flags="8" surface_cover="true" sand="true" />
-     <layer name="dirt" slope_min="22" slope_max="55" height_min="1" height_max="100000" curvature="0.200000003" flow="0" occlusion="0.200000003" insolation="0.150000006" wear="0.349999994" deposition="0" talus="0" tiling_scale="1.10000002" blend_contrast="0.219999999" porosity="0.800000012" macro_strength="0.899999976" weight_bias="0.899999976" flags="8" surface_cover="true" sand="false" />
-     <layer name="gravel" slope_min="26" slope_max="42" height_min="-100000" height_max="100000" curvature="0.100000001" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.300000012" talus="0.550000012" tiling_scale="1.20000005" blend_contrast="0.150000006" porosity="0.550000012" macro_strength="0.699999988" weight_bias="0.850000024" flags="0" surface_cover="false" sand="false" />
-     <layer name="snow" slope_min="0" slope_max="55" height_min="-100000" height_max="100000" curvature="0.300000012" flow="0" occlusion="0.25" insolation="0" wear="0" deposition="0" talus="0" tiling_scale="0.899999976" blend_contrast="0.0799999982" porosity="0.150000006" macro_strength="0.349999994" weight_bias="1" flags="4" surface_cover="true" sand="false" />
-     <layer name="forest_floor" slope_min="0" slope_max="35" height_min="4" height_max="100000" curvature="0.200000003" flow="0" occlusion="0.300000012" insolation="-0.5" wear="0" deposition="0.25" talus="0" tiling_scale="1" blend_contrast="0.280000001" porosity="0.850000024" macro_strength="1" weight_bias="0.800000012" flags="72" surface_cover="true" sand="false" />
-     <layer name="moss" slope_min="0" slope_max="50" height_min="2" height_max="100000" curvature="0.150000006" flow="0" occlusion="0.400000006" insolation="-0.600000024" wear="0" deposition="0.200000003" talus="0" tiling_scale="0.850000024" blend_contrast="0.200000003" porosity="0.899999976" macro_strength="0.800000012" weight_bias="0.75" flags="8" surface_cover="true" sand="false" />
+     <layer name="whispy_grass_meadow" slope_min="0" slope_max="38" height_min="3" height_max="100000" curvature="-0.100000001" flow="0" occlusion="-0.150000006" insolation="0.25" wear="0" deposition="0.200000003" talus="0" tiling_scale="1" blend_contrast="0.449999988" porosity="0.699999988" macro_strength="1" weight_bias="1.10000002" flags="136" surface_cover="true" sand="false" clearing="false" parallax="0.0399999991" normal_strength="1.29999995" />
+     <layer name="rock" slope_min="28" slope_max="90" height_min="-100000" height_max="100000" curvature="-0.349999994" flow="0" occlusion="0" insolation="0" wear="0.349999994" deposition="-0.300000012" talus="0" tiling_scale="0.600000024" blend_contrast="0.400000006" porosity="0.25" macro_strength="0.600000024" weight_bias="1.29999995" flags="1" surface_cover="false" sand="false" clearing="false" parallax="0.100000001" normal_strength="1.39999998" />
+     <layer name="sand" slope_min="0" slope_max="30" height_min="-100000" height_max="4" curvature="0" flow="0.150000006" occlusion="0" insolation="0" wear="0" deposition="0.349999994" talus="0" tiling_scale="1.39999998" blend_contrast="0.300000012" porosity="0.899999976" macro_strength="0.5" weight_bias="1.10000002" flags="8" surface_cover="true" sand="true" clearing="false" parallax="0.0350000001" normal_strength="1.20000005" />
+     <layer name="dirt" slope_min="22" slope_max="55" height_min="1" height_max="100000" curvature="0.200000003" flow="0" occlusion="0.200000003" insolation="0.150000006" wear="0.349999994" deposition="0" talus="0" tiling_scale="1.10000002" blend_contrast="0.219999999" porosity="0.800000012" macro_strength="0.899999976" weight_bias="0.899999976" flags="8" surface_cover="true" sand="false" clearing="true" parallax="0.0399999991" normal_strength="1.29999995" />
+     <layer name="gravel" slope_min="26" slope_max="42" height_min="-100000" height_max="100000" curvature="0.100000001" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.300000012" talus="0.550000012" tiling_scale="1.20000005" blend_contrast="0.150000006" porosity="0.550000012" macro_strength="0.699999988" weight_bias="0.850000024" flags="0" surface_cover="false" sand="false" clearing="false" parallax="0.0500000007" normal_strength="1.39999998" />
+     <layer name="snow" slope_min="0" slope_max="55" height_min="-100000" height_max="100000" curvature="0.300000012" flow="0" occlusion="0.25" insolation="0" wear="0" deposition="0" talus="0" tiling_scale="0.899999976" blend_contrast="0.0799999982" porosity="0.150000006" macro_strength="0.349999994" weight_bias="1" flags="4" surface_cover="true" sand="false" clearing="false" parallax="0.0500000007" normal_strength="1" />
+     <layer name="forest_floor" slope_min="0" slope_max="35" height_min="4" height_max="100000" curvature="0.200000003" flow="0" occlusion="0.300000012" insolation="-0.5" wear="0" deposition="0.25" talus="0" tiling_scale="1" blend_contrast="0.280000001" porosity="0.850000024" macro_strength="1" weight_bias="0.800000012" flags="72" surface_cover="true" sand="false" clearing="false" parallax="0.0399999991" normal_strength="1.29999995" />
+     <layer name="moss" slope_min="0" slope_max="50" height_min="3" height_max="100000" curvature="0.150000006" flow="0" occlusion="0.400000006" insolation="-0.600000024" wear="0" deposition="0.200000003" talus="0" tiling_scale="0.850000024" blend_contrast="0.200000003" porosity="0.899999976" macro_strength="0.800000012" weight_bias="0.75" flags="8" surface_cover="true" sand="false" clearing="false" parallax="0.0399999991" normal_strength="1.29999995" />
     </layers>
     <scatter>
      <layer name="pine_woodland" mesh_path="project/models/forest/pine/pine_a.gltf" mesh_variants="project/models/forest/pine/pine_b.gltf;project/models/forest/pine/pine_c.gltf;project/models/forest/fir/fir_a.gltf;project/models/forest/fir/fir_b.gltf;project/models/forest/fir/fir_c.gltf;project/models/forest/broadleaf/broadleaf_a.gltf;project/models/forest/broadleaf/broadleaf_b.gltf;project/models/forest/broadleaf/broadleaf_c.gltf" habitat="1" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1000" max_per_tile="14000" seed="1147" slope_min="0" slope_max="42" slope_bias="0" height_min="4" height_max="700" height_fade="12" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="30" clump_count="32" clump_raggedness="0.699999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.720000029" size_max="1.17999995" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0" surface_offset="-0.0799999982" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="2400" shadow_distance="220" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.75" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="109" />
      <layer name="limestone_outcrops" mesh_path="project/models/island_biomes/limestone_slab/limestone_slab.gltf" mesh_variants="project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="false" kind="0" mountain_rocks="true" formation_spacing="130" formation_length="60" formation_width="30" formation_height="16" formation_jitter="12" embed_fraction="0.479999989" coating="0.400000006" coating_scale="3" density="12" max_per_tile="700" seed="631" slope_min="14" slope_max="75" slope_bias="0" height_min="12" height_max="100000" height_fade="10" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="0" clump_count="10" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="8" size_min="0.300000012" size_max="0.899999976" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.5" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="260" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="12" />
-     <layer name="loose_stones" mesh_path="project/models/island_biomes/weathered_stone/weathered_stone.gltf" mesh_variants="project/models/island_biomes/angular_stone/angular_stone.gltf;project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="110" max_per_tile="2400" seed="2591" slope_min="0" slope_max="70" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0.349999994" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="14" clump_count="4" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.300000012" size_max="2.0999999" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.75" surface_offset="-0.0399999991" sink="0.0599999987" blend_height="1" blend_sharpness="0.5" render_distance="1500" shadow_distance="110" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
+     <layer name="loose_stones" mesh_path="project/models/island_biomes/weathered_stone/weathered_stone.gltf" mesh_variants="project/models/island_biomes/angular_stone/angular_stone.gltf;project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="40" max_per_tile="2400" seed="2591" slope_min="0" slope_max="70" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0.349999994" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="14" clump_count="4" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.300000012" size_max="2.0999999" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.75" surface_offset="-0.0399999991" sink="0.0599999987" blend_height="1" blend_sharpness="0.5" render_distance="1500" shadow_distance="110" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
      <layer name="flowers" mesh_path="builtin/flower" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="5.76000023" max_per_tile="0" seed="0" slope_min="0" slope_max="18" slope_bias="0" height_min="3" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.449999988" clump_radius="30" clump_count="1000" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="0.639999986" size_min="0.200000003" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="500" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="32" />
-     <layer name="grass" mesh_path="builtin/grass_blade" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="1" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.899999976" max_per_tile="0" seed="0" slope_min="0" slope_max="24" slope_bias="0" height_min="1" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.379999995" clump_radius="26" clump_count="1" clump_raggedness="0.850000024" clump_coverage="0.449999988" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="500" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="0" />
-     <layer name="pebbles" mesh_path="builtin/pebble" mesh_variants="" habitat="0" material_folder="project/materials/gravel" enabled="true" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1" max_per_tile="0" seed="0" slope_min="0" slope_max="45" slope_bias="0" height_min="0.5" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="26" clump_count="1" clump_raggedness="0.699999988" clump_coverage="0.550000012" clump_invert="true" mesh_scale="0.109999999" size_min="0.449999988" size_max="1.79999995" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.00999999978" sink="0" blend_height="1" blend_sharpness="0.699999988" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="18" grass_ring_1="45" grass_ring_2="90" grass_cell_0="0.449999988" grass_cell_1="0.620000005" grass_cell_2="0.949999988" flags="0" />
-     <layer name="olive_groves" mesh_path="project/models/forest/olive/olive_a.gltf" mesh_variants="project/models/forest/olive/olive_b.gltf;project/models/forest/olive/olive_c.gltf" habitat="2" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="160" max_per_tile="3500" seed="3511" slope_min="0" slope_max="25" slope_bias="0" height_min="3" height_max="280" height_fade="5" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="30" clump_count="10" clump_raggedness="0.649999976" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.35000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0" surface_offset="-0.119999997" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="2600" shadow_distance="200" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.699999988" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="109" />
-     <layer name="maquis_scrub" mesh_path="project/models/forest/lentisk/lentisk_a.gltf" mesh_variants="project/models/forest/lentisk/lentisk_b.gltf;project/models/forest/lentisk/lentisk_c.gltf;project/models/forest/lentisk/lentisk_d.gltf;project/models/forest/myrtle/myrtle_a.gltf;project/models/forest/myrtle/myrtle_b.gltf;project/models/forest/myrtle/myrtle_c.gltf;project/models/forest/myrtle/myrtle_d.gltf;project/models/forest/mastic/mastic_b.gltf;project/models/forest/mastic/mastic_c.gltf" habitat="3" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="720" max_per_tile="12000" seed="6173" slope_min="0" slope_max="45" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0.200000003" wear="0" deposition="0.150000006" talus="0" ground_mask="89" mask_channel="-1" mask_min="0.00999999978" clump_radius="12" clump_count="14" clump_raggedness="0.949999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.550000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.100000001" surface_offset="-0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="1100" shadow_distance="90" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.699999988" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="137" />
+     <layer name="grass" mesh_path="builtin/grass_blade" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="1" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.899999976" max_per_tile="0" seed="0" slope_min="0" slope_max="24" slope_bias="0" height_min="1" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.219999999" clump_radius="26" clump_count="1" clump_raggedness="0.850000024" clump_coverage="0.779999971" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="500" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="0" />
+     <layer name="pebbles" mesh_path="builtin/pebble" mesh_variants="" habitat="0" material_folder="project/materials/gravel" enabled="false" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1" max_per_tile="0" seed="0" slope_min="0" slope_max="45" slope_bias="0" height_min="0.5" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="26" clump_count="1" clump_raggedness="0.699999988" clump_coverage="0.550000012" clump_invert="true" mesh_scale="0.109999999" size_min="0.449999988" size_max="1.79999995" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.00999999978" sink="0" blend_height="1" blend_sharpness="0.699999988" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="18" grass_ring_1="45" grass_ring_2="90" grass_cell_0="0.449999988" grass_cell_1="0.620000005" grass_cell_2="0.949999988" flags="0" />
+     <layer name="olive_groves" mesh_path="project/models/forest/olive/olive_a.gltf" mesh_variants="project/models/forest/olive/olive_b.gltf;project/models/forest/olive/olive_c.gltf" habitat="2" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="90" max_per_tile="3500" seed="3511" slope_min="0" slope_max="25" slope_bias="0" height_min="3" height_max="280" height_fade="5" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="30" clump_count="10" clump_raggedness="0.649999976" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.35000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0" surface_offset="-0.119999997" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="2600" shadow_distance="200" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.699999988" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="109" />
+     <layer name="maquis_scrub" mesh_path="project/models/forest/lentisk/lentisk_a.gltf" mesh_variants="project/models/forest/lentisk/lentisk_b.gltf;project/models/forest/lentisk/lentisk_c.gltf;project/models/forest/lentisk/lentisk_d.gltf;project/models/forest/myrtle/myrtle_a.gltf;project/models/forest/myrtle/myrtle_b.gltf;project/models/forest/myrtle/myrtle_c.gltf;project/models/forest/myrtle/myrtle_d.gltf;project/models/forest/mastic/mastic_b.gltf;project/models/forest/mastic/mastic_c.gltf" habitat="3" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="260" max_per_tile="12000" seed="6173" slope_min="0" slope_max="45" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0.200000003" wear="0" deposition="0.150000006" talus="0" ground_mask="89" mask_channel="-1" mask_min="0.00999999978" clump_radius="12" clump_count="14" clump_raggedness="0.949999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.550000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.100000001" surface_offset="-0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="1100" shadow_distance="90" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.699999988" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="137" />
      <layer name="" mesh_path="" mesh_variants="" habitat="0" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="8" max_per_tile="0" seed="0" slope_min="0" slope_max="35" slope_bias="0" height_min="1" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="0" clump_count="1" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="8" />
      <layer name="" mesh_path="" mesh_variants="" habitat="0" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="8" max_per_tile="0" seed="0" slope_min="0" slope_max="35" slope_bias="0" height_min="1" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="0" clump_count="1" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="8" />
      <layer name="" mesh_path="" mesh_variants="" habitat="0" material_folder="" enabled="false" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="8" max_per_tile="0" seed="0" slope_min="0" slope_max="35" slope_bias="0" height_min="1" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="0" clump_count="1" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="8" />

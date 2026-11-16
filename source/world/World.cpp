@@ -1538,6 +1538,13 @@ namespace spartan
                 filesystem::create_directories(directory);
             });
 
+            // the list is written before the prune runs, so files the last save deleted are dropped here
+            erase_if(owned_files, [&directory](const string& name)
+            {
+                error_code exists_error;
+                return !filesystem::exists(filesystem::path(directory) / name, exists_error);
+            });
+
             // terrain sculpt layers are world data written by the component, not resources, they
             // go next to the world so a regenerate on load finds them
             {
@@ -1609,7 +1616,14 @@ namespace spartan
                     {
                         continue;
                     }
-                    if (Render* render = entity->GetComponent<Render>())
+                    // transient hierarchies are never serialized and rebuild from their own sources on load,
+                    // so what they render must not become world owned files (scatter would gain a _2 copy per save)
+                    bool transient = false;
+                    for (Entity* node = entity; node != nullptr && !transient; node = node->GetParent())
+                    {
+                        transient = node->IsTransient();
+                    }
+                    if (Render* render = entity->GetComponent<Render>(); render && !transient)
                     {
                         if (Mesh* mesh = render->GetMesh())
                         {

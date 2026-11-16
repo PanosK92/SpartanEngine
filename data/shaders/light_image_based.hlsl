@@ -212,7 +212,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 sky_sh[9];
     sh_load_l2(tex5, sky_sh);
     const float ibl_visibility_floor = 0.1f;
-    float  ibl_visibility = max(surface.occlusion, ibl_visibility_floor);
+    float  ibl_visibility = max(surface.is_grass_blade() ? grass_canopy_visibility(surface.occlusion) : surface.occlusion, ibl_visibility_floor);
     float3 diffuse_skysphere = sh_irradiance_l2(
         surface.bent_normal,
         sky_sh,

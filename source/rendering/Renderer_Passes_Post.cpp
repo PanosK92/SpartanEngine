@@ -87,8 +87,11 @@ namespace spartan
         RHI_Texture* tex_ssao   = GetRenderTarget(Renderer_RenderTarget::ssao);
         RHI_Texture* tex_hist_0 = GetRenderTarget(Renderer_RenderTarget::ssao_history_0);
         RHI_Texture* tex_hist_1 = GetRenderTarget(Renderer_RenderTarget::ssao_history_1);
+        RHI_Texture* tex_meta_0 = GetRenderTarget(Renderer_RenderTarget::ssao_history_meta_0);
+        RHI_Texture* tex_meta_1 = GetRenderTarget(Renderer_RenderTarget::ssao_history_meta_1);
+        RHI_Texture* tex_raw    = GetRenderTarget(Renderer_RenderTarget::ssao_raw);
         RHI_Texture* tex_packed = GetRenderTarget(Renderer_RenderTarget::ssao_packed);
-        if (!tex_ssao || !tex_hist_0 || !tex_hist_1 || !tex_packed)
+        if (!tex_ssao || !tex_hist_0 || !tex_hist_1 || !tex_meta_0 || !tex_meta_1 || !tex_raw || !tex_packed)
         {
             return;
         }
@@ -97,6 +100,8 @@ namespace spartan
         const uint32_t history_read  = m_pass_state.ssao_history.Read();
         RHI_Texture* tex_history_read  = history_read == 0 ? tex_hist_0 : tex_hist_1;
         RHI_Texture* tex_history_write = history_write == 0 ? tex_hist_0 : tex_hist_1;
+        RHI_Texture* tex_meta_read     = history_read == 0 ? tex_meta_0 : tex_meta_1;
+        RHI_Texture* tex_meta_write    = history_write == 0 ? tex_meta_0 : tex_meta_1;
 
         RHI_CommandList::BeginPass("screen_space_ambient_occlusion");
         SetCommonTextures(rhi_all_mips, false);
@@ -109,20 +114,33 @@ namespace spartan
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(tex_packed, GetResolutionScale());
 
-            // cortao main pass and temporal accumulation
+            // cortao main pass, this frame's occlusion and bent normal
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_c));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_history_read);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_packed);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetStandardTexture(Renderer_StandardTexture::Cortao_bent_normal_lut));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, GetStandardTexture(Renderer_StandardTexture::Cortao_occluder_lut));
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_ssao);
-            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_history_write);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_raw);
+            RHI_CommandList::Dispatch(tex_raw, GetResolutionScale());
+
+            // temporal accumulation into the history
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_temporal_c));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_raw);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_history_read);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_meta_read);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_history_write);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_meta_write);
             // history resets on the first frame or after rt recreate, a secondary view has none of its own,
             // it only writes the slot the primary overwrites next, so the primary's history survives it
             const bool secondary_view = IsSecondaryViewActive();
             m_pcb_pass_cpu.set(pass_ssao::reset_history, !m_pass_state.ssao_history.valid || secondary_view);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch(tex_history_write, GetResolutionScale());
+
+            // cross bilateral denoise of the accumulated result
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::ssao_denoise_c));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_history_write);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_meta_write);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_ssao);
             RHI_CommandList::Dispatch(tex_ssao, GetResolutionScale());
 
             if (!secondary_view)

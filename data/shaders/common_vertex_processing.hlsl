@@ -354,14 +354,14 @@ static const float wind_gust_width    = 170.0f; // meters across the wind per te
 static const float wind_gust_speed    = 6.0f;   // meters per second the fronts travel downwind
 static const float wind_front_spacing = 16.0f;  // meters between successive fronts of the primary train
 
-// one front per unit phase, the downwind edge rises sharply and the tail relaxes slowly,
-// so each blade snaps over when a front arrives and recovers once it has passed
+// one front per unit phase, the arrival is quicker than the relaxation but both stay soft, a rise over
+// a seventh of the spacing drew a hard edged band that the eye tracks across the whole field
 float wind_front(float phase)
 {
     float s    = frac(phase);
-    float rise = smoothstep(1.0f, 0.86f, s);
-    float tail = smoothstep(0.2f, 0.86f, s);
-    return rise * tail * tail;
+    float rise = smoothstep(1.0f, 0.62f, s);
+    float tail = smoothstep(0.0f, 0.62f, s);
+    return rise * tail;
 }
 
 // grass and flowers are light, a 2 m/s breeze already lays them over noticeably, so the response
@@ -391,11 +391,13 @@ float wind_gust(float2 world_xz, float time)
     float  side   = dot(world_xz, across);
     float4 field  = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float2(travel / wind_gust_length, side / wind_gust_width), 0);
 
-    float front_a  = wind_front(travel / wind_front_spacing + field.r * 0.45f + field.g * 0.2f);
-    float front_b  = wind_front(travel / (wind_front_spacing * 1.63f) + side / (wind_front_spacing * 7.0f) + field.g * 0.5f + 0.37f);
-    float front    = max(front_a, front_b * 0.7f);
-    float strength = smoothstep(0.3f, 0.75f, field.b);
-    return saturate(strength * (0.28f + 0.72f * front));
+    // near ground turbulence intensity is about 0.2 to 0.3, gusts modulate the breeze instead of
+    // switching it on and off, and the warp is strong enough that no two fronts share a straight line
+    float front_a  = wind_front(travel / wind_front_spacing + field.r * 1.1f + field.g * 0.6f);
+    float front_b  = wind_front(travel / (wind_front_spacing * 1.63f) + side / (wind_front_spacing * 7.0f) + field.g * 1.1f + 0.37f);
+    float front    = 0.6f * front_a + 0.4f * front_b;
+    float strength = smoothstep(0.1f, 0.9f, field.b);
+    return saturate(0.25f + 0.75f * strength * (0.45f + 0.55f * front));
 }
 
 // shared wind sample for grass, flowers, and trees
@@ -455,16 +457,18 @@ wind_sample evaluate_wind(
 
     wind_sample s;
     s.bend_dir_world = float3(dir_xz.x, 0.0f, dir_xz.y);
-    float ambient_pressure = 0.055f;
+    // the mean breeze keeps every blade leaning, gusts add on top, calm and gusted grass differing by
+    // more than about 3x reads as patches switching on and off rather than as one field of wind
+    float ambient_pressure = 0.4f;
     float gust_pressure = smoothstep(
-        0.08f,
-        0.55f,
+        0.2f,
+        1.0f,
         wf.b
     );
     float wind_response = grass_wind_response();
     s.bend_strength = wind_response * (
         ambient_pressure +
-        gust_pressure * 1.35f
+        gust_pressure * 0.9f
     );
     s.gust           = wf.b;
     s.micro          = wf.a - 0.5f;

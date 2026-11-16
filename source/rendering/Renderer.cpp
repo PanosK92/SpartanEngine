@@ -4405,11 +4405,18 @@ namespace spartan
                 entry.terrain_blend_contrast      = rule.blend_contrast;
                 entry.terrain_porosity            = rule.porosity;
                 entry.terrain_macro_strength      = rule.macro_strength;
-                entry.terrain_flags               = rule.flags;
+                entry.terrain_flags               = rule.flags & ~static_cast<uint32_t>(TerrainLayerFlags_Pom);
+                // on a layer these two are the rule's, height is the relief in metres the parallax march carves
+                entry.normal                      = rule.normal_strength;
+                entry.height                      = rule.parallax;
+                if (rule.parallax > 0.0f)
+                    entry.terrain_flags |= TerrainLayerFlags_Pom;
                 if (rule.surface_cover)
                     entry.terrain_flags |= TerrainLayerFlags_Cover;
                 if (rule.sand)
                     entry.terrain_flags |= TerrainLayerFlags_Sand;
+                if (rule.clearing)
+                    entry.terrain_flags |= TerrainLayerFlags_Clearing;
 
                 layer_count++;
             }

@@ -1091,8 +1091,11 @@ void TerrainEditor::DrawGroundLayer(Terrain* terrain, const uint32_t index)
         changed |= property_float("Blend",    &rule.blend_contrast, 0.01f, 0.01f, 1.0f, "height blend band width, smaller is a sharper interface with the neighbouring material", "%.2f");
         changed |= property_float("Porosity", &rule.porosity,       0.01f, 0.0f,  1.0f, "how much the material darkens when wet, sand is high and rock is low", "%.2f");
         changed |= property_float("Macro",    &rule.macro_strength, 0.01f, 0.0f,  1.0f, "large scale colour breakup amount", "%.2f");
+        changed |= property_float("Parallax", &rule.parallax,       0.001f, 0.0f, 0.3f, "metres of relief the height map carves up close, a pebble bed is about 0.05 and bedrock about 0.1, 0 skips the march", "%.3f m");
+        changed |= property_float("Normal",   &rule.normal_strength, 0.01f, 0.0f, 4.0f, "multiplies the normal map slope, above 1 deepens the grain", "%.2f");
         changed |= property_toggle("Rock Cover", &rule.surface_cover, "allow this terrain material to accumulate on nearby rock ledges");
         changed |= property_toggle("Sand", &rule.sand, "loose grains, glints in the sun, darkens and turns glossy where the swash runs and gives under tires and feet");
+        changed |= property_toggle("Clearings", &rule.clearing, "takes the bare ground between the grass pockets, whatever the slope and height bands say");
 
         auto flag_toggle = [&rule, &changed](const char* label, const uint32_t bit, const char* tooltip)
         {

@@ -90,6 +90,11 @@ cortao_uint cortao_samplePackedData(cortao_float2 texCoords, cortao_float mipmap
 
 void cortao_writeResult(cortao_int2 pixelCoords, cortao_half occlusion, cortao_half3 bentNormal, cortao_half3x3 tangentSpaceTransform, cortao_uint rayBits);
 
+#if CORTAO_CUSTOM_NOISE
+	//xyz: sample rotation, radius dither and tangent rotation in [0, 1), w < 0.5 flips the spiral direction
+	cortao_float4 cortao_customNoise(cortao_int2 pixelCoords);
+#endif
+
 
 #if CORTAO_DEBUG_HOOKS
 	void cortao_debugCenterPixel(cortao_float3 position, cortao_float3 normal, cortao_float radius);
@@ -172,6 +177,10 @@ cortao_uint cortao_computeRayOcclusion(
 	
 	cortao_uint rayBits = 0u;
 	
+	#ifdef CORTAO_OCCLUDER_RADIUS_SCALE
+		cortao_float inverseMaxRadius = 1.0 / maxRadius;
+	#endif
+	
 	//Hack to preload the occluder lookup table descriptor, which is marginally faster at higher sample counts.
 	#if CORTAO_OCCLUDER_LOOKUP_TABLE && CORTAO_SAMPLE_COUNT > 4
 		rayBits = cortao_sampleOccluderLookupTable(cortao_float3(0, 0, 0));
@@ -249,6 +258,9 @@ cortao_uint cortao_computeRayOcclusion(
 			//Calculate the slope compensation weight and use it to calculate the normalized visual occluder radius.
 			cortao_half slopeCompensation = cortao_inverseSqrt(max(dot(sampleNormal, viewDirection), cortao_half(params.inverseMaxSlopeCompensation)));			
 			cortao_float occluderRadius = (maxRadius * sampleWeight) * (slopeCompensation * inverseLength);
+			#ifdef CORTAO_OCCLUDER_RADIUS_SCALE
+				occluderRadius *= CORTAO_OCCLUDER_RADIUS_SCALE(direction, viewDirection, normal, lengthSqrd * inverseLength * inverseMaxRadius);
+			#endif
 
 			//Heuristically check for backface occluders.
 			cortao_half sampleDot = dot(sampleNormal, direction);
@@ -383,11 +395,20 @@ void cortao_mainPass(cortao_uint2 pixelCoords, CORTAOMainPassParameters params) 
 
 	
 	//Setup a set of random variables used during the setup code
+	#if CORTAO_CUSTOM_NOISE
+		//BeamNG: spatially well distributed noise from the integration, so small spatial filters cancel it
+		cortao_float4 customNoise = cortao_customNoise(cortao_int2(pixelCoords));
+		cortao_uint2 random = cortao_uint2(customNoise.w < 0.5 ? 0u : 1u, 0u);
+		cortao_float randomSampleRotation = customNoise.x * cortao_float(CORTAO_PI2);
+		cortao_float offsetDither = customNoise.y;
+		cortao_half randomTangentRotation = cortao_half(customNoise.z * cortao_float(CORTAO_PI2));
+	#else
 	cortao_uint2 random = cortao_hash(cortao_seed(pixelCoords) + cortao_unpack16(params.randomSeed));
 	
 	cortao_float randomSampleRotation = cortao_float(random.x) * (cortao_float(CORTAO_PI2) / cortao_float(0xFFFFFFFFu));
 	cortao_float offsetDither = cortao_float(random.y) * (1.0 / cortao_float(0xFFFFFFFFu));
 	cortao_half randomTangentRotation = cortao_half(cortao_float(random.x ^ random.y ^ params.randomSeed) * (cortao_float(CORTAO_PI2) / cortao_float(0xFFFFFFFFu)));
+	#endif
 	cortao_float2 sampleRotation = cortao_float2(sin(randomSampleRotation), cos(randomSampleRotation));
 
 	

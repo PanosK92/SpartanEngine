@@ -915,6 +915,7 @@ struct MaterialParameters
     bool terrain_layer_below_sea(){ return (terrain_flags & (1 << 3)) != 0; }
     bool terrain_has_maps()       { return (terrain_flags & (1 << 4)) != 0; }
     bool terrain_layer_sand()     { return (terrain_flags & (1 << 16)) != 0; }
+    bool terrain_layer_clearing() { return (terrain_flags & (1 << 17)) != 0; }
     // on the surface material bits 8 to 11 hold how many layers to sample and 12 to 15 the debug view
     uint terrain_layer_quality()  { return (terrain_flags >> 8)  & 0xFu; }
     uint terrain_debug_view()     { return (terrain_flags >> 12) & 0xFu; }

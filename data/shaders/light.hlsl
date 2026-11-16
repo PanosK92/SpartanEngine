@@ -317,6 +317,8 @@ void evaluate_light(
         // resolved by the primary shadow ray. Solid occluders still fully block.
         if (surface.is_foliage())
             L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.70f);
+        if (surface.is_grass_blade())
+            L_shadow_contact = grass_canopy_visibility(L_shadow_contact);
         L_shadow = min(L_shadow_primary, L_shadow_contact);
 
         // Transmission still needs a clear path to the light. Contact shadows also
@@ -337,7 +339,7 @@ void evaluate_light(
         // chan 2018 microshadowing, ao driven terminator darkening, occlusion 1 means no effect
         // the aperture is centred on the bent normal, so light from the open side of a crevice is kept
         float bent_n_dot_l = saturate(dot(surface.bent_normal, -light.to_pixel));
-        micro_shadow       = microw_shadowing_cod(bent_n_dot_l, surface.occlusion);
+        micro_shadow       = microw_shadowing_cod(bent_n_dot_l, surface.is_grass_blade() ? grass_canopy_visibility(surface.occlusion) : surface.occlusion);
 
         // area lights widen specular roughness so the highlight matches the light's angular extent
         float original_roughness       = surface.roughness;

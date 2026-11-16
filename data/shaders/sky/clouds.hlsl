@@ -90,11 +90,12 @@ static const float  cloud_ambient_sky_base = 0.20;   // share of it that still r
 static const float3 cloud_ground_albedo    = float3(0.20, 0.18, 0.14); // warm terrain under the clouds
 
 // multiple scattering octaves, every octave halves the extinction and the phase eccentricity
-// and keeps 0.75 of the energy, five of them carry enough light into the cloud to reach the
-// albedo above, three at 0.6 left the sunlit side three times too dark
-static const int    cloud_scatter_octaves       = 5;
+// and keeps 0.85 of the energy, eight of them bring an optically thick sunlit face to ~0.25 of
+// the sun illuminance per steradian, the 0.8 / pi a water cloud of albedo 0.8 reflects, five
+// at 0.75 stopped at half of that and the clouds rendered no brighter than the blue sky
+static const int    cloud_scatter_octaves       = 8;
 static const float  cloud_scatter_extinction    = 0.5;
-static const float  cloud_scatter_contribution  = 0.75;
+static const float  cloud_scatter_contribution  = 0.85;
 static const float  cloud_scatter_eccentricity  = 0.5;
 
 // night lighting, moon and airglow share night_sky_* / night_moon_to_sun from common.hlsl

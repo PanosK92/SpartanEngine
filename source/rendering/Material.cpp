@@ -251,6 +251,50 @@ namespace spartan
             }
         }
 
+        // a scanned height map rarely uses more than a slice of its range, stretch it between its 0.5 and 99.5
+        // percentiles so one unit of height means the same relief on every map, only the red channel is read
+        void stretch_height_range(vector<byte>& height)
+        {
+            array<size_t, 256> histogram = {};
+            for (size_t i = 0; i < height.size(); i += 4)
+            {
+                histogram[to_integer<uint8_t>(height[i])]++;
+            }
+
+            const size_t tail = max<size_t>((height.size() / 4) / 200, 1);
+            int low           = 0;
+            int high          = 255;
+            for (size_t seen = 0; low < 255; low++)
+            {
+                seen += histogram[low];
+                if (seen > tail)
+                {
+                    break;
+                }
+            }
+            for (size_t seen = 0; high > 0; high--)
+            {
+                seen += histogram[high];
+                if (seen > tail)
+                {
+                    break;
+                }
+            }
+
+            // already wide, or flat enough that a stretch would only blow up noise
+            if (high - low < 4 || high - low > 240)
+            {
+                return;
+            }
+
+            const float scale = 255.0f / static_cast<float>(high - low);
+            for (size_t i = 0; i < height.size(); i += 4)
+            {
+                const float value = (static_cast<float>(to_integer<uint8_t>(height[i])) - static_cast<float>(low)) * scale;
+                height[i]         = static_cast<byte>(clamp(value, 0.0f, 255.0f));
+            }
+        }
+
         void merge_alpha_mask_into_color_alpha(vector<byte>& albedo, vector<byte>& mask)
         {
             SP_ASSERT_MSG(albedo.size() == mask.size(), "The dimensions must be equal");
@@ -693,6 +737,12 @@ namespace spartan
                         if (has_packable_data(texture_height) && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
                         {
                             texture_processing::resize_texture(texture_height->GetMip(0, 0)->bytes, texture_height->GetWidth(), texture_height->GetHeight(), texture_height->GetChannelCount(), height_data, max_width, max_height);
+                        }
+
+                        // a terrain layer states its relief in metres, that only holds if its map spans the whole range
+                        if (material->GetProperty(MaterialProperty::IsTerrain) == 1.0f && has_packable_data(texture_height))
+                        {
+                            texture_processing::stretch_height_range(height_data);
                         }
 
                         texture_processing::pack_occlusion_roughness_metalness_height(

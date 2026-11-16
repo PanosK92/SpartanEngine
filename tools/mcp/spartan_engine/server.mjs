@@ -2353,6 +2353,71 @@ register_tool(
 
 register_tool(
   server,
+  "terrain_layers_get",
+  "Read the terrain surface layers (up to 8 slots: meadow, rock, sand, dirt, gravel, snow, forest_floor, moss) with every rule attribute exactly as the world file stores it in <terrain><layers><layer>: slope and height bands, analysis influences, tiling_scale, blend_contrast, parallax (relief in metres, 0 skips the march), normal_strength, clearing, plus layer_quality, snow_amount, wetness, blend_height and the active debug_view. id is optional when the world has one terrain.",
+  {
+    id: z.string().optional(),
+  },
+  "terrain_layers_get",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "terrain_layers_set",
+  "Edit one terrain surface layer and/or the terrain wide surface settings. layer is the slot index or layer name, values maps attribute names from terrain_layers_get to new values (e.g. {parallax: 0.05, normal_strength: 1.3, height_min: 3}). The surface reacts the same frame, scattered props keep their placement until the next scatter. debug_view (off, weights, dominant_layer, curvature, flow, occlusion, insolation, deposition, wear, talus, wetness) works outside edit mode and is never saved. world_save persists the rules.",
+  {
+    id: z.string().optional(),
+    layer: z.union([z.number().int().min(0).max(7), z.string()]).optional(),
+    values: z.record(z.string(), z.union([z.number(), z.boolean(), z.string()])).optional(),
+    layer_quality: z.number().int().min(1).max(4).optional(),
+    snow_amount: z.number().min(0).max(4).optional(),
+    wetness: z.number().min(0).max(1).optional(),
+    blend_height: z.number().min(0).max(10).optional(),
+    debug_view: z.string().optional(),
+  },
+  "terrain_layers_set",
+  {
+    annotations: edit_tool,
+    map_args: (args) => {
+      const { layer, values, ...mapped } = args;
+      const entries = Object.entries(values ?? {});
+      if ((layer === undefined) !== (entries.length === 0))
+      {
+        throw new Error("layer and values go together, values must set at least one attribute");
+      }
+      if (layer !== undefined)
+      {
+        mapped.layer = layer;
+        mapped.count = entries.length;
+        entries.forEach(([name, value], i) =>
+        {
+          mapped[`attribute_${i}`] = name;
+          mapped[`value_${i}`] = value;
+        });
+      }
+      return mapped;
+    },
+  },
+);
+
+register_tool(
+  server,
+  "terrain_surface_sample",
+  "Sample the terrain at world space points: height, the dominant surface layer the cpu mirror of the shader picks, and the baked analysis channels (curvature, flow, occlusion, insolation, deposition, wear, talus, woodland, prop masks). points is a flat x,z list, up to 256 points. Shader only effects such as grass clearings are not part of the cpu mirror.",
+  {
+    id: z.string().optional(),
+    points: z.array(z.number()).min(2).max(512),
+  },
+  "terrain_surface_sample",
+  {
+    annotations: read_only,
+    map_args: (args) => ({ ...args, points: args.points.join(",") }),
+  },
+);
+
+register_tool(
+  server,
   "console_read",
   "Read recent Spartan console/log output, optionally filtered by minimum severity.",
   {

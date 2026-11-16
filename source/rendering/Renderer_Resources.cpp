@@ -607,6 +607,38 @@ namespace spartan
                     flags,
                     "ssao_history_1"
                 );
+                // view depth and accumulated frame count of the history
+                at(view_targets(), Renderer_RenderTarget::ssao_history_meta_0) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    1,
+                    RHI_Format::R16G16_Float,
+                    flags,
+                    "ssao_history_meta_0"
+                );
+                at(view_targets(), Renderer_RenderTarget::ssao_history_meta_1) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    1,
+                    RHI_Format::R16G16_Float,
+                    flags,
+                    "ssao_history_meta_1"
+                );
+                // this frame's cortao result before temporal accumulation
+                at(view_targets(), Renderer_RenderTarget::ssao_raw) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    1,
+                    RHI_Format::R16G16B16A16_Float,
+                    flags,
+                    "ssao_raw"
+                );
                 m_pass_state.ssao_history.Reset();
             }
             if (!at(view_targets(), Renderer_RenderTarget::ssao_packed))
@@ -633,8 +665,11 @@ namespace spartan
         {
             at(view_targets(), Renderer_RenderTarget::ssao)           = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_0) = nullptr;
-            at(view_targets(), Renderer_RenderTarget::ssao_history_1) = nullptr;
-            at(view_targets(), Renderer_RenderTarget::ssao_packed)    = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_1)      = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_meta_0) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_meta_1) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_raw)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_packed)         = nullptr;
             m_pass_state.ssao_history.Reset();
         }
         
@@ -860,6 +895,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::ssao)                        = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_0)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_history_1)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_meta_0)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_meta_1)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_raw)                    = nullptr;
             at(view_targets(), Renderer_RenderTarget::ssao_packed)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::reflections)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position)= nullptr;
@@ -1477,6 +1515,8 @@ namespace spartan
             { Renderer_Shader::motion_blur_c,                         RHI_Shader_Type::Compute, "motion_blur.hlsl"                                                           },
             { Renderer_Shader::ssao_c,                                RHI_Shader_Type::Compute, "ssao.hlsl"                                                                  },
             { Renderer_Shader::ssao_prepass_c,                        RHI_Shader_Type::Compute, "ssao.hlsl",                                  RHI_Vertex_Type::Max, "SSAO_PREPASS" },
+            { Renderer_Shader::ssao_temporal_c,                       RHI_Shader_Type::Compute, "ssao.hlsl",                                  RHI_Vertex_Type::Max, "SSAO_TEMPORAL" },
+            { Renderer_Shader::ssao_denoise_c,                        RHI_Shader_Type::Compute, "ssao.hlsl",                                  RHI_Vertex_Type::Max, "SSAO_DENOISE" },
             { Renderer_Shader::sss_c_bend,                            RHI_Shader_Type::Compute, "screen_space_shadows/bend_sss.hlsl"                                         },
             { Renderer_Shader::depth_of_field_focus_c,                RHI_Shader_Type::Compute, "depth_of_field.hlsl", RHI_Vertex_Type::Max, "DOF_FOCUS" },
             { Renderer_Shader::depth_of_field_c,                      RHI_Shader_Type::Compute, "depth_of_field.hlsl"                                                        },

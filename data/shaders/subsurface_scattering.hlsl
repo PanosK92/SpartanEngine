@@ -80,12 +80,23 @@ float foliage_transmission_response(float n_dot_l, float view_dot_minus_light)
 
 // Transmitted light crosses the chlorophyll a second time, so red and blue are absorbed again and
 // what makes it through is a deeper, yellower green than what the surface reflects. Returned as a
-// multiplier on albedo because the composition applies albedo once to all diffuse light.
+// multiplier on albedo because the composition applies albedo once to all diffuse light, so the
+// chroma goes in once here, that product is the second crossing. Squaring it was a third one and
+// turned every back lit crown into a green no leaf transmits, about three times greener than red
+// where a real leaf passes roughly two.
 float3 foliage_transmission_tint(float3 albedo)
 {
     float peak    = max(max(albedo.r, albedo.g), albedo.b) + 1e-4f;
     float3 chroma = saturate(albedo / peak);
-    return chroma * chroma * float3(0.85f, 1.0f, 0.8f);
+    return chroma * float3(0.85f, 1.0f, 0.8f);
 }
 
+// Screen space occlusion and contact shadows read every blade in front of a pixel as a solid wall.
+// A blade passes on about as much light as it reflects and its neighbours scatter that again, so
+// the inside of a tuft is far brighter than the depth buffer suggests, without this a meadow in
+// full sun renders as a black hole next to the ground it grows on.
+float grass_canopy_visibility(float visibility)
+{
+    return lerp(1.0f, visibility, 0.45f);
+}
 #endif
