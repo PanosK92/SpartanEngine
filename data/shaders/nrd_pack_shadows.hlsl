@@ -85,7 +85,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // The shadow ray already offsets its origin. Close hits are real blockers
     // (for example car trim and tire contacts), not evidence of an unoccluded ray.
-    float distance_to_occluder = visibility >= 0.99f
+    // A pixel dimmed only by glass has visibility below one but no blocker distance. SIGMA builds the
+    // shadow from the distance alone, distance zero would read as a blocker touching the surface and turn
+    // the glass shadow black, so it's sent as lit. The glass shadow shows where the raw mask is used.
+    float distance_to_occluder = visibility >= 0.99f || blocker_dist <= 0.0f
         ? NRD_FP16_MAX
         : max(blocker_dist, 0.0f);
 

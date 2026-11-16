@@ -71,6 +71,16 @@ float2 trace_opaque_shadow(float3 origin, float3 direction, float t_max)
     return float2(1.0f, 0.0f);
 }
 
+float trace_glass_shadow(float visibility, float3 origin, float3 direction, float t_max)
+{
+    if (visibility <= 0.0f)
+    {
+        return visibility;
+    }
+
+    return visibility * rt_trace_transmittance(origin, direction, t_max);
+}
+
 void write_local_shadow(uint2 launch_id, uint slice, float visibility, float hit_dist, float dist_to_light, float light_size)
 {
     tex_uav_rt_shadows_local[uint3(launch_id, slice)] = float4(
@@ -154,7 +164,10 @@ void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light
             any_hit = true;
         }
     }
-    write_local_shadow(launch_id, slice, visibility_sum / float(sample_count),
+    float center_distance = length(to_light);
+    float glass_distance  = min(max(center_distance - emitter_safety, 0.001f), SHADOW_RAY_MAX_DISTANCE);
+    float visibility      = trace_glass_shadow(visibility_sum / float(sample_count), ray_origin, to_light / center_distance, glass_distance);
+    write_local_shadow(launch_id, slice, visibility,
         any_hit ? hit_min : 0.0f, dist_to_light, is_area ? max(light.area_width, light.area_height) : 0.1f);
 }
 
@@ -235,7 +248,7 @@ void ray_gen()
             float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
             float3 ray_origin = pos_ws + normal_ws * (base_offset * normal_sign);
             float2 vis        = trace_opaque_shadow(ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
-            float visibility  = vis.x;
+            float visibility  = trace_glass_shadow(vis.x, ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
             float hit_dist    = vis.x < 1.0f ? vis.y : 0.0f;
             tex_uav[launch_id] = float4(visibility, hit_dist, 0.0f, 1.0f);
         }
