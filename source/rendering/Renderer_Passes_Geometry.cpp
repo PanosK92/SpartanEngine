@@ -2497,6 +2497,28 @@ namespace spartan
                 RHI_CommandList::UpdateBuffer(buf_args,
                     (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, 0)) * sizeof(Sb_IndirectDrawArgs),
                     sizeof(coarse_args), coarse_args.data(), false);
+
+                // the same draw lists for the mesh shader path, which also needs each blade lod's vertex count
+                const vector<MeshLod>& lods = state.mesh->GetSubMesh(0).lods;
+                auto mesh_geometry          = [&](const Sb_IndirectDrawArgs& arguments, const uint32_t lod)
+                {
+                    const uint32_t lod_mesh = lod < lods.size() ? lod : 0u;
+                    return std::array<uint32_t, 4>{ arguments.first_index, arguments.index_count, static_cast<uint32_t>(arguments.vertex_offset), lods[lod_mesh].vertex_count };
+                };
+                std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> fine_geometry;
+                std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> coarse_geometry;
+                for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+                {
+                    fine_geometry[lod]   = mesh_geometry(state.indirect_args_static[lod], lod);
+                    coarse_geometry[lod] = mesh_geometry(coarse_args[lod], lod == 0 ? 1u : lod);
+                }
+                RHI_Buffer* buf_mesh_geometry = GetBuffer(Renderer_Buffer::GrassMeshGeometry);
+                RHI_CommandList::UpdateBuffer(buf_mesh_geometry,
+                    renderer_gpu_scatter_arg_index(slot, 0) * sizeof(fine_geometry[0]),
+                    sizeof(fine_geometry), fine_geometry.data(), false);
+                RHI_CommandList::UpdateBuffer(buf_mesh_geometry,
+                    (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, 0)) * sizeof(coarse_geometry[0]),
+                    sizeof(coarse_geometry), coarse_geometry.data(), false);
                 state.args_baked = true;
             }
 
@@ -2714,6 +2736,8 @@ namespace spartan
 
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_count, buf_count);
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
+                RHI_CommandList::SetBuffer("grass_mesh_geometry", GetBuffer(Renderer_Buffer::GrassMeshGeometry));
+                RHI_CommandList::SetBuffer("grass_mesh_args", GetBuffer(Renderer_Buffer::GrassMeshArgs));
 
                 // the args shader clamps each atomic counter against its own lod cap, draw_index is
                 // the first args entry of the slot
@@ -3074,7 +3098,17 @@ namespace spartan
         RHI_Shader* grass_vertex = GetShader(Renderer_Shader::grass_blade_v);
         RHI_Shader* grass_pixel = GetShader(Renderer_Shader::grass_gbuffer_p);
 
-        const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
+        // the mesh shader shades every blade vertex exactly once, the instanced draw shades a vertex again whenever it
+        // falls out of the post transform cache, which with the heavy grass vertex work costs about a third more
+        RHI_Shader* grass_mesh       = GetShader(Renderer_Shader::grass_mesh_m);
+        const bool grass_mesh_ready  = cvar_mesh_shaders.GetValueAs<bool>()        &&
+                                       RHI_Device::IsSupportedMeshShaders()        &&
+                                       !xr_multiview                               &&
+                                       grass_mesh && grass_mesh->IsCompiled();
+        RHI_Buffer* buf_mesh_args    = GetBuffer(Renderer_Buffer::GrassMeshArgs);
+
+        const uint32_t arg_stride      = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
+        const uint32_t mesh_arg_stride = static_cast<uint32_t>(sizeof(uint32_t) * 4);
 
         // when this draw opens the g-buffer, the first pipeline it binds carries the clear, every one after it loads
         bool clear_pending = clear_targets;
@@ -3111,14 +3145,17 @@ namespace spartan
                 {
                     continue;
                 }
-                pso.shaders[RHI_Shader_Type::Vertex] = shader_vertex;
-                pso.shaders[RHI_Shader_Type::Pixel]  = shader_pixel;
-                const Color clear_color              = clear_pending ? Color::standard_transparent : rhi_color_load;
-                pso.clear_color[0]                   = clear_color;
-                pso.clear_color[1]                   = clear_color;
-                pso.clear_color[2]                   = clear_color;
-                pso.clear_color[3]                   = clear_color;
-                pso.clear_color[4]                   = clear_color;
+                // card rings stay instanced, the card turns to face the camera in the vertex shader
+                const bool mesh_path = grass_specialized && grass_mesh_ready && !gpu_scatter_card_ring(state, lod);
+                pso.shaders[RHI_Shader_Type::Vertex]     = mesh_path ? nullptr : shader_vertex;
+                pso.shaders[RHI_Shader_Type::MeshShader] = mesh_path ? grass_mesh : nullptr;
+                pso.shaders[RHI_Shader_Type::Pixel]      = shader_pixel;
+                const Color clear_color                  = clear_pending ? Color::standard_transparent : rhi_color_load;
+                pso.clear_color[0]                       = clear_color;
+                pso.clear_color[1]                       = clear_color;
+                pso.clear_color[2]                       = clear_color;
+                pso.clear_color[3]                       = clear_color;
+                pso.clear_color[4]                       = clear_color;
                 RHI_CommandList::SetPipelineState(pso);
                 cleared       = cleared || clear_pending;
                 clear_pending = false;
@@ -3129,10 +3166,21 @@ namespace spartan
                     tracks.valid ? tracks.fields[tracks.current].get() : fallback);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2,
                     tracks.valid ? tracks.fields[1 - tracks.current].get() : fallback);
-                RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
-                RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
+                if (mesh_path)
+                {
+                    RHI_CommandList::SetBuffer("grass_mesh_geometry", GetBuffer(Renderer_Buffer::GrassMeshGeometry));
+                    RHI_CommandList::SetBuffer("grass_mesh_args", buf_mesh_args);
+                }
+                else
+                {
+                    RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
+                    RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
+                }
 
-                m_pcb_pass_cpu.draw_index     = 0;
+                // the mesh shader finds its draw list through draw_index, the instanced vertex shader ignores it
+                const uint32_t fine_list   = renderer_gpu_scatter_arg_index(slot, lod);
+                const uint32_t coarse_list = renderer_max_gpu_scatter_args + fine_list;
+                m_pcb_pass_cpu.draw_index     = mesh_path ? fine_list : 0;
                 m_pcb_pass_cpu.is_transparent = 0;
                 m_pcb_pass_cpu.material_index = state.material->GetIndex();
                 m_pcb_pass_cpu.set(pass_grass_draw::uv_patch, state.params.uv_patch);
@@ -3153,13 +3201,29 @@ namespace spartan
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
-                RHI_CommandList::DrawIndexedIndirect(buf_args, renderer_gpu_scatter_arg_index(slot, lod) * arg_stride);
+                if (mesh_path)
+                {
+                    RHI_CommandList::DrawMeshTasksIndirect(buf_mesh_args, fine_list * mesh_arg_stride);
+                }
+                else
+                {
+                    RHI_CommandList::DrawIndexedIndirect(buf_args, fine_list * arg_stride);
+                }
+
+                // coarse blades of the near ring, the same allocation filled from its end
                 if (lod == 0)
                 {
                     m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, gpu_scatter_lod_cap(slot, lod, state.params.density));
+                    m_pcb_pass_cpu.draw_index = mesh_path ? coarse_list : 0;
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::DrawIndexedIndirect(buf_args,
-                        (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, lod)) * arg_stride);
+                    if (mesh_path)
+                    {
+                        RHI_CommandList::DrawMeshTasksIndirect(buf_mesh_args, coarse_list * mesh_arg_stride);
+                    }
+                    else
+                    {
+                        RHI_CommandList::DrawIndexedIndirect(buf_args, coarse_list * arg_stride);
+                    }
                 }
             }
         }

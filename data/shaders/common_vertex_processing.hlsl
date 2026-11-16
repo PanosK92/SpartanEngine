@@ -632,6 +632,107 @@ float vegetation_flex(float3 rest_offset, float3 up)
     return smoothstep(0.08f, 0.7f, radius) * smoothstep(0.0f, 0.3f, height) * (1.0f - smoothstep(2.4f, 3.6f, height));
 }
 
+// the part of the grass and flower bend that every vertex of a blade shares, it depends on the root, the time and
+// the wind there, never on the vertex, so the vertex shader evaluates it per vertex and the mesh shader once per blade
+struct grass_bend
+{
+    float3 wind_axis;
+    float  wind_angle;        // wind bend per unit of h^1.5, before the slope limit
+    float  max_allowed_angle; // keeps the blade above horizontal
+    float3 rest_axis;
+    float  rest_angle;        // resting arch per unit of h^1.5
+    float  rest_scale;        // how far the breeze deepens or relaxes the arch
+};
+
+grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 instance_up, float time_offset, uint instance_id)
+{
+    float time = (float)buffer_frame.time + time_offset;
+
+#ifdef GRASS_INSTANCED
+    wind_sample ws = evaluate_grass_instance_wind(instance_pos, time_offset, instance_id);
+#else
+    wind_sample ws = evaluate_wind(instance_pos, time_offset);
+#endif
+
+    // retain subtle blade variation without breaking gust coherence
+    float2 inst          = wind_instance_phase_freq(instance_pos);
+    float  instance_phase = inst.x;
+    float  nat_freq       = inst.y;
+    float  spring         = sin(
+        time * nat_freq +
+        instance_phase
+    ) * 0.03f;
+    float wind_response = grass_wind_response();
+    float ambient_wobble = (
+        sin(
+            time * 0.80f +
+            instance_phase
+        ) * 1.60f +
+        sin(
+            time * 0.53f +
+            instance_phase * 1.70f
+        ) * 0.70f
+    ) * DEG_TO_RAD * wind_response;
+
+    // peak bend angle of 55 deg
+    float bend_amp     = ws.bend_strength * (1.0f + spring);
+    float micro_jitter = ws.micro *
+        0.035f *
+        ws.bend_strength;
+    // blades inside a front flutter against the pressure, the shimmer that sells a passing gust
+    float gust_flutter = (
+        sin(time * (5.5f + nat_freq * 1.6f) + instance_phase * 3.1f) * 0.7f +
+        sin(time * (8.3f + nat_freq * 2.1f) + instance_phase * 5.3f) * 0.3f
+    ) * smoothstep(0.15f, 0.6f, ws.gust) * wind_response * (5.0f * DEG_TO_RAD);
+
+    grass_bend bend;
+    bend.wind_angle = (
+        bend_amp * (55.0f * DEG_TO_RAD) +
+        ambient_wobble +
+        micro_jitter +
+        gust_flutter
+    );
+
+    // never let the blade rotate below horizontal
+    static const float3 vertical      = float3(0.0f, 1.0f, 0.0f);
+    float current_angle_from_vertical = acos(saturate(dot(instance_up, vertical)));
+    bend.max_allowed_angle            = max(0.0f, (75.0f * DEG_TO_RAD) - current_angle_from_vertical);
+
+    // rotation axis perpendicular to bend direction in the horizontal plane
+    float3 raw_axis       = cross(instance_up, ws.bend_dir_world);
+    float  axis_length_sq = dot(raw_axis, raw_axis);
+    bend.wind_axis        = axis_length_sq > 0.0001f ? raw_axis * rsqrt(axis_length_sq) : float3(1.0f, 0.0f, 0.0f);
+
+    bend.rest_axis  = 0.0f;
+    bend.rest_angle = 0.0f;
+    bend.rest_scale = 1.0f;
+    if (is_grass_blade)
+    {
+        // Gravity gives every blade a gentle resting arch, even with no wind.
+        // Hash the root, not the transient instance slot, so neither repopulation
+        // nor camera motion changes its shape. Keep the lower stem relatively stiff.
+        float rest_heading = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
+        bend.rest_angle    = lerp(10.0f, 22.0f, hash(instance_pos.zx + float2(73.1f, 5.9f))) * DEG_TO_RAD;
+        // Let the resting arch deepen and relax in the breeze. Keep its direction
+        // stable, and retain the exact resting pose at zero wind. Shared gusts drive
+        // the strength while each blade's phase/frequency keeps the flex from marching
+        // in unison. 'time' includes the previous-frame offset for motion vectors.
+        float rest_flex = sin(time * (1.3f + nat_freq * 0.2f) + instance_phase) * 0.65f +
+                          sin(time * 0.93f + instance_phase * 1.7f) * 0.35f;
+        bend.rest_scale = 1.0f + rest_flex * wind_response * (0.10f + 0.14f * ws.gust);
+        float3 rest_direction = float3(cos(rest_heading), 0.0f, sin(rest_heading));
+        float3 rest_axis = cross(instance_up, rest_direction);
+        bend.rest_axis = rest_axis * rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
+    }
+
+    return bend;
+}
+
+#if defined(GRASS_BEND_PRECOMPUTED)
+// the current and the previous frame bend of the blade a mesh shader thread is building, set before every vertex
+static grass_bend grass_bend_precomputed[2];
+#endif
+
 struct vertex_processing
 {
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
@@ -783,87 +884,32 @@ struct vertex_processing
         // grass and flower wind
         if (surface.is_grass_blade() || surface.is_flower())
         {
-#ifdef GRASS_INSTANCED
-            wind_sample ws = evaluate_grass_instance_wind(instance_pos, time_offset, instance_id);
+            // the blade shares everything but its height, a mesh shader computes that once per blade, see grass_mesh.hlsl
+#if defined(GRASS_BEND_PRECOMPUTED)
+            grass_bend bend = grass_bend_precomputed[time_offset < 0.0f ? 1 : 0];
 #else
-            wind_sample ws = evaluate_wind(instance_pos, time_offset);
+            grass_bend bend = grass_bend_compute(surface.is_grass_blade(), instance_pos, instance_up, time_offset, instance_id);
 #endif
 
             // height fraction along the blade, base = 0, tip = 1
             float h          = saturate(vertex.uv_misc.z);
             float h_cantilever = h * sqrt(h); // stiffer at the base than a linear taper
 
-            // retain subtle blade variation without breaking gust coherence
-            float2 inst          = wind_instance_phase_freq(instance_pos);
-            float  instance_phase = inst.x;
-            float  nat_freq       = inst.y;
-            float  spring         = sin(
-                time * nat_freq +
-                instance_phase
-            ) * 0.03f;
-            float wind_response = grass_wind_response();
-            float ambient_wobble = (
-                sin(
-                    time * 0.80f +
-                    instance_phase
-                ) * 1.60f +
-                sin(
-                    time * 0.53f +
-                    instance_phase * 1.70f
-                ) * 0.70f
-            ) * DEG_TO_RAD * wind_response;
-
-            // peak bend angle of 55 deg
-            float bend_amp     = ws.bend_strength * (1.0f + spring);
-            float micro_jitter = ws.micro *
-                0.035f *
-                ws.bend_strength;
-            // blades inside a front flutter against the pressure, the shimmer that sells a passing gust
-            float gust_flutter = (
-                sin(time * (5.5f + nat_freq * 1.6f) + instance_phase * 3.1f) * 0.7f +
-                sin(time * (8.3f + nat_freq * 2.1f) + instance_phase * 5.3f) * 0.3f
-            ) * smoothstep(0.15f, 0.6f, ws.gust) * wind_response * (5.0f * DEG_TO_RAD);
-            float angle        = (
-                bend_amp * (55.0f * DEG_TO_RAD) +
-                ambient_wobble +
-                micro_jitter +
-                gust_flutter
-            ) * h_cantilever;
-
             // never let the blade rotate below horizontal
-            static const float3 vertical              = float3(0.0f, 1.0f, 0.0f);
-            float current_angle_from_vertical         = acos(saturate(dot(instance_up, vertical)));
-            float max_allowed_angle                   = max(0.0f, (75.0f * DEG_TO_RAD) - current_angle_from_vertical);
-            angle                                     = sign(angle) * min(abs(angle), max_allowed_angle);
-
-            // rotation axis perpendicular to bend direction in the horizontal plane
-            float3 raw_axis      = cross(instance_up, ws.bend_dir_world);
-            float  axis_length_sq = dot(raw_axis, raw_axis);
-            float3 axis           = axis_length_sq > 0.0001f ? raw_axis * rsqrt(axis_length_sq) : float3(1.0f, 0.0f, 0.0f);
+            float angle = bend.wind_angle * h_cantilever;
+            angle       = sign(angle) * min(abs(angle), bend.max_allowed_angle);
+            float3 axis = bend.wind_axis;
 
             if (surface.is_grass_blade())
             {
-                // Gravity gives every blade a gentle resting arch, even with no wind.
-                // Hash the root, not the transient instance slot, so neither repopulation
-                // nor camera motion changes its shape. Keep the lower stem relatively stiff.
-                float rest_heading = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
-                float rest_angle = lerp(10.0f, 22.0f, hash(instance_pos.zx + float2(73.1f, 5.9f))) * DEG_TO_RAD * h_cantilever;
-                // Let the resting arch deepen and relax in the breeze. Keep its direction
-                // stable, and retain the exact resting pose at zero wind. Shared gusts drive
-                // the strength while each blade's phase/frequency keeps the flex from marching
-                // in unison. 'time' includes the previous-frame offset for motion vectors.
-                float rest_flex = sin(time * (1.3f + nat_freq * 0.2f) + instance_phase) * 0.65f +
-                                  sin(time * 0.93f + instance_phase * 1.7f) * 0.35f;
-                rest_angle *= 1.0f + rest_flex * wind_response * (0.10f + 0.14f * ws.gust);
-                float3 rest_direction = float3(cos(rest_heading), 0.0f, sin(rest_heading));
-                float3 rest_axis = cross(instance_up, rest_direction);
-                rest_axis *= rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
-                float3 rotation_vector = axis * angle + rest_axis * rest_angle;
+                float rest_angle = bend.rest_angle * h_cantilever;
+                rest_angle *= bend.rest_scale;
+                float3 rotation_vector = axis * angle + bend.rest_axis * rest_angle;
                 float rotation_length = length(rotation_vector);
                 axis = rotation_length > 1e-6f ? rotation_vector / rotation_length : instance_up;
                 // Wind adds to the resting curve, while the existing slope limit keeps it
                 // above the ground. Tire pressure below replaces this relaxed pose entirely.
-                angle = min(rotation_length, max_allowed_angle);
+                angle = min(rotation_length, bend.max_allowed_angle);
             }
 
             if (grass_press.z > 0.0001f)
