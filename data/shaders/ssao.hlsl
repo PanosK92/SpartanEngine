@@ -88,7 +88,22 @@ cortao_float3 cortao_loadNormal(cortao_int2 pixelCoords)
 
 void cortao_writePackedData(cortao_int2 pixelCoords, cortao_int mipLevel, cortao_uint data)
 {
+#if defined(API_WEBGPU)
+    // webgpu splits the mip array into separate bindings, so it takes constant indices only and the early return in the prepass loop keeps it from unrolling
+    switch (mipLevel)
+    {
+        case 0: tex_uav_mips[0][pixelCoords] = asfloat(data); break;
+        case 1: tex_uav_mips[1][pixelCoords] = asfloat(data); break;
+        case 2: tex_uav_mips[2][pixelCoords] = asfloat(data); break;
+        case 3: tex_uav_mips[3][pixelCoords] = asfloat(data); break;
+        case 4: tex_uav_mips[4][pixelCoords] = asfloat(data); break;
+        case 5: tex_uav_mips[5][pixelCoords] = asfloat(data); break;
+        case 6: tex_uav_mips[6][pixelCoords] = asfloat(data); break;
+        case 7: tex_uav_mips[7][pixelCoords] = asfloat(data); break;
+    }
+#else
     tex_uav_mips[mipLevel][pixelCoords] = asfloat(data);
+#endif
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

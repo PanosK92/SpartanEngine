@@ -5,25 +5,102 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Spartan Engine (WebGPU)</title>
 <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #101014; overflow: hidden; font-family: sans-serif; color: #ddd; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #101014; overflow: hidden; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #ddd; }
     #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
-    #status { position: absolute; left: 16px; bottom: 16px; font-size: 13px; opacity: 0.8; white-space: pre; pointer-events: none; }
+    #loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #101014; transition: opacity 0.8s ease; }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #loading_title { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: #eee; }
+    #loading_track { width: min(420px, 70vw); height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+    #loading_bar { width: 0%; height: 100%; background: #e8e8ec; transition: width 0.3s ease; }
+    #loading_step { min-height: 1.2em; font-size: 12px; color: #9a9aa4; text-align: center; max-width: 80vw; }
 </style>
 </head>
 <body>
 <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
-<div id="status">loading...</div>
+<div id="loading">
+    <div id="loading_title">Spartan Engine</div>
+    <div id="loading_track"><div id="loading_bar"></div></div>
+    <div id="loading_step">Loading</div>
+</div>
 <script>
-    const status_element = document.getElementById("status");
+    const loading_element = document.getElementById("loading");
+    const bar_element     = document.getElementById("loading_bar");
+    const step_element    = document.getElementById("loading_step");
+
+    // the download fills the first part of the bar, the engine's own load steps the rest
+    const download_share = 0.7;
+    let progress         = 0.0;
+    let engine_base      = download_share;
+    let engine_step      = "";
+    let failed           = false;
+
+    function show(fraction, text)
+    {
+        progress = Math.max(progress, Math.min(fraction, 1.0));
+        bar_element.style.width = (progress * 100.0).toFixed(1) + "%";
+        if (text !== undefined)
+        {
+            step_element.textContent = text;
+        }
+    }
+
+    function fail(text)
+    {
+        failed = true;
+        show(progress, text);
+    }
+
+    // emscripten reports the data download as "Downloading data... (loaded/total)"
     function set_status(text)
     {
-        status_element.textContent = text;
-        status_element.style.display = text ? "block" : "none";
+        if (failed || !text)
+            return;
+
+        const match = text.match(/\((\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\)/);
+        if (match && Number(match[2]) > 0)
+        {
+            const loaded = Number(match[1]);
+            const total  = Number(match[2]);
+            show(download_share * loaded / total, "Downloading " + (loaded / 1048576).toFixed(0) + " / " + (total / 1048576).toFixed(0) + " MB");
+        }
     }
+
+    // called by the engine every time its load step or fraction changes
+    window.spartan_progress = function (step, fraction)
+    {
+        if (failed || !step)
+            return;
+
+        // each new step takes a share of what is left, so the bar keeps moving without knowing the step count,
+        // pipelines are the longest step in the browser and get most of what remains
+        const name = step.replace(/\s*\(.*\)$/, "");
+        if (name !== engine_step)
+        {
+            engine_step = name;
+            engine_base = Math.max(engine_base, progress) + (0.97 - Math.max(engine_base, progress)) * 0.15;
+        }
+        const share = name === "Compiling pipelines" ? 0.8 : 0.3;
+        const next  = engine_base + (0.97 - engine_base) * share;
+        show(fraction >= 0.0 ? engine_base + (next - engine_base) * fraction : engine_base, step);
+    };
+
+    // the startup world has no file, only the requested world ends the loading screen
+    window.spartan_world_ready = function (path)
+    {
+        if (!path)
+            return;
+
+        show(1.0, "Ready");
+        setTimeout(() => loading_element.classList.add("done"), 600);
+        if (window.parent !== window)
+        {
+            window.parent.postMessage("spartan-world-ready", "*");
+        }
+    };
 
     if (!navigator.gpu)
     {
-        set_status("this browser doesn't expose WebGPU (navigator.gpu is missing)");
+        fail("This browser doesn't expose WebGPU, try a recent Chrome or Edge");
     }
 
     // ?world=worlds/name.world opens another packaged world
@@ -36,12 +113,12 @@
         print: (text) => console.log(text),
         printErr: (text) => console.warn(text),
         setStatus: (text) => set_status(text),
-        monitorRunDependencies: (left) => { if (left) set_status("loading data (" + left + " left)"); },
-        onRuntimeInitialized: () => set_status(""),
-        onAbort: (what) => { set_status("aborted: " + what); console.error("abort: " + what + "\n" + new Error().stack); },
+        monitorRunDependencies: (left) => { if (!left) show(download_share, "Starting the engine"); },
+        onRuntimeInitialized: () => show(download_share, "Starting the engine"),
+        onAbort: (what) => { fail("The engine stopped: " + what); console.error("abort: " + what + "\n" + new Error().stack); },
     };
 
-    window.addEventListener("error", (event) => set_status("error: " + event.message));
+    window.addEventListener("error", (event) => fail("Error: " + event.message));
     window.addEventListener("unhandledrejection", (event) => console.error("unhandled: " + (event.reason && event.reason.stack ? event.reason.stack : event.reason)));
 </script>
 {{{ SCRIPT }}}

@@ -10,6 +10,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../profiling/WorldWork.h"
 #include "commands/CommandStack.h"
 #include <unordered_set>
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 #include "World.h"
 #include "RenderSpatialIndex.h"
 #include "../commands/console/ConsoleCommands.h"
@@ -74,6 +77,67 @@ namespace spartan
 {
     namespace
     {
+    #if defined(__EMSCRIPTEN__)
+        // the page hosting the browser build draws its loading screen from this
+        namespace web_progress
+        {
+            string world_path;        // set once the requested world is ready, the startup world has none
+            bool announced          = false;
+            uint32_t settled_frames = 0;
+            string last_key;
+
+            // scripts spawn meshes, textures decode and compress and pipelines compile after the world reports ready,
+            // the page is only told once all of that has stayed quiet for a second of frames
+            constexpr uint32_t settle_frames = 60;
+
+            void report(const string& step, const float fraction)
+            {
+                const string key = step + "|" + to_string(static_cast<int>(fraction * 100.0f));
+                if (key == last_key)
+                    return;
+                last_key = key;
+
+                EM_ASM({ if (window.spartan_progress) window.spartan_progress(UTF8ToString($0), $1); }, step.c_str(), fraction);
+            }
+
+            void tick()
+            {
+                if (announced)
+                    return;
+
+                const ProgressDisplay display     = ProgressTracker::GetDisplay();
+                const uint32_t pipelines_pending = RHI_Device::GetPipelineCompilingCount();
+                if (display.count > 0)
+                {
+                    const ProgressSnapshot& task = display.tasks[0];
+                    report(task.step.empty() ? task.title : task.step, task.fraction);
+                }
+                else if (pipelines_pending > 0)
+                {
+                    // the count grows as new passes ask for pipelines, so the bar follows the largest backlog seen
+                    static uint32_t pipelines_peak = 0;
+                    pipelines_peak = max(pipelines_peak, pipelines_pending);
+                    report("Compiling pipelines (" + to_string(pipelines_pending) + " left)", 1.0f - static_cast<float>(pipelines_pending) / static_cast<float>(pipelines_peak));
+                }
+                else if (!world_path.empty())
+                {
+                    report("Preparing the first frames", static_cast<float>(settled_frames) / static_cast<float>(settle_frames));
+                }
+
+                if (world_path.empty())
+                    return;
+
+                const bool busy = display.active_count > 0 || pipelines_pending > 0 || World::IsLoadingFromFile() || World::IsPreparing() || World::IsPlayBooting();
+                settled_frames  = busy ? 0 : settled_frames + 1;
+                if (settled_frames < settle_frames)
+                    return;
+
+                announced = true;
+                EM_ASM({ if (window.spartan_world_ready) window.spartan_world_ready(UTF8ToString($0)); }, world_path.c_str());
+            }
+        }
+    #endif
+
         void log_cpu_memory(const char* label)
         {
             constexpr double mb = 1024.0 * 1024.0;
@@ -881,6 +945,9 @@ namespace spartan
         work_counters = {};
         ++work_counter_tick;
         ScopedWorldWork work_scope(work_counters);
+    #if defined(__EMSCRIPTEN__)
+        web_progress::tick();
+    #endif
         CountWorldWork(WorldWork::entities_total, entities.size());
         {
             static float census_logged_mb = 0.0f;
@@ -967,6 +1034,14 @@ namespace spartan
             world_progress.Finish();
             SP_LOG_INFO("World ready: %.2f ms from load request", io.load_timer.GetElapsedTimeMs());
             io.state.store(WorldIoState::Idle, memory_order_release);
+        #if defined(__EMSCRIPTEN__)
+            if (!file_path.empty())
+            {
+                web_progress::world_path     = file_path;
+                web_progress::announced      = false;
+                web_progress::settled_frames = 0;
+            }
+        #endif
         }
         else if (work_counter_tick % 1800 == 0)
         {

@@ -439,10 +439,11 @@ def write_engine(ninja, object_root, libraries):
 
     shell = BUILD_DIR / "shell.html"
     data = OUT_DIR / "spartan.data.stamp"
+    # lz4 keeps the package small, models and shaders are text and static hosts cap file sizes (github pages at 100 MB)
     link_flags = COMMON_FLAGS + PORT_FLAGS + [
-        "-sJSPI", "-sALLOW_MEMORY_GROWTH=1", "-sINITIAL_MEMORY=1024MB", "-sMAXIMUM_MEMORY=4GB", "-sSTACK_SIZE=16MB",
-        "-sENVIRONMENT=web", "-sEXIT_RUNTIME=0", "-sASSERTIONS=1", "-sFORCE_FILESYSTEM=1", "-sEXPORTED_RUNTIME_METHODS=FS", "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$Browser",
-        "--shell-file", str(shell), "--preload-file", str(BUILD_DIR / "data") + "@/data", "--preload-file", str(BUILD_DIR / "cache") + "@/cache", "--preload-file", str(BUILD_DIR / "worlds") + "@/worlds", "--preload-file", str(BUILD_DIR / "project") + "@/project"
+        "-sLZ4=1", "-sJSPI", "-sALLOW_MEMORY_GROWTH=1", "-sINITIAL_MEMORY=1024MB", "-sMAXIMUM_MEMORY=4GB", "-sSTACK_SIZE=16MB",
+        "-sENVIRONMENT=web", "-sEXIT_RUNTIME=0", "-sASSERTIONS=1", "-sFORCE_FILESYSTEM=1", "-sEXPORTED_RUNTIME_METHODS=FS", "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$Browser,$UTF8ToString",
+        "--shell-file", str(shell), "--preload-file", str(BUILD_DIR / "data") + "@/data", "--preload-file", str(BUILD_DIR / "cache") + "@/cache", "--preload-file", str(BUILD_DIR / "worlds") + "@/worlds", "--preload-file", str(BUILD_DIR / "project") + "@/project", "--preload-file", str(BUILD_DIR / "root") + "@/"
     ]
     output = OUT_DIR / "spartan.html"
     ninja.build([output], "link", objects + libraries, implicit=[shell, data], variables={"flags": flags_string(link_flags)})
@@ -451,7 +452,7 @@ def write_engine(ninja, object_root, libraries):
 
 # data -------------------------------------------------------------------------------------------
 
-def stage_data(world, shader_cache):
+def stage_data(world, shader_cache, game):
     # the browser preloads data/ into its in-memory file system, the shader cache rides along so nothing compiles at runtime
     data = BUILD_DIR / "data"
     source = ROOT / "binaries" / "data"
@@ -495,13 +496,27 @@ def stage_data(world, shader_cache):
             else:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source_path, target_path)
+    # name.web.ext is the lighter browser copy of name.ext (tools/web/make_web_variant.py), it ships under the original name
+    for variant in sorted(project.rglob("*.web.*")):
+        original = variant.with_name(variant.name.replace(".web.", ".", 1))
+        variant.replace(original)
+        print(f"packaging the web variant of {original.relative_to(BUILD_DIR).as_posix()}", flush=True)
+    # files next to the executable, a game.xml there boots the world as a shipped game: no editor, play mode from the first frame
+    root = BUILD_DIR / "root"
+    if root.is_dir():
+        shutil.rmtree(root)
+    root.mkdir(parents=True)
+    if game:
+        start_world = "worlds/" + Path(world).name
+        (root / "game.xml").write_text(f'<?xml version="1.0"?>\n<Game name="Spartan Engine" start_world="{start_world}">\n  <Window mode="maximized" />\n</Game>\n', encoding="utf-8")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     # wasm can't load from file://, the package carries its own server
     write_if_changed(OUT_DIR / "serve.py", (ROOT / "tools" / "web" / "serve.py").read_text(encoding="utf-8"))
     shell = (ROOT / "tools" / "web" / "shell.html").read_text(encoding="utf-8")
-    write_if_changed(BUILD_DIR / "shell.html", shell.replace("SPARTAN_DEFAULT_WORLD", "worlds/" + Path(world).name if world else ""))
-    staged = sorted((str(f.relative_to(BUILD_DIR)), f.stat().st_size) for folder in (data, cache, worlds, project) for f in folder.rglob("*") if f.is_file())
-    write_if_changed(OUT_DIR / "spartan.data.stamp", str(world) + "\n" + "\n".join(f"{name} {size}" for name, size in staged))
+    # a game loads its start world itself, passing --world as well would load it twice
+    write_if_changed(BUILD_DIR / "shell.html", shell.replace("SPARTAN_DEFAULT_WORLD", "worlds/" + Path(world).name if world and not game else ""))
+    staged = sorted((str(f.relative_to(BUILD_DIR)), f.stat().st_size) for folder in (data, cache, worlds, project, root) for f in folder.rglob("*") if f.is_file())
+    write_if_changed(OUT_DIR / "spartan.data.stamp", str(world) + (" game" if game else "") + "\n" + "\n".join(f"{name} {size}" for name, size in staged))
 
 
 MODEL_EXTENSIONS = {".gltf", ".glb", ".obj", ".fbx", ".dae", ".blend", ".mesh"}
@@ -533,7 +548,7 @@ def write_if_changed(path, text):
 
 # commands ---------------------------------------------------------------------------------------
 
-def generate(world, shader_cache):
+def generate(world, shader_cache, game):
     fetch_dependencies()
     build_assimp()
     ninja = Ninja()
@@ -553,7 +568,7 @@ def generate(world, shader_cache):
     ninja.build(["engine"], "phony", [output])
     ninja.lines.append("default engine")
     ninja.write(BUILD_DIR / "build.ninja")
-    stage_data(world, shader_cache)
+    stage_data(world, shader_cache, game)
 
 
 def build(target, jobs):
@@ -584,12 +599,15 @@ def main():
     parser.add_argument("command", choices=["deps", "engine", "serve", "all"])
     parser.add_argument("--world", default="", help="world file under worlds/ to package, empty packages none")
     parser.add_argument("--shader-cache", type=Path, default=ROOT / "binaries" / "cache" / "generated_cache" / "webgpu_shaders", help="wgsl cache the desktop webgpu build wrote")
+    parser.add_argument("--game", action="store_true", help="ship --world as a game, without the editor and in play mode from the start")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--jobs", type=int, default=0)
     args = parser.parse_args()
+    if args.game and not args.world:
+        parser.error("--game needs --world")
 
     if args.command in ("deps", "engine", "all"):
-        generate(args.world, args.shader_cache)
+        generate(args.world, args.shader_cache, args.game)
     if args.command == "deps":
         build("deps", args.jobs)
     if args.command in ("engine", "all"):

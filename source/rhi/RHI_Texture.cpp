@@ -23,6 +23,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../error_handling/Breadcrumbs.h"
 #include "../geometry/GeneratedCache.h"
 #include "../world/World.h"
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 //===========================================
 
 //= NAMESPACES =====
@@ -361,6 +364,14 @@ namespace spartan
                 RHI_Pipeline* pipeline = nullptr;
                 RHI_DescriptorSetLayout* layout = nullptr;
                 RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+            #if defined(__EMSCRIPTEN__)
+                // the browser finishes pipelines only when control returns to it, compression is synchronous so it yields until this one exists
+                for (uint32_t attempt = 0; !pipeline && attempt < 5000 && !RHI_Device::IsDeviceLost(); attempt++)
+                {
+                    emscripten_sleep(1);
+                    RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+                }
+            #endif
                 if (!pipeline)
                 {
                     RHI_CommandList::ImmediateExecutionEnd(cmd_list);

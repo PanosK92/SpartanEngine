@@ -623,11 +623,20 @@ namespace spartan
                 SP_PROFILE_CPU_END();
                 // The next substep's forces/queries read these results, so steps stay serial
                 SP_PROFILE_CPU_START("physics_fetch_results");
+#if defined(__EMSCRIPTEN__)
+                // emscripten's thread stubs return 0 from pthread_cond_timedwait, so physx's checkResults spins forever on an unset
+                // sync, with no other threads an empty queue means the step is complete and its sync is set
+                while (dispatcher->Assist())
+                {
+                    ++step_statistics.assisted_tasks;
+                }
+#else
                 while ((cvar_physics_assist.GetValue() || dispatcher->getWorkerCount() == 0) && !scene->checkResults(false))
                 {
                     if (dispatcher->Assist()) ++step_statistics.assisted_tasks;
                     else std::this_thread::yield();
                 }
+#endif
                 scene->fetchResults(true);
                 SP_PROFILE_CPU_END();
                 SP_PROFILE_CPU_END();
@@ -933,6 +942,11 @@ namespace spartan
         }
 
         scene->simulate(numeric_limits<float>::min());
+#if defined(__EMSCRIPTEN__)
+        while (dispatcher->Assist())
+        {
+        }
+#endif
         scene->fetchResults(true);
 
         const PxRenderBuffer& rb = scene->getRenderBuffer();

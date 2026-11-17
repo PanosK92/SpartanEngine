@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Window.h"
 #include "Engine.h"
+#include "GameManifest.h"
 #include "../rendering/Renderer.h"
 #include "../resource/ResourceCache.h"
 #include "../input/Input.h"
@@ -511,6 +512,11 @@ namespace spartan
         if (FileSystem::Exists(file_path))
         {
             load();
+        }
+        else if (GameManifest::IsPackaged())
+        {
+            // a player's first launch (and every browser launch) starts without the developer overlay, settings can still turn it on
+            cvar_performance_metrics.SetValue(0.0f);
         }
 
         // write right away so a missing or outdated file shows every option while the engine runs, not only after exit

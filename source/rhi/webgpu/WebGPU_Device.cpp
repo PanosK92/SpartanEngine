@@ -651,6 +651,7 @@ namespace spartan
         {
             RHI_Texture* texture = nullptr;
             void* srv            = nullptr;
+            uint64_t revision    = 0;
         };
 
         mutex mutex_layers;
@@ -888,7 +889,8 @@ namespace spartan
             {
                 RHI_Texture* source = textures[layer];
                 void* srv           = source ? source->GetRhiSrv() : nullptr;
-                if (sources[layer].texture == source && sources[layer].srv == srv)
+                const uint64_t revision = source ? source->GetRhiRevision() : 0;
+                if (sources[layer].texture == source && sources[layer].srv == srv && sources[layer].revision == revision)
                     continue;
 
                 // the renderer retries until a texture has a view, the layer keeps what it had until then
@@ -902,7 +904,7 @@ namespace spartan
                     encoder                                 = wgpuDeviceCreateCommandEncoder(RHI_Context::device, &descriptor);
                 }
                 draw_layer(encoder, layer, source_view_of(source));
-                sources[layer] = { source, srv };
+                sources[layer] = { source, srv, revision };
             }
 
             if (encoder)
@@ -1382,7 +1384,9 @@ namespace spartan
             it = pipelines::cache.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
         }
 
-        pipeline = it->second->IsReady() && it->second->GetRhiResource() ? it->second.get() : nullptr;
+        // the browser creates the wgpu pipeline asynchronously, a pipeline that can't record yet would silently skip its dispatches
+        const webgpu::Pipeline* resource = it->second->IsReady() ? static_cast<const webgpu::Pipeline*>(it->second->GetRhiResource()) : nullptr;
+        pipeline = resource && resource->status.load(memory_order_acquire) == webgpu::PipelineStatus::Ready ? it->second.get() : nullptr;
     }
 
     uint32_t RHI_Device::GetPipelineCount()
@@ -1397,7 +1401,23 @@ namespace spartan
         uint32_t count = 0;
         for (const auto& [hash, pipeline] : pipelines::cache)
         {
-            count += pipeline && !pipeline->IsReady() ? 1 : 0;
+            if (!pipeline || !pipeline->IsReady())
+            {
+                count++;
+                continue;
+            }
+
+            // the browser keeps creating the wgpu objects after the rhi side is done, variants included
+            webgpu::Pipeline* resource = static_cast<webgpu::Pipeline*>(pipeline->GetRhiResource());
+            if (!resource)
+                continue;
+
+            count += resource->status.load(memory_order_acquire) == webgpu::PipelineStatus::Pending ? 1 : 0;
+            lock_guard<mutex> lock_variants(resource->variants_mutex);
+            for (const auto& [key, variant] : resource->variants)
+            {
+                count += variant && variant->status.load(memory_order_acquire) == webgpu::PipelineStatus::Pending ? 1 : 0;
+            }
         }
         return count;
     }

@@ -1042,7 +1042,8 @@ static const uint draw_flag_impostor = 1u << 14;
 
 float3 impostor_frame_direction(uint2 frame, uint frames)
 {
-    float2 o = (float2(frame) + 0.5f) / (float)frames * 2.0f - 1.0f;
+    // specialized variants fold frames to 0, tint rejects a constant division by zero
+    float2 o = (float2(frame) + 0.5f) / (float)max(frames, 1u) * 2.0f - 1.0f;
     float px = (o.x + o.y) * 0.5f;
     float pz = (o.x - o.y) * 0.5f;
     return normalize(float3(px, 1.0f - abs(px) - abs(pz), pz));

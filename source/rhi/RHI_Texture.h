@@ -174,6 +174,7 @@ namespace spartan
         RHI_Texture_Type GetType() const             { return m_type; }
         void*& GetRhiResource()                      { return m_rhi_resource; }
         void* GetRhiSrv() const                      { return m_rhi_srv; }
+        uint64_t GetRhiRevision() const              { return m_rhi_revision; }
         void* GetRhiSrvMip(const uint32_t i) const   { return m_rhi_srv_mips[i]; }
         void* GetRhiSrvLayer(const uint32_t i) const { return i < m_rhi_srv_layers.size() ? m_rhi_srv_layers[i] : nullptr; }
         void* GetRhiDsv(const uint32_t i = 0) const  { return i < m_rhi_dsv.size() ? m_rhi_dsv[i] : nullptr; }
@@ -203,6 +204,7 @@ namespace spartan
 
         // api resources
         void* m_rhi_srv                                                 = nullptr;     // an srv with all mips
+        uint64_t m_rhi_revision                                         = 0;           // bumped by every gpu resource creation, a recreated view can land on the old address
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips             = { nullptr }; // an srv for each mip
         // Per-layer storage is independent of the simultaneous render-target binding limit.
         std::vector<void*> m_rhi_srv_layers; // per-layer srvs for array textures

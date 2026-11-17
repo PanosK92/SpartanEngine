@@ -360,6 +360,7 @@ namespace spartan
         }
 
         SetLayoutDirect(0, m_mip_count, RHI_Image_Layout::General);
+        m_rhi_revision++;
         return true;
     }
 
