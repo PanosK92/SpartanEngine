@@ -149,10 +149,20 @@ namespace spartan
 
             // a vendor upscaler the device lacks (every one of them on webgpu) falls back to the engine's own taau
             const bool xess_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess();
-            const bool dlss_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::IsSupportedDlss();
-            if (xess_missing || dlss_missing)
+            const bool dlss_missing    = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::IsSupportedDlss();
+            const bool metalfx_missing = v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx) && !RHI_Device::IsSupportedMetalFx();
+            if (xess_missing || dlss_missing || metalfx_missing)
             {
-                SP_LOG_INFO("%s is not available on this device, using TAAU", xess_missing ? "XeSS" : "DLSS");
+                const char* name = "MetalFX";
+                if (xess_missing)
+                {
+                    name = "XeSS";
+                }
+                else if (dlss_missing)
+                {
+                    name = "DLSS";
+                }
+                SP_LOG_INFO("%s is not available on this device, using TAAU", name);
                 v = static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau);
                 *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = v;
             }
@@ -160,7 +170,8 @@ namespace spartan
             if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau) ||
                 v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) ||
                 v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) ||
-                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr))
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) ||
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx))
             {
                 RHI_VendorTechnology::ResetHistory();
                 Renderer::ResetTaauHistory();

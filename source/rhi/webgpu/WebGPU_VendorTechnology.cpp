@@ -93,6 +93,17 @@ namespace spartan
     {
     }
 
+    // metalfx is apple only
+    float RHI_VendorTechnology::MetalFx_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
+    {
+        return 0.0f;
+    }
+
+    bool RHI_VendorTechnology::MetalFx_Dispatch(RHI_Texture* tex_color, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output)
+    {
+        return false;
+    }
+
     bool RHI_VendorTechnology::NRD_Dispatch(
         Nrd_Preset preset, RHI_Texture* tex_mv, RHI_Texture* tex_normal_roughness, RHI_Texture* tex_view_z, RHI_Texture* tex_signal_in, RHI_Texture* tex_signal_out,
         const Vector3* light_direction, uint32_t shadow_denoiser_index, uint32_t eye, RHI_Texture* tex_specular_in, RHI_Texture* tex_specular_out, bool checkerboard, RHI_Texture* tex_translucency)

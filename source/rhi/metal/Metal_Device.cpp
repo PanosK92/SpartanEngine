@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Compiler.h"
 #include "../../profiling/Profiler.h"
 #include "Metal_Internal.h"
+#include <MetalFX/MetalFX.hpp>
 //===================================
 
 //= NAMESPACES =====
@@ -226,6 +227,7 @@ namespace spartan
         m_is_shader_base_instance_supported = false;
         m_xess_supported                    = false;
         m_dlss_supported                    = false;
+        m_metalfx_supported                 = MTLFX::TemporalScalerDescriptor::supportsMetal4FX(RHI_Context::device);
 
         MTL4::CommandQueueDescriptor* descriptor = MTL4::CommandQueueDescriptor::alloc()->init();
         metal_utility::set_label(descriptor, "queue");
