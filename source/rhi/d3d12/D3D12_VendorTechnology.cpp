@@ -685,12 +685,12 @@ namespace spartan
             }
             else if (preset == Nrd_Preset::Shadows)
             {
-                // TODO: SIGMA_SHADOW_TRANSLUCENCY with an IN_TRANSLUCENCY input for glass shadows, see nrd_pack_shadows.hlsl
-                denoisers[0] = { nrd_common::id_shadows, nrd::Denoiser::SIGMA_SHADOW };
-                denoisers[1] = { nrd_common::id_shadows_local0, nrd::Denoiser::SIGMA_SHADOW };
-                denoisers[2] = { nrd_common::id_shadows_local0 + 1, nrd::Denoiser::SIGMA_SHADOW };
-                denoisers[3] = { nrd_common::id_shadows_local0 + 2, nrd::Denoiser::SIGMA_SHADOW };
-                denoisers[4] = { nrd_common::id_shadows_local0 + 3, nrd::Denoiser::SIGMA_SHADOW };
+                // translucency carries the colour of glass shadows, see nrd_pack_shadows.hlsl
+                denoisers[0] = { nrd_common::id_shadows, nrd::Denoiser::SIGMA_SHADOW_TRANSLUCENCY };
+                denoisers[1] = { nrd_common::id_shadows_local0, nrd::Denoiser::SIGMA_SHADOW_TRANSLUCENCY };
+                denoisers[2] = { nrd_common::id_shadows_local0 + 1, nrd::Denoiser::SIGMA_SHADOW_TRANSLUCENCY };
+                denoisers[3] = { nrd_common::id_shadows_local0 + 2, nrd::Denoiser::SIGMA_SHADOW_TRANSLUCENCY };
+                denoisers[4] = { nrd_common::id_shadows_local0 + 3, nrd::Denoiser::SIGMA_SHADOW_TRANSLUCENCY };
                 denoiser_count = 5;
                 pool_name      = "NRD_Shadows";
             }
@@ -1396,7 +1396,8 @@ namespace spartan
         uint32_t eye,
         RHI_Texture* tex_specular_in,
         RHI_Texture* tex_specular_out,
-        bool checkerboard
+        bool checkerboard,
+        RHI_Texture* tex_translucency
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -1406,7 +1407,7 @@ namespace spartan
             return false;
         }
 
-        if (preset == Nrd_Preset::Shadows && !light_direction)
+        if (preset == Nrd_Preset::Shadows && (!light_direction || !tex_translucency))
         {
             return false;
         }
@@ -1439,6 +1440,10 @@ namespace spartan
         cmd_list->EnsureComputeShaderResource(tex_normal_roughness, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_view_z, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_signal_in, include_pixel_stage);
+        if (preset == Nrd_Preset::Shadows)
+        {
+            cmd_list->EnsureComputeShaderResource(tex_translucency, include_pixel_stage);
+        }
         cmd_list->PrepareForExternalWrite(tex_signal_out);
         cmd_list->FlushBarriers();
 
@@ -1538,6 +1543,7 @@ namespace spartan
                 return false;
             }
             snapshot.SetResource(nrd::ResourceType::IN_PENUMBRA, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::IN_TRANSLUCENCY, nvidia::make_resource(tex_translucency, false));
             snapshot.SetResource(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, nvidia::make_resource(tex_signal_out, true));
         }
 
@@ -1552,6 +1558,10 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_normal_roughness, include_pixel_stage);
         cmd_list->AdoptComputeShaderResource(tex_view_z, include_pixel_stage);
         cmd_list->AdoptComputeShaderResource(tex_signal_in, include_pixel_stage);
+        if (preset == Nrd_Preset::Shadows)
+        {
+            cmd_list->AdoptComputeShaderResource(tex_translucency, include_pixel_stage);
+        }
         cmd_list->AdoptUnorderedAccess(tex_signal_out);
         cmd_list->restore_after_external_pass();
         return true;

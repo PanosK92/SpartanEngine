@@ -127,7 +127,38 @@ float3 rt_glass_tint(float3 color, float absorption, float distance)
     return exponent > 0.0f ? pow(saturate(color), exponent) : 1.0f;
 }
 
-float rt_trace_transmittance(float3 origin, float3 direction, float t_max)
+// world space shading normal at a candidate hit, interpolated so a tessellated sphere doesn't print its facets into the shadow
+float3 rt_candidate_normal(GeometryInfo geo, uint primitive_index, float2 barycentrics)
+{
+    uint index_base = geo.index_offset + primitive_index * 3u;
+    float3 n0       = unpack_vertex_oct(load_pulled_vertex(geo.vertex_offset + geometry_indices[index_base + 0u]).normal);
+    float3 n1       = unpack_vertex_oct(load_pulled_vertex(geo.vertex_offset + geometry_indices[index_base + 1u]).normal);
+    float3 n2       = unpack_vertex_oct(load_pulled_vertex(geo.vertex_offset + geometry_indices[index_base + 2u]).normal);
+    float3 bary     = float3(saturate(1.0f - barycentrics.x - barycentrics.y), barycentrics);
+    float3 normal   = n0 * bary.x + n1 * bary.y + n2 * bary.z;
+
+    // normals take the inverse transpose, a non uniformly scaled instance would bend them otherwise
+    float3x3 world_to_object = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
+    return normalize(mul(normal, transpose(world_to_object)));
+}
+
+// schlick, the share of light an interface lets through at this angle
+float rt_fresnel_transmission(float cos_theta, float ior)
+{
+    float r0 = (ior - 1.0f) / (ior + 1.0f);
+    r0      *= r0;
+    float m  = 1.0f - saturate(cos_theta);
+    float m2 = m * m;
+    return 1.0f - (r0 + (1.0f - r0) * m2 * m2 * m);
+}
+
+struct RtTransmittance
+{
+    float3 color;    // light that makes it through, 0 behind an alpha tested blocker
+    float  distance; // distance to the nearest glass hit, negative when the ray crossed none, sigma sizes the penumbra with it
+};
+
+RtTransmittance rt_trace_transmittance(float3 origin, float3 direction, float t_max)
 {
     RayDesc ray;
     ray.Origin    = origin;
@@ -138,6 +169,7 @@ float rt_trace_transmittance(float3 origin, float3 direction, float t_max)
     // glass instances are opaque in the tlas, forcing them non opaque hands every crossing to the loop,
     // the mask only holds transparent instances so opaque geometry is never forced
     float3 transmittance = 1.0f;
+    float nearest        = -1.0f;
     bool blocked         = false;
     RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_FORCE_NON_OPAQUE, 0x02, ray);
@@ -154,13 +186,17 @@ float rt_trace_transmittance(float3 origin, float3 direction, float t_max)
             albedo = rt_candidate_albedo(geo, primitive, query.CandidateTriangleBarycentrics(), position);
         }
 
+        if (material.is_alpha_tested() && albedo.a <= get_alpha_threshold(position, material.alpha_cutoff))
+        {
+            continue;
+        }
+
+        // traversal is not in distance order, keep the closest crossing that takes light away
+        float distance = query.CandidateTriangleRayT();
+        nearest        = nearest < 0.0f ? distance : min(nearest, distance);
+
         if (material.is_alpha_tested())
         {
-            if (albedo.a <= get_alpha_threshold(position, material.alpha_cutoff))
-            {
-                continue;
-            }
-
             blocked = true;
         }
         else if (material.alpha_blend > 0.5f)
@@ -169,9 +205,14 @@ float rt_trace_transmittance(float3 origin, float3 direction, float t_max)
         }
         else
         {
-            float ior     = material.ior > 1.0f ? material.ior : 1.5f;
-            float f0      = (ior - 1.0f) / (ior + 1.0f);
-            transmittance *= 1.0f - f0 * f0;
+            // the tint below takes KHR_materials_volume's authored thickness, fresnel takes the entry angle at the exit
+            // too since shadow rays don't refract (exact for spheres and parallel slabs), no total internal reflection
+            // since the unrefracted ray would fake a hard dark ring
+            float ior         = material.ior > 1.0f ? material.ior : 1.5f;
+            float cos_theta    = abs(dot(direction, rt_candidate_normal(geo, primitive, query.CandidateTriangleBarycentrics())));
+            float transmission = rt_fresnel_transmission(cos_theta, ior);
+            // a pane is one triangle standing in for both of its interfaces, a volume meets every interface as its own hit
+            transmittance *= material.is_thin_walled() ? transmission * transmission : transmission;
             if (material.is_thin_walled())
             {
                 transmittance *= rt_glass_tint(material.color.rgb * albedo.rgb, material.absorption, material.thickness);
@@ -189,11 +230,10 @@ float rt_trace_transmittance(float3 origin, float3 direction, float t_max)
         }
     }
 
-    // TODO: rgb shadows, the transmittance is rgb but the shadow masks have one channel, so colored glass casts a grey
-    // shadow. the sun mask has a free channel (b), the local light slices are full (visibility, blocker distance,
-    // distance to light, light size) and need a second target, sigma translucency takes rgb as well
-    // TODO: also return the distance to the nearest glass hit, sigma needs it, see nrd_pack_shadows.hlsl
-    return blocked ? 0.0f : dot(transmittance, float3(0.2126f, 0.7152f, 0.0722f));
+    RtTransmittance result;
+    result.color    = blocked ? 0.0f : transmittance;
+    result.distance = nearest;
+    return result;
 }
 
 // distance to the nearest surface along the ray, negative when it is clear, a ray started

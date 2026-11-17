@@ -579,7 +579,7 @@ namespace spartan
             static const char* names[] =
             {
                 "tex", "tex2", "tex3", "tex4", "tex5", "tex6", "tex3d",
-                "tex_uav", "tex_uav2", "tex_uav3", "tex_uav4", "tex3d_uav",
+                "tex_uav", "tex_uav2", "tex_uav3", "tex_uav4", "tex_uav5", "tex3d_uav",
                 "tex_uav_sss", "tex_uav_uint", "tex_uav_mips"
             };
             for (const char* candidate : names)

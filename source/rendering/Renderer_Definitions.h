@@ -302,6 +302,7 @@ namespace spartan
         ocean_fft_b        = 11, // working: z displacement
         ocean_displacement = 12, // assembled displacement
         ocean_normal       = 13, // assembled slope + foam
+        tex5          = 14,
         geometry_info = 20, // ray tracing geometry info buffer
         // restir reservoir uav bindings
         reservoir0    = 21,

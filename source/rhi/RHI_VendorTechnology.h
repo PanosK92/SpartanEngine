@@ -76,6 +76,7 @@ namespace spartan
         // nrd, guides + signal in/out, light_direction only for shadows
         // shadow_denoiser_index 0 is the sun, 1-4 are local sigma instances
         // checkerboard means the reflections signal holds one pixel of each horizontal pair, packed into the left half
+        // tex_translucency is the sigma translucency input, required by the shadows preset
         static bool NRD_Dispatch(
             Nrd_Preset preset,
             RHI_Texture* tex_mv,
@@ -88,7 +89,8 @@ namespace spartan
             uint32_t eye = 0,
             RHI_Texture* tex_specular_in = nullptr,
             RHI_Texture* tex_specular_out = nullptr,
-            bool checkerboard = false
+            bool checkerboard = false,
+            RHI_Texture* tex_translucency = nullptr
         );
     };
 }

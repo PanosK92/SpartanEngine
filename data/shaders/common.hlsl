@@ -1213,6 +1213,25 @@ float luminance(float4 color)
 }
 
 /*------------------------------------------------------------------------------
+    RAY TRACED SHADOW MASKS
+------------------------------------------------------------------------------*/
+// the sun mask and every local light slice share one layout
+// r = visibility luminance, g = blocker distance, b = red visibility, a = blue visibility
+// green follows from the luminance, every channel stays linear so the masks can be filtered, blurred and
+// averaged like a plain visibility, readers that only want a grey shadow keep reading .r
+float4 shadow_mask_pack(float3 visibility, float blocker_distance)
+{
+    visibility = saturate(visibility);
+    return float4(dot(visibility, srgb_color_space_coefficient), blocker_distance, visibility.r, visibility.b);
+}
+
+float3 shadow_mask_unpack(float4 mask)
+{
+    float green = (mask.r - srgb_color_space_coefficient.r * mask.b - srgb_color_space_coefficient.b * mask.a) / srgb_color_space_coefficient.g;
+    return saturate(float3(mask.b, green, mask.a));
+}
+
+/*------------------------------------------------------------------------------
     RESTIR GI DEMODULATION
 ------------------------------------------------------------------------------*/
 // The composition buffer carries the sum of the separately denoised lobes.

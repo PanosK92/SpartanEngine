@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 //
 // tex_uav                   = ray traced shadows, sun
 // tex_uav_rt_shadows_local  = ray traced shadows, local lights, one slice per sigma slot
+// both use the shadow_mask_pack layout, the visibility channels (r, b, a) are linear and get averaged, the blocker
+// distance (g) is not, it's taken from one neighbour
 
 //= INCLUDES =========
 #include "common.hlsl"
@@ -28,11 +30,11 @@ static const int2 fill_offsets[4] =
     int2( 0,  1)
 };
 
-// the weighted mean of the visibility, and the blocker data of the strongest neighbour that has a blocker,
+// the weighted mean of the visibility, and the blocker distance of the strongest neighbour that has a blocker,
 // a static pixel keeps its previous visibility, clamped to the range of the neighbours
 float4 fill_signal(float4 samples[4], float4 weights, float4 previous, bool is_static)
 {
-    float visibility    = 0.0f;
+    float3 visibility   = 0.0f;
     float best_weight   = -1.0f;
     float best_blocked  = -1.0f;
     float4 best         = samples[0];
@@ -40,7 +42,7 @@ float4 fill_signal(float4 samples[4], float4 weights, float4 previous, bool is_s
     [unroll]
     for (uint i = 0; i < 4; i++)
     {
-        visibility += samples[i].r * weights[i];
+        visibility += samples[i].rba * weights[i];
         if (weights[i] > best_weight)
         {
             best_weight = weights[i];
@@ -56,13 +58,13 @@ float4 fill_signal(float4 samples[4], float4 weights, float4 previous, bool is_s
 
     if (is_static)
     {
-        float visibility_min = min(min(samples[0].r, samples[1].r), min(samples[2].r, samples[3].r));
-        float visibility_max = max(max(samples[0].r, samples[1].r), max(samples[2].r, samples[3].r));
-        visibility           = clamp(previous.r, visibility_min, visibility_max);
+        float3 visibility_min = min(min(samples[0].rba, samples[1].rba), min(samples[2].rba, samples[3].rba));
+        float3 visibility_max = max(max(samples[0].rba, samples[1].rba), max(samples[2].rba, samples[3].rba));
+        visibility            = clamp(previous.rba, visibility_min, visibility_max);
     }
 
     float4 result = best_blocked >= 0.0f ? best_blocker : best;
-    result.r      = visibility;
+    result.rba    = visibility;
     return result;
 }
 
@@ -91,10 +93,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float depth = get_linear_depth(pixel);
     if (tex_depth[pixel].r <= 0.0f)
     {
-        tex_uav[pixel] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        tex_uav[pixel] = shadow_mask_pack(1.0f, 0.0f);
         for (uint slice = 0; slice < slices; slice++)
         {
-            tex_uav_rt_shadows_local[uint3(pixel, slice)] = float4(1.0f, 0.0f, 1.0f, 1.0f);
+            tex_uav_rt_shadows_local[uint3(pixel, slice)] = shadow_mask_pack(1.0f, 0.0f);
         }
         return;
     }

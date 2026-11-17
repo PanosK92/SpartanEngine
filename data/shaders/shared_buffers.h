@@ -515,6 +515,7 @@ namespace pass_nrd_shadows
     static const SHARED_UINT tan_light_angular_radius = 0; // float
     static const SHARED_UINT local_slice              = 1; // uint
     static const SHARED_UINT is_local                 = 2; // bool
+    static const SHARED_UINT light_index              = 3; // uint, the local light the slice belongs to
 }
 
 namespace pass_path_tracing
