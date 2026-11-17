@@ -17,5 +17,8 @@ namespace spartan
         static void Tick();
         static void FrameCapture();
         static void LaunchRenderDocUi();
+
+        // what the editor calls the capture button, the backend decides which tool it is
+        static const char* GetCaptureName();
     };
 }
