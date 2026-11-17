@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstring>
 #include <memory>
 #include <vector>
+#include "physx/foundation/PxPhysicsVersion.h"
 #include "physx/cooking/PxCooking.h"
 #include "../geometry/GeneratedCache.h"
 

@@ -6,6 +6,9 @@
 #include "../car/Car.h"
 #include "../car/CarPhysics.h"
 #include "../car/CarSimulation.h"
+#include <physx/PxShape.h>
+#include <physx/geometry/PxGeometryQuery.h>
+#include <physx/geometry/PxGeometryHelpers.h>
 #include "../core/Engine.h"
 #include "../core/Timer.h"
 #include "../physics/PhysicsWorld.h"

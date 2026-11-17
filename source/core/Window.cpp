@@ -12,7 +12,13 @@ Commercial use requires written permission and negotiated payment terms.
 #include "GameManifest.h"
 #include "../input/Input.h"
 #include "../display/Display.h"
-#include "../rhi/RHI_Implementation.h"
+#include "../rhi/RHI_Device.h"
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#endif
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
 #include <freetype/freetype.h>
@@ -286,8 +292,8 @@ namespace spartan
         m_title                      = packaged ? game.name : string(spartan::version::c_str());
 
         // set window flags - borderless for custom title bar
-        // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Context, set at compile time per-api
-        uint32_t flags = SDL_WINDOW_RESIZABLE | RHI_Context::sdl_window_flags;
+        // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Device, set at compile time per-api
+        uint32_t flags = SDL_WINDOW_RESIZABLE | RHI_Device::GetSdlWindowFlags();
         #if defined(__EMSCRIPTEN__)
         // match desktop hidpi backing resolution for sharp taau, keep css pixel density on phones to stay within mobile vram budgets
         if (EM_ASM_INT({ return Math.min(window.screen.width, window.screen.height) >= 768 ? 1 : 0; }))

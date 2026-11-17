@@ -346,6 +346,16 @@ def engine_sources():
         if path.name == "pch.cpp":
             continue
         sources.append(path)
+    def compile_priority(path):
+        rel = path.relative_to(source).as_posix()
+        if rel.startswith("scripting/Scripting"):
+            return (0, rel)
+        if rel == "rendering/Renderer.cpp" or rel.startswith("mcp/McpCommands") or rel.startswith("editor/mcp/McpAssistant"):
+            return (1, rel)
+        if rel.startswith("world/") or rel.startswith("editor/widgets/Properties") or rel.startswith("editor/imgui/source/imgui"):
+            return (2, rel)
+        return (3, rel)
+    sources.sort(key=compile_priority)
     recast = THIRD / "recast"
     third = sorted(recast.rglob("*.cpp"))
     third += [THIRD / "lz4" / "lz4.c", THIRD / "astronomy" / "astronomy.c", THIRD / "mimalloc" / "src" / "static.c"]
@@ -355,23 +365,20 @@ def engine_sources():
 
 def lzma_sources():
     root = THIRD / "lzma_sdk"
-    common = ["CRC", "CrcReg", "IntToString", "LzFindPrepare", "NewHandler", "MyString", "StringConvert", "StringToInt", "MyVector", "Wildcard", "MyWindows", "UTFConvert"]
-    windows = ["FileDir", "FileFind", "FileIO", "FileName", "PropVariant", "PropVariantConv", "Synchronization", "System", "TimeUtils", "ErrorMsg"]
-    zcommon = ["CreateCoder", "CWrappers", "InBuffer", "InOutTempBuffer", "FilterCoder", "LimitedStreams", "MethodId", "MethodProps", "OutBuffer", "ProgressUtils", "PropId", "StreamBinder", "StreamObjects", "StreamUtils", "UniqBlocks", "VirtThread", "FileStreams"]
-    arcommon = ["CoderMixer2", "HandlerOut", "InStreamWithCRC", "ItemNameUtils", "OutStreamWithCRC", "ParseProperties"]
-    z7 = ["7zCompressionMode", "7zDecode", "7zEncode", "7zExtract", "7zFolderInStream", "7zHandler", "7zHandlerOut", "7zHeader", "7zIn", "7zOut", "7zProperties", "7zSpecStream", "7zUpdate", "7zRegister"]
-    compress = ["CodecExports", "Bcj2Coder", "Bcj2Register", "BcjCoder", "BcjRegister", "BranchMisc", "BranchRegister", "ByteSwap", "CopyCoder", "CopyRegister", "DeltaFilter", "Lzma2Decoder", "Lzma2Encoder", "Lzma2Register", "LzmaDecoder", "LzmaEncoder", "LzmaRegister"]
+    unity_cpp = [
+        "unity_cpp_common_win",
+        "unity_cpp_7zip_common",
+        "unity_cpp_7zip_7z",
+        "unity_cpp_7zip_compress",
+        "create_object",
+        "archive_create",
+        "archive_extract",
+        "file_sha256"
+    ]
     c = ["7zStream", "Alloc", "Bcj2", "Bcj2Enc", "Bra", "Bra86", "BraIA64", "CpuArch", "Delta", "LzFind", "LzFindMt", "LzFindOpt", "Lzma2Dec", "Lzma2DecMt", "Lzma2Enc", "LzmaDec", "LzmaEnc", "MtCoder", "MtDec", "SwapBytes", "Threads", "7zCrc", "7zCrcOpt", "7zAlloc", "7zBuf", "7zFile", "7zDec", "7zArcIn", "Sha256", "Sha256Opt"]
     files = []
-    files += [root / "CPP" / "Common" / f"{f}.cpp" for f in common]
-    files += [root / "CPP" / "Windows" / f"{f}.cpp" for f in windows]
-    files += [root / "CPP" / "7zip" / "Common" / f"{f}.cpp" for f in zcommon]
-    files += [root / "CPP" / "7zip" / "Archive" / "ArchiveExports.cpp"]
-    files += [root / "CPP" / "7zip" / "Archive" / "Common" / f"{f}.cpp" for f in arcommon]
-    files += [root / "CPP" / "7zip" / "Archive" / "7z" / f"{f}.cpp" for f in z7]
-    files += [root / "CPP" / "7zip" / "Compress" / f"{f}.cpp" for f in compress]
+    files += [root / "spartan" / f"{f}.cpp" for f in unity_cpp]
     files += [root / "C" / f"{f}.c" for f in c]
-    files += [root / "spartan" / f"{f}.cpp" for f in ["create_object", "archive_create", "archive_extract", "file_sha256"]]
     return files, root
 
 

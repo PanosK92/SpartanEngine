@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include "pch.h"
 #include "CarSimulation.h"
+#include <physx/PxPhysicsAPI.h>
 #include <deque>
 #include <fstream>
 #include <sstream>

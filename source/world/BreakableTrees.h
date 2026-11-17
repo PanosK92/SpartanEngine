@@ -7,6 +7,9 @@
 // A fallen tree stays on the ground and stands up again once nobody is around to see it.
 #pragma once
 #include "VegetationInteraction.h"
+#include <physx/PxPhysics.h>
+#include <physx/PxRigidStatic.h>
+#include <physx/PxMaterial.h>
 #include "../commands/console/ConsoleCommands.h"
 #include "../world/components/Render.h"
 #include "../geometry/Mesh.h"

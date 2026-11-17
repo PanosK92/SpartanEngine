@@ -224,4 +224,35 @@ namespace spartan::scripting
     {
         return sol::state_view(lua_state);
     }
+
+    bool execute_snippet(const std::string& code, std::optional<std::string>& out_result, std::string& out_error)
+    {
+        out_result.reset();
+        out_error.clear();
+
+        sol::state_view lua(lua_state);
+        sol::protected_function_result result = lua.safe_script(code, sol::script_pass_on_error);
+        if (!result.valid())
+        {
+            const sol::error error = result;
+            out_error = error.what();
+            return false;
+        }
+
+        const sol::object return_value = result;
+        if (return_value.valid() && return_value.get_type() != sol::type::lua_nil)
+        {
+            const sol::protected_function to_string = lua["tostring"];
+            const sol::protected_function_result to_string_result = to_string(return_value);
+            if (to_string_result.valid())
+            {
+                if (const sol::optional<std::string> as_string = to_string_result)
+                {
+                    out_result = *as_string;
+                }
+            }
+        }
+
+        return true;
+    }
 }

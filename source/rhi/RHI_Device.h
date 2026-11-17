@@ -175,6 +175,13 @@ namespace spartan
         static bool IsDeviceLost()  { return m_device_lost; }
         static void SetDeviceLost() { m_device_lost = true; }
 
+        // api metadata (keeps shared code free of backend headers)
+        static RHI_Api_Type GetApiType();
+        static const char* GetApiTypeString();
+        static const char* GetApiVersionString();
+        static uint32_t GetSdlWindowFlags();
+        static bool SupportsImGuiMultiViewport();
+
         // misc
         static uint64_t GetBufferDeviceAddress(void* buffer);
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name);

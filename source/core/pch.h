@@ -13,16 +13,24 @@ Commercial use requires written permission and negotiated payment terms.
 
 // std (lean, ubiquitous-only)
 #include <string>
+#include <string_view>
 #include <algorithm>
 #include <type_traits>
 #include <memory>
 #include <limits>
 #include <cassert>
 #include <cstdint>
+#include <cctype>
+#include <cmath>
+#include <bit>
+#include <numeric>
+#include <optional>
+#include <functional>
 #include <atomic>
 #include <mutex>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <set>
 #include <cstdio>
 #include <array>
@@ -31,6 +39,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstring>
 #include <chrono>
 #include <utility>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 //===========================
 
 // common
@@ -43,11 +54,15 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../file_system/FileSystem.h"
 #include "Stopwatch.h"
 #include "../logging/Log.h"
+SP_WARNINGS_OFF
+#include "../io/pugixml.hpp"
+SP_WARNINGS_ON
 
 // math
 #include "../math/Vector2.h"
 #include "../math/Vector3.h"
 #include "../math/Vector4.h"
+#include "../math/Quaternion.h"
 #include "../math/Ray.h"
 #include "../math/RayHitResult.h"
 #include "../math/Rectangle.h"

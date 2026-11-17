@@ -45,6 +45,7 @@ SP_WARNINGS_OFF
     #undef _DEBUG
 #endif
 #define PX_PHYSX_STATIC_LIB
+#include <physx/PxPhysicsAPI.h>
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //============================================

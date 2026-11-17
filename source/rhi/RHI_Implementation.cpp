@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ==================
 #include "pch.h"
 #include "RHI_Implementation.h"
+#include "RHI_Device.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_video.h>
 SP_WARNINGS_ON
@@ -52,4 +53,29 @@ namespace spartan
 
     // api agnostic
     const char* RHI_Context::api_version_cstr;
+
+    RHI_Api_Type RHI_Device::GetApiType()
+    {
+        return RHI_Context::api_type;
+    }
+
+    const char* RHI_Device::GetApiTypeString()
+    {
+        return RHI_Context::api_type_str;
+    }
+
+    const char* RHI_Device::GetApiVersionString()
+    {
+        return RHI_Context::api_version_cstr;
+    }
+
+    uint32_t RHI_Device::GetSdlWindowFlags()
+    {
+        return RHI_Context::sdl_window_flags;
+    }
+
+    bool RHI_Device::SupportsImGuiMultiViewport()
+    {
+        return RHI_Context::supports_imgui_multi_viewport;
+    }
 }

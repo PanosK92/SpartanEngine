@@ -14,6 +14,8 @@ namespace spartan::scripting
     void register_math(sol::state_view state);
     void register_entity(sol::state_view state);
     void register_components(sol::state_view state);
+    void register_components_rendering(sol::state_view state);
+    void register_components_physics(sol::state_view state);
     void register_world_helpers(sol::state_view state);
     void register_world(sol::state_view state);
     void register_world_systems(sol::state_view state);

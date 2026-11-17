@@ -8,8 +8,9 @@ Commercial use requires written permission and negotiated payment terms.
 #pragma once
 
 #include "Component.h"
+#include <memory>
 SP_WARNINGS_OFF
-#include "sol/sol.hpp"
+#include <sol/forward.hpp>
 SP_WARNINGS_ON
 
 namespace spartan
@@ -32,14 +33,17 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
+        bool IsScriptLoaded() const;
+        sol::table& GetScriptTable();
 
         std::string file_path;
-        sol::table  script;
 
     private:
+        struct ScriptInstance;
         // loads the script file, applies serialized properties and runs the lua initialize and load hooks
         void LoadInternal(pugi::xml_node& node);
 
+        std::unique_ptr<ScriptInstance> m_instance;
         uint64_t m_serial = 0;
     };
 }

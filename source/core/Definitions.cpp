@@ -113,4 +113,24 @@ namespace spartan
         callstack_str = callstack.str();
         return callstack_str.c_str();
     }
+
+    void show_info_window(const char* message)
+    {
+#if defined(_WIN32)
+        MessageBeep(MB_ICONINFORMATION);
+        MessageBoxA(nullptr, message ? message : "", "Info", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONINFORMATION);
+#else
+        printf("Info: %s\n", message ? message : "");
+#endif
+    }
+
+    void show_warning_window(const char* message)
+    {
+#if defined(_WIN32)
+        MessageBeep(MB_ICONWARNING);
+        MessageBoxA(nullptr, message ? message : "", "Warning", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONWARNING);
+#else
+        printf("Warning: %s\n", message ? message : "");
+#endif
+    }
 }

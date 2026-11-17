@@ -37,6 +37,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <mutex>
 #include "CarPhysicsMeshView.h"
 #include "CarPhysicsMeshSystems.h"
+#include <physx/PxPhysicsAPI.h>
 //==========================================
 
 namespace spartan

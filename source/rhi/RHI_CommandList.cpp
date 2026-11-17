@@ -16,7 +16,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_Descriptor.h"
 #include "RHI_Device.h"
-#include "RHI_Implementation.h"
+#include <stack>
 #include <unordered_set>
 //============================
 
@@ -969,7 +969,7 @@ namespace spartan
                 const bool hazard = previous.access != RHI_Resource_Access::None && current.access != RHI_Resource_Access::None && (resource_tracker::writes(previous.access) || resource_tracker::writes(current.access));
                 const bool scope_change = previous.scope != current.scope && previous.scope != RHI_Barrier_Scope::None && current.scope != RHI_Barrier_Scope::None;
                 const bool attachment_release = previous.usage == RHI_Resource_Usage::Attachment && current.usage != RHI_Resource_Usage::Attachment;
-                const bool vulkan = RHI_Context::api_type == RHI_Api_Type::Vulkan;
+                const bool vulkan = RHI_Device::GetApiType() == RHI_Api_Type::Vulkan;
                 const bool sampled_after_write = previous.unsynced &&
                     resource_tracker::writes(previous.access) &&
                     current.access == RHI_Resource_Access::Read;
@@ -1076,7 +1076,7 @@ namespace spartan
                 current.scope == RHI_Barrier_Scope::Graphics &&
                 resource_tracker::writes(previous.access);
             const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
-            const bool vulkan = RHI_Context::api_type == RHI_Api_Type::Vulkan;
+            const bool vulkan = RHI_Device::GetApiType() == RHI_Api_Type::Vulkan;
             // Repeated indirect reads need no dependency on one another. Keep
             // the transition from a producer or another usage synchronized.
             const bool to_indirect = current.usage == RHI_Resource_Usage::Indirect && previous.usage != RHI_Resource_Usage::Indirect;

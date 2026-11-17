@@ -8,6 +8,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "../../profiling/Profiler.h"
 #include "Script.h"
+SP_WARNINGS_OFF
+#include <sol/sol.hpp>
+SP_WARNINGS_ON
 #include "io/pugixml.hpp"
 #include "world/Entity.h"
 #include "world/World.h"
@@ -15,6 +18,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../scripting/Scripting.h"
 
 using namespace spartan;
+
+struct Script::ScriptInstance
+{
+    sol::table table;
+};
 
 namespace
 {
@@ -97,6 +105,7 @@ namespace
 
 Script::Script(Entity* Entity)
     :Component(Entity)
+    ,m_instance(std::make_unique<ScriptInstance>())
 {
     m_serial = next_serial.fetch_add(1, std::memory_order_relaxed);
     {
@@ -119,6 +128,16 @@ Script::~Script()
 {
     std::lock_guard lock(live_scripts_mutex);
     live_scripts.erase(this);
+}
+
+bool Script::IsScriptLoaded() const
+{
+    return m_instance && m_instance->table.valid();
+}
+
+sol::table& Script::GetScriptTable()
+{
+    return m_instance->table;
 }
 
 void Script::LoadScriptFile(std::string_view path)
@@ -146,47 +165,48 @@ void Script::LoadScriptFile(std::string_view path)
 
     file_path.assign(path.data(), path.size());
 
-    script = ReturnValue;
+    m_instance->table = ReturnValue;
 
 }
 
 void Script::Initialize()
 {
-    invoke_lifecycle(script, "Initialize", GetEntity(), file_path);
+    invoke_lifecycle(m_instance->table, "Initialize", GetEntity(), file_path);
 }
 
 void Script::Start()
 {
-    invoke_lifecycle(script, "Start", GetEntity(), file_path);
+    invoke_lifecycle(m_instance->table, "Start", GetEntity(), file_path);
 }
 
 void Script::Stop()
 {
-    invoke_lifecycle(script, "Stop", GetEntity(), file_path);
+    invoke_lifecycle(m_instance->table, "Stop", GetEntity(), file_path);
 }
 
 void Script::Remove()
 {
-    invoke_lifecycle(script, "Remove", GetEntity(), file_path);
+    invoke_lifecycle(m_instance->table, "Remove", GetEntity(), file_path);
 }
 
 void Script::PreTick()
 {
     if (!is_simulation_active()) return;
-    invoke_lifecycle(script, "PreTick", GetEntity(), file_path);
+    invoke_lifecycle(m_instance->table, "PreTick", GetEntity(), file_path);
 }
 
 void Script::Tick()
 {
     SP_PROFILE_CPU();
     if (!is_simulation_active()) return;
-    invoke_lifecycle(script, "Tick", GetEntity(), file_path);
+    invoke_lifecycle(m_instance->table, "Tick", GetEntity(), file_path);
 }
 
 void Script::Save(pugi::xml_node& node)
 {
     node.append_attribute("file_path") = file_path.c_str();
 
+    sol::table& script = m_instance->table;
     if (script.valid())
     {
         sol::protected_function TickFunction = script["Save"];
@@ -250,6 +270,7 @@ void Script::LoadInternal(pugi::xml_node& node)
     file_path        = node.attribute("file_path").as_string("N/A");
     LoadScriptFile(file_path);
 
+    sol::table& script = m_instance->table;
     if (script.valid())
     {
         sol::table saved_data = scripting::get_state().create_table();

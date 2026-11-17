@@ -8022,28 +8022,17 @@ namespace spartan
                 return json_error("missing code");
             }
 
-            sol::state_view lua = scripting::get_state();
-            sol::protected_function_result result = lua.safe_script(*code, sol::script_pass_on_error);
-            if (!result.valid())
+            std::optional<std::string> return_text;
+            std::string lua_error;
+            if (!scripting::execute_snippet(*code, return_text, lua_error))
             {
-                const sol::error error = result;
-                return json_error(std::string("lua error, ") + error.what());
+                return json_error("lua error, " + lua_error);
             }
 
             std::string json = "{\"ok\":true";
-            const sol::object return_value = result;
-            if (return_value.valid() && return_value.get_type() != sol::type::lua_nil)
+            if (return_text)
             {
-                const sol::protected_function to_string = lua["tostring"];
-                const sol::protected_function_result to_string_result = to_string(return_value);
-                if (to_string_result.valid())
-                {
-                    const sol::optional<std::string> as_string = to_string_result;
-                    if (as_string)
-                    {
-                        json += ",\"result\":" + json_string(*as_string);
-                    }
-                }
+                json += ",\"result\":" + json_string(*return_text);
             }
             json += "}";
             return json;

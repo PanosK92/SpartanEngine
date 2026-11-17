@@ -35,6 +35,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Physics.h"
 #include "../physics/PhysicsWorld.h"
 #include "../car/CarSimulation.h"
+#include <physx/PxPhysicsAPI.h>
 #include "../file_system/FileSystem.h"
 #include <fstream>
 #include <iostream>

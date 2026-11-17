@@ -16,8 +16,26 @@ Commercial use requires written permission and negotiated payment terms.
     #undef _DEBUG
 #endif
 #define PX_PHYSX_STATIC_LIB
-#include <physx/PxPhysicsAPI.h>
-#include <physx/extensions/PxGearJoint.h>
+#include <physx/foundation/PxTransform.h>
+#include <physx/foundation/PxMat33.h>
+#include <physx/foundation/PxMathUtils.h>
+#include <physx/PxRigidDynamic.h>
+#include <physx/PxQueryFiltering.h>
+
+namespace physx
+{
+    class PxPhysics;
+    class PxScene;
+    class PxConvexMesh;
+    class PxMaterial;
+    class PxGeometry;
+    class PxJoint;
+    class PxD6Joint;
+    class PxRevoluteJoint;
+    class PxDistanceJoint;
+    class PxSphericalJoint;
+    class PxGearJoint;
+}
 #include <string>
 #include <algorithm>
 #include <cstring>

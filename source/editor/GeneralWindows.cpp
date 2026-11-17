@@ -30,7 +30,7 @@ SP_WARNINGS_OFF
 #include <meshoptimizer/meshoptimizer.h>
 #include <openxr/openxr.h>
 #include <physx/foundation/PxPhysicsVersion.h>
-#include <sol/sol.hpp>
+#include <sol/forward.hpp>
 #include <renderdoc/replay/version.h>
 #include "io/pugixml.hpp"
 #if defined(_WIN32) && !defined(API_GRAPHICS_WEBGPU)

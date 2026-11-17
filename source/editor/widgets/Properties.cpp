@@ -44,6 +44,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "resource/IResource.h"
 #include "rhi/RHI_Texture.h"
 #include "world/components/Script.h"
+SP_WARNINGS_OFF
+#include <sol/sol.hpp>
+SP_WARNINGS_ON
 #include "world/components/ParticleSystem.h"
 #include "world/components/Water.h"
 #include "world/components/SpawnPoint.h"
@@ -1359,7 +1362,7 @@ void Properties::ShowScript(spartan::Script* script) const
     }
 
     {
-        const bool loaded = script->script.valid();
+        const bool loaded = script->IsScriptLoaded();
         const string file = FileSystem::GetFileNameFromFilePath(script->file_path);
         component_summary(loaded ? file : (script->file_path.empty() ? "no file" : "not loaded"), loaded || script->file_path.empty() ? ImVec4(0, 0, 0, 0) : ImGui::Style::color_warning);
     }
@@ -1385,7 +1388,7 @@ void Properties::ShowScript(spartan::Script* script) const
         }
 
         // status as a colored line, a green dot needs no reading, a red one says what to do
-        const bool is_loaded = script->script.valid();
+        const bool is_loaded = script->IsScriptLoaded();
         if (is_loaded)
         {
             layout::note("Loaded. Values below are the script's globals, edits apply live and are lost on reload.", ImGui::Style::color_ok);
@@ -1420,8 +1423,9 @@ void Properties::ShowScript(spartan::Script* script) const
         // the script's globals as ordinary rows, so a script reads like any other component; functions and tables are its code, not its settings
         if (is_loaded)
         {
+            sol::table& script_table = script->GetScriptTable();
             vector<string> code_members;
-            for (auto&& [K, V] : script->script)
+            for (auto&& [K, V] : script_table)
             {
                 const std::string key = K.as<std::string>();
                 ImGui::PushID(key.c_str());
@@ -1431,7 +1435,7 @@ void Properties::ShowScript(spartan::Script* script) const
                     bool value = V.as<bool>();
                     if (property_toggle(key.c_str(), &value))
                     {
-                        script->script[K] = value;
+                        script_table[K] = value;
                     }
                 }
                 else if (V.get_type() == sol::type::number)
@@ -1448,7 +1452,7 @@ void Properties::ShowScript(spartan::Script* script) const
                         int value = V.as<int>();
                         if (ImGui::DragInt("##value", &value))
                         {
-                            script->script[K] = value;
+                            script_table[K] = value;
                         }
                     }
                     else
@@ -1456,7 +1460,7 @@ void Properties::ShowScript(spartan::Script* script) const
                         double value = V.as<double>();
                         if (ImGui::DragScalar("##value", ImGuiDataType_Double, &value, 0.01f, nullptr, nullptr, "%.6g"))
                         {
-                            script->script[K] = value;
+                            script_table[K] = value;
                         }
                     }
                     ImGui::EditorUi::decorate_field();
@@ -1467,7 +1471,7 @@ void Properties::ShowScript(spartan::Script* script) const
                     layout::begin_property(key.c_str());
                     if (ImGui::InputText("##value", &value))
                     {
-                        script->script[K] = value;
+                        script_table[K] = value;
                     }
                     ImGui::EditorUi::decorate_field();
                 }

@@ -4,6 +4,7 @@
 // Commercial use requires written permission and negotiated payment terms.
 // SPDX-License-Identifier: MIT
 
+#include "pch.h"
 #include "GeneratedCache.h"
 #include "../../third_party/lz4/lz4.h"
 #include <algorithm>

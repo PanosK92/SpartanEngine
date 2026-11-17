@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 #include "CarMultibody.h"
+#include <physx/extensions/PxJoint.h>
 
 namespace car
 {

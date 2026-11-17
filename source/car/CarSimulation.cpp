@@ -8,6 +8,8 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ============
 #include "pch.h"
 #include "CarSimulation.h"
+#include <physx/PxPhysicsAPI.h>
+#include <physx/extensions/PxGearJoint.h>
 #include <physx/cooking/PxCooking.h>
 #include "../io/pugixml.hpp"
 #include <filesystem>

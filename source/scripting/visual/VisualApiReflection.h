@@ -544,13 +544,8 @@ namespace spartan::scripting::visual
         {
         }
 
-        template <typename Owner>
-        void record_entries(const std::string&)
-        {
-        }
-
-        template <typename Owner, typename K, typename V, typename... Rest>
-        void record_entries(const std::string& owner, const K& key, const V& value, const Rest&... rest)
+        template <typename Owner, typename K, typename V>
+        void record_entry(const std::string& owner, const K& key, const V& value)
         {
             using KU = std::decay_t<K>;
             using VU = std::decay_t<V>;
@@ -577,8 +572,54 @@ namespace spartan::scripting::visual
             {
                 record_named<Owner>(owner, std::string(key), value);
             }
+        }
 
-            record_entries<Owner>(owner, rest...);
+        template <typename Owner, typename K, typename V>
+        void bind_one_entry(const std::string& owner, sol::usertype<Owner>& ut, K&& key, V&& value)
+        {
+            record_entry<Owner>(owner, key, value);
+            ut.set(std::forward<K>(key), std::forward<V>(value));
+        }
+
+        template <typename Owner>
+        void bind_entries(const std::string&, sol::usertype<Owner>&)
+        {
+        }
+
+        template <typename Owner, typename K, typename V, typename... Rest>
+            requires (sizeof...(Rest) < 14)
+        void bind_entries(const std::string& owner, sol::usertype<Owner>& ut, K&& key, V&& value, Rest&&... rest)
+        {
+            bind_one_entry<Owner>(owner, ut, std::forward<K>(key), std::forward<V>(value));
+            if constexpr (sizeof...(Rest) > 0)
+            {
+                bind_entries<Owner>(owner, ut, std::forward<Rest>(rest)...);
+            }
+        }
+
+        template <
+            typename Owner,
+            typename K0, typename V0, typename K1, typename V1, typename K2, typename V2, typename K3, typename V3,
+            typename K4, typename V4, typename K5, typename V5, typename K6, typename V6, typename K7, typename V7,
+            typename... Rest>
+        void bind_entries(
+            const std::string& owner, sol::usertype<Owner>& ut,
+            K0&& k0, V0&& v0, K1&& k1, V1&& v1, K2&& k2, V2&& v2, K3&& k3, V3&& v3,
+            K4&& k4, V4&& v4, K5&& k5, V5&& v5, K6&& k6, V6&& v6, K7&& k7, V7&& v7,
+            Rest&&... rest)
+        {
+            bind_one_entry<Owner>(owner, ut, std::forward<K0>(k0), std::forward<V0>(v0));
+            bind_one_entry<Owner>(owner, ut, std::forward<K1>(k1), std::forward<V1>(v1));
+            bind_one_entry<Owner>(owner, ut, std::forward<K2>(k2), std::forward<V2>(v2));
+            bind_one_entry<Owner>(owner, ut, std::forward<K3>(k3), std::forward<V3>(v3));
+            bind_one_entry<Owner>(owner, ut, std::forward<K4>(k4), std::forward<V4>(v4));
+            bind_one_entry<Owner>(owner, ut, std::forward<K5>(k5), std::forward<V5>(v5));
+            bind_one_entry<Owner>(owner, ut, std::forward<K6>(k6), std::forward<V6>(v6));
+            bind_one_entry<Owner>(owner, ut, std::forward<K7>(k7), std::forward<V7>(v7));
+            if constexpr (sizeof...(Rest) > 0)
+            {
+                bind_entries<Owner>(owner, ut, std::forward<Rest>(rest)...);
+            }
         }
 
         template <typename E>
@@ -594,19 +635,54 @@ namespace spartan::scripting::visual
             }
         }
 
-        inline void collect_enum(std::vector<std::pair<std::string, int64_t>>&, std::type_index&)
-        {
-        }
-
-        template <typename K, typename E, typename... Rest>
-        void collect_enum(std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, const K& key, const E& value, const Rest&... rest)
+        template <typename K, typename E>
+        void bind_one_enum(std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, sol::table& target, K&& key, E&& value)
         {
             if constexpr (std::is_enum_v<std::decay_t<E>>)
             {
                 cpp = typeid(std::decay_t<E>);
             }
             values.emplace_back(std::string(key), enum_value(value));
-            collect_enum(values, cpp, rest...);
+            target.set(std::forward<K>(key), std::forward<E>(value));
+        }
+
+        inline void bind_enum_entries(std::vector<std::pair<std::string, int64_t>>&, std::type_index&, sol::table&)
+        {
+        }
+
+        template <typename K, typename E, typename... Rest>
+            requires (sizeof...(Rest) < 14)
+        void bind_enum_entries(std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, sol::table& target, K&& key, E&& value, Rest&&... rest)
+        {
+            bind_one_enum(values, cpp, target, std::forward<K>(key), std::forward<E>(value));
+            if constexpr (sizeof...(Rest) > 0)
+            {
+                bind_enum_entries(values, cpp, target, std::forward<Rest>(rest)...);
+            }
+        }
+
+        template <
+            typename K0, typename E0, typename K1, typename E1, typename K2, typename E2, typename K3, typename E3,
+            typename K4, typename E4, typename K5, typename E5, typename K6, typename E6, typename K7, typename E7,
+            typename... Rest>
+        void bind_enum_entries(
+            std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, sol::table& target,
+            K0&& k0, E0&& e0, K1&& k1, E1&& e1, K2&& k2, E2&& e2, K3&& k3, E3&& e3,
+            K4&& k4, E4&& e4, K5&& k5, E5&& e5, K6&& k6, E6&& e6, K7&& k7, E7&& e7,
+            Rest&&... rest)
+        {
+            bind_one_enum(values, cpp, target, std::forward<K0>(k0), std::forward<E0>(e0));
+            bind_one_enum(values, cpp, target, std::forward<K1>(k1), std::forward<E1>(e1));
+            bind_one_enum(values, cpp, target, std::forward<K2>(k2), std::forward<E2>(e2));
+            bind_one_enum(values, cpp, target, std::forward<K3>(k3), std::forward<E3>(e3));
+            bind_one_enum(values, cpp, target, std::forward<K4>(k4), std::forward<E4>(e4));
+            bind_one_enum(values, cpp, target, std::forward<K5>(k5), std::forward<E5>(e5));
+            bind_one_enum(values, cpp, target, std::forward<K6>(k6), std::forward<E6>(e6));
+            bind_one_enum(values, cpp, target, std::forward<K7>(k7), std::forward<E7>(e7));
+            if constexpr (sizeof...(Rest) > 0)
+            {
+                bind_enum_entries(values, cpp, target, std::forward<Rest>(rest)...);
+            }
         }
     }
 
@@ -614,20 +690,36 @@ namespace spartan::scripting::visual
     sol::usertype<T> usertype(sol::state_view state, const char* name, Args&&... args)
     {
         static_assert(sizeof...(Args) % 2 == 0, "usertype entries come in name, value pairs");
-        detail::add_owner(name, true, typeid(T));
-        reflection::record_entries<T>(name, args...);
-        return state.new_usertype<T>(name, std::forward<Args>(args)...);
+        constexpr sol::automagic_flags enrollment_flags = sol::meta::any_same_v<sol::no_construction, sol::meta::unqualified_t<Args>...>
+            ? sol::clear_flags(sol::automagic_flags::all, sol::automagic_flags::default_constructor)
+            : sol::automagic_flags::all;
+        sol::constant_automagic_enrollments<enrollment_flags> enrollments;
+        enrollments.default_constructor = !sol::detail::any_is_constructor_v<Args...>;
+        enrollments.destructor          = !sol::detail::any_is_destructor_v<Args...>;
+        sol::usertype<T> ut             = state.new_usertype<T>(name, std::move(enrollments));
+        std::string owner_name(name);
+        detail::add_owner(owner_name, true, typeid(T));
+        reflection::bind_entries<T>(owner_name, ut, std::forward<Args>(args)...);
+        return ut;
     }
 
     template <typename... Args>
     void enumeration(sol::state_view state, const char* name, Args&&... args)
     {
         static_assert(sizeof...(Args) % 2 == 0, "enum entries come in name, value pairs");
+        constexpr size_t pair_count = sizeof...(Args) / 2;
         std::vector<std::pair<std::string, int64_t>> values;
+        values.reserve(pair_count);
         std::type_index cpp = typeid(void);
-        reflection::collect_enum(values, cpp, args...);
+        sol::table target   = state.create_table(0, static_cast<int>(pair_count));
+        reflection::bind_enum_entries(values, cpp, target, std::forward<Args>(args)...);
         detail::add_enum(name, cpp, std::move(values));
-        state.new_enum(name, std::forward<Args>(args)...);
+        sol::table metatable = state.create_table_with(
+            sol::meta_function::new_index, sol::detail::fail_on_newindex,
+            sol::meta_function::index, target,
+            sol::meta_function::pairs, sol::stack::stack_detail::readonly_pairs
+        );
+        state.create_named_table(name, sol::metatable_key, metatable);
     }
 
     // a named lua table whose functions are recorded as they are assigned

@@ -221,17 +221,27 @@ namespace car
             layout.battery.size[0] = 0.8f; layout.battery.size[1] = 0.12f; layout.battery.size[2] = 0.6f;
         }
 
+        #if defined(_MSC_VER)
+        __declspec(noinline)
+        #elif defined(__GNUC__) || defined(__clang__)
+        __attribute__((noinline))
+        #endif
+        void require_field(bool condition, const string& name, const char* field, bool& valid)
+        {
+            if (!condition)
+            {
+                SP_LOG_ERROR("car preset %s has invalid %s", name.c_str(), field);
+                valid = false;
+            }
+        }
+
         bool validate_preset(car_preset& preset, const string& name)
         {
             auto finite_range = [](float value, float minimum, float maximum) { return std::isfinite(value) && value >= minimum && value <= maximum; };
             bool valid = true;
             auto require = [&](bool condition, const char* field)
             {
-                if (!condition)
-                {
-                    SP_LOG_ERROR("car preset %s has invalid %s", name.c_str(), field);
-                    valid = false;
-                }
+                require_field(condition, name, field, valid);
             };
 
             const auto& layout = preset.packaging;
@@ -528,353 +538,405 @@ namespace car
 
         void load_preset(pugi::xml_node node, car_preset& preset)
         {
-            #define READ_FLOAT(member) read_float(node, #member, preset.member)
-            #define READ_INT(member) read_int(node, #member, preset.member)
-            #define READ_BOOL(member) read_bool(node, #member, preset.member)
-            #define READ_FLOAT_ARRAY(member) read_float_array(node, #member, preset.member, max_gears)
-            #define READ_ENGINE_ARRAY(member) read_float_array(node, #member, preset.member, max_engine_cylinders)
+            struct float_field
+            {
+                const char* name;
+                float car_preset::* member;
+            };
+            struct int_field
+            {
+                const char* name;
+                int car_preset::* member;
+            };
+            struct bool_field
+            {
+                const char* name;
+                bool car_preset::* member;
+            };
+            struct curve16_field
+            {
+                const char* name;
+                float (car_preset::* member)[16];
+            };
+            struct gear_array_field
+            {
+                const char* name;
+                float (car_preset::* member)[max_gears];
+            };
+            struct engine_array_field
+            {
+                const char* name;
+                float (car_preset::* member)[max_engine_cylinders];
+            };
 
-            READ_FLOAT(mass);
-            READ_FLOAT(length);
-            READ_FLOAT(width);
-            READ_FLOAT(height);
-            READ_FLOAT(wheelbase);
-            READ_FLOAT(track_front);
-            READ_FLOAT(track_rear);
-            READ_FLOAT(suspension_height);
-            READ_FLOAT(suspension_travel);
-            READ_FLOAT(front_wheel_radius);
-            READ_FLOAT(rear_wheel_radius);
-            READ_FLOAT(front_wheel_width);
-            READ_FLOAT(rear_wheel_width);
-            READ_FLOAT(wheel_mass);
-            READ_FLOAT(upright_mass);
-            READ_FLOAT(suspension_link_mass);
-            READ_FLOAT(steering_rack_mass);
-            READ_FLOAT(arb_mass);
-            READ_FLOAT(coilover_mass);
-            READ_FLOAT(halfshaft_mass);
-            READ_FLOAT(driveshaft_mass);
-            READ_FLOAT(differential_mass);
-            READ_FLOAT(inertia_xx);
-            READ_FLOAT(inertia_yy);
-            READ_FLOAT(inertia_zz);
-            READ_INT(aero_yaw_count);
-            read_float_array(node, "aero_yaw_x", preset.aero_yaw_x, 16);
-            read_float_array(node, "aero_yaw_scale", preset.aero_yaw_scale, 16);
-            read_float_array(node, "aero_drag_scale", preset.aero_drag_scale, 16);
+            static constexpr float_field float_fields[] =
+            {
+                { "mass",                             &car_preset::mass },
+                { "length",                           &car_preset::length },
+                { "width",                            &car_preset::width },
+                { "height",                           &car_preset::height },
+                { "wheelbase",                        &car_preset::wheelbase },
+                { "track_front",                      &car_preset::track_front },
+                { "track_rear",                       &car_preset::track_rear },
+                { "suspension_height",                &car_preset::suspension_height },
+                { "suspension_travel",                &car_preset::suspension_travel },
+                { "front_wheel_radius",               &car_preset::front_wheel_radius },
+                { "rear_wheel_radius",                &car_preset::rear_wheel_radius },
+                { "front_wheel_width",                &car_preset::front_wheel_width },
+                { "rear_wheel_width",                 &car_preset::rear_wheel_width },
+                { "wheel_mass",                       &car_preset::wheel_mass },
+                { "upright_mass",                     &car_preset::upright_mass },
+                { "suspension_link_mass",             &car_preset::suspension_link_mass },
+                { "steering_rack_mass",               &car_preset::steering_rack_mass },
+                { "arb_mass",                         &car_preset::arb_mass },
+                { "coilover_mass",                    &car_preset::coilover_mass },
+                { "halfshaft_mass",                   &car_preset::halfshaft_mass },
+                { "driveshaft_mass",                  &car_preset::driveshaft_mass },
+                { "differential_mass",                &car_preset::differential_mass },
+                { "inertia_xx",                       &car_preset::inertia_xx },
+                { "inertia_yy",                       &car_preset::inertia_yy },
+                { "inertia_zz",                       &car_preset::inertia_zz },
+                { "underfloor_y",                     &car_preset::underfloor_y },
+                { "tire_pressure_reference_temp",     &car_preset::tire_pressure_reference_temp },
+                { "tire_damage_energy",               &car_preset::tire_damage_energy },
+                { "tire_damage_temp",                 &car_preset::tire_damage_temp },
+                { "tire_hydroplaning_speed",          &car_preset::tire_hydroplaning_speed },
+                { "battery_capacity_kwh",             &car_preset::battery_capacity_kwh },
+                { "battery_initial_soc",              &car_preset::battery_initial_soc },
+                { "motor_efficiency",                 &car_preset::motor_efficiency },
+                { "battery_efficiency",               &car_preset::battery_efficiency },
+                { "battery_heat_capacity",            &car_preset::battery_heat_capacity },
+                { "battery_cooling",                  &car_preset::battery_cooling },
+                { "battery_derate_temp",              &car_preset::battery_derate_temp },
+                { "battery_cutoff_temp",              &car_preset::battery_cutoff_temp },
+                { "regen_power_kw",                   &car_preset::regen_power_kw },
+                { "engine_stall_rpm",                 &car_preset::engine_stall_rpm },
+                { "starter_torque",                   &car_preset::starter_torque },
+                { "yaw_control_gain",                 &car_preset::yaw_control_gain },
+                { "inertia_xy",                       &car_preset::inertia_xy },
+                { "inertia_xz",                       &car_preset::inertia_xz },
+                { "inertia_yz",                       &car_preset::inertia_yz },
+                { "engine_idle_rpm",                  &car_preset::engine_idle_rpm },
+                { "engine_redline_rpm",               &car_preset::engine_redline_rpm },
+                { "engine_max_rpm",                   &car_preset::engine_max_rpm },
+                { "engine_peak_torque",               &car_preset::engine_peak_torque },
+                { "engine_peak_torque_rpm",           &car_preset::engine_peak_torque_rpm },
+                { "engine_inertia",                   &car_preset::engine_inertia },
+                { "engine_friction",                  &car_preset::engine_friction },
+                { "engine_rpm_smoothing",             &car_preset::engine_rpm_smoothing },
+                { "engine_crank_axis_x",              &car_preset::engine_crank_axis_x },
+                { "engine_crank_axis_y",              &car_preset::engine_crank_axis_y },
+                { "engine_crank_axis_z",              &car_preset::engine_crank_axis_z },
+                { "downshift_blip_amount",            &car_preset::downshift_blip_amount },
+                { "downshift_blip_duration",          &car_preset::downshift_blip_duration },
+                { "engine_displacement_l",            &car_preset::engine_displacement_l },
+                { "engine_bore_mm",                   &car_preset::engine_bore_mm },
+                { "engine_stroke_mm",                 &car_preset::engine_stroke_mm },
+                { "engine_compression_ratio",         &car_preset::engine_compression_ratio },
+                { "exhaust_primary_length_m",         &car_preset::exhaust_primary_length_m },
+                { "exhaust_collector_length_m",       &car_preset::exhaust_collector_length_m },
+                { "engine_bank_angle_deg",            &car_preset::engine_bank_angle_deg },
+                { "exhaust_tailpipe_length_m",        &car_preset::exhaust_tailpipe_length_m },
+                { "exhaust_muffler_level",            &car_preset::exhaust_muffler_level },
+                { "intake_runner_length_m",           &car_preset::intake_runner_length_m },
+                { "intake_valve_duration_deg",        &car_preset::intake_valve_duration_deg },
+                { "engine_combustion_variation",      &car_preset::engine_combustion_variation },
+                { "supercharger_drive_ratio",         &car_preset::supercharger_drive_ratio },
+                { "cooling_fan_ratio",                &car_preset::cooling_fan_ratio },
+                { "final_drive",                      &car_preset::final_drive },
+                { "shift_up_rpm",                     &car_preset::shift_up_rpm },
+                { "shift_down_rpm",                   &car_preset::shift_down_rpm },
+                { "shift_time",                       &car_preset::shift_time },
+                { "clutch_engagement_rate",           &car_preset::clutch_engagement_rate },
+                { "clutch_max_torque",                &car_preset::clutch_max_torque },
+                { "driveline_inertia",                &car_preset::driveline_inertia },
+                { "drivetrain_efficiency",            &car_preset::drivetrain_efficiency },
+                { "brake_force",                      &car_preset::brake_force },
+                { "brake_bias_front",                 &car_preset::brake_bias_front },
+                { "reverse_power_ratio",              &car_preset::reverse_power_ratio },
+                { "brake_ambient_temp",               &car_preset::brake_ambient_temp },
+                { "brake_optimal_temp",               &car_preset::brake_optimal_temp },
+                { "brake_fade_temp",                  &car_preset::brake_fade_temp },
+                { "brake_max_temp",                   &car_preset::brake_max_temp },
+                { "brake_heat_coefficient",           &car_preset::brake_heat_coefficient },
+                { "brake_cooling_base",               &car_preset::brake_cooling_base },
+                { "brake_cooling_airflow",            &car_preset::brake_cooling_airflow },
+                { "brake_thermal_mass",               &car_preset::brake_thermal_mass },
+                { "brake_specific_heat",              &car_preset::brake_specific_heat },
+                { "throttle_smoothing",               &car_preset::throttle_smoothing },
+                { "brake_smoothing",                  &car_preset::brake_smoothing },
+                { "tread_stiffness_long",             &car_preset::tread_stiffness_long },
+                { "tread_stiffness_lat",              &car_preset::tread_stiffness_lat },
+                { "tire_slide_friction_ratio",        &car_preset::tire_slide_friction_ratio },
+                { "lat_B",                            &car_preset::lat_B },
+                { "lat_C",                            &car_preset::lat_C },
+                { "lat_D",                            &car_preset::lat_D },
+                { "lat_E",                            &car_preset::lat_E },
+                { "long_B",                           &car_preset::long_B },
+                { "long_C",                           &car_preset::long_C },
+                { "long_D",                           &car_preset::long_D },
+                { "long_E",                           &car_preset::long_E },
+                { "combined_long_B",                  &car_preset::combined_long_B },
+                { "combined_long_C",                  &car_preset::combined_long_C },
+                { "combined_long_E",                  &car_preset::combined_long_E },
+                { "combined_lat_B",                   &car_preset::combined_lat_B },
+                { "combined_lat_C",                   &car_preset::combined_lat_C },
+                { "combined_lat_E",                   &car_preset::combined_lat_E },
+                { "load_B_scale_min",                 &car_preset::load_B_scale_min },
+                { "pneumatic_trail_max",              &car_preset::pneumatic_trail_max },
+                { "pneumatic_trail_peak",             &car_preset::pneumatic_trail_peak },
+                { "tire_friction",                    &car_preset::tire_friction },
+                { "min_slip_speed",                   &car_preset::min_slip_speed },
+                { "load_sensitivity",                 &car_preset::load_sensitivity },
+                { "load_reference",                   &car_preset::load_reference },
+                { "rear_grip_ratio",                  &car_preset::rear_grip_ratio },
+                { "slip_angle_deadband",              &car_preset::slip_angle_deadband },
+                { "camber_thrust_coeff",              &car_preset::camber_thrust_coeff },
+                { "max_slip_angle",                   &car_preset::max_slip_angle },
+                { "tire_pressure",                    &car_preset::tire_pressure },
+                { "tire_pressure_optimal",            &car_preset::tire_pressure_optimal },
+                { "tire_ambient_temp",                &car_preset::tire_ambient_temp },
+                { "tire_surface_heat_capacity",       &car_preset::tire_surface_heat_capacity },
+                { "tire_core_heat_capacity",          &car_preset::tire_core_heat_capacity },
+                { "tire_surface_core_conductance",    &car_preset::tire_surface_core_conductance },
+                { "tire_heat_transfer_static",        &car_preset::tire_heat_transfer_static },
+                { "tire_heat_transfer_airflow",       &car_preset::tire_heat_transfer_airflow },
+                { "tire_optimal_temp",                &car_preset::tire_optimal_temp },
+                { "tire_temp_range",                  &car_preset::tire_temp_range },
+                { "tire_heat_from_slip",              &car_preset::tire_heat_from_slip },
+                { "tire_heat_from_rolling",           &car_preset::tire_heat_from_rolling },
+                { "tire_cooling_rate",                &car_preset::tire_cooling_rate },
+                { "tire_cooling_airflow",             &car_preset::tire_cooling_airflow },
+                { "tire_grip_temp_factor",            &car_preset::tire_grip_temp_factor },
+                { "tire_min_temp",                    &car_preset::tire_min_temp },
+                { "tire_max_temp",                    &car_preset::tire_max_temp },
+                { "tire_relaxation_length",           &car_preset::tire_relaxation_length },
+                { "tire_wear_rate",                   &car_preset::tire_wear_rate },
+                { "tire_wear_heat_mult",              &car_preset::tire_wear_heat_mult },
+                { "tire_grip_wear_loss",              &car_preset::tire_grip_wear_loss },
+                { "tire_core_transfer_rate",          &car_preset::tire_core_transfer_rate },
+                { "tire_surface_response",            &car_preset::tire_surface_response },
+                { "tire_probe_arc",                   &car_preset::tire_probe_arc },
+                { "tire_crown_drop",                  &car_preset::tire_crown_drop },
+                { "front_spring_freq",                &car_preset::front_spring_freq },
+                { "rear_spring_freq",                 &car_preset::rear_spring_freq },
+                { "front_damping_ratio",              &car_preset::front_damping_ratio },
+                { "rear_damping_ratio",               &car_preset::rear_damping_ratio },
+                { "damping_bump_ratio",               &car_preset::damping_bump_ratio },
+                { "damping_rebound_ratio",            &car_preset::damping_rebound_ratio },
+                { "damping_bump_high_speed_ratio",    &car_preset::damping_bump_high_speed_ratio },
+                { "damping_rebound_high_speed_ratio", &car_preset::damping_rebound_high_speed_ratio },
+                { "damper_knee_velocity",             &car_preset::damper_knee_velocity },
+                { "front_arb_stiffness",              &car_preset::front_arb_stiffness },
+                { "rear_arb_stiffness",               &car_preset::rear_arb_stiffness },
+                { "max_susp_force",                   &car_preset::max_susp_force },
+                { "max_damper_velocity",              &car_preset::max_damper_velocity },
+                { "bump_stop_stiffness",              &car_preset::bump_stop_stiffness },
+                { "bump_stop_threshold",              &car_preset::bump_stop_threshold },
+                { "bump_stop_progression",            &car_preset::bump_stop_progression },
+                { "packer_threshold",                 &car_preset::packer_threshold },
+                { "packer_stiffness",                 &car_preset::packer_stiffness },
+                { "bushing_stiffness_radial",         &car_preset::bushing_stiffness_radial },
+                { "bushing_stiffness_axial",          &car_preset::bushing_stiffness_axial },
+                { "bushing_damping",                  &car_preset::bushing_damping },
+                { "bushing_max_deflection",           &car_preset::bushing_max_deflection },
+                { "rolling_resistance",               &car_preset::rolling_resistance },
+                { "drag_coeff",                       &car_preset::drag_coeff },
+                { "frontal_area",                     &car_preset::frontal_area },
+                { "lift_coeff_front",                 &car_preset::lift_coeff_front },
+                { "lift_coeff_rear",                  &car_preset::lift_coeff_rear },
+                { "drs_rear_cl_factor",               &car_preset::drs_rear_cl_factor },
+                { "side_area",                        &car_preset::side_area },
+                { "ground_effect_multiplier",         &car_preset::ground_effect_multiplier },
+                { "ground_effect_height_ref",         &car_preset::ground_effect_height_ref },
+                { "ground_effect_height_max",         &car_preset::ground_effect_height_max },
+                { "yaw_drag_multiplier",              &car_preset::yaw_drag_multiplier },
+                { "yaw_side_force_coeff",             &car_preset::yaw_side_force_coeff },
+                { "pitch_sensitivity",                &car_preset::pitch_sensitivity },
+                { "aero_center_height",               &car_preset::aero_center_height },
+                { "aero_center_front_z",              &car_preset::aero_center_front_z },
+                { "aero_center_rear_z",               &car_preset::aero_center_rear_z },
+                { "center_of_mass_x",                 &car_preset::center_of_mass_x },
+                { "center_of_mass_y",                 &car_preset::center_of_mass_y },
+                { "center_of_mass_z",                 &car_preset::center_of_mass_z },
+                { "max_steer_angle",                  &car_preset::max_steer_angle },
+                { "steering_rate",                    &car_preset::steering_rate },
+                { "self_align_gain",                  &car_preset::self_align_gain },
+                { "steering_linearity",               &car_preset::steering_linearity },
+                { "front_camber",                     &car_preset::front_camber },
+                { "rear_camber",                      &car_preset::rear_camber },
+                { "front_toe",                        &car_preset::front_toe },
+                { "rear_toe",                         &car_preset::rear_toe },
+                { "tire_vertical_stiffness",          &car_preset::tire_vertical_stiffness },
+                { "tire_carcass_stiffness_fraction",  &car_preset::tire_carcass_stiffness_fraction },
+                { "tire_carcass_twist",               &car_preset::tire_carcass_twist },
+                { "lsd_viscous",                      &car_preset::lsd_viscous },
+                { "abs_load_sensitivity",             &car_preset::abs_load_sensitivity },
+                { "airborne_wheel_decay",             &car_preset::airborne_wheel_decay },
+                { "bearing_friction",                 &car_preset::bearing_friction },
+                { "handbrake_torque",                 &car_preset::handbrake_torque },
+                { "torque_split_front",               &car_preset::torque_split_front },
+                { "center_diff_coupling",             &car_preset::center_diff_coupling },
+                { "lsd_preload",                      &car_preset::lsd_preload },
+                { "lsd_lock_ratio_accel",             &car_preset::lsd_lock_ratio_accel },
+                { "lsd_lock_ratio_decel",             &car_preset::lsd_lock_ratio_decel },
+                { "driveshaft_stiffness",             &car_preset::driveshaft_stiffness },
+                { "driveshaft_damping",               &car_preset::driveshaft_damping },
+                { "input_deadzone",                   &car_preset::input_deadzone },
+                { "steering_deadzone",                &car_preset::steering_deadzone },
+                { "braking_speed_threshold",          &car_preset::braking_speed_threshold },
+                { "linear_damping",                   &car_preset::linear_damping },
+                { "angular_damping",                  &car_preset::angular_damping },
+                { "abs_slip_threshold",               &car_preset::abs_slip_threshold },
+                { "abs_release_rate",                 &car_preset::abs_release_rate },
+                { "abs_pulse_frequency",              &car_preset::abs_pulse_frequency },
+                { "tc_slip_threshold",                &car_preset::tc_slip_threshold },
+                { "tc_power_reduction",               &car_preset::tc_power_reduction },
+                { "tc_response_rate",                 &car_preset::tc_response_rate },
+                { "boost_max_pressure",               &car_preset::boost_max_pressure },
+                { "boost_spool_rate",                 &car_preset::boost_spool_rate },
+                { "boost_wastegate_rpm",              &car_preset::boost_wastegate_rpm },
+                { "boost_torque_mult",                &car_preset::boost_torque_mult },
+                { "boost_min_rpm",                    &car_preset::boost_min_rpm },
+                { "electric_motor_torque",            &car_preset::electric_motor_torque },
+                { "electric_motor_power_kw",          &car_preset::electric_motor_power_kw },
+                { "electric_motor_max_rpm",           &car_preset::electric_motor_max_rpm },
+                { "electric_torque_response",         &car_preset::electric_torque_response }
+            };
 
-            READ_INT(aero_pitch_count);
-            read_float_array(node, "aero_pitch_x", preset.aero_pitch_x, 16);
-            read_float_array(node, "aero_front_scale", preset.aero_front_scale, 16);
-            read_float_array(node, "aero_rear_scale", preset.aero_rear_scale, 16);
+            static constexpr int_field int_fields[] =
+            {
+                { "aero_yaw_count",            &car_preset::aero_yaw_count },
+                { "aero_pitch_count",          &car_preset::aero_pitch_count },
+                { "aero_height_count",         &car_preset::aero_height_count },
+                { "aero_speed_count",          &car_preset::aero_speed_count },
+                { "engine_map_count",          &car_preset::engine_map_count },
+                { "motor_efficiency_count",    &car_preset::motor_efficiency_count },
+                { "engine_sound_cylinders",    &car_preset::engine_sound_cylinders },
+                { "engine_sound_banks",        &car_preset::engine_sound_banks },
+                { "turbo_count",               &car_preset::turbo_count },
+                { "supercharger_lobes",        &car_preset::supercharger_lobes },
+                { "valves_per_cylinder",       &car_preset::valves_per_cylinder },
+                { "camshafts_per_bank",        &car_preset::camshafts_per_bank },
+                { "cooling_fan_blades",        &car_preset::cooling_fan_blades },
+                { "electric_motor_pole_pairs", &car_preset::electric_motor_pole_pairs },
+                { "gear_count",                &car_preset::gear_count },
+                { "tire_model_type",           &car_preset::tire_model_type },
+                { "tire_probe_rows",           &car_preset::tire_probe_rows },
+                { "tire_probe_columns",        &car_preset::tire_probe_columns },
+                { "tire_substeps",             &car_preset::tire_substeps },
+                { "drivetrain_type",           &car_preset::drivetrain_type },
+                { "diff_type",                 &car_preset::diff_type },
+                { "engine_stage_max",          &car_preset::engine_stage_max },
+                { "suspension_stage_max",      &car_preset::suspension_stage_max },
+                { "tires_stage_max",           &car_preset::tires_stage_max },
+                { "brakes_stage_max",          &car_preset::brakes_stage_max },
+                { "aero_stage_max",            &car_preset::aero_stage_max },
+                { "weight_stage_max",          &car_preset::weight_stage_max },
+                { "exhaust_stage_max",         &car_preset::exhaust_stage_max },
+                { "intake_stage_max",          &car_preset::intake_stage_max },
+                { "turbo_stage_max",           &car_preset::turbo_stage_max }
+            };
 
-            READ_INT(aero_height_count);
-            read_float_array(node, "aero_height_x", preset.aero_height_x, 16);
-            read_float_array(node, "aero_height_scale", preset.aero_height_scale, 16);
+            static constexpr bool_field bool_fields[] =
+            {
+                { "yaw_control_enabled",        &car_preset::yaw_control_enabled },
+                { "inertia_is_assembled",       &car_preset::inertia_is_assembled },
+                { "engine_torque_is_net",       &car_preset::engine_torque_is_net },
+                { "turbo_bypass_valve",         &car_preset::turbo_bypass_valve },
+                { "solid_lifters",              &car_preset::solid_lifters },
+                { "individual_throttle_bodies", &car_preset::individual_throttle_bodies },
+                { "air_cooled",                 &car_preset::air_cooled },
+                { "catalytic_converter",        &car_preset::catalytic_converter },
+                { "particulate_filter",         &car_preset::particulate_filter },
+                { "exhaust_valve",              &car_preset::exhaust_valve },
+                { "manual_transmission",        &car_preset::manual_transmission },
+                { "drs_enabled",                &car_preset::drs_enabled },
+                { "ground_effect_enabled",      &car_preset::ground_effect_enabled },
+                { "yaw_aero_enabled",           &car_preset::yaw_aero_enabled },
+                { "pitch_aero_enabled",         &car_preset::pitch_aero_enabled },
+                { "abs_enabled",                &car_preset::abs_enabled },
+                { "tc_enabled",                 &car_preset::tc_enabled },
+                { "tc_use_tire_peak",           &car_preset::tc_use_tire_peak },
+                { "turbo_enabled",              &car_preset::turbo_enabled },
+                { "electric_enabled",           &car_preset::electric_enabled }
+            };
 
-            READ_INT(aero_speed_count);
-            read_float_array(node, "aero_speed_x", preset.aero_speed_x, 16);
-            read_float_array(node, "aero_speed_scale", preset.aero_speed_scale, 16);
+            static constexpr curve16_field curve16_fields[] =
+            {
+                { "aero_yaw_x",             &car_preset::aero_yaw_x },
+                { "aero_yaw_scale",         &car_preset::aero_yaw_scale },
+                { "aero_drag_scale",        &car_preset::aero_drag_scale },
+                { "aero_pitch_x",           &car_preset::aero_pitch_x },
+                { "aero_front_scale",       &car_preset::aero_front_scale },
+                { "aero_rear_scale",        &car_preset::aero_rear_scale },
+                { "aero_height_x",          &car_preset::aero_height_x },
+                { "aero_height_scale",      &car_preset::aero_height_scale },
+                { "aero_speed_x",           &car_preset::aero_speed_x },
+                { "aero_speed_scale",       &car_preset::aero_speed_scale },
+                { "engine_map_rpm",         &car_preset::engine_map_rpm },
+                { "engine_map_torque",      &car_preset::engine_map_torque },
+                { "motor_efficiency_rpm",   &car_preset::motor_efficiency_rpm },
+                { "motor_efficiency_value", &car_preset::motor_efficiency_value }
+            };
 
-            READ_INT(engine_map_count);
-            read_float_array(node, "engine_map_rpm", preset.engine_map_rpm, 16);
-            read_float_array(node, "engine_map_torque", preset.engine_map_torque, 16);
+            static constexpr gear_array_field gear_fields[] =
+            {
+                { "gear_ratios",         &car_preset::gear_ratios },
+                { "upshift_speed_base",  &car_preset::upshift_speed_base },
+                { "upshift_speed_sport", &car_preset::upshift_speed_sport },
+                { "downshift_speeds",    &car_preset::downshift_speeds }
+            };
 
-            READ_FLOAT(underfloor_y);
-            READ_FLOAT(tire_pressure_reference_temp);
-            READ_FLOAT(tire_damage_energy);
-            READ_FLOAT(tire_damage_temp);
-            READ_FLOAT(tire_hydroplaning_speed);
-            READ_FLOAT(battery_capacity_kwh);
-            READ_FLOAT(battery_initial_soc);
-            READ_FLOAT(motor_efficiency);
-            READ_INT(motor_efficiency_count);
-            read_float_array(node, "motor_efficiency_rpm", preset.motor_efficiency_rpm, 16);
-            read_float_array(node, "motor_efficiency_value", preset.motor_efficiency_value, 16);
-            READ_FLOAT(battery_efficiency);
-            READ_FLOAT(battery_heat_capacity);
-            READ_FLOAT(battery_cooling);
-            READ_FLOAT(battery_derate_temp);
-            READ_FLOAT(battery_cutoff_temp);
-            READ_FLOAT(regen_power_kw);
-            READ_FLOAT(engine_stall_rpm);
-            READ_FLOAT(starter_torque);
-            READ_BOOL(yaw_control_enabled); READ_FLOAT(yaw_control_gain);
+            static constexpr engine_array_field engine_fields[] =
+            {
+                { "engine_firing_intervals_deg", &car_preset::engine_firing_intervals_deg },
+                { "engine_firing_order",         &car_preset::engine_firing_order },
+                { "engine_cylinder_bank",        &car_preset::engine_cylinder_bank }
+            };
 
-            READ_BOOL(inertia_is_assembled);
-            READ_FLOAT(inertia_xy); READ_FLOAT(inertia_xz); READ_FLOAT(inertia_yz);
+            for (const float_field& field : float_fields)
+            {
+                read_float(node, field.name, preset.*(field.member));
+            }
+            for (const int_field& field : int_fields)
+            {
+                read_int(node, field.name, preset.*(field.member));
+            }
+            for (const bool_field& field : bool_fields)
+            {
+                read_bool(node, field.name, preset.*(field.member));
+            }
+            for (const curve16_field& field : curve16_fields)
+            {
+                read_float_array(node, field.name, preset.*(field.member), 16);
+            }
+            for (const gear_array_field& field : gear_fields)
+            {
+                read_float_array(node, field.name, preset.*(field.member), max_gears);
+            }
+            for (const engine_array_field& field : engine_fields)
+            {
+                read_float_array(node, field.name, preset.*(field.member), max_engine_cylinders);
+            }
+
             if (node.attribute("calibration_id"))
             {
                 snprintf(preset.calibration_id, sizeof(preset.calibration_id), "%s", node.attribute("calibration_id").as_string());
-                for (char& c : preset.calibration_id) if (c && !isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-' && c != '.') c = '_';
+                for (char& c : preset.calibration_id)
+                {
+                    if (c && !isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-' && c != '.')
+                    {
+                        c = '_';
+                    }
+                }
             }
 
-            READ_FLOAT(engine_idle_rpm);
-            READ_FLOAT(engine_redline_rpm);
-            READ_FLOAT(engine_max_rpm);
-            READ_FLOAT(engine_peak_torque);
-            READ_BOOL(engine_torque_is_net);
-            READ_FLOAT(engine_peak_torque_rpm);
-            READ_FLOAT(engine_inertia);
-            READ_FLOAT(engine_friction);
-            READ_FLOAT(engine_rpm_smoothing);
-            READ_FLOAT(engine_crank_axis_x);
-            READ_FLOAT(engine_crank_axis_y);
-            READ_FLOAT(engine_crank_axis_z);
-            READ_FLOAT(downshift_blip_amount);
-            READ_FLOAT(downshift_blip_duration);
-            READ_INT(engine_sound_cylinders);
-            READ_INT(engine_sound_banks);
-            READ_FLOAT(engine_displacement_l);
-            READ_FLOAT(engine_bore_mm);
-            READ_FLOAT(engine_stroke_mm);
-            READ_FLOAT(engine_compression_ratio);
-            READ_FLOAT(exhaust_primary_length_m);
-            READ_FLOAT(exhaust_collector_length_m);
-            READ_FLOAT(engine_bank_angle_deg);
-            READ_FLOAT(exhaust_tailpipe_length_m);
-            READ_FLOAT(exhaust_muffler_level);
-            READ_FLOAT(intake_runner_length_m);
-            READ_FLOAT(intake_valve_duration_deg);
-            READ_FLOAT(engine_combustion_variation);
-            READ_BOOL(turbo_bypass_valve);
-            READ_ENGINE_ARRAY(engine_firing_intervals_deg);
-            READ_ENGINE_ARRAY(engine_firing_order);
-            READ_ENGINE_ARRAY(engine_cylinder_bank);
             read_choice(node, "forced_induction", { "turbo", "roots", "twin_screw", "centrifugal" }, preset.forced_induction);
-            READ_INT(turbo_count);
-            READ_FLOAT(supercharger_drive_ratio);
-            READ_INT(supercharger_lobes);
-            READ_INT(valves_per_cylinder);
-            READ_INT(camshafts_per_bank);
-            READ_BOOL(solid_lifters);
             read_choice(node, "cam_drive", { "chain", "belt", "gear" }, preset.cam_drive);
             read_choice(node, "fuel_injection", { "port", "direct", "port_direct", "mechanical" }, preset.fuel_injection);
-            READ_BOOL(individual_throttle_bodies);
-            READ_BOOL(air_cooled);
-            READ_FLOAT(cooling_fan_ratio);
-            READ_INT(cooling_fan_blades);
-            READ_BOOL(catalytic_converter);
-            READ_BOOL(particulate_filter);
             read_choice(node, "exhaust_crossover", { "none", "h_pipe", "x_pipe", "merged" }, preset.exhaust_crossover);
-            READ_BOOL(exhaust_valve);
             read_choice(node, "gearbox_type", { "manual", "dual_clutch", "automatic", "straight_cut" }, preset.gearbox_type);
-            READ_INT(electric_motor_pole_pairs);
-
-            READ_FLOAT_ARRAY(gear_ratios);
-            READ_INT(gear_count);
-            READ_FLOAT(final_drive);
-            READ_FLOAT(shift_up_rpm);
-            READ_FLOAT(shift_down_rpm);
-            READ_FLOAT(shift_time);
-            READ_FLOAT(clutch_engagement_rate);
-            READ_FLOAT(clutch_max_torque);
-            READ_FLOAT(driveline_inertia);
-            READ_FLOAT(drivetrain_efficiency);
-            READ_BOOL(manual_transmission);
-            READ_FLOAT_ARRAY(upshift_speed_base);
-            READ_FLOAT_ARRAY(upshift_speed_sport);
-            READ_FLOAT_ARRAY(downshift_speeds);
-
-            READ_FLOAT(brake_force);
-            READ_FLOAT(brake_bias_front);
-            READ_FLOAT(reverse_power_ratio);
-            READ_FLOAT(brake_ambient_temp);
-            READ_FLOAT(brake_optimal_temp);
-            READ_FLOAT(brake_fade_temp);
-            READ_FLOAT(brake_max_temp);
-            READ_FLOAT(brake_heat_coefficient);
-            READ_FLOAT(brake_cooling_base);
-            READ_FLOAT(brake_cooling_airflow);
-            READ_FLOAT(brake_thermal_mass);
-            READ_FLOAT(brake_specific_heat);
-
-            READ_FLOAT(throttle_smoothing);
-            READ_FLOAT(brake_smoothing);
-
-            READ_INT(tire_model_type);
-            READ_FLOAT(tread_stiffness_long);
-            READ_FLOAT(tread_stiffness_lat);
-            READ_FLOAT(tire_slide_friction_ratio);
-
-            READ_FLOAT(lat_B);
-            READ_FLOAT(lat_C);
-            READ_FLOAT(lat_D);
-            READ_FLOAT(lat_E);
-            READ_FLOAT(long_B);
-            READ_FLOAT(long_C);
-            READ_FLOAT(long_D);
-            READ_FLOAT(long_E);
-            READ_FLOAT(combined_long_B);
-            READ_FLOAT(combined_long_C);
-            READ_FLOAT(combined_long_E);
-            READ_FLOAT(combined_lat_B);
-            READ_FLOAT(combined_lat_C);
-            READ_FLOAT(combined_lat_E);
-            READ_FLOAT(load_B_scale_min);
-            READ_FLOAT(pneumatic_trail_max);
-            READ_FLOAT(pneumatic_trail_peak);
-
-            READ_FLOAT(tire_friction);
-            READ_FLOAT(min_slip_speed);
-            READ_FLOAT(load_sensitivity);
-            READ_FLOAT(load_reference);
-            READ_FLOAT(rear_grip_ratio);
-            READ_FLOAT(slip_angle_deadband);
-            READ_FLOAT(camber_thrust_coeff);
-            READ_FLOAT(max_slip_angle);
-            READ_FLOAT(tire_pressure);
-            READ_FLOAT(tire_pressure_optimal);
-
-            READ_FLOAT(tire_ambient_temp);
-            READ_FLOAT(tire_surface_heat_capacity);
-            READ_FLOAT(tire_core_heat_capacity);
-            READ_FLOAT(tire_surface_core_conductance);
-            READ_FLOAT(tire_heat_transfer_static);
-            READ_FLOAT(tire_heat_transfer_airflow);
-            READ_FLOAT(tire_optimal_temp);
-            READ_FLOAT(tire_temp_range);
-            READ_FLOAT(tire_heat_from_slip);
-            READ_FLOAT(tire_heat_from_rolling);
-            READ_FLOAT(tire_cooling_rate);
-            READ_FLOAT(tire_cooling_airflow);
-            READ_FLOAT(tire_grip_temp_factor);
-            READ_FLOAT(tire_min_temp);
-            READ_FLOAT(tire_max_temp);
-            READ_FLOAT(tire_relaxation_length);
-            READ_FLOAT(tire_wear_rate);
-            READ_FLOAT(tire_wear_heat_mult);
-            READ_FLOAT(tire_grip_wear_loss);
-            READ_FLOAT(tire_core_transfer_rate);
-            READ_FLOAT(tire_surface_response);
-
-            READ_INT(tire_probe_rows);
-            READ_INT(tire_probe_columns);
-            READ_FLOAT(tire_probe_arc);
-            READ_FLOAT(tire_crown_drop);
-            READ_INT(tire_substeps);
-
-            READ_FLOAT(front_spring_freq);
-            READ_FLOAT(rear_spring_freq);
-            READ_FLOAT(front_damping_ratio);
-            READ_FLOAT(rear_damping_ratio);
-            READ_FLOAT(damping_bump_ratio);
-            READ_FLOAT(damping_rebound_ratio);
-            READ_FLOAT(damping_bump_high_speed_ratio);
-            READ_FLOAT(damping_rebound_high_speed_ratio);
-            READ_FLOAT(damper_knee_velocity);
-            READ_FLOAT(front_arb_stiffness);
-            READ_FLOAT(rear_arb_stiffness);
-            READ_FLOAT(max_susp_force);
-            READ_FLOAT(max_damper_velocity);
-            READ_FLOAT(bump_stop_stiffness);
-            READ_FLOAT(bump_stop_threshold);
-            READ_FLOAT(bump_stop_progression);
-            READ_FLOAT(packer_threshold);
-            READ_FLOAT(packer_stiffness);
-
-            READ_FLOAT(bushing_stiffness_radial);
-            READ_FLOAT(bushing_stiffness_axial);
-            READ_FLOAT(bushing_damping);
-            READ_FLOAT(bushing_max_deflection);
-
-            READ_FLOAT(rolling_resistance);
-            READ_FLOAT(drag_coeff);
-            READ_FLOAT(frontal_area);
-            READ_FLOAT(lift_coeff_front);
-            READ_FLOAT(lift_coeff_rear);
-            READ_BOOL(drs_enabled);
-            READ_FLOAT(drs_rear_cl_factor);
-            READ_FLOAT(side_area);
-            READ_BOOL(ground_effect_enabled);
-            READ_FLOAT(ground_effect_multiplier);
-            READ_FLOAT(ground_effect_height_ref);
-            READ_FLOAT(ground_effect_height_max);
-            READ_BOOL(yaw_aero_enabled);
-            READ_FLOAT(yaw_drag_multiplier);
-            READ_FLOAT(yaw_side_force_coeff);
-            READ_BOOL(pitch_aero_enabled);
-            READ_FLOAT(pitch_sensitivity);
-            READ_FLOAT(aero_center_height);
-            READ_FLOAT(aero_center_front_z);
-            READ_FLOAT(aero_center_rear_z);
-
-            READ_FLOAT(center_of_mass_x);
-            READ_FLOAT(center_of_mass_y);
-            READ_FLOAT(center_of_mass_z);
-
-            READ_FLOAT(max_steer_angle);
-            READ_FLOAT(steering_rate);
-            READ_FLOAT(self_align_gain);
-            READ_FLOAT(steering_linearity);
-            READ_FLOAT(front_camber);
-            READ_FLOAT(rear_camber);
-            READ_FLOAT(front_toe);
-            READ_FLOAT(rear_toe);
-            READ_FLOAT(tire_vertical_stiffness);
-            READ_FLOAT(tire_carcass_stiffness_fraction);
-            READ_FLOAT(tire_carcass_twist);
-            READ_FLOAT(lsd_viscous);
-            READ_FLOAT(abs_load_sensitivity);
-
-            READ_FLOAT(airborne_wheel_decay);
-            READ_FLOAT(bearing_friction);
-            READ_FLOAT(handbrake_torque);
-
-            READ_INT(drivetrain_type);
-            READ_FLOAT(torque_split_front);
-            READ_FLOAT(center_diff_coupling);
-            READ_FLOAT(lsd_preload);
-            READ_FLOAT(lsd_lock_ratio_accel);
-            READ_FLOAT(lsd_lock_ratio_decel);
-            READ_INT(diff_type);
-            READ_INT(engine_stage_max);
-            READ_INT(suspension_stage_max);
-            READ_INT(tires_stage_max);
-            READ_INT(brakes_stage_max);
-            READ_INT(aero_stage_max);
-            READ_INT(weight_stage_max);
-            READ_INT(exhaust_stage_max);
-            READ_INT(intake_stage_max);
-            READ_INT(turbo_stage_max);
-            READ_FLOAT(driveshaft_stiffness);
-            READ_FLOAT(driveshaft_damping);
-
-            READ_FLOAT(input_deadzone);
-            READ_FLOAT(steering_deadzone);
-            READ_FLOAT(braking_speed_threshold);
-            READ_FLOAT(linear_damping);
-            READ_FLOAT(angular_damping);
-
-            READ_BOOL(abs_enabled);
-            READ_FLOAT(abs_slip_threshold);
-            READ_FLOAT(abs_release_rate);
-            READ_FLOAT(abs_pulse_frequency);
-            READ_BOOL(tc_enabled);
-            READ_BOOL(tc_use_tire_peak);
-            READ_FLOAT(tc_slip_threshold);
-            READ_FLOAT(tc_power_reduction);
-            READ_FLOAT(tc_response_rate);
-
-            READ_BOOL(turbo_enabled);
-            READ_FLOAT(boost_max_pressure);
-            READ_FLOAT(boost_spool_rate);
-            READ_FLOAT(boost_wastegate_rpm);
-            READ_FLOAT(boost_torque_mult);
-            READ_FLOAT(boost_min_rpm);
-
-            READ_BOOL(electric_enabled);
-            READ_FLOAT(electric_motor_torque);
-            READ_FLOAT(electric_motor_power_kw);
-            READ_FLOAT(electric_motor_max_rpm);
-            READ_FLOAT(electric_torque_response);
-
-            #undef READ_FLOAT
-            #undef READ_INT
-            #undef READ_BOOL
-            #undef READ_FLOAT_ARRAY
-            #undef READ_ENGINE_ARRAY
         }
     }
 

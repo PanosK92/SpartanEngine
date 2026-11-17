@@ -10,7 +10,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Profiler.h"
 #include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_CommandList.h"
-#include "../rhi/RHI_Implementation.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../rhi/RHI_FrameGeneration.h"
 #include "../rhi/RHI_Compiler.h"
@@ -31,6 +30,9 @@ Commercial use requires written permission and negotiated payment terms.
 #ifdef _WIN32
 #include <Windows.h>
 #include <dwmapi.h>
+#if defined(API_GRAPHICS_D3D12)
+#include <dxgi.h>
+#endif
 #pragma comment(lib, "dwmapi.lib")
 #endif
 //====================================
@@ -2434,7 +2436,7 @@ namespace spartan
             static const string driver_version   = clean_driver_version(gpu ? gpu->GetDriverVersion() : nullptr);
 
             system_lines[0].left = gpu ? gpu->GetName() : "Unknown GPU";
-            snprintf(system_lines[0].right, sizeof(system_lines[0].right), "%s %s  |  %s", RHI_Context::api_type_str, RHI_Context::api_version_cstr ? RHI_Context::api_version_cstr : "", driver_version.c_str());
+            snprintf(system_lines[0].right, sizeof(system_lines[0].right), "%s %s  |  %s", RHI_Device::GetApiTypeString(), RHI_Device::GetApiVersionString() ? RHI_Device::GetApiVersionString() : "", driver_version.c_str());
 
 #ifdef __AVX2__
             const char* avx2 = "  |  AVX2";

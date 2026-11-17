@@ -17,7 +17,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "profiling/Profiler.h"
 #include "rhi/RHI_Device.h"
 #include "resource/ResourceCache.h"
-#include "rhi/RHI_Implementation.h"
 #include "Window.h"
 //===============================================
 
@@ -44,7 +43,7 @@ void spartan::gui::initialize(bool editor)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     if (editor) io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    if (editor && spartan::RHI_Context::supports_imgui_multi_viewport)
+    if (editor && spartan::RHI_Device::SupportsImGuiMultiViewport())
     {
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }

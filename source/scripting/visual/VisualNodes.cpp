@@ -361,72 +361,114 @@ namespace spartan::scripting::visual
                 definition.outputs        = { data_pin("entity", "Entity") };
                 add(move(definition));
             }
-            add(make_expression("util.is_valid",  "Is Valid",  "Utilities", "({0} ~= nil)", { data_pin("value", "any") }, "boolean", "True when the value is not nil."));
-            add(make_expression("util.select",    "Select",    "Utilities", "(function() if {0} then return {1} end return {2} end)()", { data_pin("condition", "boolean"), data_pin("a", "any"), data_pin("b", "any") }, "any", "a when the condition holds, b otherwise."));
-            add(make_expression("util.to_string", "To String", "Utilities", "tostring({0})", { data_pin("value", "any") }, "string", "The value as text."));
-            add(make_expression("util.to_number", "To Number", "Utilities", "tonumber({0})", { data_pin("value", "any") }, "number", "The text as a number, nil when it is not one."));
-            add(make_expression("util.type",      "Type Of",   "Utilities", "type({0})", { data_pin("value", "any") }, "string", "Lua's name for the value's type."));
             {
                 NodeDefinition definition = make("util.comment", "Comment", "Utilities", NodeKind::Comment, "A note on the graph, it does not run.");
                 add(move(definition));
             }
 
-            // math on numbers
-            const vector<PinDefinition> ab = { data_pin("a", "number"), data_pin("b", "number") };
-            const vector<PinDefinition> x  = { data_pin("x", "number") };
-            add(make_expression("math.add",        "Add",            "Math|Number", "({0} + {1})", ab, "number", "a + b"));
-            add(make_expression("math.subtract",   "Subtract",       "Math|Number", "({0} - {1})", ab, "number", "a - b"));
-            add(make_expression("math.multiply",   "Multiply",       "Math|Number", "({0} * {1})", ab, "number", "a * b"));
-            add(make_expression("math.divide",     "Divide",         "Math|Number", "({0} / {1})", { data_pin("a", "number"), data_pin("b", "number", "1") }, "number", "a / b"));
-            add(make_expression("math.modulo",     "Modulo",         "Math|Number", "({0} % {1})", { data_pin("a", "number"), data_pin("b", "number", "1") }, "number", "The remainder of a / b."));
-            add(make_expression("math.power",      "Power",          "Math|Number", "({0} ^ {1})", ab, "number", "a raised to b."));
-            add(make_expression("math.negate",     "Negate",         "Math|Number", "(-{0})", x, "number", "-x"));
-            add(make_expression("math.abs",        "Absolute",       "Math|Number", "math.abs({0})", x, "number", "x without its sign."));
-            add(make_expression("math.min",        "Min",            "Math|Number", "math.min({0}, {1})", ab, "number", "The smaller of a and b."));
-            add(make_expression("math.max",        "Max",            "Math|Number", "math.max({0}, {1})", ab, "number", "The larger of a and b."));
-            add(make_expression("math.clamp",      "Clamp",          "Math|Number", "math.min(math.max({0}, {1}), {2})", { data_pin("x", "number"), data_pin("min", "number"), data_pin("max", "number", "1") }, "number", "x kept between min and max."));
-            add(make_expression("math.lerp",       "Lerp",           "Math|Number", "({0} + ({1} - {0}) * {2})", { data_pin("a", "number"), data_pin("b", "number", "1"), data_pin("t", "number", "0.5") }, "number", "From a to b by t."));
-            add(make_expression("math.floor",      "Floor",          "Math|Number", "math.floor({0})", x, "integer", "x rounded down."));
-            add(make_expression("math.ceil",       "Ceil",           "Math|Number", "math.ceil({0})", x, "integer", "x rounded up."));
-            add(make_expression("math.round",      "Round",          "Math|Number", "math.floor({0} + 0.5)", x, "integer", "x rounded to the nearest integer."));
-            add(make_expression("math.sqrt",       "Square Root",    "Math|Number", "math.sqrt({0})", x, "number", "The square root of x."));
-            add(make_expression("math.sin",        "Sin",            "Math|Number", "math.sin({0})", x, "number", "Sine of x radians."));
-            add(make_expression("math.cos",        "Cos",            "Math|Number", "math.cos({0})", x, "number", "Cosine of x radians."));
-            add(make_expression("math.tan",        "Tan",            "Math|Number", "math.tan({0})", x, "number", "Tangent of x radians."));
-            add(make_expression("math.atan2",      "Atan2",          "Math|Number", "math.atan({0}, {1})", { data_pin("y", "number"), data_pin("x", "number", "1") }, "number", "The angle of (x, y) in radians."));
-            add(make_expression("math.radians",    "To Radians",     "Math|Number", "math.rad({0})", { data_pin("degrees", "number") }, "number", "Degrees to radians."));
-            add(make_expression("math.degrees",    "To Degrees",     "Math|Number", "math.deg({0})", { data_pin("radians", "number") }, "number", "Radians to degrees."));
-            add(make_expression("math.pi",         "Pi",             "Math|Number", "math.pi", {}, "number", "3.14159...", "pi"));
-            add(make_expression("math.random",     "Random",         "Math|Number", "math.random()", {}, "number", "A random number from 0 up to 1."));
-            add(make_expression("math.random_range", "Random Range", "Math|Number", "({0} + math.random() * ({1} - {0}))", { data_pin("min", "number"), data_pin("max", "number", "1") }, "number", "A random number between min and max."));
-            add(make_expression("math.random_integer", "Random Integer", "Math|Number", "math.random({0}, {1})", { data_pin("min", "integer", "1"), data_pin("max", "integer", "6") }, "integer", "A random integer between min and max, both included."));
+            struct PinSpec
+            {
+                const char* name;
+                const char* type;
+                const char* default_value;
+            };
+            struct BuiltinSpec
+            {
+                bool statement;
+                const char* id;
+                const char* title;
+                const char* category;
+                const char* lua;
+                const char* output_type;
+                const char* output_name;
+                const char* tooltip;
+                int pin_count;
+                PinSpec pins[3];
+            };
 
-            // comparisons and logic
-            add(make_expression("compare.less",          "Less",             "Math|Compare", "({0} < {1})",  ab, "boolean", "a < b"));
-            add(make_expression("compare.less_equal",    "Less Or Equal",    "Math|Compare", "({0} <= {1})", ab, "boolean", "a <= b"));
-            add(make_expression("compare.greater",       "Greater",          "Math|Compare", "({0} > {1})",  ab, "boolean", "a > b"));
-            add(make_expression("compare.greater_equal", "Greater Or Equal", "Math|Compare", "({0} >= {1})", ab, "boolean", "a >= b"));
-            add(make_expression("compare.equal",         "Equal",            "Math|Compare", "({0} == {1})", { data_pin("a", "any"), data_pin("b", "any") }, "boolean", "a == b, usertypes compare through their own equality."));
-            add(make_expression("compare.not_equal",     "Not Equal",        "Math|Compare", "({0} ~= {1})", { data_pin("a", "any"), data_pin("b", "any") }, "boolean", "a ~= b"));
-            add(make_expression("logic.and", "And", "Math|Logic", "({0} and {1})", { data_pin("a", "boolean"), data_pin("b", "boolean") }, "boolean", "True when both are."));
-            add(make_expression("logic.or",  "Or",  "Math|Logic", "({0} or {1})",  { data_pin("a", "boolean"), data_pin("b", "boolean") }, "boolean", "True when either is."));
-            add(make_expression("logic.not", "Not", "Math|Logic", "(not {0})",     { data_pin("a", "boolean") }, "boolean", "The opposite."));
+            static constexpr BuiltinSpec builtins[] =
+            {
+                // utilities
+                { false, "util.is_valid",  "Is Valid",  "Utilities", "({0} ~= nil)", "boolean", "result", "True when the value is not nil.", 1, { { "value", "any", "" } } },
+                { false, "util.select",    "Select",    "Utilities", "(function() if {0} then return {1} end return {2} end)()", "any", "result", "a when the condition holds, b otherwise.", 3, { { "condition", "boolean", "" }, { "a", "any", "" }, { "b", "any", "" } } },
+                { false, "util.to_string", "To String", "Utilities", "tostring({0})", "string", "result", "The value as text.", 1, { { "value", "any", "" } } },
+                { false, "util.to_number", "To Number", "Utilities", "tonumber({0})", "number", "result", "The text as a number, nil when it is not one.", 1, { { "value", "any", "" } } },
+                { false, "util.type",      "Type Of",   "Utilities", "type({0})", "string", "result", "Lua's name for the value's type.", 1, { { "value", "any", "" } } },
 
-            // strings
-            add(make_expression("string.concat",   "Append",    "String", "(tostring({0}) .. tostring({1}))", { data_pin("a", "any"), data_pin("b", "any") }, "string", "a followed by b, as text."));
-            add(make_expression("string.format",   "Format",    "String", "string.format({0}, {1})", { data_pin("format", "string", "%.2f"), data_pin("value", "any") }, "string", "string.format with one value, %d %.2f %s..."));
-            add(make_expression("string.length",   "Length",    "String", "(#{0})", { data_pin("text", "string") }, "integer", "The number of bytes in the text."));
-            add(make_expression("string.upper",    "Upper",     "String", "string.upper({0})", { data_pin("text", "string") }, "string", "The text in capitals."));
-            add(make_expression("string.lower",    "Lower",     "String", "string.lower({0})", { data_pin("text", "string") }, "string", "The text in lower case."));
-            add(make_expression("string.contains", "Contains",  "String", "(string.find({0}, {1}, 1, true) ~= nil)", { data_pin("text", "string"), data_pin("part", "string") }, "boolean", "True when part appears in the text."));
-            add(make_expression("string.sub",      "Substring", "String", "string.sub({0}, {1}, {2})", { data_pin("text", "string"), data_pin("first", "integer", "1"), data_pin("last", "integer", "-1") }, "string", "The characters from first to last, negatives count from the end."));
+                // math on numbers
+                { false, "math.add",            "Add",            "Math|Number", "({0} + {1})", "number",  "result", "a + b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "math.subtract",       "Subtract",       "Math|Number", "({0} - {1})", "number",  "result", "a - b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "math.multiply",       "Multiply",       "Math|Number", "({0} * {1})", "number",  "result", "a * b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "math.divide",         "Divide",         "Math|Number", "({0} / {1})", "number",  "result", "a / b", 2, { { "a", "number", "" }, { "b", "number", "1" } } },
+                { false, "math.modulo",         "Modulo",         "Math|Number", "({0} % {1})", "number",  "result", "The remainder of a / b.", 2, { { "a", "number", "" }, { "b", "number", "1" } } },
+                { false, "math.power",          "Power",          "Math|Number", "({0} ^ {1})", "number",  "result", "a raised to b.", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "math.negate",         "Negate",         "Math|Number", "(-{0})",      "number",  "result", "-x", 1, { { "x", "number", "" } } },
+                { false, "math.abs",            "Absolute",       "Math|Number", "math.abs({0})", "number", "result", "x without its sign.", 1, { { "x", "number", "" } } },
+                { false, "math.min",            "Min",            "Math|Number", "math.min({0}, {1})", "number", "result", "The smaller of a and b.", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "math.max",            "Max",            "Math|Number", "math.max({0}, {1})", "number", "result", "The larger of a and b.", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "math.clamp",          "Clamp",          "Math|Number", "math.min(math.max({0}, {1}), {2})", "number", "result", "x kept between min and max.", 3, { { "x", "number", "" }, { "min", "number", "" }, { "max", "number", "1" } } },
+                { false, "math.lerp",           "Lerp",           "Math|Number", "({0} + ({1} - {0}) * {2})", "number", "result", "From a to b by t.", 3, { { "a", "number", "" }, { "b", "number", "1" }, { "t", "number", "0.5" } } },
+                { false, "math.floor",          "Floor",          "Math|Number", "math.floor({0})", "integer", "result", "x rounded down.", 1, { { "x", "number", "" } } },
+                { false, "math.ceil",           "Ceil",           "Math|Number", "math.ceil({0})",  "integer", "result", "x rounded up.", 1, { { "x", "number", "" } } },
+                { false, "math.round",          "Round",          "Math|Number", "math.floor({0} + 0.5)", "integer", "result", "x rounded to the nearest integer.", 1, { { "x", "number", "" } } },
+                { false, "math.sqrt",           "Square Root",    "Math|Number", "math.sqrt({0})", "number", "result", "The square root of x.", 1, { { "x", "number", "" } } },
+                { false, "math.sin",            "Sin",            "Math|Number", "math.sin({0})",  "number", "result", "Sine of x radians.", 1, { { "x", "number", "" } } },
+                { false, "math.cos",            "Cos",            "Math|Number", "math.cos({0})",  "number", "result", "Cosine of x radians.", 1, { { "x", "number", "" } } },
+                { false, "math.tan",            "Tan",            "Math|Number", "math.tan({0})",  "number", "result", "Tangent of x radians.", 1, { { "x", "number", "" } } },
+                { false, "math.atan2",          "Atan2",          "Math|Number", "math.atan({0}, {1})", "number", "result", "The angle of (x, y) in radians.", 2, { { "y", "number", "" }, { "x", "number", "1" } } },
+                { false, "math.radians",        "To Radians",     "Math|Number", "math.rad({0})", "number", "result", "Degrees to radians.", 1, { { "degrees", "number", "" } } },
+                { false, "math.degrees",        "To Degrees",     "Math|Number", "math.deg({0})", "number", "result", "Radians to degrees.", 1, { { "radians", "number", "" } } },
+                { false, "math.pi",             "Pi",             "Math|Number", "math.pi", "number", "pi", "3.14159...", 0, {} },
+                { false, "math.random",         "Random",         "Math|Number", "math.random()", "number", "result", "A random number from 0 up to 1.", 0, {} },
+                { false, "math.random_range",   "Random Range",   "Math|Number", "({0} + math.random() * ({1} - {0}))", "number", "result", "A random number between min and max.", 2, { { "min", "number", "" }, { "max", "number", "1" } } },
+                { false, "math.random_integer", "Random Integer", "Math|Number", "math.random({0}, {1})", "integer", "result", "A random integer between min and max, both included.", 2, { { "min", "integer", "1" }, { "max", "integer", "6" } } },
 
-            // tables
-            add(make_expression("table.length", "Length", "Table", "(#{0})", { data_pin("table", "table") }, "integer", "The number of items in an array table."));
-            add(make_expression("table.get",    "Get",    "Table", "{0}[{1}]", { data_pin("table", "table"), data_pin("key", "any", "1") }, "any", "table[key]", "value"));
-            add(make_statement("table.set",    "Set",    "Table", "{0}[{1}] = {2}", { data_pin("table", "table"), data_pin("key", "any", "1"), data_pin("value", "any") }, "table[key] = value"));
-            add(make_statement("table.insert", "Insert", "Table", "table.insert({0}, {1})", { data_pin("table", "table"), data_pin("value", "any") }, "Appends the value to an array table."));
-            add(make_statement("table.clear",  "Clear",  "Table", "for key in pairs({0}) do {0}[key] = nil end", { data_pin("table", "table") }, "Removes every item."));
+                // comparisons and logic
+                { false, "compare.less",          "Less",             "Math|Compare", "({0} < {1})",  "boolean", "result", "a < b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "compare.less_equal",    "Less Or Equal",    "Math|Compare", "({0} <= {1})", "boolean", "result", "a <= b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "compare.greater",       "Greater",          "Math|Compare", "({0} > {1})",  "boolean", "result", "a > b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "compare.greater_equal", "Greater Or Equal", "Math|Compare", "({0} >= {1})", "boolean", "result", "a >= b", 2, { { "a", "number", "" }, { "b", "number", "" } } },
+                { false, "compare.equal",         "Equal",            "Math|Compare", "({0} == {1})", "boolean", "result", "a == b, usertypes compare through their own equality.", 2, { { "a", "any", "" }, { "b", "any", "" } } },
+                { false, "compare.not_equal",     "Not Equal",        "Math|Compare", "({0} ~= {1})", "boolean", "result", "a ~= b", 2, { { "a", "any", "" }, { "b", "any", "" } } },
+                { false, "logic.and",             "And",              "Math|Logic",   "({0} and {1})", "boolean", "result", "True when both are.", 2, { { "a", "boolean", "" }, { "b", "boolean", "" } } },
+                { false, "logic.or",              "Or",               "Math|Logic",   "({0} or {1})",  "boolean", "result", "True when either is.", 2, { { "a", "boolean", "" }, { "b", "boolean", "" } } },
+                { false, "logic.not",             "Not",              "Math|Logic",   "(not {0})",     "boolean", "result", "The opposite.", 1, { { "a", "boolean", "" } } },
+
+                // strings
+                { false, "string.concat",   "Append",    "String", "(tostring({0}) .. tostring({1}))", "string",  "result", "a followed by b, as text.", 2, { { "a", "any", "" }, { "b", "any", "" } } },
+                { false, "string.format",   "Format",    "String", "string.format({0}, {1})",          "string",  "result", "string.format with one value, %d %.2f %s...", 2, { { "format", "string", "%.2f" }, { "value", "any", "" } } },
+                { false, "string.length",   "Length",    "String", "(#{0})",                           "integer", "result", "The number of bytes in the text.", 1, { { "text", "string", "" } } },
+                { false, "string.upper",    "Upper",     "String", "string.upper({0})",                "string",  "result", "The text in capitals.", 1, { { "text", "string", "" } } },
+                { false, "string.lower",    "Lower",     "String", "string.lower({0})",                "string",  "result", "The text in lower case.", 1, { { "text", "string", "" } } },
+                { false, "string.contains", "Contains",  "String", "(string.find({0}, {1}, 1, true) ~= nil)", "boolean", "result", "True when part appears in the text.", 2, { { "text", "string", "" }, { "part", "string", "" } } },
+                { false, "string.sub",      "Substring", "String", "string.sub({0}, {1}, {2})",        "string",  "result", "The characters from first to last, negatives count from the end.", 3, { { "text", "string", "" }, { "first", "integer", "1" }, { "last", "integer", "-1" } } },
+
+                // tables
+                { false, "table.length", "Length", "Table", "(#{0})",      "integer", "result", "The number of items in an array table.", 1, { { "table", "table", "" } } },
+                { false, "table.get",    "Get",    "Table", "{0}[{1}]",    "any",     "value",  "table[key]", 2, { { "table", "table", "" }, { "key", "any", "1" } } },
+                { true,  "table.set",    "Set",    "Table", "{0}[{1}] = {2}", "",     "",       "table[key] = value", 3, { { "table", "table", "" }, { "key", "any", "1" }, { "value", "any", "" } } },
+                { true,  "table.insert", "Insert", "Table", "table.insert({0}, {1})", "", "",   "Appends the value to an array table.", 2, { { "table", "table", "" }, { "value", "any", "" } } },
+                { true,  "table.clear",  "Clear",  "Table", "for key in pairs({0}) do {0}[key] = nil end", "", "", "Removes every item.", 1, { { "table", "table", "" } } }
+            };
+
+            for (const BuiltinSpec& spec : builtins)
+            {
+                vector<PinDefinition> inputs;
+                inputs.reserve(spec.pin_count);
+                for (int i = 0; i < spec.pin_count; ++i)
+                {
+                    inputs.push_back(data_pin(spec.pins[i].name, spec.pins[i].type, spec.pins[i].default_value));
+                }
+
+                if (spec.statement)
+                {
+                    add(make_statement(spec.id, spec.title, spec.category, spec.lua, move(inputs), spec.tooltip));
+                }
+                else
+                {
+                    add(make_expression(spec.id, spec.title, spec.category, spec.lua, move(inputs), spec.output_type, spec.tooltip, spec.output_name));
+                }
+            }
 
             // usertype helpers
             const ApiEnum* component_types = find_enum("ComponentType");

@@ -143,6 +143,7 @@ function solution_configuration()
             symbols "On"
 
         filter { "configurations:development", "system:windows" }
+            debugformat "c7"
             buildoptions { "/Zo", "/Oy-" }
             linkoptions { "/DEBUG:FULL", "/OPT:NOICF", "/IGNORE:4099" }
 
@@ -155,11 +156,13 @@ function solution_configuration()
             symbols "On"
 
         filter { "configurations:release", "system:windows" }
-            linkoptions { "/DEBUG:FULL", "/OPT:REF", "/OPT:ICF", "/IGNORE:4099" }
+            debugformat "c7"
+            linkoptions { "/DEBUG:FULL", "/OPT:REF", "/OPT:ICF", "/CGTHREADS:8", "/IGNORE:4099" }
 
         filter { "system:windows" }
             platforms { "x64" }
             toolset "msc"
+            preferredtoolarchitecture "x86_64"
             systemversion "latest"
             architecture "x64"
             -- /Zc:preprocessor: conformant preprocessor, faster on real workloads
@@ -226,30 +229,24 @@ function spartan_project_configuration()
         filter { "files:**/recast/**" }
             flags { "NoPCH" }
             warnings "Off"
-        filter { "files:**/navigation/NavigationMesh.cpp" }
-            flags { "NoPCH" }
         filter {}
         files { "../third_party/lz4/lz4.c", "../third_party/lz4/lz4.h" }
-        filter { "files:**/lz4/**" }
-            flags { "NoPCH" }
-            warnings "Off"
-        filter { "files:**/geometry/GeneratedCache.cpp" }
-            flags { "NoPCH" }
-        filter {}
         files { "../third_party/astronomy/astronomy.c", "../third_party/astronomy/astronomy.h" }
-        filter { "files:**/astronomy/**" }
-            flags { "NoPCH" }
-        filter {}
         -- mimalloc backs Allocator, static.c is the whole library in one translation unit and does not override malloc
         includedirs { "../third_party/mimalloc/include" }
         files { "../third_party/mimalloc/src/static.c" }
-        filter { "files:**/mimalloc/**" }
+
+        -- keep identical metadata across all c translation units (lz4, astronomy, mimalloc, lzma c) so msbuild compiles them in one /MP batch
+        filter { "files:**.c" }
             flags { "NoPCH" }
             warnings "Off"
-        filter { "files:**/mimalloc/**", "configurations:debug" }
+            defines { "Z7_NO_CRYPTO" }
+        filter { "files:**.c", "configurations:debug" }
             defines { "MI_DEBUG=1" }
-        filter { "files:**/mimalloc/**", "configurations:release or development" }
+        filter { "files:**.c", "configurations:release or development" }
             defines { "MI_BUILD_RELEASE" }
+        filter { "files:**.c", "system:linux" }
+            buildoptions { "-w" }
         filter {}
 
         -- the resource script holds the windows icon and version info
@@ -274,8 +271,8 @@ function spartan_project_configuration()
             pchheader "source/core/pch.h"
         filter {}
 
-        -- lzma sdk: compile into spartan, no separate solution project
-        filter { "files:**/lzma_sdk/**" }
+        -- lzma sdk c++ units: compile into spartan, no separate solution project
+        filter { "files:**/lzma_sdk/**.cpp" }
             flags { "NoPCH" }
             warnings "Off"
             exceptionhandling "On"
@@ -288,7 +285,7 @@ function spartan_project_configuration()
                 path.join(lzma_sdk.root, "spartan"),
             }
 
-        filter { "files:**/lzma_sdk/**", "system:linux" }
+        filter { "files:**/lzma_sdk/**.cpp", "system:linux" }
             buildoptions { "-w" }
 
         filter {}
@@ -296,7 +293,7 @@ function spartan_project_configuration()
         filter { "system:windows" }
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
-                "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
+                "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/physx/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
@@ -410,6 +407,42 @@ function spartan_project_configuration()
 end
 
 if generation_actions[_ACTION] then
+    -- cl.exe /MP dispatches translation units in vcxproj order; schedule the heaviest ones first so slow TUs never straggle at the tail
+    if _ACTION == "vs2022" or _ACTION == "vs2026" then
+        require("vstudio")
+        local function compile_priority(relpath)
+            local p = relpath:gsub("\\", "/")
+            if p:find("/pch%.cpp$") then return 0 end
+            if p:find("/scripting/Scripting") then return 1 end
+            if p:find("/rendering/Renderer%.cpp$") or p:find("/mcp/McpCommands") or p:find("/editor/mcp/McpAssistant") then return 2 end
+            if p:find("/world/") or p:find("/editor/widgets/Properties") or p:find("/editor/imgui/source/imgui") then return 3 end
+            if p:find("/car/") or p:find("/physics/") or p:find("/rendering/") or p:find("/rhi/") or p:find("/editor/") then return 4 end
+            return 5
+        end
+        premake.override(premake.vstudio.vc2010, "emitFiles", function(base, prj, group, tag, fileFunc, fileCfgFunc, checkFunc)
+            if tag == "ClCompile" and group and group.files then
+                local ordered = {}
+                for i, f in ipairs(group.files) do
+                    ordered[i] = f
+                end
+                table.sort(ordered, function(a, b)
+                    local pa = compile_priority(a.relpath or a.name or "")
+                    local pb = compile_priority(b.relpath or b.name or "")
+                    if pa ~= pb then
+                        return pa < pb
+                    end
+                    return (a.relpath or "") < (b.relpath or "")
+                end)
+                local saved = group.files
+                group.files = ordered
+                base(prj, group, tag, fileFunc, fileCfgFunc, checkFunc)
+                group.files = saved
+                return
+            end
+            return base(prj, group, tag, fileFunc, fileCfgFunc, checkFunc)
+        end)
+    end
+
     configure_graphics_api()
     solution_configuration()
     spartan_project_configuration()

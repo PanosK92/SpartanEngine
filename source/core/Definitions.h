@@ -133,31 +133,17 @@ namespace spartan::version
 #define WIDE_STR_HELPER(x) L ## x
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
-#if defined(_WIN32)
-    #define SP_INFO_WINDOW(text_message)                                                                        \
-    {                                                                                                           \
-        MessageBeep(MB_ICONINFORMATION);                                                                        \
-        MessageBoxW(NULL, L##text_message, L"Info", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONINFORMATION); \
-    }
-#else
-    #define SP_INFO_WINDOW(text_message)    \
-    {                                       \
-        printf("Info: %s\n", text_message); \
-    }
-#endif
+namespace spartan
+{
+    void show_info_window(const char* message);
+    void show_warning_window(const char* message);
+}
 
-#if defined(_WIN32)
-    #define SP_WARNING_WINDOW(text_message)                                                                    \
-    {                                                                                                          \
-        MessageBeep(MB_ICONWARNING);                                                                           \
-        MessageBoxW(NULL, L##text_message, L"Warning", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONWARNING); \
-    }
-#else
-    #define SP_WARNING_WINDOW(text_message)    \
-    {                                          \
-        printf("Warning: %s\n", text_message); \
-    }
-#endif
+#define SP_INFO_WINDOW(text_message) \
+    spartan::show_info_window(text_message)
+
+#define SP_WARNING_WINDOW(text_message) \
+    spartan::show_warning_window(text_message)
 
 #define SP_ERROR_WINDOW(text_message) \
     spartan::ErrorHandler::Fatal(spartan::ErrorCategory::Internal, __FUNCTION__, text_message)

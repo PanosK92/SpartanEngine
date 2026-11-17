@@ -14,7 +14,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_Device.h"
 #include "RHI_Shader.h"
 #include "RHI_CommandList.h"
-#include "RHI_Implementation.h"
 #include "ThreadPool.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/Renderer_Buffers.h"

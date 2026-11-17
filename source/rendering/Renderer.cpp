@@ -32,7 +32,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_TextureStreaming.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../rhi/RHI_Queue.h"
-#include "../rhi/RHI_Implementation.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Shader.h"
 #include "../rhi/RHI_CommandList.h"
@@ -3963,7 +3962,7 @@ namespace spartan
 
     RHI_Api_Type Renderer::GetRhiApiType()
     {
-        return RHI_Context::api_type;
+        return RHI_Device::GetApiType();
     }
 
     uint64_t Renderer::GetFrameNumber()

@@ -5,6 +5,7 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
+#include "pch.h"
 #include "NavigationMesh.h"
 #include <algorithm>
 #include <cmath>

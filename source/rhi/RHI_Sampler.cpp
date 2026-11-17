@@ -9,7 +9,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "RHI_Sampler.h"
 #include "RHI_Device.h"
-#include "RHI_Implementation.h"
 //=============================
 
 namespace spartan

@@ -7,6 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 
+#include <optional>
+#include <string>
 #include <sol/forward.hpp>
 
 namespace spartan
@@ -21,6 +23,9 @@ namespace spartan::scripting
 
     // the state every script, world companion script and console command runs in
     sol::state_view get_state();
+
+    // runs an ad-hoc lua snippet and formats any non-nil return value with lua tostring
+    bool execute_snippet(const std::string& code, std::optional<std::string>& out_result, std::string& out_error);
 
     // the component as its lua usertype, nil for components lua has no binding for
     sol::object to_lua(sol::state_view state, Component* component);
