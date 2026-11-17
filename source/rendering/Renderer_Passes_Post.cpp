@@ -182,6 +182,11 @@ namespace spartan
             }
             RHI_CommandList::EndPass();
 
+            if (tex_in->HasPerMipViews() && tex_in->GetMipCount() > 1)
+            {
+                Pass_Downscale(tex_in, Renderer_DownsampleFilter::Average);
+            }
+
             RHI_CommandList::BeginPass("depth_of_field");
             SetCommonTextures(eye_layer);
             {

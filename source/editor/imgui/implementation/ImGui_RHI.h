@@ -1324,8 +1324,8 @@ namespace ImGui::RHI
                 }
 
                 math::Rectangle rectangle;
-                rectangle.width  = draw_data->DisplaySize.x;
-                rectangle.height = draw_data->DisplaySize.y;
+                rectangle.width  = draw_data->DisplaySize.x * draw_data->FramebufferScale.x;
+                rectangle.height = draw_data->DisplaySize.y * draw_data->FramebufferScale.y;
                 RHI_CommandList::SetScissorRectangle(rectangle);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, texture);
                 rhi_resources->push_constant_buffer_pass.set(pass_imgui::flags, flags);
@@ -1407,10 +1407,10 @@ namespace ImGui::RHI
                         // set scissor rectangle
                         {
                             math::Rectangle rectangle;
-                            rectangle.x      = pcmd->ClipRect.x - draw_data->DisplayPos.x;
-                            rectangle.y      = pcmd->ClipRect.y - draw_data->DisplayPos.y;
-                            rectangle.width  = (pcmd->ClipRect.z - draw_data->DisplayPos.x) - rectangle.x;
-                            rectangle.height = (pcmd->ClipRect.w - draw_data->DisplayPos.y) - rectangle.y;
+                            rectangle.x      = (pcmd->ClipRect.x - draw_data->DisplayPos.x) * draw_data->FramebufferScale.x;
+                            rectangle.y      = (pcmd->ClipRect.y - draw_data->DisplayPos.y) * draw_data->FramebufferScale.y;
+                            rectangle.width  = (pcmd->ClipRect.z - pcmd->ClipRect.x) * draw_data->FramebufferScale.x;
+                            rectangle.height = (pcmd->ClipRect.w - pcmd->ClipRect.y) * draw_data->FramebufferScale.y;
 
                             RHI_CommandList::SetScissorRectangle(rectangle);
                         }

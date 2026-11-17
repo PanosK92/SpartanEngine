@@ -16,6 +16,9 @@ Commercial use requires written permission and negotiated payment terms.
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
 #include <freetype/freetype.h>
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 #pragma comment(lib, "winmm.lib") 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "version.lib")
@@ -285,6 +288,13 @@ namespace spartan
         // set window flags - borderless for custom title bar
         // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Context, set at compile time per-api
         uint32_t flags = SDL_WINDOW_RESIZABLE | RHI_Context::sdl_window_flags;
+        #if defined(__EMSCRIPTEN__)
+        // match desktop hidpi backing resolution for sharp taau, keep css pixel density on phones to stay within mobile vram budgets
+        if (EM_ASM_INT({ return Math.min(window.screen.width, window.screen.height) >= 768 ? 1 : 0; }))
+        {
+            flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        }
+        #endif
         if (!packaged)
         {
             flags |= SDL_WINDOW_BORDERLESS;

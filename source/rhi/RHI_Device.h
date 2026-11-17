@@ -144,6 +144,7 @@ namespace spartan
         static uint64_t PropertyGetMinUniformBufferOffsetAlignment()      { return m_min_uniform_buffer_offset_alignment; }
         static uint64_t PropertyGetMinStorageBufferOffsetAlignment()      { return m_min_storage_buffer_offset_alignment; }
         static uint64_t PropertyGetMinAccelerationBufferOffsetAlignment() { return m_min_acceleration_buffer_offset_alignment; }
+        static uint32_t PropertyGetMaxTexture2dDimension()                { return m_max_texture_2d_dimension; }
         static uint32_t PropertyGetMaxPushConstantSize()                  { return m_max_push_constant_size; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeX()             { return m_max_shading_rate_texel_size_x; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeY()             { return m_max_shading_rate_texel_size_y; }
@@ -159,6 +160,7 @@ namespace spartan
         static bool IsSupportedTessellation()                             { return m_is_tessellation_supported; }
         // Whether a vertex shader can recover firstInstance from an indirect draw.
         static bool IsSupportedShaderBaseInstance()                       { return m_is_shader_base_instance_supported; }
+        static bool IsSupportedBcCompression()                            { return m_is_bc_compression_supported; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
@@ -221,6 +223,7 @@ namespace spartan
         static bool m_is_mesh_shaders_supported;
         static bool m_is_tessellation_supported;
         static bool m_is_shader_base_instance_supported;
+        static bool m_is_bc_compression_supported;
         static void (*m_pipeline_bound_callback)(RHI_CommandList*);
         static const void* m_default_push_constants;
         static uint32_t m_default_push_constants_size;

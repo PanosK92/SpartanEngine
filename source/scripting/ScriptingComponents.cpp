@@ -728,6 +728,10 @@ namespace spartan::scripting
                 "SetAutoExposureAdaptationSpeed",  &Camera::SetAutoExposureAdaptationSpeed,
                 "GetAutoExposureCompensation",     &Camera::GetAutoExposureCompensation,
                 "SetAutoExposureCompensation",     &Camera::SetAutoExposureCompensation,
+                "GetAperture",                     &Camera::GetAperture,
+                "SetAperture",                     &Camera::SetAperture,
+                "GetShutterSpeed",                 &Camera::GetShutterSpeed,
+                "SetShutterSpeed",                 &Camera::SetShutterSpeed,
                 "GetFlag",                         &Camera::GetFlag,
                 "SetFlag",                         &Camera::SetFlag
             );

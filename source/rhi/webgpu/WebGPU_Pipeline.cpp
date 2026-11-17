@@ -559,16 +559,17 @@ namespace spartan
     {
         Pipeline* pipeline = static_cast<Pipeline*>(resource);
 
+        #if defined(__EMSCRIPTEN__)
+        if (pipeline->status.load(memory_order_acquire) == PipelineStatus::Pending)
+            return;
+        #else
         // the creation callback still holds the pointer
         while (pipeline->status.load(memory_order_acquire) == PipelineStatus::Pending)
         {
             process_events();
-#if defined(__EMSCRIPTEN__)
-            emscripten_sleep(1);
-#else
             this_thread::sleep_for(chrono::microseconds(200));
-#endif
         }
+        #endif
 
         for (auto& [key, variant] : pipeline->variants)
         {

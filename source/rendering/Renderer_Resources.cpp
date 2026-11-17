@@ -1065,21 +1065,27 @@ namespace spartan
             // the diffuse light after it has travelled under the surface, written only while a diffusion profile is on screen
             at(view_targets(), Renderer_RenderTarget::light_diffuse_scattered) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_diffuse_scattered");
 
-            at(view_targets(), Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
-            at(view_targets(), Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
-            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
-            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows_local) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, nrd_local_shadow_max, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows_local");
+            const bool rt_supported      = RHI_Device::IsSupportedRayTracing();
+            const uint32_t rt_width      = rt_supported ? width_render : 1;
+            const uint32_t rt_height     = rt_supported ? height_render : 1;
+            at(view_targets(), Renderer_RenderTarget::sss)                      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
+            at(view_targets(), Renderer_RenderTarget::reflections)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
+            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
+            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows_local) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, rt_width, rt_height, nrd_local_shadow_max, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows_local");
 
-            // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
-            // must share one resolution: both presets use the same nrd pool_screen
-            at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
-            at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
-            at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
-            at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
-            at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
-            at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
-            // sigma_shadow_translucency writes the shadow in x and the glass colour in yzw
-            at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
+            if (rt_supported)
+            {
+                // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
+                // must share one resolution: both presets use the same nrd pool_screen
+                at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
+                at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
+                at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
+                at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
+                at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
+                at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
+                // sigma_shadow_translucency writes the shadow in x and the glass colour in yzw
+                at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
+            }
         };
 
         // gated by cvar_restir_pt so disabling restir frees the output ring as well as the reservoir slots managed by UpdateOptionalRenderTargets
@@ -1096,7 +1102,12 @@ namespace spartan
             }
             // concurrent sharing, the opaque light compute batch reads the atlas after the graphics shadow pass writes it
             // a secondary view lights one asset with a couple of studio lights, a quarter of the area is plenty
-            const uint32_t atlas_resolution = is_secondary_target_set() ? renderer_resolution_shadow_atlas / 2 : renderer_resolution_shadow_atlas;
+            #if defined(__EMSCRIPTEN__)
+            const uint32_t base_atlas_resolution = renderer_resolution_shadow_atlas / 2;
+            #else
+            const uint32_t base_atlas_resolution = renderer_resolution_shadow_atlas;
+            #endif
+            const uint32_t atlas_resolution = min(is_secondary_target_set() ? base_atlas_resolution / 2 : base_atlas_resolution, RHI_Device::PropertyGetMaxTexture2dDimension());
             at(view_targets(), Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_resolution, atlas_resolution, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shadow_atlas");
         };
 

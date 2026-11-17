@@ -965,8 +965,21 @@ namespace spartan
             io.notify_loaded = true;
 
             // only the main thread may publish into entities, the load worker stages into entities_pending
+            #if defined(__EMSCRIPTEN__)
+            static bool commit_step_painted = false;
+            if (io.ready_for_commit.load(memory_order_acquire) && !commit_step_painted)
+            {
+                commit_step_painted = true;
+                world_progress.SetStep("Initializing world scripts");
+                web_progress::tick();
+                return;
+            }
+            #endif
             if (io.ready_for_commit.exchange(false, memory_order_acq_rel))
             {
+                #if defined(__EMSCRIPTEN__)
+                commit_step_painted = false;
+                #endif
                 ProcessPendingAdditions();
 
                 io.defer_scripts.store(false, memory_order_release);
@@ -982,6 +995,11 @@ namespace spartan
                     {
                         return a.first < b.first;
                     });
+
+                    if (!inits.empty())
+                    {
+                        world_progress.SetStep("Initializing world scripts");
+                    }
 
                     for (pair<int, function<void()>>& init : inits)
                     {
@@ -1015,6 +1033,16 @@ namespace spartan
         {
             if (!io.preparation.Tick(entities, world_progress, callbacks.prepare ? callbacks.prepare : TerrainSystem::PrepareWorld, [] { ProcessPendingRemovals(); })) return;
             world_progress.SetStep("Uploading world geometry");
+            #if defined(__EMSCRIPTEN__)
+            static bool upload_step_painted = false;
+            if (!upload_step_painted)
+            {
+                upload_step_painted = true;
+                web_progress::tick();
+                return;
+            }
+            upload_step_painted = false;
+            #endif
             generated_cache::SaveChecksumIndex(GetResourceDirectory());
             GeometryBuffer::SaveWorldLoadCapacity(GetResourceDirectory());
             GeometryBuffer::BuildIfDirty();

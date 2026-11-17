@@ -441,8 +441,10 @@ def write_engine(ninja, object_root, libraries):
     data = OUT_DIR / "spartan.data.stamp"
     # lz4 keeps the package small, models and shaders are text and static hosts cap file sizes (github pages at 100 MB)
     link_flags = COMMON_FLAGS + PORT_FLAGS + [
-        "-sLZ4=1", "-sJSPI", "-sALLOW_MEMORY_GROWTH=1", "-sINITIAL_MEMORY=1024MB", "-sMAXIMUM_MEMORY=4GB", "-sSTACK_SIZE=16MB",
-        "-sENVIRONMENT=web", "-sEXIT_RUNTIME=0", "-sASSERTIONS=1", "-sFORCE_FILESYSTEM=1", "-sEXPORTED_RUNTIME_METHODS=FS", "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$Browser,$UTF8ToString",
+        "-sLZ4=1", "-sALLOW_MEMORY_GROWTH=1", "-sINITIAL_MEMORY=128MB", "-sMAXIMUM_MEMORY=2GB", "-sSTACK_SIZE=16MB",
+        "-sENVIRONMENT=web", "-sEXIT_RUNTIME=0", "-sASSERTIONS=1", "-sFORCE_FILESYSTEM=1", "-sEXPORTED_RUNTIME_METHODS=FS",
+        "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$Browser,$UTF8ToString,$WebGPU",
+        "-sEXPORTED_FUNCTIONS=_main,_emwgpuCreateAdapter,_emwgpuCreateDevice,_emwgpuCreateQueue",
         "--shell-file", str(shell), "--preload-file", str(BUILD_DIR / "data") + "@/data", "--preload-file", str(BUILD_DIR / "cache") + "@/cache", "--preload-file", str(BUILD_DIR / "worlds") + "@/worlds", "--preload-file", str(BUILD_DIR / "project") + "@/project", "--preload-file", str(BUILD_DIR / "root") + "@/"
     ]
     output = OUT_DIR / "spartan.html"

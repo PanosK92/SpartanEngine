@@ -162,6 +162,10 @@ namespace spartan
 
     void webgpu::buffer_read_back(RHI_Buffer* buffer)
     {
+        #if defined(__EMSCRIPTEN__)
+        (void)buffer;
+        return;
+        #else
         WGPUBuffer source = static_cast<WGPUBuffer>(buffer->GetRhiResource());
         uint8_t* data     = static_cast<uint8_t*>(buffer->GetMappedData());
         if (!source || !data)
@@ -196,11 +200,7 @@ namespace spartan
         while (status.load() < 0)
         {
             webgpu::process_events();
-            #if defined(__EMSCRIPTEN__)
-            emscripten_sleep(1);
-            #else
             this_thread::yield();
-            #endif
         }
 
         if (status.load() == static_cast<int>(WGPUMapAsyncStatus_Success))
@@ -219,6 +219,7 @@ namespace spartan
             wgpuBufferUnmap(staging);
         }
         wgpuBufferRelease(staging);
+        #endif
     }
 
     void RHI_Buffer::RHI_DestroyResource()

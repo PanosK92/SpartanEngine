@@ -64,6 +64,7 @@ namespace spartan
     bool RHI_Device::m_is_mesh_shaders_supported                    = false;
     bool RHI_Device::m_is_tessellation_supported                    = true;
     bool RHI_Device::m_is_shader_base_instance_supported            = false;
+    bool RHI_Device::m_is_bc_compression_supported                 = true;
     void (*RHI_Device::m_pipeline_bound_callback)(RHI_CommandList*) = nullptr;
     const void* RHI_Device::m_default_push_constants                = nullptr;
     uint32_t RHI_Device::m_default_push_constants_size              = 0;

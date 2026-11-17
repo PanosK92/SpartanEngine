@@ -196,7 +196,12 @@ namespace spartan
         {
             SP_ASSERT(texture != nullptr);
 
-            if (RHI_Device::IsDeviceLost())
+            #if defined(__EMSCRIPTEN__)
+            // material_layers resamples every browser material texture to rgba8, skipping synchronous gpu readback keeps wasm free of jspi/asyncify
+            return false;
+            #endif
+
+            if (RHI_Device::IsDeviceLost() || !RHI_Device::IsSupportedBcCompression())
             {
                 return false;
             }
@@ -364,13 +369,8 @@ namespace spartan
                 RHI_Pipeline* pipeline = nullptr;
                 RHI_DescriptorSetLayout* layout = nullptr;
                 RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
-            #if defined(__EMSCRIPTEN__)
-                // the browser finishes pipelines only when control returns to it, compression is synchronous so it yields until this one exists
-                for (uint32_t attempt = 0; !pipeline && attempt < 5000 && !RHI_Device::IsDeviceLost(); attempt++)
-                {
-                    emscripten_sleep(1);
-                    RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
-                }
+            #if !defined(__EMSCRIPTEN__)
+            // native builds wait inline if needed
             #endif
                 if (!pipeline)
                 {
@@ -1156,6 +1156,7 @@ namespace spartan
         bool restored_mips = false;
         RHI_Format target = m_compression_format != RHI_Format::Max ? m_compression_format : RHI_Format::BC3_Unorm;
         if (is_not_compressed && is_material_texture && (m_flags & RHI_Texture_Compress) &&
+            RHI_Device::IsSupportedBcCompression() &&
             m_type == RHI_Texture_Type::Type2D && m_depth == 1 && m_slices.size() == 1 &&
             m_slices[0].mips.size() == 1 && m_format == RHI_Format::R8G8B8A8_Unorm &&
             !World::GetResourceDirectory().empty())
@@ -1227,7 +1228,7 @@ namespace spartan
             Breadcrumbs::EndMarker(); // mip_generation
 
             // compress - format is chosen per-texture (bc3 for packed, bc1 for color, bc5 for normal, etc.)
-            bool compress       = m_flags & RHI_Texture_Compress;
+            bool compress       = (m_flags & RHI_Texture_Compress) && RHI_Device::IsSupportedBcCompression();
             bool not_compressed = !IsCompressedFormat();
             if (compress && not_compressed)
             {

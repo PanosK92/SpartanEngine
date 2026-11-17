@@ -124,11 +124,90 @@
     };
 
     window.addEventListener("error", (event) => fail("Error: " + event.message));
-    window.addEventListener("unhandledrejection", (event) => console.error("unhandled: " + (event.reason && event.reason.stack ? event.reason.stack : event.reason)));
-    const script = document.createElement("script");
-    script.src   = versioned("spartan.js");
-    script.async = true;
-    document.body.appendChild(script);
+    window.addEventListener("unhandledrejection", (event) =>
+    {
+        const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+        fail("The engine stopped: " + reason);
+        console.error("unhandled: " + (event.reason && event.reason.stack ? event.reason.stack : event.reason));
+    });
+
+    (async () =>
+    {
+        if (!navigator.gpu)
+        {
+            fail("This browser doesn't expose WebGPU, try a recent Chrome, Edge or Safari");
+            return;
+        }
+
+        try
+        {
+            const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" }) || await navigator.gpu.requestAdapter();
+            if (!adapter)
+            {
+                fail("No WebGPU adapter is available on this device");
+                return;
+            }
+
+            const wanted = [
+                "float32-filterable",
+                "float32-blendable",
+                "texture-formats-tier1",
+                "texture-formats-tier2",
+                "unorm16-texture-formats",
+                "rg11b10ufloat-renderable",
+                "bgra8unorm-storage",
+                "depth32float-stencil8",
+                "texture-compression-bc",
+                "indirect-first-instance",
+                "depth-clip-control",
+                "dual-source-blending"
+            ];
+            const requiredFeatures = wanted.filter((feature) => adapter.features && adapter.features.has(feature));
+            const requiredLimits   = {};
+            if (adapter.limits)
+            {
+                for (const key in adapter.limits)
+                {
+                    const value = adapter.limits[key];
+                    if (typeof value === "number" && key !== "minSubgroupSize" && key !== "maxSubgroupSize")
+                    {
+                        requiredLimits[key] = value;
+                    }
+                }
+            }
+
+            let device = null;
+            try
+            {
+                device = await adapter.requestDevice({ requiredFeatures, requiredLimits });
+            }
+            catch (_)
+            {
+                device = await adapter.requestDevice({ requiredFeatures });
+            }
+
+            device.addEventListener("uncapturederror", (event) =>
+            {
+                if (event && event.error)
+                {
+                    console.warn("WebGPU: " + event.error.message);
+                }
+            });
+
+            Module.preinitializedWebGPUAdapter = adapter;
+            Module.preinitializedWebGPUDevice  = device;
+        }
+        catch (err)
+        {
+            fail("WebGPU initialization failed: " + (err && err.message ? err.message : String(err)));
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src   = versioned("spartan.js");
+        script.async = true;
+        document.body.appendChild(script);
+    })();
 </script>
 <!-- loaded above with the version, emscripten requires the placeholder: {{{ SCRIPT }}} -->
 </body>

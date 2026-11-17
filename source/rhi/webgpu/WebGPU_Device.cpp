@@ -108,19 +108,17 @@ namespace spartan
             }
         }
 
-        // async requests finish through the event loop, the browser needs control back to resolve its promises
+        #if !defined(__EMSCRIPTEN__)
+        // async requests finish through the event loop
         void wait_until(const atomic<bool>& done)
         {
             while (!done.load())
             {
                 wgpuInstanceProcessEvents(RHI_Context::instance);
-                #if defined(__EMSCRIPTEN__)
-                emscripten_sleep(1);
-                #else
                 this_thread::yield();
-                #endif
             }
         }
+        #endif
     }
 
     namespace queues
@@ -964,6 +962,48 @@ namespace spartan
             SP_ASSERT_MSG(RHI_Context::instance != nullptr, "Failed to create a WebGPU instance");
         }
 
+        const WGPUFeatureName wanted[] =
+        {
+            WGPUFeatureName_Float32Filterable,
+            WGPUFeatureName_Float32Blendable,
+            WGPUFeatureName_TextureFormatsTier1,
+            WGPUFeatureName_TextureFormatsTier2,
+            WGPUFeatureName_Unorm16TextureFormats,
+            WGPUFeatureName_RG11B10UfloatRenderable,
+            WGPUFeatureName_BGRA8UnormStorage,
+            WGPUFeatureName_Depth32FloatStencil8,
+            WGPUFeatureName_TextureCompressionBC,
+            WGPUFeatureName_IndirectFirstInstance,
+            WGPUFeatureName_DepthClipControl,
+            WGPUFeatureName_DualSourceBlending,
+            #if !defined(__EMSCRIPTEN__)
+            WGPUFeatureName_ImplicitDeviceSynchronization, // shaders and pipelines are created on worker threads
+            #endif
+        };
+
+        WGPULimits limits = WGPU_LIMITS_INIT;
+
+        #if defined(__EMSCRIPTEN__)
+        // the browser shell acquires the adapter and device in javascript before starting wasm so neither jspi nor asyncify is needed
+        RHI_Context::adapter = reinterpret_cast<WGPUAdapter>(EM_ASM_PTR({ return WebGPU.importJsAdapter(Module.preinitializedWebGPUAdapter, $0); }, RHI_Context::instance));
+        RHI_Context::device  = emscripten_webgpu_get_device();
+        SP_ASSERT_MSG(RHI_Context::adapter != nullptr && RHI_Context::device != nullptr, "Preinitialized WebGPU device is missing");
+
+        WGPUAdapterInfo info = WGPU_ADAPTER_INFO_INIT;
+        wgpuAdapterGetInfo(RHI_Context::adapter, &info);
+        const string adapter_name = info.device.data && info.device.length ? string(info.device.data, info.device.length == WGPU_STRLEN ? strlen(info.device.data) : info.device.length) : "WebGPU browser adapter";
+        PhysicalDeviceRegister(RHI_PhysicalDevice(1, 0, nullptr, info.vendorID, RHI_PhysicalDevice_Type::Discrete, adapter_name.c_str(), adapter_memory(info.vendorID, info.deviceID), RHI_Context::adapter));
+        PhysicalDeviceSetPrimary(0);
+
+        wgpuDeviceGetLimits(RHI_Context::device, &limits);
+        for (WGPUFeatureName feature : wanted)
+        {
+            if (wgpuDeviceHasFeature(RHI_Context::device, feature))
+            {
+                features.insert(static_cast<uint32_t>(feature));
+            }
+        }
+        #else
         // adapter, a machine without a gpu (ci) falls back to a software one (warp natively)
         {
             const bool software_only = Engine::HasArgument("--software-gpu");
@@ -974,7 +1014,7 @@ namespace spartan
 
                 WGPURequestAdapterOptions options = WGPU_REQUEST_ADAPTER_OPTIONS_INIT;
                 options.powerPreference           = WGPUPowerPreference_HighPerformance;
-                #if defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                #if defined(_WIN32)
                 RequestAdapterOptionsLuid luid_options = {};
                 luid_options.chain.sType               = WGPUSType_RequestAdapterOptionsLUID;
                 if (fallback)
@@ -1030,39 +1070,17 @@ namespace spartan
         }
 
         // the defaults are what every browser guarantees, the engine binds far more per stage, so ask for what the adapter has
-        WGPULimits limits = WGPU_LIMITS_INIT;
         wgpuAdapterGetLimits(RHI_Context::adapter, &limits);
         limits.nextInChain = nullptr;
 
         // features, only the ones the adapter has, the rest degrade
         vector<WGPUFeatureName> required;
+        for (WGPUFeatureName feature : wanted)
         {
-            const WGPUFeatureName wanted[] =
+            if (wgpuAdapterHasFeature(RHI_Context::adapter, feature))
             {
-                WGPUFeatureName_Float32Filterable,
-                WGPUFeatureName_Float32Blendable,
-                WGPUFeatureName_TextureFormatsTier1,
-                WGPUFeatureName_TextureFormatsTier2,
-                WGPUFeatureName_Unorm16TextureFormats,
-                WGPUFeatureName_RG11B10UfloatRenderable,
-                WGPUFeatureName_BGRA8UnormStorage,
-                WGPUFeatureName_Depth32FloatStencil8,
-                WGPUFeatureName_TextureCompressionBC,
-                WGPUFeatureName_IndirectFirstInstance,
-                WGPUFeatureName_DepthClipControl,
-                WGPUFeatureName_DualSourceBlending,
-                #if !defined(__EMSCRIPTEN__)
-                WGPUFeatureName_ImplicitDeviceSynchronization, // shaders and pipelines are created on worker threads
-                #endif
-            };
-
-            for (WGPUFeatureName feature : wanted)
-            {
-                if (wgpuAdapterHasFeature(RHI_Context::adapter, feature))
-                {
-                    required.push_back(feature);
-                    features.insert(static_cast<uint32_t>(feature));
-                }
+                required.push_back(feature);
+                features.insert(static_cast<uint32_t>(feature));
             }
         }
 
@@ -1108,6 +1126,7 @@ namespace spartan
             wait_until(done);
             SP_ASSERT_MSG(RHI_Context::device != nullptr, "Failed to create a WebGPU device");
         }
+        #endif
         native_queue = wgpuDeviceGetQueue(RHI_Context::device);
 
         // limits
@@ -1128,6 +1147,7 @@ namespace spartan
         m_is_tessellation_supported         = false;
         m_is_shading_rate_supported         = false;
         m_is_shader_base_instance_supported = false;
+        m_is_bc_compression_supported       = webgpu::has_feature(WGPUFeatureName_TextureCompressionBC);
         m_xess_supported                    = false;
         m_dlss_supported                    = false;
 

@@ -906,7 +906,15 @@ namespace spartan
             uint32_t width  = Window::GetWidthInPixels();
             uint32_t height = Window::GetHeightInPixels();
             SetResolutionOutput(width, height, false);
+            #if defined(__EMSCRIPTEN__)
+            const float pixel_budget = static_cast<float>(1920 * 1080);
+            const float scale_cap    = min(1.0f, sqrt(pixel_budget / static_cast<float>(max(width * height, 1u))));
+            const uint32_t render_w  = max(static_cast<uint32_t>(static_cast<float>(width) * scale_cap) & ~1u, 64u);
+            const uint32_t render_h  = max(static_cast<uint32_t>(static_cast<float>(height) * scale_cap) & ~1u, 64u);
+            SetResolutionRender(render_w, render_h, false);
+            #else
             SetResolutionRender(1920, 1080, false); // lower than output so taau works well
+            #endif
             SetViewport(static_cast<float>(width), static_cast<float>(height));
         }
 

@@ -152,10 +152,15 @@ int main(int argc, char** argv)
 #else
     try
     {
+        #if defined(__EMSCRIPTEN__)
+        Editor* editor = new Editor(args);
+        editor->Tick();
+        #else
         {
             Editor editor(args);
             editor.Tick();
         }
+        #endif
         // Only report success after the editor and engine have finished shutting down.
         if (spartan::Engine::IsStartupSmokeTest())
             SP_LOG_INFO("STARTUP_SMOKE_TEST_PASSED");

@@ -27,9 +27,9 @@ static const int   APERTURE_BLADES    = 6;     // hexagonal cinematic bokeh
 
 // auto focus parameters
 static const int   FOCUS_SAMPLES      = 32;    // depth samples for focus calculation
-static const float FOCUS_REGION       = 0.10f; // screen fraction for focus area
+static const float FOCUS_REGION       = 0.06f; // screen fraction for focus area
 static const float CENTER_WEIGHT_BIAS = 3.0f;  // prefer centre of screen for focus
-static const float SUBJECT_TOLERANCE  = 2.0f;  // depths within this multiple of the nearest hit are the same subject
+static const float SUBJECT_TOLERANCE  = 1.08f; // lock onto the front feature of the subject so eyes/nose stay sharp at wide apertures
 static const float FOCUS_ADAPT_SPEED  = 3.5f;  // cinematic focus pull, higher is snappier
 
 // depth handling
@@ -236,7 +236,7 @@ float get_nearest_linear_depth(float2 uv)
 /*------------------------------------------------------------------------------
     main bokeh blur with gather sampling
 ------------------------------------------------------------------------------*/
-float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens, float2 texel_size, float2 resolution)
+float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens, float2 texel_size, float2 render_texel_size, float max_mip, float2 resolution)
 {
     float blur_radius = abs(center_coc);
 
@@ -264,9 +264,12 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
         if (!is_valid_uv(sample_uv))
             continue;
 
-        float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb;
-        // read a little further out than the sample, temporal antialiasing spreads a silhouette about a texel past its depth
-        float  sample_depth = get_nearest_linear_depth(sample_uv + normalize(disk) * texel_size * 0.75f);
+        // temporal upsampling reconstructs silhouettes up to ~1.5 render texels outside the depth buffer,
+        // probe both the sample and a render-texel step further along the tap so antialiased rim pixels keep foreground depth
+        float2 dir          = normalize(disk);
+        float  depth_at_tap = get_nearest_linear_depth(sample_uv);
+        float  depth_pushed = get_nearest_linear_depth(sample_uv + dir * render_texel_size * 1.5f);
+        float  sample_depth = min(depth_at_tap, depth_pushed);
         float  sample_coc   = compute_coc_signed(sample_depth, lens);
         float  abs_sample_coc = abs(sample_coc);
 
@@ -277,9 +280,28 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
         float depth_weight  = (sample_depth > center_depth && center_is_fg) ? BG_LEAK_PREVENTION : 1.0f;
         float scatter       = lerp(0.35f, 1.0f, saturate(abs_sample_coc * INV_SCATTER_NORM));
 
-        // keep bright specular energy so out of focus lights form soft orbs
-        float lum       = luminance(sample_color);
-        float highlight = 1.0f + HIGHLIGHT_GAIN * saturate((lum - HIGHLIGHT_THRESHOLD) * 0.25f);
+        // select the prefiltered mip whose texel footprint matches the per-sample disc spacing so thin rim highlights blur smoothly,
+        // clamping the mip whenever a sharper foreground silhouette sits inside that mip texel's footprint so sharp subjects never bleed into the background
+        float  sample_mip = clamp(log2(max(effective_coc * 0.35f, 1.0f)), 0.0f, max_mip);
+        if (sample_mip > 0.0f)
+        {
+            float2 mip_reach  = exp2(sample_mip) * texel_size;
+            float  near_guard = min(
+                min(get_nearest_linear_depth(sample_uv + float2(mip_reach.x, 0.0f)), get_nearest_linear_depth(sample_uv - float2(mip_reach.x, 0.0f))),
+                min(get_nearest_linear_depth(sample_uv + float2(0.0f, mip_reach.y)), get_nearest_linear_depth(sample_uv - float2(0.0f, mip_reach.y)))
+            );
+            if (near_guard < sample_depth)
+            {
+                float guard_coc = abs(compute_coc_signed(near_guard, lens));
+                sample_mip      = min(sample_mip, clamp(log2(max(guard_coc * 0.35f, 1.0f)), 0.0f, max_mip));
+            }
+        }
+        float3 sample_color = tex.SampleLevel(samplers[sampler_trilinear_clamp], sample_uv, sample_mip).rgb;
+
+        // keep bright specular energy so out of focus lights form soft orbs, damped at tiny coc to avoid edge fireflies
+        float lum           = luminance(sample_color);
+        float bokeh_boost   = saturate((abs_sample_coc - 1.5f) * 0.25f);
+        float highlight     = 1.0f + HIGHLIGHT_GAIN * bokeh_boost * saturate((lum - HIGHLIGHT_THRESHOLD) * 0.25f);
 
         float w = coverage * depth_weight * scatter * highlight;
 
@@ -335,10 +357,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
     if (any(thread_id.xy >= uint2(resolution)))
         return;
 
-    lens_t lens        = gs_lens;
-    float2 uv          = (thread_id.xy + 0.5f) / resolution;
-    float2 texel_half  = 0.5f / resolution;
-    float  depth       = min(get_nearest_linear_depth(uv - texel_half), get_nearest_linear_depth(uv + texel_half));
+    lens_t lens              = gs_lens;
+    float2 uv                = (thread_id.xy + 0.5f) / resolution;
+    float2 render_texel_size = 1.0f / max(get_render_resolution_active(), float2(1.0f, 1.0f));
+    float2 depth_half        = 0.5f * render_texel_size;
+    float  depth             = min(
+        min(get_nearest_linear_depth(uv - depth_half), get_nearest_linear_depth(uv + depth_half)),
+        min(get_nearest_linear_depth(uv + float2(depth_half.x, -depth_half.y)), get_nearest_linear_depth(uv + float2(-depth_half.x, depth_half.y)))
+    );
     float  coc         = compute_coc_signed(depth, lens);
     float  blur_radius = abs(coc);
 
@@ -349,8 +375,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
         return;
     }
 
+    uint tex_w = 0, tex_h = 0, tex_mips = 1;
+    tex.GetDimensions(0, tex_w, tex_h, tex_mips);
+    float  max_mip    = float(max(tex_mips, 1u) - 1u);
     float2 texel_size = 1.0f / resolution;
-    float3 blurred    = bokeh_gather(uv, coc, depth, lens, texel_size, resolution);
+    float3 blurred    = bokeh_gather(uv, coc, depth, lens, texel_size, render_texel_size, max_mip, resolution);
 
     float4 original = tex[thread_id.xy];
     // soft transition out of the sharp plane, then full cinematic blur

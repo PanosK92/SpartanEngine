@@ -32,6 +32,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "mcp/McpCommandsComponents.h"
 #include "world/World.h"
 #include "rendering/Renderer.h"
+#include "rhi/RHI_Device.h"
 #include "rhi/RHI_Compiler.h"
 #include "imgui/source/imgui_internal.h"
 SP_WARNINGS_OFF
@@ -95,6 +96,27 @@ namespace
         ImGui::AddSettingsHandler(&handler);
     }
 
+    void on_packaged_window_resized(spartan::sp_variant)
+    {
+        if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
+            return;
+
+        const uint32_t width  = spartan::Window::GetWidthInPixels();
+        const uint32_t height = spartan::Window::GetHeightInPixels();
+        if (!spartan::RHI_Device::IsValidResolution(width, height))
+            return;
+
+        spartan::Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
+        spartan::Renderer::SetResolutionOutput(width, height);
+        #if defined(__EMSCRIPTEN__)
+        const float pixel_budget = static_cast<float>(1920 * 1080);
+        const float scale_cap    = min(1.0f, sqrt(pixel_budget / static_cast<float>(max(width * height, 1u))));
+        const uint32_t render_w  = max(static_cast<uint32_t>(static_cast<float>(width) * scale_cap) & ~1u, 64u);
+        const uint32_t render_h  = max(static_cast<uint32_t>(static_cast<float>(height) * scale_cap) & ~1u, 64u);
+        spartan::Renderer::SetResolutionRender(render_w, render_h);
+        #endif
+    }
+
     // a shipped game never shows the editor, it boots its start world and stays in play mode
     void start_packaged_game()
     {
@@ -105,6 +127,9 @@ namespace
         {
             spartan::Engine::SetFlag(spartan::EngineMode::Playing, true);
         });
+
+        // without the editor viewport widget, the packaged game tracks the window directly
+        SP_SUBSCRIBE_TO_EVENT(spartan::EventType::WindowResized, on_packaged_window_resized);
 
         const spartan::GameManifestData& game = spartan::GameManifest::Get();
         if (!spartan::FileSystem::Exists(game.start_world) || !spartan::World::LoadFromFile(game.start_world))
@@ -212,7 +237,7 @@ void Editor::Tick()
         SP_LOG_ERROR("Shader bake timed out");
         return;
     }
-    while (!spartan::Window::WantsToClose())
+    auto step_frame = [](Editor* self)
     {
         spartan::Profiler::FrameStart();
         spartan::Profiler::TimeBlockStart(
@@ -236,12 +261,12 @@ void Editor::Tick()
 
         if (render_editor)
         {
-            editor_layout::begin_root(this);
+            editor_layout::begin_root(self);
 
-            for (unique_ptr<Widget>& widget : m_widgets)
+            self->ForEachWidget([](Widget* widget)
             {
                 widget->Tick();
-            }
+            });
             MenuBar::Tick();
 
             editor_layout::end_root();
@@ -252,10 +277,53 @@ void Editor::Tick()
         spartan::Profiler::TimeBlockEnd(spartan::TimeBlockType::Cpu);
         spartan::Timer::PostTick();
         spartan::Profiler::PostTick();
+    };
 
 #if defined(__EMSCRIPTEN__)
-        // the browser only presents the canvas and delivers input once the frame hands control back
-        emscripten_sleep(0);
-#endif
+    emscripten_set_main_loop_arg(
+        [](void* arg)
+        {
+            Editor* self = static_cast<Editor*>(arg);
+            if (spartan::Window::WantsToClose())
+            {
+                emscripten_cancel_main_loop();
+                return;
+            }
+            // run one frame per requestAnimationFrame without unwinding the stack every tick
+            spartan::Profiler::FrameStart();
+            spartan::Profiler::TimeBlockStart("frame_active", spartan::TimeBlockType::Cpu);
+            spartan::World::ProcessPendingLoad();
+
+            const bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible) && !spartan::Engine::IsHeadless();
+            spartan::Renderer::SetPresentInRenderer(false);
+            editor_imgui::begin_frame();
+            if (!render_editor)
+                spartan::Input::SetBlockedByUi(false);
+
+            spartan::Engine::Tick();
+
+            if (render_editor)
+            {
+                editor_layout::begin_root(self);
+                self->ForEachWidget([](Widget* widget) { widget->Tick(); });
+                MenuBar::Tick();
+                editor_layout::end_root();
+                GeneralWindows::Tick();
+            }
+            editor_imgui::render();
+
+            spartan::Profiler::TimeBlockEnd(spartan::TimeBlockType::Cpu);
+            spartan::Timer::PostTick();
+            spartan::Profiler::PostTick();
+        },
+        this,
+        0,
+        false
+    );
+#else
+    while (!spartan::Window::WantsToClose())
+    {
+        step_frame(this);
     }
+#endif
 }
