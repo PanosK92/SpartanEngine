@@ -74,6 +74,20 @@ namespace spartan
             if (from == to)
                 return false;
 
+            if (from == WGPUTextureFormat_R8Unorm && to == WGPUTextureFormat_RGBA8Unorm)
+            {
+                const uint8_t* source = static_cast<const uint8_t*>(bytes);
+                out.resize(size * 4);
+                for (uint64_t i = 0; i < size; i++)
+                {
+                    out[i * 4 + 0] = source[i];
+                    out[i * 4 + 1] = 0;
+                    out[i * 4 + 2] = 0;
+                    out[i * 4 + 3] = 255;
+                }
+                return true;
+            }
+
             if (from == WGPUTextureFormat_RG16Float && to == WGPUTextureFormat_RGBA16Float)
             {
                 const uint16_t* source = static_cast<const uint16_t*>(bytes);
@@ -208,12 +222,34 @@ namespace spartan
     WGPUTextureFormat webgpu::texture_format(const RHI_Texture* texture)
     {
         const WGPUTextureFormat format = to_format(texture->GetFormat());
+        if (texture->IsRt())
+        {
+            if (format == WGPUTextureFormat_RG11B10Ufloat && !has_feature(WGPUFeatureName_RG11B10UfloatRenderable))
+                return WGPUTextureFormat_RGBA16Float;
+
+            if ((format == WGPUTextureFormat_R16Unorm || format == WGPUTextureFormat_RGBA16Unorm) && !has_feature(WGPUFeatureName_Unorm16TextureFormats))
+                return WGPUTextureFormat_RGBA16Float;
+        }
+
         if (!texture->IsUav())
             return format;
 
-        // only four channel formats can be read and written in one dispatch, the two channel and packed ones widen
+        // only four channel formats can be read and written in one dispatch, the two channel and packed ones widen,
+        // and tier 1 formats widen to core storage formats when the adapter lacks tier 1
+        const bool tier1 = has_feature(WGPUFeatureName_TextureFormatsTier1);
         switch (format)
         {
+            case WGPUTextureFormat_R8Unorm:
+            case WGPUTextureFormat_RG8Unorm:
+            case WGPUTextureFormat_RGB10A2Unorm:
+                return tier1 ? format : WGPUTextureFormat_RGBA8Unorm;
+            case WGPUTextureFormat_R8Uint:
+            case WGPUTextureFormat_R16Uint:
+                return tier1 ? format : WGPUTextureFormat_R32Uint;
+            case WGPUTextureFormat_R16Float:
+            case WGPUTextureFormat_R16Unorm:
+            case WGPUTextureFormat_RGBA16Unorm:
+                return tier1 ? format : WGPUTextureFormat_RGBA16Float;
             case WGPUTextureFormat_RG11B10Ufloat:
             case WGPUTextureFormat_RG16Float:
                 return WGPUTextureFormat_RGBA16Float;
@@ -275,7 +311,9 @@ namespace spartan
         {
             usage |= WGPUTextureUsage_StorageBinding;
         }
-        if ((IsRt() || ((IsUav() || (m_flags & RHI_Texture_ClearBlit)) && !compressed)) && is_renderable(format))
+        // safari webkit rejects render_attachment usage on 3d textures, 3d clears run through compute instead
+        const bool is_3d = m_type == RHI_Texture_Type::Type3D;
+        if (!is_3d && (IsRt() || ((IsUav() || (m_flags & RHI_Texture_ClearBlit)) && !compressed)) && is_renderable(format))
         {
             usage |= WGPUTextureUsage_RenderAttachment;
         }
@@ -368,6 +406,7 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
+            webgpu::depth_mirror_release(m_rhi_resource);
             webgpu::texture_views_release(m_rhi_resource);
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Image, m_rhi_resource);
             m_rhi_resource = nullptr;

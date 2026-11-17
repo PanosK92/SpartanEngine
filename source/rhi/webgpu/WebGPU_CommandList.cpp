@@ -280,9 +280,253 @@ namespace spartan
                 return true;
 
             if (layout == WGPUTextureSampleType_UnfilterableFloat)
-                return format == WGPUTextureSampleType_Float || format == WGPUTextureSampleType_Depth;
+                return format == WGPUTextureSampleType_Float || (format == WGPUTextureSampleType_Depth && webgpu::supports_depth_unfilterable());
 
             return false;
+        }
+
+        // safari webkit forbids binding depth32float views to unfilterable-float texture_2d<f32> layouts,
+        // so depth targets get a core r32float mirror synced through texture_depth_2d whenever depth changes
+        namespace webgpu_depth_mirror
+        {
+            const char* source = R"(
+                @group(0) @binding(0) var src : texture_depth_2d;
+                @group(0) @binding(1) var dst : texture_storage_2d<r32float, write>;
+
+                @compute @workgroup_size(8, 8, 1)
+                fn copy_cs(@builtin(global_invocation_id) id : vec3u)
+                {
+                    let size = textureDimensions(src);
+                    if (id.x >= size.x || id.y >= size.y)
+                    {
+                        return;
+                    }
+                    let d = textureLoad(src, vec2i(id.xy), 0);
+                    textureStore(dst, vec2i(id.xy), vec4f(d, 0.0, 0.0, 0.0));
+                }
+            )";
+
+            struct Entry
+            {
+                WGPUTexture texture       = nullptr;
+                vector<WGPUTextureView> views_2d;
+                WGPUTextureView view_arr  = nullptr;
+                uint32_t width            = 0;
+                uint32_t height           = 0;
+                uint32_t layers           = 0;
+                uint64_t dirty_version    = 1;
+                uint64_t synced_version   = 0;
+            };
+
+            mutex mutex_mirror;
+            unordered_map<void*, Entry> entries;
+            WGPUShaderModule module       = nullptr;
+            WGPUBindGroupLayout layout    = nullptr;
+            WGPUComputePipeline pipeline  = nullptr;
+
+            bool ensure_pipeline()
+            {
+                if (pipeline)
+                    return true;
+
+                WGPUShaderSourceWGSL wgsl             = WGPU_SHADER_SOURCE_WGSL_INIT;
+                wgsl.code                             = webgpu::label(source);
+                WGPUShaderModuleDescriptor mod_desc   = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
+                mod_desc.nextInChain                  = &wgsl.chain;
+                mod_desc.label                        = webgpu::label("depth_mirror");
+                module                                = wgpuDeviceCreateShaderModule(RHI_Context::device, &mod_desc);
+
+                WGPUBindGroupLayoutEntry bgl_entries[2]      = { WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT, WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT };
+                bgl_entries[0].binding                       = 0;
+                bgl_entries[0].visibility                    = WGPUShaderStage_Compute;
+                bgl_entries[0].texture.sampleType            = WGPUTextureSampleType_Depth;
+                bgl_entries[0].texture.viewDimension         = WGPUTextureViewDimension_2D;
+                bgl_entries[1].binding                       = 1;
+                bgl_entries[1].visibility                    = WGPUShaderStage_Compute;
+                bgl_entries[1].storageTexture.access         = WGPUStorageTextureAccess_WriteOnly;
+                bgl_entries[1].storageTexture.format         = WGPUTextureFormat_R32Float;
+                bgl_entries[1].storageTexture.viewDimension  = WGPUTextureViewDimension_2D;
+
+                WGPUBindGroupLayoutDescriptor bgl_desc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+                bgl_desc.entryCount                    = 2;
+                bgl_desc.entries                       = bgl_entries;
+                layout                                 = wgpuDeviceCreateBindGroupLayout(RHI_Context::device, &bgl_desc);
+
+                WGPUPipelineLayoutDescriptor pl_desc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
+                pl_desc.bindGroupLayoutCount         = 1;
+                pl_desc.bindGroupLayouts             = &layout;
+                WGPUPipelineLayout pl                = wgpuDeviceCreatePipelineLayout(RHI_Context::device, &pl_desc);
+
+                WGPUComputePipelineDescriptor cp_desc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
+                cp_desc.label                         = webgpu::label("depth_mirror");
+                cp_desc.layout                        = pl;
+                cp_desc.compute.module                = module;
+                cp_desc.compute.entryPoint            = webgpu::label("copy_cs");
+                pipeline                              = wgpuDeviceCreateComputePipeline(RHI_Context::device, &cp_desc);
+                wgpuPipelineLayoutRelease(pl);
+                return pipeline != nullptr;
+            }
+
+            void free_entry(Entry& entry)
+            {
+                for (WGPUTextureView v : entry.views_2d)
+                {
+                    if (v) wgpuTextureViewRelease(v);
+                }
+                entry.views_2d.clear();
+                if (entry.view_arr)
+                {
+                    wgpuTextureViewRelease(entry.view_arr);
+                    entry.view_arr = nullptr;
+                }
+                if (entry.texture)
+                {
+                    wgpuTextureRelease(entry.texture);
+                    entry.texture = nullptr;
+                }
+            }
+
+            Entry& ensure_entry(RHI_Texture* depth_tex)
+            {
+                void* raw          = depth_tex->GetRhiResource();
+                const uint32_t w   = max(1u, depth_tex->GetResidentWidth());
+                const uint32_t h   = max(1u, depth_tex->GetResidentHeight());
+                const uint32_t l   = max(1u, depth_tex->GetArrayLength());
+                Entry& entry       = entries[raw];
+                if (!entry.texture || entry.width != w || entry.height != h || entry.layers != l)
+                {
+                    free_entry(entry);
+                    WGPUTextureDescriptor desc = WGPU_TEXTURE_DESCRIPTOR_INIT;
+                    desc.label                 = webgpu::label("depth_r32_mirror");
+                    desc.usage                 = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_StorageBinding;
+                    desc.dimension             = WGPUTextureDimension_2D;
+                    desc.size                  = { w, h, l };
+                    desc.format                = WGPUTextureFormat_R32Float;
+                    desc.mipLevelCount         = 1;
+                    desc.sampleCount           = 1;
+                    entry.texture              = wgpuDeviceCreateTexture(RHI_Context::device, &desc);
+                    entry.width                = w;
+                    entry.height               = h;
+                    entry.layers               = l;
+                    entry.dirty_version        = 1;
+                    entry.synced_version       = 0;
+
+                    entry.views_2d.resize(l, nullptr);
+                    for (uint32_t i = 0; i < l; i++)
+                    {
+                        WGPUTextureViewDescriptor vd = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
+                        vd.format                    = WGPUTextureFormat_R32Float;
+                        vd.dimension                 = WGPUTextureViewDimension_2D;
+                        vd.baseMipLevel              = 0;
+                        vd.mipLevelCount             = 1;
+                        vd.baseArrayLayer            = i;
+                        vd.arrayLayerCount           = 1;
+                        entry.views_2d[i]            = wgpuTextureCreateView(entry.texture, &vd);
+                    }
+                    WGPUTextureViewDescriptor vd_arr = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
+                    vd_arr.format                    = WGPUTextureFormat_R32Float;
+                    vd_arr.dimension                 = WGPUTextureViewDimension_2DArray;
+                    vd_arr.baseMipLevel              = 0;
+                    vd_arr.mipLevelCount             = 1;
+                    vd_arr.baseArrayLayer            = 0;
+                    vd_arr.arrayLayerCount           = l;
+                    entry.view_arr                   = wgpuTextureCreateView(entry.texture, &vd_arr);
+                }
+                return entry;
+            }
+
+            void mark_dirty(void* raw)
+            {
+                if (!raw || webgpu::supports_depth_unfilterable())
+                    return;
+
+                lock_guard<mutex> lock(mutex_mirror);
+                entries[raw].dirty_version++;
+            }
+
+            void release(void* raw)
+            {
+                if (!raw)
+                    return;
+
+                lock_guard<mutex> lock(mutex_mirror);
+                auto it = entries.find(raw);
+                if (it != entries.end())
+                {
+                    free_entry(it->second);
+                    entries.erase(it);
+                }
+            }
+
+            void sync_if_needed(State& state, RHI_Texture* depth_tex)
+            {
+                if (!depth_tex || !depth_tex->GetRhiResource() || webgpu::supports_depth_unfilterable())
+                    return;
+
+                lock_guard<mutex> lock(mutex_mirror);
+                Entry& entry = ensure_entry(depth_tex);
+                if (!entry.texture || entry.synced_version == entry.dirty_version || !ensure_pipeline())
+                    return;
+
+                const bool reopen_compute = state.compute != nullptr;
+                if (reopen_compute)
+                {
+                    end_compute(state);
+                }
+
+                WGPUComputePassDescriptor cp_desc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
+                cp_desc.label                     = webgpu::label("depth_mirror_sync");
+                WGPUComputePassEncoder pass       = wgpuCommandEncoderBeginComputePass(state.encoder, &cp_desc);
+                wgpuComputePassEncoderSetPipeline(pass, pipeline);
+                for (uint32_t i = 0; i < entry.layers; i++)
+                {
+                    WGPUTextureView src_view = webgpu::texture_view(depth_tex, WGPUTextureViewDimension_2D, 0, 1, i, 1, true);
+                    if (!src_view || !entry.views_2d[i])
+                        continue;
+
+                    WGPUBindGroupEntry bg_entries[2] = { WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT };
+                    bg_entries[0].binding            = 0;
+                    bg_entries[0].textureView        = src_view;
+                    bg_entries[1].binding            = 1;
+                    bg_entries[1].textureView        = entry.views_2d[i];
+                    WGPUBindGroupDescriptor bg_desc  = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
+                    bg_desc.layout                   = layout;
+                    bg_desc.entryCount               = 2;
+                    bg_desc.entries                  = bg_entries;
+                    WGPUBindGroup group              = wgpuDeviceCreateBindGroup(RHI_Context::device, &bg_desc);
+                    wgpuComputePassEncoderSetBindGroup(pass, 0, group, 0, nullptr);
+                    wgpuComputePassEncoderDispatchWorkgroups(pass, (entry.width + 7) / 8, (entry.height + 7) / 8, 1);
+                    wgpuBindGroupRelease(group);
+                }
+                wgpuComputePassEncoderEnd(pass);
+                wgpuComputePassEncoderRelease(pass);
+                entry.synced_version = entry.dirty_version;
+
+                if (reopen_compute)
+                {
+                    WGPUComputePassDescriptor reopen_desc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
+                    state.compute                         = wgpuCommandEncoderBeginComputePass(state.encoder, &reopen_desc);
+                }
+            }
+
+            WGPUTextureView view_for_depth(RHI_Texture* depth_tex, const WGPUTextureViewDimension dimension, const uint32_t layer)
+            {
+                lock_guard<mutex> lock(mutex_mirror);
+                Entry& entry = ensure_entry(depth_tex);
+                if (!entry.texture)
+                    return nullptr;
+
+                if (dimension == WGPUTextureViewDimension_2D)
+                {
+                    const uint32_t idx = layer != rhi_all_mips ? min(layer, entry.layers - 1) : 0;
+                    return entry.views_2d[idx];
+                }
+                if (dimension == WGPUTextureViewDimension_2DArray)
+                {
+                    return entry.view_arr;
+                }
+                return nullptr;
+            }
         }
 
         bool is_attachment(const State& state, const RHI_Texture* texture)
@@ -309,6 +553,10 @@ namespace spartan
                 if (binding.kind == webgpu::Kind::Texture && (usage & WGPUTextureUsage_TextureBinding) && sample_type_compatible(binding.sample_type, webgpu::sample_type_of(format)))
                 {
                     entry.textureView = view_for(texture, binding.dimension, resource.mip, resource.mip_count, resource.layer);
+                }
+                else if (binding.kind == webgpu::Kind::Texture && !webgpu::supports_depth_unfilterable() && webgpu::sample_type_of(format) == WGPUTextureSampleType_Depth && binding.sample_type == WGPUTextureSampleType_UnfilterableFloat)
+                {
+                    entry.textureView = webgpu_depth_mirror::view_for_depth(texture, binding.dimension, resource.layer);
                 }
                 else if (binding.kind == webgpu::Kind::StorageTexture && (usage & WGPUTextureUsage_StorageBinding) && format == binding.storage_format)
                 {
@@ -718,6 +966,148 @@ namespace spartan
         }
     }
 
+    void webgpu::depth_mirror_mark_dirty(void* texture)
+    {
+        webgpu_depth_mirror::mark_dirty(texture);
+    }
+
+    void webgpu::depth_mirror_release(void* texture)
+    {
+        webgpu_depth_mirror::release(texture);
+    }
+
+    namespace webgpu_clear_3d
+    {
+        struct Pipeline
+        {
+            WGPUComputePipeline pipeline = nullptr;
+            WGPUBindGroupLayout layout   = nullptr;
+        };
+
+        mutex mutex_clear_3d;
+        unordered_map<uint32_t, Pipeline> pipelines;
+        WGPUBuffer uniform_buffer = nullptr;
+
+        const Pipeline* get_pipeline(const WGPUTextureFormat format)
+        {
+            lock_guard<mutex> lock(mutex_clear_3d);
+            const uint32_t key = static_cast<uint32_t>(format);
+            auto it            = pipelines.find(key);
+            if (it != pipelines.end())
+                return &it->second;
+
+            const char* format_name = webgpu::storage_format_name(format);
+            if (!format_name)
+                return nullptr;
+
+            const string code =
+                string("@group(0) @binding(0) var<uniform> clear_color : vec4f;\n") +
+                "@group(0) @binding(1) var dst : texture_storage_3d<" + format_name + ", write>;\n" +
+                "@compute @workgroup_size(4, 4, 4)\n"
+                "fn clear_cs(@builtin(global_invocation_id) id : vec3u)\n"
+                "{\n"
+                "    let size = textureDimensions(dst);\n"
+                "    if (id.x >= size.x || id.y >= size.y || id.z >= size.z) { return; }\n"
+                "    textureStore(dst, vec3i(id), clear_color);\n"
+                "}\n";
+
+            WGPUShaderSourceWGSL wgsl           = WGPU_SHADER_SOURCE_WGSL_INIT;
+            wgsl.code                           = webgpu::label(code.c_str());
+            WGPUShaderModuleDescriptor mod_desc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
+            mod_desc.nextInChain                = &wgsl.chain;
+            mod_desc.label                      = webgpu::label("clear_3d");
+            WGPUShaderModule module             = wgpuDeviceCreateShaderModule(RHI_Context::device, &mod_desc);
+
+            if (!uniform_buffer)
+            {
+                WGPUBufferDescriptor buf_desc = WGPU_BUFFER_DESCRIPTOR_INIT;
+                buf_desc.label                = webgpu::label("clear_3d_uniform");
+                buf_desc.size                 = 256;
+                buf_desc.usage                = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
+                uniform_buffer                = wgpuDeviceCreateBuffer(RHI_Context::device, &buf_desc);
+            }
+
+            WGPUBindGroupLayoutEntry entries[2]      = { WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT, WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT };
+            entries[0].binding                       = 0;
+            entries[0].visibility                    = WGPUShaderStage_Compute;
+            entries[0].buffer.type                   = WGPUBufferBindingType_Uniform;
+            entries[0].buffer.hasDynamicOffset       = true;
+            entries[0].buffer.minBindingSize         = 16;
+            entries[1].binding                       = 1;
+            entries[1].visibility                    = WGPUShaderStage_Compute;
+            entries[1].storageTexture.access         = WGPUStorageTextureAccess_WriteOnly;
+            entries[1].storageTexture.format         = format;
+            entries[1].storageTexture.viewDimension  = WGPUTextureViewDimension_3D;
+
+            WGPUBindGroupLayoutDescriptor bgl_desc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+            bgl_desc.entryCount                    = 2;
+            bgl_desc.entries                       = entries;
+            Pipeline result;
+            result.layout = wgpuDeviceCreateBindGroupLayout(RHI_Context::device, &bgl_desc);
+
+            WGPUPipelineLayoutDescriptor pl_desc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
+            pl_desc.bindGroupLayoutCount         = 1;
+            pl_desc.bindGroupLayouts             = &result.layout;
+            WGPUPipelineLayout pl                = wgpuDeviceCreatePipelineLayout(RHI_Context::device, &pl_desc);
+
+            WGPUComputePipelineDescriptor cp_desc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
+            cp_desc.label                         = webgpu::label("clear_3d");
+            cp_desc.layout                        = pl;
+            cp_desc.compute.module                = module;
+            cp_desc.compute.entryPoint            = webgpu::label("clear_cs");
+            result.pipeline                       = wgpuDeviceCreateComputePipeline(RHI_Context::device, &cp_desc);
+
+            wgpuPipelineLayoutRelease(pl);
+            wgpuShaderModuleRelease(module);
+            return &(pipelines[key] = result);
+        }
+
+        bool dispatch(State& state, RHI_Texture* texture, const Color& clear_color)
+        {
+            const WGPUTextureFormat format = webgpu::texture_format(texture);
+            const Pipeline* pipe           = get_pipeline(format);
+            if (!pipe || !pipe->pipeline)
+                return false;
+
+            WGPUTextureView view = webgpu::texture_view(texture, WGPUTextureViewDimension_3D, 0, 1, 0, 1, false);
+            if (!view)
+                return false;
+
+            uint32_t chunk  = 0;
+            uint64_t offset = 0;
+            float* data     = reinterpret_cast<float*>(allocate(state, 16, 256, chunk, offset));
+            data[0]         = clear_color.r;
+            data[1]         = clear_color.g;
+            data[2]         = clear_color.b;
+            data[3]         = clear_color.a;
+
+            WGPUBindGroupEntry entries[2]   = { WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT };
+            entries[0].binding              = 0;
+            entries[0].buffer               = state.chunks[chunk].buffer;
+            entries[0].offset               = 0;
+            entries[0].size                 = 16;
+            entries[1].binding              = 1;
+            entries[1].textureView          = view;
+            WGPUBindGroupDescriptor bg_desc = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
+            bg_desc.layout                  = pipe->layout;
+            bg_desc.entryCount              = 2;
+            bg_desc.entries                 = entries;
+            WGPUBindGroup group             = wgpuDeviceCreateBindGroup(RHI_Context::device, &bg_desc);
+
+            const uint32_t dyn_offset         = static_cast<uint32_t>(offset);
+            WGPUComputePassDescriptor cp_desc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
+            cp_desc.label                     = webgpu::label("clear_3d");
+            WGPUComputePassEncoder pass       = wgpuCommandEncoderBeginComputePass(state.encoder, &cp_desc);
+            wgpuComputePassEncoderSetPipeline(pass, pipe->pipeline);
+            wgpuComputePassEncoderSetBindGroup(pass, 0, group, 1, &dyn_offset);
+            wgpuComputePassEncoderDispatchWorkgroups(pass, (max(1u, texture->GetResidentWidth()) + 3) / 4, (max(1u, texture->GetResidentHeight()) + 3) / 4, (max(1u, texture->GetDepth()) + 3) / 4);
+            wgpuComputePassEncoderEnd(pass);
+            wgpuComputePassEncoderRelease(pass);
+            wgpuBindGroupRelease(group);
+            return true;
+        }
+    }
+
     RHI_CommandList::RHI_CommandList(RHI_Queue* queue, void* cmd_pool, const char* name)
     {
         SP_ASSERT(cmd_pool != nullptr);
@@ -977,8 +1367,20 @@ namespace spartan
                 if (!texture || !texture->GetRhiResource())
                     continue;
 
+                WGPUTexture raw = static_cast<WGPUTexture>(texture->GetRhiResource());
+                if (!(wgpuTextureGetUsage(raw) & WGPUTextureUsage_RenderAttachment))
+                    continue;
+
+                const uint32_t tex_w = texture->GetResidentWidth();
+                const uint32_t tex_h = texture->GetResidentHeight();
+                if (width != 0 && (tex_w != width || tex_h != height))
+                    continue;
+
                 const bool is_3d = texture->GetType() == RHI_Texture_Type::Type3D;
                 colors[i].view   = webgpu::texture_view(texture, is_3d ? WGPUTextureViewDimension_3D : WGPUTextureViewDimension_2D, 0, 1, is_3d ? 0 : m_pso.render_target_array_index, 1, false);
+                if (!colors[i].view)
+                    continue;
+
                 if (is_3d)
                 {
                     colors[i].depthSlice = m_pso.render_target_array_index;
@@ -993,8 +1395,8 @@ namespace spartan
                 }
                 color_count            = i + 1;
                 state.attachments[i]   = texture;
-                width                  = texture->GetResidentWidth();
-                height                 = texture->GetResidentHeight();
+                width                  = tex_w;
+                height                 = tex_h;
             }
         }
 
@@ -1002,7 +1404,9 @@ namespace spartan
         bool has_depth                                        = false;
         if (RHI_Texture* depth = m_pso.render_target_depth_texture)
         {
-            if (depth->GetRhiResource())
+            WGPUTexture raw = static_cast<WGPUTexture>(depth->GetRhiResource());
+            if (raw && (wgpuTextureGetUsage(raw) & WGPUTextureUsage_RenderAttachment) &&
+                (width == 0 || (depth->GetResidentWidth() == width && depth->GetResidentHeight() == height)))
             {
                 const bool clear_depth         = !m_load_depth_render_target && m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care;
                 depth_attachment.view          = webgpu::texture_view(depth, WGPUTextureViewDimension_2D, 0, 1, m_pso.render_target_array_index, 1, false);
@@ -1016,13 +1420,15 @@ namespace spartan
                     depth_attachment.stencilStoreOp    = WGPUStoreOp_Store;
                     depth_attachment.stencilClearValue = clear_stencil ? m_pso.clear_stencil : 0;
                 }
-                has_depth                                    = true;
-                state.attachments[rhi_max_render_target_count] = depth;
-
-                if (width == 0)
+                has_depth                                    = depth_attachment.view != nullptr;
+                if (has_depth)
                 {
-                    width  = depth->GetResidentWidth();
-                    height = depth->GetResidentHeight();
+                    state.attachments[rhi_max_render_target_count] = depth;
+                    if (width == 0)
+                    {
+                        width  = depth->GetResidentWidth();
+                        height = depth->GetResidentHeight();
+                    }
                 }
             }
         }
@@ -1078,6 +1484,7 @@ namespace spartan
 
         if (RHI_Texture* depth = m_pso.render_target_depth_texture)
         {
+            webgpu::depth_mirror_mark_dirty(depth->GetRhiResource());
             SetTrackedTextureLayout(depth, 0, depth->GetResidentMipCount(), RHI_Image_Layout::General);
         }
     }
@@ -1090,13 +1497,28 @@ namespace spartan
         if (!texture->IsDepthStencilFormat() && (clear_color == rhi_color_load || clear_color == rhi_color_dont_care))
             return;
 
-        WGPUTexture resource = static_cast<WGPUTexture>(texture->GetRhiResource());
-        if (!(wgpuTextureGetUsage(resource) & WGPUTextureUsage_RenderAttachment))
+        WGPUTexture resource      = static_cast<WGPUTexture>(texture->GetRhiResource());
+        const WGPUTextureUsage us = wgpuTextureGetUsage(resource);
+        if (!(us & WGPUTextureUsage_RenderAttachment))
         {
+            if (texture->GetType() == RHI_Texture_Type::Type3D && (us & WGPUTextureUsage_StorageBinding))
+            {
+                render_pass_end();
+                State& state = get_state(m_rhi_state);
+                end_compute(state);
+                PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
+                if (webgpu_clear_3d::dispatch(state, texture, clear_color))
+                {
+                    SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
+                    TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute, RHI_Resource_Usage::Shader);
+                }
+                return;
+            }
+
             static once_flag logged;
             call_once(logged, [texture]()
             {
-                SP_LOG_WARNING("%s can't be a render target, webgpu clears through render passes", texture->GetObjectName().c_str());
+                SP_LOG_WARNING("%s can't be cleared", texture->GetObjectName().c_str());
             });
             return;
         }
@@ -1146,6 +1568,10 @@ namespace spartan
             wgpuRenderPassEncoderRelease(pass);
         }
 
+        if (texture->IsDepthStencilFormat())
+        {
+            webgpu::depth_mirror_mark_dirty(texture->GetRhiResource());
+        }
         SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, scope, RHI_Resource_Usage::Attachment);
     }
@@ -1216,6 +1642,25 @@ namespace spartan
             state.pipeline_variant = select_variant(state, pipeline);
         }
         pipeline = state.pipeline_variant;
+
+        if (!webgpu::supports_depth_unfilterable() && state.resources_dirty)
+        {
+            for (const webgpu::Binding& binding : pipeline->bindings[webgpu::group_pass])
+            {
+                if (binding.kind == webgpu::Kind::Texture && binding.sample_type == WGPUTextureSampleType_UnfilterableFloat && binding.binding < state.resources.size())
+                {
+                    RHI_Texture* tex = state.resources[binding.binding].type == Resource::Type::Texture ? state.resources[binding.binding].texture : nullptr;
+                    if (tex && tex->IsDepthStencilFormat() && !is_attachment(state, tex))
+                    {
+                        if (compute)
+                        {
+                            webgpu_depth_mirror::sync_if_needed(state, tex);
+                            state.pipeline_bound = nullptr;
+                        }
+                    }
+                }
+            }
+        }
 
         if (state.pipeline_bound != pipeline)
         {
@@ -1445,6 +1890,10 @@ namespace spartan
             webgpu_blit::draw(state, view_source, format_source, view_destination, format_destination);
         }
 
+        if (destination->IsDepthStencilFormat())
+        {
+            webgpu::depth_mirror_mark_dirty(destination->GetRhiResource());
+        }
         SetTrackedTextureLayout(source, 0, source->GetResidentMipCount(), RHI_Image_Layout::General);
         SetTrackedTextureLayout(destination, 0, destination->GetResidentMipCount(), RHI_Image_Layout::General);
     }

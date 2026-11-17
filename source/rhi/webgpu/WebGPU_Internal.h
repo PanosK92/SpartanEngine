@@ -61,6 +61,7 @@ namespace spartan
         WGPUQueue queue();
         void process_events();
         bool has_feature(WGPUFeatureName feature);
+        bool supports_depth_unfilterable();
         bool is_storage_format(WGPUTextureFormat format);
         bool is_filterable_format(WGPUTextureFormat format);
         WGPUTextureSampleType sample_type_of(WGPUTextureFormat format);
@@ -200,6 +201,8 @@ namespace spartan
         WGPUTextureFormat texture_format(const RHI_Texture* texture); // what the texture is stored as, which can be wider than its rhi format
         WGPUTextureView texture_view(RHI_Texture* texture, WGPUTextureViewDimension dimension, uint32_t mip, uint32_t mip_count, uint32_t layer, uint32_t layer_count, bool depth_only);
         void texture_views_release(void* texture);
+        void depth_mirror_mark_dirty(void* texture);
+        void depth_mirror_release(void* texture);
 
         // mappable buffers live in a cpu shadow, the queue writes what changed before every submit
         void buffer_register(RHI_Buffer* buffer);

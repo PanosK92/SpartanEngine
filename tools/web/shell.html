@@ -194,6 +194,77 @@
                 }
             });
 
+            // probe whether this browser allows binding depth32float views to unfilterable-float layouts (Safari WebKit rejects it)
+            let depthUnfilterableOk = false;
+            try
+            {
+                device.pushErrorScope("validation");
+                const probeTex = device.createTexture({ size: [1, 1, 1], format: "depth32float", usage: GPUTextureUsage.TEXTURE_BINDING });
+                const probeBgl = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: "unfilterable-float", viewDimension: "2d" } }] });
+                device.createBindGroup({ layout: probeBgl, entries: [{ binding: 0, resource: probeTex.createView({ aspect: "depth-only" }) }] });
+                const probeErr = await device.popErrorScope();
+                probeTex.destroy();
+                depthUnfilterableOk = !probeErr;
+            }
+            catch (_)
+            {
+                depthUnfilterableOk = false;
+            }
+
+            // Safari WebKit throws synchronous InvalidStateError on recoverable pass/bindgroup validation mismatches instead of returning error objects like Dawn
+            if (typeof GPUCommandEncoder !== "undefined" && GPUCommandEncoder.prototype && !GPUCommandEncoder.prototype.__spWrapped)
+            {
+                GPUCommandEncoder.prototype.__spWrapped = true;
+                const origBeginRenderPass = GPUCommandEncoder.prototype.beginRenderPass;
+                const noopPass = new Proxy({}, { get: () => () => {} });
+                GPUCommandEncoder.prototype.beginRenderPass = function (desc)
+                {
+                    try
+                    {
+                        return origBeginRenderPass.call(this, desc);
+                    }
+                    catch (err)
+                    {
+                        console.warn("WebGPU beginRenderPass skipped (" + (desc && desc.label ? desc.label : "pass") + "): " + (err && err.message ? err.message : err));
+                        return noopPass;
+                    }
+                };
+            }
+            if (typeof GPUDevice !== "undefined" && GPUDevice.prototype && !GPUDevice.prototype.__spWrapped)
+            {
+                GPUDevice.prototype.__spWrapped = true;
+                const origCreateBindGroup = GPUDevice.prototype.createBindGroup;
+                let fallbackBindGroup = null;
+                GPUDevice.prototype.createBindGroup = function (desc)
+                {
+                    try
+                    {
+                        return origCreateBindGroup.call(this, desc);
+                    }
+                    catch (err)
+                    {
+                        console.warn("WebGPU createBindGroup fallback (" + (desc && desc.label ? desc.label : "group") + "): " + (err && err.message ? err.message : err));
+                        if (!fallbackBindGroup)
+                        {
+                            const emptyLayout = this.createBindGroupLayout({ entries: [] });
+                            fallbackBindGroup = origCreateBindGroup.call(this, { layout: emptyLayout, entries: [] });
+                        }
+                        return fallbackBindGroup;
+                    }
+                };
+                const origSetBindGroup = GPUComputePassEncoder.prototype.setBindGroup;
+                GPUComputePassEncoder.prototype.setBindGroup = function ()
+                {
+                    try { return origSetBindGroup.apply(this, arguments); } catch (_) {}
+                };
+                const origRenderSetBindGroup = GPURenderPassEncoder.prototype.setBindGroup;
+                GPURenderPassEncoder.prototype.setBindGroup = function ()
+                {
+                    try { return origRenderSetBindGroup.apply(this, arguments); } catch (_) {}
+                };
+            }
+
+            Module.spartanDepthUnfilterableOk  = depthUnfilterableOk ? 1 : 0;
             Module.preinitializedWebGPUAdapter = adapter;
             Module.preinitializedWebGPUDevice  = device;
         }

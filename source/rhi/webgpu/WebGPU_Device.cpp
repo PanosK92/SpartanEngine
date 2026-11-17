@@ -36,7 +36,8 @@ namespace spartan
 {
     namespace
     {
-        WGPUQueue native_queue = nullptr;
+        WGPUQueue native_queue   = nullptr;
+        bool depth_unfilterable  = true;
         unordered_set<uint32_t> features;
         atomic<uint64_t> frame = 0;
 
@@ -347,6 +348,11 @@ namespace spartan
     bool webgpu::has_feature(const WGPUFeatureName feature)
     {
         return features.count(static_cast<uint32_t>(feature)) != 0;
+    }
+
+    bool webgpu::supports_depth_unfilterable()
+    {
+        return depth_unfilterable;
     }
 
     bool webgpu::is_storage_format(const WGPUTextureFormat format)
@@ -1003,6 +1009,7 @@ namespace spartan
                 features.insert(static_cast<uint32_t>(feature));
             }
         }
+        depth_unfilterable = EM_ASM_INT({ return Module.spartanDepthUnfilterableOk ? 1 : 0; }) != 0;
         #else
         // adapter, a machine without a gpu (ci) falls back to a software one (warp natively)
         {
