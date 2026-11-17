@@ -121,19 +121,23 @@ float3 reflections_fog(float3 radiance, float3 origin, float3 direction, float d
 // negligible against it, directions off screen fall back to the short march
 float3 reflections_fog_sky(float3 radiance, float3 origin, float3 direction)
 {
-    float3 marched   = reflections_fog(radiance, origin, direction, k_fog_miss_distance);
-    float3 dir_view  = world_to_view(direction, false);
-    if (dir_view.z <= 0.05f)
-        return marched;
+    float3 dir_view = world_to_view(direction, false);
+    if (dir_view.z > 0.05f)
+    {
+        float2 uv       = view_to_uv(dir_view, false);
+        float2 edge     = min(uv, 1.0f - uv);
+        float on_screen = smoothstep(0.0f, 0.05f, min(edge.x, edge.y));
+        if (on_screen > 0.0f)
+        {
+            FogTransport column = sample_fog_volume(uv, fog_far);
+            float3 sky = radiance * column.transmittance + column.scattering;
+            if (on_screen >= 1.0f)
+                return sky;
 
-    float2 uv        = view_to_uv(dir_view, false);
-    float2 edge      = min(uv, 1.0f - uv);
-    float  on_screen = smoothstep(0.0f, 0.05f, min(edge.x, edge.y));
-    if (on_screen <= 0.0f)
-        return marched;
-
-    FogTransport column = sample_fog_volume(uv, fog_far);
-    return lerp(marched, radiance * column.transmittance + column.scattering, on_screen);
+            return lerp(reflections_fog(radiance, origin, direction, k_fog_miss_distance), sky, on_screen);
+        }
+    }
+    return reflections_fog(radiance, origin, direction, k_fog_miss_distance);
 }
 
 struct LightCandidate
@@ -448,7 +452,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 reflect_dir    = reflect(-view_dir, normal);
     float  sky_visibility = -1.0f;
     float3 indirect       = cached;
-    if (cache_confidence < 1.0f)
+    if (shade_hit && cache_confidence < 1.0f)
     {
         float3 sky_vis_dir = normalize(lerp(normal, reflect_dir, metallic));
         sky_visibility     = ray_trace_sky_visibility(position, normal, sky_vis_dir);

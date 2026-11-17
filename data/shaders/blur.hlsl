@@ -15,6 +15,10 @@ float compute_gaussian_weight(int sample_distance, const float sigma2)
     return (g * exp(-(sample_distance * sample_distance) / (2.0f * sigma2)));
 }
 
+// A linear fetch at the weighted centroid integrates two adjacent Gaussian taps.
+static const uint max_pairs = 32u;
+groupshared float2 gs_pairs[max_pairs];
+
 float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_out, const float2 uv, const float radius, const float sigma2, const float2 direction)
 {
     const float2 texel_size      = 1.0f / resolution_in;
@@ -27,6 +31,21 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
 
     float3 color  = 0.0f;
     float weights = 0.0f;
+#if !PASS_BLUR_GAUSSIAN_BILATERAL
+    if (radius > 0.0f && radius <= float(max_pairs))
+    {
+        uint pairs = uint(ceil(radius));
+        float2 source_size = direction.y != 0.0f ? resolution_out : resolution_in;
+        for (uint pair = 0u; pair < pairs; ++pair)
+        {
+            float2 tap = gs_pairs[pair];
+            float2 pixel = clamp(float2(pos) + direction * tap.x, 0.0f, resolution_in - 1.0f);
+            color += tex.SampleLevel(samplers[sampler_bilinear_clamp], (pixel + 0.5f) / source_size, 0).rgb * tap.y;
+            weights += tap.y;
+        }
+        return color / weights;
+    }
+#endif
     for (int i = -radius; i < radius; i++)
     {
         float2 sample_uv = uv + (i * direction_texel);
@@ -74,7 +93,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 }
 #else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID, uint lane : SV_GroupIndex)
 {
     const float radius     = pass_float(pass_blur::radius);
     const float sigma      = radius / 3.0f;
@@ -91,6 +110,19 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         resolution_in  = resolution_out;
         resolution_out = temp;
     }
+#if !PASS_BLUR_GAUSSIAN_BILATERAL
+    if (radius > 0.0f && radius <= float(max_pairs))
+    {
+        if (lane < uint(ceil(radius)))
+        {
+            int offset = -int(radius) + int(lane) * 2;
+            float w0 = exp(-float(offset * offset) / (2.0f * sigma * sigma));
+            float w1 = offset + 1 < radius ? exp(-float((offset + 1) * (offset + 1)) / (2.0f * sigma * sigma)) : 0.0f;
+            gs_pairs[lane] = float2(float(offset) + w1 / (w0 + w1), w0 + w1);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+#endif
     // dispatch dimensions are rounded up to whole thread groups
     if (any(thread_id.xy >= resolution_in))
         return;

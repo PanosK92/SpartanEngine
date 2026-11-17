@@ -110,7 +110,7 @@ float2 area_shadow_rect_uv(uint sample_index, float width, float height)
     return (float2(sample_index % nx, sample_index / nx) + 0.5f) / float2(nx, ny) - 0.5f;
 }
 
-void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light, float3 ray_origin)
+void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light, float3 ray_origin, bool checkerboard)
 {
     bool is_area = (light.flags & (1u << 6)) != 0u;
     float3 to_light = light.position - ray_origin;
@@ -141,7 +141,11 @@ void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light
     float emitter_safety = is_area
         ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f
         : 0.01f;
-    uint sample_count = is_area ? AREA_SHADOW_SAMPLES : 1u;
+    // Neighbouring traced pixels cover complementary strata. Use the horizontal
+    // pair index so the checkerboard fill sees all four phases across its support.
+    uint stride = checkerboard ? 4u : 1u;
+    uint phase = ((launch_id.x >> 1u) + 2u * launch_id.y) & (stride - 1u);
+    uint sample_count = is_area ? AREA_SHADOW_SAMPLES / stride : 1u;
     float visibility_sum = 0.0f;
     float hit_min = SHADOW_RAY_MAX_DISTANCE;
     bool any_hit = false;
@@ -150,7 +154,7 @@ void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light
         float3 target = light.position;
         if (is_area)
         {
-            float2 rect_uv = area_shadow_rect_uv(s, light.area_width, light.area_height);
+            float2 rect_uv = area_shadow_rect_uv(s * stride + phase, light.area_width, light.area_height);
             target += area_right * rect_uv.x * light.area_width + area_up * rect_uv.y * light.area_height;
         }
         float3 to_sample = target - ray_origin;
@@ -295,7 +299,7 @@ void ray_gen()
             continue;
         float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
         float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
-        trace_local_light_shadow(pixel, slot, light, pos_ws + normal_ws * (local_offset * normal_sign));
+        trace_local_light_shadow(pixel, slot, light, pos_ws + normal_ws * (local_offset * normal_sign), checkerboard);
     }
 }
 

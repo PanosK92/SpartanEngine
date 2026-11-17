@@ -100,18 +100,20 @@ float3 sample_nrd_area_shadow(float2 uv, uint slot)
     float center_z  = get_linear_depth(uv);
     float3 center_n = get_normal(uv);
 
-    const int radius     = 3;
-    const float sigma2   = 4.0f;
-    float4 acc           = 0.0f;
-    float weight_sum     = 0.0f;
+    // Integrate the Gaussian in four bilinear footprints along each axis. Each pair
+    // samples at its weighted centroid, with a bilateral guide at the same location.
+    static const float offsets[4] = { -2.348645f, -0.468791f, 1.407333f, 3.0f };
+    static const float weights[4] = { 0.931183f, 1.882497f, 1.489028f, 0.324652f };
+    float4 acc       = 0.0f;
+    float weight_sum = 0.0f;
 
     [unroll]
-    for (int y = -radius; y <= radius; y++)
+    for (uint y = 0; y < 4; y++)
     {
         [unroll]
-        for (int x = -radius; x <= radius; x++)
+        for (uint x = 0; x < 4; x++)
         {
-            float2 tap_uv = uv + float2((float)x, (float)y) * texel;
+            float2 tap_uv = uv + float2(offsets[x], offsets[y]) * texel;
             float4 visibility = tex_rt_shadows_local.SampleLevel(
                 GET_SAMPLER(sampler_bilinear_clamp),
                 float3(tap_uv, slice),
@@ -121,7 +123,7 @@ float3 sample_nrd_area_shadow(float2 uv, uint slot)
             float3 tap_n     = get_normal(tap_uv);
             float weight_z   = saturate(1.0f - abs(center_z - tap_z) * 4.0f);
             float weight_n   = saturate(dot(center_n, tap_n));
-            float weight_s   = exp(-float(x * x + y * y) / (2.0f * sigma2));
+            float weight_s   = weights[x] * weights[y];
             float weight     = weight_s * weight_z * weight_n;
             acc             += visibility * weight;
             weight_sum      += weight;
@@ -361,6 +363,8 @@ void evaluate_light(
         if (surface.is_grass_blade())
             L_shadow_contact = grass_canopy_visibility(L_shadow_contact);
         L_shadow = min(L_shadow_primary, L_shadow_contact);
+        if (!has_transmission && !any(L_shadow > 0.0f))
+            return;
 
         // Transmission still needs a clear path to the light. Contact shadows also
         // contain the vegetation that is absent from the ray tracing structure.
@@ -457,24 +461,22 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    Surface surface;
-    surface.Build(thread_id.xy, resolution_out, true, true);
-
-    // early exit for mismatched pass/surface types
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky();
-    bool early_exit_2 = pass_is_transparent() && !surface.is_transparent();
-    if (early_exit_1 || early_exit_2)
-    {
+    // Alpha alone selects the pass. In particular the transparent dispatch
+    // can reject opaque pixels before fetching their material and SSAO guides.
+    float2 uv = (thread_id.xy + 0.5f) / resolution_out;
+    float alpha = tex_albedo.SampleLevel(samplers[sampler_point_clamp], uv, 0).a;
+    bool transparent = alpha > 0.0f && alpha < 1.0f;
+    if ((pass_is_opaque() && transparent) || (pass_is_transparent() && !transparent))
         return;
-    }
-
-    if (surface.is_sky() && pass_is_opaque())
+    if (alpha == 0.0f && pass_is_opaque())
     {
         tex_uav[thread_id.xy]  = 0.0f;
         tex_uav2[thread_id.xy] = 0.0f;
         return;
     }
 
+    Surface surface;
+    surface.Build(thread_id.xy, resolution_out, true, true);
     float3 out_diffuse  = 0.0f;
     float3 out_specular = 0.0f;
 

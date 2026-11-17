@@ -8,6 +8,10 @@ Commercial use requires written permission and negotiated payment terms.
 #ifndef SPARTAN_COMMON_CULLING
 #define SPARTAN_COMMON_CULLING
 
+// Spread a large mesh across multiple workgroups when there are few instance batches.
+static const uint meshlet_cull_rows = 64u;
+static const uint survivor_split_draw = 0x80000000u;
+
 // shared gpu culling primitives, the hi-z helpers take the hi-z texture as a parameter so the meshlet cull
 // can pass its occluder hi-z (tex) and grass populate can pass the same occluder hi-z on a different slot (tex2)
 

@@ -51,6 +51,13 @@ bool light_intersects_cluster(LightParameters light, float3 aabb_min, float3 aab
 
     if (is_area)
     {
+        // The area light only emits in front of its plane. Reject a cluster
+        // only if even its furthest corner in that direction is behind it.
+        float3 normal = world_to_view(light.direction, false);
+        float3 support = lerp(aabb_min, aabb_max, step(0.0f, normal));
+        if (dot(normal, support - world_to_view(center_ws, true)) < -0.001f)
+            return false;
+
         // wrap the rectangle with a sphere that also covers the range falloff
         float half_diag = 0.5f * sqrt(light.area_width * light.area_width + light.area_height * light.area_height);
         radius          = light.range + half_diag;
@@ -114,18 +121,24 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
     if (final_count > 1u)
 #endif
     {
+        // The light list cannot exceed the number of candidates. Small scenes
+        // need only a few sort stages even on backends requiring uniform barriers.
+        uint sort_size = 1u;
+        while (sort_size < min(max(light_count, 1u) - 1u, (uint)CLUSTER_MAX_LIGHTS))
+            sort_size <<= 1u;
+
         // pad the upper lanes with a sentinel so the sort leaves them alone
-        for (uint pad = final_count + thread_index; pad < (uint)CLUSTER_MAX_LIGHTS; pad += THREADS_PER_GROUP)
+        for (uint pad = final_count + thread_index; pad < sort_size; pad += THREADS_PER_GROUP)
         {
             gs_indices[pad] = 0xFFFFFFFFu;
         }
         GroupMemoryBarrierWithGroupSync();
 
-        for (uint k = 2u; k <= (uint)CLUSTER_MAX_LIGHTS; k <<= 1u)
+        for (uint k = 2u; k <= sort_size; k <<= 1u)
         {
             for (uint j = k >> 1u; j > 0u; j >>= 1u)
             {
-                for (uint idx = thread_index; idx < (uint)CLUSTER_MAX_LIGHTS; idx += THREADS_PER_GROUP)
+                for (uint idx = thread_index; idx < sort_size; idx += THREADS_PER_GROUP)
                 {
                     uint ixj = idx ^ j;
                     if (ixj > idx)

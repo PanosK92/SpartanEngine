@@ -57,6 +57,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     if (!late && thread_id.x < INSTANCE_CULL_BATCH_SIZE / 32u)
         gs_visibility[thread_id.x] = 0u;
     task = cull_tasks[task_index];
+    uint meshlet_rows = 1u;
     if (thread_id.x < task.instance_count)
     {
         task.instance_index += thread_id.x;
@@ -130,6 +131,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             }
         }
 
+        uint meshlet_count = indirect_draw_data[task.draw_index].lod_meshlet_count;
+
         // a non-instanced draw is a single thread, so it can rewrite its own draw to the lod its coverage wants
         // the coverage comes from the lod 0 bounds in the table, the late cull runs this again and must pick the same lod
         if (survives && (draw.flags & draw_flag_gpu_lod) != 0u)
@@ -141,6 +144,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             uint lod           = sphere_lod_index(lod0_center, lod0_radius, lod_count);
             DrawLod pick       = draw_lods[draw.impostor_texel_offset + lod];
 
+            meshlet_count = pick.meshlet_count;
             indirect_draw_data_rw[task.draw_index].lod_first_index        = pick.first_index;
             indirect_draw_data_rw[task.draw_index].lod_vertex_offset      = pick.vertex_offset;
             indirect_draw_data_rw[task.draw_index].lod_meshlet_offset     = pick.meshlet_offset;
@@ -152,6 +156,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             indirect_draw_data_rw[task.draw_index].flags                  = (draw.flags & ~(7u << 8u)) | (lod << 8u);
         }
 
+        if (task_count <= 128u && (draw.flags & 2u) == 0u && meshlet_count >= 256u)
+            meshlet_rows = min((meshlet_count + 63u) / 64u, meshlet_cull_rows);
         whole_instance = (indirect_draw_data[task.draw_index].flags & (1u << 14)) != 0u;
         if (survives)
         {
@@ -203,7 +209,9 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         return;
 
     SurvivingInstance si;
-    si.draw_index     = task.draw_index;
+    if (meshlet_rows > 1u)
+        InterlockedMax(instance_dispatch_args[0].group_count_y, meshlet_rows);
+    si.draw_index     = task.draw_index | (meshlet_rows > 1u ? survivor_split_draw : 0u);
     si.instance_index = task.instance_index | (drawn_early ? SURVIVING_INSTANCE_DRAWN_EARLY : 0u);
     surviving_instances[slot] = si;
 }

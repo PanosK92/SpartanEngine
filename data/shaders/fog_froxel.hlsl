@@ -65,6 +65,11 @@ uint fog_air_light_mask(uint3 group_id, uint first_light)
         {
             if (dot(delta, delta) > (radius + extent) * (radius + extent))
                 continue;
+            // A rectangle emits only on its front side. Every point on its plane
+            // has the same signed distance along the emitter normal.
+            if ((light.flags & (1u << 6)) != 0u &&
+                dot(delta, light.direction) > radius * length(light.direction))
+                continue;
             // A spotlight's range sphere includes most of the space behind and
             // beside its beam. Cull that space before every cell constructs the
             // light and samples its IES profile. Area emitters use a different
@@ -475,7 +480,12 @@ void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3
         positions[0] = get_camera_position() + ray_direction * (air_start + air_length * 0.25f);
         positions[1] = get_camera_position() + ray_direction * (air_start + air_length * 0.75f);
         float3 sigma_s = (air_extinction * 0.95f).xxx;
-        scatter_rate = fog_light_medium(positions, 2u, ray_direction, thread_id, uv, false, sigma_s);
+        // Subdivide long segments where the lighting can change along the ray.
+        // For short cells the midpoint already resolves the near-field shafts.
+        uint air_samples = air_length < 0.25f ? 1u : 2u;
+        if (air_samples == 1u)
+            positions[0] = air_position;
+        scatter_rate = fog_light_medium(positions, air_samples, ray_direction, thread_id, uv, false, sigma_s);
         if (air_extinction > 0.0f)
             scatter_rate += fog_ambient_medium(sky, uv, air_distance, air_position, ray_direction, false) * sigma_s;
     }

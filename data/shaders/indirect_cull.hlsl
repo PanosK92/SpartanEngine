@@ -71,10 +71,13 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     float4 plane_l, plane_r, plane_b, plane_t;
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
 
+    SurvivingInstance si = surviving_instances[surv_index];
+    bool split_meshlets = (si.draw_index & survivor_split_draw) != 0u;
+    si.draw_index &= ~survivor_split_draw;
+
     // header load, one thread rebuilds the per-instance state into groupshared, all threads consume after the barrier
     if (lid == 0)
     {
-        SurvivingInstance si  = surviving_instances[surv_index];
         gs_drawn_early        = (si.instance_index & SURVIVING_INSTANCE_DRAWN_EARLY) != 0u;
         si.instance_index    &= ~SURVIVING_INSTANCE_DRAWN_EARLY;
         gs_draw_index         = si.draw_index;
@@ -105,7 +108,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         // both passes must agree on cached vs local evaluation or the equal depth test rejects the whole instance
         uint wind_slot        = gs_draw.instance_offset + si.instance_index;
         gs_wind_slot          = split_opaque_alpha && gs_wind && (gs_draw.flags & (1u << 14)) == 0u && is_per_instance && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
-        if (gs_wind_slot != 0u)
+        if (gs_wind_slot != 0u && group_id.y == 0u)
         {
             float4x4 instance = pull_instance_transform(gs_draw.instance_offset, si.instance_index);
             TreeWindState current = evaluate_tree_wind(mul(instance, gs_draw.transform), 0.0f);
@@ -115,10 +118,13 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     }
     GroupMemoryBarrierWithGroupSync();
 
+    if (!split_meshlets && group_id.y != 0u)
+        return;
+
     uint meshlet_count = gs_meshlet_count;
     uint iterations    = (meshlet_count + 63u) / 64u; // uniform across the workgroup so the wave ops below stay convergent
 
-    for (uint it = 0u; it < iterations; it++)
+    for (uint it = group_id.y; it < iterations; it += split_meshlets ? meshlet_cull_rows : 1u)
     {
         uint m                 = lid + it * 64u;
         bool is_visible        = false;

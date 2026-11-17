@@ -43,7 +43,6 @@ static const float HIGHLIGHT_GAIN      = 2.5f;
 
 // derived constants
 static const float COC_CLAMP_PIXELS = MAX_COC_RADIUS * COC_CLAMP_FACTOR;
-static const float INV_SAMPLE_COUNT = 1.0f / (float)SAMPLE_COUNT;
 static const float INV_SCATTER_NORM = 1.0f / (MAX_COC_RADIUS * 0.3f);
 static const float BLADE_ANGLE      = PI2 / (float)APERTURE_BLADES;
 
@@ -58,6 +57,9 @@ struct lens_t
 };
 
 groupshared lens_t gs_lens;
+static const uint group_size = THREAD_GROUP_COUNT_X * THREAD_GROUP_COUNT_Y;
+groupshared float2 gs_depth_coc[group_size];
+groupshared float4 gs_bokeh[group_size];
 
 /*------------------------------------------------------------------------------
     fast signed coc using precomputed lens factor
@@ -65,13 +67,11 @@ groupshared lens_t gs_lens;
 ------------------------------------------------------------------------------*/
 float compute_coc_signed(float depth, lens_t lens)
 {
-    float d         = max(depth, 0.01f);
-    float s_minus_d = lens.focus_distance - d;
-    float coc_pix   = abs(s_minus_d) * lens.coc_factor / d;
-    bool  is_near   = s_minus_d > 0.0f;
-    float scale     = is_near ? NEAR_SCALE : FAR_SCALE;
-    coc_pix         = min(coc_pix * scale, COC_CLAMP_PIXELS);
-    return is_near ? -coc_pix : coc_pix;
+    // In reverse Z, reciprocal view depth is affine in hardware depth.
+    // Keep depth comparisons and gathers in that space throughout the kernel.
+    float inv_depth = lerp(rcp(buffer_frame.camera_far), rcp(buffer_frame.camera_near), depth);
+    float coc = (1.0f - lens.focus_distance * min(inv_depth, 100.0f)) * lens.coc_factor;
+    return clamp(coc * (coc < 0.0f ? NEAR_SCALE : FAR_SCALE), -COC_CLAMP_PIXELS, COC_CLAMP_PIXELS);
 }
 
 /*------------------------------------------------------------------------------
@@ -205,20 +205,20 @@ float smooth_focus_distance(float target_distance)
     map a unit disk sample onto a polygonal aperture
     wide open stays round, stopping down reveals blade shape
 ------------------------------------------------------------------------------*/
-float2 aperture_sample_offset(float t, float angle, float aperture_fstop)
+float aperture_sample_radius(float t, float2 direction, float aperture_fstop)
 {
     float r = sqrt(t);
 
-    float sector = fmod(angle, BLADE_ANGLE) - BLADE_ANGLE * 0.5f;
-    float poly_r = cos(BLADE_ANGLE * 0.5f) / max(cos(sector), 1e-3f);
+    // Hexagon face normals are at 30, 90, 150 degrees and their opposites.
+    float2 axis = abs(direction);
+    float cos_half = cos(BLADE_ANGLE * 0.5f);
+    float poly_r = cos_half / max(axis.y, cos_half * axis.x + 0.5f * axis.y);
 
     // f/1.4 ~ circular, f/8+ ~ clear hexagon
     float poly_amount = saturate((aperture_fstop - 1.4f) / 6.5f);
     r *= lerp(1.0f, poly_r, poly_amount * 0.9f);
 
-    float sin_a, cos_a;
-    sincos(angle, sin_a, cos_a);
-    return float2(cos_a, sin_a) * r;
+    return r;
 }
 
 /*------------------------------------------------------------------------------
@@ -227,38 +227,39 @@ float2 aperture_sample_offset(float t, float angle, float aperture_fstop)
     background, reading the nearest depth keeps those pixels with the subject, a
     blurred background then neither picks them up nor blurs the edge away
 ------------------------------------------------------------------------------*/
-float get_nearest_linear_depth(float2 uv)
+float get_nearest_depth(float2 uv)
 {
     float4 depths = tex_depth.GatherRed(samplers[sampler_point_clamp], uv * get_render_uv_scale());
-    return linearize_depth(max(max(depths.x, depths.y), max(depths.z, depths.w))); // reverse z, the largest is the nearest
+    return max(max(depths.x, depths.y), max(depths.z, depths.w)); // reverse z, the largest is the nearest
 }
 
 /*------------------------------------------------------------------------------
     main bokeh blur with gather sampling
 ------------------------------------------------------------------------------*/
-float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens, float2 texel_size, float2 render_texel_size, float max_mip, float2 resolution)
+float4 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens, float2 texel_size, float2 render_texel_size, float max_mip, uint2 pattern_pixel, uint stratum, uint stride, int tap_count)
 {
     float blur_radius = abs(center_coc);
 
-    float3 color_sum  = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-    float  weight_sum = 1.0f;
+    // Keep the centre sample's share of the kernel constant as the tap budget changes.
+    float  weight_sum = float(tap_count) / float(SAMPLE_COUNT * stride);
+    float3 color_sum  = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb * weight_sum;
 
     bool center_is_fg = center_coc < 0.0f;
 
     // dof runs after taa, so nothing resolves a rotation that changes per frame, it must stay fixed in screen space
     const float3 ign = float3(0.06711056f, 0.00583715f, 52.9829189f);
-    float angle      = frac(ign.z * frac(dot(floor(uv * resolution), ign.xy))) * PI2;
+    float angle      = frac(ign.z * frac(dot(float2(pattern_pixel), ign.xy))) * PI2;
 
+    float inv_taps = rcp(float(tap_count));
     [loop]
-    for (int i = 0; i < SAMPLE_COUNT; i++)
+    for (int i = int(stratum); i < tap_count; i += int(stride))
     {
-        angle += GOLDEN_ANGLE;
+        float t = (float)(i + 1) * inv_taps;
+        float2 dir;
+        sincos(angle + (i + 1) * GOLDEN_ANGLE, dir.y, dir.x);
+        float r = aperture_sample_radius(t, dir, lens.aperture_fstop) * blur_radius;
 
-        float t = (float)(i + 1) * INV_SAMPLE_COUNT;
-        float2 disk = aperture_sample_offset(t, angle, lens.aperture_fstop);
-        float r = length(disk) * blur_radius;
-
-        float2 offset    = disk * blur_radius * texel_size;
+        float2 offset    = dir * r * texel_size;
         float2 sample_uv = uv + offset;
 
         if (!is_valid_uv(sample_uv))
@@ -266,31 +267,30 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
 
         // temporal upsampling reconstructs silhouettes up to ~1.5 render texels outside the depth buffer,
         // probe both the sample and a render-texel step further along the tap so antialiased rim pixels keep foreground depth
-        float2 dir          = normalize(disk);
-        float  depth_at_tap = get_nearest_linear_depth(sample_uv);
-        float  depth_pushed = get_nearest_linear_depth(sample_uv + dir * render_texel_size * 1.5f);
-        float  sample_depth = min(depth_at_tap, depth_pushed);
+        float  depth_at_tap = get_nearest_depth(sample_uv);
+        float  depth_pushed = get_nearest_depth(sample_uv + dir * render_texel_size * 1.5f);
+        float  sample_depth = max(depth_at_tap, depth_pushed);
         float  sample_coc   = compute_coc_signed(sample_depth, lens);
         float  abs_sample_coc = abs(sample_coc);
 
         // a sample in front of this pixel only reaches it through its own blur, borrowing this pixel's radius
         // smears a sharp subject over the defocused background behind it as a halo around its silhouette
-        float effective_coc = sample_depth < center_depth ? abs_sample_coc : max(abs_sample_coc, blur_radius);
+        float effective_coc = sample_depth > center_depth ? abs_sample_coc : max(abs_sample_coc, blur_radius);
         float coverage      = saturate(1.0f - r / max(effective_coc, FLT_MIN));
-        float depth_weight  = (sample_depth > center_depth && center_is_fg) ? BG_LEAK_PREVENTION : 1.0f;
+        float depth_weight  = (sample_depth < center_depth && center_is_fg) ? BG_LEAK_PREVENTION : 1.0f;
         float scatter       = lerp(0.35f, 1.0f, saturate(abs_sample_coc * INV_SCATTER_NORM));
 
         // select the prefiltered mip whose texel footprint matches the per-sample disc spacing so thin rim highlights blur smoothly,
         // clamping the mip whenever a sharper foreground silhouette sits inside that mip texel's footprint so sharp subjects never bleed into the background
         float  sample_mip = clamp(log2(max(effective_coc * 0.35f, 1.0f)), 0.0f, max_mip);
-        if (sample_mip > 0.0f)
+        if (sample_mip > 0.0f && (sample_coc > 0.0f || effective_coc > abs_sample_coc))
         {
             float2 mip_reach  = exp2(sample_mip) * texel_size;
-            float  near_guard = min(
-                min(get_nearest_linear_depth(sample_uv + float2(mip_reach.x, 0.0f)), get_nearest_linear_depth(sample_uv - float2(mip_reach.x, 0.0f))),
-                min(get_nearest_linear_depth(sample_uv + float2(0.0f, mip_reach.y)), get_nearest_linear_depth(sample_uv - float2(0.0f, mip_reach.y)))
+            float  near_guard = max(
+                max(get_nearest_depth(sample_uv + float2(mip_reach.x, 0.0f)), get_nearest_depth(sample_uv - float2(mip_reach.x, 0.0f))),
+                max(get_nearest_depth(sample_uv + float2(0.0f, mip_reach.y)), get_nearest_depth(sample_uv - float2(0.0f, mip_reach.y)))
             );
-            if (near_guard < sample_depth)
+            if (near_guard > sample_depth)
             {
                 float guard_coc = abs(compute_coc_signed(near_guard, lens));
                 sample_mip      = min(sample_mip, clamp(log2(max(guard_coc * 0.35f, 1.0f)), 0.0f, max_mip));
@@ -309,7 +309,7 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
         weight_sum += w;
     }
 
-    return color_sum / max(weight_sum, FLT_MIN);
+    return float4(color_sum, weight_sum);
 }
 
 /*------------------------------------------------------------------------------
@@ -328,7 +328,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 }
 #else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
@@ -354,34 +354,55 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
     }
     GroupMemoryBarrierWithGroupSync();
 
-    if (any(thread_id.xy >= uint2(resolution)))
-        return;
-
+    uint2 pixel = min(thread_id.xy, uint2(resolution) - 1u);
     lens_t lens              = gs_lens;
-    float2 uv                = (thread_id.xy + 0.5f) / resolution;
+    float2 uv                = (pixel + 0.5f) / resolution;
     float2 render_texel_size = 1.0f / max(get_render_resolution_active(), float2(1.0f, 1.0f));
     float2 depth_half        = 0.5f * render_texel_size;
-    float  depth             = min(
-        min(get_nearest_linear_depth(uv - depth_half), get_nearest_linear_depth(uv + depth_half)),
-        min(get_nearest_linear_depth(uv + float2(depth_half.x, -depth_half.y)), get_nearest_linear_depth(uv + float2(-depth_half.x, depth_half.y)))
+    float  depth             = max(
+        max(get_nearest_depth(uv - depth_half), get_nearest_depth(uv + depth_half)),
+        max(get_nearest_depth(uv + float2(depth_half.x, -depth_half.y)), get_nearest_depth(uv + float2(-depth_half.x, depth_half.y)))
     );
     float  coc         = compute_coc_signed(depth, lens);
     float  blur_radius = abs(coc);
 
-    // in focus passthrough
-    if (blur_radius < IN_FOCUS_THRESHOLD)
+    // A broad defocus kernel varies slowly across a 2x2 footprint. Distribute its
+    // strata across those pixels only when they agree on both depth and signed CoC.
+    gs_depth_coc[group_index] = float2(linearize_depth(depth), coc);
+    GroupMemoryBarrierWithGroupSync();
+    uint quad_base = group_index & ~(THREAD_GROUP_COUNT_X | 1u);
+    float2 lo = gs_depth_coc[quad_base];
+    float2 hi = lo;
+    [unroll]
+    for (uint lane = 1u; lane < 4u; ++lane)
     {
-        tex_uav[thread_id.xy] = tex[thread_id.xy];
-        return;
+        float2 guide = gs_depth_coc[quad_base + (lane & 1u) + (lane >> 1u) * THREAD_GROUP_COUNT_X];
+        lo = min(lo, guide);
+        hi = max(hi, guide);
     }
-
-    uint tex_w = 0, tex_h = 0, tex_mips = 1;
-    tex.GetDimensions(0, tex_w, tex_h, tex_mips);
-    float  max_mip    = float(max(tex_mips, 1u) - 1u);
-    float2 texel_size = 1.0f / resolution;
-    float3 blurred    = bokeh_gather(uv, coc, depth, lens, texel_size, render_texel_size, max_mip, resolution);
-
-    float4 original = tex[thread_id.xy];
+    bool share = (lo.y >= 5.0f || hi.y <= -5.0f) && hi.y - lo.y < 0.5f && hi.x <= lo.x * 1.02f;
+    float pattern_radius = share ? max(abs(lo.y), abs(hi.y)) : blur_radius;
+    int tap_count = clamp(int(ceil(pattern_radius * 1.5f)), 4, SAMPLE_COUNT);
+    uint lane_id = (thread_id.x & 1u) + 2u * (thread_id.y & 1u);
+    float4 gathered = 0.0f;
+    if (blur_radius >= IN_FOCUS_THRESHOLD)
+    {
+        uint tex_w, tex_h, tex_mips;
+        tex.GetDimensions(0, tex_w, tex_h, tex_mips);
+        gathered = bokeh_gather(uv, coc, depth, lens, 1.0f / resolution, render_texel_size,
+            float(tex_mips - 1u), share ? pixel >> 1u : pixel, share ? lane_id : 0u, share ? 4u : 1u, tap_count);
+    }
+    gs_bokeh[group_index] = gathered;
+    GroupMemoryBarrierWithGroupSync();
+    if (any(thread_id.xy >= uint2(resolution)))
+        return;
+    if (share)
+    {
+        gathered = gs_bokeh[quad_base] + gs_bokeh[quad_base + 1u]
+                 + gs_bokeh[quad_base + THREAD_GROUP_COUNT_X] + gs_bokeh[quad_base + THREAD_GROUP_COUNT_X + 1u];
+    }
+    float4 original = tex[pixel];
+    float3 blurred = gathered.rgb / max(gathered.a, FLT_MIN);
     // soft transition out of the sharp plane, then full cinematic blur
     float  blend  = smoothstep(IN_FOCUS_THRESHOLD, IN_FOCUS_THRESHOLD + 1.75f, blur_radius);
     float3 result = lerp(original.rgb, blurred, blend);
