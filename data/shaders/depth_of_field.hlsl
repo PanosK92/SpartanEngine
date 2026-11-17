@@ -245,8 +245,9 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
 
     bool center_is_fg = center_coc < 0.0f;
 
-    // randomize starting angle per pixel for temporal stability with taa
-    float angle = noise_interleaved_gradient(uv * resolution, true) * PI2;
+    // dof runs after taa, so nothing resolves a rotation that changes per frame, it must stay fixed in screen space
+    const float3 ign = float3(0.06711056f, 0.00583715f, 52.9829189f);
+    float angle      = frac(ign.z * frac(dot(floor(uv * resolution), ign.xy))) * PI2;
 
     [loop]
     for (int i = 0; i < SAMPLE_COUNT; i++)

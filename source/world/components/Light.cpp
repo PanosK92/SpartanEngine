@@ -796,11 +796,12 @@ namespace spartan
         {
             return 2;
         }
-        if (m_light_type == LightType::Point)
+        // area lights emit over a hemisphere, a single perspective slice leaves its rim unshadowed, so they share the point cube
+        if (m_light_type == LightType::Point || m_light_type == LightType::Area)
         {
             return 6;
         }
-        return 1; // spot and area lights use a single slice
+        return 1;
     }
 
     void Light::ValidateSettings()
@@ -865,12 +866,7 @@ namespace spartan
             // use the entity's own up vector so a forward of world up or down does not collapse the cross product
             m_matrix_view[0] = Matrix::CreateLookToLH(position, GetEntity()->GetForward(), GetEntity()->GetUp());
         }
-        else if (m_light_type == LightType::Area)
-        {
-            // use the entity's own up vector so a forward of world up or down does not collapse the cross product
-            m_matrix_view[0] = Matrix::CreateLookToLH(position, GetEntity()->GetForward(), GetEntity()->GetUp());
-        }
-        else if (m_light_type == LightType::Point)
+        else if (m_light_type == LightType::Point || m_light_type == LightType::Area)
         {
             // +X (right)
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);
@@ -908,15 +904,7 @@ namespace spartan
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
             m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1]);
         }
-        else if (m_light_type == LightType::Area)
-        {
-            // wide perspective from the rectangle center, an orthographic at the rectangle size only covers a narrow column
-            const float fov_y_radians = math::deg_to_rad * 120.0f;
-            const float aspect_ratio  = 1.0f;
-            m_matrix_projection[0]    = Matrix::CreatePerspectiveFieldOfViewLH(fov_y_radians, aspect_ratio, m_range, 0.05f);
-            m_frustums[0]             = Frustum(m_matrix_view[0], m_matrix_projection[0]);
-        }
-        else // spot/point
+        else // spot, point and area
         {
             const float aspect_ratio  = 1;
             const float fov_y_radians = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2 + 0.02f; // small epsilon to hide face seems

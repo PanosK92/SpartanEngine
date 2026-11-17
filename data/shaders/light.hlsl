@@ -192,6 +192,37 @@ float3 subsurface_transmission(Surface surface, Light light)
 }
 #endif
 
+// The same light without rays. The shadow slices of a local light hold where the light entered the solid, the
+// distance from there to the pixel is the thickness. A directional cascade is too coarse to measure millimetres.
+float3 subsurface_transmission_shadow_map(Surface surface, Light light)
+{
+    if (light.is_directional())
+    {
+        return 0.0f;
+    }
+
+    // only the side that faces away from the light. a point the light reaches skims along under its own surface and comes out
+    // with next to nothing, and around the terminator the slices hold the outline of the body, where a texel is half solid and
+    // half the wall behind it. a head is centimetres thick by then, so the fade only costs the rim of something thin
+    float n_dot_l = dot(surface.normal, -light.to_pixel);
+    float facing  = saturate((-n_dot_l - 0.05f) / 0.15f);
+    if (facing <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float radius_max    = max(max(surface.subsurface_radius.x, surface.subsurface_radius.y), surface.subsurface_radius.z);
+    float thickness_max = radius_max * 16.0f;
+    float thickness     = local_shadow_thickness(light, surface.position);
+    if (thickness < 0.0f || thickness > thickness_max)
+    {
+        return 0.0f;
+    }
+
+    float entry = saturate(0.3f - n_dot_l);
+    return light.radiance * entry * facing * INV_PI * subsurface_burley_transmittance(thickness, surface.subsurface_radius);
+}
+
 // evaluates a single light against the surface, accumulates into the out parameters
 // surface is taken by value so per light tweaks do not leak
 void evaluate_light(
@@ -225,20 +256,30 @@ void evaluate_light(
     bool light_can_contribute       = light.can_contribute();
     bool has_brdf                   = any(light.radiance > 0.0f);
     bool has_sss                    = scattering_fraction > 0.0f && surface.metallic < 1.0f;
-    // back lit thin parts need rays through the solid, without a tlas they simply stay dark
-    bool has_transmission           = has_profile && !is_transparent && is_ray_traced_shadows_enabled();
+    // back lit thin parts measure the solid with rays, without a tlas the shadow slices of a local light stand in for them
+    bool transmission_ray_traced    = is_ray_traced_shadows_enabled();
+    bool has_transmission           = has_profile && !is_transparent && (transmission_ray_traced || (light.has_shadows() && !light.is_directional()));
 
     if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss || has_transmission))
     {
-    #ifdef RAY_TRACING_ENABLED
         if (has_transmission)
         {
             // the light enters on the far side, this pixel's own shadow says nothing about it
             Light light_transmitted    = light;
             light_transmitted.radiance = light_radiance_raw;
-            L_subsurface += subsurface_transmission(surface, light_transmitted) * saturate(surface.subsurface_scattering);
+            float3 transmitted         = 0.0f;
+            if (transmission_ray_traced)
+            {
+            #ifdef RAY_TRACING_ENABLED
+                transmitted = subsurface_transmission(surface, light_transmitted);
+            #endif
+            }
+            else
+            {
+                transmitted = subsurface_transmission_shadow_map(surface, light_transmitted);
+            }
+            L_subsurface += transmitted * saturate(surface.subsurface_scattering);
         }
-    #endif
 
         float3 L_shadow_primary = 1.0f;
         float L_shadow_contact = 1.0f;

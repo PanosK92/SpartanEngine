@@ -106,8 +106,13 @@
     // ?world=worlds/name.world opens another packaged world
     const world = new URLSearchParams(window.location.search).get("world") || "SPARTAN_DEFAULT_WORLD";
 
+    // the page that embeds the engine passes ?v=<build> so a new deploy never pairs a cached spartan.js or spartan.wasm with new data
+    const version = new URLSearchParams(window.location.search).get("v");
+    const versioned = (path) => version ? path + "?v=" + encodeURIComponent(version) : path;
+
     var Module =
     {
+        locateFile: (path, prefix) => prefix + versioned(path),
         arguments: world ? ["--world", world] : [],
         canvas: document.getElementById("canvas"),
         print: (text) => console.log(text),
@@ -120,7 +125,11 @@
 
     window.addEventListener("error", (event) => fail("Error: " + event.message));
     window.addEventListener("unhandledrejection", (event) => console.error("unhandled: " + (event.reason && event.reason.stack ? event.reason.stack : event.reason)));
+    const script = document.createElement("script");
+    script.src   = versioned("spartan.js");
+    script.async = true;
+    document.body.appendChild(script);
 </script>
-{{{ SCRIPT }}}
+<!-- loaded above with the version, emscripten requires the placeholder: {{{ SCRIPT }}} -->
 </body>
 </html>

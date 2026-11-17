@@ -18,9 +18,14 @@ static const float g_penumbra_filter_size           = 128.0f;
 static const float g_shadow_sample_reciprocal       = 1.0f / (float)g_shadow_sample_count;
 static const float g_minimum_penumbra_size          = 0.5f;
 static const float g_maximum_penumbra_size          = 64.0f;
-static const float g_contact_hardening_factor       = 0.5f;
 static const float g_base_bias_texels               = 0.6f;
 static const float g_slope_bias_texels              = 2.2f;
+static const float g_local_shadow_near              = 0.05f; // must match the near plane in Light::UpdateProjectionMatrix
+static const float g_local_light_size               = 0.05f; // point and spot lights have no emitter size, treat them as a small bulb
+static const float g_local_penumbra_separation_max  = 0.25f; // blocker to receiver distance over light to blocker distance
+static const float g_local_penumbra_search          = 0.1f;  // blocker search radius as a fraction of the emitter size
+static const float g_local_bias_texels              = 1.0f;  // the footprint of one bilinear tap
+static const float g_local_bias_cos_min             = 0.15f; // past this grazing angle the bias stops growing, or it would outrun every nearby blocker
 
 static const float2 g_vogel_samples_penumbra[g_penumbra_sample_count] =
 {
@@ -69,47 +74,6 @@ float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
     return rotate_2d(sample, angle);
 }
 
-// estimate penumbra size using pcss, texel_size_cascade_local is precomputed in vogel_depth
-float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, float receiver_depth, float light_distance, float2 texel_size_cascade_local)
-{
-    float penumbra          = g_minimum_penumbra_size;
-    float blocker_depth_sum = 0.0f;
-    uint  blocker_count     = 0;
-    float search_radius     = g_penumbra_filter_size * texel_size_cascade_local.x;
-
-    // adaptive blocker search
-    for(uint i = 0; i < g_penumbra_sample_count; i++)
-    {
-        float2 offset = vogel_disk_sample(i, g_penumbra_sample_count, rotation_angle) * search_radius;
-        float depth   = light_sample_depth(light, sample_coords + float3(offset, 0.0f));
-
-        if(depth > receiver_depth + 0.0001f)
-        {
-            blocker_depth_sum += depth;
-            blocker_count++;
-        }
-    }
-
-    // compute penumbra size
-    if (blocker_count > 0)
-    {
-        float blocker_depth_avg = blocker_depth_sum / float(blocker_count);
-        float depth_difference  = receiver_depth - blocker_depth_avg;
-        
-        if (depth_difference > 0.0f && blocker_depth_avg > 0.0f)
-        {
-            float light_size_factor = saturate(light_distance * 0.1f);
-            penumbra                = (depth_difference / blocker_depth_avg) * light_size_factor * search_radius;
-            
-            // contact hardening
-            float contact_factor = saturate(depth_difference * 1000.0f);
-            penumbra             = lerp(penumbra * g_contact_hardening_factor, penumbra, contact_factor);
-        }
-    }
-    
-    return clamp(penumbra, g_minimum_penumbra_size, g_maximum_penumbra_size);
-}
-
 // Orthographic reverse-Z stores nearer blockers at larger depth values. Convert
 // their separation to metres before applying the sun's angular radius, so tall
 // trees soften on the ground while contact shadows retain leaf detail.
@@ -140,7 +104,7 @@ float2 directional_filter_radius(Light light, float3 coords, float receiver_dept
     return clamp(separation * sun_angular_radius * world_to_uv, texel * 1.5f, texel * 32.0f);
 }
 
-// compute shadow factor using vogel disk sampling
+// compute shadow factor using vogel disk sampling, directional cascades only, local lights filter in compute_shadow_local
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
     uint cascade_index = (uint)sample_coords.z;
@@ -158,11 +122,6 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
     if (light.is_directional() && !far_directional)
     {
         filter_size = directional_filter_radius(light, sample_coords, receiver_depth, texel_size_cascade_local);
-    }
-    else if (!far_directional)
-    {
-        float light_distance = length(surface.position - light.position);
-        filter_size *= compute_penumbra(light, rotation_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
     }
     filter_size *= filter_size_multiplier;
     
@@ -224,6 +183,173 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
     return surface.normal * (offset_amount * normal_sign);
 }
 
+// distance along the slice axis of a reverse-z perspective shadow depth, near maps to 1 and the light range to 0
+float local_shadow_linear_depth(Light light, float depth)
+{
+    float range = max(light.far, g_local_shadow_near + 1e-3f);
+    return g_local_shadow_near * range / (g_local_shadow_near + depth * (range - g_local_shadow_near));
+}
+
+// the inverse, the shadow depth of a distance along the slice axis
+float local_shadow_depth(Light light, float z)
+{
+    float range = max(light.far, g_local_shadow_near + 1e-3f);
+    return g_local_shadow_near * (range - z) / (max(z, g_local_shadow_near) * (range - g_local_shadow_near));
+}
+
+// where a point lands in the shadow slices of a local light, xy is the slice uv and w the distance along the slice axis.
+// a point or area light looks through the six faces of a cube and a spot light through one frustum
+float4 local_shadow_project(Light light, float3 position, out uint slice_index)
+{
+    slice_index = 0u;
+    if (light.is_point() || light.is_area())
+    {
+        float3 light_to_point = position - light.position;
+        float3 abs_dir        = abs(light_to_point);
+        slice_index = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_point.x > 0.0f ? 0u : 1u) :
+                      (abs_dir.y >= abs_dir.z)                           ? (light_to_point.y > 0.0f ? 2u : 3u) :
+                                                                           (light_to_point.z > 0.0f ? 4u : 5u);
+    }
+
+    float4 clip = mul(float4(position, 1.0f), light_get_transform(light, slice_index));
+    return float4(ndc_to_uv(clip.xy / clip.w), clip.z / clip.w, clip.w);
+}
+
+// point, spot and area lights. the taps sit on a disc that faces the light and is sized in metres, each one is projected on
+// its own, so a kernel that crosses the edge of a cube face carries on in the next face instead of reading past the slice
+float compute_shadow_local(Surface surface, Light light)
+{
+    float3 to_light  = light.position - surface.position;
+    float  distance  = length(to_light);
+    float3 direction = to_light / max(distance, 1e-4f);
+
+    uint   slice_index;
+    float4 center = local_shadow_project(light, surface.position, slice_index);
+    if (center.w <= g_local_shadow_near)
+    {
+        return 1.0f;
+    }
+
+    // size of a shadow texel at the receiver, the horizontal scale of the projection, 1 / tan(fov / 2), sits in the first column
+    float4x4 transform   = light_get_transform(light, slice_index);
+    float    proj_scale  = length(float3(transform[0][0], transform[1][0], transform[2][0]));
+    float    texel_world = 2.0f * distance / max(proj_scale, 1e-6f) * light_get_atlas_texel_size(light, slice_index).x;
+
+    // every tap is compared against the plane of the receiver and not against one depth. one bias for the whole kernel either
+    // self shadows at its rim or, as a normal offset, slides the shadow of a nose centimetres across a cheek the light grazes,
+    // where a texel covers several times its width. only the side of the kernel where the plane climbs towards the light is
+    // let off, the other side keeps the depth of the receiver, the shading normal is not exact enough to follow the plane down
+    float3 normal      = dot(surface.normal, direction) < 0.0f ? -surface.normal : surface.normal;
+    float  n_dot_l     = dot(normal, direction);
+    float  plane_slope = 1.0f / max(n_dot_l, g_local_bias_cos_min);
+    float  tan_theta   = sqrt(saturate(1.0f - n_dot_l * n_dot_l)) * plane_slope;
+    float  bias_base   = texel_world * g_local_bias_texels * (1.0f + tan_theta);
+
+    // half a texel lifts the receiver off its own facets
+    float3 position = surface.position + normal * (0.5f * texel_world);
+    float3 tangent;
+    float3 bitangent;
+    find_best_axis_vectors(direction, tangent, bitangent);
+
+    // blocker search, only what rises above the plane of the receiver and sits in the cone from the receiver to the emitter
+    // blocks it. on a surface the light grazes half of the taps are nearer the light without being in its way, and a brow
+    // centimetres to the side says nothing about the shadow of a nose, counting either one blurs that shadow away
+    float emitter_radius = light.is_area() ? sqrt(light.area_width * light.area_height * INV_PI) : g_local_light_size;
+    float search_radius  = clamp(emitter_radius * g_local_penumbra_search, 2.0f * texel_world, g_penumbra_filter_size * texel_world);
+    float blocker_sum    = 0.0f;
+    uint  blocker_count  = 0;
+    for (uint i = 0; i <= g_penumbra_sample_count; i++)
+    {
+        // the first tap is the receiver itself, the disc has no sample at its center
+        float2 offset = i == 0 ? float2(0.0f, 0.0f) : g_vogel_samples_penumbra[i - 1] * search_radius;
+        float3 across = tangent * offset.x + bitangent * offset.y;
+        float3 tap    = position + across;
+        uint   tap_slice;
+        float4 tap_uv = local_shadow_project(light, tap, tap_slice);
+        if (tap_uv.w <= g_local_shadow_near || any(tap_uv.xy < 0.0f) || any(tap_uv.xy > 1.0f))
+            continue;
+
+        // the slices store the distance along their axis, the plane is measured from the light
+        float axis_scale = tap_uv.w / length(tap - light.position);
+        float blocker    = local_shadow_linear_depth(light, light_sample_depth(light, float3(tap_uv.xy, (float)tap_slice))) / axis_scale;
+        float cone_radius = emitter_radius * (distance - blocker) / distance + texel_world;
+        float plane       = distance - bias_base - max(-dot(across, normal), 0.0f) * plane_slope;
+        if (blocker < plane && length(offset) <= cone_radius)
+        {
+            blocker_sum += blocker;
+            blocker_count++;
+        }
+    }
+
+    // similar triangles, an emitter this wide casts a penumbra this wide at the receiver. the kernel only widens where the
+    // receiver faces the light, across a receiver the light grazes a shadow is a few texels wide, a wide kernel sees mostly
+    // the receiver itself and the bias that takes to hide outruns the blocker, which wiped the shadow of a nose off a cheek
+    float separation = 0.0f;
+    if (blocker_count > 0)
+    {
+        float blocker = blocker_sum / float(blocker_count);
+        float facing  = n_dot_l * n_dot_l;
+        separation    = clamp((distance - blocker) / max(blocker, 1e-3f), 0.0f, g_local_penumbra_separation_max) * facing * facing;
+    }
+    float filter_texel  = g_shadow_filter_size * texel_world;
+    float filter_radius = clamp(emitter_radius * separation, g_minimum_penumbra_size * filter_texel, g_maximum_penumbra_size * filter_texel);
+
+    float shadow = 0.0f;
+    for (uint j = 0; j < g_shadow_sample_count; j++)
+    {
+        float2 offset = vogel_disk_sample(j, g_shadow_sample_count, 0.0f) * filter_radius;
+        float3 across = tangent * offset.x + bitangent * offset.y;
+        float3 tap    = position + across;
+        uint   tap_slice;
+        float4 tap_uv = local_shadow_project(light, tap, tap_slice);
+        if (tap_uv.w <= g_local_shadow_near || any(tap_uv.xy < 0.0f) || any(tap_uv.xy > 1.0f))
+        {
+            shadow += 1.0f;
+            continue;
+        }
+
+        // keep bilinear taps inside this slice instead of reading a neighbor
+        float2 texel      = light_get_atlas_texel_size(light, tap_slice);
+        float2 uv         = clamp(tap_uv.xy, texel * 0.5f, 1.0f - texel * 0.5f);
+        float  axis_scale = tap_uv.w / length(tap - light.position);
+        float  plane      = distance - bias_base - max(-dot(across, normal), 0.0f) * plane_slope;
+        shadow           += light_compare_depth(light, float3(uv, (float)tap_slice), local_shadow_depth(light, plane * axis_scale));
+    }
+
+    return shadow * g_shadow_sample_reciprocal;
+}
+
+// metres of solid between where a local light enters a body and a point on its far side, negative when the slices do not
+// cover the point. a slice holds the first surface the light meets, everything from there to the point counts as solid
+float local_shadow_thickness(Light light, float3 position)
+{
+    float  distance = length(position - light.position);
+    uint   slice_index;
+    float4 uv = local_shadow_project(light, position, slice_index);
+    if (uv.w <= g_local_shadow_near || any(uv.xy < 0.0f) || any(uv.xy > 1.0f))
+    {
+        return -1.0f;
+    }
+
+    // four taps around the point, a single one steps with the texel grid where depth cannot be filtered.
+    // a tap that looks past the body reads the wall behind it, that is no measurement, counting it as no solid lit speckles along the outline
+    float2 texel      = light_get_atlas_texel_size(light, slice_index);
+    float  axis_scale = uv.w / max(distance, 1e-4f);
+    float  thickness  = 0.0f;
+    for (uint i = 0; i < 4; i++)
+    {
+        float2 offset = float2((i & 1u) != 0u ? 0.5f : -0.5f, (i & 2u) != 0u ? 0.5f : -0.5f) * texel;
+        float  entry  = local_shadow_linear_depth(light, light_sample_depth(light, float3(uv.xy + offset, (float)slice_index))) / axis_scale;
+        if (entry > distance)
+        {
+            return -1.0f;
+        }
+        thickness += distance - entry;
+    }
+
+    return thickness * 0.25f;
+}
+
 // main shadow computation function
 float compute_shadow(Surface surface, Light light)
 {
@@ -242,28 +368,12 @@ float compute_shadow(Surface surface, Light light)
 
     float shadow = 1.0f;
 
-    // point light (cubemap)
-    if (light.is_point())
+    // point, spot and area lights
+    if (!light.is_directional())
     {
-        float3 position_world = surface.position + compute_normal_offset(surface, light, 0);
-        float3 light_to_pixel = position_world - light.position;
-        float3 abs_dir        = abs(light_to_pixel);
-
-        uint face_index = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_pixel.x > 0.0f ? 0u : 1u) :
-                          (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0.0f ? 2u : 3u) :
-                                                                               (light_to_pixel.z > 0.0f ? 4u : 5u);
-
-        float4 clip_pos = mul(
-            float4(position_world, 1.0f),
-            light_get_transform(light, face_index)
-        );
-        float3 ndc      = clip_pos.xyz / clip_pos.w;
-        float2 uv       = ndc_to_uv(ndc.xy);
-        shadow          = vogel_depth(light, surface, float3(uv, (float)face_index), ndc.z);
-
-        shadow = lerp(1.0f, shadow, fade);
+        shadow = lerp(1.0f, compute_shadow_local(surface, light), fade);
     }
-    // directional or spot light (cascaded shadow maps)
+    // directional light (cascaded shadow maps)
     else 
     {
         const uint near_cascade = 0;
@@ -325,9 +435,6 @@ float compute_shadow(Surface surface, Light light)
                 shadow = lerp(1.0f, shadow, cascade_edge_fade(ndc_far));
             }
         }
-
-        if (light.is_spot())
-            shadow = lerp(1.0f, shadow, fade);
     }
 
     return shadow;

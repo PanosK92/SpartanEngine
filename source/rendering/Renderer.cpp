@@ -1735,14 +1735,37 @@ namespace spartan
                 entity->GetComponent<Light>()->UpdateMatrices();
             }
         }
-        else if (lights_changed)
-        {
-            UpdateShadowAtlas();
-        }
 
         // frustum and draw distance membership depend on the camera, rebuild every frame
         SP_PROFILE_CPU_START("bindless_lights");
         UpdateLights();
+        if (!secondary)
+        {
+            // the atlas only holds the lights that are indexed and close enough to shadow, a set that follows the camera,
+            // packing only when a light was edited left any light that came into view afterwards without a slice
+            static uint64_t shadow_set_packed = 0;
+            uint64_t shadow_set               = 1469598103934665603ull;
+            // ray traced shadows empty the atlas and its resolution sizes the slices, either one changing asks for a new packing
+            shadow_set = (shadow_set ^ (IsRayTracedShadowsActive() ? 1ull : 0ull)) * 1099511628211ull;
+            shadow_set = (shadow_set ^ GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth()) * 1099511628211ull;
+            for (Entity* entity : light_entities())
+            {
+                Light* light = entity->GetComponent<Light>();
+                if (light && light->GetIndex() != numeric_limits<uint32_t>::max() && light->IsShadowEffective())
+                {
+                    shadow_set = (shadow_set ^ entity->GetObjectId()) * 1099511628211ull;
+                    shadow_set = (shadow_set ^ light->GetSliceCount()) * 1099511628211ull;
+                }
+            }
+
+            if (lights_changed || shadow_set != shadow_set_packed)
+            {
+                // indices come first, the packing skips lights without one, then the buffer is refilled with the new rectangles
+                UpdateShadowAtlas();
+                UpdateLights();
+                shadow_set_packed = shadow_set;
+            }
+        }
         if (lights_changed)
         {
             ++m_pass_state.path_tracing.scene_revision;
@@ -4510,7 +4533,12 @@ namespace spartan
             }
 
             // distance based lod, directional lights are always considered effective
-            const bool shadows_effective    = light_component->IsShadowEffective();
+            // a light the atlas ran out of room for has undefined slices, sampling them would read another light's depth
+            bool shadows_effective = light_component->IsShadowEffective();
+            for (uint32_t i = 0; shadows_effective && !IsRayTracedShadowsActive() && i < light_component->GetSliceCount(); i++)
+            {
+                shadows_effective = light_component->GetAtlasRectangle(i).IsDefined();
+            }
             const bool volumetric_effective = light_component->IsVolumetricEffective();
 
             const bool has_screen_space_shadows                  = light_component->GetLightType() == LightType::Directional &&
@@ -6400,6 +6428,20 @@ namespace spartan
         if (m_shadow_slices.empty())
         {
             return;
+        }
+
+        // when the atlas is full the slices at the end go without, so the sun and then the lights nearest the camera come first
+        {
+            Camera* camera           = GetViewCamera();
+            const Vector3 camera_pos = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
+            auto priority = [&](const Light* light)
+            {
+                return light->GetLightType() == LightType::Directional ? -1.0f : Vector3::DistanceSquared(light->GetEntity()->GetPosition(), camera_pos);
+            };
+            stable_sort(m_shadow_slices.begin(), m_shadow_slices.end(), [&](const ShadowSlice& a, const ShadowSlice& b)
+            {
+                return priority(a.light) < priority(b.light);
+            });
         }
 
         // row-based packing: lays out uniform-sized slices left-to-right, wrapping to the next row

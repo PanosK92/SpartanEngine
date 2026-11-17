@@ -15,7 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 // raster atlas path only, ray traced shadows trace the tlas instead
 float visible(float3 position, Light light, uint2 pixel_pos)
 {
-    if (light.is_point())
+    if (light.is_point() || light.is_area())
     {
         // pick the cube face whose axis dominates the light to point vector
         float3 light_to_pixel = position - light.position;
