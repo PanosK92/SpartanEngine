@@ -1078,8 +1078,8 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
             at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
             at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
-            // sigma_shadow writes a 1-component texel, rgba16f fails vk image write component count
-            at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16_Float, flags, "nrd_out_shadow");
+            // sigma_shadow_translucency writes the shadow in x and the glass colour in yzw
+            at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
         };
 
         // gated by cvar_restir_pt so disabling restir frees the output ring as well as the reservoir slots managed by UpdateOptionalRenderTargets
@@ -1561,6 +1561,7 @@ namespace spartan
             { Renderer_Shader::shadows_ray_generation_r,              RHI_Shader_Type::RayGeneration, "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_miss_r,                    RHI_Shader_Type::RayMiss,       "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_hit_r,                     RHI_Shader_Type::RayHit,        "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::ray_traced_shadows_fill_c,             RHI_Shader_Type::Compute,       "ray_traced_shadows_fill.hlsl",         RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::nrd_pack_shadows_c,                    RHI_Shader_Type::Compute,       "nrd_pack_shadows.hlsl",                RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::nrd_unpack_shadows_c,                  RHI_Shader_Type::Compute,       "nrd_unpack_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::path_tracing_sky_c,                  RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_SKY_ONLY",       true,  true },

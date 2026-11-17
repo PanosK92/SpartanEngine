@@ -10,7 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "nrd/NRD.hlsli"
 //===============================
 
-// unpacks sigma shadow into ray_traced_shadows.r or a local array slice
+// unpacks sigma shadow and translucency into ray_traced_shadows or a local array slice, shadow_mask_pack layout
 // pass_f3_value.y = local array slice
 // pass_f3_value.z = 0 sun, 1 local light
 // tex     = out_shadow_translucency
@@ -34,22 +34,25 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         if (is_local)
         {
-            tex_uav_rt_shadows_local[uint3(thread_id.xy, local_slice)] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+            tex_uav_rt_shadows_local[uint3(thread_id.xy, local_slice)] = shadow_mask_pack(1.0f, 0.0f);
         }
         else
         {
-            tex_uav[thread_id.xy] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+            tex_uav[thread_id.xy] = shadow_mask_pack(1.0f, 0.0f);
         }
         return;
     }
 
-    float visibility = saturate(SIGMA_BackEnd_UnpackShadow(tex[thread_id.xy]).x);
+    // x is the opaque shadow, 1 where nothing blocks, yzw the colour that reaches the pixels x calls blocked,
+    // zero behind an opaque blocker and the glass colour behind glass, combined the way nrd's own sample does
+    float4 shadow     = saturate(SIGMA_BackEnd_UnpackShadow(tex[thread_id.xy]));
+    float3 visibility = lerp(shadow.yzw, 1.0f, shadow.x);
     if (is_local)
     {
-        tex_uav_rt_shadows_local[uint3(thread_id.xy, local_slice)] = float4(visibility, 0.0f, 0.0f, 1.0f);
+        tex_uav_rt_shadows_local[uint3(thread_id.xy, local_slice)] = shadow_mask_pack(visibility, 0.0f);
     }
     else
     {
-        tex_uav[thread_id.xy] = float4(visibility, 0.0f, 0.0f, 1.0f);
+        tex_uav[thread_id.xy] = shadow_mask_pack(visibility, 0.0f);
     }
 }

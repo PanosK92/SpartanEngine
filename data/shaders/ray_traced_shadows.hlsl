@@ -71,14 +71,28 @@ float2 trace_opaque_shadow(float3 origin, float3 direction, float t_max)
     return float2(1.0f, 0.0f);
 }
 
-void write_local_shadow(uint2 launch_id, uint slice, float visibility, float hit_dist, float dist_to_light, float light_size)
+// rgb visibility through the glass in xyz, distance to the nearest glass hit in w, negative when the ray crossed none
+float4 trace_glass_shadow(float visibility, float3 origin, float3 direction, float t_max)
 {
-    tex_uav_rt_shadows_local[uint3(launch_id, slice)] = float4(
-        visibility,
-        hit_dist,
-        dist_to_light,
-        light_size
-    );
+    if (visibility <= 0.0f)
+    {
+        return float4(0.0f, 0.0f, 0.0f, -1.0f);
+    }
+
+    RtTransmittance glass = rt_trace_transmittance(origin, direction, t_max);
+    return float4(visibility * glass.color, glass.distance);
+}
+
+// an opaque blocker sizes the penumbra, a pixel dimmed only by glass uses the glass, sigma treats it as blocked
+// there and carries the colour through its translucency signal, zero means nothing was hit
+float shadow_blocker_distance(bool opaque_hit, float opaque_distance, float glass_distance)
+{
+    return opaque_hit ? opaque_distance : max(glass_distance, 0.0f);
+}
+
+void write_local_shadow(uint2 pixel, uint slice, float3 visibility, float blocker_distance)
+{
+    tex_uav_rt_shadows_local[uint3(pixel, slice)] = shadow_mask_pack(visibility, blocker_distance);
 }
 
 // Fixed stratified samples keep stationary shadows stable. Long showroom tubes need
@@ -154,27 +168,37 @@ void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light
             any_hit = true;
         }
     }
-    write_local_shadow(launch_id, slice, visibility_sum / float(sample_count),
-        any_hit ? hit_min : 0.0f, dist_to_light, is_area ? max(light.area_width, light.area_height) : 0.1f);
+    float center_distance = length(to_light);
+    float glass_t_max     = min(max(center_distance - emitter_safety, 0.001f), SHADOW_RAY_MAX_DISTANCE);
+    float4 visibility     = trace_glass_shadow(visibility_sum / float(sample_count), ray_origin, to_light / center_distance, glass_t_max);
+    write_local_shadow(launch_id, slice, visibility.rgb, shadow_blocker_distance(any_hit, hit_min, visibility.w));
 }
 
 [shader("raygeneration")]
 void ray_gen()
 {
+    // Checkerboard the ray tracing
+    uint2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
     uint2 launch_id   = DispatchRaysIndex().xy;
-    uint2 launch_size = DispatchRaysDimensions().xy;
-    float2 uv         = (launch_id + 0.5f) / launch_size;
+    bool checkerboard = DispatchRaysDimensions().x < resolution.x;
+    uint2 pixel       = checkerboard ? reflections_checkerboard_pixel(launch_id) : launch_id;
+    if (any(pixel >= resolution))
+    {
+        return;
+    }
+    float2 uv = (pixel + 0.5f) / resolution;
 
     [unroll]
     for (uint clear_slice = 0; clear_slice < nrd_local_shadow_max; clear_slice++)
     {
-        write_local_shadow(launch_id, clear_slice, 1.0f, 0.0f, 1.0f, 1.0f);
+        write_local_shadow(pixel, clear_slice, 1.0f, 0.0f);
     }
 
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
-        tex_uav[launch_id] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        tex_uav[pixel] = shadow_mask_pack(1.0f, 0.0f);
         return;
     }
 
@@ -198,7 +222,7 @@ void ray_gen()
     bool wrapped_subsurface        = has_scattering && !receiver.has_subsurface_profile();
     if (is_restir_pt_direct_enabled() && is_frame_without_transparency() && !receiver.is_water() && !wrapped_subsurface && restir_coverage(uv) >= 1.0f)
     {
-        tex_uav[launch_id] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        tex_uav[pixel] = shadow_mask_pack(1.0f, 0.0f);
         return;
     }
 
@@ -207,8 +231,8 @@ void ray_gen()
 
     float  frame_index = (float)buffer_frame.frame;
     float2 xi_base;
-    xi_base.x = frac(hash(float2(launch_id))         + frame_index * 0.7548776662f);
-    xi_base.y = frac(hash(float2(launch_id) + 31.7f) + frame_index * 0.5698402909f);
+    xi_base.x = frac(hash(float2(pixel))         + frame_index * 0.7548776662f);
+    xi_base.y = frac(hash(float2(pixel) + 31.7f) + frame_index * 0.5698402909f);
 
     // directional sun, 1 spp jittered disk, sigma reconstructs the penumbra
     {
@@ -220,11 +244,11 @@ void ray_gen()
         float n_dot_l       = dot(normal_ws, light_dir);
         if (!sun_casts)
         {
-            tex_uav[launch_id] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+            tex_uav[pixel] = shadow_mask_pack(1.0f, 0.0f);
         }
         else if (n_dot_l <= 0.0f && !has_scattering)
         {
-            tex_uav[launch_id] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+            tex_uav[pixel] = shadow_mask_pack(0.0f, 0.0f);
         }
         else
         {
@@ -235,9 +259,8 @@ void ray_gen()
             float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
             float3 ray_origin = pos_ws + normal_ws * (base_offset * normal_sign);
             float2 vis        = trace_opaque_shadow(ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
-            float visibility  = vis.x;
-            float hit_dist    = vis.x < 1.0f ? vis.y : 0.0f;
-            tex_uav[launch_id] = float4(visibility, hit_dist, 0.0f, 1.0f);
+            float4 visibility = trace_glass_shadow(vis.x, ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
+            tex_uav[pixel]    = shadow_mask_pack(visibility.rgb, shadow_blocker_distance(vis.x < 1.0f, vis.y, visibility.w));
         }
     }
 
@@ -272,7 +295,7 @@ void ray_gen()
             continue;
         float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
         float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
-        trace_local_light_shadow(launch_id, slot, light, pos_ws + normal_ws * (local_offset * normal_sign));
+        trace_local_light_shadow(pixel, slot, light, pos_ws + normal_ws * (local_offset * normal_sign));
     }
 }
 

@@ -38,6 +38,9 @@ namespace spartan
         TConsoleVar<bool> cvar_rt_light_culling("r.rt_light_culling", true,
             "Skip zero-contribution lights in reflections and back-facing local shadow rays");
 
+        TConsoleVar<bool> cvar_ray_traced_shadows_checkerboard("r.ray_traced_shadows_checkerboard", true,
+            "Trace half the shadow pixels in a checkerboard, a depth and normal aware fill reconstructs the rest");
+
         TConsoleVar<bool> cvar_ray_traced_reflections_checkerboard("r.ray_traced_reflections_checkerboard", true,
             "Trace and shade half the reflection pixels in a checkerboard, nrd reconstructs the rest");
 
@@ -433,6 +436,7 @@ namespace spartan
         // as a single chunk in the profiler, the sub stages below are plain gpu markers
         RHI_CommandList::BeginPass("ray_traced_shadows");
         {
+            bool checkerboard = false;
             RHI_CommandList::BeginMarker("trace");
             {
                 SetCommonTextures();
@@ -462,11 +466,31 @@ namespace spartan
                 }
                 m_pcb_pass_cpu.set(pass_ray_traced_shadows::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
 
-                uint32_t width  = tex_shadows->GetWidth();
-                uint32_t height = tex_shadows->GetHeight();
-                RHI_CommandList::TraceRays(width, height);
+                // the ray generation shader detects checkerboard from a launch narrower than its targets
+                RHI_Shader* shader_fill = GetShader(Renderer_Shader::ray_traced_shadows_fill_c);
+                checkerboard            = cvar_ray_traced_shadows_checkerboard.GetValueAs<bool>() && tex_shadows_local && shader_fill && shader_fill->IsCompiled();
+                uint32_t width          = tex_shadows->GetWidth();
+                uint32_t height         = tex_shadows->GetHeight();
+                RHI_CommandList::TraceRays(checkerboard ? (width + 1) / 2 : width, height);
             }
             RHI_CommandList::EndMarker();
+
+            // the pixels the checkerboard skipped, from their four traced neighbours
+            if (checkerboard)
+            {
+                RHI_CommandList::BeginMarker("checkerboard_fill");
+                {
+                    const uint32_t thread_group_size = 8;
+                    const uint32_t packed_width      = (tex_shadows->GetWidth() + 1) / 2;
+                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::ray_traced_shadows_fill_c), "ray_traced_shadows_fill");
+                    SetCommonTextures();
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu); // the slot table the trace used
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
+                    RHI_CommandList::Dispatch((packed_width + thread_group_size - 1) / thread_group_size, (tex_shadows->GetHeight() + thread_group_size - 1) / thread_group_size);
+                }
+                RHI_CommandList::EndMarker();
+            }
 
             Pass_Denoise_RayTracedShadows();
         }
@@ -501,7 +525,10 @@ namespace spartan
         RHI_Texture* tex_view_z        = GetRenderTarget(Renderer_RenderTarget::nrd_screen_viewz);
         RHI_Texture* tex_in            = GetRenderTarget(Renderer_RenderTarget::nrd_in_penumbra);
         RHI_Texture* tex_out           = GetRenderTarget(Renderer_RenderTarget::nrd_out_shadow);
-        if (!tex_shadows || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
+        // sigma's translucency input borrows the reflections denoiser's input, both live within their own pass, the
+        // shadows run on compute b and the graphics queue waits for it before the reflections denoise starts
+        RHI_Texture* tex_translucency  = GetRenderTarget(Renderer_RenderTarget::nrd_in_spec_radiance);
+        if (!tex_shadows || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out || !tex_translucency)
         {
             return;
         }
@@ -519,7 +546,7 @@ namespace spartan
             return;
         }
 
-        auto denoise_sigma = [&](float tan_radius, uint32_t slice, bool is_local, const Vector3& direction, uint32_t denoiser_index)
+        auto denoise_sigma = [&](float tan_radius, uint32_t slice, bool is_local, uint32_t light_index, const Vector3& direction, uint32_t denoiser_index)
         {
             // untimed sub passes, the trace and its denoiser read as one chunk in the profiler
             RHI_CommandList::BeginPass(is_local ? "nrd_pack_shadows_local" : "nrd_pack_shadows", false);
@@ -528,6 +555,7 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_nrd_shadows::tan_light_angular_radius, tan_radius);
             m_pcb_pass_cpu.set(pass_nrd_shadows::local_slice, slice);
             m_pcb_pass_cpu.set(pass_nrd_shadows::is_local, is_local);
+            m_pcb_pass_cpu.set(pass_nrd_shadows::light_index, light_index);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_shadows);
             if (tex_shadows_local)
@@ -538,10 +566,11 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_normal);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex5, tex_translucency);
             RHI_CommandList::Dispatch(tex_shadows);
             RHI_CommandList::EndPass();
 
-            if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, &direction, denoiser_index))
+            if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, &direction, denoiser_index, 0, nullptr, nullptr, false, tex_translucency))
             {
                 return false;
             }
@@ -582,7 +611,7 @@ namespace spartan
         {
             RHI_CommandList::BeginMarker("nrd_sun");
             {
-                denoise_sigma(tan_light_angular_radius, 0, false, light_direction, 0);
+                denoise_sigma(tan_light_angular_radius, 0, false, 0, light_direction, 0);
             }
             RHI_CommandList::EndMarker();
         }
@@ -606,7 +635,7 @@ namespace spartan
 
             RHI_CommandList::BeginMarker("nrd_local");
             {
-                denoise_sigma(0.0f, slot - 1, true, local_direction, slot);
+                denoise_sigma(0.0f, slot - 1, true, i, local_direction, slot);
             }
             RHI_CommandList::EndMarker();
         }

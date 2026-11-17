@@ -95,7 +95,7 @@ namespace spartan
 
     bool RHI_VendorTechnology::NRD_Dispatch(
         Nrd_Preset preset, RHI_Texture* tex_mv, RHI_Texture* tex_normal_roughness, RHI_Texture* tex_view_z, RHI_Texture* tex_signal_in, RHI_Texture* tex_signal_out,
-        const Vector3* light_direction, uint32_t shadow_denoiser_index, uint32_t eye, RHI_Texture* tex_specular_in, RHI_Texture* tex_specular_out, bool checkerboard)
+        const Vector3* light_direction, uint32_t shadow_denoiser_index, uint32_t eye, RHI_Texture* tex_specular_in, RHI_Texture* tex_specular_out, bool checkerboard, RHI_Texture* tex_translucency)
     {
         // a copied checkerboard signal stays packed, the renderer expands it itself when this fails
         if (checkerboard)

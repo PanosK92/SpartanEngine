@@ -48,24 +48,24 @@ float trace_local_light_visibility(Surface surface, Light light)
 }
 #endif
 
-// samples the denoised half-res ray traced shadow with bilinear upsample
-float sample_ray_traced_shadow(float2 uv)
+// samples the denoised half-res ray traced shadow with bilinear upsample, rgb so glass casts its colour
+float3 sample_ray_traced_shadow(float2 uv)
 {
     if (!is_ray_traced_shadows_enabled())
     {
-        return 1.0;
+        return 1.0f;
     }
 
-    return saturate(
+    return shadow_mask_unpack(
         tex4.SampleLevel(
             GET_SAMPLER(sampler_bilinear_clamp),
             uv,
             0
-        ).r
+        )
     );
 }
 
-float sample_nrd_local_shadow(float2 uv, uint slot)
+float3 sample_nrd_local_shadow(float2 uv, uint slot)
 {
     if (!is_ray_traced_shadows_enabled() || slot == 0u)
     {
@@ -73,17 +73,17 @@ float sample_nrd_local_shadow(float2 uv, uint slot)
     }
 
     uint slice = slot - 1u;
-    return saturate(
+    return shadow_mask_unpack(
         tex_rt_shadows_local.SampleLevel(
             GET_SAMPLER(sampler_bilinear_clamp),
             float3(uv, slice),
             0
-        ).r
+        )
     );
 }
 
 // depth and normal aware blur, hides the discrete rectangle sample steps
-float sample_nrd_area_shadow(float2 uv, uint slot)
+float3 sample_nrd_area_shadow(float2 uv, uint slot)
 {
     if (!is_ray_traced_shadows_enabled() || slot == 0u)
     {
@@ -102,7 +102,7 @@ float sample_nrd_area_shadow(float2 uv, uint slot)
 
     const int radius     = 3;
     const float sigma2   = 4.0f;
-    float acc            = 0.0f;
+    float4 acc           = 0.0f;
     float weight_sum     = 0.0f;
 
     [unroll]
@@ -112,11 +112,11 @@ float sample_nrd_area_shadow(float2 uv, uint slot)
         for (int x = -radius; x <= radius; x++)
         {
             float2 tap_uv = uv + float2((float)x, (float)y) * texel;
-            float visibility = tex_rt_shadows_local.SampleLevel(
+            float4 visibility = tex_rt_shadows_local.SampleLevel(
                 GET_SAMPLER(sampler_bilinear_clamp),
                 float3(tap_uv, slice),
                 0
-            ).r;
+            );
             float tap_z      = get_linear_depth(tap_uv);
             float3 tap_n     = get_normal(tap_uv);
             float weight_z   = saturate(1.0f - abs(center_z - tap_z) * 4.0f);
@@ -128,7 +128,7 @@ float sample_nrd_area_shadow(float2 uv, uint slot)
         }
     }
 
-    return saturate(acc / max(weight_sum, 1e-4f));
+    return shadow_mask_unpack(acc / max(weight_sum, 1e-4f));
 }
 
 // Demodulated diffuse: composition applies the actual leaf/blade albedo once.
@@ -210,7 +210,7 @@ void evaluate_light(
     // raw light energy without n_dot_l, sss needs it since light.radiance bakes n_dot_l in
     float3 light_radiance_raw = light.color * light.intensity * light.attenuation;
 
-    float  L_shadow        = 1.0f;
+    float3 L_shadow        = 1.0f;
     float3 L_specular_sum  = 0.0f;
     float3 L_diffuse_term  = 0.0f;
     float3 L_subsurface    = 0.0f;
@@ -240,7 +240,7 @@ void evaluate_light(
         }
     #endif
 
-        float L_shadow_primary = 1.0f;
+        float3 L_shadow_primary = 1.0f;
         float L_shadow_contact = 1.0f;
 
         {
