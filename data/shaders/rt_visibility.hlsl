@@ -154,7 +154,7 @@ float rt_fresnel_transmission(float cos_theta, float ior)
 
 struct RtTransmittance
 {
-    float3 color;    // light that makes it through, 0 behind an alpha tested blocker
+    float3 color;    // light that makes it through, 0 once less than 1% is left
     float  distance; // distance to the nearest glass hit, negative when the ray crossed none, sigma sizes the penumbra with it
 };
 
@@ -186,6 +186,8 @@ RtTransmittance rt_trace_transmittance(float3 origin, float3 direction, float t_
             albedo = rt_candidate_albedo(geo, primitive, query.CandidateTriangleBarycentrics(), position);
         }
 
+        // a cutout is a hole, what the cutout keeps is still glass (only transparent instances reach this loop), so it
+        // falls through to the glass below like the raster, which only discards under the cutoff
         if (material.is_alpha_tested() && albedo.a <= get_alpha_threshold(position, material.alpha_cutoff))
         {
             continue;
@@ -195,11 +197,7 @@ RtTransmittance rt_trace_transmittance(float3 origin, float3 direction, float t_
         float distance = query.CandidateTriangleRayT();
         nearest        = nearest < 0.0f ? distance : min(nearest, distance);
 
-        if (material.is_alpha_tested())
-        {
-            blocked = true;
-        }
-        else if (material.alpha_blend > 0.5f)
+        if (material.alpha_blend > 0.5f)
         {
             transmittance *= 1.0f - saturate(material.color.a * albedo.a);
         }
@@ -208,7 +206,7 @@ RtTransmittance rt_trace_transmittance(float3 origin, float3 direction, float t_
             // the tint below takes KHR_materials_volume's authored thickness, fresnel takes the entry angle at the exit
             // too since shadow rays don't refract (exact for spheres and parallel slabs), no total internal reflection
             // since the unrefracted ray would fake a hard dark ring
-            float ior         = material.ior > 1.0f ? material.ior : 1.5f;
+            float ior          = material.ior > 1.0f ? material.ior : 1.5f;
             float cos_theta    = abs(dot(direction, rt_candidate_normal(geo, primitive, query.CandidateTriangleBarycentrics())));
             float transmission = rt_fresnel_transmission(cos_theta, ior);
             // a pane is one triangle standing in for both of its interfaces, a volume meets every interface as its own hit
@@ -223,7 +221,7 @@ RtTransmittance rt_trace_transmittance(float3 origin, float3 direction, float t_
             }
         }
 
-        if (blocked || all(transmittance < 0.01f))
+        if (all(transmittance < 0.01f))
         {
             blocked = true;
             query.Abort();
