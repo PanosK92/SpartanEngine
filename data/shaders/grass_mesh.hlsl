@@ -21,27 +21,28 @@ Commercial use requires written permission and negotiated payment terms.
 #include "grass_mesh_layout.hlsl"
 //==============================
 
-static const uint grass_mesh_threads    = 64;
-static const uint grass_mesh_max_blades = 64; // the far blade, 4 vertices and 2 triangles, is the most a group holds
+static const uint grass_mesh_threads = 32;
 
 groupshared float4x4   blade_transforms[grass_mesh_max_blades];
 groupshared grass_bend blade_bends_current[grass_mesh_max_blades];
 groupshared grass_bend blade_bends_previous[grass_mesh_max_blades];
+groupshared float2 blade_interactions[2][grass_mesh_max_blades];
+groupshared float4 blade_roots[2][grass_mesh_max_blades];
 
 [outputtopology("triangle")]
 [numthreads(grass_mesh_threads, 1, 1)]
 void main_ms(
     uint  thread_index : SV_GroupThreadID,
     uint3 group_id     : SV_GroupID,
-    out vertices gbuffer_scatter_vertex vertices[grass_mesh_max_vertices],
-    out indices uint3 triangles[grass_mesh_max_triangles]
+    out vertices gbuffer_scatter_vertex vertices[GRASS_MESH_MAX_VERTICES],
+    out indices uint3 triangles[GRASS_MESH_MAX_TRIANGLES]
 )
 {
     // draw_index is the section, the grid is 2d because metal drops more than 65535 groups in one dimension
     uint  section          = buffer_pass.draw_index;
     uint4 geometry         = grass_mesh_geometry[section];
     uint  section_blades   = grass_mesh_args[section].w;
-    uint  blades_per_group = min(grass_mesh_blades_per_group(geometry), grass_mesh_max_blades);
+    uint  blades_per_group = grass_mesh_blades_per_group(geometry);
     uint  group_index      = group_id.y * MESH_GRID_WIDTH + group_id.x;
     uint  first_blade      = group_index * blades_per_group;
     uint  blade_count      = first_blade < section_blades ? min(blades_per_group, section_blades - first_blade) : 0u;
@@ -72,6 +73,16 @@ void main_ms(
 
         float3 root = transform[3].xyz;
         float3 up   = normalize(transform[1].xyz);
+        Surface surface;
+        surface.flags = 1u << 11; // grass blade
+        [unroll]
+        for (uint frame = 0; frame < 2; ++frame)
+        {
+            float time_offset = frame == 0 ? 0.0f : -buffer_frame.delta_time;
+            float3 pressure = grass_root_pressure(surface, root, time_offset);
+            blade_interactions[frame][blade] = sample_vegetation_interaction(root.xz, time_offset);
+            blade_roots[frame][blade] = float4(pressure, grass_camera_bias(root, up, transform[2].xyz, pressure.z, time_offset));
+        }
         blade_transforms[blade]     = transform;
         blade_bends_current[blade]  = grass_bend_compute(true, root, up, 0.0f, instance_id);
         blade_bends_previous[blade] = grass_bend_compute(true, root, up, -buffer_frame.delta_time, instance_id);
@@ -93,6 +104,10 @@ void main_ms(
         input.tangent_packed     = pulled.tangent;
         input.instance_transform = blade_transforms[blade];
 
+        grass_interaction_precomputed[0] = blade_interactions[0][blade];
+        grass_interaction_precomputed[1] = blade_interactions[1][blade];
+        grass_root_precomputed[0] = blade_roots[0][blade];
+        grass_root_precomputed[1] = blade_roots[1][blade];
         grass_bend_precomputed[0] = blade_bends_current[blade];
         grass_bend_precomputed[1] = blade_bends_previous[blade];
 

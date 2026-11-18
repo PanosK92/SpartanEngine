@@ -2161,10 +2161,10 @@ namespace spartan
                 // scatter that is already populated rasterizes first, it tests against the prepass depth and writes its own,
                 // so the opaque pass after it fails the depth test under every blade and chip and never shades the ground
                 // they hide, the terrain shader is the most expensive one in the g-buffer and a meadow covers most of it
-                const bool scatter_first   = !submit_before_scatter && cvar_gbuffer_scatter_first.GetValue();
+                const bool scatter_first   = cvar_gbuffer_scatter_first.GetValue();
                 const bool scatter_cleared = scatter_first && Pass_Grass_Draw(true);
                 Pass_GBuffer_Indirect(!scatter_cleared);
-                if (submit_before_scatter)
+                if (submit_before_scatter && !scatter_cleared)
                 {
                     // the meshlet g-buffer never reads procedural scatter, submitting it here lets it overlap the
                     // populate compute, only the grass draw and what follows waits for the scatter queue
@@ -3097,6 +3097,7 @@ namespace spartan
 
         RHI_Shader* grass_vertex = GetShader(Renderer_Shader::grass_blade_v);
         RHI_Shader* grass_pixel = GetShader(Renderer_Shader::grass_gbuffer_p);
+        RHI_Shader* opaque_pixel = GetShader(Renderer_Shader::grass_opaque_p);
 
         // the mesh shader shades every blade vertex exactly once, the instanced draw shades a vertex again whenever it
         // falls out of the post transform cache, which with the heavy grass vertex work costs about a third more
@@ -3128,6 +3129,14 @@ namespace spartan
                 continue;
             }
 
+            // Both fine and coarse indirect draws use this pipeline. Larger custom meshes
+            // retain their indexed draws when a single instance exceeds the shader's export arrays.
+            const auto& lods = mesh->GetSubMesh(0).lods;
+            const bool fits_mesh_group = all_of(lods.begin(), lods.end(), [](const MeshLod& level)
+            {
+                return level.vertex_count <= GRASS_MESH_MAX_VERTICES && level.index_count / 3u <= GRASS_MESH_MAX_TRIANGLES;
+            });
+
             for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
             {
                 const uint32_t lod_base = renderer_gpu_scatter_base(slot, lod);
@@ -3141,12 +3150,15 @@ namespace spartan
                     state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f;
                 RHI_Shader* shader_vertex = grass_specialized ? grass_vertex : GetShader(Renderer_Shader::grass_gbuffer_v);
                 RHI_Shader* shader_pixel  = grass_specialized ? grass_pixel : GetShader(Renderer_Shader::gbuffer_p);
+                const bool card_ring = grass_specialized && gpu_scatter_card_ring(state, lod);
+                if (grass_specialized && !card_ring && opaque_pixel && opaque_pixel->IsCompiled())
+                    shader_pixel = opaque_pixel;
                 if (!shader_vertex || !shader_vertex->IsCompiled() || !shader_pixel || !shader_pixel->IsCompiled())
                 {
                     continue;
                 }
                 // card rings stay instanced, the card turns to face the camera in the vertex shader
-                const bool mesh_path = grass_specialized && grass_mesh_ready && !gpu_scatter_card_ring(state, lod);
+                const bool mesh_path = grass_specialized && grass_mesh_ready && fits_mesh_group && !gpu_scatter_card_ring(state, lod);
                 pso.shaders[RHI_Shader_Type::Vertex]     = mesh_path ? nullptr : shader_vertex;
                 pso.shaders[RHI_Shader_Type::MeshShader] = mesh_path ? grass_mesh : nullptr;
                 pso.shaders[RHI_Shader_Type::Pixel]      = shader_pixel;
@@ -3186,7 +3198,6 @@ namespace spartan
                 m_pcb_pass_cpu.set(pass_grass_draw::uv_patch, state.params.uv_patch);
                 m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, 0u);
                 m_pcb_pass_cpu.set(pass_grass_draw::lod_base, lod_base);
-                const bool card_ring = grass_specialized && gpu_scatter_card_ring(state, lod);
                 m_pcb_pass_cpu.set(pass_grass_draw::card_width, card_ring ? state.params.cell_size_m[lod] * gpu_scatter_card_cells : 0.0f);
                 m_pcb_pass_cpu.set(pass_grass_draw::card_thin, card_ring ? gpu_scatter_card_thin() : 0.0f);
                 m_pcb_pass_cpu.set(pass_grass_draw::blend_reach, max(cvar_scatter_blend_distance.GetValue(), 0.0f));

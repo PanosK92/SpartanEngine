@@ -551,6 +551,7 @@ namespace spartan
         grass_gbuffer_v,
         grass_blade_v,
         grass_gbuffer_p,
+        grass_opaque_p,
         grass_interaction_c,
         vegetation_interaction_c,
         // gpu texture compression
@@ -588,7 +589,6 @@ namespace spartan
         cloud_resolved_1,
         cloud_resolved_distance_1,
         cloud_environment,
-        cloud_composite,
         cloud_velocity,
         light_diffuse,
         light_specular,

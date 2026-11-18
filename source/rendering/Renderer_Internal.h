@@ -378,9 +378,6 @@ namespace spartan
             uint64_t           gi_timeline_value = 0;
             // graphics wrote a resource the in flight gi reads, the next graphics submission waits for it
             bool               gi_upload_hazard  = false;
-            // async fog runs after compute b, graphics only waits for it right before its first reader
-            RHI_SyncPrimitive* fog_timeline       = nullptr;
-            uint64_t           fog_timeline_value = 0;
         };
 
         // pass history that follows the camera of one view, it lives in PassState while that view renders

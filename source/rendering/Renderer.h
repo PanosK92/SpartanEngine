@@ -467,7 +467,6 @@ namespace spartan
         bool Pass_ReSTIR_CopyGBuffer();
         void Pass_ReSTIR_WithOpaqueHistory(bool use_current_copy);
         void Pass_GraphicsPhase2_ShadowsAndRT();
-        void WaitForAsyncFog();
         void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early);
         void Pass_VariableRateShading();
         void Pass_ShadowMaps();

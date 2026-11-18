@@ -21,7 +21,7 @@ static const float cumulus_bottom_alt = 1500.0;
 // cloud shadow map, cumulus transmittance toward the sun stored as a 2d map indexed by where
 // the sun ray crosses the cloud base plane, baked by the CLOUD_SHADOW kernel in clouds.hlsl
 // and sampled by the volumetric fog march so the sun shafts thread through the cloud gaps
-// 8 km half extent over a 1024 map gives ~16 m texels, anything visible on the ground sits
+// 8 km half extent over a 512 map gives ~31 m texels, anything visible on the ground sits
 // well inside that range and the border fade hands the rest of the world back to unshadowed
 static const float cloud_shadow_half_extent = 8000.0;
 static const float cloud_shadow_min_sun_y   = 0.087; // ~5 degrees, keeps the projection bounded at grazing sun
@@ -55,7 +55,8 @@ float cloud_shadow_sample(Texture2D shadow_map, SamplerState samp, float3 pos, f
     float2 border = min(uv, 1.0 - uv);
     float  inside = smoothstep(0.0, 0.04, min(border.x, border.y));
     
-    float lod   = log2(max(length(pos.xz - cam_pos.xz) * 0.0015, 1.0));
+    // Keep the distance filter footprint in metres as the bake resolution changes.
+    float lod   = log2(max(length(pos.xz - cam_pos.xz) * (0.0015 / 1024.0) * float(shadow_width), 1.0));
     float trans = shadow_map.SampleLevel(samp, uv, lod).r;
     return lerp(1.0, trans, inside);
 }

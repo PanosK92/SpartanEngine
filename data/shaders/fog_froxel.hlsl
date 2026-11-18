@@ -91,6 +91,18 @@ uint fog_air_light_mask(uint3 group_id, uint first_light)
     return mask;
 }
 
+// Each group samples three elevation bands. Issue all azimuth samples together.
+groupshared float3 fog_ring_samples[18];
+
+void fog_sample_sky_band(uint index)
+{
+    static const float elevation[3] = { 0.1745f, 0.5585f, 0.9948f };
+    uint band = index / 6u;
+    float azimuth = (float(index % 6u) + 0.5f * float(band)) * (PI2 / 6.0f);
+    float3 dir = float3(cos(azimuth) * cos(elevation[band]), sin(elevation[band]), sin(azimuth) * cos(elevation[band]));
+    fog_ring_samples[index] = min(tex.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(dir), 7).rgb, 50.0f);
+}
+
 // The probe is identical for every cell in the dispatch.
 FogSkyProbe fog_build_sky_probe()
 {
@@ -126,7 +138,6 @@ FogSkyProbe fog_build_sky_probe()
     // darkest part of a clear sky and left the mist at half the horizon it covers, so the upper
     // hemisphere is averaged over four elevation bands by solid angle and by cosine (for the
     // irradiance the ground receives), and the ground sends back its albedo of sun plus sky
-    static const float band_elevation[3] = { 0.1745f, 0.5585f, 0.9948f }; // 10, 32, 57 degrees
     static const float band_solid[4]     = { 0.342f, 0.365f, 0.233f, 0.060f };
     static const float band_cosine[4]    = { 0.117f, 0.383f, 0.383f, 0.117f };
     float3 sky_mean     = probe.zenith * band_solid[3];
@@ -138,9 +149,7 @@ FogSkyProbe fog_build_sky_probe()
         [unroll]
         for (uint i = 0u; i < 6u; i++)
         {
-            float azimuth = (float(i) + 0.5f * float(band)) * (PI2 / 6.0f);
-            float3 dir    = float3(cos(azimuth) * cos(band_elevation[band]), sin(band_elevation[band]), sin(azimuth) * cos(band_elevation[band]));
-            ring         += min(tex.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(dir), sky_mip).rgb, sky_color_max);
+            ring += fog_ring_samples[band * 6u + i];
         }
         ring         /= 6.0f;
         sky_mean     += ring * band_solid[band];
@@ -580,14 +589,15 @@ void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3
 [numthreads(8, 8, 2)]
 void main_cs(uint3 group_id : SV_GroupID, uint3 local_id : SV_GroupThreadID, uint group_index : SV_GroupIndex)
 {
-    if (group_index == 0u)
-    {
-        fog_group_sky = fog_build_sky_probe();
-    }
+    if (group_index < 18u)
+        fog_sample_sky_band(group_index);
     // Build separate 32-light masks in parallel. Busy streets must not fall
     // back to evaluating every headlight in every air cell after light 32.
     if (group_index < fog_light_mask_words)
         fog_group_air_lights[group_index] = fog_air_light_mask(group_id, group_index * 32u);
+    GroupMemoryBarrierWithGroupSync();
+    if (group_index == 0u)
+        fog_group_sky = fog_build_sky_probe();
     GroupMemoryBarrierWithGroupSync();
     // Retain the CPU's 8x8x4 cell tiling with fewer resident threads per group.
     bool water_cache_valid = false;

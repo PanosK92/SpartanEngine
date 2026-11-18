@@ -593,6 +593,7 @@ namespace pass_skysphere
 namespace pass_clouds
 {
     static const SHARED_UINT reset_history   = 0; // bool, temporal
+    static const SHARED_UINT write_velocity  = 0; // bool, final composite only
     static const SHARED_UINT environment_row = 0; // uint, environment, first pixel row of the strip
 }
 
@@ -1272,6 +1273,8 @@ struct MeshletBounds
 #define MESHLET_MAX_INDICES   (MESHLET_MAX_TRIANGLES * 3)
 #define MESHLET_MAX_VERTICES  64
 #define MESH_SHADER_NUMTHREADS 32
+#define GRASS_MESH_MAX_VERTICES 64
+#define GRASS_MESH_MAX_TRIANGLES 64
 
 // clustered lighting grid dimensions, 16x9 matches a 16:9 aspect ratio and 24 exponential z slices
 // keep these in sync with the cluster_z_scale, cluster_z_bias compute on the cpu

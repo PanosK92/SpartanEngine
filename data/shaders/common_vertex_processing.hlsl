@@ -602,6 +602,10 @@ float2 sample_vegetation_interaction(float2 world_xz, float time_offset)
     return tex_vegetation_interaction.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).xy;
 }
 
+#ifdef GRASS_BEND_PRECOMPUTED
+static float2 grass_interaction_precomputed[2];
+#endif
+
 // moves a vertex by the field sampled at its rest position, flex is 0 where the plant is rigid
 // the stem keeps its length, so a pushed tip also drops, like a pendulum about the root
 void apply_vegetation_interaction(float2 rest_xz, float3 root, float3 up, float flex, float time_offset, inout float3 position_world)
@@ -609,7 +613,11 @@ void apply_vegetation_interaction(float2 rest_xz, float3 root, float3 up, float 
     if (flex <= 0.0f)
         return;
 
-    float2 push   = sample_vegetation_interaction(rest_xz, time_offset) * flex;
+#ifdef GRASS_BEND_PRECOMPUTED
+    float2 push = grass_interaction_precomputed[time_offset < 0.0f ? 1 : 0] * flex;
+#else
+    float2 push = sample_vegetation_interaction(rest_xz, time_offset) * flex;
+#endif
     float push_sq = dot(push, push);
     if (push_sq < 1e-8f)
         return;
@@ -652,7 +660,7 @@ grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 i
 {
     float time = (float)buffer_frame.time + time_offset;
 
-#ifdef GRASS_INSTANCED
+#if defined(GRASS_INSTANCED) && !defined(GRASS_BEND_PRECOMPUTED)
     wind_sample ws = evaluate_grass_instance_wind(instance_pos, time_offset, instance_id);
 #else
     wind_sample ws = evaluate_wind(instance_pos, time_offset);
@@ -737,6 +745,79 @@ grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 i
 static grass_bend grass_bend_precomputed[2];
 #endif
 
+float3 grass_root_pressure(Surface surface, float3 instance_pos, float time_offset)
+{
+    float3 grass_press = 0.0f;
+#ifdef GRASS_INSTANCED
+    if (surface.is_grass_blade())
+    {
+        float4 mapping = time_offset < 0.0f ? pass_float4(pass_grass_draw::tracks_previous) : pass_float4(pass_grass_draw::tracks);
+        float2 uv = (instance_pos.xz - mapping.xy) * mapping.z;
+        if (mapping.w > 0.5f && all(uv > 0.0f) && all(uv < 1.0f))
+        {
+            float4 pressed;
+            if (time_offset < 0.0f)
+                pressed = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0);
+            else
+                pressed = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0);
+            // Premultiplied height stays correct when filtering against empty texels.
+            float height_weight = pressed.z > 0.0001f ?
+                1.0f - smoothstep(0.25f, 0.65f, abs(pressed.w / pressed.z - instance_pos.y)) : 0.0f;
+            grass_press = pressed.xyz * height_weight;
+        }
+    }
+#endif
+
+    // a blade in a tire rut stays whole and lies over, the tire pressed it into the floor of the rut
+    if (surface.is_grass_blade() || surface.is_flower())
+    {
+        float rut_press = saturate(-terrain_deformation_offset(instance_pos.xz) / 0.01f);
+        if (rut_press > grass_press.z)
+        {
+            // along the track when no tire direction was recorded, which is across the slope of the rut wall,
+            // on the flat floor each blade falls its own way
+            float2 direction = grass_press.xy;
+            if (dot(direction, direction) < 1e-6f)
+            {
+                float2 gradient = terrain_deformation_gradient(instance_pos.xz);
+                float heading   = hash(instance_pos.xz + float2(41.7f, 13.3f)) * PI2;
+                direction       = dot(gradient, gradient) > 0.01f ? float2(-gradient.y, gradient.x) : float2(cos(heading), sin(heading));
+            }
+            grass_press = float3(direction, rut_press);
+        }
+    }
+    return grass_press;
+}
+
+float grass_camera_bias(float3 instance_pos, float3 instance_up, float3 blade_normal, float press, float time_offset)
+{
+    const float camera_bias_strength = 0.9f;
+
+    float3 camera_position = time_offset < 0.0f ?
+        buffer_frame.camera_position_previous :
+        buffer_frame.camera_position;
+    float3 to_camera = camera_position - instance_pos;
+    float3 view_planar = to_camera - instance_up * dot(to_camera, instance_up);
+    float view_length_sq = dot(view_planar, view_planar);
+    view_planar *= rsqrt(max(view_length_sq, 1e-8f));
+
+    blade_normal -= instance_up * dot(blade_normal, instance_up);
+    blade_normal *= rsqrt(max(dot(blade_normal, blade_normal), 1e-8f));
+
+    float facing_cos = clamp(dot(blade_normal, view_planar), -1.0f, 1.0f);
+    float facing_sin = dot(cross(blade_normal, view_planar), instance_up);
+    // bias = 0.45 * sin(2 * view_angle), bounded to about 26 degrees. Keeping
+    // the signed cosine makes both faces agree, with no flip at the blade edge.
+    // A 45-degree view stays about 19 degrees off broadside; a 90-degree view
+    // still sees the edge. Fade near overhead where the viewing azimuth vanishes.
+    float overhead_fade = saturate(view_length_sq / max(dot(to_camera, to_camera) * 0.04f, 1e-8f));
+    return camera_bias_strength * facing_sin * facing_cos * overhead_fade * (1.0f - press);
+}
+
+#if defined(GRASS_BEND_PRECOMPUTED)
+static float4 grass_root_precomputed[2]; // pressure.xyz and camera bias angle
+#endif
+
 struct vertex_processing
 {
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
@@ -746,45 +827,11 @@ struct vertex_processing
         float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
         float3 position_rest = position_world;
 
-        float3 grass_press = 0.0f;
-#ifdef GRASS_INSTANCED
-        if (surface.is_grass_blade())
-        {
-            float4 mapping = time_offset < 0.0f ? pass_float4(pass_grass_draw::tracks_previous) : pass_float4(pass_grass_draw::tracks);
-            float2 uv = (instance_pos.xz - mapping.xy) * mapping.z;
-            if (mapping.w > 0.5f && all(uv > 0.0f) && all(uv < 1.0f))
-            {
-                float4 pressed;
-                if (time_offset < 0.0f)
-                    pressed = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0);
-                else
-                    pressed = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0);
-                // Premultiplied height stays correct when filtering against empty texels.
-                float height_weight = pressed.z > 0.0001f ?
-                    1.0f - smoothstep(0.25f, 0.65f, abs(pressed.w / pressed.z - instance_pos.y)) : 0.0f;
-                grass_press = pressed.xyz * height_weight;
-            }
-        }
+#if defined(GRASS_BEND_PRECOMPUTED)
+        float3 grass_press = grass_root_precomputed[time_offset < 0.0f ? 1 : 0].xyz;
+#else
+        float3 grass_press = grass_root_pressure(surface, instance_pos, time_offset);
 #endif
-
-        // a blade in a tire rut stays whole and lies over, the tire pressed it into the floor of the rut
-        if (surface.is_grass_blade() || surface.is_flower())
-        {
-            float rut_press = saturate(-terrain_deformation_offset(instance_pos.xz) / 0.01f);
-            if (rut_press > grass_press.z)
-            {
-                // along the track when no tire direction was recorded, which is across the slope of the rut wall,
-                // on the flat floor each blade falls its own way
-                float2 direction = grass_press.xy;
-                if (dot(direction, direction) < 1e-6f)
-                {
-                    float2 gradient = terrain_deformation_gradient(instance_pos.xz);
-                    float heading   = hash(instance_pos.xz + float2(41.7f, 13.3f)) * PI2;
-                    direction       = dot(gradient, gradient) > 0.01f ? float2(-gradient.y, gradient.x) : float2(cos(heading), sin(heading));
-                }
-                grass_press = float3(direction, rut_press);
-            }
-        }
 
         // fft ocean, displace the camera-centered clipmap by the summed cascade displacement
         if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
@@ -854,29 +901,11 @@ struct vertex_processing
         // edge-on at wider angles. The root supplies one rotation for the entire blade.
         if (surface.is_grass_blade())
         {
-            const float camera_bias_strength = 0.9f;
-
-            float3 camera_position = time_offset < 0.0f ?
-                buffer_frame.camera_position_previous :
-                buffer_frame.camera_position;
-            float3 to_camera = camera_position - instance_pos;
-            float3 view_planar = to_camera - instance_up * dot(to_camera, instance_up);
-            float view_length_sq = dot(view_planar, view_planar);
-            view_planar *= rsqrt(max(view_length_sq, 1e-8f));
-
-            float3 blade_normal = transform[2].xyz;
-            blade_normal -= instance_up * dot(blade_normal, instance_up);
-            blade_normal *= rsqrt(max(dot(blade_normal, blade_normal), 1e-8f));
-
-            float facing_cos = clamp(dot(blade_normal, view_planar), -1.0f, 1.0f);
-            float facing_sin = dot(cross(blade_normal, view_planar), instance_up);
-            // bias = 0.45 * sin(2 * view_angle), bounded to about 26 degrees. Keeping
-            // the signed cosine makes both faces agree, with no flip at the blade edge.
-            // A 45-degree view stays about 19 degrees off broadside; a 90-degree view
-            // still sees the edge. Fade near overhead where the viewing azimuth vanishes.
-            float overhead_fade = saturate(view_length_sq / max(dot(to_camera, to_camera) * 0.04f, 1e-8f));
-            float bias_angle = camera_bias_strength * facing_sin * facing_cos * overhead_fade * (1.0f - grass_press.z);
-
+#if defined(GRASS_BEND_PRECOMPUTED)
+            float bias_angle = grass_root_precomputed[time_offset < 0.0f ? 1 : 0].w;
+#else
+            float bias_angle = grass_camera_bias(instance_pos, instance_up, transform[2].xyz, grass_press.z, time_offset);
+#endif
             float3x3 bias_rot = rotation_matrix(instance_up, bias_angle);
 
             float3 offset  = position_world - instance_pos;

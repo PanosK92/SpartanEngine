@@ -1399,8 +1399,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 view_dir      = cloud_view_direction(uv);
     if (scene_distance < 1e20 && !cloud_ray_reaches_layer(get_camera_position(), view_dir, scene_distance))
     {
-        tex_uav[tid.xy]  = tex.Load(int3(tid.xy, 0));
-        tex_uav2[tid.xy] = tex4.Load(int3(tid.xy, 0));
+        if (pass_bool(pass_clouds::write_velocity))
+            tex_uav2[tid.xy] = tex4.Load(int3(tid.xy, 0));
         return;
     }
 
@@ -1441,8 +1441,11 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     }
 
     float4 cloud_value = weight_sum > 1e-5 ? cloud_sum / weight_sum : float4(0.0, 0.0, 0.0, 1.0);
-    float4 scene_color = tex.Load(int3(tid.xy, 0));
+    float4 scene_color = tex_uav[tid.xy];
     tex_uav[tid.xy] = float4(scene_color.rgb * cloud_value.a + cloud_value.rgb, scene_color.a);
+    if (!pass_bool(pass_clouds::write_velocity))
+        return;
+
     float resolved_cloud_distance = cloud_distance_weight > 1e-5 ? cloud_distance_sum / cloud_distance_weight : 0.0;
     bool has_cloud = resolved_cloud_distance > 0.0 && cloud_value.a < 0.98;
     bool has_sky = scene_distance > 1e20;
@@ -1578,27 +1581,27 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     // coherent midpoint sampling, a per-texel jitter decorrelates neighbouring texels and
     // prints a dot grid onto the ground, without it any residual march error stays smooth
     float optical_depth = 0.0;
-    float2 weather      = float2(0.0, 0.0);
-    int weather_age     = cumulus_weather_interval * 2;
-    
+    const int weather_interval = cumulus_weather_interval * 2;
     [loop]
-    for (int i = 0; i < cloud_shadow_steps; i++)
+    for (int first = 0; first < cloud_shadow_steps; first += weather_interval)
     {
-        float3 p = p0 + dir * ((float(i) + 0.5) * dt);
-        
-        if (weather_age >= cumulus_weather_interval * 2)
+        float3 start = p0 + dir * ((float(first) + 0.5) * dt);
+        float2 weather = cloud_weather(tex3d, GET_SAMPLER(sampler_bilinear_wrap), start);
+        if (weather.x <= 0.0)
+            continue;
+
+        [loop]
+        for (int i = first; i < min(first + weather_interval, cloud_shadow_steps); ++i)
         {
-            weather     = cloud_weather(tex3d, GET_SAMPLER(sampler_bilinear_wrap), p);
-            weather_age = 0;
-        }
-        weather_age++;
-        
-        if (weather.x > 0.0)
-        {
+            float3 p = p0 + dir * ((float(i) + 0.5) * dt);
             optical_depth += cloud_density_cumulus_cheap(p, tex3d, GET_SAMPLER(sampler_bilinear_wrap), weather) * dt;
         }
+
+        // Below half the smallest FP16 subnormal, all remaining samples still round to black.
+        if (optical_depth * cumulus_sigma_t > 17.33)
+            break;
     }
-    
+
     float trans = exp(-optical_depth * cumulus_sigma_t);
     tex_uav[tid.xy] = float4(trans, trans, trans, 1.0);
 }

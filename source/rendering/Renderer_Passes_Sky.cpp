@@ -47,7 +47,7 @@ namespace spartan
             // the cloud shadow map is centered on a texel snapped anchor that the shaders derive from
             // the camera and the sun, see cloud_shadow_plane_uv in cloud_shadow.hlsl. the map has to be
             // baked again on the frame the anchor moves to another texel, a bake on a fixed cadence
-            // left it one texel (16 m) off for up to three frames every time a moving camera crossed one.
+            // left it one texel off for up to three frames every time a moving camera crossed one.
             // in between the clouds drift a fraction of a texel, so the cadence itself can be slow
             bool cloud_shadow_anchor_moved = false;
             bool cloud_shadow_clear        = false;
@@ -106,7 +106,8 @@ namespace spartan
                     m_pass_state.sky.cloud_shadow_clear = cloud_shadow_clear && RHI_CommandList::IsPipelineReady();
 
                     // the raw bake has texel-rate edges that moire against the screen grid, blur and mips remove them
-                    Pass_Blur(tex_cloud_shadow, false, 4.0f, 0);
+                    // Two texels cover the same 62.5 m penumbra at the lower bake resolution.
+                    Pass_Blur(tex_cloud_shadow, false, 2.0f, 0);
                     Pass_Downscale(tex_cloud_shadow, Renderer_DownsampleFilter::Average);
                 }
 
@@ -267,18 +268,17 @@ namespace spartan
         const Renderer_RenderTarget resolved_targets[] = { Renderer_RenderTarget::cloud_resolved_0, Renderer_RenderTarget::cloud_resolved_1 };
         const Renderer_RenderTarget distance_targets[] = { Renderer_RenderTarget::cloud_resolved_distance_0, Renderer_RenderTarget::cloud_resolved_distance_1 };
         const uint32_t output_index = m_pass_state.cloud_history.Write();
-        RHI_Texture* tex_composite  = GetRenderTarget(Renderer_RenderTarget::cloud_composite);
+        // Every invocation reads and writes its own scene pixel. The refraction snapshot needs colour only.
+        m_pcb_pass_cpu.set(pass_clouds::write_velocity, tex_scene == GetRenderTarget(Renderer_RenderTarget::frame_render));
 
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_composite_c), "clouds_composite");
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_scene);
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_composite);
+        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_scene);
         RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_velocity), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::Dispatch(tex_composite, GetResolutionScale());
-        RHI_CommandList::Blit(tex_composite, tex_scene, false);
+        RHI_CommandList::Dispatch(tex_scene, GetResolutionScale());
     }
 
     void Renderer::Pass_Clouds_Environment()

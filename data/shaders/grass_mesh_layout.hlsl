@@ -24,16 +24,14 @@ RWStructuredBuffer<uint4> grass_mesh_args : register(u58);
 StructuredBuffer<uint4> grass_mesh_args : register(t67);
 #endif
 
-// a mesh group holds 256 vertices and 256 triangles
-static const uint grass_mesh_max_vertices  = 256;
-static const uint grass_mesh_max_triangles = 256;
+// Small export arrays keep several groups resident while their blades fetch wind and interaction fields.
+static const uint grass_mesh_max_blades    = 16;
 
-// as many blades as fit, 19 near blades (13 vertices, 11 triangles), 36 mid ones (7, 5) or 64 far ones (4, 2)
 uint grass_mesh_blades_per_group(uint4 geometry)
 {
     uint blade_vertices  = max(geometry.w, 1u);
     uint blade_triangles = max(geometry.y / 3u, 1u);
-    return max(1u, min(grass_mesh_max_vertices / blade_vertices, grass_mesh_max_triangles / blade_triangles));
+    return clamp(min(GRASS_MESH_MAX_VERTICES / blade_vertices, GRASS_MESH_MAX_TRIANGLES / blade_triangles), 1u, grass_mesh_max_blades);
 }
 
 #endif // SPARTAN_GRASS_MESH_LAYOUT

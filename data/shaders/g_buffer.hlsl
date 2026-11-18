@@ -616,6 +616,9 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 }
 
 #ifdef GRASS_SPECIALIZED
+#ifdef GRASS_OPAQUE
+[earlydepthstencil]
+#endif
 gbuffer main_ps(gbuffer_scatter_vertex packed, bool is_front_face : SV_IsFrontFace)
 {
     gbuffer_vertex vertex = unpack_gbuffer_scatter(packed);
@@ -685,7 +688,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     face_normal = face_normal_length_sq > 0.0f ? face_normal * rsqrt(face_normal_length_sq) : normalize(vertex.normal);
     face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
 
-#ifdef GRASS_SPECIALIZED
+#if defined(GRASS_SPECIALIZED) && !defined(GRASS_OPAQUE)
     // the outer ring draws tuft impostor cards, the tufts are cut out before anything is shaded and then
     // hand the blade shading below the same height, width and variation a real blade would carry
     float card_footprint = max(abs(ddx(vertex.uv_misc.x)), abs(ddy(vertex.uv_misc.x)));

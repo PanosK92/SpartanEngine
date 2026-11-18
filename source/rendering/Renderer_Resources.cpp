@@ -887,7 +887,6 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_0)   = nullptr;
             at(view_targets(), Renderer_RenderTarget::cloud_resolved_1)            = nullptr;
             at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_1)   = nullptr;
-            at(view_targets(), Renderer_RenderTarget::cloud_composite)             = nullptr;
             at(view_targets(), Renderer_RenderTarget::cloud_velocity)              = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth_hiz)           = nullptr;
             at(view_targets(), Renderer_RenderTarget::gbuffer_depth_hiz_early)     = nullptr;
@@ -996,7 +995,7 @@ namespace spartan
         {
             // concurrent sharing, the compute batch writes it and the graphics queue reads it from the blit onward
             at(view_targets(), Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
-            at(view_targets(), Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
+            at(view_targets(), Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
             at(view_targets(), Renderer_RenderTarget::particle_volume)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
             // the splat only deposits a fixed size subset of the live particles each frame, so a single
             // frame of the grid is a sparse decimated sample of the medium, accumulating it against a
@@ -1048,7 +1047,6 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_0) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_0");
             at(view_targets(), Renderer_RenderTarget::cloud_resolved_1)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_1");
             at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_1) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_1");
-            at(view_targets(), Renderer_RenderTarget::cloud_composite)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_composite");
             at(view_targets(), Renderer_RenderTarget::cloud_velocity)            = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_Rtv, "cloud_velocity");
             m_pass_state.cloud_history.Reset();
         };
@@ -1177,7 +1175,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_noise)                  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 128, 128,  128, 1,                                                RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise");
             // cumulus transmittance toward the sun, projected on the cloud base plane, read by lighting and fog
             // float4 so the shared gaussian blur can soften it in place, mips kill distant screen-space moire
-            at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, compute_mip_count(1024, 1024, 16),                 RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "cloud_shadow");
+            at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, compute_mip_count(512, 512, 16), RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "cloud_shadow");
             at(render_targets, Renderer_RenderTarget::cloud_environment)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 1, compute_mip_count(renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 16), RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "cloud_environment");
 
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
@@ -1631,6 +1629,7 @@ namespace spartan
             { Renderer_Shader::grass_gbuffer_v,                       RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
             { Renderer_Shader::grass_blade_v,                         RHI_Shader_Type::Vertex, "g_buffer.hlsl", RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED", true, false, "GRASS_SPECIALIZED" },
             { Renderer_Shader::grass_gbuffer_p,                       RHI_Shader_Type::Pixel, "g_buffer.hlsl", RHI_Vertex_Type::Max, "GRASS_SPECIALIZED"                                        },
+            { Renderer_Shader::grass_opaque_p,                        RHI_Shader_Type::Pixel, "g_buffer.hlsl", RHI_Vertex_Type::Max, "GRASS_SPECIALIZED", true, false, "GRASS_OPAQUE" },
 
             // gpu texture compression, synchronous so encode-on-load can wait
             { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         true },

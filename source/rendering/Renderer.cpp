@@ -7466,23 +7466,6 @@ namespace spartan
         }
     }
 
-    void Renderer::WaitForAsyncFog()
-    {
-        if (!m_cross_queue_sync.fog_timeline)
-        {
-            return;
-        }
-
-        // everything recorded so far only needed compute b, the rest of the frame also reads the fog
-        RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, m_cross_queue_sync.pending_compute_timeline, m_cross_queue_sync.pending_compute_timeline_value);
-        RHI_Device::Bind(RHI_Frame_List::Graphics);
-        m_cross_queue_sync.pending_compute_timeline       = m_cross_queue_sync.fog_timeline;
-        m_cross_queue_sync.pending_compute_timeline_value = m_cross_queue_sync.fog_timeline_value;
-        RHI_Device::SetFrameWait(m_cross_queue_sync.fog_timeline, m_cross_queue_sync.fog_timeline_value);
-        m_cross_queue_sync.fog_timeline       = nullptr;
-        m_cross_queue_sync.fog_timeline_value = 0;
-    }
-
     void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early)
     {
         Pass_Light(false, eye_layer);
@@ -7521,7 +7504,6 @@ namespace spartan
         {
             Pass_Light_Ibl(true, eye_layer);
         }
-        WaitForAsyncFog();
         Pass_Reflections_Shade(eye_layer);
         Pass_Reflections_Denoise(eye_layer);
 
@@ -7841,14 +7823,12 @@ namespace spartan
             const bool fog_prepared_async = IsRayTracedShadowsActive() &&
                 !Xr::IsSessionRunning() && !IsSecondaryViewActive();
             RHI_Work scatter_work;
-            RHI_Work surface;
-            RHI_CommandList* fog_commands = nullptr;
             // the shading rate reads last frame's output and both depth prepasses consume it
             Pass_VariableRateShading();
             if (fog_prepared_async)
             {
                 Pass_Cull_Early();
-                surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+                const RHI_Work surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
                 RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 scatter_commands->Begin();
                 RHI_Device::Bind(scatter_commands);
@@ -7857,11 +7837,13 @@ namespace spartan
                 scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
                 scatter_work = scatter_commands->GetWork();
                 submit_sky();
-                // submitted after compute b, lighting waits on b alone and fog is only needed from reflections on
-                fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+                // Queue fog behind its sky and ocean inputs while graphics shades the terrain.
+                // The later compute B signal covers fog as well as screen-space lighting.
+                RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 fog_commands->Begin();
                 RHI_Device::Bind(fog_commands);
                 Pass_Fog(0, rhi_all_mips);
+                fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
             submit_sky();
@@ -7916,15 +7898,6 @@ namespace spartan
             );
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline.get();
             const uint64_t compute_b_value        = batch_b.value;
-
-            // queue order makes the fog signal cover compute b as well
-            if (fog_commands)
-            {
-                fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-                const RHI_Work fog_work = fog_commands->GetWork();
-                m_cross_queue_sync.fog_timeline       = fog_work.timeline.get();
-                m_cross_queue_sync.fog_timeline_value = fog_work.value;
-            }
 
             if (restir_async)
             {
@@ -8014,7 +7987,6 @@ namespace spartan
                     Pass_Fog(eye, eye_layer);
                 ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early);
             }
-            WaitForAsyncFog();
 
             if (xr_stereo)
             {
