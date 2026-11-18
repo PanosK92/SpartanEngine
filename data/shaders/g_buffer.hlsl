@@ -25,13 +25,6 @@ struct gbuffer
 };
 
 // constants
-// Multipliers preserve each species' authored reflectance and leaf detail.
-// Adding a constant colour lifts dark foliage and washes out the texture.
-// Photographed crowns sit at 1.1 to 1.25 times as much green as red, leaf atlases are usually painted greener,
-// so the spread leans olive and yellow instead of adding more green.
-static const float3 vegetation_greener  = float3(0.98f, 1.00f, 0.90f);
-static const float3 vegetation_yellower = float3(1.10f, 0.98f, 0.80f);
-static const float3 vegetation_browner  = float3(1.00f, 0.88f, 0.74f);
 // Linear albedo, measured leaf reflectance rather than a painted green: a living blade reflects about a tenth of
 // the light (the foliage patch of a colour chart is 0.095, 0.150, 0.056) and its green is only 1.2 to 1.5 times
 // its red, lime tips with twice as much green as red are what reads as nuclear once the blade is lit properly.
@@ -910,10 +903,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     else if (surface.color_variation_from_instance())
     {
-        float variation       = hash((uint)vertex.uv_misc.w);
-        float3 variation_tint = lerp(vegetation_greener, vegetation_yellower, smoothstep(0.0f, 0.6f, variation));
-        variation_tint        = lerp(variation_tint, vegetation_browner, smoothstep(0.6f, 1.0f, variation));
-        albedo.rgb           *= variation_tint;
+        albedo.rgb *= vegetation_instance_tint((uint)vertex.uv_misc.w);
     }
 
     // Asset calibration can lift an underexposed leaf atlas, but diffuse

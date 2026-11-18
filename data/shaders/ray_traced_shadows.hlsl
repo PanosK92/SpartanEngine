@@ -21,28 +21,6 @@ struct [raypayload] ShadowPayload
     float shadow_alpha : read(caller) : write(caller, closesthit, miss); // how much light is blocked (0 = transparent, 1 = opaque)
 };
 
-float2 concentric_disk_sample(float2 u)
-{
-    float2 offset = 2.0f * u - 1.0f;
-    
-    if (offset.x == 0.0f && offset.y == 0.0f)
-        return float2(0.0f, 0.0f);
-    
-    float theta, r;
-    if (abs(offset.x) > abs(offset.y))
-    {
-        r     = offset.x;
-        theta = PI * 0.25f * (offset.y / offset.x);
-    }
-    else
-    {
-        r     = offset.y;
-        theta = PI * 0.5f - PI * 0.25f * (offset.x / offset.y);
-    }
-    
-    return float2(cos(theta), sin(theta)) * r;
-}
-
 void create_orthonormal_basis(float3 n, out float3 tangent, out float3 bitangent)
 {
     float3 up = abs(n.y) < 0.999f ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f);
@@ -234,12 +212,8 @@ void ray_gen()
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.01f + camera_distance * 0.0001f;
 
-    float  frame_index = (float)buffer_frame.frame;
-    float2 xi_base;
-    xi_base.x = frac(hash(float2(pixel))         + frame_index * 0.7548776662f);
-    xi_base.y = frac(hash(float2(pixel) + 31.7f) + frame_index * 0.5698402909f);
-
-    // directional sun, 1 spp jittered disk, sigma reconstructs the penumbra
+    // A fixed antipodal pair on the solar disk keeps canopy transmission stable
+    // as a receiver moves between pixels or the checkerboard changes parity.
     {
         // slot 0 holds a local light when the world has no sun, and a sun that is off, dark or shadowless is never
         // shadowed by the lighting pass, the denoise makes the same call from the same entry
@@ -257,15 +231,26 @@ void ray_gen()
         }
         else
         {
-            float2 disk       = concentric_disk_sample(xi_base);
-            float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
-            // Start on the illuminated side of a thin sheet, otherwise a leaf
-            // hits itself before the ray can test the real blockers behind it.
-            float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
-            float3 ray_origin = pos_ws + normal_ws * (base_offset * normal_sign);
-            float2 vis        = trace_opaque_shadow(ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
-            float4 visibility = trace_glass_shadow(vis.x, ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
-            tex_uav[pixel]    = shadow_mask_pack(visibility.rgb, shadow_blocker_distance(vis.x < 1.0f, vis.y, visibility.w));
+            float3 transmission = 0.0f;
+            float blocker = SHADOW_RAY_MAX_DISTANCE;
+            bool blocked = false;
+            [unroll] for (uint i = 0; i < 2; ++i)
+            {
+                float2 disk = i == 0 ? float2(0.5f, 0.5f) : float2(-0.5f, -0.5f);
+                float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
+                float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
+                float3 origin = pos_ws + normal_ws * (base_offset * normal_sign);
+                float2 vis = trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
+                float4 glass = trace_glass_shadow(vis.x, origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
+                transmission += glass.rgb;
+                float distance = shadow_blocker_distance(vis.x < 1.0f, vis.y, glass.w);
+                if (distance > 0.0f)
+                {
+                    blocker = min(blocker, distance);
+                    blocked = true;
+                }
+            }
+            tex_uav[pixel] = shadow_mask_pack(transmission * 0.5f, blocked ? blocker : 0.0f);
         }
     }
 

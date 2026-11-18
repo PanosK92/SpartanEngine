@@ -158,7 +158,12 @@ namespace spartan
         bool GetRainOccluded() const          { return m_rain_occluded; }
         void SetRainOccluded(bool occluded)   { m_rain_occluded = occluded; }
 
-        // leaf litter is normally laid only where nobody sees it appear, a camera cut replaces the whole frame so it may be laid in view
+        // Runtime source for newly shed leaves. Authored emitters use their own color ramp.
+        void SetLeafSource(uint32_t material, uint32_t instance) { m_leaf_material = material; m_leaf_instance = instance; }
+        uint32_t GetLeafMaterial() const { return m_leaf_material; }
+        uint32_t GetLeafInstance() const { return m_leaf_instance; }
+
+        // Permit surface seeding in view, where new leaves fade in.
         bool GetSeedVisible() const           { return m_seed_visible; }
         void SetSeedVisible(bool visible)     { m_seed_visible = visible; }
 
@@ -263,6 +268,8 @@ namespace spartan
         float m_volume_shadowing            = 0.5f;
         math::Vector4 m_ground_plane = math::Vector4::Zero;
         bool m_rain_occluded         = false;
+        uint32_t m_leaf_material = 0xffffffffu;
+        uint32_t m_leaf_instance = 0;
         bool m_seed_visible          = false;
         float m_drag                        = 1.2f;
         float m_turbulence_strength         = 0.3f;

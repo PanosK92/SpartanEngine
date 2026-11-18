@@ -857,7 +857,9 @@ namespace spartan
             }
             if (entity == wheel)
             {
-                mesh_center_offset = local * mesh_center - entity->GetPositionLocal();
+                // Store the lever arm in wheel axes. The current physical pose supplies
+                // steering, spin and the right-hand wheel flip when placing the mesh.
+                mesh_center_offset = entity->GetScaleLocal() * mesh_center;
             }
             point = local * point;
             reached_vehicle = entity->GetParent() == vehicle;
@@ -2215,7 +2217,9 @@ namespace spartan
 
         Vector3 normal = from_px_vec3(state.contact_normal);
         normal = rotation.Conjugate() * (VehicleState().vehicle_render_rotation * (VehicleState().vehicle_physics_rotation.Conjugate() * normal));
-        const Vector3 point = rotation.Conjugate() * (TransformVehiclePointToRender(from_px_vec3(state.contact_point)) - hub);
+        // Contact points are relative to the rebased PhysX scene; the visual hub is in world space.
+        const Vector3 contact_world = PhysicsWorld::ToWorldPosition(from_px_vec3(state.contact_point));
+        const Vector3 point = rotation.Conjugate() * (TransformVehiclePointToRender(contact_world) - hub);
         float distance = -normal.Dot(point);
         grounded &= car::prepare_tire_contact_plane(normal, distance, radius);
         // At rest, keep the solved shape until the support plane moves by a
@@ -2437,7 +2441,9 @@ namespace spartan
                 i == static_cast<int>(WheelIndex::FrontRight);
             const Quaternion base = vehicle_rotation * VehicleState().cheap_wheel_local_rot[i];
             Quaternion wheel_rotation = (is_front ? steer_q : Quaternion::Identity) * spin * base;
-            Vector3 wheel_position = vehicle_position + vehicle_rotation * VehicleState().cheap_wheel_local_pos[i];
+            const Vector3 rest_hub = VehicleState().cheap_wheel_local_pos[i] +
+                VehicleState().cheap_wheel_local_rot[i] * VehicleState().wheel_mesh_center_offsets[i];
+            Vector3 wheel_position = vehicle_position + vehicle_rotation * rest_hub;
             wheel_position -= wheel_rotation * VehicleState().wheel_mesh_center_offsets[i];
             if (!wheel_position.IsFinite() || !wheel_rotation.IsFinite())
             {

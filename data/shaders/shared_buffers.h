@@ -1419,13 +1419,13 @@ struct EmitterParams
     SHARED_FLOAT  collision_clearance SHARED_DEFAULT(0.0f);
     // weather rain, particles die where the rain occlusion grid says a roof or the ground stops them
     SHARED_UINT   rain_occluded SHARED_DEFAULT(0);
-    // leaf litter may be laid in view, set for the moments after a camera cut
+    // permit litter to fade in on visible surfaces
     SHARED_UINT   seed_visible  SHARED_DEFAULT(0);
     // set for smoke that also lives in the fluid grid, inside the grid its particles ride the solved flow
     // as tracers and stay out of the volume, the grid density stands in for them until they leave it
     SHARED_UINT   fluid_tracer   SHARED_DEFAULT(0);
-    SHARED_UINT   padding_seed_1 SHARED_DEFAULT(0);
-    SHARED_UINT   padding_seed_2 SHARED_DEFAULT(0);
+    SHARED_UINT   leaf_material SHARED_DEFAULT(0xffffffffu);
+    SHARED_UINT   leaf_instance SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_low  SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_high SHARED_DEFAULT(0);
 };

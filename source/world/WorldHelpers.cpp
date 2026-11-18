@@ -774,6 +774,7 @@ namespace spartan
                 // One representative canopy per plant, never one per submesh.
                 Entity* acoustic_part = nullptr;
                 float acoustic_area = 0.0f;
+                bool representative_is_foliage = false;
                 for (Entity* part : parts)
                 {
                     Render* render = part->GetComponent<Render>();
@@ -842,8 +843,10 @@ namespace spartan
                     {
                         const Vector3 size = render->GetBoundingBoxMesh().GetSize();
                         const float area = size.x * size.z;
-                        if (area > acoustic_area)
+                        const bool crown = foliage && (layer.flags & TerrainScatterFlags_Canopy);
+                        if ((crown && !representative_is_foliage) || (crown == representative_is_foliage && area > acoustic_area))
                         {
+                            representative_is_foliage = crown;
                             acoustic_area = area;
                             acoustic_part = part;
                         }

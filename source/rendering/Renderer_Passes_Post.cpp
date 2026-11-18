@@ -1507,6 +1507,8 @@ namespace spartan
             params.emitter_velocity     = emitter->GetEmitterVelocity();
             params.ground_plane         = emitter->GetGroundPlane();
             params.rain_occluded        = emitter->GetRainOccluded() ? 1u : 0u;
+            params.leaf_material        = emitter->GetLeafMaterial();
+            params.leaf_instance        = emitter->GetLeafInstance();
             params.seed_visible         = emitter->GetSeedVisible() ? 1u : 0u;
             // decided by what the effect was authored as, a plume demoted to billboards below still rides the fluid
             params.fluid_tracer         = emitter->GetRenderMode() == ParticleRenderMode::Volumetric ? 1u : 0u;

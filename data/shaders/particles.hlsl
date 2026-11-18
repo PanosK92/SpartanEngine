@@ -129,6 +129,33 @@ bool under_cover(float3 position)
 
 #ifdef EMIT
 
+// Use the source crown's albedo atlas, material multiplier and instance tint.
+float3 canopy_leaf_color(EmitterParams emitter, uint seed)
+{
+    MaterialParameters material = material_parameters[emitter.leaf_material];
+    float3 color = material.color.rgb;
+    if (material.has_texture_albedo())
+    {
+        uint texture_index = get_material_texture_index(emitter.leaf_material, material_texture_index_albedo);
+        // The coarsest mip gives the crown average if the sampled texels are cutouts.
+        float3 albedo = material_textures[NonUniformResourceIndex(texture_index)].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), 0.5, 16).rgb;
+        for (uint i = 0; i < 4; ++i)
+        {
+            float2 uv = float2(rng(seed + 2u * i), rng(seed + 2u * i + 1u));
+            float4 sample_color = material_textures[NonUniformResourceIndex(texture_index)].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv, 2);
+            if (sample_color.a > 0.6)
+            {
+                albedo = sample_color.rgb;
+                break;
+            }
+        }
+        color *= material.is_albedo_srgb() ? srgb_to_linear(albedo) : albedo;
+    }
+    if ((material.flags & (1u << 10)) != 0u)
+        color *= vegetation_instance_tint(emitter.leaf_instance);
+    return saturate(color);
+}
+
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -177,9 +204,18 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         offset      = float3(r * cos(theta), (rng(seed + 1307u) * 2.0 - 1.0) * emitter.radius * 0.45, r * sin(theta));
     }
 
-    // Thin the edge of litter patches so neighboring carpets merge without a
-    // visible circular boundary. The leaves themselves remain fully opaque.
-    if (emitter.render_mode == 5u && rng(seed + 1889u) >
+    if (emitter.leaf_material != 0xffffffffu && emitter.render_mode == 5u)
+    {
+        // Two independent disk samples give a continuous density falloff from the tree to the road.
+        float2 drift = 0.0;
+        for (uint i = 0; i < 2; ++i)
+        {
+            float angle = rng(seed + 1871u + i * 2u) * 6.2831853;
+            drift += float2(cos(angle), sin(angle)) * sqrt(rng(seed + 1872u + i * 2u));
+        }
+        offset = float3(drift.x, 0, drift.y) * (0.5 * emitter.radius);
+    }
+    else if (emitter.render_mode == 5u && rng(seed + 1889u) >
         1.0 - smoothstep(0.6, 1.0, length(offset.xz) / max(emitter.radius, 0.001))) return;
 
     // bias the launch upward and blend toward the emitter direction when requested
@@ -263,9 +299,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         p.wake_origin  = float4(random_direction(seed + 997u) * (1.0 + 3.0 * rng(seed + 1009u)), 0.0);
         p.birth_effect = float4(tangent, 1.0);
         p.ground_plane = float4(0.0, 0.0, 0.0, emitter.render_mode == 5u ? 0.0 : 0.0001);
-        // each leaf is born with its own dryness, a fixed property, so nothing recolours it later
-        p.birth_color.rgb  = lerp(p.birth_color.rgb, emitter.end_color.rgb, rng(seed + 947u) * 0.7);
-        p.birth_color.rgb *= lerp(float3(0.42, 0.55, 0.30), float3(1.18, 0.95, 0.66), rng(seed + 941u));
+        if (emitter.leaf_material != 0xffffffffu)
+            p.birth_color.rgb = canopy_leaf_color(emitter, seed + 941u);
+        else
+        {
+            p.birth_color.rgb  = lerp(p.birth_color.rgb, emitter.end_color.rgb, rng(seed + 947u) * 0.7);
+            p.birth_color.rgb *= lerp(float3(0.42, 0.55, 0.30), float3(1.18, 0.95, 0.66), rng(seed + 941u));
+        }
         p.color = p.birth_color;
     }
 
@@ -1898,14 +1938,13 @@ particle_output main_ps(ps_input input)
             leaf_height = abs(dx) * 0.28 + dx * dx * lerp(-0.4, 0.7, frac(seed * 11.1)) + along * along * 0.07 + ribs * 0.012 - vein * 0.015;
             leaf_blade  = true;
 
-            // a dry leaf is never one flat colour: fresher at the stem, drier at the tip and rim,
-            // with rot blotches and specks, a pale midrib, and a duller, paler underside
+            // Shade the ridges, rim and veins while retaining the blade's birth hue.
             float2 nq    = q * 2.5 + seed * 37.0;
             float blotch = leaf_noise(nq) * 0.65 + leaf_noise(nq * 2.9 + 5.0) * 0.35;
             float rim    = smoothstep(-0.10, 0.0, edge);
-            float3 tint  = base_color * lerp(float3(1.10, 1.06, 0.80), float3(0.88, 0.80, 0.74), along * 0.5 + 0.5);
-            tint         = lerp(tint, tint * float3(0.50, 0.38, 0.28), smoothstep(0.55, 0.85, blotch) * 0.85);
-            tint         = lerp(tint, tint * float3(0.62, 0.50, 0.40), rim * 0.7);
+            float3 tint  = base_color * lerp(1.06, 0.86, along * 0.5 + 0.5);
+            tint         = lerp(tint, tint * 0.48, smoothstep(0.55, 0.85, blotch) * 0.85);
+            tint         = lerp(tint, tint * 0.58, rim * 0.7);
             tint        *= 1.0 - 0.45 * pow(leaf_noise(q * 15.0 + seed * 91.0), 6.0);
             tint        *= 1.0 + vein * 0.18 - ribs * 0.06;
             if (input.nature_shape.y < -1.5)

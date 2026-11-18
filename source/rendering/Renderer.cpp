@@ -2402,7 +2402,7 @@ namespace spartan
     {
         Renderer::view().frame.view_projection_previous = Renderer::view().frame.view_projection;
         Renderer::view().frame.view_projection          = Renderer::view().frame.view * Renderer::view().frame.projection;
-        Renderer::view().frame.view_projection_inverted = Matrix::Invert(Renderer::view().frame.view_projection);
+        Renderer::view().frame.view_projection_inverted = Matrix::Invert(Renderer::view().frame.projection) * Renderer::view().frame.view_inverted;
 
         // the camera view translates by -camera_position, so relative to it only the rotation is left
         Matrix view_rotation = Renderer::view().frame.view;
@@ -2719,7 +2719,7 @@ namespace spartan
             Renderer::view().frame.projection               = Xr::GetProjectionMatrix(0);
             Renderer::view().frame.projection_inverted      = Matrix::Invert(Renderer::view().frame.projection);
             Renderer::view().frame.view_projection          = Renderer::view().frame.view * Renderer::view().frame.projection;
-            Renderer::view().frame.view_projection_inverted = Matrix::Invert(Renderer::view().frame.view_projection);
+            Renderer::view().frame.view_projection_inverted = Renderer::view().frame.projection_inverted * Renderer::view().frame.view_inverted;
             Renderer::view().frame.camera_position          = Renderer::view().frame.view_inverted.GetTranslation();
 
             // vr does not jitter the projection, jittered equals unjittered, replace mono fields so consumers see eye consistent data
@@ -2731,7 +2731,7 @@ namespace spartan
             Renderer::view().frame.projection_right                          = Xr::GetProjectionMatrix(1);
             Renderer::view().frame.projection_inverted_right                 = Matrix::Invert(Renderer::view().frame.projection_right);
             Renderer::view().frame.view_projection_right                     = Renderer::view().frame.view_right * Renderer::view().frame.projection_right;
-            Renderer::view().frame.view_projection_inverted_right            = Matrix::Invert(Renderer::view().frame.view_projection_right);
+            Renderer::view().frame.view_projection_inverted_right            = Renderer::view().frame.projection_inverted_right * Renderer::view().frame.view_inverted_right;
             Renderer::view().frame.view_projection_previous_right            = Renderer::view().view_projection_previous_right;
             Renderer::view().frame.view_projection_unjittered_right          = Renderer::view().frame.view_projection_right;
             Renderer::view().frame.view_projection_previous_unjittered_right = Renderer::view().view_projection_previous_right;
