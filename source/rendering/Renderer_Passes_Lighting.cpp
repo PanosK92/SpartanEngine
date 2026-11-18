@@ -453,7 +453,6 @@ namespace spartan
                 // Resolve the four SIGMA slots once per frame, rather than scanning
                 // every visible street light for every shaded pixel.
                 static_assert(nrd_local_shadow_max == 4);
-                uint32_t local_mask = 0;
                 for (uint32_t slot = 0; slot < nrd_local_shadow_max; ++slot)
                 {
                     m_pcb_pass_cpu.set(pass_ray_traced_shadows::local_shadow_lights + slot, 0u);
@@ -464,12 +463,9 @@ namespace spartan
                     const uint32_t slot = (flags >> 8u) & 7u;
                     if (slot > 0 && slot <= nrd_local_shadow_max && (flags & (1u << 3)) != 0)
                     {
-                        local_mask |= 1u << (slot - 1);
                         m_pcb_pass_cpu.set(pass_ray_traced_shadows::local_shadow_lights + slot - 1, i);
                     }
                 }
-                m_pcb_pass_cpu.set(pass_ray_traced_shadows::previous_local_mask, m_pass_state.local_shadow_mask);
-                m_pass_state.local_shadow_mask = local_mask;
                 m_pcb_pass_cpu.set(pass_ray_traced_shadows::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
 
                 // the ray generation shader detects checkerboard from a launch narrower than its targets
@@ -554,6 +550,9 @@ namespace spartan
 
         auto denoise_sigma = [&](float tan_radius, uint32_t slice, bool is_local, uint32_t light_index, const Vector3& direction, uint32_t denoiser_index)
         {
+            // SIGMA reads last frame's sun output during stabilization. All spatial-only
+            // local light passes can reuse a separate scratch texture.
+            RHI_Texture* output = is_local ? GetRenderTarget(Renderer_RenderTarget::nrd_out_shadow_local) : tex_out;
             // untimed sub passes, the trace and its denoiser read as one chunk in the profiler
             RHI_CommandList::BeginPass(is_local ? "nrd_pack_shadows_local" : "nrd_pack_shadows", false);
             SetCommonTextures();
@@ -576,7 +575,7 @@ namespace spartan
             RHI_CommandList::Dispatch(tex_shadows);
             RHI_CommandList::EndPass();
 
-            if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, &direction, denoiser_index, 0, nullptr, nullptr, false, tex_translucency))
+            if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, output, &direction, denoiser_index, 0, nullptr, nullptr, false, tex_translucency))
             {
                 return false;
             }
@@ -587,7 +586,7 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_nrd_shadows::local_slice, slice);
             m_pcb_pass_cpu.set(pass_nrd_shadows::is_local, is_local);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_out);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, output);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
             if (tex_shadows_local)
             {
@@ -1358,7 +1357,7 @@ namespace spartan
                         break;
                     }
 
-                    math::Matrix view_projection = Renderer::GetViewCamera()->GetViewProjectionMatrix();
+                    const math::Matrix& view_projection = Renderer::view().frame.view_projection;
                     Vector4 p = {};
 
                     // todo: why do we need to flip sign?

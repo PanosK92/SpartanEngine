@@ -506,7 +506,6 @@ namespace pass_reflections_apply
 namespace pass_ray_traced_shadows
 {
     static const SHARED_UINT light_culling       = 0; // bool
-    static const SHARED_UINT previous_local_mask = 5;
     static const SHARED_UINT local_shadow_lights = 1; // uint x nrd_local_shadow_max, light index per sigma slot, 0 is empty
 }
 

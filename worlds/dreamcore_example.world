@@ -49,7 +49,7 @@
   <Entity name="ocean" id="2001000000000000006" active="true" position="30 0 -2.5" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <water>
-    <water wave_size="1" surf_size="0.899999976" clarity="0.75" sea_level="0" />
+    <water biome="2" wave_size="1" surf_size="0.899999976" clarity="0.75" sea_level="0" />
    </water>
   </Entity>
   <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">

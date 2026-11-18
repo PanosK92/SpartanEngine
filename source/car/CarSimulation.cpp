@@ -3271,6 +3271,7 @@ namespace car
                 debug_suspension_bottom[i] = wheel_center;
 
                 tire_probe_row rows[max_tire_probe_rows];
+                PxVec3 row_centers[max_tire_probe_rows];
                 int hit_count = 0;
                 for (int r = 0; r < row_count; r++)
                 {
@@ -3278,8 +3279,8 @@ namespace car
                     // a tread is crowned, and the mean radius is held at nominal so a flat road at zero
                     // camber still loads exactly as the single point model did before
                     float row_radius = wheel_radius + crown * (1.0f / 3.0f - 4.0f * offset * offset);
-                    PxVec3 row_center = wheel_center + wheel_axis * (offset * wheel_width);
-                    rows[r] = probe_tread_row(scene, row_center, plane_down, wheel_axis, local_up, row_radius, ray_length, max_penetration, column_count, arc, filter);
+                    row_centers[r] = wheel_center + wheel_axis * (offset * wheel_width);
+                    rows[r] = probe_tread_row(scene, row_centers[r], plane_down, wheel_axis, local_up, row_radius, ray_length, max_penetration, column_count, arc, filter);
                     hit_count += rows[r].hit ? 1 : 0;
                 }
 
@@ -3306,7 +3307,9 @@ namespace car
                         continue;
                     }
 
-                    PxVec3 probe_velocity = wheel_actor ? actor_point_velocity(wheel_actor, row.point) : actor_point_velocity(body, row.point);
+                    // Penetration measures axle-to-ground separation. An off-centre probe hit
+                    // on a spinning tread has a normal velocity even at constant separation.
+                    PxVec3 probe_velocity = actor_point_velocity(wheel_actor ? wheel_actor : body, row_centers[r]);
                     if (const PxRigidDynamic* ground_actor = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
                     {
                         probe_velocity -= actor_point_velocity(ground_actor, row.point);

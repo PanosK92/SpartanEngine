@@ -341,6 +341,7 @@ namespace spartan
         );
         void DisableOcean(Water* water);
         bool IsOceanEnabled();
+        const Water* GetActiveOcean();
         // world space wave height at (x, z) from the readback of the gpu displacement, false when no ocean is active
         bool GetOceanHeight(const float x, const float z, float& height);
         // the calm sea surface, false when no ocean is active, a cheap test before the wave queries

@@ -936,6 +936,7 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)           = nullptr;
             at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)                  = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_out_shadow_local)            = nullptr;
             for_restir_reservoir_slot([](uint32_t, Renderer_RenderTarget rt) { at(view_targets(), rt) = nullptr; });
             at(view_targets(), Renderer_RenderTarget::shading_rate)                 = nullptr;
             at(view_targets(), Renderer_RenderTarget::shadow_atlas)                 = nullptr;
@@ -1083,6 +1084,7 @@ namespace spartan
                 at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
                 // sigma_shadow_translucency writes the shadow in x and the glass colour in yzw
                 at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
+                at(view_targets(), Renderer_RenderTarget::nrd_out_shadow_local)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow_local");
             }
         };
 

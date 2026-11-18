@@ -3424,6 +3424,26 @@ void Properties::ShowWater(spartan::Water* water) const
         ImGui::DragFloat("##sea_level", &sea_level, 0.1f, -1000.0f, 1000.0f, "%.1f m");
         ImGui::EditorUi::decorate_field();
 
+        static const vector<string> biomes = { "None", "Coastal", "Open ocean" };
+        uint32_t biome = water->GetBiome();
+        if (property_combo("Sea life", biomes, &biome, "Coastal waters favor schools, jellyfish and crabs. Open oceans favor sharks and whales."))
+            water->SetBiome(biome);
+        if (biome != Water::None)
+        {
+            float population = water->GetPopulation() * 100.0f;
+            if (property_slider("Population", &population, 0.0f, 100.0f, "%.0f%%", "Local abundance around the camera."))
+                water->SetPopulation(population / 100.0f);
+            static const char* species[Water::SpeciesCount] = { "Schooling fish", "Sharks", "Jellyfish", "Whales", "Crabs" };
+            for (uint32_t i = 0; i < Water::SpeciesCount; ++i)
+            {
+                const uint32_t bit = 1u << i;
+                const uint32_t mask = water->GetSpeciesMask();
+                bool enabled = (mask & bit) != 0;
+                if (property_toggle(species[i], &enabled))
+                    water->SetSpeciesMask(enabled ? mask | bit : mask & ~bit);
+            }
+        }
+
         if (wave_size != water->GetWaveSize())
         {
             water->SetWaveSize(wave_size);

@@ -33,6 +33,9 @@ namespace spartan
     {
         SP_REGISTER_ATTRIBUTE_GET_SET(GetWaveSize, SetWaveSize, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetSurfSize, SetSurfSize, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetBiome, SetBiome, uint32_t);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetSpeciesMask, SetSpeciesMask, uint32_t);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetPopulation, SetPopulation, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetClarity, SetClarity, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_sea_level, SetSeaLevel, float);
     }
@@ -135,6 +138,9 @@ namespace spartan
     void Water::Save(pugi::xml_node& node)
     {
         pugi::xml_node water = node.append_child("water");
+        water.append_attribute("biome")        = GetBiome();
+        water.append_attribute("species_mask") = GetSpeciesMask();
+        water.append_attribute("population")   = GetPopulation();
         water.append_attribute("wave_size") = GetWaveSize();
         water.append_attribute("surf_size") = m_surf_size;
         water.append_attribute("clarity")   = GetClarity();
@@ -155,6 +161,9 @@ namespace spartan
         float legacy_size = water.attribute("amplitude").as_float(1.0f)
             * water.attribute("displacement_scale").as_float(1.0f);
         float legacy_clarity = 1.0f - water.attribute("turbidity").as_float(1.0f) / 4.0f;
+        SetBiome(water.attribute("biome").as_uint(None));
+        SetSpeciesMask(water.attribute("species_mask").as_uint(all_species));
+        SetPopulation(water.attribute("population").as_float(0.65f));
         SetWaveSize(water.attribute("wave_size").as_float(legacy_size));
         SetSurfSize(water.attribute("surf_size").as_float(m_surf_size));
         SetClarity(water.attribute("clarity").as_float(legacy_clarity));

@@ -20,7 +20,6 @@ Commercial use requires written permission and negotiated payment terms.
 static const float fill_depth_edge      = 0.1f;  // relative depth spread of the four neighbours that counts as an edge
 static const float fill_normal_power    = 8.0f;  // sharpness of the normal weight
 static const float fill_weight_epsilon  = 1e-4f;
-static const float fill_static_pixels   = 0.25f; // screen motion below which the previous frame's value is reused
 
 static const int2 fill_offsets[4] =
 {
@@ -30,9 +29,9 @@ static const int2 fill_offsets[4] =
     int2( 0,  1)
 };
 
-// the weighted mean of the visibility, and the blocker distance of the strongest neighbour that has a blocker,
-// a static pixel keeps its previous visibility, clamped to the range of the neighbours
-float4 fill_signal(float4 samples[4], float4 weights, float4 previous, bool is_static)
+// Reconstruct both inputs from this trace. SIGMA reprojects its own history
+// after packing and overwrites these textures with the filtered result.
+float4 fill_signal(float4 samples[4], float4 weights)
 {
     float3 visibility   = 0.0f;
     float best_weight   = -1.0f;
@@ -54,13 +53,6 @@ float4 fill_signal(float4 samples[4], float4 weights, float4 previous, bool is_s
             best_blocked = weights[i];
             best_blocker = samples[i];
         }
-    }
-
-    if (is_static)
-    {
-        float3 visibility_min = min(min(samples[0].rba, samples[1].rba), min(samples[2].rba, samples[3].rba));
-        float3 visibility_max = max(max(samples[0].rba, samples[1].rba), max(samples[2].rba, samples[3].rba));
-        visibility            = clamp(previous.rba, visibility_min, visibility_max);
     }
 
     float4 result = best_blocked >= 0.0f ? best_blocker : best;
@@ -103,10 +95,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     float3 normal = get_normal(pixel);
-
-    // velocity is in ndc, half of it times the resolution is the motion in pixels
-    float2 motion    = tex_velocity[pixel].xy * 0.5f * float2(resolution);
-    bool   is_static = dot(motion, motion) < fill_static_pixels * fill_static_pixels;
 
     // neighbours outside the screen take the one across, they are traced pixels too
     uint2  neighbours[4];
@@ -156,7 +144,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         samples[i] = tex_uav[neighbours[i]];
     }
-    tex_uav[pixel] = fill_signal(samples, weights, tex_uav[pixel], is_static);
+    tex_uav[pixel] = fill_signal(samples, weights);
 
     for (uint slice = 0; slice < slices; slice++)
     {
@@ -171,8 +159,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             samples[i] = tex_uav_rt_shadows_local[uint3(neighbours[i], slice)];
         }
-        float4 previous = (pass_uint(pass_ray_traced_shadows::previous_local_mask) & (1u << slice)) != 0u
-            ? tex_uav_rt_shadows_local[uint3(pixel, slice)] : shadow_mask_pack(1.0f, 0.0f);
-        tex_uav_rt_shadows_local[uint3(pixel, slice)] = fill_signal(samples, weights, previous, is_static);
+        tex_uav_rt_shadows_local[uint3(pixel, slice)] = fill_signal(samples, weights);
     }
 }

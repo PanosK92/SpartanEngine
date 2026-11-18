@@ -479,7 +479,6 @@ namespace spartan
             ViewPassHistory& h   = other.history;
             swap(pass.cleared_reflections,     h.cleared_reflections);
             swap(pass.cleared_rt_reflections,  h.cleared_rt_reflections);
-            swap(pass.local_shadow_mask,       h.local_shadow_mask);
             swap(pass.cleared_rt_shadows,      h.cleared_rt_shadows);
             swap(pass.depth_history_cleared,   h.depth_history_cleared);
             swap(pass.hiz_history_valid,       h.hiz_history_valid);

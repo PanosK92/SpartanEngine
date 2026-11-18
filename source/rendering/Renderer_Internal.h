@@ -194,7 +194,6 @@ namespace spartan
 
             bool cleared_reflections     = false;
             bool cleared_rt_reflections  = false;
-            uint32_t local_shadow_mask = 0;
             bool cleared_rt_shadows      = false;
             bool skip_rt_trace           = false;
             // set by the reflections trace, shade and denoise must agree with the layout it wrote
@@ -386,7 +385,6 @@ namespace spartan
         {
             bool cleared_reflections    = false;
             bool cleared_rt_reflections = false;
-            uint32_t local_shadow_mask = 0;
             bool cleared_rt_shadows     = false;
             bool depth_history_cleared  = false;
             bool hiz_history_valid      = false;

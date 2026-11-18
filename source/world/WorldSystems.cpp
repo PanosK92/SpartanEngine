@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CameraController.h"
 #include "components/Camera.h"
 #include "AmbientWildlife.h"
+#include "MarineLife.h"
 #include "AmbientAtmosphere.h"
 #include "RoadDetails.h"
 #include "../core/ProgressTracker.h"
@@ -183,6 +184,7 @@ namespace spartan::world_systems
         callbacks.after_entities_destroyed = [] {
             vehicle_particle_wake::Clear();
             vehicle_particle_fluid::Clear();
+            marine_life::Clear(false);
             ambient_wildlife::Clear(false);
             ambient_atmosphere::Clear(false);
             road_details::Clear();
@@ -216,6 +218,9 @@ namespace spartan::world_systems
             {
                 SP_PROFILE_CPU_START("ambient_atmosphere_tick");
                 ambient_atmosphere::Tick(dt);
+                SP_PROFILE_CPU_END();
+                SP_PROFILE_CPU_START("marine_life_tick");
+                marine_life::Tick(dt);
                 SP_PROFILE_CPU_END();
             }
             SP_PROFILE_CPU_START("vehicle_particle_wake_tick");

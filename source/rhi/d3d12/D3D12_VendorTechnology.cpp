@@ -1547,7 +1547,8 @@ namespace spartan
             nrd_common::fill_preset_shadows(
                 sigma,
                 light_dir,
-                shadow_denoiser_index != 0
+                shadow_denoiser_index != 0,
+                common::cb_frame->delta_time_real
             );
             if (pool.integration.SetDenoiserSettings(denoiser_id, &sigma) != nrd::Result::SUCCESS)
             {

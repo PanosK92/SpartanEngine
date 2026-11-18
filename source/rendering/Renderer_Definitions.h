@@ -682,6 +682,7 @@ namespace spartan
         nrd_out_spec_radiance,
         nrd_in_penumbra,
         nrd_out_shadow,
+        nrd_out_shadow_local,
         // restir reservoir buffers (current frame)
         restir_reservoir0,
         restir_reservoir1,

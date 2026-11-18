@@ -1957,15 +1957,18 @@ namespace spartan
             }
 
             bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
-            PxRigidDynamic* wheel_actor = VehicleState().vehicle_simulation->get_multibody_state().corners[i].wheel_body;
-            if (!wheel_actor)
+            const auto& corner = VehicleState().vehicle_simulation->get_multibody_state().corners[i];
+            if (!corner.upright || !corner.wheel_joint)
             {
                 continue;
             }
 
             Vector3 wheel_position;
-            Quaternion wheel_rotation;
-            from_px_transform(wheel_actor->getGlobalPose(), wheel_position, wheel_rotation);
+            Quaternion upright_rotation;
+            from_px_transform(corner.upright->getGlobalPose(), wheel_position, upright_rotation);
+            // The bearing fixes the centre and axle to the upright. Only twist about
+            // local X belongs to the rotating mesh, even under load on the joint.
+            Quaternion wheel_rotation = upright_rotation * Quaternion::FromAxisAngle(Vector3::Right, corner.wheel_joint->getAngle());
             if (!wheel_position.IsFinite() || !wheel_rotation.IsFinite())
             {
                 continue;
@@ -1980,7 +1983,8 @@ namespace spartan
             wheel_position -= wheel_rotation * VehicleState().wheel_mesh_center_offsets[i];
             wheel_entity->SetPositionAndRotation(wheel_position, wheel_rotation);
 
-            const Vector3 angular = from_px_vec3(wheel_actor->getAngularVelocity());
+            const Vector3 axle = upright_rotation * Vector3::Right;
+            const Vector3 angular = axle * from_px_vec3(corner.wheel_body->getAngularVelocity()).Dot(axle);
             const Vector3 angular_render = TransformVehicleRotationToRender(Quaternion::Identity) * angular;
             // All mesh parts use the same wheel-space pivot. Compute it once,
             // and reuse traversal storage rather than allocating for every wheel.
@@ -2006,18 +2010,9 @@ namespace spartan
             // not the spinning wheel body. This also retains steering and camber.
             if (caliper)
             {
-                if (PxRigidDynamic* upright = VehicleState().vehicle_simulation->get_multibody_state().corners[i].upright)
-                {
-                    Vector3 upright_position;
-                    Quaternion upright_rotation;
-                    from_px_transform(upright->getGlobalPose(), upright_position, upright_rotation);
-                    if (upright_rotation.IsFinite())
-                    {
-                        if (is_right_wheel)
-                            upright_rotation *= Quaternion::FromAxisAngle(Vector3::Up, math::pi);
-                        caliper->SetRotation(TransformVehicleRotationToRender(upright_rotation));
-                    }
-                }
+                if (is_right_wheel)
+                    upright_rotation *= Quaternion::FromAxisAngle(Vector3::Up, math::pi);
+                caliper->SetRotation(TransformVehicleRotationToRender(upright_rotation));
             }
         }
         if (!defer_tire_deformation) FlushTireDeformationBatch();

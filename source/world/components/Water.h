@@ -56,6 +56,17 @@ namespace spartan
             m_caustics_intensity = 1.0f;
         }
 
+        enum Biome : uint32_t { None, Coastal, OpenOcean };
+        enum Species : uint32_t { Fish, Shark, Jellyfish, Whale, Crab, SpeciesCount };
+        static constexpr uint32_t all_species = (1u << SpeciesCount) - 1;
+
+        uint32_t GetBiome() const { return m_biome; }
+        void SetBiome(uint32_t biome) { m_biome = biome <= OpenOcean ? biome : None; }
+        uint32_t GetSpeciesMask() const { return m_species_mask; }
+        void SetSpeciesMask(uint32_t mask) { m_species_mask = mask & all_species; }
+        float GetPopulation() const { return m_population; }
+        void SetPopulation(float value) { m_population = Sanitize(value, 0.0f, 1.0f, 0.65f); }
+
         // simulation parameters
         uint32_t GetCascadeCount() const
         {
@@ -176,6 +187,10 @@ namespace spartan
         float m_normal_strength     = 1.0f;
         float m_sea_level           = 0.0f;
         float m_surf_size           = 0.9f;
+
+        uint32_t m_biome        = None;
+        uint32_t m_species_mask = all_species;
+        float m_population      = 0.65f;
 
         // water body optics, read by the renderer each frame, they do not touch the spectrum
         float m_turbidity           = 1.0f; // suspended particles, affects transmission and underwater lighting

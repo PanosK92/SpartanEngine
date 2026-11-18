@@ -988,6 +988,11 @@ namespace spartan
         ocean_readback_written_mask = 0;
     }
 
+    const Water* Renderer::GetActiveOcean()
+    {
+        return m_pass_state.ocean;
+    }
+
     float Renderer::GetOceanSwashDepth(const float x, const float z)
     {
         const Water* water = m_pass_state.ocean;

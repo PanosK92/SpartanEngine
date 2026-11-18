@@ -241,17 +241,15 @@ namespace spartan
         }
 
         // directional rt shadows, sigma penumbra reconstruction
-        inline void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], bool is_local)
+        inline void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], bool is_local, float delta_time)
         {
             settings                          = {};
             settings.lightDirection[0]        = is_local ? 0.0f : light_direction[0];
             settings.lightDirection[1]        = is_local ? 0.0f : light_direction[1];
             settings.lightDirection[2]        = is_local ? 0.0f : light_direction[2];
             settings.planeDistanceSensitivity = is_local ? 0.04f : 0.02f;
-            // the stabilize pass reprojects a receiver's history with the receiver's motion, so the shadow
-            // of a moving occluder (the player car) trails behind it and smears out with speed, taau
-            // already stabilizes the jittered sun penumbra
-            settings.maxStabilizedFrameNum    = 0;
+            // A short sun history covers both checkerboard phases while limiting trails from moving casters.
+            settings.maxStabilizedFrameNum = is_local ? 0u : get_accumulated_frame_num(0.04f, nrd::SIGMA_MAX_HISTORY_FRAME_NUM, delta_time);
         }
     }
 }
