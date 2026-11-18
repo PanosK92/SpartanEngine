@@ -73,6 +73,15 @@ namespace spartan
             RHI_Texture* tex_bias = nullptr
         );
 
+        // metalfx, false when it could not run, the caller falls back to taau
+        static float MetalFx_GetResolutionScaleMin(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
+        static bool MetalFx_Dispatch(
+            RHI_Texture* tex_color,
+            RHI_Texture* tex_depth,
+            RHI_Texture* tex_velocity,
+            RHI_Texture* tex_output
+        );
+
         // nrd, guides + signal in/out, light_direction only for shadows
         // shadow_denoiser_index 0 is the sun, 1-4 are local sigma instances
         // checkerboard means the reflections signal holds one pixel of each horizontal pair, packed into the left half

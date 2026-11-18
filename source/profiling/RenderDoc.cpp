@@ -30,8 +30,128 @@ namespace spartan
     {
     }
 
+    const char* RenderDoc::GetCaptureName()
+    {
+        return "RenderDoc capture";
+    }
+
     void RenderDoc::LaunchRenderDocUi()
     {
+    }
+}
+// renderdoc has no metal backend, so the same entry points drive the xcode metal debugger
+#elif defined(API_GRAPHICS_METAL)
+
+//= INCLUDES ===========================
+#include "../rhi/RHI_Implementation.h"
+#include "../file_system/FileSystem.h"
+//======================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
+
+namespace spartan
+{
+    namespace
+    {
+        enum class Capture_State
+        {
+            Idle,
+            Requested,
+            Recording
+        };
+
+        Capture_State capture_state = Capture_State::Idle;
+        string capture_path;
+    }
+
+    void RenderDoc::OnPreDeviceCreation()
+    {
+        // outside of xcode, metal only allows captures when this is set before the device exists
+        setenv("MTL_CAPTURE_ENABLED", "1", 1);
+    }
+
+    void RenderDoc::Shutdown()
+    {
+        if (capture_state == Capture_State::Recording)
+        {
+            MTL::CaptureManager::sharedCaptureManager()->stopCapture();
+        }
+        capture_state = Capture_State::Idle;
+    }
+
+    void RenderDoc::Tick()
+    {
+        // tick runs at the end of every frame, so starting here and stopping on the next tick records exactly one frame
+        if (capture_state == Capture_State::Recording)
+        {
+            MTL::CaptureManager::sharedCaptureManager()->stopCapture();
+            capture_state = Capture_State::Idle;
+            LaunchRenderDocUi();
+            return;
+        }
+
+        if (capture_state != Capture_State::Requested)
+        {
+            return;
+        }
+
+        MTL::CaptureManager* capture_manager       = MTL::CaptureManager::sharedCaptureManager();
+        MTL::CaptureDescriptor* capture_descriptor = MTL::CaptureDescriptor::alloc()->init();
+        capture_descriptor->setCaptureObject(RHI_Context::device);
+
+        // launched from xcode the frame goes straight into the debugger, otherwise it is written to a gputrace document
+        capture_path.clear();
+        if (capture_manager->supportsDestination(MTL::CaptureDestinationDeveloperTools))
+        {
+            capture_descriptor->setDestination(MTL::CaptureDestinationDeveloperTools);
+        }
+        else
+        {
+            capture_path = FileSystem::GetWorkingDirectory() + "/frame_" + to_string(time(nullptr)) + ".gputrace";
+            NS::URL* capture_url = NS::URL::fileURLWithPath(NS::String::string(capture_path.c_str(), NS::UTF8StringEncoding));
+            capture_descriptor->setDestination(MTL::CaptureDestinationGPUTraceDocument);
+            capture_descriptor->setOutputURL(capture_url);
+        }
+
+        NS::Error* error = nullptr;
+        if (capture_manager->startCapture(capture_descriptor, &error))
+        {
+            capture_state = Capture_State::Recording;
+        }
+        else
+        {
+            SP_LOG_ERROR("Metal frame capture failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+            capture_state = Capture_State::Idle;
+        }
+        capture_descriptor->release();
+    }
+
+    void RenderDoc::FrameCapture()
+    {
+        if (capture_state == Capture_State::Idle)
+        {
+            capture_state = Capture_State::Requested;
+        }
+    }
+
+    const char* RenderDoc::GetCaptureName()
+    {
+        return "Metal debugger capture";
+    }
+
+    void RenderDoc::LaunchRenderDocUi()
+    {
+        // the xcode destination is already open, a gputrace document opens in xcode
+        if (capture_path.empty())
+        {
+            SP_LOG_INFO("Metal frame capture is ready in Xcode");
+            return;
+        }
+
+        SP_LOG_INFO("Metal frame capture saved to %s", capture_path.c_str());
+        FileSystem::OpenUrl("file://" + capture_path);
     }
 }
 #else
@@ -246,6 +366,11 @@ namespace spartan
         capture_count_before = rdc_api->GetNumCaptures();
         open_capture_when_ready = true;
         rdc_api->TriggerCapture();
+    }
+
+    const char* RenderDoc::GetCaptureName()
+    {
+        return "RenderDoc capture";
     }
 
     void RenderDoc::LaunchRenderDocUi()

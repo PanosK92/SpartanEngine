@@ -637,7 +637,8 @@ namespace spartan
         if (is_stereo &&
             (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
              method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
-             method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr))
+             method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr ||
+             method == Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx))
         {
             method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
         }
@@ -655,7 +656,8 @@ namespace spartan
         const bool scale_exposure   = shader_exposure && shader_exposure->IsCompiled() &&
             (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
              method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
-             method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr);
+             method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr ||
+             method == Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx);
         const auto pass_exposure = [&](const char* name, RHI_Texture* texture, const bool inverse, const float scale)
         {
             RHI_CommandList::BeginPass(name);
@@ -690,9 +692,21 @@ namespace spartan
                 }
             }
 
-            if (fsr_dispatched)
+            bool metalfx_dispatched = false;
+            if (method == Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx)
             {
-                // FSR already wrote the output above.
+                metalfx_dispatched = RHI_VendorTechnology::MetalFx_Dispatch(tex_in, tex_depth, tex_velocity, tex_out);
+                if (!metalfx_dispatched)
+                {
+                    method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+                    cvar_antialiasing_upsampling.SetValue(static_cast<float>(method));
+                    m_taau_reset_history = true;
+                }
+            }
+
+            if (fsr_dispatched || metalfx_dispatched)
+            {
+                // FSR or MetalFX already wrote the output above.
             }
             else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {

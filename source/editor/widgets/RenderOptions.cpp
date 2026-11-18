@@ -98,19 +98,21 @@ namespace
         return method == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau ||
                method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
                method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss ||
-               method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
+               method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr ||
+               method == Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx;
     }
 
     const char* upscaler_short_name()
     {
         switch (upscaler())
         {
-            case Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upscale_Linear: return "FXAA";
-            case Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau:   return "TAAU";
-            case Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess:   return "XeSS";
-            case Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss:   return "DLSS";
-            case Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr:     return "FSR";
-            default:                                                       return "Bilinear";
+            case Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upscale_Linear:     return "FXAA";
+            case Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau:       return "TAAU";
+            case Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess:       return "XeSS";
+            case Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss:       return "DLSS";
+            case Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr:         return "FSR";
+            case Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx: return "MetalFX";
+            default:                                                           return "Bilinear";
         }
     }
 
@@ -611,10 +613,10 @@ namespace
                 row_note(note, style::color_text_faint);
             }
 
-            // Keep indices stable on every GPU (the cvar callback rejects unsupported DLSS).
+            // Keep indices stable on every GPU (the cvar callback rejects unsupported DLSS and MetalFX).
             vector<string> upscalers = { "None (bilinear)", "FXAA (bilinear)", "TAAU", "Intel XeSS 3",
-                "NVIDIA DLSS 4.5", "AMD FSR 4 (3.1 fallback)" };
-            cvar_combo("Upscaler", "r.antialiasing_upsampling", upscalers, "Anti-aliasing and upscaling from render to output resolution. TAAU, XeSS, DLSS and FSR reconstruct detail over time, the others stretch the image.");
+                "NVIDIA DLSS 4.5", "AMD FSR 4 (3.1 fallback)", "Apple MetalFX" };
+            cvar_combo("Upscaler", "r.antialiasing_upsampling", upscalers, "Anti-aliasing and upscaling from render to output resolution. TAAU, XeSS, DLSS, FSR and MetalFX reconstruct detail over time, the others stretch the image.");
 
             if (!filter.IsActive() && !upscaler_is_temporal() && percent < 99.5f)
             {

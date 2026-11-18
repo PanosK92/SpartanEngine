@@ -176,6 +176,10 @@ namespace spartan
                 {
                     aa = Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss;
                 }
+                else if (RHI_Device::IsSupportedMetalFx())
+                {
+                    aa = Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx;
+                }
                 ConsoleRegistry::Get().SetValueFromString("r.antialiasing_upsampling", std::to_string(static_cast<float>(aa)));
             }
 

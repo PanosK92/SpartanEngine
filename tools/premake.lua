@@ -372,7 +372,7 @@ function spartan_project_configuration()
                 "PhysXPvdSDK_static", "PhysXVehicle_static", "PhysXCharacterKinematic_static"
             }
             links {
-                "Metal.framework", "QuartzCore.framework", "Foundation.framework", "Cocoa.framework", "IOKit.framework",
+                "Metal.framework", "MetalFX.framework", "QuartzCore.framework", "Foundation.framework", "Cocoa.framework", "IOKit.framework",
                 "CoreVideo.framework", "CoreAudio.framework", "AudioToolbox.framework", "Carbon.framework",
                 "ForceFeedback.framework", "GameController.framework", "CoreHaptics.framework",
                 "UniformTypeIdentifiers.framework", "AVFoundation.framework", "CoreMedia.framework"

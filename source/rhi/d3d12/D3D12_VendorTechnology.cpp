@@ -1384,6 +1384,17 @@ namespace spartan
     #endif
     }
 
+    // metalfx is apple only
+    float RHI_VendorTechnology::MetalFx_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
+    {
+        return 0.0f;
+    }
+
+    bool RHI_VendorTechnology::MetalFx_Dispatch(RHI_Texture* tex_color, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output)
+    {
+        return false;
+    }
+
     bool RHI_VendorTechnology::NRD_Dispatch(
         Nrd_Preset preset,
         RHI_Texture* tex_mv,

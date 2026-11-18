@@ -155,6 +155,7 @@ namespace spartan
         static bool IsSupportedVrs()                                      { return m_is_shading_rate_supported; }
         static bool IsSupportedXess()                                     { return m_xess_supported; }
         static bool IsSupportedDlss()                                     { return m_dlss_supported; }
+        static bool IsSupportedMetalFx()                                  { return m_metalfx_supported; }
         static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
         static bool IsSupportedMeshShaders()                              { return m_is_mesh_shaders_supported; }
         static bool IsSupportedTessellation()                             { return m_is_tessellation_supported; }
@@ -226,6 +227,7 @@ namespace spartan
         static bool m_is_shading_rate_supported;
         static bool m_xess_supported;
         static bool m_dlss_supported;
+        static bool m_metalfx_supported;
         static bool m_is_ray_tracing_supported;
         static bool m_is_mesh_shaders_supported;
         static bool m_is_tessellation_supported;

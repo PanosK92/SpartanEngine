@@ -2259,6 +2259,10 @@ namespace spartan
         {
             scale_min = RHI_VendorTechnology::XeSS_GetResolutionScaleMin(m_resolution_render, m_resolution_output);
         }
+        else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx)
+        {
+            scale_min = RHI_VendorTechnology::MetalFx_GetResolutionScaleMin(m_resolution_render, m_resolution_output);
+        }
 
         return sanitize_resolution_scale(max(cvar_resolution_scale.GetValue(), scale_min));
     }
@@ -2335,9 +2339,10 @@ namespace spartan
             return;
         }
 
-        if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
+        if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau ||
+            upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_MetalFx_Upscale_MetalFx)
         {
-            // halton-2,3 jitter, taau pass uses it to reconstruct sub-pixel detail
+            // halton-2,3 jitter, taau and metalfx use it to reconstruct sub-pixel detail
             auto halton = [](uint32_t index, uint32_t base) -> float
             {
                 float result = 0.0f;

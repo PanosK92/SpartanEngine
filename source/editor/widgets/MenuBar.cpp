@@ -944,10 +944,10 @@ namespace
                     }
                     else
                     {
-                        SP_LOG_WARNING("RenderDoc integration is disabled. To enable, set \"debug_renderdoc\" to \"true\" in spartan.xml and restart");
+                        SP_LOG_WARNING("%s is disabled. To enable, set \"debug_renderdoc\" to \"true\" in spartan.xml and restart", spartan::RenderDoc::GetCaptureName());
                     }
                 };
-                toolbar_button(spartan::IconType::RenderDoc, "RenderDoc capture", renderdoc_visible, renderdoc_press, nullptr);
+                toolbar_button(spartan::IconType::RenderDoc, spartan::RenderDoc::GetCaptureName(), renderdoc_visible, renderdoc_press, nullptr);
 
                 group_x += width + group_gap();
             }
@@ -1016,7 +1016,7 @@ namespace
                 ImGui::Separator();
                 if (ImGui::MenuItem("Screenshot"))
                     spartan::Renderer::Screenshot();
-                if (ImGui::MenuItem("RenderDoc capture", nullptr, false, spartan::cvar_debug_renderdoc.GetValue()))
+                if (ImGui::MenuItem(spartan::RenderDoc::GetCaptureName(), nullptr, false, spartan::cvar_debug_renderdoc.GetValue()))
                     spartan::RenderDoc::FrameCapture();
                 ImGui::EndPopup();
             }
