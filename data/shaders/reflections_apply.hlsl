@@ -39,10 +39,7 @@ static const float g_refraction_max_distance  = 2.0f;   // max refraction distan
 static const float g_refraction_thickness     = 0.1f;   // depth testing thickness
 static const float g_refraction_step_length   = g_refraction_max_distance / (float)g_refraction_max_steps;
 
-// how far the wash around an object reaches over the water in a lively sea, in metres, and the taps that search it
-static const float contact_foam_radius = 1.6f;
 static const uint  contact_foam_taps   = 20;
-static const float contact_foam_grain  = 3.0f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -82,6 +79,28 @@ float3 compute_refracted_dir(float3 incident_dir, float3 normal, float ior_outer
     return normalize(ior_ratio * incident_dir + (ior_ratio * cos_theta_i - cos_theta_t) * normal);
 }
 
+// A thin pane bends the ray only until it exits the far face. Project that lateral
+// displacement at the opaque receiver depth so distant road markings stay in place.
+float2 thin_pane_uv(Surface surface, float3 incident, float3 refracted, float2 uv)
+{
+    float2 screen_uv = render_uv_to_screen_uv(uv);
+    float depth = tex4.SampleLevel(samplers[sampler_point_clamp], screen_uv, 0.0f).r;
+    if (depth <= 0.0f || depth >= surface.depth)
+        return uv;
+
+    float3 exit_step = refracted * (surface.thickness / max(abs(dot(refracted, surface.normal)), 0.001f));
+    float3 step_view = world_to_view(exit_step, false);
+    float3 ray_view = world_to_view(incident, false);
+    float3 receiver = world_to_view(get_position(depth, screen_uv));
+    float3 offset = step_view - ray_view * (step_view.z / max(ray_view.z, 0.001f));
+    float2 shifted_uv = view_to_uv(receiver + offset);
+    if (!is_valid_uv(shifted_uv))
+        return uv;
+
+    float shifted_depth = tex4.SampleLevel(samplers[sampler_point_clamp], shifted_uv, 0.0f).r;
+    return shifted_depth < surface.depth ? screen_uv_to_render_uv(shifted_uv) : uv;
+}
+
 // screen space raymarch along the refracted direction, returns the hit render uv or the straight through uv, handles curved glass correctly
 float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, float depth_transparent, float2 uv)
 {
@@ -100,13 +119,12 @@ float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, flo
 
         if (!is_valid_uv(ray_uv))
             break;
-        ray_uv = screen_uv_to_render_uv(ray_uv);
 
         // check if the ray passed through the glass and hit geometry behind it
-        float depth_z     = get_linear_depth(ray_uv);
+        float depth_z     = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], ray_uv, 0.0f).r);
         float depth_delta = ray_pos.z - depth_z;
         if (depth_delta > 0.0f && depth_delta < g_refraction_thickness && depth_z > depth_transparent + 0.01f)
-            return ray_uv;
+            return screen_uv_to_render_uv(ray_uv);
 
         // early exit if the ray is too far from any surface
         if (abs(depth_delta) > g_refraction_thickness * 10.0f && i > 4)
@@ -197,15 +215,14 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
 // a pile half a metre away from a wall half a metre down
 float ocean_contact_foam(float3 water_position, float footprint, float wave_activity)
 {
-    // calm water lies against a wall without breaking
-    float activity = smoothstep(0.01f, 0.06f, wave_activity);
+    // Only a crest running up a solid face leaves a contact fringe. A body entering the
+    // water already generates impact foam through the displacement field.
+    float crest    = max(water_position.y - buffer_frame.ocean_sea_level, 0.0f);
+    float activity = smoothstep(0.04f, 0.25f, wave_activity) * smoothstep(0.25f, 1.25f, crest / max(wave_activity, 0.01f));
     if (activity <= 0.0f)
-    {
         return 0.0f;
-    }
 
-    // a bigger sea throws its wash further, once the reach is under a pixel there is nothing left to resolve
-    float reach    = contact_foam_radius * lerp(0.7f, 1.0f, smoothstep(0.03f, 0.25f, wave_activity));
+    float reach    = min(crest, 0.35f);
     float resolved = smoothstep(0.75f, 2.0f, reach / max(footprint, 1e-4f));
     if (resolved <= 0.0f)
     {
@@ -236,7 +253,7 @@ float ocean_contact_foam(float3 water_position, float footprint, float wave_acti
         float beside   = length(away);
         float above    = contact.y - water_position.y;
         // the shaft above the water and the shaft seen through it both mark where the object stands in the surface
-        float at_surface = above >= 0.0f ? 1.0f - smoothstep(0.25f, 0.7f, above) : 1.0f - smoothstep(0.1f, 0.4f, -above);
+        float at_surface = above >= 0.0f ? 1.0f - smoothstep(0.0f, reach, above) : 1.0f - smoothstep(0.0f, reach, -above);
         if (at_surface <= 0.0f || beside >= nearest)
         {
             continue;
@@ -260,19 +277,9 @@ float ocean_contact_foam(float3 water_position, float footprint, float wave_acti
         return 0.0f;
     }
 
-    // the wash is thrown out when a crest surges up the object and drains back as the trough pulls away, and it
-    // slides off slowly with the wind, both move the edge of the collar and never thin its core, foam that only
-    // fades in strength leaves a square pile wearing a uniform grey ring
-    float surge   = saturate(0.5f + 0.35f * (water_position.y - buffer_frame.ocean_sea_level) / max(wave_activity, 0.05f));
-    float2 drift  = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
-    float breakup = ocean_foam_noise((water_position.xz - drift) * 1.3f) * 0.6f + ocean_foam_noise((water_position.xz - drift) * 4.0f) * 0.4f;
-    breakup       = lerp(0.5f, breakup, 1.0f - smoothstep(0.2f, 0.6f, footprint * 1.3f));
-    float extent  = reach * lerp(0.7f, 1.0f, surge) * lerp(0.45f, 1.0f, smoothstep(0.15f, 0.8f, breakup));
-    // froth is packed against the object and stays dense over most of the wash, only its last third opens into strands
-    float coverage = pow(1.0f - smoothstep(0.0f, extent, nearest), 0.6f);
-
-    // the collar is a metre wide, the open sea raft has bubbles that size, so it wears the same raft at a finer scale
-    return ocean_foam_raft(saturate(coverage * activity * resolved), (water_position.xz - drift) * contact_foam_grain, wind_axis, footprint * contact_foam_grain);
+    float2 drift = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
+    float coverage = saturate(1.0f - nearest / reach);
+    return ocean_foam_raft(0.45f * coverage * coverage * activity * resolved, water_position.xz - drift, wind_axis, footprint);
 }
 
 // Unit-albedo Lambertian radiance under the same lights, shadows and sky as the scene.
@@ -496,30 +503,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             else
             {
                 float shell_thickness = max(surface.thickness, 0.001f);
-                float optical_path    = max(shell_thickness / max(n_dot_v, 0.15f), shell_thickness);
-
-                // thin-shell parallax, bend the background by the authored thickness even when the raymarch fails
-                float3 view_tangent = view_dir_normalized - surface.normal * dot(view_dir_normalized, surface.normal);
-                float2 parallax     = view_tangent.xz * (optical_path * glass_parallax_scale) * get_render_uv_scale();
-                float2 uv_parallax  = uv + parallax;
-                if (!is_valid_render_uv(uv_parallax))
-                {
-                    uv_parallax = uv;
-                }
-
-                float2 refracted_uv = compute_refraction_uv(surface.position, refracted_dir, depth_transparent, uv_parallax);
-                if (dot(refracted_uv - uv_parallax, refracted_uv - uv_parallax) < 1e-10f)
-                {
-                    refracted_uv = uv_parallax;
-                }
-
-                // the traced ray replaces the screen march, what it hits off screen or behind other geometry is shaded at the hit
+                float2 refracted_uv    = uv;
                 bool   traced_hidden     = false;
                 float3 traced_radiance   = 0.0f;
                 float3 traced_throughput = 1.0f;
                 float  traced_distance   = 0.0f;
+                if (surface.thin_walled)
+                {
+                    refracted_uv = thin_pane_uv(surface, view_dir_normalized, refracted_dir, uv);
+                }
 #ifdef RAY_TRACING_ENABLED
-                if (pass_bool(pass_reflections_apply::ray_traced_refraction))
+                else if (pass_bool(pass_reflections_apply::ray_traced_refraction))
                 {
                     GlassRefraction traced = trace_glass_refraction(surface, view_dir_normalized, refracted_dir, thread_id.xy);
                     traced_throughput      = traced.throughput;
@@ -535,6 +529,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     }
                 }
 #endif
+                else
+                {
+                    float optical_path = shell_thickness / max(n_dot_v, 0.15f);
+                    float3 tangent = view_dir_normalized - surface.normal * dot(view_dir_normalized, surface.normal);
+                    float2 fallback_uv = uv + tangent.xz * (optical_path * glass_parallax_scale) * get_render_uv_scale();
+                    refracted_uv = compute_refraction_uv(surface.position, refracted_dir, depth_transparent,
+                        is_valid_render_uv(fallback_uv) ? fallback_uv : uv);
+                }
 
                 float2 delta = refracted_uv - uv;
 
@@ -633,7 +635,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 kT = 1.0f - reflectance;
         // The volume has already integrated incident light along the refracted path.
         // Entrained bubbles replace part of that column radiance as the breaker aerates.
-        float bubble_fraction = 0.35f * smoothstep(0.12f, 0.9f, foam_churn);
+        float bubble_fraction = 0.14f * foam_churn * foam_churn;
         float3 whitewater_light = 0.0f;
         if (bubble_fraction > 0.0f || foam > 0.0f)
             whitewater_light = ocean_whitewater_light(surface, thread_id.xy);

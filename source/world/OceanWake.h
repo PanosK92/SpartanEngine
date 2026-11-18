@@ -37,6 +37,9 @@ namespace spartan
         static constexpr float cell_size      = 0.25f;
         static constexpr float window_size    = resolution * cell_size;
 
+        // Approximate the decay of a submerged disturbance with depth, using its footprint as wavelength.
+        static float SurfaceInfluence(float water_above_top, float footprint);
+
         static bool IsEnabled();
         static void Clear();
 

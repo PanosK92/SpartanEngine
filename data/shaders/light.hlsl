@@ -294,8 +294,8 @@ void evaluate_light(
             const bool shadowed_output       = has_sss || any(diffuse_precomputed > 0.0f) || any(specular_precomputed > 0.0f);
             const bool want_shadows          = light.has_shadows() && shadowed_output;
             const bool ray_traced            = want_shadows && is_ray_traced_shadows_enabled();
-            // the denoised masks are traced once from the left eye, the right eye would sample them misaligned
-            const bool screen_masks          = !is_multiview_active();
+            // The masks were traced at opaque depth in the left eye. Other receivers trace from their own position.
+            const bool screen_masks          = !pass_is_transparent() && !is_multiview_active();
             const bool use_rt_shadow_texture = ray_traced && screen_masks && light.is_directional();
             const bool use_nrd_local_shadow  = ray_traced && screen_masks && !light.is_directional() && light.nrd_local_shadow_slot() != 0u;
             const bool use_rt_inline         = ray_traced && !use_rt_shadow_texture && !use_nrd_local_shadow;

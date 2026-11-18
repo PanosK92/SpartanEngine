@@ -272,6 +272,14 @@ namespace spartan
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
         void SyncStaticPoses();
+        struct BuoyancySample
+        {
+            math::Vector3 center;       // actor space
+            math::Vector3 half_extents; // actor-space enclosing box of this volume sample
+            float volume;
+        };
+        static std::vector<BuoyancySample> BuildBuoyancySamples(void* actor);
+        std::vector<std::vector<BuoyancySample>> m_buoyancy_samples;
         void ApplyBuoyancy();
         float ComputeVolume();
 

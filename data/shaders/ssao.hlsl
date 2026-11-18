@@ -12,7 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 // cortao (circular occluder ray traced ambient occlusion), see cortao/LICENSE
 // cortao view space is right handed (camera looks down -z), spartan view space looks down +z, so z flips at the callbacks
 // main pass -> temporal accumulation (32 frame history) -> cross bilateral denoise
-// raw and history targets hold (bent normal * visibility, visibility), the bent normal in world space
+// raw and history targets hold (world-space bent normal offset * visibility, visibility)
 #define CORTAO_HLSL                    1
 #define CORTAO_PERSPECTIVE_PROJECTION  1
 #define CORTAO_PACKED_NORMAL_BITS      10
@@ -38,7 +38,8 @@ float4 cortao_projection_terms()
 
 uint cortao_frame_seed()
 {
-    uint state = buffer_frame.frame * 747796405u + 2891336453u;
+    // Repeat within the shortest moving-surface histories so coarse mip selection converges quickly.
+    uint state = (buffer_frame.frame & 3u) * 747796405u + 2891336453u;
     uint word  = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
 }
@@ -158,7 +159,7 @@ float4 moving_occluder_tap(int2 center, uint index, int2 out_size, float view_de
     const float dist      = radius_px * 0.5f * float(ring + 1u) + 4.0f;
     const int2  tap       = clamp(center + int2(round(float2(cos(angle), sin(angle)) * dist)), int2(0, 0), out_size - 1);
     const float tap_depth = get_depth(uint2(tap));
-    if (tap_depth < 1e-4f)
+    if (tap_depth == 0.0f)
     {
         return float4(0.0f, 0.0f, 0.0f, 4.0f);
     }
@@ -178,7 +179,7 @@ struct history_tap
     float4 weights;
 };
 
-// tex2 = history (bent * visibility, visibility), tex3 = history (view depth, age / max frames)
+// tex2 = history (bent offset * visibility, visibility), tex3 = history (view depth, age / max frames)
 // bilateral history: weight each of 4 prev neighbors by depth match instead of trusting bilinear; kills sub-pixel ghosting where neighbors straddle a depth discontinuity
 //  r_simple = |pv - view_z|: works for camera-attached geometry (dashboard, mirrors) where the surface moves with the camera so depth at the same uv is invariant
 //  r_motion = |pv - prev_expected_z|: works for world-static geometry under camera dolly (walls, buildings) where the velocity buffer tracks screen motion but depth differs by the camera's forward delta
@@ -190,7 +191,7 @@ history_tap fetch_history(float2 prev_uv, float2 prev_size, float2 texture_size,
     {
         return h;
     }
-    const float2 prev_px    = prev_uv * prev_size - 0.5f;
+    const float2 prev_px    = clamp(prev_uv * prev_size - 0.5f, 0.0f, prev_size - 1.0f);
     const int2   prev_base  = int2(floor(prev_px));
     const float2 prev_frac  = prev_px - float2(prev_base);
     const float4 spatial4   = float4(
@@ -228,8 +229,8 @@ history_tap fetch_history(float2 prev_uv, float2 prev_size, float2 texture_size,
     return h;
 }
 
-// an 8x8 output group plus the 3x3 filter halo
-#define TILE_DIM 10
+// an 8x8 output group plus the 5x5 filter halo
+#define TILE_DIM 12
 #define TILE_N   (TILE_DIM * TILE_DIM)
 groupshared float  g_tile_visibility[TILE_N];
 groupshared float  g_tile_depth[TILE_N];
@@ -243,7 +244,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 {
     const int2  out_size   = int2(get_render_resolution_active());
     const uint2 group_base = thread_id.xy - group_thread_id.xy;
-    const int2  tile_origin = int2(group_base) - 1;
+    const int2  tile_origin = int2(group_base) - 2;
     const uint  tile_index  = group_thread_id.y * THREAD_GROUP_COUNT_X + group_thread_id.x;
     for (uint i = tile_index; i < TILE_N; i += THREAD_GROUP_COUNT_X * THREAD_GROUP_COUNT_Y)
     {
@@ -258,7 +259,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     {
         const int2  mover_center = min(int2(group_base) + 4, out_size - 1);
         const float center_depth = get_depth(uint2(mover_center));
-        const float mover_depth  = center_depth > 1e-4f ? center_depth : get_depth(uint2(min(int2(thread_id.xy), out_size - 1)));
+        const float mover_depth  = center_depth > 0.0f ? center_depth : get_depth(uint2(min(int2(thread_id.xy), out_size - 1)));
         g_tile_mover[tile_index] = moving_occluder_tap(mover_center, tile_index, out_size, ssao_view_depth(mover_depth));
     }
     GroupMemoryBarrierWithGroupSync();
@@ -287,44 +288,42 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     const float3 normal    = g_tile_normal[center.y * TILE_DIM + center.x];
 
     // sky does not receive ao or carry useful temporal history
-    if (depth_raw < 1e-4f)
+    if (depth_raw == 0.0f)
     {
-        tex_uav[pixel]  = float4(normal, 1.0f);
+        tex_uav[pixel]  = float4(0, 0, 0, 1);
         tex_uav2[pixel] = float4(view_z, 1.0f / g_history_max_frames, 0.0f, 0.0f);
         return;
     }
 
     const float depth_scale = 1.0f / max(view_z, 1e-3f);
 
-    // depth-weighted 3x3 prefilter of the current ao feeding the temporal blend. the interleaved gradient noise is spatially decorrelated so a 3x3 average drops the per-frame variance ~3x, and that variance is exactly what the blend injects at 1/age every frame and reads as flicker. the depth normalized weight keeps it from bleeding across silhouettes and rejects fully past 8 percent
-    // the same taps bound the history clamp window; taps from another surface (the car body and tyre over the road at a silhouette) are left out, their dark ao would otherwise lower v_min enough to accept the tyre contact trail left in the road history
+    // A separable [1 2 3 2 1] spatial kernel reduces fresh-frame noise before reprojection.
+    // Only immediate neighbours on the same surface set the history bounds.
     float  cur_sum   = 0.0f;
     float  cur_sum2  = 0.0f;
     float  cur_wsum  = 0.0f;
-    float  v_min     = 1.0f;
-    float  v_max     = 0.0f;
+    float  v_min     = g_tile_visibility[center.y * TILE_DIM + center.x];
+    float  v_max     = v_min;
     float3 bent_sum  = 0.0f;
-    float3 bent_min  = 1.0f;
-    float3 bent_max  = -1.0f;
+    float3 bent_min  = g_tile_bent[center.y * TILE_DIM + center.x];
+    float3 bent_max  = bent_min;
     [unroll]
-    for (int dy = -1; dy <= 1; ++dy)
+    for (int dy = -2; dy <= 2; ++dy)
     {
         [unroll]
-        for (int dx = -1; dx <= 1; ++dx)
+        for (int dx = -2; dx <= 2; ++dx)
         {
             const uint  cache_index = (center.y + dy) * TILE_DIM + center.x + dx;
             const float ao_n        = g_tile_visibility[cache_index];
             const float r_n         = abs(g_tile_depth[cache_index] - view_z) * depth_scale;
-            if (r_n < 0.05f)
+            const float surface_w   = (1.0f - smoothstep(0.01f, 0.08f, r_n)) * ssao_normal_weight(dot(normal, g_tile_normal[cache_index]));
+            const float w_n         = surface_w * (3 - abs(dx)) * (3 - abs(dy));
+            const float3 bent       = g_tile_bent[cache_index];
+            bent_sum += bent * w_n;
+            if (max(abs(dx), abs(dy)) <= 1 && surface_w > 0.05f)
             {
                 v_min = min(v_min, ao_n);
                 v_max = max(v_max, ao_n);
-            }
-            const float  w_n  = (1.0f - smoothstep(0.01f, 0.08f, r_n)) * ssao_normal_weight(dot(normal, g_tile_normal[cache_index]));
-            const float3 bent = g_tile_bent[cache_index];
-            bent_sum += bent * w_n;
-            if (w_n > 0.05f)
-            {
                 bent_min = min(bent_min, bent);
                 bent_max = max(bent_max, bent);
             }
@@ -335,13 +334,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     }
     const float cur_vis   = cur_wsum > 1e-4f ? cur_sum / cur_wsum : g_tile_visibility[center.y * TILE_DIM + center.x];
     const float cur_sigma = cur_wsum > 1e-4f ? sqrt(max(cur_sum2 / cur_wsum - cur_vis * cur_vis, 0.0f)) : 0.0f;
-    // no matching geometry: use an open hemisphere, not a neighbour's occlusion direction across a foreground/background boundary
-    const float3 cur_bent = cur_wsum > 1e-4f ? bent_sum / cur_wsum : normal;
-    if (any(bent_min > bent_max))
-    {
-        bent_min = cur_bent;
-        bent_max = cur_bent;
-    }
+    const float3 cur_bent = cur_wsum > 1e-4f ? bent_sum / cur_wsum : g_tile_bent[center.y * TILE_DIM + center.x];
     float3 hist_bent = cur_bent;
 
     const float3 prev_camera     = camera_previous(uv, depth_raw);
@@ -460,7 +453,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 #elif defined(SSAO_DENOISE)
 
 // cross bilateral denoise of the accumulated result, a 3x3 kernel widening to 5x5 where the history is young
-// tex = history (bent * visibility, visibility), tex2 = (view depth, age / max frames), tex_uav = (bent normal, visibility)
+// tex = history (bent offset * visibility, visibility), tex2 = (view depth, age / max frames), tex_uav = (bent normal, visibility)
 #define TILE_W     THREAD_GROUP_COUNT_X
 #define TILE_H     THREAD_GROUP_COUNT_Y
 #define HALO       2
@@ -516,7 +509,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
     float  sum       = center_w * center_ao.w;
     float  wsum      = center_w;
-    float3 bent_sum  = center_ao.xyz * center_w;
+    float4 bent_sum  = center_ao * center_w;
 
     static const int2 offsets8[8] =
     {
@@ -547,7 +540,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
         sum  += ao.w * w;
         wsum += w;
         // the directional field stays on its surface even while noisy ao uses a wider spatial gate
-        bent_sum += ao.xyz * weights8[j] * (1.0f - smoothstep(0.005f, 0.04f, r)) * ssao_normal_weight(dot(n_z.xyz, n_c));
+        bent_sum += ao * weights8[j] * (1.0f - smoothstep(0.005f, 0.04f, r)) * ssao_normal_weight(dot(n_z.xyz, n_c));
     }
 
     // pixels that just lost their history (revealed behind the moving steering wheel, after a fast move) widen to the 5x5 ring, converged pixels keep the 3x3
@@ -586,17 +579,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
             const float  w        = outer_w * weights16[k] * depth_w * normal_w;
             sum  += ao.w * w;
             wsum += w;
-            bent_sum += ao.xyz * outer_w * weights16[k] * (1.0f - smoothstep(0.005f, 0.04f, r)) * ssao_normal_weight(dot(n_z.xyz, n_c));
+            bent_sum += ao * outer_w * weights16[k] * (1.0f - smoothstep(0.005f, 0.04f, r)) * ssao_normal_weight(dot(n_z.xyz, n_c));
         }
     }
 
-    const float3 bent_normal = dot(bent_sum, bent_sum) > 1e-8f ? normalize(bent_sum) : n_c;
+    const float3 direction   = n_c * bent_sum.w + bent_sum.xyz;
+    const float3 bent_normal = dot(direction, n_c) > 1e-5f ? normalize(direction) : n_c;
     tex_uav[c] = float4(bent_normal, saturate(sum / max(wsum, 1e-4f)));
 }
 
 #else
 
-#define CORTAO_SAMPLE_COUNT             8
+#define CORTAO_SAMPLE_COUNT             16
 #define CORTAO_RAY_COUNT                16
 #define CORTAO_OCCLUDER_LOOKUP_TABLE    1
 #define CORTAO_BENT_NORMAL_LOOKUP_TABLE 1
@@ -612,29 +606,31 @@ float cortao_ign(float2 pixel)
     return frac(52.9829189f * frac(dot(pixel, float2(0.06711056f, 0.00583715f))));
 }
 
-// every dimension has its own pixel lattice and advances by its own low discrepancy step per frame, the lattices are picked so a 3x3 neighbourhood covers each dimension and each pair of dimensions evenly
+// Four stratified phases rotate the sample spiral and ray basis. Per-pixel lattices decorrelate neighbours.
 cortao_float4 cortao_customNoise(cortao_int2 pixelCoords)
 {
     const float2 pixel = float2(pixelCoords);
-    const float  frame = float(buffer_frame.frame & 63u);
+    const float  phase = float(buffer_frame.frame & 3u);
     return frac(float4(
         cortao_ign(pixel),
         dot(pixel, float2(0.2202203f, 0.3591321f)),
         dot(pixel, float2(0.1251447f, 0.6607579f)),
-        cortao_ign(float2(pixel.x, -pixel.y))) + frame * float4(0.8200329f, 0.7044833f, 0.4760966f, 0.6180340f));
+        cortao_ign(float2(pixel.x, -pixel.y))) + phase * float4(0.25f, 0.75f, 0.75f, 0.5f));
 }
 
 // tex3 = packed depth and normal mips, tex4 = bent normal table, tex3d = occluder table
 cortao_uint cortao_samplePackedData(cortao_float2 texCoords, cortao_float mipmap)
 {
-    // samples outside the screen read the nearest edge texel of the active render area, the surface at the border is taken to continue beyond it
-    float2 size;
-    float  mip_count;
-    tex3.GetDimensions(0, size.x, size.y, mip_count);
-    const float  mip    = clamp(round(mipmap), 0.0f, mip_count - 1.0f);
-    const float2 uv_max = get_render_uv_scale() - 0.5f * exp2(mip) / size;
-    const float2 uv     = min(saturate(texCoords) * get_render_uv_scale(), uv_max);
-    return asuint(tex3.SampleLevel(samplers[sampler_point_clamp], uv, mipmap).r);
+    // Black border in active viewport coordinates. The prepass writes floor-sized mips.
+    if (any(texCoords < 0.0f) || any(texCoords >= 1.0f))
+        return 0u;
+
+    uint2 size = uint2(get_render_resolution_active());
+    uint max_mip = min(7u, uint(firstbithigh(min(size.x, size.y))));
+    uint mip = uint(clamp(floor(mipmap + 0.5f), 0.0f, float(max_mip)));
+    uint2 mip_size = size >> mip;
+    uint2 pixel = min(uint2(texCoords * size) >> mip, mip_size - 1u);
+    return asuint(tex3.Load(int3(pixel, mip)).r);
 }
 
 cortao_half3 cortao_loadNormal(cortao_int2 pixelCoords)
@@ -659,11 +655,16 @@ cortao_half3 cortao_loadBentNormalLookupTable(cortao_uint rayBits)
 
 void cortao_writeResult(cortao_int2 pixelCoords, cortao_half occlusion, cortao_half3 bentNormal, cortao_half3x3 tangentSpaceTransform, cortao_uint rayBits)
 {
-    // every ray blocked leaves no unoccluded direction, fall back to the surface normal
-    const float3 bent_cortao = rayBits == 0xFFFFu ? tangentSpaceTransform[2] : bentNormal;
-    const float3 bent_world  = normalize(view_to_world(float3(bent_cortao.x, bent_cortao.y, -bent_cortao.z), false));
-    const float  visibility  = saturate(occlusion);
-    tex_uav[pixelCoords]     = float4(bent_world * visibility, visibility);
+    // Filter the deviation from the receiving normal so smoothing preserves curvature.
+    // An open hemisphere has no bend. A fully blocked one carries no directional weight.
+    const float visibility = saturate(occlusion);
+    float3 offset = 0.0f;
+    if (rayBits != 0u && visibility > 0.0f)
+    {
+        float3 delta = normalize(bentNormal) - tangentSpaceTransform[2];
+        offset = view_to_world(float3(delta.xy, -delta.z), false);
+    }
+    tex_uav[pixelCoords] = float4(offset * visibility, visibility);
 }
 
 CORTAOMainPassParameters cortao_main_pass_parameters()
@@ -703,9 +704,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // sky has no receiving surface, keep open visibility for the filters
-    if (get_depth(pos) < 1e-4f)
+    if (get_depth(pos) == 0.0f)
     {
-        tex_uav[pos] = float4(get_normal(pos), 1.0f);
+        tex_uav[pos] = float4(0, 0, 0, 1);
         return;
     }
 

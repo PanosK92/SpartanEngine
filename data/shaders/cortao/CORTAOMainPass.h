@@ -336,11 +336,12 @@ void cortao_constructSamplingBasis(cortao_float3 normal, out cortao_float3 tange
 }
 
 void cortao_constructTangentBasis(cortao_half3 normal, out cortao_half3 tangent, out cortao_half3 bitangent) {
-	//Also, frisvad's arbitrary orthonormal tangent basis construction, but copy-pasted and slightly tweaked.
-	cortao_half a = cortao_half(1.0) / (cortao_half(1.0) + normal.z);
+	// Sign-stable orthonormal basis, including normals facing down the view axis.
+	cortao_half signZ = normal.z >= 0.0 ? cortao_half(1.0) : cortao_half(-1.0);
+	cortao_half a = -cortao_half(1.0) / (signZ + normal.z);
 	cortao_half b = normal.x * normal.y * a;
-	tangent = cortao_half3(cortao_fma(normal.x * normal.x,  a, cortao_half(-1.0)), b, normal.x);
-	bitangent = cortao_half3(b, cortao_fma(normal.y * normal.y, a, cortao_half(-1.0)), normal.y);
+	tangent = cortao_half3(-1.0 - signZ * normal.x * normal.x * a, -signZ * b, signZ * normal.x);
+	bitangent = cortao_half3(-b, -signZ - normal.y * normal.y * a, normal.y);
 }
 
 

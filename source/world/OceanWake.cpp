@@ -39,7 +39,7 @@ namespace spartan
         constexpr int32_t sponge_cells = 24;     // the window edge absorbs instead of wrapping waves around
         constexpr float sponge_rate    = 6.0f;   // per second at the very edge
         constexpr float level_rate     = 0.05f;  // per second, a heaped sea settles back to the ocean level
-        constexpr float foam_life      = 3.5f;   // seconds for the wake foam to fade to a third
+        constexpr float foam_life      = 1.6f;   // e-folding time of bubbles in an undisturbed wake, seconds
         constexpr float height_max     = 3.0f;   // m, a body teleported into the sea must not blow the field up
         constexpr uint32_t stale_ticks = 30;     // ticks without a report before a body counts as gone
         static_assert((OceanWake::resolution & (OceanWake::resolution - 1)) == 0, "the toroidal wrap masks, the resolution must be a power of two");
@@ -57,10 +57,14 @@ namespace spartan
         {
             mutex lock;
             vector<float> height;
-            vector<float> velocity;
+            // volume flux per metre of face width, positive east and north (m^2/s)
+            vector<float> flux_x;
+            vector<float> flux_z;
+            vector<float> next_foam;
             vector<float> foam;
             vector<float> speed2;  // squared wave speed, 0 on dry cells
-            vector<float> source;
+            vector<float> source;  // scratch displacement for one body
+            vector<float> pending; // sum of displaced heights awaiting the next fixed step
             vector<int32_t> touched;
             vector<uint32_t> hull_stamp; // cells under the body being splatted carry its stamp
             vector<uint32_t> hull_distance;
@@ -96,10 +100,13 @@ namespace spartan
             {
                 const size_t count = static_cast<size_t>(res) * res;
                 s.height.assign(count, 0.0f);
-                s.velocity.assign(count, 0.0f);
+                s.flux_x.assign(count, 0.0f);
+                s.flux_z.assign(count, 0.0f);
+                s.next_foam.assign(count, 0.0f);
                 s.foam.assign(count, 0.0f);
                 s.speed2.assign(count, 0.0f);
                 s.source.assign(count, 0.0f);
+                s.pending.assign(count, 0.0f);
                 s.hull_stamp.assign(count, 0);
                 s.hull_distance.assign(count, 0);
             }
@@ -141,11 +148,15 @@ namespace spartan
         {
             const size_t i = cell_index(cx, cz);
             s.height[i]    = 0.0f;
-            s.velocity[i]  = 0.0f;
+            s.flux_x[i]    = 0.0f;
+            s.flux_z[i]    = 0.0f;
+            s.flux_x[cell_index(cx - 1, cz)] = 0.0f;
+            s.flux_z[cell_index(cx, cz - 1)] = 0.0f;
             s.foam[i]      = 0.0f;
             s.source[i]    = 0.0f;
+            s.pending[i]   = 0.0f;
 
-            float depth = 1000.0f;
+            float depth = s.depth_key;
             float bed   = 0.0f;
             if (terrain && terrain->SampleHeight((cx + 0.5f) * OceanWake::cell_size, (cz + 0.5f) * OceanWake::cell_size, bed))
             {
@@ -181,7 +192,9 @@ namespace spartan
         {
             const int32_t target_x = static_cast<int32_t>(floorf(focus.x / OceanWake::cell_size)) - res / 2;
             const int32_t target_z = static_cast<int32_t>(floorf(focus.z / OceanWake::cell_size)) - res / 2;
-            const float depth      = max(cvar_depth.GetValue(), 0.1f);
+            // The 2D Courant limit is c^2 dt^2 / dx^2 <= 1/2.
+            constexpr float stable_depth = 0.45f * OceanWake::cell_size * OceanWake::cell_size / (gravity * step_dt * step_dt);
+            const float depth      = clamp(cvar_depth.GetValue(), 0.1f, stable_depth);
             Terrain* terrain       = Terrain::FindActive();
 
             const bool rebuild = !s.origin_valid || sea_level != s.sea_level || depth != s.depth_key || abs(target_x - s.origin_x) >= res || abs(target_z - s.origin_z) >= res;
@@ -449,53 +462,39 @@ namespace spartan
         // linear shallow water waves, symplectic euler, stable while c * dt / dx stays under 0.7 (here ~0.13)
         float step(State& s, bool apply_source)
         {
-            const float inv_dx2 = 1.0f / (OceanWake::cell_size * OceanWake::cell_size);
+            const float dt_dx   = step_dt / OceanWake::cell_size;
             const float damping = max(cvar_damping.GetValue(), 0.0f);
-            const float decay   = expf(-step_dt * 1.1f / foam_life);
+            const float decay   = expf(-step_dt / foam_life);
             float peak          = 0.0f;
 
             if (apply_source)
             {
-                for (int32_t i : s.touched)
+                for (size_t i = 0; i < s.pending.size(); i++)
                 {
-                    if (s.speed2[i] > 0.0f)
-                    {
-                        s.height[i] = clamp(s.height[i] + s.source[i], -height_max, height_max);
-                        s.foam[i]   = min(s.foam[i] + fabsf(s.source[i]) * 2.5f, 1.0f);
-                    }
-                    s.source[i] = 0.0f;
+                    s.height[i] = clamp(s.height[i] + s.pending[i], -height_max, height_max);
+                    s.pending[i] = 0.0f;
                 }
-                s.touched.clear();
             }
 
             for (int32_t z = 0; z < res; z++)
             {
-                const int32_t up   = ((z + 1) & mask) * res;
-                const int32_t down = ((z - 1) & mask) * res;
-                const int32_t row  = z * res;
+                const int32_t up  = ((z + 1) & mask) * res;
+                const int32_t row = z * res;
                 for (int32_t x = 0; x < res; x++)
                 {
-                    const int32_t i = row + x;
-                    if (s.speed2[i] <= 0.0f)
-                    {
-                        s.velocity[i] = 0.0f;
-                        continue;
-                    }
-
-                    // a dry neighbour mirrors the cell, the beach reflects the wave
-                    const float h       = s.height[i];
-                    const int32_t left  = row + ((x - 1) & mask);
+                    const int32_t i     = row + x;
                     const int32_t right = row + ((x + 1) & mask);
                     const int32_t north = up + x;
-                    const int32_t south = down + x;
-                    const float hl      = s.speed2[left]  > 0.0f ? s.height[left]  : h;
-                    const float hr      = s.speed2[right] > 0.0f ? s.height[right] : h;
-                    const float hn      = s.speed2[north] > 0.0f ? s.height[north] : h;
-                    const float hs      = s.speed2[south] > 0.0f ? s.height[south] : h;
-                    const float laplace = (hl + hr + hn + hs - 4.0f * h) * inv_dx2;
+                    const float rate    = damping + max(s.sponge_x[x], s.sponge_z[z]);
+                    const float retain  = max(1.0f - rate * step_dt, 0.0f);
 
-                    const float rate = damping + max(s.sponge_x[x], s.sponge_z[z]);
-                    s.velocity[i]    = (s.velocity[i] + s.speed2[i] * laplace * step_dt) * max(1.0f - rate * step_dt, 0.0f);
+                    // Both cells share the same face flow. A dry bed or the outer edge closes the face.
+                    const float east = min(s.speed2[i], s.speed2[right]);
+                    const float top  = min(s.speed2[i], s.speed2[north]);
+                    s.flux_x[i] = east > 0.0f && x != ((s.origin_x - 1) & mask) ?
+                        retain * (s.flux_x[i] - east * dt_dx * (s.height[right] - s.height[i])) : 0.0f;
+                    s.flux_z[i] = top > 0.0f && z != ((s.origin_z - 1) & mask) ?
+                        retain * (s.flux_z[i] - top * dt_dx * (s.height[north] - s.height[i])) : 0.0f;
                 }
             }
 
@@ -507,21 +506,42 @@ namespace spartan
                     const int32_t i = row + x;
                     if (s.speed2[i] <= 0.0f)
                     {
-                        s.height[i] = 0.0f;
-                        s.foam[i]   = 0.0f;
+                        s.height[i]    = 0.0f;
+                        s.next_foam[i] = 0.0f;
                         continue;
                     }
 
                     const float settle = level_rate + max(s.sponge_x[x], s.sponge_z[z]) * 0.5f;
-                    const float v      = s.velocity[i];
-                    s.height[i]        = clamp((s.height[i] + v * step_dt) * (1.0f - settle * step_dt), -height_max, height_max);
-                    // only water thrown up or dropping fast breaks into whitewater, a travelling ripple stays clear,
-                    // the foam fades where it was made so the wake leaves a trail
-                    s.foam[i]          = min(s.foam[i] * decay + max(fabsf(v) - 1.5f, 0.0f) * step_dt * 0.5f, 1.0f);
-                    peak               = max(peak, fabsf(s.height[i]));
+                    const int32_t left = row + ((x - 1) & mask);
+                    const int32_t down = ((z - 1) & mask) * res + x;
+                    const float rise   = (s.flux_x[left] - s.flux_x[i] + s.flux_z[down] - s.flux_z[i]) * dt_dx;
+                    s.height[i] = clamp((s.height[i] + rise) * (1.0f - settle * step_dt), -height_max, height_max);
+
+                    // Transport coverage upwind with the incoming water. Limit the weights to keep
+                    // coverage bounded even for a steep impact in a nearly dry shoreline cell.
+                    const int32_t right = row + ((x + 1) & mask);
+                    const int32_t north = ((z + 1) & mask) * res + x;
+                    const float west_in = max(s.flux_x[left], 0.0f);
+                    const float east_in = max(-s.flux_x[i], 0.0f);
+                    const float south_in = max(s.flux_z[down], 0.0f);
+                    const float north_in = max(-s.flux_z[i], 0.0f);
+                    const float inflow = west_in + east_in + south_in + north_in;
+                    const float weight = dt_dx / max(s.speed2[i] / gravity, dt_dx * inflow);
+                    const float foam = s.foam[i] * (1.0f - weight * inflow) + weight *
+                        (west_in * s.foam[left] + east_in * s.foam[right] + south_in * s.foam[down] + north_in * s.foam[north]);
+                    // Strong convergence steepens a crest; the same rise breaks sooner in shallow water.
+                    const float breaking = max(rise - 0.35f * sqrtf(s.speed2[i]) * step_dt, 0.0f);
+                    // A refilling trough also converges. Only a rising crest entrains air,
+                    // and newly formed bubbles can occupy only the clear fraction of the surface.
+                    const float crest = clamp(s.height[i] / OceanWake::cell_size, 0.0f, 1.0f);
+                    const float entrained = crest * breaking / (OceanWake::cell_size + breaking);
+                    const float remaining = clamp(foam * decay, 0.0f, 1.0f);
+                    s.next_foam[i] = remaining + (1.0f - remaining) * entrained;
+                    peak = max(peak, max(fabsf(s.height[i]), s.next_foam[i]));
                 }
             }
 
+            s.foam.swap(s.next_foam);
             return peak;
         }
 
@@ -530,17 +550,25 @@ namespace spartan
             if (!s.height.empty())
             {
                 fill(s.height.begin(), s.height.end(), 0.0f);
-                fill(s.velocity.begin(), s.velocity.end(), 0.0f);
+                fill(s.flux_x.begin(), s.flux_x.end(), 0.0f);
+                fill(s.flux_z.begin(), s.flux_z.end(), 0.0f);
                 fill(s.foam.begin(), s.foam.end(), 0.0f);
                 fill(s.source.begin(), s.source.end(), 0.0f);
+                fill(s.pending.begin(), s.pending.end(), 0.0f);
             }
             s.touched.clear();
             s.bodies.clear();
+            s.origin_valid = false;
             s.accumulator = 0.0f;
             s.quiet_time  = 0.0f;
             s.upload_zero = s.active;
             s.active      = false;
         }
+    }
+
+    float OceanWake::SurfaceInfluence(float water_above_top, float footprint)
+    {
+        return water_above_top > 0.0f ? expf(-6.2831853f * water_above_top / max(footprint, cell_size)) : 1.0f;
     }
 
     bool OceanWake::IsEnabled()
@@ -607,6 +635,15 @@ namespace spartan
                     splat(s, body.current, 1.0f);
                     splat(s, body.previous, -1.0f);
                     push_out_of_hull(s, body.current);
+                    for (int32_t i : s.touched)
+                    {
+                        if (s.speed2[i] > 0.0f)
+                        {
+                            s.pending[i] += s.source[i];
+                        }
+                        s.source[i] = 0.0f;
+                    }
+                    s.touched.clear();
                 }
                 body.previous     = body.current;
                 body.has_previous = true;

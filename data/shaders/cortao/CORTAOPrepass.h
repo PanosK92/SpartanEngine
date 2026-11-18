@@ -88,7 +88,7 @@ void cortao_prepass(cortao_uint2 pixelCoords, CORTAOPrepassParameters params) {
 		
 		//Pack a spheremap encoded normal
 		cortao_uint seed = cortao_hash(cortao_seed(pixelCoords) + params.randomSeed);
-		cortao_float2 dither = cortao_float2(cortao_unpack16(seed)) * (1.0 / cortao_float(0xFFFFu));
+		cortao_float2 dither = cortao_float2(cortao_unpack16(seed)) * (1.0 / cortao_float(0x10000u));
 		cortao_uint mask = (1 << CORTAO_PACKED_NORMAL_BITS) - 1;
 		cortao_uint packedNormal = cortao_encodeNormal(normal, dither);
 		

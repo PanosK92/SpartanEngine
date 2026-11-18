@@ -253,7 +253,8 @@ cortao_uint cortao_encodeNormal(cortao_float3 normal, cortao_float2 dither) {
 	cortao_uint componentMask = (1u << bitsPerComponent) - 1u;
 	cortao_uint componentMax = componentMask >> 1u;
 
-	cortao_float2 encodedNormal = normal.xy * cortao_inverseSqrt(cortao_fma(normal.z, 2.0, 2.0));
+	// The south pole maps to the rim of the disk. Choose a finite representative there.
+	cortao_float2 encodedNormal = normal.z > -0.999999 ? normal.xy * cortao_inverseSqrt(cortao_fma(normal.z, 2.0, 2.0)) : cortao_float2(1.0, 0.0);
 	 
 	cortao_int2 values = cortao_int2(floor(cortao_fma(encodedNormal, cortao_float2(componentMax, componentMax), dither)));
 
@@ -280,7 +281,8 @@ cortao_half3 cortao_decodeNormal(cortao_uint packedData) {
 
 	cortao_half2 e = cortao_half2(values) * cortao_half(1.0 / cortao_float(componentMax));
 	
-	cortao_half z = cortao_fma(-e.x, e.x, cortao_fma(-e.y, e.y, cortao_half(1.0)));
+	// Quantizing the two components independently can round a rim sample outside the disk.
+	cortao_half z = max(cortao_half(0.0), cortao_fma(-e.x, e.x, cortao_fma(-e.y, e.y, cortao_half(1.0))));
 	return cortao_half3(e * (cortao_half(2.0) * sqrt(z)), cortao_fma(z, cortao_half(2.0), cortao_half(-1.0)));
 }
 
