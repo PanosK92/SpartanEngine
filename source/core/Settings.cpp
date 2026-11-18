@@ -162,7 +162,7 @@ namespace spartan
                 { "DISPLAY - output, resolution, upscaling and tonemapping",
                   { "r.hdr", "r.gamma", "r.vsync", "r.tonemapping", "r.resolution_scale", "r.dynamic_resolution", "r.antialiasing_upsampling", "r.dlss_reactivity", "r.variable_rate_shading" } },
                 { "LIGHTING - ambient occlusion, ray tracing and global illumination",
-                  { "r.ssao", "r.ray_traced_shadows", "r.ray_traced_reflections", "r.rt_light_culling", "r.restir_pt", "r.restir_pt_direct", "r.restir_pt_emissive_pool", "r.restir_pt_scale", "r.restir_pt_reference" } },
+                  { "r.ssao", "r.ray_traced_shadows", "r.ray_traced_reflections", "r.rt_light_culling", "r.restir_pt", "r.restir_pt_emissive_pool", "r.restir_pt_scale", "r.restir_pt_reference" } },
                 { "ATMOSPHERE - haze and mist",
                   { "r.atmosphere.mist_density", "r.atmosphere.mist_height", "r.atmosphere.ground_mist", "r.atmosphere.mist_variation" } },
                 { "POST PROCESSING - camera and film effects",

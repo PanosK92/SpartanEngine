@@ -10,6 +10,12 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_decals.hlsl"
 #include "common_ray_hit.hlsl"
 
+bool restir_layered(MaterialParameters m)
+{
+    return m.clearcoat > 0.0f || m.flake_strength > 0.0f || m.sheen > 0.0f ||
+        m.anisotropic != 0.0f || m.pearl_strength > 0.0f || m.iridescence > 0.0f;
+}
+
 struct PathSurface
 {
     float3 hit_position;
@@ -34,6 +40,7 @@ struct PathSurface
     float  absorption;
     float  thickness;
     bool   thin_walled;
+    bool   layered;
     bool   hit;
 };
 
@@ -55,6 +62,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     uint material_index    = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
     payload.material_index = material_index;
+    payload.layered = restir_layered(mat);
     payload.material_alpha = mat.color.a;
     payload.alpha_blend = mat.alpha_blend;
     payload.ior = mat.ior;

@@ -637,15 +637,9 @@ namespace
     void section_lighting()
     {
         const bool rt_supported = RHI_Device::IsSupportedRayTracing();
-        string summary = "Raster";
-        if (rt_supported && (cvar_get("r.ray_traced_reflections") != 0.0f || cvar_get("r.ray_traced_shadows") != 0.0f))
-        {
-            summary = "Ray traced";
-        }
-        if (rt_supported && cvar_restir_pt.GetValueAs<bool>())
-        {
-            summary += " + ReSTIR";
-        }
+        static const vector<string> modes = { "Hybrid", "ReSTIR PT", "Reference path tracer" };
+        uint32_t mode = !rt_supported ? 0 : cvar_restir_pt.GetValueAs<bool>() ? 1 : cvar_path_tracing.GetValueAs<bool>() ? 2 : 0;
+        const string& summary = modes[mode];
 
         if (section_begin("Lighting", summary))
         {
@@ -655,10 +649,21 @@ namespace
             }
 
             ImGui::BeginDisabled(!rt_supported);
-            cvar_toggle("Ray traced reflections", "r.ray_traced_reflections", "Accurate reflections of off-screen geometry, blended with screen space and image based lighting by roughness.");
-            cvar_toggle("Ray traced shadows", "r.ray_traced_shadows", "Contact-hardening shadows for all lights, traced instead of shadow maps.");
-            cvar_toggle("Path traced GI (ReSTIR)", "r.restir_pt", "Work in progress. Global illumination via ReSTIR path tracing.");
-            if (cvar_restir_pt.GetValueAs<bool>())
+            if (row_begin("Lighting mode", "ReSTIR traces direct and indirect surface lighting, including reflections and shadows. The reference tracer progressively accumulates independent samples."))
+            {
+                if (ImGuiSp::combo_box("##lighting_mode", modes, &mode))
+                {
+                    cvar_write("r.restir_pt", mode == 1 ? 1.0f : 0.0f);
+                    cvar_write("r.path_tracing", mode == 2 ? 1.0f : 0.0f);
+                }
+                row_end();
+            }
+            if (mode == 0)
+            {
+                cvar_toggle("Ray traced reflections", "r.ray_traced_reflections", "Accurate reflections of off-screen geometry, blended with screen space and image based lighting by roughness.");
+                cvar_toggle("Ray traced shadows", "r.ray_traced_shadows", "Contact-hardening shadows for all lights, traced instead of shadow maps.");
+            }
+            else if (mode == 1)
             {
                 cvar_slider("Resolution", "r.restir_pt_scale", "Share of the render resolution that is path traced. Lower is faster and noisier.", 0.1f, 1.0f, "%.0f%%", 100.0f, 0.0f, 1);
             }

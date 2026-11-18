@@ -1,6 +1,6 @@
 # Rendering
 
-The renderer is a hybrid: rasterized G-buffer and clustered deferred lighting, with ray tracing and ReSTIR path tracing layered on top, all GPU-driven and bindless. It is written once in HLSL and C++ against the RHI, which has DirectX 12, Vulkan and Metal backends.
+The GPU-driven, bindless renderer supports hybrid deferred lighting, ReSTIR PT and a reference path tracer. It is written once in HLSL and C++ against the RHI, which has DirectX 12, Vulkan and Metal backends.
 
 The public API is the `spartan::Renderer` static class in [`Renderer.h`](../source/rendering/Renderer.h). The whole frame is readable top to bottom in `Renderer::ProduceFrame()` in [`Renderer.cpp`](../source/rendering/Renderer.cpp).
 
@@ -37,9 +37,9 @@ Before recording, `Renderer::Tick` streams textures, uploads changed geometry an
    - Early cull against last frame's Hi-Z, depth prepass, build an early Hi-Z.
    - Late cull of what the early pass rejected against the new Hi-Z, depth prepass, build the final Hi-Z.
    - Grass population, then the opaque **G-buffer**.
-8. **Compute B**, in parallel with shadows: SSAO (XeGTAO), screen-space shadows, ray-traced shadows, ReSTIR path tracing (optionally on its own async queue).
-9. **Shadow maps** into the shadow atlas, when ray-traced shadows are off.
-10. **Lighting**: deferred lights, composition, image-based lighting, cloud composite, transparent G-buffer and lighting, ray-traced reflections (trace, shade, denoise, apply), light flares, volumetric clouds, froxel fog composite.
+8. **Hybrid lighting** computes ambient occlusion, shadows, deferred lighting, image-based lighting, transparent lighting and reflections according to the hybrid settings.
+9. **ReSTIR PT** uses opaque and transparent G-buffer surfaces to initialize paths, resamples their direct and indirect contributions across frames and neighboring pixels, and composites the denoised lighting with visible emission and sky. Selecting this mode in Render Options bypasses the hybrid surface lighting passes. The saved hybrid settings apply again when switching back.
+10. Cloud composition, light flares and volumetric fog follow surface lighting.
 11. **Particles**.
 12. **Anti-aliasing and upscaling**: TAAU, DLSS, XeSS or FSR.
 13. **Post-processing**: depth of field, motion blur, lens rain, auto exposure, bloom, tonemapping, then dithering, sharpening (CAS), film grain, VHS, chromatic aberration and the cinematic overlay.

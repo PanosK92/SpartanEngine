@@ -1700,7 +1700,7 @@ Surface build_particle_surface(float3 position_world, float3 albedo, uint2 pixel
 #ifdef RAY_TRACING_ENABLED
 float trace_particle_shadow_ray(Light light, Surface surface)
 {
-    if (!is_ray_traced_shadows_enabled())
+    if (!is_ray_traced_shadows_enabled() && !is_restir_pt_enabled())
     {
         return 1.0;
     }
@@ -1763,7 +1763,7 @@ float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, b
     {
         float shadow = 1.0;
     #ifdef RAY_TRACING_ENABLED
-        if (is_ray_traced_shadows_enabled())
+        if (is_ray_traced_shadows_enabled() || is_restir_pt_enabled())
         {
             if (allow_ray_traced_shadow)
             {

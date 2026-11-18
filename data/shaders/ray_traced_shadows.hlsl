@@ -196,19 +196,6 @@ void ray_gen()
     bool has_scattering = material.subsurface_scattering > 0.0f;
     bool thin_foliage = has_scattering && receiver.is_foliage();
 
-    // unified restir carries the direct light of an opaque surface, the lighting pass scales its own direct terms by one
-    // minus the restir coverage, so under full coverage no mask is read and no ray is worth tracing. two readers remain,
-    // wrapped subsurface stays in the lighting pass and is shadowed there, and a transparent surface reads the mask of
-    // what is behind it. a diffusion profile needs no mask, its transmission enters on the far side of the solid
-    receiver.subsurface_scattering = material.subsurface_scattering;
-    receiver.subsurface_radius     = material.subsurface_radius;
-    bool wrapped_subsurface        = has_scattering && !receiver.has_subsurface_profile();
-    if (is_restir_pt_direct_enabled() && is_frame_without_transparency() && !receiver.is_water() && !wrapped_subsurface && restir_coverage(uv) >= 1.0f)
-    {
-        tex_uav[pixel] = shadow_mask_pack(1.0f, 0.0f);
-        return;
-    }
-
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.01f + camera_distance * 0.0001f;
 

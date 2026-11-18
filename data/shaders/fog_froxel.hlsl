@@ -176,7 +176,7 @@ float3 fog_sky_ambient(FogSkyProbe probe, float2 uv, float distance, float3 ray_
     // room receives blue outdoor inscattering, which auto exposure then amplifies.
     // Visibility is traced once per coarse cell by the sky visibility pass.
     #ifdef RAY_TRACING_ENABLED
-    if (is_ray_traced_shadows_enabled())
+    if (is_ray_traced_shadows_enabled() || is_restir_pt_enabled())
     {
         float sky_visibility = tex_fog_sky_visibility.SampleLevel(
             GET_SAMPLER(sampler_trilinear_clamp),
@@ -263,7 +263,7 @@ float3 fog_evaluate_light(
     {
     #ifdef RAY_TRACING_ENABLED
         // the atlas is not rendered with ray traced shadows, the tlas holds every caster
-        if (is_ray_traced_shadows_enabled())
+        if (is_ray_traced_shadows_enabled() || is_restir_pt_enabled())
         {
             visibility = fog_trace_shadow(light, sample_pos);
         }
@@ -619,7 +619,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     float visibility = 1.0f;
     #ifdef RAY_TRACING_ENABLED
-    if (is_ray_traced_shadows_enabled())
+    if (is_ray_traced_shadows_enabled() || is_restir_pt_enabled())
     {
         float2 uv = (float2(thread_id.xy) + 0.5f) / float2(dims.xy);
         float distance = fog_slice_to_distance((float(thread_id.z) + 0.5f) / float(dims.z));

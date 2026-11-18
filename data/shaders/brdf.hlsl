@@ -5,6 +5,9 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
+#ifndef SPARTAN_BRDF
+#define SPARTAN_BRDF
+
 //= INCLUDES =========
 #include "common.hlsl"
 //====================
@@ -356,3 +359,5 @@ float specular_occlusion_bent(float3 bent_normal, float visibility, float3 refle
     float specular_occlusion_ao   = saturate(pow(n_dot_v + visibility, exp2(-16.0f * roughness - 1.0f)) - 1.0f + visibility);
     return lerp(specular_occlusion_ao, specular_occlusion_cone, smoothstep(0.01f, 0.09f, roughness_alpha));
 }
+
+#endif

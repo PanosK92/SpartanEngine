@@ -34,7 +34,7 @@ namespace spartan
         // map and show the hdr frame. sdr_data is the srgb encoded rgba half float tonemap of the frame, hdr_data the same frame
         // display encoded as rgba half or full float, both frame_width by frame_height, hdr_white_nits the luminance that frame
         // puts sdr white at, width and height the size the image is saved at
-        static void SaveHdrJpeg(const std::string& file_path, const uint32_t frame_width, const uint32_t frame_height, const uint32_t width, const uint32_t height, const void* sdr_data, const void* hdr_data, const uint32_t hdr_bits_per_channel, ImageColorSpace hdr_color_space, const float hdr_white_nits);
+        static bool SaveHdrJpeg(const std::string& file_path, const uint32_t frame_width, const uint32_t frame_height, const uint32_t width, const uint32_t height, const void* sdr_data, const void* hdr_data, const uint32_t hdr_bits_per_channel, ImageColorSpace hdr_color_space, const float hdr_white_nits);
         static void SaveSdr(const std::string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data);
         // writes 8 bit rgba straight to png, SaveSdr above expects half float data
         static void SaveSdrRgba8(const std::string& file_path, const uint32_t width, const uint32_t height, const void* data);

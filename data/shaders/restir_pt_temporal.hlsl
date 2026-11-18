@@ -174,6 +174,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float  roughness = max(material.r, 0.04f);
     float  metallic  = material.g;
 
+    restir_load_primary_material(uv);
     Reservoir current = unpack_reservoir(
         tex_reservoir0[pixel],
         tex_reservoir1[pixel],
@@ -272,6 +273,21 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             // a sample whose reconnection instance was streamed out or whose pool index went stale has no path to shift
             bool usable = asuint(restir_primary_hit_previous[prev_pixel].x) != 0u && endpoint_alive &&
                 is_reservoir_valid(temporal) && temporal.M > 0.0f;
+
+            if (usable)
+            {
+                uint instance = asuint(restir_primary_hit_previous[prev_pixel].x) - 1u;
+                usable = restir_remap_history_instance(instance);
+                if (usable)
+                {
+                    uint old_index = geometry_infos[instance].material_index;
+                    MaterialParameters old_material = material_parameters[old_index];
+                    bool old_interface = restir_layered(old_material) || old_material.color.a < 1.0f || (old_material.flags & (1u << 13u)) != 0u;
+                    // Coverage of a blended pixel can change independently of the triangle.
+                    if (old_interface || restir_primary_bsdf_index != 0xffffffffu)
+                        usable = old_index == restir_primary_bsdf_index && old_material.alpha_blend <= 0.0f;
+                }
+            }
 
             if (usable)
             {

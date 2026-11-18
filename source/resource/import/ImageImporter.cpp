@@ -915,17 +915,17 @@ namespace spartan
         }
     }
 
-    void ImageImporter::SaveHdrJpeg(const string& file_path, const uint32_t frame_width, const uint32_t frame_height, const uint32_t width, const uint32_t height, const void* sdr_data, const void* hdr_data, const uint32_t hdr_bits_per_channel, const ImageColorSpace hdr_color_space, const float hdr_white_nits)
+    bool ImageImporter::SaveHdrJpeg(const string& file_path, const uint32_t frame_width, const uint32_t frame_height, const uint32_t width, const uint32_t height, const void* sdr_data, const void* hdr_data, const uint32_t hdr_bits_per_channel, const ImageColorSpace hdr_color_space, const float hdr_white_nits)
     {
         if (frame_width == 0 || frame_height == 0 || width == 0 || height == 0 || !sdr_data || !hdr_data || !(hdr_white_nits > 0.0f))
         {
-            return;
+            return false;
         }
 
         if (hdr_bits_per_channel != 16 && hdr_bits_per_channel != 32)
         {
             SP_LOG_ERROR("HDR JPEG export expects RGBA half or full float data");
-            return;
+            return false;
         }
 
         // freeimage keeps 24 bit pixels in this order
@@ -953,7 +953,7 @@ namespace spartan
             if (!bitmap)
             {
                 SP_LOG_ERROR("Failed to allocate FreeImage SDR bitmap");
-                return;
+                return false;
             }
 
             const uint16_t* sdr_half = static_cast<const uint16_t*>(sdr_data);
@@ -977,7 +977,7 @@ namespace spartan
             if (!bitmap)
             {
                 SP_LOG_ERROR("Failed to resize the SDR image of %s", file_path.c_str());
-                return;
+                return false;
             }
 
             const bool encoded = save_jpeg_to_memory(bitmap, base_jpeg);
@@ -985,7 +985,7 @@ namespace spartan
             if (!encoded)
             {
                 SP_LOG_ERROR("Failed to encode the SDR image of %s", file_path.c_str());
-                return;
+                return false;
             }
         }
 
@@ -1003,7 +1003,7 @@ namespace spartan
                 FreeImage_Unload(base);
             }
             SP_LOG_ERROR("Failed to decode the SDR image of %s", file_path.c_str());
-            return;
+            return false;
         }
 
         static const array<float, 256> srgb_to_linear = []()
@@ -1039,7 +1039,7 @@ namespace spartan
             {
                 FreeImage_Unload(base);
                 SP_LOG_ERROR("Failed to resize the HDR image of %s", file_path.c_str());
-                return;
+                return false;
             }
 
             gain.resize(static_cast<size_t>(width) * height * 4);
@@ -1098,7 +1098,7 @@ namespace spartan
             if (!bitmap)
             {
                 SP_LOG_ERROR("Failed to allocate FreeImage gain map bitmap");
-                return;
+                return false;
             }
 
             ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
@@ -1122,7 +1122,7 @@ namespace spartan
             if (!encoded)
             {
                 SP_LOG_ERROR("Failed to encode the gain map of %s", file_path.c_str());
-                return;
+                return false;
             }
         }
 
@@ -1196,7 +1196,9 @@ namespace spartan
         if (file.fail())
         {
             SP_LOG_ERROR("Failed to save HDR JPEG to %s", file_path.c_str());
+            return false;
         }
+        return true;
     }
 
     void ImageImporter::SaveSdrRgba8(const string& file_path, const uint32_t width, const uint32_t height, const void* data)

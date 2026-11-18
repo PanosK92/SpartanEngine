@@ -640,6 +640,25 @@ float4 restir_primary_surface(float2 uv)
     return float4(restir_primary_position(uv), asfloat(normal_roughness));
 }
 
+bool restir_layered(MaterialParameters m);
+
+bool restir_needs_material_parameters(float2 uv)
+{
+    MaterialParameters m = material_parameters[get_material_index(uv)];
+    return tex_albedo.Load(int3(gbuffer_texel(uv), 0)).a < 1.0f || (m.flags & (1u << 13u)) != 0u || restir_layered(m);
+}
+
+// Set per shader invocation. Spatial pairs and temporal correspondences validate
+// interface identity before evaluating either direction of a shift.
+static uint restir_primary_bsdf_index = 0xffffffffu;
+static float restir_primary_alpha = 1.0f;
+
+void restir_load_primary_material(float2 uv)
+{
+    restir_primary_bsdf_index = restir_needs_material_parameters(uv) ? get_material_index(uv) : 0xffffffffu;
+    restir_primary_alpha = tex_albedo.Load(int3(gbuffer_texel(uv), 0)).a;
+}
+
 uint restir_primary_material(float2 uv)
 {
     float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
@@ -1028,6 +1047,12 @@ bool is_neighbor_gbuffer_compatible(
     float3 center_pos = restir_primary_position(center_uv);
     float3 center_normal = get_normal(center_uv);
     float2 neighbor_uv   = restir_primary_uv(uint2(second), uint2(resolution));
+    if (restir_needs_material_parameters(center_uv) || restir_needs_material_parameters(neighbor_uv))
+    {
+        if (get_material_index(center_uv) != get_material_index(neighbor_uv) ||
+            tex_albedo.Load(int3(gbuffer_texel(center_uv), 0)).a != tex_albedo.Load(int3(gbuffer_texel(neighbor_uv), 0)).a)
+            return false;
+    }
     float neighbor_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).r;
 
     if (neighbor_depth <= 0.0f)
@@ -1610,7 +1635,7 @@ ShiftResult try_reconnection_shift(
     // cached source contribution remains valid; it is not a continuous BSDF.
     if (has_reconnection(src) && (src.rc_before_delta || src.rc_after_delta))
         return result;
-    if (has_reconnection(src) && src.rc_length > 2u)
+    if (has_reconnection(src) && (src.rc_length > 2u || restir_primary_bsdf_index != 0xffffffffu))
     {
         // Even an unchanged primary can have moving occluders along its prefix.
         // trace_shift_visibility relies on replay to validate these segments.
@@ -1990,22 +2015,17 @@ PathSample restir_light_endpoint_descriptor(RestirLightSample light, float3 orig
 // One light-tile RIS technique per vertex, with 32/v^2 unshadowed proposals.
 // Selection uses a separate RNG stream; prefix replay consumes only its seed.
 RestirLightSample sample_direct_lighting_at_vertex(
-    float3 shading_pos, float3 shading_normal, float3 geometric_normal,
-    float3 view_dir, float3 albedo, float roughness, float metallic,
-    float specular_blend, inout uint seed, bool replay, uint vertex, bool dielectric = false, float eta = 1.0f, bool allow_reflection = true, float3 transmission_tint = 1.0f)
+    PathSurface surface, float3 view_dir, inout uint seed, bool replay, uint vertex,
+    bool dielectric, float eta, bool allow_reflection, float3 transmission_tint)
 {
     RestirLightSample result = (RestirLightSample)0;
     float offset_xi = random_float(seed);
     uint selection_seed = seed ^ 0x9e3779b9u;
     if (replay) return result; // NEE leaves always reconnect; full replay is BSDF-only.
-    float3 surface_pos = shading_pos;
-    shading_pos = restir_ray_origin(surface_pos, geometric_normal);
-    PathSurface surface = (PathSurface)0;
-    surface.hit_normal = shading_normal;
-    surface.geometric_normal = geometric_normal;
-    surface.albedo = albedo;
-    surface.roughness = roughness;
-    surface.metallic = metallic;
+    float3 surface_pos = surface.hit_position;
+    float3 geometric_normal = surface.geometric_normal;
+    float3 shading_normal = surface.hit_normal;
+    float3 shading_pos = restir_ray_origin(surface_pos, geometric_normal);
     uint candidate_count = restir_nee_candidate_count(vertex);
     uint tile_offset = 0u;
     [loop] for (uint proposal = 0u; proposal < candidate_count; ++proposal)
@@ -2016,7 +2036,6 @@ RestirLightSample sample_direct_lighting_at_vertex(
         candidate.emtri_draw = proposal;
         if (entry.lights.x != 0xffffffffu)
         {
-            if (vertex == 1u && !is_restir_pt_direct_enabled()) continue;
             uint index = entry.lights.x;
             if (index >= (uint)buffer_frame.restir_pt_light_count) continue;
             LightParameters light = light_parameters[index];
@@ -2125,7 +2144,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
             any(shading_pos != restir_light_sample_origin(candidate, surface_pos, geometric_normal))) continue;
         float bsdf_pdf;
         float3 brdf = restir_surface_evaluate(surface, view_dir, candidate.direction, bsdf_pdf,
-            specular_blend, dielectric, eta, transmission_tint);
+            1.0f, dielectric, eta, transmission_tint);
         float mis = candidate.light_index == RESTIR_ENDPOINT_EMTRI ?
             restir_pooled_endpoint_mis(vertex + 1u, candidate.light_index, candidate.endpoint_pdf, bsdf_pdf) :
             (candidate.light_index == RESTIR_ENDPOINT_SKY ?

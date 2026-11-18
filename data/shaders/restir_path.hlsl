@@ -59,6 +59,7 @@ PathSurface restir_rc_surface(PathSample s)
     surface.material_index = s.rc_material_index;
     surface.front_facing = s.rc_front_facing;
     MaterialParameters mat = material_parameters[s.rc_material_index];
+    surface.layered = restir_layered(mat);
     surface.material_alpha = mat.color.a;
     surface.alpha_blend = mat.alpha_blend;
     surface.ior = mat.ior;
@@ -129,40 +130,6 @@ PathSurface restir_trace_surface(RayDesc ray)
     float hit_distance;
     uint3 hit = restir_trace_hit(ray, hit_distance);
     return reconstruct_path_surface(hit_distance, hit.x, hit.y, hit.z, ray, 0.0f);
-}
-
-// FetchDenoiserData / TraceDenoiserReplayPath: the guide belongs to the selected
-// reservoir path after reuse. Non-specular primary events supply zero distance.
-float restir_denoiser_hit_distance(Reservoir reservoir, float3 position, float3 normal,
-    float3 geometric_normal, float3 view, float3 albedo, float roughness, float metallic)
-{
-    if (!(reservoir.W > 0.0f)) return 0.0f;
-    float linear_roughness = sqrt(ggx_alpha_from_roughness(roughness));
-    // Reference PathTracerParams::specularRoughnessThreshold defaults to 0.25.
-    // Its direct-reconnection branch accepts any sampled lobe on a smooth surface.
-    if (reservoir.sample.rc_length == 2u)
-    {
-        if (linear_roughness >= 0.25f) return 0.0f;
-        return is_sky_sample(reservoir.sample) ? FLT_MAX_16U : length(reservoir.sample.rc_pos - position);
-    }
-    if (linear_roughness > 0.25f) return 0.0f;
-    uint seed = reservoir.sample.seed_path;
-    float2 xi = random_float2(seed);
-    float specular_probability = saturate(compute_spec_probability(albedo, roughness, metallic,
-        dot(normal, view)) * restir_primary_specular_blend(roughness));
-    if (xi.x < 1.0f - specular_probability) return 0.0f;
-    float pdf;
-    float3 direction = sample_reflection_brdf(albedo, roughness, metallic, normal, geometric_normal,
-        view, xi, pdf, restir_primary_specular_blend(roughness));
-    if (!restir_pdf_valid(pdf) || dot(normal, direction) <= 0.0f || !all(isfinite(direction))) return 0.0f;
-    RayDesc ray;
-    ray.Origin = restir_ray_origin(position, geometric_normal);
-    ray.Direction = direction;
-    ray.TMin = RESTIR_RAY_T_MIN;
-    ray.TMax = RESTIR_RAY_T_MAX;
-    float distance;
-    restir_trace_hit(ray, distance);
-    return distance >= 0.0f ? distance : FLT_MAX_16U;
 }
 
 // Match the reference's explicit-LOD reconstruction from retained hit identity.
@@ -270,63 +237,88 @@ void restir_stream_leaf(inout PathSample selected, inout float weight_sum, PathS
         selected = leaf;
 }
 
+bool restir_sample_coverage(PathSurface surface, inout uint seed)
+{
+    if (surface.alpha_blend > 0.0f && surface.material_alpha < 1.0f)
+        return random_float(seed) >= surface.material_alpha;
+    return false;
+}
+
+RestirSurfaceSample restir_sample_scatter(PathSurface surface, float3 view, inout uint seed, RestirMediumState medium, bool pass_through)
+{
+    bool dielectric = restir_surface_is_dielectric(surface);
+    float eta = dielectric ? restir_surface_eta(surface, medium) : 1.0f;
+    float2 xi = random_float2(seed);
+    float lobe = dielectric ? random_float(seed) : 0.0f;
+    if (pass_through)
+    {
+        RestirSurfaceSample scatter = (RestirSurfaceSample)0;
+        scatter.direction = -view;
+        scatter.weight = 1.0f;
+        scatter.component = 2u;
+        scatter.transmission = true;
+        scatter.delta = true;
+        scatter.valid = true;
+        return scatter;
+    }
+    return restir_surface_sample(surface, view, float3(xi, lobe), 1.0f, dielectric, eta, restir_surface_transmission_tint(surface));
+}
+
 // One BSDF spine with a light-ending leaf at each vertex. Reconnection is
 // selected incrementally, so the walk needs no per-vertex array or second trace.
 // The prefix uses random-number measure; the connection and RC outgoing edges
 // retain their sampled lobes in solid-angle measure. initial_weight includes
 // their joint direction/component densities, not the marginal footprint PDFs.
-PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, float3 dir,
-    float dir_pdf, float3 primary_weight, float dir_joint_pdf, uint primary_component, uint replay_seed, inout uint seed, out float3 reference_radiance,
-    bool replay, PathSample requested, float3 primary_view, float3 primary_albedo,
-    float primary_roughness, float primary_metallic, float3 camera_position, float3 primary_geometric_normal)
+PathSample trace_path_from_primary(PathSurface camera_hit, float3 view, float3 camera_position,
+    uint replay_seed, inout uint seed, out float3 reference_radiance, bool replay, PathSample requested)
 {
+    float3 dir = -view;
     PathSample selected = (PathSample)0;
     PathSample connection = (PathSample)0;
     float weight_sum = 0.0f;
     uint selection_seed = seed ^ 0x68bc21ebu;
     reference_radiance = 0.0f;
     PathSurface previous = (PathSurface)0;
-    previous.hit = true;
-    previous.hit_position = primary_pos;
-    previous.hit_normal = primary_normal;
-    previous.geometric_normal = primary_geometric_normal;
-    previous.albedo = primary_albedo;
-    previous.roughness = primary_roughness;
-    previous.metallic = primary_metallic;
-    // Sampled throughput is independent of continuous density for delta events.
-    float3 throughput = primary_weight;
+    previous.hit_position = camera_position;
+    float3 throughput = 1.0f;
     float3 reference_throughput = 1.0f;
     float connection_source_pdf = 1.0f;
     float3 suffix = 1.0f;
     float connection_density = 1.0f;
-    float incoming_pdf = dir_pdf;
-    float incoming_joint_pdf = dir_joint_pdf;
-    uint incoming_component = primary_component;
-    bool incoming_transmission = false; // primary sampling is currently reflection-only
-    bool incoming_delta = false; // primary sampling currently has no delta lobe
+    float incoming_pdf = 1.0f;
+    float incoming_joint_pdf = 1.0f;
+    uint incoming_component = 0u;
+    bool incoming_transmission = false;
+    bool incoming_delta = true;
     RestirMediumState medium = (RestirMediumState)0;
     bool incoming_nee_supported = true;
     float roulette_weight = 1.0f;
-    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_geometric_normal, camera_position);
+    float threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(camera_hit.hit_position, camera_hit.geometric_normal, camera_position);
     float first_hit_distance = 0.0f;
     float3 first_hit_position = 0.0f;
-    [loop] for (uint depth = 2u; depth <= RESTIR_MAX_PATH_LENGTH; ++depth)
+    [loop] for (uint depth = 1u; depth <= RESTIR_MAX_PATH_LENGTH; ++depth)
     {
         RayDesc ray;
         ray.Origin = restir_ray_origin(previous.hit_position, previous.geometric_normal, incoming_transmission);
         ray.Direction = dir;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
-        PathSurface current = restir_trace_surface(ray);
+        bool at_camera_hit = depth == 1u;
+        PathSurface current;
+        if (at_camera_hit)
+            current = camera_hit;
+        else
+            current = restir_trace_surface(ray);
         float3 transmittance = current.hit ? restir_medium_transmittance(medium, current.hit_distance) : 1.0f;
         throughput *= transmittance;
         reference_throughput *= transmittance;
         if (has_reconnection(connection)) suffix *= transmittance;
         bool dielectric = restir_surface_is_dielectric(current);
+        bool pass_through = restir_sample_coverage(current, seed);
         float eta = dielectric ? restir_surface_eta(current, medium) : 1.0f;
         if (depth == 2u)
         {
-            first_hit_distance = current.hit ? length(current.hit_position - primary_pos) : RESTIR_MISS_HIT_DISTANCE;
+            first_hit_distance = current.hit ? length(current.hit_position - camera_hit.hit_position) : RESTIR_MISS_HIT_DISTANCE;
             first_hit_position = current.hit ? current.hit_position : dir;
         }
         // Match the reference's default useLightsInDielectricVolumes=false.
@@ -341,7 +333,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         }
         // Sky NEE has no support on surface emitters. An unpooled emissive
         // hit is sampled only by the BSDF and must keep its full contribution.
-        float endpoint_mis = current.pooled_emitter
+        float endpoint_mis = at_camera_hit ? 1.0f : current.pooled_emitter
             ? restir_pooled_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, endpoint_nee_pdf, incoming_pdf)
             : (current.hit ? 1.0f : restir_environment_endpoint_mis(depth, RESTIR_ENDPOINT_BSDF, previous.hit_normal, dir, incoming_pdf));
         if (!incoming_nee_supported) endpoint_mis = 1.0f;
@@ -358,13 +350,13 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf.rc_L_post = suffix * emitted * (depth == connection.rc_length + 1u ? 1.0f : endpoint_mis);
         }
-        else if (restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, RESTIR_RC_EMITTER_PDF, threshold, incoming_transmission, incoming_component))
+        else if (!at_camera_hit && !incoming_delta && restir_prefix_connection_allowed(previous, endpoint, incoming_pdf, RESTIR_RC_EMITTER_PDF, threshold, incoming_transmission, incoming_component))
         {
             leaf = restir_connection_descriptor(previous, endpoint, dir, depth, replay_seed, incoming_transmission, incoming_component, incoming_delta);
             leaf.flags |= PATH_FLAG_RC_EMIT;
             leaf.rc_L_nee = emitted;
             leaf.F = throughput * incoming_joint_pdf * emitted * endpoint_mis;
-            inverse_density = dir_joint_pdf / incoming_joint_pdf;
+            inverse_density = 1.0f / incoming_joint_pdf;
         }
         else
         {
@@ -372,11 +364,11 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             leaf = (PathSample)0;
             leaf.seed_path = replay_seed;
             leaf.rc_pos = first_hit_position;
-            leaf.rc_normal = primary_normal;
-            leaf.rc_outgoing_dir = primary_normal;
+            leaf.rc_normal = camera_hit.hit_normal;
+            leaf.rc_outgoing_dir = camera_hit.hit_normal;
             if (depth == 2u && !current.hit) leaf.flags = PATH_FLAG_SKY;
             leaf.F = throughput * emitted * endpoint_mis;
-            inverse_density = dir_joint_pdf;
+            inverse_density = 1.0f;
         }
         leaf.endpoint_pooled = current.pooled_emitter;
         leaf.endpoint_environment = !current.hit;
@@ -394,10 +386,10 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         if (depth == RESTIR_MAX_PATH_LENGTH)
             break;
 
-        RestirLightSample light = sample_direct_lighting_at_vertex(current.hit_position, current.hit_normal,
-            current.geometric_normal, -dir, current.albedo, current.roughness, current.metallic, 1.0f, seed,
+        RestirLightSample light = sample_direct_lighting_at_vertex(current, -dir, seed,
             replay, depth, dielectric, eta, medium.slots.x == 0u, restir_surface_transmission_tint(current));
-        reference_radiance += reference_throughput * light.radiance_sum * roulette_weight;
+        if (!pass_through)
+            reference_radiance += reference_throughput * light.radiance_sum * roulette_weight;
         float light_bsdf_pdf;
         float3 light_f = restir_surface_evaluate(current, -dir, light.direction, light_bsdf_pdf, 1.0f, dielectric, eta, restir_surface_transmission_tint(current));
         float light_mis = light.light_index == RESTIR_ENDPOINT_EMTRI
@@ -410,21 +402,21 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
         {
             leaf.rc_L_post = suffix * light_f * light.incident * light_mis;
         }
-        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, light_bsdf_pdf, threshold, incoming_transmission, incoming_component))
+        else if (!at_camera_hit && !incoming_delta && restir_prefix_connection_allowed(previous, current, incoming_pdf, light_bsdf_pdf, threshold, incoming_transmission, incoming_component))
         {
             leaf = restir_connection_descriptor(previous, current, dir, depth, replay_seed, incoming_transmission, incoming_component, incoming_delta);
             leaf.rc_outgoing_dir = light.direction;
             if (light.transmission) leaf.flags |= PATH_FLAG_TRANSMISSION_AFTER_RC;
             leaf.rc_L_post = light.incident;
             leaf.F = throughput * incoming_joint_pdf * light_f * light.incident * light_mis;
-            inverse_density = dir_joint_pdf / incoming_joint_pdf;
+            inverse_density = 1.0f / incoming_joint_pdf;
         }
         else
         {
             // Section 6.2.3: force connection to the sampled NEE endpoint.
             leaf = restir_light_endpoint_descriptor(light, restir_light_sample_origin(light, current.hit_position, current.geometric_normal), depth, replay_seed);
             leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
-            inverse_density = restir_pdf_valid(light.endpoint_pdf) ? dir_joint_pdf / light.endpoint_pdf : 0.0f;
+            inverse_density = restir_pdf_valid(light.endpoint_pdf) ? 1.0f / light.endpoint_pdf : 0.0f;
         }
         leaf.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
         leaf.endpoint_environment = light.light_index == RESTIR_ENDPOINT_SKY;
@@ -438,6 +430,7 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             leaf.endpoint_emtri_draw = light.emtri_draw;
         if (has_reconnection(connection))
             leaf.F = throughput * light_f * light.incident * light_mis * connection_source_pdf;
+        if (pass_through) leaf.F = 0.0f;
         restir_stream_leaf(selected, weight_sum, leaf, inverse_density * roulette_weight * light.initial_weight,
             selection_seed, replay, requested);
 
@@ -447,16 +440,14 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             if (!replay && rr >= RESTIR_RR_CONTINUATION) break;
             if (!replay) roulette_weight /= RESTIR_RR_CONTINUATION;
         }
-        float2 scatter_xi = random_float2(seed);
-        float scatter_lobe = dielectric ? random_float(seed) : 0.0f;
-        RestirSurfaceSample scatter = restir_surface_sample(current, -dir, float3(scatter_xi, scatter_lobe), 1.0f, dielectric, eta, restir_surface_transmission_tint(current));
+        RestirSurfaceSample scatter = restir_sample_scatter(current, -dir, seed, medium, pass_through);
         if (!scatter.valid)
             break;
         float3 outgoing = scatter.direction;
         float outgoing_pdf = restir_path_sample_pdf(scatter);
         if (has_reconnection(connection))
             suffix *= scatter.weight;
-        else if (restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold, incoming_transmission, incoming_component))
+        else if (!at_camera_hit && !incoming_delta && restir_prefix_connection_allowed(previous, current, incoming_pdf, outgoing_pdf, threshold, incoming_transmission, incoming_component))
         {
             connection = restir_connection_descriptor(previous, current, dir, depth, replay_seed, incoming_transmission, incoming_component, incoming_delta);
             connection.rc_nee_reflection_disabled = medium.slots.x != 0u;
@@ -465,13 +456,14 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
             connection.rc_after_delta = scatter.delta;
             if (scatter.transmission) connection.flags |= PATH_FLAG_TRANSMISSION_AFTER_RC;
             connection_source_pdf = incoming_joint_pdf * restir_path_sample_joint_pdf(scatter);
-            connection_density = dir_joint_pdf / connection_source_pdf;
+            connection_density = 1.0f / connection_source_pdf;
             suffix = 1.0f;
         }
         throughput *= scatter.weight;
         reference_throughput *= scatter.weight;
-        incoming_nee_supported = medium.slots.x == 0u || scatter.transmission;
-        restir_surface_cross_medium(medium, current, scatter);
+        incoming_nee_supported = !scatter.delta && (medium.slots.x == 0u || scatter.transmission);
+        if (!pass_through)
+            restir_surface_cross_medium(medium, current, scatter);
         previous = current;
         dir = outgoing;
         incoming_pdf = outgoing_pdf;
@@ -484,6 +476,75 @@ PathSample trace_path_from_primary(float3 primary_pos, float3 primary_normal, fl
     float target = target_scalar(selected.F);
     selected.initial_weight = !replay && target > 0.0f ? weight_sum / target : 1.0f;
     return selected;
+}
+
+// The raster primary also exists for displaced water and thin surfaces absent
+// from the TLAS. Replay its camera edge exactly, then trace the remaining path.
+PathSurface restir_camera_primary(float3 pos, float3 normal, float3 geometric_normal,
+    float3 view, float3 albedo, float roughness, float metallic)
+{
+    uint material_index = restir_primary_bsdf_index;
+    PathSurface surface = (PathSurface)0;
+    surface.hit = true;
+    surface.hit_position = pos;
+    surface.front_facing = dot(geometric_normal, view) >= 0.0f;
+    surface.geometric_normal = surface.front_facing ? geometric_normal : -geometric_normal;
+    surface.hit_normal = dot(normal, view) >= 0.0f ? normal : -normal;
+    surface.albedo = albedo;
+    surface.roughness = roughness;
+    surface.metallic = metallic;
+    if (material_index == 0xffffffffu)
+        return surface;
+    MaterialParameters mat = material_parameters[material_index];
+    surface.material_index = material_index;
+    surface.layered = restir_layered(mat);
+    surface.material_alpha = restir_primary_alpha;
+    surface.alpha_blend = mat.alpha_blend;
+    surface.ior = max(mat.ior, 1.0001f);
+    surface.thin_walled = mat.is_thin_walled();
+    surface.absorption = mat.absorption;
+    surface.thickness = mat.thickness;
+    if ((mat.flags & (1u << 13u)) != 0u)
+    {
+        surface.material_alpha = min(surface.material_alpha, 0.99999f);
+        surface.ior = 1.333f;
+        surface.alpha_blend = 0.0f;
+        surface.thin_walled = false;
+    }
+
+    return surface;
+}
+
+// FetchDenoiserData / TraceDenoiserReplayPath: the guide belongs to the selected
+// reservoir path after reuse. Non-specular primary events supply zero distance.
+float restir_denoiser_hit_distance(Reservoir reservoir, float3 position, float3 normal,
+    float3 geometric_normal, float3 view, float3 albedo, float roughness, float metallic)
+{
+    if (!(reservoir.W > 0.0f)) return 0.0f;
+    PathSurface surface = restir_camera_primary(position, normal, geometric_normal, view, albedo, roughness, metallic);
+    float linear_roughness = restir_surface_is_dielectric(surface) ? sqrt(restir_dielectric_alpha(roughness))
+        : sqrt(ggx_alpha_from_roughness(roughness));
+    // Reference PathTracerParams::specularRoughnessThreshold defaults to 0.25.
+    // Its direct-reconnection branch accepts any sampled lobe on a smooth surface.
+    if (reservoir.sample.rc_length == 2u)
+    {
+        if (linear_roughness >= 0.25f) return 0.0f;
+        return is_sky_sample(reservoir.sample) ? FLT_MAX_16U : length(reservoir.sample.rc_pos - position);
+    }
+    if (linear_roughness > 0.25f) return 0.0f;
+    uint seed = reservoir.sample.seed_path;
+    bool pass_through = restir_sample_coverage(surface, seed);
+    random_float(seed); // primary NEE tile offset
+    RestirSurfaceSample scatter = restir_sample_scatter(surface, view, seed, (RestirMediumState)0, pass_through);
+    if (!scatter.valid || scatter.component != 2u) return 0.0f;
+    RayDesc ray;
+    ray.Origin = restir_ray_origin(position, surface.geometric_normal, scatter.transmission);
+    ray.Direction = scatter.direction;
+    ray.TMin = RESTIR_RAY_T_MIN;
+    ray.TMax = RESTIR_RAY_T_MAX;
+    float distance;
+    restir_trace_hit(ray, distance);
+    return distance >= 0.0f ? distance : FLT_MAX_16U;
 }
 
 // Replay just the prefix, reconnect the stored suffix, and require the first
@@ -501,37 +562,23 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     uint transmission_events = 0u;
     float vertex_eta[RESTIR_MAX_PATH_LENGTH + 1u];
     RestirMediumState medium = (RestirMediumState)0;
-    PathSurface primary = (PathSurface)0;
-    primary.hit = true;
-    primary.hit_position = pos;
-    primary.hit_normal = normal;
-    primary.geometric_normal = primary_geometric_normal;
-    primary.albedo = albedo;
-    primary.roughness = roughness;
-    primary.metallic = metallic;
-    vertices[1] = primary;
+    vertices[1] = restir_camera_primary(pos, normal, primary_geometric_normal, view, albedo, roughness, metallic);
+    directions[0] = -view;
     uint seed = src.seed_path;
     float3 prefix = 1.0f;
     [loop] for (uint i = 1u; i + 1u < src.rc_length; ++i)
     {
         PathSurface v = vertices[i];
         float3 incoming = i == 1u ? view : -directions[i - 1u];
-        bool dielectric = i > 1u && restir_surface_is_dielectric(v);
+        bool dielectric = restir_surface_is_dielectric(v);
         float eta = dielectric ? restir_surface_eta(v, medium) : 1.0f;
         vertex_eta[i] = eta;
-        if (i > 1u)
-        {
-            // Advance exactly the initial tree's NEE dimensions. A fixed BSDF
-            // leaf skips all light evaluation and visibility work.
-            sample_direct_lighting_at_vertex(v.hit_position, v.hit_normal, v.geometric_normal,
-                incoming, v.albedo, v.roughness, v.metallic, 1.0f, seed, true, i, dielectric, eta, medium.slots.x == 0u, restir_surface_transmission_tint(v));
-            if (i + 1u > 3u + RESTIR_RR_START)
-                random_float(seed); // no roulette termination during replay
-        }
-        float blend = i == 1u ? restir_primary_specular_blend(roughness) : 1.0f;
-        float2 scatter_xi = random_float2(seed);
-        float scatter_lobe = dielectric ? random_float(seed) : 0.0f;
-        RestirSurfaceSample scatter = restir_surface_sample(v, incoming, float3(scatter_xi, scatter_lobe), blend, dielectric, eta, restir_surface_transmission_tint(v));
+        bool pass_through = restir_sample_coverage(v, seed);
+        // Advance the same NEE and roulette dimensions as the initial path.
+        sample_direct_lighting_at_vertex(v, incoming, seed, true, i, dielectric, eta, medium.slots.x == 0u, restir_surface_transmission_tint(v));
+        if (i + 1u > 3u + RESTIR_RR_START)
+            random_float(seed);
+        RestirSurfaceSample scatter = restir_sample_scatter(v, incoming, seed, medium, pass_through);
         if (!scatter.valid)
             return result;
         float3 direction = scatter.direction;
@@ -546,7 +593,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         ray.Direction = direction;
         ray.TMin = RESTIR_RAY_T_MIN;
         ray.TMax = RESTIR_RAY_T_MAX;
-        restir_surface_cross_medium(medium, v, scatter);
+        if (!pass_through) restir_surface_cross_medium(medium, v, scatter);
         vertices[i + 1u] = restir_trace_surface(ray);
         if (!vertices[i + 1u].hit)
             return result;
@@ -554,6 +601,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     }
     uint k = src.rc_length;
     PathSurface previous = vertices[k - 1u];
+    // A null coverage event carries no light-connection lobe.
+    if (restir_sample_coverage(previous, seed)) return result;
     bool previous_dielectric = restir_surface_is_dielectric(previous);
     vertex_eta[k - 1u] = previous_dielectric ? restir_surface_eta(previous, medium) : 1.0f;
     float3 connection_origin = restir_reconnection_ray_origin(src, previous.hit_position, previous.geometric_normal);
@@ -598,7 +647,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         else
             restir_surface_evaluate(v, -directions[j - 1u], directions[j], pdf_out, 1.0f,
                 restir_surface_is_dielectric(v), vertex_eta[j], restir_surface_transmission_tint(v));
-        if (restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold,
+        if ((delta_events & (1u << (j - 1u))) == 0u && restir_prefix_connection_allowed(vertices[j - 1u], v, pdfs[j - 1u], pdf_out, threshold,
             (transmission_events & (1u << (j - 1u))) != 0u, components[j - 1u]))
             return result;
     }
@@ -659,15 +708,9 @@ ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_p
     ShiftResult result = (ShiftResult)0;
     result.sample = src;
     uint seed = src.seed_path;
-    RestirSurfaceSample primary = restir_primary_sample(dst_albedo, roughness, metallic,
-        dst_normal, dst_geometric_normal, dst_view, random_float2(seed), restir_primary_specular_blend(roughness));
-    float pdf_dst = restir_path_sample_pdf(primary);
-    float3 dir = primary.direction;
-    if (!primary.valid || !restir_pdf_valid(pdf_dst) || dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT || any(isnan(dir)))
-        return result;
+    PathSurface surface = restir_camera_primary(dst_pos, dst_normal, dst_geometric_normal, dst_view, dst_albedo, roughness, metallic);
     float3 unused_reference;
-    PathSample replayed = trace_path_from_primary(dst_pos, dst_normal, dir, pdf_dst, primary.weight, restir_path_sample_joint_pdf(primary), primary.component, src.seed_path, seed, unused_reference, true, src,
-        dst_view, dst_albedo, roughness, metallic, camera_position, dst_geometric_normal);
+    PathSample replayed = trace_path_from_primary(surface, dst_view, camera_position, src.seed_path, seed, unused_reference, true, src);
     if (has_reconnection(replayed) || replayed.path_length != src.path_length || replayed.endpoint_light != src.endpoint_light)
         return result;
     result.sample = replayed;

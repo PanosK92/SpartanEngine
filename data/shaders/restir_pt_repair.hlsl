@@ -35,26 +35,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 7);
     uint2 block = pixel / 8u;
     restir_light_tile_index = xxhash32(block.x ^ xxhash32(block.y) ^ buffer_frame.frame) % RESTIR_LIGHT_TILE_COUNT;
-    uint count = clamp(get_restir_initial_candidates(), 1u, 8u);
-    float3 radiance = 0.0f;
-    for (uint i = 0u; i < count; ++i)
-    {
-        uint replay_seed = seed;
-        RestirSurfaceSample primary = restir_primary_sample(albedo, roughness, metallic, normal, geometric_normal,
-            view, random_float2(seed), restir_primary_specular_blend(roughness));
-        float pdf = restir_path_sample_pdf(primary);
-        float3 direction = primary.direction;
-        if (!primary.valid || !restir_pdf_valid(pdf) || dot(normal, direction) <= 0.0f || !all(isfinite(direction)))
-            continue;
-        float3 incident;
-        trace_path_from_primary(position, normal, direction, pdf, primary.weight, restir_path_sample_joint_pdf(primary), primary.component, replay_seed, seed, incident, false, (PathSample)0,
-            view, albedo, roughness, metallic, get_camera_position(), geometric_normal);
-        radiance += primary.weight * incident;
-    }
-    radiance /= float(count);
-    RestirLightSample light = sample_direct_lighting_at_vertex(position, normal, geometric_normal,
-        view, albedo, roughness, metallic, 1.0f, seed, false, 1u);
-    radiance += light.radiance_sum;
+    restir_load_primary_material(uv);
+    PathSurface surface = restir_camera_primary(position, normal, geometric_normal, view, albedo, roughness, metallic);
+    float3 radiance;
+    uint replay_seed = seed;
+    trace_path_from_primary(surface, view, get_camera_position(), replay_seed, seed, radiance, false, (PathSample)0);
     // Alpha zero is valid lighting but is not a denoised accumulation history.
     tex_uav[pixel] = float4(all(isfinite(radiance)) ? radiance : 0.0f, 0.0f);
 }

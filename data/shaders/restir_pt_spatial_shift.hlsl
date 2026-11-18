@@ -38,6 +38,7 @@ float4 evaluate_pair_shift(uint2 pixel, uint table, Reservoir center, float2 res
     float3 position = restir_primary_position(uv);
     float2 partner_uv = restir_primary_uv(uint2(partner), uint2(resolution));
     float3 partner_position = restir_primary_position(partner_uv);
+    restir_load_primary_material(partner_uv);
     float4 material = get_material(partner_uv);
     float3 normal = get_normal(partner_uv);
     float3 geometric_normal = get_geometric_normal(partner_uv);

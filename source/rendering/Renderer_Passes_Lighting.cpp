@@ -62,7 +62,6 @@ namespace spartan
     }
 
     // The estimator already includes the primary BSDF and returns radiance.
-    static const float restir_composition_intensity = 1.0f;
 
     void Renderer::Pass_Reflections_Apply(uint32_t eye_layer /*= rhi_all_mips*/)
     {
@@ -1719,9 +1718,6 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::rt_shadows_local, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local));
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
-            // the restir light of surfaces with a diffusion profile is composited here, ahead of the subsurface pass
-            RHI_Texture* tex_restir = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_restir ? tex_restir : GetStandardTexture(Renderer_StandardTexture::Black));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, light_diffuse);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, light_specular);
 
@@ -1787,7 +1783,8 @@ namespace spartan
         RHI_Texture* tex_skysphere     = GetRenderTarget(Renderer_RenderTarget::skysphere);
         // opaque diffuse may have been spread under the surface, transparents are lit after that pass and stay as they are
         const bool scattered           = !is_transparent_pass && m_pass_state.subsurface_scattered;
-        RHI_Texture* tex_light_diffuse = GetRenderTarget(scattered ? Renderer_RenderTarget::light_diffuse_scattered : Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* tex_light_diffuse = GetRenderTarget(IsRestirActive() ? Renderer_RenderTarget::restir_denoised :
+            (scattered ? Renderer_RenderTarget::light_diffuse_scattered : Renderer_RenderTarget::light_diffuse));
         RHI_Texture* tex_light_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
 
         RHI_CommandList::BeginPass(is_transparent_pass ? "light_composition_transparent" : "light_composition");
@@ -1830,34 +1827,7 @@ namespace spartan
             RHI_Texture* tex_sky_sh = GetRenderTarget(Renderer_RenderTarget::sky_sh);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_sky_sh ? tex_sky_sh : GetStandardTexture(Renderer_StandardTexture::Black));
 
-            // the async gi is still being traced, last frame's result is matched against last frame's gbuffer copy
-            const bool restir_previous = m_pass_state.restir.async_this_frame;
-            RHI_Texture* tex_gi = GetRenderTarget(
-                restir_previous ? Renderer_RenderTarget::restir_denoised_previous : Renderer_RenderTarget::restir_denoised
-            );
-            const bool restir_enabled =
-                cvar_restir_pt.GetValueAs<bool>() &&
-                tex_gi &&
-                !IsSecondaryViewActive();
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, tex_gi ? tex_gi : GetStandardTexture(
-                    Renderer_StandardTexture::Black
-                ));
-
-            RHI_Texture* tex_depth_history  = nullptr;
-            RHI_Texture* tex_normal_history = nullptr;
-            if (restir_previous)
-            {
-                const bool history_is_0 = m_pass_state.restir.gbuffer_copy_index == 1;
-                tex_depth_history  = GetRenderTarget(history_is_0 ? Renderer_RenderTarget::restir_gbuffer_depth_0  : Renderer_RenderTarget::restir_gbuffer_depth_1);
-                tex_normal_history = GetRenderTarget(history_is_0 ? Renderer_RenderTarget::restir_gbuffer_normal_0 : Renderer_RenderTarget::restir_gbuffer_normal_1);
-            }
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, tex_depth_history ? tex_depth_history : GetStandardTexture(Renderer_StandardTexture::Black));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_normal_previous, tex_normal_history ? tex_normal_history : GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous));
-
             m_pcb_pass_cpu.set(pass_light_image_based::environment_mip_count, static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
-            m_pcb_pass_cpu.set(pass_light_image_based::restir_enabled, restir_enabled);
-            m_pcb_pass_cpu.set(pass_light_image_based::restir_intensity, restir_composition_intensity);
-            m_pcb_pass_cpu.set(pass_light_image_based::restir_previous, restir_previous && tex_depth_history && tex_normal_history);
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
         }
         RHI_CommandList::EndPass();

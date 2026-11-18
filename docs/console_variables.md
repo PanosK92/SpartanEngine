@@ -62,7 +62,7 @@ Grouped by subsystem. Each cvar's description string, shown in the console and t
 
 ### Renderer: lighting and global illumination
 
-`r.ssao`, `r.ray_traced_reflections`, `r.ray_traced_reflections_checkerboard`, `r.ray_traced_shadows`, `r.rt_light_culling`, `r.restir_pt`, `r.restir_pt_async`, `r.restir_pt_direct`, `r.restir_pt_emissive_pool`, `r.restir_pt_scale`, `r.restir_pt_reference`, `r.path_tracing`, `r.path_tracing_bounces`.
+`r.ssao`, `r.ray_traced_reflections`, `r.ray_traced_reflections_checkerboard`, `r.ray_traced_shadows`, `r.rt_light_culling`, `r.restir_pt`, `r.restir_pt_async`, `r.restir_pt_emissive_pool`, `r.restir_pt_scale`, `r.restir_pt_reference`, `r.path_tracing`, `r.path_tracing_bounces`.
 
 ### Renderer: atmosphere
 

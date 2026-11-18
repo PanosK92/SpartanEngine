@@ -55,7 +55,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // this range, so those output texels can still contain an older surface.
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
-    if (depth <= 0.0f || linearize_depth(depth) >= denoising_range)
+    if (depth > 0.0f && linearize_depth(depth) >= denoising_range)
+    {
+        tex_uav[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, -1.0f);
+        return;
+    }
+    if (depth <= 0.0f)
     {
         tex_uav[thread_id.xy] = 0.0f;
         return;
@@ -96,6 +101,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Match the actual G-buffer sample behind this low-resolution lighting tap.
         float2 sample_uv = (float2(restir_guide_pixel(uint2(pixel), lighting_size, resolution)) + 0.5f) / float2(resolution);
         float sample_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r;
+        if (get_material_index(sample_uv) != get_material_index(uv))
+            continue;
         if (sample_depth <= 0.0f || linearize_depth(sample_depth) >= denoising_range)
             continue;
         float3 sample_normal = get_normal(sample_uv);

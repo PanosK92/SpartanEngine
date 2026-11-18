@@ -13,7 +13,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "light_cluster.hlsl"
 #include "subsurface_scattering.hlsl"
 #include "rt_visibility.hlsl"
-#include "restir_material_factors.hlsl"
 //============================
 
 #ifdef RAY_TRACING_ENABLED
@@ -491,25 +490,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_precomputed = is_transparent ? float3(1.0f, 1.0f, 1.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
     float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
 
-    // Unified ReSTIR carries direct diffuse and specular. Subsurface transmission
-    // stays here; light_image_based composites the combined ReSTIR signal, except
-    // on a surface with a diffusion profile, which takes it at the end of this pass.
-    if (is_restir_pt_direct_enabled() && !surface.is_transparent() && !surface.is_water() && !surface.is_sky())
-    {
-        float coverage = restir_coverage(surface.uv);
-
-        // nothing of a fully covered surface is left for this pass unless light also travels through it
-        if (coverage >= 1.0f && surface.subsurface_scattering <= 0.0f)
-        {
-            tex_uav[thread_id.xy]  = 0.0f;
-            tex_uav2[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-            return;
-        }
-
-        diffuse_precomputed  *= 1.0f - coverage;
-        specular_precomputed *= 1.0f - coverage;
-    }
-
     uint total_lights = buffer_frame.cluster_light_count;
 
     // slot 0 is always the directional sun, evaluated unconditionally because it has no spatial bound
@@ -557,30 +537,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // alpha marks the pixels whose diffuse light the subsurface pass spreads, their neighbours only gather from marked ones
     float diffuses = pass_is_opaque() && surface.is_opaque() && surface.has_subsurface_profile() && surface.metallic < 1.0f ? 1.0f : 0.0f;
-
-    // the path traced light of such a pixel joins here rather than in light_image_based, which skips it, so the subsurface
-    // pass spreads its diffuse share together with the transmission above. restir carries one radiance for both lobes, it is
-    // split the way its denoiser splits it, by how much each lobe reflects. the analytic lobes of the lights were tried as
-    // the ratio instead, without visibility they read a shadowed crease as a highlight and leave it unspread. tex3 holds
-    // the signal at render resolution, a negative alpha marks a pixel the reconstruction could not fill, which stays
-    // black as it does in light_image_based
-    if (is_restir_subsurface_enabled() && diffuses > 0.0f)
-    {
-        float4 restir = tex3[thread_id.xy];
-        if (restir.a >= 0.0f)
-        {
-            float3 albedo = saturate(tex_albedo.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb);
-            float3 view   = normalize(-surface.camera_to_pixel);
-            float3 factor_diffuse;
-            float3 factor_specular;
-            restir_nrd_material_factors(albedo, surface.metallic, ggx_alpha_from_roughness(max(surface.roughness, 0.04f)), saturate(dot(surface.normal, view)), factor_diffuse, factor_specular);
-
-            // composition multiplies the diffuse target by albedo, so it takes the light ahead of that
-            float3 illumination = max(restir.rgb, 0.0f) * restir_coverage(surface.uv) * surface.alpha / (factor_diffuse + factor_specular);
-            out_diffuse        += illumination * (1.0f - surface.metallic);
-            out_specular       += illumination * factor_specular;
-        }
-    }
 
     tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,  diffuses));
     tex_uav2[thread_id.xy] = validate_output(float4(out_specular, 1.0f));

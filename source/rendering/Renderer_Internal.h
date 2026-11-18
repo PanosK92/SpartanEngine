@@ -109,7 +109,6 @@ namespace spartan
             // consecutive frames that wrote a gbuffer copy, async needs last frame's copy as history
             uint32_t gbuffer_copy_frames = 0;
             // the gi ran on its own compute list this frame, image based lighting reads last frame's gi
-            bool async_this_frame = false;
 
             void Reset() { *this = RestirState(); }
         };

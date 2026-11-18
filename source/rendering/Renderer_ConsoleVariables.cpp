@@ -99,21 +99,16 @@ namespace spartan
             }
         }
 
-        void on_ssao_change(const CVarVariant& value)
-        {
-            if (get<float>(value) != 0.0f && RHI_Device::IsSupportedRayTracing() &&
-                (cvar_restir_pt.GetValueAs<bool>() || cvar_path_tracing.GetValueAs<bool>()))
-            {
-                cvar_ssao.SetValue(0.0f);
-            }
-        }
-
         void on_path_tracing_change(const CVarVariant& value)
         {
-            if (get<float>(value) != 0.0f && RHI_Device::IsSupportedRayTracing())
-            {
-                cvar_ssao.SetValue(0.0f);
-            }
+            if (get<float>(value) != 0.0f)
+                cvar_restir_pt.SetValue(0.0f);
+        }
+
+        void on_restir_change(const CVarVariant& value)
+        {
+            if (get<float>(value) != 0.0f)
+                cvar_path_tracing.SetValue(0.0f);
         }
 
         void on_ray_traced_reflections_change(const CVarVariant& value)
@@ -219,18 +214,17 @@ namespace spartan
     TConsoleVar<float> cvar_mist_height                    ("r.atmosphere.mist_height",         300.0f, "altitude scale of additional haze in metres; does not change baseline atmospheric air");
     TConsoleVar<float> cvar_ground_mist                    ("r.atmosphere.ground_mist",         1.0f,   "ground mist relative to mist density, strongest in sheltered valleys");
     TConsoleVar<float> cvar_mist_variation                 ("r.atmosphere.mist_variation",      0.65f,  "wind driven variation in additional mist, 0 to 1");
-    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,   "screen space ambient occlusion, unavailable while path tracing is enabled", on_ssao_change);
+    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,   "screen space ambient occlusion, unavailable while path tracing is enabled");
     TConsoleVar<float> cvar_subsurface_scattering          ("r.subsurface_scattering",          1.0f,   "screen space subsurface scattering for materials with a subsurface radius (skin, wax, marble), 0 falls back to wrapped diffuse");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections", on_ray_traced_reflections_change);
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights", on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_path_tracing                   ("r.path_tracing",                   0.0f,   "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);
     TConsoleVar<float> cvar_path_tracing_bounces           ("r.path_tracing_bounces",           8.0f,   "maximum path scattering events (1-32)");
-    TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,   "restir path tracing global illumination", on_path_tracing_change);
-    TConsoleVar<float> cvar_restir_pt_async                ("r.restir_pt_async",                0.0f,   "trace and denoise restir across the frame boundary, lighting uses the previous frame's reprojected result, only wins when ray tracing leaves the gpu partly idle");
-    TConsoleVar<float> cvar_restir_pt_direct               ("r.restir_pt_direct",               1.0f,   "restir owns direct diffuse and specular from analytic lights (unified direct and indirect)");
+    TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,   "unified ReSTIR path tracing for direct and indirect surface lighting", on_restir_change);
+    TConsoleVar<float> cvar_restir_pt_async                ("r.restir_pt_async",                0.0f,   "run ReSTIR tracing and denoising on a separate compute list");
     TConsoleVar<float> cvar_restir_pt_emissive_pool        ("r.restir_pt_emissive_pool",        1.0f,   "sample flat color emissive triangles directly, 0 leaves emitters to brdf bounces");
     TConsoleVar<float> cvar_restir_pt_reference            ("r.restir_pt_reference",            0.0f,   "validation: 0 normal, 1 reference path sum, 2 initial RIS, 3 temporal, 4 spatial, 5 spatial without temporal history, 6 full reuse without duplication map; modes 1-6 bypass denoising");
-    TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                0.5f,   "restir resolution scale (0.1-1.0)", on_restir_pt_scale_change);
+    TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                1.0f,   "restir resolution scale (0.1-1.0)", on_restir_pt_scale_change);
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,   "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,   "depth of field");
     TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,   "film grain effect");

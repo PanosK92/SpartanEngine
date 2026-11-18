@@ -52,9 +52,6 @@ void spartan::gui::initialize(bool editor)
     io.IniFilename = editor ? "settings/editor.ini" : nullptr;
     io.LogFilename = "logs/imgui_log.txt";
 
-    ImFontConfig config;
-    config.GlyphOffset.y = -1.0f;
-
     const string dir_fonts =
         spartan::ResourceCache::GetResourceDirectory(
             spartan::ResourceDirectory::Fonts
@@ -62,21 +59,21 @@ void spartan::gui::initialize(bool editor)
     const float scaled_font_size =
         font_size *
         spartan::Window::GetDpiScale();
-    spartan::gui::font_normal = io.Fonts->AddFontFromFileTTF(
-        (dir_fonts + "Inter/Inter-Regular.ttf").c_str(),
-        scaled_font_size
-    );
-    spartan::gui::font_bold = io.Fonts->AddFontFromFileTTF(
-        (dir_fonts + "Inter/Inter-SemiBold.ttf").c_str(),
-        scaled_font_size,
-        &config
-    );
-
-    // numerics and micro labels, falls back to the text font so a missing file never takes the editor down
-    const string mono_regular = dir_fonts + "JetBrainsMono/JetBrainsMono-Regular.ttf";
-    const string mono_medium  = dir_fonts + "JetBrainsMono/JetBrainsMono-Medium.ttf";
-    spartan::gui::font_mono        = spartan::FileSystem::Exists(mono_regular) ? io.Fonts->AddFontFromFileTTF(mono_regular.c_str(), scaled_font_size, &config) : spartan::gui::font_normal;
-    spartan::gui::font_mono_medium = spartan::FileSystem::Exists(mono_medium) ? io.Fonts->AddFontFromFileTTF(mono_medium.c_str(), scaled_font_size, &config) : spartan::gui::font_bold;
+    ImFontConfig config;
+    config.Flags |= ImFontFlags_NoLoadError;
+    config.SizePixels = scaled_font_size;
+    auto load_font = [&](const char* file, ImFont* fallback)
+    {
+        ImFont* font = io.Fonts->AddFontFromFileTTF((dir_fonts + file).c_str(), scaled_font_size, &config);
+        return font ? font : fallback;
+    };
+    font_normal = load_font("Inter/Inter-Regular.ttf", nullptr);
+    if (!font_normal)
+        font_normal = io.Fonts->AddFontDefault(&config);
+    config.GlyphOffset.y = -1.0f;
+    font_bold        = load_font("Inter/Inter-SemiBold.ttf", font_normal);
+    font_mono        = load_font("JetBrainsMono/JetBrainsMono-Regular.ttf", font_normal);
+    font_mono_medium = load_font("JetBrainsMono/JetBrainsMono-Medium.ttf", font_bold);
     ImGui::GetStyle().FontScaleMain = font_scale;
 
     if (Engine::IsStartupSmokeTest())

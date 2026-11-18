@@ -215,7 +215,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (((group.x & 3u) + (group.y & 3u) * 4u + buffer_frame.frame) % k_cache_update_divisor == 0u)
     {
         float own_share = get_rt_reflection_cached(uv_source);
-        bool  owned     = get_depth(uv_source) > 0.0f && !(is_restir_pt_enabled() && restir_coverage(uv_source) >= 1.0f);
+        bool  owned     = get_depth(uv_source) > 0.0f;
         bool  own_cell  = owned && (traced ? reflections_random(seed) < own_share : own_share >= 1.0f);
         if (own_cell || (traced && hit_distance > 0.0f))
         {

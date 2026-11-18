@@ -80,6 +80,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light_emissive       = sample_sky_catmull_rom(direction_sphere_uv(view_dir_sky));
         alpha                = 0.0f;
     }
+    else if (is_restir_pt_enabled())
+    {
+        float4 lighting = tex3.Load(int3(thread_id.xy, 0));
+        light_specular = lighting.a >= 0.0f ? lighting.rgb : 0.0f;
+        light_emissive = surface.emissive;
+        alpha = surface.alpha;
+    }
     // fill opaque and transparent pixels based on pass type
     else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
     {

@@ -52,7 +52,7 @@ The **World Launcher** opens at start-up, after the welcome window. It lists eve
 | **Z** | Cycle the gizmo pivot (median, active, individual) |
 | **Ctrl+Shift+B** | Build Game |
 | **Alt+Enter** | Fullscreen |
-| **F12** | Screenshot |
+| **F12** | Save a gameplay screenshot as one Ultra HDR JPEG (<code>_hdr.jpg</code>) during HDR output or a PNG during SDR output |
 | **Ctrl+0** | Toggle VR |
 | **Ctrl+F** | Filter in most panels |
 

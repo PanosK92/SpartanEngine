@@ -574,9 +574,6 @@ namespace pass_fog
 namespace pass_light_image_based
 {
     static const SHARED_UINT environment_mip_count = 0; // float
-    static const SHARED_UINT restir_enabled        = 1; // bool
-    static const SHARED_UINT restir_intensity      = 2; // float
-    static const SHARED_UINT restir_previous       = 3; // bool, gi is last frame's async output, reprojected against its opaque gbuffer
 }
 
 namespace pass_light_integration

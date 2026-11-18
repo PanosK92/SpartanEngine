@@ -91,7 +91,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
     extern TConsoleVar<float> cvar_restir_pt_async;
-    extern TConsoleVar<float> cvar_restir_pt_direct;
     extern TConsoleVar<float> cvar_restir_pt_emissive_pool;
     extern TConsoleVar<float> cvar_restir_pt_reference;
     extern TConsoleVar<float> cvar_motion_blur;
@@ -369,6 +368,7 @@ namespace spartan
         // the active view renders both eyes, a secondary view never does
         bool IsStereoView();
         // ray traced shadows are live this frame, the shadow atlas is neither rendered nor read
+        bool IsRestirActive();
         bool IsRayTracedShadowsActive();
         void InvalidateSecondaryView();
         // a capture is waiting on a secondary render, issuing a new request would change what it grabs
@@ -466,7 +466,7 @@ namespace spartan
         void Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async);
         void Pass_ComputeBatchB(bool include_gi);
         bool Pass_ReSTIR_CopyGBuffer();
-        void Pass_ReSTIR_WithOpaqueHistory(bool use_current_copy);
+        void Pass_ReSTIR_WithHistory(bool use_current_copy);
         void Pass_GraphicsPhase2_ShadowsAndRT();
         void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early);
         void Pass_VariableRateShading();

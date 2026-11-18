@@ -13,12 +13,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_surface.hlsl"
 //==============================
 
-// upper bounds on the per pixel ris pool sizes, live counts come from the get_restir_* helpers
-// rr and sun/sky sampling constants and helpers live in restir_reservoir.hlsl, shared with the
-// replay shift so the initial trace and the replay evaluate the same integrand
-static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
-static const float MIN_COS_AT_PRIMARY              = 0.0f;
-
 [[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_hit_output : register(u71);
 [[vk::image_format("rgba32f")]] RWTexture2D<float4> restir_primary_surface_output : register(u72);
 
@@ -80,82 +74,25 @@ void ray_gen()
     float match_tolerance = max(0.001f, primary_distance * 0.0001f);
     primary_ray.TMax = primary_distance + match_tolerance;
     float primary_hit_distance;
-    uint3 primary_hit = restir_trace_hit(primary_ray, primary_hit_distance, true);
+    uint3 primary_hit = restir_trace_hit(primary_ray, primary_hit_distance, !restir_needs_material_parameters(uv));
     // Raster-only/deformed surfaces can differ from the RT scene. Never label
     // such a surface with a nearby triangle from a different representation.
-    if (primary_hit_distance > 0.0f && abs(primary_hit_distance - primary_distance) <= match_tolerance)
+    if (primary_hit_distance > 0.0f && abs(primary_hit_distance - primary_distance) <= match_tolerance &&
+        geometry_infos[primary_hit.x].material_index == get_material_index(uv))
         restir_primary_hit_output[launch_id] = float4(asfloat(uint3(primary_hit.x + 1u, primary_hit.yz)), asfloat(primary_material));
 
+    restir_load_primary_material(uv);
+    PathSurface surface = restir_camera_primary(pos_ws, normal_ws, geometric_normal_ws, view_dir, albedo, roughness, metallic);
+
+    // One path tree per pixel (section 6.1). The walk streams BSDF-hit
+    // emitters and the selected NEE leaf at every vertex into one reservoir.
+    float3 canonical_gi;
+    uint replay_seed = seed;
     Reservoir reservoir = create_empty_reservoir();
-    float3 canonical_gi = float3(0, 0, 0);
-    // One BSDF path tree and one primary NEE leaf share the initial RIS.
-    const uint n_brdf_count = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
-    const float n_brdf = float(n_brdf_count);
-
-    for (uint i = 0; i < n_brdf_count; i++)
-    {
-        // capture the seed before xi so the replay shift can replay the same primary sample
-        // Sample the complete primary diffuse/glossy mixture.
-        uint   replay_seed = seed;
-        float2 xi          = random_float2(seed);
-        RestirSurfaceSample primary = restir_primary_sample(albedo, roughness, metallic,
-            normal_ws, geometric_normal_ws, view_dir, xi, restir_primary_specular_blend(roughness));
-        float source_pdf = restir_path_sample_pdf(primary);
-        float3 dir = primary.direction;
-
-        bool dir_valid = primary.valid && restir_pdf_valid(source_pdf) &&
-                         (dot(dir, normal_ws) >= MIN_COS_AT_PRIMARY) &&
-                         !any(isnan(dir));
-
-        PathSample candidate = (PathSample)0;
-        float weight = 0.0f;
-
-        if (dir_valid)
-        {
-            float3 reference_radiance;
-            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, primary.weight, restir_path_sample_joint_pdf(primary), primary.component, replay_seed, seed, reference_radiance, false, (PathSample)0,
-                view_dir, albedo, roughness, metallic, get_camera_position(), geometric_normal_ws);
-            // Independent path-tracing estimate: sum the traced light contributions,
-            // without selecting a path endpoint or doing spatiotemporal reuse.
-            canonical_gi += primary.weight * reference_radiance;
-            // The path walk evaluates F in its selected hybrid measure. A
-            // primary-to-RC evaluation would discard a postponed glossy prefix.
-            float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-            if (target_pdf > 0.0f)
-            {
-                // Endpoint MIS is already in F; the path-tree RIS weight stays separate.
-                weight = target_pdf * candidate.initial_weight / (restir_path_sample_joint_pdf(primary) * n_brdf);
-            }
-        }
-
-        update_reservoir(reservoir, candidate, weight, random_float(seed));
-    }
-
-    // Section 6.1: all light kinds compete in the same 32-proposal RIS.
-    RestirLightSample light = sample_direct_lighting_at_vertex(pos_ws, normal_ws, geometric_normal_ws,
-        view_dir, albedo, roughness, metallic, 1.0f, seed, false, 1u);
-    PathSample light_candidate = restir_light_endpoint_descriptor(light, restir_light_sample_origin(light, pos_ws, geometric_normal_ws), 1u, seed);
-    float light_weight = 0.0f;
-    if (light.endpoint_valid && restir_pdf_valid(light.endpoint_pdf))
-    {
-        float bsdf_pdf;
-        float3 brdf = evaluate_reflection_brdf(albedo, roughness, metallic, normal_ws, geometric_normal_ws, view_dir, light.direction, bsdf_pdf, 1.0f);
-        float mis = light_candidate.endpoint_pooled ?
-            restir_pooled_endpoint_mis(2u, light.light_index, light.endpoint_pdf, bsdf_pdf) :
-            (light_candidate.endpoint_environment ?
-                restir_environment_endpoint_mis(2u, light.light_index, normal_ws, light.direction, bsdf_pdf) : 1.0f);
-        light_candidate.F = brdf * light.endpoint_radiance * mis;
-        float W = light.initial_weight / light.endpoint_pdf;
-        light_weight = target_scalar(light_candidate.F) * W;
-        canonical_gi += light.radiance_sum * n_brdf;
-    }
-    update_reservoir(reservoir, light_candidate, light_weight, random_float(seed));
-
-    // no 1/M divide, the balance mis weights already encode the 1/N_s normalization
-    // the winner is visible by construction so the finalize target needs no visibility factor
-    float final_target = target_pdf_self(reservoir.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    reservoir.target_pdf = final_target;
-    reservoir.W = (final_target > 0.0f) ? (reservoir.weight_sum / final_target) : 0.0f;
+    reservoir.sample = trace_path_from_primary(surface, view_dir, get_camera_position(), replay_seed, seed,
+        canonical_gi, false, (PathSample)0);
+    reservoir.target_pdf = target_scalar(reservoir.sample.F);
+    reservoir.W = reservoir.target_pdf > 0.0f ? reservoir.sample.initial_weight : 0.0f;
 
     // the canonical technique gets a confidence of one no matter how many candidates scored,
     // the mis shares downstream are functions of the technique, not of what it happened to draw,
@@ -184,7 +121,6 @@ void ray_gen()
     tex_reservoir2[launch_id] = t2;
     tex_reservoir3[launch_id] = t3;
 
-    canonical_gi /= n_brdf;
     canonical_gi /= restir_gi_demodulator(albedo);
 
     float hit_dist = restir_denoiser_hit_distance(reservoir, pos_ws, normal_ws, geometric_normal_ws,

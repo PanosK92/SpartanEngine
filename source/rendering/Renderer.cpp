@@ -163,7 +163,6 @@ namespace spartan
             // the size the frame is saved at, the frame resized to the shape of the viewport it is shown in
             uint32_t save_width       = 0;
             uint32_t save_height      = 0;
-            bool staged               = false;
         };
 
         struct screenshot_request
@@ -175,13 +174,12 @@ namespace spartan
             // how the frame on screen is encoded
             ImageColorSpace frame_color_space = ImageColorSpace::LinearRec709;
             bool save_exr = false;
-            // an hdr frame is also saved as a jpeg with a gain map, next to the sdr png
+            // an hdr gameplay frame uses a jpeg with an embedded sdr rendition
             bool save_hdr = false;
             // luminance the frame on screen puts sdr white at, zero when that frame is sdr
             float hdr_white_nits = 0.0f;
             // screenshot_sdr holds this request's frame tonemapped for sdr
             bool sdr_frame_rendered = false;
-            screenshot_hdr_pair hdr_pair;
             bool restir_radiance = false;
             bool restir_specular = false;
             bool pending  = false;
@@ -390,6 +388,7 @@ namespace spartan
             ray_tracing_build_work.clear();
             ray_tracing_instanced_renders.clear();
             ray_tracing_pending_blas = false;
+            const bool full_transport = Renderer::IsPathTracingActive() || (cvar_restir_pt.GetValueAs<bool>() && !Renderer::IsStereoView());
             Camera* camera = Renderer::GetViewCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
@@ -411,7 +410,7 @@ namespace spartan
                 {
                     prefetch_scene_data(entries, i + 8, end);
                     const RenderSceneData& data = *entries[i];
-                    if (!data.active.load(memory_order_relaxed) || (!Renderer::IsPathTracingActive() && (data.flags & RenderFlags::ExcludeFromRayTracing))) continue;
+                    if (!data.active.load(memory_order_relaxed) || (!full_transport && (data.flags & RenderFlags::ExcludeFromRayTracing))) continue;
                     Render* render = data.render;
                     // Prepare resident geometry independently of TLAS visibility. Otherwise
                     // travelling across a culling boundary starts another BLAS burst and
@@ -420,7 +419,7 @@ namespace spartan
                     batch.missing |= missing;
                     if (missing) batch.builds.push_back(render);
                     // Keep the same off-screen shadow/reflection visibility budget.
-                    if (camera && data.instances.empty() && !Renderer::IsPathTracingActive())
+                    if (camera && data.instances.empty() && !full_transport)
                     {
                         const float distance = max(data.max_distance_render, data.max_distance_shadow);
                         if (distance >= 0.0f && distance < numeric_limits<float>::max() * 0.5f)
@@ -539,18 +538,13 @@ namespace spartan
             }
         }
 
-        void save_screenshot_async(
+        void save_sdr_screenshot_async(
             const screenshot_request& request,
             shared_ptr<RHI_Buffer> sdr_staging,
-            shared_ptr<RHI_Buffer> exr_staging,
             uint32_t width,
             uint32_t height,
             uint32_t channel_count,
-            uint32_t bits_per_channel,
-            uint32_t exr_width,
-            uint32_t exr_height,
-            uint32_t exr_channel_count,
-            uint32_t exr_bits_per_channel
+            uint32_t bits_per_channel
         )
         {
             SP_ASSERT_MSG(sdr_staging && sdr_staging->GetMappedData(), "Staging buffer not mappable");
@@ -622,18 +616,6 @@ namespace spartan
                 ImageImporter::SaveSdr(request.png_path, width, height, channel_count, bits_per_channel, sdr_data);
                 SP_LOG_INFO("SDR screenshot saved as '%s'", request.png_path.c_str());
             });
-
-            if (request.save_exr && exr_staging && exr_staging->GetMappedData())
-            {
-                ThreadPool::AddTask([request, exr_staging, exr_width, exr_height, exr_channel_count, exr_bits_per_channel]()
-                {
-                    void* exr_data = exr_staging->GetMappedData();
-
-                    SP_LOG_INFO("Saving EXR screenshot to '%s'...", request.exr_path.c_str());
-                    ImageImporter::Save(request.exr_path, exr_width, exr_height, exr_channel_count, exr_bits_per_channel, exr_data, request.frame_color_space);
-                    SP_LOG_INFO("EXR screenshot saved as '%s'", request.exr_path.c_str());
-                });
-            }
         }
 
         bool wants_hdr_pair(const screenshot_request& request)
@@ -644,7 +626,6 @@ namespace spartan
         screenshot_hdr_pair stage_hdr_pair()
         {
             screenshot_hdr_pair pair;
-            pair.staged = true;
 
             // the jpeg lays one over the other pixel for pixel
             RHI_Texture* tex_frame = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
@@ -685,6 +666,8 @@ namespace spartan
         {
             if (!pair.frame || !pair.sdr || !pair.frame->GetMappedData() || !pair.sdr->GetMappedData())
             {
+                screenshot_save_failures++;
+                SP_LOG_ERROR("Could not read back HDR screenshot for %s", request.hdr_path.c_str());
                 return;
             }
 
@@ -697,7 +680,11 @@ namespace spartan
                 } guard;
 
                 SP_LOG_INFO("Saving HDR screenshot to '%s'...", path.c_str());
-                ImageImporter::SaveHdrJpeg(path, pair.width, pair.height, pair.save_width, pair.save_height, pair.sdr->GetMappedData(), pair.frame->GetMappedData(), pair.bits_per_channel, color_space, white_nits);
+                if (!ImageImporter::SaveHdrJpeg(path, pair.width, pair.height, pair.save_width, pair.save_height, pair.sdr->GetMappedData(), pair.frame->GetMappedData(), pair.bits_per_channel, color_space, white_nits))
+                {
+                    screenshot_save_failures++;
+                    return;
+                }
                 SP_LOG_INFO("HDR screenshot saved as '%s'", path.c_str());
             });
         }
@@ -724,16 +711,16 @@ namespace spartan
             }
 
             // the numbering restarts with every session, numbers an earlier one used are skipped rather than overwritten
-            uint32_t index = screenshot_index++;
-            while (FileSystem::Exists("screenshot_" + to_string(index) + ".png"))
+            do
             {
-                index = screenshot_index++;
+                const string stem = "screenshot_" + to_string(screenshot_index++);
+                request.png_path = stem + ".png";
+                request.hdr_path = stem + "_hdr.jpg";
+                request.exr_path = stem + ".exr";
             }
+            while (FileSystem::Exists(request.png_path) || FileSystem::Exists(request.hdr_path) || FileSystem::Exists(request.exr_path));
             request.save_exr = !request.ui && cvar_screenshot_exr.GetValueAs<bool>();
             request.save_hdr = !request.ui;
-            request.exr_path = "screenshot_" + to_string(index) + ".exr";
-            request.hdr_path = "screenshot_" + to_string(index) + "_hdr.jpg";
-            request.png_path = "screenshot_" + to_string(index) + ".png";
             return request;
         }
 
@@ -1757,7 +1744,7 @@ namespace spartan
             static uint64_t shadow_set_packed = 0;
             uint64_t shadow_set               = 1469598103934665603ull;
             // ray traced shadows empty the atlas and its resolution sizes the slices, either one changing asks for a new packing
-            shadow_set = (shadow_set ^ (IsRayTracedShadowsActive() ? 1ull : 0ull)) * 1099511628211ull;
+            shadow_set = (shadow_set ^ ((IsRayTracedShadowsActive() || IsRestirActive()) ? 1ull : 0ull)) * 1099511628211ull;
             shadow_set = (shadow_set ^ GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth()) * 1099511628211ull;
             for (Entity* entity : light_entities())
             {
@@ -2042,6 +2029,11 @@ namespace spartan
     bool Renderer::IsSecondaryViewActive()
     {
         return secondary_render_root_active != nullptr;
+    }
+
+    bool Renderer::IsRestirActive()
+    {
+        return (view().frame.options & (1u << 3)) != 0;
     }
 
     bool Renderer::IsRayTracedShadowsActive()
@@ -2681,31 +2673,14 @@ namespace spartan
         // wait for loading and the first resident BLAS set to finish.
         const bool ray_tracing_ready = ray_tracing_allowed &&
             (tlas_available || (!frame_is_loading && !pending_blas));
-        Renderer::view().frame.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
-        Renderer::view().frame.set_bit(cvar_ssao.GetValueAs<bool>() && !IsStereoView(),                     1 << 1);
-        Renderer::view().frame.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
-        Renderer::view().frame.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
+        const bool restir = cvar_restir_pt.GetValueAs<bool>() && tlas_available && !IsStereoView() && !IsPathTracingActive();
+        if (!secondary_render_root_active && restir != IsRestirActive())
+            m_pass_state.restir.history_invalid = true;
+        Renderer::view().frame.set_bit(!restir && cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
+        Renderer::view().frame.set_bit(!restir && cvar_ssao.GetValueAs<bool>() && !IsStereoView(),                     1 << 1);
+        Renderer::view().frame.set_bit(!restir && cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
+        Renderer::view().frame.set_bit(restir, 1 << 3);
         Renderer::view().frame.set_bit(cvar_subsurface_scattering.GetValueAs<bool>(),                       1 << 5);
-
-        // the reservoirs hold a different integrand with and without direct light, so switching
-        // ownership must drop history instead of letting stale samples resolve into the new one, a secondary
-        // view traces nothing and gets the primary's bits back afterwards, so it changes no ownership
-        const bool restir_direct = cvar_restir_pt.GetValueAs<bool>() && cvar_restir_pt_direct.GetValueAs<bool>() && ray_tracing_ready;
-        if (!secondary_render_root_active && restir_direct != ((Renderer::view().frame.options & (1u << 4)) != 0))
-        {
-            m_pass_state.restir.history_invalid    = true;
-        }
-        Renderer::view().frame.set_bit(restir_direct, 1 << 4);
-
-        // nothing transparent is drawn this frame, a pass that keeps work only for what transparency reads can drop it,
-        // the bit is set when it is safe so a shader running against an older executable keeps doing the work
-        Renderer::view().frame.set_bit(!m_transparents_present, 1 << 6);
-
-        // the restir light of a surface with a diffusion profile is composited by the lighting pass instead of the image based
-        // one, so the subsurface pass that follows spreads the path traced diffuse the way it spreads the raster one. the async
-        // gi is still being traced when the lighting pass runs, so that mode keeps the image based composition
-        const bool restir_subsurface = cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready && cvar_subsurface_scattering.GetValueAs<bool>() && m_pass_state.subsurface_profiles_present && !cvar_restir_pt_async.GetValueAs<bool>();
-        Renderer::view().frame.set_bit(restir_subsurface, 1 << 7);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()
@@ -4548,7 +4523,7 @@ namespace spartan
             // distance based lod, directional lights are always considered effective
             // a light the atlas ran out of room for has undefined slices, sampling them would read another light's depth
             bool shadows_effective = light_component->IsShadowEffective();
-            for (uint32_t i = 0; shadows_effective && !IsRayTracedShadowsActive() && i < light_component->GetSliceCount(); i++)
+            for (uint32_t i = 0; shadows_effective && !IsRayTracedShadowsActive() && !IsRestirActive() && i < light_component->GetSliceCount(); i++)
             {
                 shadows_effective = light_component->GetAtlasRectangle(i).IsDefined();
             }
@@ -4852,7 +4827,7 @@ namespace spartan
         SP_PROFILE_CPU();
         // Ray-traced shadows use the TLAS exclusively. Raster casters are
         // only needed for the shadow-map fallback (including secondary views).
-        const bool shadow_maps_required = !IsRayTracedShadowsActive() && !GetViewLightEntities().empty();
+        const bool shadow_maps_required = !IsRayTracedShadowsActive() && !IsRestirActive() && !GetViewLightEntities().empty();
         const Vector3 cull_camera_position = GetViewCamera() ? GetViewCamera()->GetEntity()->GetPosition() : Vector3::Zero;
         auto needs_shadow_caster = [&](const RenderSceneData& data)
         {
@@ -5700,7 +5675,7 @@ namespace spartan
     {
         constexpr float hysteresis = instanced_tlas_hysteresis;
         constexpr float radius_max = 500.0f;
-        const float radius = Renderer::IsPathTracingActive() ? 1e15f : min(render->GetMaxShadowDistance(), radius_max);
+        const float radius = (Renderer::IsPathTracingActive() || Renderer::IsRestirActive()) ? 1e15f : min(render->GetMaxShadowDistance(), radius_max);
 
         Entity* entity               = render->GetEntity();
         const uint64_t blas_address  = render->GetAccelerationStructureDeviceAddress();
@@ -6419,7 +6394,7 @@ namespace spartan
                 continue;
             }
             light->ClearAtlasRectangles();
-            if (IsRayTracedShadowsActive())
+            if (IsRayTracedShadowsActive() || IsRestirActive())
             {
                 continue;
             }
@@ -6661,6 +6636,7 @@ namespace spartan
         if (
             !screenshot.ready ||
             screenshot.ui ||
+            wants_hdr_pair(screenshot) ||
             screenshot.viewport_ui ||
             screenshot.secondary_view ||
             screenshot.restir_radiance ||
@@ -6912,7 +6888,6 @@ namespace spartan
     {
         array<screenshot_request, 2> requests;
         uint32_t request_count = 0;
-        bool stage_held        = false;
         {
             lock_guard<mutex> lock(screenshot_mutex);
             if (screenshot.ready && screenshot.viewport_ui_owed)
@@ -6920,7 +6895,6 @@ namespace spartan
                 // the editor took the ui target but its replay was incomplete (its pipeline is still compiling) and the
                 // target is black, the capture waits for the next frame's replay instead of saving that
                 screenshot.viewport_ui_owed = false;
-                stage_held                  = wants_hdr_pair(screenshot) && !screenshot.hdr_pair.staged;
             }
             else if (screenshot.ready)
             {
@@ -6933,24 +6907,13 @@ namespace spartan
                 secondary_capture = {};
             }
         }
-        if (request_count == 0 && !stage_held)
+        if (request_count == 0)
         {
             return;
         }
 
         // present submitted the capture work, wait once so every readback sees finished pixels
         RHI_Device::QueueWaitAll(true);
-
-        if (stage_held)
-        {
-            // by the time the replay lands the frame has moved on from the tonemap it was captured with, so the pair is read back now
-            const screenshot_hdr_pair pair = stage_hdr_pair();
-            lock_guard<mutex> lock(screenshot_mutex);
-            if (screenshot.ready)
-            {
-                screenshot.hdr_pair = pair;
-            }
-        }
 
         for (uint32_t i = 0; i < request_count; i++)
         {
@@ -6990,6 +6953,26 @@ namespace spartan
                 });
                 continue;
             }
+            if (request.save_exr && !request.secondary_view && !request.ui && !Xr::IsSessionRunning())
+            {
+                RHI_Texture* frame = GetRenderTarget(Renderer_RenderTarget::frame_output);
+                auto staging = copy_texture_to_staging(frame);
+                if (staging && staging->GetMappedData())
+                {
+                    ThreadPool::AddTask([request, staging, width = frame->GetWidth(), height = frame->GetHeight(),
+                                         channels = frame->GetChannelCount(), bits = frame->GetBitsPerChannel()]()
+                    {
+                        ImageImporter::Save(request.exr_path, width, height, channels, bits, staging->GetMappedData(), request.frame_color_space);
+                    });
+                }
+            }
+
+            if (wants_hdr_pair(request))
+            {
+                save_hdr_screenshot_async(request, stage_hdr_pair());
+                continue;
+            }
+
             RHI_Texture* tex_sdr =
                 request.ui || request.viewport_ui
                     ? screenshot_ui_target.get()
@@ -7003,32 +6986,8 @@ namespace spartan
                 continue;
             }
 
-            shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
-            shared_ptr<RHI_Buffer> exr_staging;
-            RHI_Texture* tex_exr = GetRenderTarget(Renderer_RenderTarget::frame_output);
-            if (request.save_exr && !request.secondary_view && !request.ui && !Xr::IsSessionRunning())
-            {
-                exr_staging = copy_texture_to_staging(tex_exr);
-            }
-
-            save_screenshot_async(
-                request,
-                sdr_staging,
-                exr_staging,
-                tex_sdr->GetWidth(),
-                tex_sdr->GetHeight(),
-                tex_sdr->GetChannelCount(),
-                tex_sdr->GetBitsPerChannel(),
-                tex_exr ? tex_exr->GetWidth() : 0,
-                tex_exr ? tex_exr->GetHeight() : 0,
-                tex_exr ? tex_exr->GetChannelCount() : 0,
-                tex_exr ? tex_exr->GetBitsPerChannel() : 0
-            );
-
-            if (wants_hdr_pair(request))
-            {
-                save_hdr_screenshot_async(request, request.hdr_pair.staged ? request.hdr_pair : stage_hdr_pair());
-            }
+            save_sdr_screenshot_async(request, copy_texture_to_staging(tex_sdr), tex_sdr->GetWidth(),
+                tex_sdr->GetHeight(), tex_sdr->GetChannelCount(), tex_sdr->GetBitsPerChannel());
         }
     }
 
@@ -7337,20 +7296,22 @@ namespace spartan
     void Renderer::Pass_ComputeBatchB(bool include_gi)
     {
         RHI_CommandList::BeginMarker("compute_batch_b");
-        Pass_ScreenSpaceAmbientOcclusion();
-        Pass_ScreenSpaceShadows();
-        Pass_RayTracedShadows();
-        if (include_gi)
+        if (!IsRestirActive())
         {
-            Pass_ReSTIR_WithOpaqueHistory(false);
+            Pass_ScreenSpaceAmbientOcclusion();
+            Pass_ScreenSpaceShadows();
+            Pass_RayTracedShadows();
+        }
+        if (include_gi && IsRestirActive())
+        {
+            Pass_ReSTIR_WithHistory(false);
         }
         RHI_CommandList::EndMarker();
     }
 
     bool Renderer::Pass_ReSTIR_CopyGBuffer()
     {
-        // ReSTIR records opaque primaries. Preserve their geometry before the
-        // transparent pass overwrites the main G-buffer, including in sync mode.
+        // Keep the visible primary guides, including transparent surfaces, for replay.
         const bool async_wanted = cvar_restir_pt_async.GetValueAs<bool>() && RHI_Device::IsAsyncComputeConcurrent();
         if (secondary_render_root_active || IsStereoView() || Window::IsMinimized() || !cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
         {
@@ -7396,9 +7357,9 @@ namespace spartan
         return true;
     }
 
-    void Renderer::Pass_ReSTIR_WithOpaqueHistory(bool use_current_copy)
+    void Renderer::Pass_ReSTIR_WithHistory(bool use_current_copy)
     {
-        // Sync tracing reads the live opaque G-buffer and its preserved history.
+        // Sync tracing reads the live G-buffer and its preserved history.
         // Async tracing also reads current copies so graphics can overwrite the originals.
         const uint32_t current  = m_pass_state.restir.gbuffer_copy_index;
         const uint32_t base     = static_cast<uint32_t>(current == 0 ? Renderer_RenderTarget::restir_gbuffer_color_0 : Renderer_RenderTarget::restir_gbuffer_color_1);
@@ -7474,46 +7435,53 @@ namespace spartan
 
     void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early)
     {
-        Pass_Light(false, eye_layer);
-        Pass_Light_Subsurface(eye_layer);
-        Pass_Light_Composition(false, eye_layer);
-        // the refraction background is copied below, so opaque ambient has to be in it already,
-        // otherwise anything behind glass that is not in direct light reads as black
-        Pass_Light_Ibl(false, eye_layer);
-
         const bool clouds_prepared = early_work_recorded ? clouds_prepared_early : Pass_Clouds_Prepare(eye_layer);
-        RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
-        if (clouds_prepared)
+        if (IsRestirActive())
         {
-            Pass_Clouds_Composite(eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
+            Pass_Light_Composition(false, eye_layer);
         }
-
-        if (eye == 0)
+        else
         {
-            Pass_LightClusterVisualize();
-        }
+            Pass_Light(false, eye_layer);
+            Pass_Light_Subsurface(eye_layer);
+            Pass_Light_Composition(false, eye_layer);
+            // the refraction background is copied below, so opaque ambient has to be in it already,
+            // otherwise anything behind glass that is not in direct light reads as black
+            Pass_Light_Ibl(false, eye_layer);
 
-        if (m_transparents_present)
-        {
-            Pass_GBuffer(true);
-            Pass_Light(true, eye_layer);
-            Pass_Light_Composition(true, eye_layer);
-        }
+            RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+            if (clouds_prepared)
+            {
+                Pass_Clouds_Composite(eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
+            }
 
-        // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
-        if (!early_work_recorded || m_transparents_present)
-        {
-            Pass_Reflections_Trace(eye_layer);
-        }
+            if (eye == 0)
+            {
+                Pass_LightClusterVisualize();
+            }
 
-        if (m_transparents_present)
-        {
-            Pass_Light_Ibl(true, eye_layer);
-        }
-        Pass_Reflections_Shade(eye_layer);
-        Pass_Reflections_Denoise(eye_layer);
+            if (m_transparents_present)
+            {
+                Pass_GBuffer(true);
+                Pass_Light(true, eye_layer);
+                Pass_Light_Composition(true, eye_layer);
+            }
 
-        Pass_Reflections_Apply(eye_layer);
+            // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
+            if (!early_work_recorded || m_transparents_present)
+            {
+                Pass_Reflections_Trace(eye_layer);
+            }
+
+            if (m_transparents_present)
+            {
+                Pass_Light_Ibl(true, eye_layer);
+            }
+            Pass_Reflections_Shade(eye_layer);
+            Pass_Reflections_Denoise(eye_layer);
+
+            Pass_Reflections_Apply(eye_layer);
+        }
         Pass_LightFlares(eye_layer);
         if (clouds_prepared)
         {
@@ -7826,7 +7794,7 @@ namespace spartan
             // Fog injection reads the current ocean, sky and TLAS, but not the
             // g-buffer. Run it while graphics builds depth and shades geometry.
             // Atlas shadows and stereo still prepare fog per eye after shadows.
-            const bool fog_prepared_async = IsRayTracedShadowsActive() &&
+            const bool fog_prepared_async = (IsRayTracedShadowsActive() || IsRestirActive()) &&
                 !Xr::IsSessionRunning() && !IsSecondaryViewActive();
             RHI_Work scatter_work;
             // the shading rate reads last frame's output and both depth prepasses consume it
@@ -7868,12 +7836,14 @@ namespace spartan
             }
 
             Pass_GraphicsPhase1_Geometry(fog_prepared_async);
+            if (IsRestirActive() && m_transparents_present)
+                Pass_GBuffer(true);
 
             RHI_Work phase1 = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false,
                 nullptr, scatter_work.timeline.get(), scatter_work.value);
 
-            // restir traces from a copy of the opaque gbuffer on its own compute list, so it keeps running through
-            // lighting, post and the start of the next frame, the copy waits for the previous gi to stop reading it
+            // Preserve the primary surfaces for temporal reuse. The prior trace must finish reading
+            // the snapshot before this frame overwrites it.
             RHI_Work gbuffer_copy;
             const bool gbuffer_history = m_pass_state.restir.gbuffer_copy_frames > 0;
             RHI_Device::Bind(RHI_Frame_List::Graphics);
@@ -7885,12 +7855,11 @@ namespace spartan
                 m_cross_queue_sync.gi_timeline_value = 0;
             }
             const bool restir_async =
-                gbuffer_copy.timeline &&
+                IsRestirActive() && gbuffer_copy.timeline &&
                 gbuffer_history &&
                 cvar_restir_pt_async.GetValueAs<bool>() &&
                 RHI_Device::IsAsyncComputeConcurrent() &&
                 m_pass_state.restir.reservoirs_initialized;
-            m_pass_state.restir.async_this_frame = restir_async;
 
             RHI_Device::Bind(RHI_Frame_List::ComputeB);
             Pass_ComputeBatchB(!restir_async);
@@ -7903,22 +7872,22 @@ namespace spartan
                 gbuffer_copy.timeline ? gbuffer_copy.value : phase1.value
             );
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline.get();
-            const uint64_t compute_b_value        = batch_b.value;
+            uint64_t compute_b_value              = batch_b.value;
 
             if (restir_async)
             {
                 RHI_CommandList* gi_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 gi_commands->Begin();
                 RHI_Device::Bind(gi_commands);
-                Pass_ReSTIR_WithOpaqueHistory(true);
+                Pass_ReSTIR_WithHistory(true);
                 gi_commands->Submit(nullptr, false, nullptr, gbuffer_copy.timeline.get(), gbuffer_copy.value);
                 const RHI_Work gi_work = gi_commands->GetWork();
                 m_cross_queue_sync.gi_timeline       = gi_work.timeline.get();
                 m_cross_queue_sync.gi_timeline_value = gi_work.value;
             }
 
-            // Keep the animated near sun cascade alongside ray-traced shadows.
-            const bool shadow_maps_required = !light_entities().empty();
+            // ReSTIR traces visibility as part of each sampled light path.
+            const bool shadow_maps_required = !IsRestirActive() && !light_entities().empty();
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {
@@ -7949,7 +7918,7 @@ namespace spartan
             }
 
             // the trace misses into the sky, so it is the first graphics work that has to wait for it
-            if (early_work_recorded && !m_transparents_present)
+            if (!IsRestirActive() && early_work_recorded && !m_transparents_present)
             {
                 Pass_Reflections_Trace(rhi_all_mips);
             }
@@ -7959,6 +7928,11 @@ namespace spartan
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
 
+            if (restir_async)
+            {
+                compute_b_timeline = m_cross_queue_sync.gi_timeline;
+                compute_b_value    = m_cross_queue_sync.gi_timeline_value;
+            }
             m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
             m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
             RHI_Device::SetFrameWait(compute_b_timeline, compute_b_value);
