@@ -42,8 +42,7 @@ namespace spartan
             r.porosity              = 0.7f;
             r.macro_strength        = 1.0f;
             r.weight_bias           = 1.1f;
-            // the meadow height map is flat noise, blades and thatch carry the relief here, a march would be all cost
-            r.parallax              = 0.0f;
+            r.parallax              = 0.14f;
             r.normal_strength       = 1.3f;
         }
 
@@ -63,7 +62,7 @@ namespace spartan
             r.macro_strength       = 0.6f;
             r.weight_bias          = 1.3f;
             // fist sized ledges and pockets, the deepest relief of the set
-            r.parallax             = 0.10f;
+            r.parallax             = 0.30f;
             r.normal_strength      = 1.4f;
         }
 
@@ -84,7 +83,7 @@ namespace spartan
             r.macro_strength       = 0.5f;
             r.weight_bias          = 1.1f;
             // soft dips and crests, the wind ripples themselves are procedural and ride on top
-            r.parallax             = 0.035f;
+            r.parallax             = 0.12f;
             r.normal_strength      = 1.2f;
             r.sand                 = true;
         }
@@ -107,7 +106,7 @@ namespace spartan
             r.macro_strength       = 0.9f;
             r.weight_bias          = 0.9f;
             // clods and embedded stones
-            r.parallax             = 0.04f;
+            r.parallax             = 0.16f;
             r.normal_strength      = 1.3f;
             // the soil between the grass pockets, this is the stony ground the instanced pebbles used to mark
             r.clearing             = true;
@@ -132,7 +131,7 @@ namespace spartan
             r.macro_strength       = 0.7f;
             r.weight_bias          = 0.85f;
             // every stone is in the height map, this is the pebble bed the instanced chips used to fake
-            r.parallax             = 0.05f;
+            r.parallax             = 0.25f;
             r.normal_strength      = 1.4f;
         }
 
@@ -152,7 +151,7 @@ namespace spartan
             r.macro_strength      = 0.35f;
             r.weight_bias         = 1.0f;
             // drifts, broad and shallow
-            r.parallax            = 0.05f;
+            r.parallax            = 0.12f;
             r.normal_strength     = 1.0f;
         }
 
@@ -174,7 +173,7 @@ namespace spartan
             r.macro_strength       = 1.0f;
             r.weight_bias          = 0.8f;
             // twigs and needle litter lying proud of the soil
-            r.parallax             = 0.04f;
+            r.parallax             = 0.19f;
             r.normal_strength      = 1.3f;
         }
 
@@ -196,7 +195,7 @@ namespace spartan
             r.macro_strength       = 0.8f;
             r.weight_bias          = 0.75f;
             // cushions
-            r.parallax             = 0.04f;
+            r.parallax             = 0.11f;
             r.normal_strength      = 1.3f;
         }
 

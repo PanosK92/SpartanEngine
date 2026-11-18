@@ -177,9 +177,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float n_dot_v   = saturate(dot(surface.normal, view_dir));
     
     // split-sum approximation: use F0 (not full fresnel) as the LUT already encodes fresnel response
-    const float2 envBRDF         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
-    const float3 specular_energy = (surface.F0 * envBRDF.x + envBRDF.y) * compute_multiscatter_energy_split_sum(surface.F0, envBRDF);
+    const float2 envBRDF = surface.is_water() ? reflection_env_brdf(surface.roughness, n_dot_v) : tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
+    float3 specular_energy = (surface.F0 * envBRDF.x + envBRDF.y) * compute_multiscatter_energy_split_sum(surface.F0, envBRDF);
     
+    if (surface.is_water()) specular_energy = saturate(specular_energy);
+
     // diffuse energy uses roughness-modified fresnel for proper energy conservation
     const float3 F              = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
     const float3 diffuse_energy = compute_diffuse_energy(F, surface.metallic);

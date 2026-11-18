@@ -137,19 +137,19 @@ float3 night_sky_radiance(float up_y)
 }
 
 // Water material coefficients shared by the volume and incident sunlight.
-static const float3 ocean_extinction     = float3(0.45f, 0.15f, 0.08f) * 0.45f;       // per channel beer lambert extinction, red dies first and blue persists
+// Absorption and scattering coefficients in inverse metres. Suspended coastal material
+// scatters across the visible spectrum and absorbs more blue light than clear seawater.
+float3 get_ocean_scattering()
+{
+    float suspended = max(buffer_frame.ocean_turbidity, 0.0f);
+    return float3(0.002f, 0.004f, 0.008f) + suspended * float3(0.018f, 0.024f, 0.022f);
+}
 
 float3 get_ocean_extinction()
 {
-    // Clear water still absorbs light; suspended particles increase extinction.
-    // At the legacy turbidity of one this retains the original coefficients.
-    return ocean_extinction * (0.5f + 0.5f * max(buffer_frame.ocean_turbidity, 0.0f));
-}
-
-float3 get_ocean_scattering()
-{
-    return min(get_ocean_extinction(), float3(0.008f, 0.018f, 0.025f)
-        * (0.25f + 0.75f * max(buffer_frame.ocean_turbidity, 0.0f)));
+    float3 absorption = float3(0.18f, 0.045f, 0.016f)
+        + max(buffer_frame.ocean_turbidity, 0.0f) * float3(0.008f, 0.012f, 0.030f);
+    return absorption + get_ocean_scattering();
 }
 
 // caustics as refracted ray density from the two finest slope cascades, the slope gradient is the jacobian of the sun ray footprint after travelling through the water, rays converge into bright ribbons where it shrinks and spread into soft dimming where it grows, the mean stays near one at any sea state so the pattern never washes to flat or clamps to black
@@ -179,8 +179,13 @@ float get_ocean_caustic(float2 world_xz, float travel)
     float jacobian_x = 1.0f + bend * travel * (slope_x.x - slope_c.x) / eps;
     float jacobian_z = 1.0f + bend * travel * (slope_z.y - slope_c.y) / eps;
 
-    // one over the jacobian is the ray density, capped where rays fold onto themselves
-    return 1.0f / max(abs(jacobian_x * jacobian_z), 0.1f);
+    float cross_xz = bend * travel * (slope_z.x - slope_c.x) / eps;
+    float cross_zx = bend * travel * (slope_x.y - slope_c.y) / eps;
+    float determinant = jacobian_x * jacobian_z - cross_xz * cross_zx;
+    // Finite beam width softens a focus continuously through the fold.
+    // Normalize at unit determinant so flat water transmits unit irradiance.
+    const float blur_squared = 0.12f;
+    return sqrt((1.0f + blur_squared) / (determinant * determinant + blur_squared));
 }
 
 // world y of the terrain under this xz, valid is 0 off the heightfield
@@ -407,7 +412,7 @@ float get_ocean_height(float2 world_xz)
 // One sunlight path for surface caustics and the participating water medium.
 // The wave slope Jacobian focuses the refracted beam; absorption removes light
 // along that same path. Apply this to incident light before the surface BRDF.
-float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprint = 0.0f)
+float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprint, bool integrate_disk = true)
 {
     if (buffer_frame.ocean_enabled <= 0.5f)
         return 1.0f;
@@ -426,10 +431,12 @@ float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprin
     // Unresolved wave focus averages to one. Sampling centimetre caustics in
     // kilometre-away fog cells creates flickering dots instead of light shafts.
     float focus = 1.0f;
-    if (wave_detail > 0.0f)
+    float beam_width = max(footprint, travel * 0.0093f);
+    float caustic_detail = 1.0f - smoothstep(0.035f, 0.22f, beam_width);
+    if (caustic_detail * wave_detail > 0.0f)
     {
         float resolved_focus = 0.0f;
-        if (footprint <= 0.0f)
+        if (!integrate_disk)
         {
             resolved_focus = get_ocean_caustic(entry, travel);
         }
@@ -448,7 +455,6 @@ float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprin
         }
         // the ribbons are centimetres wide, eight taps cannot average them over a decimetre cell and every cell lands on a random
         // brightness that flickers with the waves, cells wider than the pattern take its mean of one
-        float caustic_detail = footprint <= 0.0f ? 1.0f : 1.0f - smoothstep(0.04f, 0.25f, footprint);
         focus = lerp(1.0f, resolved_focus, saturate(buffer_frame.ocean_caustics_intensity) * wave_detail * caustic_detail);
     }
     return lerp(1.0f.xxx, exp(-get_ocean_extinction() * travel) * focus, saturate(depth / 0.08f));
@@ -541,7 +547,7 @@ float ocean_foam_footprint(float view_distance, float3 water_position)
 // Residual whitewater survives in troughs; only production depends on compression.
 // The beach whitewater comes from the breaking surf and its swash, not from a band around the waterline.
 // churn is the unshaped coverage, where the water was broken up whether or not the lace left foam on this pixel
-float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity, out OceanShore shore, out float churn)
+float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity, out float churn)
 {
     float foam   = 0.0f;
     float depth = get_ocean_water_depth(grid_xz);
@@ -564,7 +570,7 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
     // whitewater a hull churns up trails behind it until it fades where it was made
     float wake_coverage = sample_ocean_wake(water_position.xz).y;
     float wake   = shape_ocean_foam(wake_coverage, water_position.xz, footprint);
-    shore = ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f));
+    OceanShore shore = ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f));
     churn = saturate(max(max(whitecap, wake_coverage), shore.foam));
     return saturate(max(max(shaped, wake), ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }

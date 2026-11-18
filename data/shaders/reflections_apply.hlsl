@@ -9,6 +9,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common.hlsl"
 #include "fog_volume.hlsl"
 #include "brdf.hlsl"
+#include "spherical_harmonics.hlsl"
+
+Texture2D tex_water_sky_sh : register(t87);
 #ifdef RAY_TRACING_ENABLED
 #include "common_ray_surface.hlsl"
 #endif
@@ -29,17 +32,6 @@ static const uint  glass_max_crossings        = 6;      // a hollow thin shell (
 
 // ray traced reflections jitter the ray across the ggx lobe by surface roughness and a
 // spatiotemporal denoiser reconstructs a roughness proportional blur across the full range
-
-// karis 2014 analytic split sum, same as reflections_shade, f90 is baked in as 1 so the bias
-// term carries grazing fresnel, the gpu lut was built with compute_f90(0)=0 which wiped that term
-float2 reflection_env_brdf(float roughness, float n_dot_v)
-{
-    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f);
-    const float4 c1 = float4(1.0f, 0.0425f, 1.04f, -0.04f);
-    float4 r        = roughness * c0 + c1;
-    float  a004     = min(r.x * r.x, exp2(-9.28f * n_dot_v)) * r.x + r.y;
-    return float2(-1.04f, 1.04f) * a004 + r.zw;
-}
 
 // screen-space raymarching constants
 static const uint  g_refraction_max_steps     = 16;     // max ray steps for refraction
@@ -283,19 +275,12 @@ float ocean_contact_foam(float3 water_position, float footprint, float wave_acti
     return ocean_foam_raft(saturate(coverage * activity * resolved), (water_position.xz - drift) * contact_foam_grain, wind_axis, footprint * contact_foam_grain);
 }
 
-// what a white cap takes from the whole sky, the sun carries the foam at noon but at dusk and under cloud this is
-// all the light there is, a fill derived from the sun goes black with it and leaves foam darker than the water it floats on
-float3 ocean_foam_sky_light()
+// Unit-albedo Lambertian radiance under the same lights, shadows and sky as the scene.
+float3 ocean_whitewater_light(Surface surface, uint2 pixel)
 {
-    // a few texels of the sky panorama near the top of its mip chain are the mean radiance of wide patches of sky,
-    // a lambert cap under a uniform sky sends back that radiance times its albedo
-    float mip        = max(pass_float(pass_reflections_apply::mip_count) - 3.0f, 0.0f);
-    float3 radiance  = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)), mip).rgb * 2.0f;
-    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(1.0f, 0.7f, 0.0f))), mip).rgb;
-    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(-1.0f, 0.7f, 0.0f))), mip).rgb;
-    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(0.0f, 0.7f, 1.0f))), mip).rgb;
-    radiance        += tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(normalize(float3(0.0f, 0.7f, -1.0f))), mip).rgb;
-    return radiance / 6.0f;
+    float3 sky_sh[9];
+    sh_load_l2(tex_water_sky_sh, sky_sh);
+    return tex3.Load(int3(pixel, 0)).rgb + sh_irradiance_l2(surface.normal, sky_sh, 1.0f) * INV_PI;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -403,14 +388,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // foam written into the g-buffer never surfaces, it has to be injected here from the same cascade map
     float foam = 0.0f;
     float foam_churn = 0.0f;
-    float wave_activity = 0.0f;
-    OceanShore shore = (OceanShore)0;
+
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
         // recover the undisplaced fft grid so foam sits on the crest that produced it
         float2 grid_xz = get_ocean_grid_xz(surface.position.xz);
         float view_distance = length(surface.position - get_camera_position());
-        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity, shore, foam_churn);
+        float wave_activity;
+        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity, foam_churn);
         float contact = ocean_contact_foam(surface.position, ocean_foam_footprint(view_distance, surface.position), wave_activity);
         foam = max(foam, contact);
         foam_churn = max(foam_churn, contact);
@@ -618,7 +603,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 F0_opaque     = lerp(surface.F0, float3(0.04f, 0.04f, 0.04f), coat);
     float3 F0_brdf       = (surface.is_water() || surface.is_glass()) ? F0_dielectric : F0_opaque;
 
-    float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y) * compute_multiscatter_energy_split_sum(F0_brdf, brdf);
+    float3 reflectance = (F0_brdf * brdf.x + brdf.y) * compute_multiscatter_energy_split_sum(F0_brdf, brdf);
+    if (surface.is_water()) reflectance = saturate(reflectance);
+    float3 specular_reflection = reflection * reflectance;
 
     if (surface.is_alpha_blended())
     {
@@ -643,49 +630,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         // water has no diffuse layer, light_composition zeroed it, so the column below the surface
         // has to be transmitted in here, the frame only holds its analytic specular
-        float3 kT            = float3(1.0f, 1.0f, 1.0f) - F;
-        float3 surface_color = specular_reflection + refraction * kT;
-
-        // a steep shore wave is thin enough near its crest for daylight to scatter through it, suspended
-        // sand and plankton turn that light green, strongest looking through the face toward the sun
-        if (shore.height > 0.05f)
-        {
-            float3 to_sun    = -light_parameters[0].direction;
-            float visibility = is_ray_traced_shadows_enabled()
-                ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
-            float forward    = pow(saturate(dot(view_dir_normalized, to_sun) * 0.5f + 0.5f), 3.0f);
-            float glow       = pow(shore.crest, 0.7f) * lerp(0.5f, 1.0f, shore.face);
-            float thin       = (0.25f + 0.75f * glow) * (1.0f - 0.4f * shore.breaking) * shore.steepness;
-            float body       = smoothstep(0.05f, 0.5f, shore.height);
-            float3 light_in  = get_sun_radiance() * visibility * saturate(to_sun.y + 0.2f) + get_sky_fill_radiance() * 0.5f;
-            float3 scatter   = light_in * float3(0.06f, 0.36f, 0.24f) * (0.8f + 1.5f * forward) * thin * body / PI;
-            surface_color   += scatter * kT;
-        }
-
-        if (buffer_frame.ocean_enabled > 0.5f)
-        {
-            float3 to_sun    = -light_parameters[0].direction;
-            float visibility = is_ray_traced_shadows_enabled()
-                ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
-            float3 light_in  = get_sun_radiance() * visibility * saturate(to_sun.y + 0.2f) / PI + ocean_foam_sky_light();
-
-            // the open sea glows the same way on a smaller scale, the top of a wind wave is a thin wedge of water, light
-            // that enters its back leaves through the face turned to the camera, brightest looking toward the sun
-            float open_sea = 1.0f - smoothstep(0.05f, 0.5f, shore.height);
-            float lift     = (surface.position.y - buffer_frame.ocean_sea_level) / max(wave_activity, 0.05f);
-            float crest    = smoothstep(0.6f, 2.6f, lift) * smoothstep(0.03f, 0.2f, wave_activity);
-            if (crest * open_sea > 0.0f)
-            {
-                float2 view_flat = view_dir_normalized.xz / max(length(view_dir_normalized.xz), 1e-3f);
-                float face       = smoothstep(0.0f, 0.3f, -dot(surface.normal.xz, view_flat));
-                float forward    = pow(saturate(dot(view_dir_normalized, to_sun) * 0.5f + 0.5f), 3.0f);
-                surface_color   += light_in * float3(0.03f, 0.26f, 0.22f) * (0.35f + 1.6f * forward) * lerp(0.35f, 1.0f, face) * crest * open_sea * kT;
-            }
-
-            // broken water is full of fine bubbles that linger under and around the foam long after the cap has thinned,
-            // they scatter daylight back out and turn the sea milky turquoise in the gaps of the lace
-            surface_color += light_in * float3(0.1f, 0.3f, 0.28f) * (0.55f * smoothstep(0.02f, 0.6f, foam_churn)) * kT;
-        }
+        float3 kT = 1.0f - reflectance;
+        // The volume has already integrated incident light along the refracted path.
+        // Entrained bubbles replace part of that column radiance as the breaker aerates.
+        float bubble_fraction = 0.35f * smoothstep(0.12f, 0.9f, foam_churn);
+        float3 whitewater_light = 0.0f;
+        if (bubble_fraction > 0.0f || foam > 0.0f)
+            whitewater_light = ocean_whitewater_light(surface, thread_id.xy);
+        float3 bubble_return = whitewater_light * 0.75f * exp(-get_ocean_extinction() * 0.45f);
+        float3 surface_color = specular_reflection + kT * lerp(refraction, bubble_return, bubble_fraction);
 
         // the swash sheet thins to nothing at its front, cut by the terrain facets it would end in straight
         // edges, so its last centimetres fade into the wet sand behind a lobed outline
@@ -697,6 +650,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         foam           *= saturate(coverage * 2.5f);
 
         float3 water = tex_uav[thread_id.xy].rgb + surface_color;
+        // Foam covers both the mirror and the transmitted column. Its albedo
+        // sets the reflected fraction and retains the spectrum of incoming light.
+        float foam_albedo = lerp(0.55f, 0.85f, smoothstep(0.15f, 0.9f, foam));
+        water = lerp(water, whitewater_light * foam_albedo, saturate(foam));
         tex_uav[thread_id.xy] = float4(lerp(background, water, coverage), tex_uav[thread_id.xy].a);
     }
     else
@@ -708,28 +665,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         tex_uav[thread_id.xy] += float4(specular_reflection, 0.0f);
     }
 
-    // overlay lit foam on top of the composited water, whitewater is a bright near-white lambertian cap so it
-    // must replace the reflection and refraction below rather than tint them, additive blending only desaturates the water
-    if (foam > 0.0f)
-    {
-        // whitewater receives the sun as a wrap-lit diffuse term plus diffuse skylight as an ambient fill, near-white albedo
-        float  n_dot_l   = saturate(dot(surface.normal, -light_parameters[0].direction));
-        float3 sun_diff  = get_sun_radiance() * (n_dot_l * 0.5f + 0.5f) * (1.0f / PI);
-        float visibility = is_ray_traced_shadows_enabled()
-            ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
-        sun_diff *= visibility;
-        float3 incoming  = sun_diff + ocean_foam_sky_light();
-
-        // a deep pile of bubbles scatters light many times and goes near white, a thin raft is a few bubble
-        // walls over the water, darker and tinted by the sea it lets through, so foam is a veil, not paint
-        float  luma       = luminance(incoming);
-        float  thickness  = smoothstep(0.15f, 0.9f, foam);
-        float  albedo     = lerp(0.5f, 0.85f, thickness);
-        float3 tint       = lerp(float3(0.8f, 0.92f, 0.94f), float3(0.97f, 0.98f, 1.0f), thickness);
-        float3 foam_color = lerp(incoming, luma.xxx, 0.35f) * tint * albedo;
-
-        float3 base  = tex_uav[thread_id.xy].rgb;
-        float  cover = saturate(foam * 0.95f);
-        tex_uav[thread_id.xy].rgb = lerp(base, foam_color, cover);
-    }
 }

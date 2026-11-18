@@ -146,8 +146,8 @@ float3 fog_transmit_water_segment(float3 radiance, float2 uv, float start_distan
     float length = max(end_distance - start_distance, 0.0f);
     float3 extinction = get_ocean_extinction();
     // Four intervals concentrated within the first optical depth. Beyond eight
-    // blue optical depths even the least absorbed channel contributes <0.04%.
-    float limit = min(length, 8.0f / max(extinction.b, 1e-5f));
+    // optical depths even the least absorbed channel contributes <0.04%.
+    float limit = min(length, 8.0f / min(extinction.r, min(extinction.g, extinction.b)));
     float3 scattering = 0.0f;
     float3 transmission = 1.0f;
     [unroll] for (uint i = 0u; i < 4u; i++)

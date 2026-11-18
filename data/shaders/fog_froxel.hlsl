@@ -241,7 +241,7 @@ float3 fog_evaluate_light(
         // Sunlight cannot survive hundreds of optical depths. Avoid tracing
         // shadows for deep cells whose incident energy is already negligible.
         float depth = max(buffer_frame.ocean_sea_level - sample_pos.y, 0.0f);
-        if (depth * get_ocean_extinction().b > 12.0f) return 0.0f;
+        if (all(depth * get_ocean_extinction() > 12.0f)) return 0.0f;
     }
 
     // a local light in air keeps its direction, so what it scatters is known before the shadow ray is paid for
@@ -460,7 +460,8 @@ void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3
         bool distant_entry = get_camera_position().y > buffer_frame.ocean_sea_level && sea_entry > fog_detail_far;
         stable_water_sample = distant_entry && d1 > fog_detail_far;
         float entry_distance = distant_entry ? sea_entry : water_start;
-        float column = distant_entry ? 8.0f / max(get_ocean_extinction().b, 1e-5f) : water_length;
+        float3 extinction = get_ocean_extinction();
+        float column = distant_entry ? 8.0f / min(extinction.r, min(extinction.g, extinction.b)) : water_length;
         float3 entry = get_camera_position() + ray_direction * entry_distance;
         float valid;
         float bed = sample_ocean_terrain_height(entry.xz, valid);

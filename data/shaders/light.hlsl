@@ -251,7 +251,7 @@ void evaluate_light(
     // a diffusion profile keeps the whole lambert lobe here, the subsurface pass spreads it afterwards,
     // the wrapped lobe below is the cheap stand in for materials without one
     bool   has_profile         = surface.has_subsurface_profile() && surface.metallic < 1.0f;
-    float  scattering_fraction = has_profile ? 0.0f : saturate(surface.subsurface_scattering);
+    float  scattering_fraction = has_profile || surface.is_water() ? 0.0f : saturate(surface.subsurface_scattering);
 
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
     // cull the inverse square tail clustering cannot, skip when the exposed contribution is sub perceptual
@@ -373,10 +373,15 @@ void evaluate_light(
 
         if (light.is_directional() && surface.is_opaque() && buffer_frame.ocean_enabled > 0.5f)
         {
-            float3 water_transmission = get_ocean_sun_transmission(surface.position, normalize(-light.forward));
+            float footprint = ocean_foam_footprint(surface.camera_to_pixel_length, surface.position);
+            float3 water_transmission = get_ocean_sun_transmission(surface.position, normalize(-light.forward), footprint, false);
             light.radiance *= water_transmission;
             light_radiance_raw *= water_transmission;
         }
+
+        // The transparency pass applies foam coverage and albedo to this unit-albedo return.
+        if (surface.is_water())
+            out_diffuse += light.radiance * INV_PI;
 
         AngularInfo angular_info;
         angular_info.Build(light, surface);

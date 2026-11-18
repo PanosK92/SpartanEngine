@@ -1013,8 +1013,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // slopes the faded cascades no longer draw become microfacet width so far water reads as a glitter sheet, not a mirror
         // cox munk mean square slope for the wind, ggx alpha ~ sqrt(mss) and alpha = roughness^2
         float mss           = 0.003f + 0.00512f * length(buffer_frame.wind.xz);
-        float sea_roughness = sqrt(sqrt(mss));
-        roughness           = lerp(roughness, max(roughness, sea_roughness), 1.0f - resolved);
+        // Variance adds in slope space. Interpolating the perceptual roughness left
+        // partly resolved wind waves mirror-smooth over most of the middle distance.
+        float base_variance = roughness * roughness * roughness * roughness;
+        roughness = sqrt(sqrt(base_variance + mss * (1.0f - resolved)));
 
         // foam reads as whitewater in the transparency pass, keep its roughness moderate here so its reflection stays bright enough to light the foam, a full rough surface collapses the reflection to black
         roughness  = lerp(roughness, 0.5f, foam);

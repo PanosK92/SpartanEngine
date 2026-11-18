@@ -113,7 +113,7 @@ struct Surface
         bool alpha_transparent = (alpha > 0.0f && alpha < 1.0f);
         metallic               = alpha_transparent ? 0.0f : metallic;
         // the lit passes demodulate albedo out of diffuse only, a metal's reflectance is its albedo
-        F0                     = lerp(0.04f, sample_albedo.rgb, metallic);
+        F0                     = lerp(is_water() ? 0.02037f : 0.04f, sample_albedo.rgb, metallic);
         float decal_coverage   = gbuffer_decal_coverage(sample_material.b, material);
         anisotropic           = material.anisotropic;
         anisotropic_rotation  = material.anisotropic_rotation;

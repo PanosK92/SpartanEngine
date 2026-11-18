@@ -124,6 +124,17 @@ float3 compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
     return 1.0 + f0 * energy_loss / (1.0 - energy_loss + FLT_MIN);
 }
 
+// karis 2014 analytic split sum, same as reflections_shade, f90 is baked in as 1 so the bias
+// term carries grazing fresnel, the gpu lut was built with compute_f90(0)=0 which wiped that term
+float2 reflection_env_brdf(float roughness, float n_dot_v)
+{
+    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f);
+    const float4 c1 = float4(1.0f, 0.0425f, 1.04f, -0.04f);
+    float4 r        = roughness * c0 + c1;
+    float  a004     = min(r.x * r.x, exp2(-9.28f * n_dot_v)) * r.x + r.y;
+    return float2(-1.04f, 1.04f) * a004 + r.zw;
+}
+
 // fdez-aguera 2019 from the split sum terms, a + b is the single scatter albedo of a white lobe,
 // the energy it loses to microfacet shadowing comes back tinted by f0, rough metals stop going dark
 float3 compute_multiscatter_energy_split_sum(float3 f0, float2 env_brdf)

@@ -93,11 +93,12 @@ namespace spartan
                 RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_reflections);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+                RHI_CommandList::SetTexture("tex_water_sky_sh", GetRenderTarget(Renderer_RenderTarget::sky_sh));
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_frame);
 
-                // the sky lights the ocean foam on every gpu, ray traced misses and hit shading read it too
+                // ray traced misses and hit shading sample the sky panorama
                 RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
                 m_pcb_pass_cpu.set(pass_reflections_apply::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));

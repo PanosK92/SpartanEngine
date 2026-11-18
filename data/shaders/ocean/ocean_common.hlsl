@@ -14,7 +14,6 @@ static const uint  OCEAN_LOG2N      = 9;
 static const float OCEAN_PI         = 3.14159265359;
 static const float OCEAN_G          = 9.81;
 static const float OCEAN_PHILLIPS_A = 0.002; // base phillips constant, sized so the user amplitude is a plain height multiplier around 1
-static const float OCEAN_DIR_SPREAD = 2.0;   // cos power for wind alignment, higher is tighter
 static const float OCEAN_CAPILLARY  = 0.003; // sub-capillary cutoff in metres, only the finest ripples below this are damped
 
 float2 ocean_wind_dir()    { return pass_float2(pass_ocean::wind_direction); }
@@ -79,10 +78,23 @@ float ocean_phillips(float2 k, float2 wind_dir, float wind_speed, float amplitud
     float largest = wind_speed * wind_speed / OCEAN_G; // longest wave the wind can raise
     float k4      = k2 * k2;
 
-    // directional spreading, the cos power aligns waves with the wind, higher is tighter
+    // Long crests travel together. Shorter wind waves cross them from a wider range
+    // of directions. Both lobes have the same angular integral as cos(theta)^2.
     float k_dot_w     = dot(normalize(k), wind_dir);
-    float directional = pow(abs(k_dot_w), OCEAN_DIR_SPREAD);
-    float spectrum    = amplitude * exp(-1.0 / (k2 * largest * largest)) / k4 * directional;
+    float cos2        = k_dot_w * k_dot_w;
+    float long_lobe   = (8.0 / 5.0) * cos2 * cos2 * cos2;
+    float short_lobe  = 0.22 + 0.56 * cos2;
+    float relative_k  = sqrt(k2) * largest;
+    float directional = lerp(long_lobe, short_lobe, smoothstep(2.0, 12.0, relative_k));
+
+    // A narrow wind-sea peak gives consecutive crests a common spacing within a set.
+    // Use the JONSWAP frequency-domain peak shape on top of the broadband tail.
+    // The peak of the underlying Phillips frequency spectrum is at k * largest = sqrt(4/5).
+    float relative_frequency = sqrt(relative_k / 0.89442719);
+    float peak_width = relative_frequency < 1.0 ? 0.07 : 0.09;
+    float peak_offset = (relative_frequency - 1.0) / peak_width;
+    float peak = exp(-0.5 * peak_offset * peak_offset);
+    float spectrum = amplitude * exp2(peak) * exp(-1.0 / (relative_k * relative_k)) / k4 * directional;
 
     // damp waves travelling against the wind
     if (k_dot_w < 0.0)
