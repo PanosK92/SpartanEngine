@@ -96,7 +96,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         tex_uav[pixel] = shadow_mask_pack(1.0f, 0.0f);
         for (uint slice = 0; slice < slices; slice++)
         {
-            tex_uav_rt_shadows_local[uint3(pixel, slice)] = shadow_mask_pack(1.0f, 0.0f);
+            if (pass_uint(pass_ray_traced_shadows::local_shadow_lights + slice) != 0u)
+                tex_uav_rt_shadows_local[uint3(pixel, slice)] = shadow_mask_pack(1.0f, 0.0f);
         }
         return;
     }
@@ -159,7 +160,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     for (uint slice = 0; slice < slices; slice++)
     {
-        // a slot without a light was cleared by the trace on every pixel
+        // Unassigned slots have no consumers.
         if (pass_uint(pass_ray_traced_shadows::local_shadow_lights + slice) == 0u)
         {
             continue;
@@ -170,7 +171,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             samples[i] = tex_uav_rt_shadows_local[uint3(neighbours[i], slice)];
         }
-        float4 previous = tex_uav_rt_shadows_local[uint3(pixel, slice)];
+        float4 previous = (pass_uint(pass_ray_traced_shadows::previous_local_mask) & (1u << slice)) != 0u
+            ? tex_uav_rt_shadows_local[uint3(pixel, slice)] : shadow_mask_pack(1.0f, 0.0f);
         tex_uav_rt_shadows_local[uint3(pixel, slice)] = fill_signal(samples, weights, previous, is_static);
     }
 }

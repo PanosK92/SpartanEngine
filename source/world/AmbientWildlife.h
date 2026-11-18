@@ -626,8 +626,7 @@ namespace spartan::ambient_wildlife
             Vector3 position = animal.position;
             if (flying && !airborne) position.y += StandingHeight(animal);
             if (!flying && speed > 0 && animal.species != Lizard) position.y += fabsf(sinf(animal.clock*12))*.045f;
-            entity->SetPosition(position);
-            entity->SetRotation(Quaternion::FromLookRotation(animal.heading));
+            entity->SetPositionAndRotation(position, Quaternion::FromLookRotation(animal.heading));
             // Gentle emergence and distance shrink prevent abrupt recycling at the perimeter.
             const float distance = (position-viewer).Length();
             const float fade = std::min(std::min(animal.age,1.0f),std::clamp((180-distance)/30,0.0f,1.0f));

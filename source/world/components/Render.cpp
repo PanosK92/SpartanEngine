@@ -398,6 +398,8 @@ namespace spartan
 
     void Render::InvalidateSpatialBounds()
     {
+        if (Physics* physics = GetEntity()->GetComponent<Physics>(); physics && physics->StreamsCollision())
+            World::NotifyCollisionChanged(GetEntity());
         if (!m_spatial_dirty.exchange(true, memory_order_relaxed))
             World::NotifyRenderBoundsChanged(this);
     }
@@ -1118,7 +1120,7 @@ namespace spartan
         // screen coverage handles distance, object size and fov uniformly with no per-type special cases
 
         const uint32_t lod_count = GetLodCount();
-        if (lod_count == 0)
+        if (lod_count <= 1)
         {
             m_scene->lod_index = 0;
             return;

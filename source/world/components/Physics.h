@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <memory>
 #include "../../math/Vector3.h"
 #include "../../math/Quaternion.h"
+#include "../../math/BoundingBox.h"
 #include "../../rhi/RHI_Vertex.h"
 //=================================
 
@@ -170,6 +171,13 @@ namespace spartan
         // keeps one instance's actor out of the scene regardless of distance, a broken tree has no trunk to hit
         void SetInstanceSuppressed(uint32_t index, bool suppressed);
         bool IsInstanceSuppressed(uint32_t index) const { return index < m_instances_suppressed.size() && m_instances_suppressed[index]; }
+        static constexpr float activation_distance = 40.0f;
+        static constexpr float deactivation_distance = 80.0f;
+        bool StreamsCollision() const
+        {
+            return m_is_static && m_distance_streaming && m_body_type != BodyType::Controller && m_body_type != BodyType::Cloth;
+        }
+        bool NeedsStreamingRetry() const;
         bool NeedsRunningPreTick() const
         {
             return !m_is_static || m_needs_creation || m_instances_dirty ||
@@ -321,8 +329,12 @@ namespace spartan
         uint32_t m_actors_active_count = 0; // how many of the above are in the scene, lets a sleeping entity skip its per instance scan
         math::Vector3 m_activation_camera = math::Vector3::Zero;
         math::Matrix m_activation_world = math::Matrix::Identity;
+        struct ActivationIndex;
+        std::unique_ptr<ActivationIndex> m_activation_index;
+        math::BoundingBox m_activation_bounds;
         float m_activation_slack = 0.0f;
         bool m_activation_valid = false;
+        uint64_t m_activation_instance_revision = 0;
         uint64_t m_activation_collision_revision = 0;
 
         // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes

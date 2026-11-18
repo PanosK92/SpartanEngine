@@ -54,10 +54,25 @@ namespace spartan
         TConsoleVar<bool> cvar_physics_assist("physics.assist", true, "Execute ready PhysX jobs on the calling thread while waiting for simulation results");
         TConsoleVar<bool> cvar_physics_threaded("physics.threaded", true, "Run the fixed simulation steps on a dedicated thread, overlapped with rendering");
         PhysicsSceneOrigin scene_origin;
-        struct CollisionInterest { const void* owner; Vector3 position; float radius; };
+        using CollisionInterest = PhysicsWorld::CollisionInterest;
         vector<CollisionInterest> collision_interests;
         atomic<uint64_t> collision_interest_revision{1};
         constexpr float collision_interest_slack = 2.0f;
+
+        // Activation runs on several world workers. They share an immutable view
+        // between participant moves, without serializing every actor test on PhysX.
+        const vector<CollisionInterest>& collision_interest_snapshot()
+        {
+            thread_local vector<CollisionInterest> snapshot;
+            thread_local uint64_t revision = 0;
+            if (revision != collision_interest_revision.load(memory_order_acquire))
+            {
+                lock_guard<recursive_mutex> lock(physx_mutex);
+                snapshot = collision_interests;
+                revision = collision_interest_revision.load(memory_order_relaxed);
+            }
+            return snapshot;
+        }
     }
 
     void PhysicsWorld::SetCollisionInterest(const void* owner, const Vector3& position, float radius)
@@ -93,16 +108,30 @@ namespace spartan
         return collision_interest_revision.load(memory_order_acquire);
     }
 
+    const vector<PhysicsWorld::CollisionInterest>& PhysicsWorld::GetCollisionInterests()
+    {
+        return collision_interest_snapshot();
+    }
+
     bool PhysicsWorld::HasCollisionInterests()
     {
-        lock_guard<recursive_mutex> lock(physx_mutex);
-        return !collision_interests.empty();
+        return !collision_interest_snapshot().empty();
+    }
+
+    bool PhysicsWorld::IsCollisionAreaCovered(const BoundingBox& bounds, float extra_radius)
+    {
+        for (const CollisionInterest& interest : collision_interest_snapshot())
+        {
+            const float radius = interest.radius + extra_radius;
+            if (Vector3::Max((interest.position - bounds.GetMin()).Abs(), (interest.position - bounds.GetMax()).Abs()).LengthSquared() <= radius * radius)
+                return true;
+        }
+        return false;
     }
 
     bool PhysicsWorld::IsCollisionRelevant(const BoundingBox& bounds, float extra_radius)
     {
-        lock_guard<recursive_mutex> lock(physx_mutex);
-        for (const CollisionInterest& interest : collision_interests)
+        for (const CollisionInterest& interest : collision_interest_snapshot())
         {
             const float radius = interest.radius + extra_radius;
             if (Vector3::DistanceSquared(interest.position, bounds.GetClosestPoint(interest.position)) <= radius * radius)

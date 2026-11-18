@@ -616,7 +616,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 }
 
 #ifdef GRASS_SPECIALIZED
-#ifdef GRASS_OPAQUE
+#if defined(GRASS_OPAQUE) && !defined(API_WEBGPU)
 [earlydepthstencil]
 #endif
 gbuffer main_ps(gbuffer_scatter_vertex packed, bool is_front_face : SV_IsFrontFace)

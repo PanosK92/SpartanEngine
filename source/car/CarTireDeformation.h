@@ -320,6 +320,7 @@ namespace car
                     }
                 // Fixed-temperature gas law over this quasi-static shape solve.
                 // pressure_bar already includes the simulated core temperature.
+                if (iteration + 1 == iterations) break;
                 const float current_volume = volume(position);
                 if (current_volume <= 0) break;
                 const float gas_pressure = std::max((base_pressure + ambient_bar * 100000.0f) *
@@ -374,22 +375,16 @@ namespace car
                 {
                     position[i] += force[i] * step[i];
                     if (!has_contact_samples) position[i] += normal * std::max(-(normal.Dot(position[i]) + distance), 0.0f);
-                    moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
                 }
                 // Couple the supported membrane back to the tread cage during
                 // relaxation, so unsupported sidewall buckling cannot steer the shoulders.
                 if (iteration % 4 == 3)
-                {
                     support_sidewalls(normal, distance, pressure_bar, reference_stiffness, ambient_bar, 1);
-                    for (int i = lanes * sectors; i < node_count; ++i)
-                        moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
-                }
                 if (has_contact_samples)
-                {
                     project_contacts(normal, distance);
+                if (iteration + 1 < 32)
                     for (int i = lanes * sectors; i < node_count; ++i)
                         moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
-                }
             }
             support_sidewalls(normal, distance, pressure_bar, reference_stiffness, ambient_bar);
             if (has_contact_samples) project_contacts(normal, distance);

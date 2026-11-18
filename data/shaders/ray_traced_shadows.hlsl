@@ -196,7 +196,8 @@ void ray_gen()
     [unroll]
     for (uint clear_slice = 0; clear_slice < nrd_local_shadow_max; clear_slice++)
     {
-        write_local_shadow(pixel, clear_slice, 1.0f, 0.0f);
+        if (pass_uint(pass_ray_traced_shadows::local_shadow_lights + clear_slice) != 0u)
+            write_local_shadow(pixel, clear_slice, 1.0f, 0.0f);
     }
 
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
@@ -206,7 +207,7 @@ void ray_gen()
         return;
     }
 
-    float3 pos_ws    = get_position(uv);
+    float3 pos_ws    = get_position(depth, render_uv_to_screen_uv(uv));
     float3 normal_ws = get_normal(uv);
     uint material_index = get_material_index(uv);
     MaterialParameters material = material_parameters[material_index];

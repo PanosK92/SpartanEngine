@@ -72,6 +72,9 @@ namespace spartan::breakable_trees
         Wood wood    = wood_pine;
         bool indexed = false;
         bool single  = false;
+        BoundingBox detection_bounds;
+        uint64_t bounds_revision = 0;
+        bool has_bounds = false;
         // a placed tree authored without collision gets a trunk, it leaves the scene when the tree falls
         physx::PxRigidStatic* collider = nullptr;
         float collider_length          = 0.0f;
@@ -111,6 +114,7 @@ namespace spartan::breakable_trees
     inline std::unordered_map<uint64_t, TrunkSection> trunk_radius_cache;
     inline size_t scanned_entity_count = 0;
     inline float scan_timer            = 0.0f;
+    inline uint64_t detection_revision = 0;
     inline float clock                 = 0.0f;
     inline physx::PxMaterial* bark     = nullptr;
 
@@ -785,8 +789,12 @@ namespace spartan::breakable_trees
 
         for (auto& [stand_id, stand] : stands)
         {
-            BoundingBox bounds;
-            if (!stand_bounds(stand, bounds) || bounds.Intersects(sweep) == Intersection::Outside)
+            if (stand.bounds_revision != detection_revision)
+            {
+                stand.has_bounds = stand_bounds(stand, stand.detection_bounds);
+                stand.bounds_revision = detection_revision;
+            }
+            if (!stand.has_bounds || stand.detection_bounds.Intersects(sweep) == Intersection::Outside)
                 continue;
             if (!stand.indexed)
                 Index(stand);
@@ -829,6 +837,7 @@ namespace spartan::breakable_trees
 
                     const Vector3 direction = (velocity / speed * 0.7f + to_trunk * 0.3f).Normalized();
                     impact(stand_id, stand, i, body, direction, approach);
+                    ++detection_revision;
                 }
             }
         }
@@ -854,6 +863,7 @@ namespace spartan::breakable_trees
             }
         }
 
+        ++detection_revision;
         for (const vegetation_interaction::Body& body : vegetation_interaction::bodies)
             detect(body);
 

@@ -2799,7 +2799,7 @@ namespace spartan
 
     Terrain* Terrain::FindActive()
     {
-        for (Entity* entity : World::GetEntities())
+        for (Entity* entity : World::GetTerrainCandidates())
         {
             if (!entity)
             {

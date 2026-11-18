@@ -16,7 +16,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../Entity.h"
 #include "../World.h"
 #include "../../core/Engine.h"
-#include "../../core/ThreadPool.h"
 #include "../../commands/console/ConsoleCommands.h"
 #include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
@@ -720,28 +719,7 @@ namespace spartan
                     indoors = false;
                     canopy = scrub = 0.0f;
                     exposure = 1.0f;
-                    // The island has many more visual props than acoustic
-                    // contributors. Filter independently, then evaluate the
-                    // compact list in source order to preserve gain summation.
-                    static array<vector<Entity*>, 8> candidates;
-                    for (auto& batch : candidates) batch.clear();
-                    const auto& entities = World::GetEntities();
-                    const uint32_t jobs = entities.size() >= 256 ? static_cast<uint32_t>(candidates.size()) : 1u;
-                    auto collect = [&](uint32_t first, uint32_t last)
-                    {
-                        auto& batch = candidates[first];
-                        for (size_t i = entities.size() * first / jobs; i < entities.size() * last / jobs; ++i)
-                        {
-                            Entity* entity = entities[i];
-                            if (entity->GetActive() && (entity->GetComponent<Volume>() || entity->GetComponent<Terrain>() ||
-                                entity->HasTag("terrain_canopy") || entity->HasTag("terrain_scrub")))
-                                batch.push_back(entity);
-                        }
-                    };
-                    if (jobs == 1) collect(0, 1);
-                    else ThreadPool::ParallelLoop(collect, jobs);
-                    for (const auto& batch : candidates)
-                    for (Entity* entity : batch)
+                    for (Entity* entity : World::GetAmbientCandidates())
                     {
                         if (!entity->GetActive()) continue;
                         if (Volume* other = entity->GetComponent<Volume>())

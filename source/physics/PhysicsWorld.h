@@ -97,6 +97,9 @@ namespace spartan
         static void RemoveCollisionInterest(const void* owner);
         static bool HasCollisionInterests();
         static uint64_t GetCollisionInterestRevision();
+        struct CollisionInterest { const void* owner; math::Vector3 position; float radius; };
+        static const std::vector<CollisionInterest>& GetCollisionInterests();
+        static bool IsCollisionAreaCovered(const math::BoundingBox& bounds, float extra_radius);
         static bool IsCollisionRelevant(const math::BoundingBox& bounds, float extra_radius = 0.0f);
         static void* GetScene();
         static void* GetPhysics();

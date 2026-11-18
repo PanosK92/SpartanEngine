@@ -62,7 +62,7 @@ namespace spartan
             auto* ground_physics = ground->GetComponent<Physics>();
             if (!terrain && ground_physics && ground_physics->GetBodyType() == BodyType::Heightfield)
             {
-                for (Entity* e : World::GetEntities())
+                for (Entity* e : World::GetTerrainCandidates())
                 {
                     auto* candidate = e->GetComponent<Terrain>();
                     float height = 0.0f;

@@ -136,6 +136,7 @@ namespace spartan
             bool plan_initialized = false;
             size_t road_edge = road_traffic::invalid;
             road_traffic::Path road_path;
+            float road_elapsed = 0.0f;
             float road_progress = 0.0f;
             uint32_t route_random = 1;
             std::unordered_map<uint64_t, uint16_t> visits;

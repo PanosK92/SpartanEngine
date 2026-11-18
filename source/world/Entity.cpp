@@ -240,12 +240,14 @@ namespace spartan
         if (!tag.empty() && !HasTag(tag))
         {
             m_tags.push_back(tag);
+            if (tag == "terrain_canopy" || tag == "terrain_scrub") World::InvalidateEntityViews();
             if (m_parent) ++m_parent->m_child_data_revision;
         }
     }
 
     void Entity::RemoveTag(const string& tag)
     {
+        if (tag == "terrain_canopy" || tag == "terrain_scrub") World::InvalidateEntityViews();
         m_tags.erase(remove(m_tags.begin(), m_tags.end(), tag), m_tags.end());
         if (m_parent) ++m_parent->m_child_data_revision;
     }
@@ -271,6 +273,7 @@ namespace spartan
 
     void Entity::SetTagsString(const string& comma_separated)
     {
+        if (HasTag("terrain_canopy") || HasTag("terrain_scrub")) World::InvalidateEntityViews();
         m_tags.clear();
         if (m_parent) ++m_parent->m_child_data_revision;
         stringstream ss(comma_separated);
@@ -356,10 +359,10 @@ namespace spartan
         gate->sleep_radius_squared = radius * radius;
     }
 
-    void Entity::PreTick()
+    void Entity::PreTick(bool tick_physics)
     {
         // only these components override pretick, skip the full component array walk
-        if (Physics* physics = GetComponent<Physics>())
+        if (Physics* physics = GetComponent<Physics>(); physics && (tick_physics || physics->GetBodyType() == BodyType::Custom))
         {
             physics->PreTick();
         }
@@ -373,10 +376,11 @@ namespace spartan
         }
     }
 
-    void Entity::Tick(bool tick_render)
+    void Entity::Tick(bool tick_render_and_physics)
     {
         const uint64_t render_bit = uint64_t(1) << static_cast<uint32_t>(ComponentType::Render);
-        const uint64_t included = tick_render ? ~uint64_t(0) : ~render_bit;
+        const uint64_t physics_bit = uint64_t(1) << static_cast<uint32_t>(ComponentType::Physics);
+        const uint64_t included = tick_render_and_physics ? ~uint64_t(0) : ~(render_bit | physics_bit);
         // Re-read membership after callbacks: scripts may add or remove later components.
         for (uint32_t next = 0; ((m_component_mask & included) >> next) != 0;)
         {

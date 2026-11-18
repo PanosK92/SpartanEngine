@@ -44,9 +44,9 @@ namespace spartan
         // core
         void Start();
         void Stop();
-        void PreTick();
-        // Pass false after the render component has already run on a worker.
-        void Tick(bool tick_render = true);
+        void PreTick(bool tick_physics = true);
+        // Pass false when World has already dispatched rendering and collision streaming.
+        void Tick(bool tick_render_and_physics = true);
 
         // Compact participation state; its address is stable until this entity dies.
         // Physics sleeps only with a distance proof, not a reduced update frequency.

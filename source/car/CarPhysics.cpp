@@ -2475,7 +2475,7 @@ namespace spartan
             }
             if (caliper)
                 caliper->SetRotation((is_front ? steer_q : Quaternion::Identity) * base);
-            UpdateTireDeformation(i, false);
+            if (VehicleState().tire_visuals[i]) UpdateTireDeformation(i, false);
         }
     }
 

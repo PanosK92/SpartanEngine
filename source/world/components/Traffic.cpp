@@ -179,6 +179,7 @@ namespace spartan
         const float delta_time = std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
         const vector<Car*> cars = Car::GetAll();
         unordered_set<Car*> car_set(cars.begin(), cars.end());
+        Camera* camera = World::GetCamera();
         Vector3 player_position;
         Vector3 player_velocity;
         const bool has_player = GetPlayerState(player_position, player_velocity);
@@ -213,7 +214,20 @@ namespace spartan
 
             if (m_follow_roads)
             {
-                UpdateRoadDriver(driver, delta_time, has_player, player_position, player_velocity);
+                driver.road_elapsed += delta_time;
+                // Batch pose updates on distant, offscreen spline cars. Moving one chassis
+                // also updates every mesh in its hierarchy.
+                if (!driver.physics_active && camera && driver.road_elapsed < 0.1f)
+                {
+                    const Vector3 center = driver.entity->GetPosition();
+                    const Vector3 extent(10.0f);
+                    if (Vector3::DistanceSquared(center, camera->GetEntity()->GetPosition()) > 150.0f * 150.0f &&
+                        (World::GetWorkCounterTick() + driver.entity->GetObjectId()) % 4 != 0 &&
+                        !camera->IsInViewFrustum(BoundingBox(center - extent, center + extent)))
+                        continue;
+                }
+                UpdateRoadDriver(driver, driver.physics_active ? delta_time : driver.road_elapsed, has_player, player_position, player_velocity);
+                driver.road_elapsed = 0.0f;
                 continue;
             }
 
@@ -517,6 +531,7 @@ namespace spartan
             driver.entity->SetPositionAndRotation(position,rotation);
             driver.physics->SetBodyTransform(position,rotation);
             driver.spline_speed=driver.cruise_speed;driver.transition_time=2.0f;
+            driver.road_elapsed = 0.0f;
             driver.last_position=position;driver.visits.clear();
             break; // recycle one existing car, never rebuild the entire pool
         }
@@ -528,8 +543,11 @@ namespace spartan
         auto& path = driver.road_path;
         if (driver.physics_active)
         {
-            UpdateTelemetry(driver, delta_time);
-            driver.spline_speed = driver.telemetry.speed;
+            // Lane following only uses planar speed. The free-driving planner also
+            // reads wheel loads, slip, torque and acceleration from UpdateTelemetry.
+            const Vector3 velocity = driver.physics->GetLinearVelocity();
+            driver.spline_speed = velocity.IsFinite() ? planar(velocity).Length() : 0.0f;
+            driver.previous_speed = driver.spline_speed;
             driver.road_progress = path.Project(driver.entity->GetPosition(), std::max(0.0f, driver.road_progress - 4.0f),
                 std::min(path.Length(), driver.road_progress + std::max(driver.spline_speed * delta_time * 3.0f, 12.0f)));
         }
@@ -549,11 +567,21 @@ namespace spartan
         const auto target = path.Sample(driver.road_progress + lookahead);
         float target_speed_squared = driver.cruise_speed * driver.cruise_speed;
         // Brake before curves, including the connector through a junction.
+        // Both probes advance monotonically. Walk the nearby segments once instead
+        // of binary-searching the full road and interpolating 26 unused positions.
+        size_t left = std::clamp(static_cast<size_t>(std::upper_bound(path.distances.begin(), path.distances.end(),
+            driver.road_progress + 1.0f) - path.distances.begin()), size_t(1), path.points.size() - 1);
+        size_t right = left;
+        auto tangent = [&](float distance, size_t& end)
+        {
+            while (end + 1 < path.points.size() && path.distances[end] <= distance) ++end;
+            return horizontal((path.points[end] - path.points[end - 1]).Normalized());
+        };
         for (float ahead = 3.0f; ahead <= 40.0f; ahead += 3.0f)
         {
-            const auto a = path.Sample(driver.road_progress + ahead - 2.0f);
-            const auto b = path.Sample(driver.road_progress + ahead + 2.0f);
-            const float curvature = (horizontal(b.tangent) - horizontal(a.tangent)).Length() / 4.0f;
+            const Vector3 a = tangent(driver.road_progress + ahead - 2.0f, left);
+            const Vector3 b = tangent(driver.road_progress + ahead + 2.0f, right);
+            const float curvature = (b - a).Length() / 4.0f;
             const float corner_speed_squared = 2.5f / std::max(curvature, 0.001f);
             target_speed_squared = std::min(target_speed_squared,
                 corner_speed_squared + 4.0f * std::max(ahead - 5.0f, 0.0f));

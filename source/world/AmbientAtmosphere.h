@@ -78,7 +78,7 @@ namespace spartan::ambient_atmosphere
         // Same actual canopy bounds and spatial groups used by the soundscape.
         // Reservoir sampling avoids favouring the first scatter tile in the world.
         uint32_t seen = 0;
-        for (Entity* entity : World::GetEntities())
+        for (Entity* entity : World::GetAmbientCandidates())
         {
             if (!entity->GetActive()) continue;
             if (Volume* volume = entity->GetComponent<Volume>())

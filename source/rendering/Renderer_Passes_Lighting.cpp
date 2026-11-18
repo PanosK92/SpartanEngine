@@ -453,6 +453,7 @@ namespace spartan
                 // Resolve the four SIGMA slots once per frame, rather than scanning
                 // every visible street light for every shaded pixel.
                 static_assert(nrd_local_shadow_max == 4);
+                uint32_t local_mask = 0;
                 for (uint32_t slot = 0; slot < nrd_local_shadow_max; ++slot)
                 {
                     m_pcb_pass_cpu.set(pass_ray_traced_shadows::local_shadow_lights + slot, 0u);
@@ -462,8 +463,13 @@ namespace spartan
                     const uint32_t flags = m_bindless_lights[i].flags;
                     const uint32_t slot = (flags >> 8u) & 7u;
                     if (slot > 0 && slot <= nrd_local_shadow_max && (flags & (1u << 3)) != 0)
+                    {
+                        local_mask |= 1u << (slot - 1);
                         m_pcb_pass_cpu.set(pass_ray_traced_shadows::local_shadow_lights + slot - 1, i);
+                    }
                 }
+                m_pcb_pass_cpu.set(pass_ray_traced_shadows::previous_local_mask, m_pass_state.local_shadow_mask);
+                m_pass_state.local_shadow_mask = local_mask;
                 m_pcb_pass_cpu.set(pass_ray_traced_shadows::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
 
                 // the ray generation shader detects checkerboard from a launch narrower than its targets

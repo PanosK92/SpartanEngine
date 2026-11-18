@@ -122,12 +122,15 @@ namespace spartan
         static void MoveRootEntityNear(Entity* entity_to_move, Entity* target_entity, bool insert_after);
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
+        static const std::vector<Entity*>& GetTerrainCandidates();
+        static const std::vector<Entity*>& GetAmbientCandidates();
         static const std::vector<Entity*>& GetEntitiesLights();
         static const std::vector<Entity*>& GetEntitiesWithRender();
         static const std::vector<const RenderSceneData*>& GetRenderSceneData();
         static void InvalidateRenderSceneData();
         // component membership changed, so the light, render, logic and pre tick lists must be rebuilt
         static void InvalidateEntityViews();
+        static void NotifyCollisionChanged(Entity* entity);
         static void NotifyRenderBoundsChanged(Render* render);
         // editor gizmo icons, excludes render-only props
         static const std::vector<Entity*>& GetEntitiesWithIcon();

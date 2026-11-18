@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Spline.h"
 #include <unordered_set>
 #include "Physics.h"
+#include "../../commands/console/ConsoleCommands.h"
 #include "../../profiling/Profiler.h"
 #include "Render.h"
 #include "Camera.h"
@@ -56,8 +57,9 @@ namespace spartan
 {
     namespace
     {
-        const float distance_deactivate = 80.0f;
-        const float distance_activate   = 40.0f;
+        TConsoleVar<bool> cvar_validate_streaming("physics.validate_streaming", false, "Compare spatial collision streaming to a full actor scan");
+        constexpr float distance_deactivate = Physics::deactivation_distance;
+        constexpr float distance_activate   = Physics::activation_distance;
 
         // 1.8m total height for an average adult, a capsule totals cylinder_height + 2 * radius
         const float controller_radius   = 0.25f;
@@ -81,7 +83,7 @@ namespace spartan
             const Vector3 position = camera->GetEntity()->GetPosition();
             const float distance_squared = Vector3::DistanceSquared(position, render->GetBoundingBox().GetClosestPoint(position));
             const uint64_t interest_revision = PhysicsWorld::GetCollisionInterestRevision();
-            const bool outside = distance_squared > distance_deactivate_squared && !PhysicsWorld::IsCollisionRelevant(render->GetBoundingBox(), 40.0f);
+            const bool outside = distance_squared > distance_deactivate_squared && !PhysicsWorld::IsCollisionRelevant(render->GetBoundingBox(), distance_deactivate - distance_activate);
             if (outside && remember && std::isfinite(distance_squared))
             {
                 const float distance = sqrtf(distance_squared);
@@ -195,6 +197,78 @@ namespace spartan
         buoyancy::bodies.push_back(this);
     }
 
+    // Per scattered entity. Leaves reference the original actor indices, so sorting the
+    // index never changes instance ownership. Rebuild after geometry or actor edits.
+    struct Physics::ActivationIndex
+    {
+        struct Entry { Vector3 position; uint32_t actor; };
+        struct Node
+        {
+            BoundingBox bounds;
+            uint32_t first, count, active;
+            uint32_t left = 0, right = 0;
+        };
+        vector<Entry> entries;
+        vector<Node> nodes;
+        uint32_t actor_count = 0;
+
+        uint32_t BuildNode(uint32_t first, uint32_t count, const vector<bool>& active)
+        {
+            Vector3 lo = entries[first].position, hi = lo;
+            uint32_t active_count = 0;
+            for (uint32_t i = first; i < first + count; ++i)
+            {
+                lo = Vector3::Min(lo, entries[i].position);
+                hi = Vector3::Max(hi, entries[i].position);
+                active_count += active[entries[i].actor];
+            }
+            const auto index = static_cast<uint32_t>(nodes.size());
+            nodes.push_back({BoundingBox(lo, hi), first, count, active_count});
+            if (count > 12)
+            {
+                const Vector3 span = hi - lo;
+                const int axis = span.x >= span.y && span.x >= span.z ? 0 : span.y > span.z ? 1 : 2;
+                const uint32_t half = count / 2;
+                auto coordinate = [axis](const Vector3& p) { return axis == 0 ? p.x : axis == 1 ? p.y : p.z; };
+                nth_element(entries.begin() + first, entries.begin() + first + half, entries.begin() + first + count,
+                    [&](const Entry& a, const Entry& b) { return coordinate(a.position) < coordinate(b.position); });
+                nodes[index].left = BuildNode(first, half, active);
+                nodes[index].right = BuildNode(first + half, count - half, active);
+            }
+            return index;
+        }
+
+        template<typename TestActor>
+        void Visit(uint32_t index, const Vector3& camera, TestActor& test_actor)
+        {
+            Node& node = nodes[index];
+            CountWorldWork(WorldWork::physics_activation_cells_tested);
+            const bool may_wake = node.active < node.count &&
+                (Vector3::DistanceSquared(camera, node.bounds.GetClosestPoint(camera)) <= distance_activate_squared ||
+                 PhysicsWorld::IsCollisionRelevant(node.bounds));
+            const bool may_sleep = node.active && !may_wake &&
+                Vector3::Max((camera - node.bounds.GetMin()).Abs(), (camera - node.bounds.GetMax()).Abs()).LengthSquared() > distance_deactivate_squared &&
+                !PhysicsWorld::IsCollisionAreaCovered(node.bounds, distance_deactivate - distance_activate);
+            if (!may_wake && !may_sleep)
+            {
+                CountWorldWork(WorldWork::physics_activation_cells_skipped);
+                return;
+            }
+            if (node.left)
+            {
+                Visit(node.left, camera, test_actor);
+                Visit(node.right, camera, test_actor);
+                node.active = nodes[node.left].active + nodes[node.right].active;
+            }
+            else
+            {
+                node.active = 0;
+                for (uint32_t i = node.first; i < node.first + node.count; ++i)
+                    node.active += test_actor(entries[i].actor, entries[i].position);
+            }
+        }
+    };
+
     Physics::~Physics()
     {
         {
@@ -259,6 +333,7 @@ namespace spartan
     void Physics::Remove()
     {
         m_activation_valid = false;
+        m_activation_index.reset();
         // serialize physx writes, async scene loading runs this on worker threads in parallel
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
@@ -356,6 +431,7 @@ namespace spartan
 
     void Physics::OnInstancesChanged()
     {
+        if (StreamsCollision()) World::NotifyCollisionChanged(GetEntity());
         m_instances_dirty = true;
         GetEntity()->RefreshPreTickGate();
     }
@@ -385,6 +461,7 @@ namespace spartan
             m_actors_active[index] = true;
             m_actors_active_count++;
         }
+        if (StreamsCollision()) World::NotifyCollisionChanged(GetEntity());
         // distance activation adds a streamed actor back once it is in range
         m_activation_valid = false;
     }
@@ -397,6 +474,11 @@ namespace spartan
         m_needs_creation = false;
         Create();
         return true;
+    }
+
+    bool Physics::NeedsStreamingRetry() const
+    {
+        return m_needs_creation && (m_body_type != BodyType::Mesh || !outside_collision_prepare_range(GetEntity()));
     }
 
     void Physics::PreTick()
@@ -514,12 +596,7 @@ namespace spartan
         }
 
         // distance-based activation/deactivation for static actors
-        if (
-            m_body_type != BodyType::Controller &&
-            m_body_type != BodyType::Cloth &&
-            m_is_static &&
-            m_distance_streaming
-        )
+        if (StreamsCollision())
         {
             TickDistanceActivation();
         }
@@ -576,7 +653,9 @@ namespace spartan
         {
             return;
         }
+        World::InvalidateEntityViews();
         m_distance_streaming = enabled;
+        if (enabled) World::NotifyCollisionChanged(GetEntity());
         m_activation_valid   = false;
 
         if (!enabled)
@@ -584,7 +663,7 @@ namespace spartan
             // bring back every actor the camera streamed out, and create collision that was deferred for being far away
             for (size_t i = 0; i < m_actors.size() && i < m_actors_active.size(); i++)
             {
-                if (!m_actors_active[i] && m_actors[i])
+                if (!m_actors_active[i] && m_actors[i] && !IsInstanceSuppressed(static_cast<uint32_t>(i)))
                 {
                     PhysicsWorld::AddActor(static_cast<PxRigidActor*>(m_actors[i]));
                     m_actors_active[i] = true;
@@ -1100,15 +1179,24 @@ namespace spartan
         // thousands of them, so walking every instance every frame is the single largest cost in the
         // editor. they all sit inside one world box, and once the set is fully asleep a box that cannot
         // reach the activation radius rejects the whole entity in constant time
+        const BoundingBox& bounds = render->GetBoundingBox();
         const float box_distance_squared = Vector3::DistanceSquared(
             camera_pos,
-            render->GetBoundingBox().GetClosestPoint(camera_pos)
+            bounds.GetClosestPoint(camera_pos)
         );
 
-        if (m_actors_active_count == 0 && box_distance_squared > distance_activate_squared && !PhysicsWorld::IsCollisionRelevant(render->GetBoundingBox()))
+        if (m_actors_active_count == 0 && box_distance_squared > distance_activate_squared && !PhysicsWorld::IsCollisionRelevant(bounds))
         {
             CountWorldWork(WorldWork::physics_activation_box_skips);
             return;
+        }
+
+        // A streamed static can be moved by a script or its parent while asleep.
+        // Bring its shapes to the current pose before putting them back in the scene.
+        if (Engine::IsFlagSet(EngineMode::Playing) && m_body_type != BodyType::Custom)
+        {
+            UpdateShapeGeometry();
+            SyncStaticPoses();
         }
 
         // the instance list can shrink before the actors are rebuilt, never index past it
@@ -1124,7 +1212,10 @@ namespace spartan
         // displacement. Until that displacement reaches the closest hysteresis
         // boundary, no actor can change state. Edits invalidate the proof.
         const uint64_t interest_revision = PhysicsWorld::GetCollisionInterestRevision();
-        if (instanced && m_activation_valid && m_activation_collision_revision == interest_revision && world == m_activation_world &&
+        const uint64_t instance_revision = render->GetInstanceRevision();
+        const bool same_geometry = m_activation_valid && world == m_activation_world &&
+            instance_revision == m_activation_instance_revision && bounds == m_activation_bounds;
+        if (same_geometry && m_activation_collision_revision == interest_revision &&
             (camera_pos == m_activation_camera ||
              Vector3::DistanceSquared(camera_pos, m_activation_camera) < m_activation_slack * m_activation_slack))
         {
@@ -1132,55 +1223,87 @@ namespace spartan
             return;
         }
         float activation_slack = distance_activate;
-        for (uint32_t i = 0; i < count; i++)
+        auto test_actor = [&](uint32_t i, const Vector3& closest_point) -> bool
         {
-            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
-            if (!actor)
-            {
-                continue;
-            }
-
             CountWorldWork(WorldWork::physics_actors_tested);
-            if (IsInstanceSuppressed(i))
-            {
-                if (m_actors_active[i])
-                {
-                    PhysicsWorld::RemoveActor(actor);
-                    m_actors_active[i] = false;
-                    m_actors_active_count--;
-                }
-                continue;
-            }
-
-            // compute distance to actor
-            Vector3 closest_point = instanced
-                ? render->GetInstancePosition(i, world)
-                : render->GetBoundingBox().GetClosestPoint(camera_pos);
             const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
-            const BoundingBox interest_bounds = instanced ? BoundingBox(closest_point, closest_point) : render->GetBoundingBox();
-
-            // use hysteresis to prevent flickering at boundary
-            const bool is_active = m_actors_active[i];
-            if (is_active && distance_squared > distance_deactivate_squared && !PhysicsWorld::IsCollisionRelevant(interest_bounds, 40.0f))
+            const BoundingBox interest_bounds = instanced ? BoundingBox(closest_point, closest_point) : bounds;
+            const bool active = m_actors_active[i];
+            if (active && distance_squared > distance_deactivate_squared && !PhysicsWorld::IsCollisionRelevant(interest_bounds, distance_deactivate - distance_activate))
             {
                 CountWorldWork(WorldWork::physics_actors_deactivated);
-                PhysicsWorld::RemoveActor(actor);
+                PhysicsWorld::RemoveActor(static_cast<PxRigidActor*>(m_actors[i]));
                 m_actors_active[i] = false;
-                m_actors_active_count--;
+                --m_actors_active_count;
             }
-            else if (!is_active && (distance_squared <= distance_activate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds)))
+            else if (!active && (distance_squared <= distance_activate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds)))
             {
                 CountWorldWork(WorldWork::physics_actors_activated);
-                PhysicsWorld::AddActor(actor);
+                PhysicsWorld::AddActor(static_cast<PxRigidActor*>(m_actors[i]));
                 m_actors_active[i] = true;
-                m_actors_active_count++;
+                ++m_actors_active_count;
             }
-            const float threshold = m_actors_active[i] ? distance_deactivate : distance_activate;
-            activation_slack = min(activation_slack, fabsf(sqrtf(distance_squared) - threshold));
+            return m_actors_active[i];
+        };
+
+        if (instanced && count >= 32)
+        {
+            if (!m_activation_index) m_activation_index = make_unique<ActivationIndex>();
+            auto& index = *m_activation_index;
+            if (!same_geometry || index.actor_count != count)
+            {
+                index.entries.clear();
+                index.nodes.clear();
+                index.actor_count = count;
+                index.entries.reserve(count);
+                for (uint32_t i = 0; i < count; ++i)
+                    if (m_actors[i] && !IsInstanceSuppressed(i))
+                        index.entries.push_back({render->GetInstancePosition(i, world), i});
+                if (!index.entries.empty())
+                    index.BuildNode(0, static_cast<uint32_t>(index.entries.size()), m_actors_active);
+            }
+            const bool validate = cvar_validate_streaming.GetValue();
+            vector<bool> expected;
+            if (validate)
+            {
+                expected.reserve(index.entries.size());
+                for (const auto& entry : index.entries)
+                {
+                    const bool active = m_actors_active[entry.actor];
+                    const float extra = active ? distance_deactivate - distance_activate : 0.0f;
+                    expected.push_back(Vector3::DistanceSquared(camera_pos, entry.position) <=
+                        (active ? distance_deactivate_squared : distance_activate_squared) ||
+                        PhysicsWorld::IsCollisionRelevant(BoundingBox(entry.position, entry.position), extra));
+                }
+            }
+            if (!index.nodes.empty()) index.Visit(0, camera_pos, test_actor);
+            if (validate)
+            {
+                CountWorldWork(WorldWork::physics_actors_validated, expected.size());
+                for (size_t i = 0; i < expected.size(); ++i)
+                    if (expected[i] != m_actors_active[index.entries[i].actor])
+                        CountWorldWork(WorldWork::physics_activation_mismatches);
+            }
+            // Reclassify tree nodes when the viewer moves. Untested leaves cannot
+            // contribute to the per-actor displacement certificate below.
+            activation_slack = 0.0f;
         }
+        else
+        {
+            m_activation_index.reset();
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                if (!m_actors[i] || IsInstanceSuppressed(i)) continue;
+                const Vector3 point = instanced ? render->GetInstancePosition(i, world) : bounds.GetClosestPoint(camera_pos);
+                const float threshold = test_actor(i, point) ? distance_deactivate : distance_activate;
+                activation_slack = min(activation_slack, fabsf(Vector3::Distance(point, camera_pos) - threshold));
+            }
+        }
+        m_activation_instance_revision = instance_revision;
         m_activation_collision_revision = interest_revision;
         m_activation_camera = camera_pos;
         m_activation_world = world;
+        m_activation_bounds = bounds;
         // Round conservatively at the boundary; a false miss only costs a rescan.
         m_activation_slack = max(0.0f, activation_slack - 0.001f);
         m_activation_valid = true;
@@ -1570,6 +1693,7 @@ namespace spartan
             return;
         }
 
+        World::InvalidateEntityViews();
         m_body_type = type;
 
         // Procedural roads and sidewalks set their type during the main-thread
@@ -1580,6 +1704,7 @@ namespace spartan
         {
             Remove();
             m_needs_creation = true;
+            World::NotifyCollisionChanged(GetEntity());
             GetEntity()->RefreshPreTickGate();
             return;
         }
@@ -1832,6 +1957,7 @@ namespace spartan
         }
 
         // update static state
+        World::InvalidateEntityViews();
         m_is_static    = is_static;
         m_is_kinematic = false; // statics can't be kinematic
 
@@ -1849,6 +1975,7 @@ namespace spartan
 
         // update kinematic state
         m_is_kinematic = is_kinematic;
+        World::InvalidateEntityViews();
         m_is_static    = false; // kinematics require dynamic (non-static) bodies
 
         Create(); // recreate body to apply changes
@@ -1957,6 +2084,7 @@ namespace spartan
                 {
                     physics->SetEntityActive(false);
                 }
+                if (physics->StreamsCollision()) World::NotifyCollisionChanged(entity);
                 entity->RefreshPreTickGate();
             }
         } refresh{this, GetEntity()};
@@ -3085,7 +3213,7 @@ namespace spartan
                                               : render->GetBoundingBox().GetClosestPoint(camera_position))
                     : camera_position;
                 const BoundingBox interest_bounds = stream_static && !render->HasInstancing() ? render->GetBoundingBox() : BoundingBox(closest_point, closest_point);
-                const bool in_range = !stream_static || Vector3::DistanceSquared(camera_position, closest_point) <= distance_deactivate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds, 40.0f);
+                const bool in_range = !stream_static || Vector3::DistanceSquared(camera_position, closest_point) <= distance_deactivate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds, distance_deactivate - distance_activate);
                 if (in_range && !IsInstanceSuppressed(i))
                 {
                     PhysicsWorld::AddActor(actor);
@@ -4422,6 +4550,7 @@ namespace spartan
         m_friction = settings.friction;
         m_friction_rolling = settings.friction_rolling;
         m_restitution = settings.restitution;
+        World::InvalidateEntityViews();
         m_is_static = settings.is_static;
         m_is_kinematic = settings.is_kinematic;
         m_position_lock = settings.position_lock;
@@ -4437,6 +4566,7 @@ namespace spartan
         m_cloth_wind_enabled = settings.cloth_wind_enabled;
         m_cloth_pin_direction = settings.cloth_pin_direction;
         m_cloth_pin_mode = settings.cloth_pin_mode;
+        if (StreamsCollision()) World::NotifyCollisionChanged(GetEntity());
         // One deferred rebuild after all authored values have been applied.
         m_needs_creation = true;
         GetEntity()->RefreshPreTickGate();

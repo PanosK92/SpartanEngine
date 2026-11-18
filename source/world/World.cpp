@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #endif
 #include "World.h"
 #include "RenderSpatialIndex.h"
+#include "CollisionGrid.h"
 #include "../commands/console/ConsoleCommands.h"
 #include "TerrainSystem.h"
 #include "PlaySession.h"
@@ -336,6 +337,93 @@ namespace spartan
             }
         }
         TConsoleVar<int32_t> cvar_spatial_render("world.spatial_render", 1, "Persistent render BVH: 0 reference traversal, 1 spatial, 2 validate visibility");
+        CollisionGrid collision_grid;
+        mutex collision_dirty_mutex;
+        unordered_set<Entity*> collision_dirty;
+        unordered_set<Entity*> collision_retry;
+        unordered_map<const void*, BoundingBox> previous_collision_regions;
+        uint64_t collision_revision = 0;
+        Vector3 collision_position;
+        bool collision_had_camera = false;
+        bool collision_was_playing = false;
+
+        // Only the owner thread touches the grid. Worker notifications contain
+        // pointer identities only and are checked against live membership first.
+        void update_collision_streaming()
+        {
+            if (ProgressTracker::IsLoading()) return;
+            unordered_set<Entity*> work;
+            {
+                lock_guard lock(collision_dirty_mutex);
+                work.swap(collision_dirty);
+            }
+            for (Entity* entity : work)
+            {
+                if (!collision_grid.Contains(entity)) continue;
+                if (Render* render = entity->GetComponent<Render>())
+                {
+                    render->UpdateAabb();
+                    collision_grid.Update(entity, render->GetBoundingBox());
+                }
+            }
+            work.merge(collision_retry);
+            collision_retry.clear();
+            Camera* camera = World::GetCamera();
+            const Vector3 position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
+            const uint64_t revision = PhysicsWorld::GetCollisionInterestRevision();
+            const bool playing = Engine::IsFlagSet(EngineMode::Playing);
+            if (collision_had_camera != bool(camera) || collision_was_playing != playing)
+                collision_grid.All(work);
+            // Query both ends of a move. A teleport never visits the cells in between.
+            if (camera && (collision_position != position || !collision_had_camera))
+            {
+                const Vector3 extent(Physics::deactivation_distance);
+                if (collision_had_camera)
+                    collision_grid.Query({collision_position - extent, collision_position + extent}, work);
+                collision_grid.Query({position - extent, position + extent}, work);
+            }
+            if (revision != collision_revision || collision_had_camera != bool(camera))
+            {
+                unordered_map<const void*, BoundingBox> regions;
+                if (camera)
+                {
+                    for (const auto& interest : PhysicsWorld::GetCollisionInterests())
+                    {
+                        const Vector3 extent(interest.radius + Physics::deactivation_distance - Physics::activation_distance);
+                        const BoundingBox region(interest.position - extent, interest.position + extent);
+                        regions.emplace(interest.owner, region);
+                        const auto old = previous_collision_regions.find(interest.owner);
+                        if (old == previous_collision_regions.end() || !(old->second == region))
+                        {
+                            if (old != previous_collision_regions.end()) collision_grid.Query(old->second, work);
+                            collision_grid.Query(region, work);
+                        }
+                    }
+                }
+                for (const auto& [owner, region] : previous_collision_regions)
+                    if (!regions.contains(owner)) collision_grid.Query(region, work);
+                previous_collision_regions.swap(regions);
+                collision_revision = revision;
+            }
+            collision_had_camera = camera != nullptr;
+            collision_position = position;
+            collision_was_playing = playing;
+            CountWorldWork(WorldWork::physics_streaming_candidates, work.size());
+            for (Entity* entity : work)
+            {
+                if (!collision_grid.Contains(entity) || !entity->GetActive() || !entity->GetComponent<Render>()) continue;
+                Physics* physics = entity->GetComponent<Physics>();
+                if (!physics || !physics->StreamsCollision()) continue;
+                // Custom bodies own a per-frame update in the ordered pre-tick.
+                if (physics->GetBodyType() != BodyType::Custom)
+                {
+                    if (!playing || physics->NeedsRunningPreTick()) physics->PreTick();
+                    if (physics->NeedsStreamingRetry()) collision_retry.insert(entity);
+                }
+                physics->Tick();
+            }
+        }
+
         RenderSpatialIndex render_spatial_index;
         bool render_spatial_rebuild = true;
         mutex render_bounds_mutex;
@@ -348,15 +436,15 @@ namespace spartan
         // removal together so no view can retain a destroyed entity.
         struct EntityViews
         {
-            vector<Entity*> lights, render, ragdolls, logic, icons, particles, volumes;
+            vector<Entity*> lights, render, ragdolls, logic, icons, particles, volumes, terrains, ambient;
             vector<Entity::PreTickGate*> pretick;
             vector<const RenderSceneData*> render_data;
-            vector<Entity*> render_physics, render_followups;
+            vector<Entity*> render_followups;
             atomic<bool> render_dirty{true};
 
             void Clear()
             {
-                for (auto* list : {&lights, &render, &ragdolls, &logic, &icons, &particles, &volumes})
+                for (auto* list : {&lights, &render, &ragdolls, &logic, &icons, &particles, &volumes, &terrains, &ambient})
                     list->clear();
                 pretick.clear();
                 render_data.clear();
@@ -365,7 +453,7 @@ namespace spartan
 
             void Remove(Entity* entity)
             {
-                for (auto* list : {&lights, &render, &ragdolls, &logic, &icons, &particles, &volumes})
+                for (auto* list : {&lights, &render, &ragdolls, &logic, &icons, &particles, &volumes, &terrains, &ambient})
                     erase(*list, entity);
                 erase_if(pretick, [entity](const Entity::PreTickGate* gate) { return gate->entity == entity; });
                 render_dirty.store(true, memory_order_relaxed);
@@ -466,6 +554,8 @@ namespace spartan
                 return;
             }
 
+            collision_grid.Remove(entity);
+            collision_retry.erase(entity);
             entities_by_id.erase(entity->GetObjectId());
 
             if (entity == camera)
@@ -813,6 +903,10 @@ namespace spartan
             // drop the live lists first, destructors that walk GetEntities must not see freed pointers
             to_delete.swap(entities);
             entities_by_id.clear();
+            collision_grid = {};
+            collision_retry.clear();
+            previous_collision_regions.clear();
+            collision_revision = 0;
             pending_to_delete.swap(entities_pending);
             views.Clear();
             pending_remove.clear();
@@ -1135,6 +1229,7 @@ namespace spartan
                 if (callbacks.before_tick) callbacks.before_tick(static_cast<float>(Timer::GetDeltaTimeSec()));
 
             SP_PROFILE_CPU_START("world_pretick");
+            update_collision_streaming();
             Camera* pretick_camera = GetCamera();
             Vector3 pretick_position = pretick_camera ? pretick_camera->GetEntity()->GetPosition() : Vector3::Zero;
             bool pretick_playing = Engine::IsFlagSet(EngineMode::Playing);
@@ -1149,7 +1244,7 @@ namespace spartan
                     continue;
                 }
                 CountWorldWork(WorldWork::pretick_entities);
-                gate->entity->PreTick();
+                gate->entity->PreTick(!collision_grid.Contains(gate->entity));
                 // A controller or script can move/switch the camera or stop play.
                 // Refresh after each callback to preserve the original entity order.
                 pretick_camera = GetCamera();
@@ -1163,6 +1258,7 @@ namespace spartan
             // matrices before either the spatial query or per-render frustum tests.
             if (callbacks.controls) callbacks.controls();
             if (Camera* active_camera = GetCamera()) active_camera->RefreshMatrices();
+            update_collision_streaming();
             Animator::BeginSkinningBatch();
             SP_PROFILE_CPU_START("world_render_tick");
             const auto& all_render_entries = GetRenderSceneData();
@@ -1243,12 +1339,7 @@ namespace spartan
             CountWorldWork(WorldWork::spatial_candidates, render_candidates.size());
             SP_PROFILE_CPU_END();
 
-            // Rendering and collision streaming have independent work lists.
-            // Off-screen entities retain physics, scripts, animation and audio.
-            const uint32_t render_count = static_cast<uint32_t>(render_candidates.size());
-            const bool reference_traversal = cvar_spatial_render.GetValue() == 0;
-            const uint32_t physics_count = reference_traversal ? 0u : static_cast<uint32_t>(views.render_physics.size());
-            const uint32_t work_count = render_count + physics_count;
+            const uint32_t work_count = static_cast<uint32_t>(render_candidates.size());
             if (work_count)
             {
                 const uint32_t jobs = min(work_count, 64u);
@@ -1262,22 +1353,10 @@ namespace spartan
                         ScopedWorldWork batch_scope(batch_work[job]);
                         for (uint32_t i = work_count * job / jobs; i < work_count * (job + 1) / jobs; ++i)
                         {
-                            if (i < render_count)
-                            {
-                                const auto* data = render_candidates[i];
-                                if (!data->active.load(memory_order_relaxed)) continue;
-                                CountWorldWork(WorldWork::render_entities);
-                                data->render->Tick();
-                                if ((reference_traversal || data->render->IsSpatiallyDynamic()) && data->entity->CanTickWithParallelRender())
-                                    if (Physics* physics = data->entity->GetComponent<Physics>()) physics->Tick();
-                            }
-                            else
-                            {
-                                Entity* entity = views.render_physics[i - render_count];
-                                if (entity->GetActive())
-                                    if (Render* render = entity->GetComponent<Render>(); render && !render->IsSpatiallyDynamic())
-                                        if (Physics* physics = entity->GetComponent<Physics>()) physics->Tick();
-                            }
+                            const auto* data = render_candidates[i];
+                            if (!data->active.load(memory_order_relaxed)) continue;
+                            CountWorldWork(WorldWork::render_entities);
+                            data->render->Tick();
                         }
                     }
                 }, min(jobs, 8u));
@@ -1347,6 +1426,9 @@ namespace spartan
             }
             SP_PROFILE_CPU_END();
 
+            // Late scripts and autonomous vehicles can move an interest after the
+            // render pass. Make the resulting collision available to the next simulation.
+            update_collision_streaming();
             SP_PROFILE_CPU_END();
         }
 
@@ -1379,10 +1461,27 @@ namespace spartan
                         continue;
                     }
 
+                    if (entity->GetComponent<Terrain>())
+                        views.terrains.push_back(entity);
+                    if (entity->GetComponent<Terrain>() || entity->GetComponent<Volume>() ||
+                        entity->HasTag("terrain_canopy") || entity->HasTag("terrain_scrub"))
+                        views.ambient.push_back(entity);
+
                     if (entity->GetComponent<Volume>())
                     {
                         views.volumes.push_back(entity);
                     }
+
+                    Physics* physics = entity->GetComponent<Physics>();
+                    Render* collider_render = entity->GetComponent<Render>();
+                    const bool streamed = physics && collider_render && physics->StreamsCollision();
+                    if (streamed && !collision_grid.Contains(entity))
+                    {
+                        // Compute geometry on the owner thread when loading has finished.
+                        collision_grid.Update(entity, BoundingBox::Infinite);
+                        NotifyCollisionChanged(entity);
+                    }
+                    else if (!streamed) collision_grid.Remove(entity);
 
                     if (entity->GetActive())
                     {
@@ -1415,7 +1514,7 @@ namespace spartan
                         }
 
                         if (
-                            entity->GetComponent<Physics>() ||
+                            (physics && (!streamed || physics->GetBodyType() == BodyType::Custom)) ||
                             entity->GetComponent<Script>() ||
                             entity->GetComponent<Ragdoll>()
                         )
@@ -2937,6 +3036,7 @@ namespace spartan
 
         // insert at new position
         entities.insert(entities.begin() + index, entity);
+        resolve = true;
     }
 
     void World::MoveRootEntityNear(Entity* entity_to_move, Entity* target_entity, bool insert_after)
@@ -2968,6 +3068,7 @@ namespace spartan
         {
             // target not found, put entity_to_move back at end
             entities.push_back(entity_to_move);
+            resolve = true;
             return;
         }
 
@@ -2978,6 +3079,7 @@ namespace spartan
         }
 
         entities.insert(target_it, entity_to_move);
+        resolve = true;
     }
 
     Entity* World::GetEntityById(const uint64_t id)
@@ -3009,9 +3111,26 @@ namespace spartan
         return entities;
     }
 
+    const vector<Entity*>& World::GetTerrainCandidates()
+    {
+        // During loading and edits a newly published component can be queried before resolve.
+        return resolve ? entities : views.terrains;
+    }
+
+    const vector<Entity*>& World::GetAmbientCandidates()
+    {
+        return resolve ? entities : views.ambient;
+    }
+
     const vector<Entity*>& World::GetEntitiesLights()
     {
         return views.lights;
+    }
+
+    void World::NotifyCollisionChanged(Entity* entity)
+    {
+        lock_guard lock(collision_dirty_mutex);
+        collision_dirty.insert(entity);
     }
 
     void World::NotifyRenderBoundsChanged(Render* render)
@@ -3038,7 +3157,6 @@ namespace spartan
         if (views.render_dirty.exchange(false, memory_order_relaxed))
         {
             render_spatial_rebuild = true;
-            views.render_physics.clear();
             views.render_followups.clear();
             views.render_data.clear();
             views.render_data.reserve(views.render.size());
@@ -3046,11 +3164,7 @@ namespace spartan
                 if (Render* render = entity->GetComponent<Render>())
                 {
                     views.render_data.push_back(&render->GetSceneData());
-                    if (entity->CanTickWithParallelRender())
-                    {
-                        if (entity->GetComponent<Physics>()) views.render_physics.push_back(entity);
-                    }
-                    else views.render_followups.push_back(entity);
+                    if (!entity->CanTickWithParallelRender()) views.render_followups.push_back(entity);
                 }
         }
         return views.render_data;

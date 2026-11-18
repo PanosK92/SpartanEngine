@@ -479,6 +479,7 @@ namespace spartan
             ViewPassHistory& h   = other.history;
             swap(pass.cleared_reflections,     h.cleared_reflections);
             swap(pass.cleared_rt_reflections,  h.cleared_rt_reflections);
+            swap(pass.local_shadow_mask,       h.local_shadow_mask);
             swap(pass.cleared_rt_shadows,      h.cleared_rt_shadows);
             swap(pass.depth_history_cleared,   h.depth_history_cleared);
             swap(pass.hiz_history_valid,       h.hiz_history_valid);
@@ -1693,6 +1694,10 @@ namespace spartan
             UpdateMaterials();
             material_values_to_upload.clear();
         }
+        // A values-only upload updates the existing parameter buffer in place.
+        // Texture slots and image views only need revisiting on a residency change.
+        if (values_only && !bindless_textures_dirty)
+            return;
         bindless_textures_dirty = false;
         SP_PROFILE_CPU_START("material_bindless");
         // a residency swap only touches the swapped textures, the full table is prepared with the materials

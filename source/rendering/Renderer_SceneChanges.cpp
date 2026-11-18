@@ -150,8 +150,11 @@ namespace spartan
                 continue;
             }
 
-            const size_t current_hash = compute_material_hash(material);
             auto [it, inserted] = material_state_hashes.try_emplace(material->GetObjectId());
+            it->second.stamp = stamp;
+            if (!inserted && !poll_resources && it->second.revision == material->GetRevision())
+                continue;
+            const size_t current_hash = compute_material_hash(material);
             if (inserted || it->second.hash != current_hash)
             {
                 it->second.hash     = current_hash;
@@ -166,7 +169,6 @@ namespace spartan
                 changed             = true;
                 materials_with_changed_values.push_back(material);
             }
-            it->second.stamp = stamp;
         }
 
         slots_changed |= std::erase_if(material_state_hashes, [stamp](const auto& entry) { return entry.second.stamp != stamp; }) != 0;

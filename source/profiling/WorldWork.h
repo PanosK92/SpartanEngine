@@ -20,7 +20,7 @@ namespace spartan
         X(physics_created) X(physics_instances_rebuilt) X(physics_dynamic_syncs) \
         X(physics_vehicle_updates) X(physics_controller_updates) X(physics_cloth_updates) X(physics_editor_static_syncs) \
         X(physics_activation_calls) X(physics_activation_empty_skips) X(physics_activation_box_skips) \
-        X(physics_activation_cached_skips) X(physics_actors_tested) X(physics_actors_activated) X(physics_actors_deactivated) \
+        X(physics_activation_cached_skips) X(physics_actors_validated) X(physics_activation_mismatches) X(physics_streaming_candidates) X(physics_activation_cells_tested) X(physics_activation_cells_skipped) X(physics_actors_tested) X(physics_actors_activated) X(physics_actors_deactivated) \
         X(render_tick_calls) X(bounds_checks) X(bounds_rebuilt) X(bounds_instances_rebuilt) \
         X(cull_calls) X(cull_cached_skips) X(cull_tests) X(render_visible) X(visibility_changes) X(lod_updates) \
         X(spatial_rebuilds) X(spatial_retains) X(spatial_bounds_updates) X(spatial_candidates) X(spatial_visibility_mismatches) \
