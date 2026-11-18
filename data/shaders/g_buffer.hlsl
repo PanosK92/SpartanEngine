@@ -47,13 +47,14 @@ static const uint  POM_MIN_STEPS    = 10;
 static const uint  POM_REFINE_STEPS = 8;
 static const float POM_FADE_START   = 25.0f;
 static const float POM_FADE_END     = 50.0f;
-static const float POM_HEIGHT_SCALE = 0.04f;
+static const float POM_MIN_COSINE   = 0.16f;
+static const float POM_HEIGHT_SCALE = 0.065f;
 
 // terrain relief, the depth is authored per layer in metres so a handful of steps resolves it
-static const float TERRAIN_POM_MAX_STEPS       = 12.0f;
+static const float TERRAIN_POM_MAX_STEPS       = 32.0f;
 static const float TERRAIN_POM_MIN_STEPS       = 4.0f;
 static const uint  TERRAIN_POM_REFINE_STEPS    = 5;
-static const float TERRAIN_POM_MIN_COSINE      = 0.3f;  // caps the shift at about three times the relief
+static const float TERRAIN_POM_MIN_COSINE      = 0.14f; // bound ray travel at the horizon
 static const uint  TERRAIN_POM_SHADOW_STEPS    = 5;
 static const float TERRAIN_POM_SHADOW_HARDNESS = 3.0f;
 static const float TERRAIN_RELIEF_SHADOW       = 0.75f; // how much occlusion a fully buried texel loses
@@ -93,11 +94,11 @@ float2 paint_peel_slope(float2 p)
     return du * float2((b - a) + k * u.y, (c - a) + k * u.x);
 }
 
-// parallax dies off with distance and at grazing angles, where the march is all cost and no visible relief
+// Only taper the last few degrees at the silhouette. The capped ray slope keeps shallow views stable.
 float parallax_fade(float distance, float n_dot_v)
 {
     float distance_fade = saturate((POM_FADE_END - distance) / (POM_FADE_END - POM_FADE_START));
-    float grazing_fade  = smoothstep(0.1f, 0.4f, n_dot_v);
+    float grazing_fade  = smoothstep(0.0f, 0.08f, n_dot_v);
     return distance_fade * grazing_fade;
 }
 
@@ -121,8 +122,8 @@ float2 parallax_occlusion_uv(
 {
     uint num_steps = (uint)lerp(POM_MAX_STEPS, POM_MIN_STEPS, n_dot_v);
 
-    // offset limited delta_uv, total shift across the march is bounded by max_disp regardless of view angle
-    float2 delta_uv  = v_tangent.xy * max_disp / num_steps;
+    // Convert normal depth into lateral travel along the view ray.
+    float2 delta_uv  = v_tangent.xy / max(n_dot_v, POM_MIN_COSINE) * max_disp / num_steps;
     float  layer_h   = 1.0f / num_steps;
     float2 cur_uv    = uv;
     float  cur_layer = 1.0f;
@@ -195,14 +196,12 @@ float2 parallax_occlusion_uv(
 float terrain_parallax_fade(float distance, float n_dot_v)
 {
     float distance_fade = saturate((terrain_parallax_fade_end - distance) / (terrain_parallax_fade_end - terrain_parallax_fade_start));
-    float grazing_fade  = smoothstep(0.04f, 0.2f, n_dot_v);
+    float grazing_fade  = smoothstep(0.0f, 0.06f, n_dot_v);
     return distance_fade * grazing_fade;
 }
 
 // march the blended terrain height field, depth_uv is the relief in terrain uv
-// unlike the offset limited march above this one follows the real ray, the shift grows with the tangent of
-// the view angle, which is what makes a stone slide over the ground behind it, the tangent is capped so a
-// grazing ray cannot run across a whole tile
+// The planar projection uses both terrain tiling axes for view and light rays.
 // shadow comes back as how much of the sun the relief around the hit hides, 0 lit to 1 buried
 float2 terrain_parallax_uv(
     TerrainParallax parallax,
@@ -211,7 +210,7 @@ float2 terrain_parallax_uv(
     float2 duvdy,
     float3 v_tangent,
     float3 l_tangent,
-    float  depth_uv,
+    float2 depth_uv,
     float2 position_screen,
     out float shadow
 )
@@ -769,33 +768,33 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         // parallax, the two leading layers are marched as one height field in metres and the offset uv then
         // feeds every pick so the layers stay registered with each other, the layers decide the relief so a
-        // world with none switched on pays nothing, a face pointing along world x has no planar frame
+        // world with none switched on pays nothing
         float relief_shadow      = 0.0f;
         float3 position_shaded   = position_world;
         TerrainParallax parallax = terrain_parallax_setup(pick, vertex.normal);
-        if (parallax.depth > 0.0f && abs(vertex.normal.x) < 0.95f)
+        if (parallax.depth > 0.0f)
         {
-            // planar uv runs along world x and z, so the frame is built from those rather than the mesh tangent
-            float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, float3(1.0f, 0.0f, 0.0f));
-            float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
-            v_tangent.y               = -v_tangent.y; // the bitangent of that frame points down world z, planar v runs up it
-
-            float n_dot_v = saturate(v_tangent.z);
+            float3 view_dir = -camera_to_pixel / max(distance, 1e-4f);
+            float n_dot_v   = saturate(dot(vertex.normal, view_dir));
             float fade    = terrain_parallax_fade(distance, n_dot_v);
             if (fade > 0.0f)
             {
-                float3 l_tangent = mul(normalize(-light_parameters[0].direction), world_to_tangent);
-                l_tangent.y      = -l_tangent.y;
+                // Project lateral travel onto the same world XZ axes used to sample the layers.
+                float3 light_dir = normalize(-light_parameters[0].direction);
+                float n_dot_l    = dot(vertex.normal, light_dir);
+                float3 view_ray  = float3((view_dir - vertex.normal * n_dot_v).xz, n_dot_v);
+                float3 light_ray = float3((light_dir - vertex.normal * n_dot_l).xz, n_dot_l);
 
                 float2 uv_surface = uv;
                 uv = terrain_parallax_uv(
-                    parallax, uv, duvdx, duvdy, v_tangent, l_tangent, parallax.depth * fade * tiling.x, vertex.position.xy, relief_shadow
+                    parallax, uv, duvdx, duvdy, view_ray, light_ray, parallax.depth * fade * tiling, vertex.position.xy, relief_shadow
                 );
                 relief_shadow    *= fade;
                 vertex.uv_misc.xy = uv;
 
                 // everything keyed off world xz, the sand ripples above all, has to slide with the texels
-                position_shaded.xz += (uv - uv_surface) / tiling;
+                float2 inverse_tiling = sign(tiling) / max(abs(tiling), 1e-6f);
+                position_shaded.xz += (uv - uv_surface) * inverse_tiling;
             }
         }
 
@@ -847,6 +846,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float2 dx = ddx(vertex.uv_misc.xy);
             float2 dy = ddy(vertex.uv_misc.xy);
 
+            v_tangent.y *= uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, dx, dy);
             vertex.uv_misc.xy = parallax_occlusion_uv(
                 get_material_texture_index(pass_get_material_index(), material_texture_index_packed),
                 vertex.uv_misc.xy,
