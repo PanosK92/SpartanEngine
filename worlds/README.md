@@ -37,7 +37,7 @@ publish the package. Read it before touching assets.
 | `terrain_example.world` | An island sculpted from a flat terrain, with signs that explain the Terrain tool step by step |
 | `weather_example.world` | Time of day, rain, clouds and wind eased between presets |
 | `audio_example.world` | 3D sources, Doppler, a reverb volume and a 2D bed |
-| `particles_example.world` | Every built-in particle preset, with fades and bursts |
+| `particles_example.world` | Walk-through particle studies with a layered hearth, sparks, steam, snow and a spillway. Keys 1–9 toggle individual effects, 0 restores them all, and Space fires the burst chamber |
 | `roads_example.world` | Spline roads, a junction, layered asphalt and markings, scripted traffic and a `SplineFollower` bus |
 | `cinematic_example.world` | A five-shot sequencer cutscene played from Lua |
 | `ui_example.world` | HUD health bar, prompts, a menu and `Text3D` labels |
