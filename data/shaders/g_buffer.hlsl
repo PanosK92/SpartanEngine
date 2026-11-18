@@ -8,7 +8,6 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ======================
 #include "common.hlsl"
 #include "common_tessellation.hlsl"
-#include "common_road.hlsl"
 #include "common_decals.hlsl"
 #include "common_puddles.hlsl"
 #include "common_rain.hlsl"
@@ -623,6 +622,9 @@ gbuffer main_ps(gbuffer_scatter_vertex packed, bool is_front_face : SV_IsFrontFa
 {
     gbuffer_vertex vertex = unpack_gbuffer_scatter(packed);
 #elif defined(INDIRECT_DRAW)
+#if !defined(API_WEBGPU)
+[earlydepthstencil]
+#endif
 gbuffer main_ps(gbuffer_indirect_vertex packed, bool is_front_face : SV_IsFrontFace)
 {
     gbuffer_vertex vertex = unpack_gbuffer_indirect(packed);
@@ -840,7 +842,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         puddle_relief = analysis.curvature * 0.06f + (analysis.flow - 0.35f) * 0.06f + (0.5f - terrain.height) * 0.05f - 0.035f;
     }
 
-    if (surface.has_texture_height() && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
+    if (surface.has_texture_height() && material.height != 0.0f && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
     {
         float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
         float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
@@ -947,15 +949,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float3 normal_sample  = sample_texture(vertex, material_texture_index_normal).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
 
-        // the island asphalt normal map bulges like a pillow across each tile, which shows as a
-        // gradient with a straight seam every repeat, so its 16x16 texel low pass is removed
-        if (material.flags & ((1u << 22) | (1u << 23)))
-        {
-            uint width, height, levels;
-            GET_TEXTURE(material_texture_index_normal).GetDimensions(0, width, height, levels);
-            float3 low_pass    = GET_TEXTURE(material_texture_index_normal).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy, max(float(levels) - 5.0f, 0.0f)).xyz;
-            tangent_normal.xy -= unpack(low_pass).xy;
-        }
         if (material.is_normal_green_up())
             tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, ddx(vertex.uv_misc.xy), ddy(vertex.uv_misc.xy));
     
@@ -1018,15 +1011,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         occlusion *= 0.4f;
     }
-
-    float road_footprint = max(length(dpdx_world), length(dpdy_world));
-    RoadWear road_wear_state = road_wear(material.flags, position_world, vertex.uv_misc.xy, normalize(vertex.normal), normalize(vertex.tangent), road_footprint);
-    // 16x anisotropic filtering keeps the aggregate sharp along the short axis of a grazing pixel
-    float2 road_axes         = float2(length(dpdx_world), length(dpdy_world));
-    road_wear_state.texel    = max(min(road_axes.x, road_axes.y), road_footprint / 16.0f);
-    float road_macro     = road_macro_height(material.flags, road_wear_state, height_map);
-    float road_paint     = road_weathering(material.flags, road_wear_state, position_world, vertex.uv_misc.xy, height_map, albedo.rgb, roughness, road_footprint);
-    road_surface_detail(material.flags, road_wear_state, position_world, vertex.uv_misc.xy, normalize(vertex.normal), height_map, road_paint, albedo.rgb, normal, occlusion);
 
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
@@ -1259,7 +1243,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         // asphalt crevices carry low ambient occlusion, that is where the water sits
         // wheel paths are worn into shallow ruts, so the first water on a road collects in them
-        float relief = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f + (is_road ? road_wheel_paths(vertex.uv_misc.xy, position_world.xz) * 0.05f : 0.0f);
+        float relief = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f + (is_road ? (1.0f - height_map) * 0.05f : 0.0f);
         puddle_water = ground_water_apply(terrain_shaded, is_road, is_paint, position_world, geometric_normal, relief, footprint,
             rain_exposed, albedo.rgb, normal, roughness, metalness, occlusion);
     }
@@ -1290,7 +1274,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         rain_surface.water            = puddle_water;
         rain_surface.footprint        = footprint;
         rain_surface.exposure         = rain_exposed;
-        rain_surface.macro_height     = road_macro;
+        rain_surface.macro_height     = (is_road || is_paint) ? height_map : -1.0f;
 #if defined(GRASS_INSTANCED) || defined(GRASS_SPECIALIZED)
         rain_surface.detail           = false;
 #else

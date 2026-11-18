@@ -3719,7 +3719,14 @@ namespace spartan
         cache_hash.Add(uint32_t(3)); // road extrusion, junction skirts and paint generator version
         cache_hash.Add(JunctionUvSnap());
         cache_hash.Add(sizeof(RHI_Vertex_PosTexNorTan));
-        cache_hash.Add(road_surface::asphalt_repeat);
+        if (layered_finish)
+        {
+            cache_hash.Add(road_surface::asphalt_width);
+            cache_hash.Add(road_surface::asphalt_length);
+            cache_hash.Add(road_surface::paint_width_metres);
+            cache_hash.Add(road_surface::paint_length);
+        }
+        else cache_hash.Add(1.5f); // preserve existing non-layered geometry cache keys
         cache_hash.Add(frames);
         cache_hash.Add(profile_points);
         cache_hash.Add(close_profile);
@@ -3800,12 +3807,11 @@ namespace spartan
         if (!deck_mesh) return;
 
         float total_length = frames.back().distance;
-        const float finish_width = m_road_width == m_road_width_end ? fabsf(m_road_width) : 0.0f;
 
         if (layered_finish)
         {
-            road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1,finish_width);
-            road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2,finish_width);
+            road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1);
+            road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2);
         }
         else
         {
@@ -3847,7 +3853,7 @@ namespace spartan
             render->SetDefaultMaterial();
         }
 
-        if (layered_finish) render->SetMaterial(road_surface::MaterialFor(0,finish_width));
+        if (layered_finish) render->SetMaterial(road_surface::MaterialFor(0));
 
         // Asphalt and junctions sit on top of terrain; do not coat them in ground material.
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend, m_profile == SplineProfile::Road);
@@ -3985,9 +3991,11 @@ namespace spartan
                         const float tex_u = (close_profile && side == 1 && next == 0) ? 1.0f : section_u[k];
                         const float paving_v = f.distance * 0.5f;
                         const float paving_origin = floorf(frames[i - 1].distance * 0.5f);
-                        const float repeat=shoulder ? 2.0f : road_surface::asphalt_repeat;
-                        const Vector2 finish_uv(section[k].x/repeat,
-                            f.distance/repeat-floorf(frames[i-1].distance/repeat));
+                        const float repeat=shoulder ? 2.0f : road_surface::asphalt_length;
+                        const float previous_width = m_road_width + (m_road_width_end - m_road_width) * frames[i-1].t;
+                        const float u = shoulder ? section[k].x/2.0f : road_surface::DeckU(section[k].x,
+                            row == 0 ? previous_width : current_width, min(previous_width, current_width));
+                        const Vector2 finish_uv(u,f.distance/repeat-floorf(frames[i-1].distance/repeat));
                         target_vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
                             sidewalk ? Vector2((section[k].x + section[k].y) * 0.5f, paving_v - paving_origin) :
                             layered_finish ? finish_uv : Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
@@ -3995,9 +4003,6 @@ namespace spartan
                 }
                 target_indices.insert(target_indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
             }
-            if (layered_finish)
-                road_surface::Markings(frames[i-1],frame,
-                    m_road_width+(m_road_width_end-m_road_width)*frames[i-1].t,current_width,geometry.paint_vertices,geometry.paint_indices);
             previous_profile = move(cur_profile);
             previous_u = move(u);
         }
@@ -4005,9 +4010,10 @@ namespace spartan
 
     Vector2 Spline::JunctionUvSnap() const
     {
-        const float r=road_surface::asphalt_repeat;
         const Vector3 position=m_entity_ptr->GetMatrix().GetTranslation();
-        return Vector2(position.x-floorf(position.x/r)*r,position.z-floorf(position.z/r)*r);
+        const float x=road_surface::Enabled(m_entity_ptr) ? road_surface::asphalt_width : 1.5f;
+        const float z=road_surface::Enabled(m_entity_ptr) ? road_surface::asphalt_length : 1.5f;
+        return Vector2(position.x-floorf(position.x/x)*x,position.z-floorf(position.z/z)*z);
     }
 
     void Spline::AppendJunctionGeometry(RoadGeometry& geometry) const
@@ -4043,29 +4049,10 @@ namespace spartan
         // A junction is part of one participating road's render AND collision mesh.
         for (const JunctionPatch& patch : m_junction_patches)
         {
-            if (layered_finish)
-            {
-                // Same unpainted aggregate as the deck: no atlas mirroring or
-                // stripes leaking into the junction. Rebase before half packing.
-                // u-world.x/r must be whole for common_road.hlsl to tell the patch from the deck
-                const float r=road_surface::asphalt_repeat;
-                const Vector2 snap=JunctionUvSnap();
-                const Vector2 origin(floorf((patch.center.x+snap.x)/r),floorf((patch.center.z+snap.y)/r));
-                for (size_t i=0;i<patch.boundary.size();++i)
-                {
-                    const Vector3 a=patch.boundary[i],b=patch.boundary[(i+1)%patch.boundary.size()];
-                    const Vector3 normal=(b-patch.center).Cross(a-patch.center).Normalized();
-                    const uint32_t base=static_cast<uint32_t>(geometry.vertices.size());
-                    for (const Vector3 p:{patch.center,b,a})
-                        geometry.vertices.emplace_back(p,Vector2((p.x+snap.x)/r-origin.x,(p.z+snap.y)/r-origin.y),normal,Vector3::Right);
-                    geometry.indices.insert(geometry.indices.end(),{base,base+1,base+2});
-                }
-                continue;
-            }
             // Tile a paint-free band at the same texel density as the approach deck.
             // Clip at mirrored U repeats so interpolation never crosses lane markings.
             const float width = max(fabsf(m_road_width), 0.001f);
-            const float strip_width = width * 0.24f;
+            const float strip_width = layered_finish ? 8.0f : width * 0.24f;
             auto clip_x = [](const vector<Vector3>& polygon, float x, bool keep_right)
             {
                 vector<Vector3> result;
@@ -4104,7 +4091,10 @@ namespace spartan
                     {
                         float u = clamp((p.x - x) / strip_width, 0.0f, 1.0f);
                         if (mirror) u = 1.0f - u;
-                        geometry.vertices.emplace_back(p, Vector2(0.15f + u * 0.24f, (p.z - patch.center.z) / width * m_uv_tiling_v),
+                        const Vector2 uv = layered_finish ? Vector2(u * strip_width / road_surface::asphalt_width,
+                            (p.z - patch.center.z) / road_surface::asphalt_length) :
+                            Vector2(0.15f + u * 0.24f, (p.z - patch.center.z) / width * m_uv_tiling_v);
+                        geometry.vertices.emplace_back(p, uv,
                             normal, mirror ? -Vector3::Right : Vector3::Right);
                     }
                     for (uint32_t k = 1; k + 1 < polygon.size(); k++)

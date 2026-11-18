@@ -7,7 +7,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 #ifndef SPARTAN_RESTIR_SURFACE
 #define SPARTAN_RESTIR_SURFACE
-#include "common_road.hlsl"
 #include "common_decals.hlsl"
 #include "common_ray_hit.hlsl"
 
@@ -164,7 +163,6 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         roughness *= lerp(1.0f, packed.g, (float)mat.has_texture_roughness());
         metallic  *= lerp(1.0f, packed.b, (float)mat.has_texture_metalness());
     }
-    road_weathering(mat.flags,hit_position,texcoord,normal_world,tangent_world,.6,albedo,roughness,exp2(mip_level)*road_asphalt_repeat/4096.0);
     roughness = max(roughness, 0.04f);
 
     float3x3 obj_to_world_3x3 = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);

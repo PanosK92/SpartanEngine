@@ -4274,9 +4274,6 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadPaint)               ? (1U << 23) : 0;
                 properties[count].flags |= is_pooled_emitter_material(material)                                ? (1U << 24) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::PaintPreset) > 0.0f        ? (1U << 25) : 0;
-                // quarter metres in bits 26-31, read by road_half_width in common_road.hlsl
-                const float road_half_width = std::min(std::max(material->GetProperty(MaterialProperty::RoadHalfWidth), 0.0f), 15.75f);
-                properties[count].flags |= static_cast<uint32_t>(road_half_width * 4.0f + 0.5f) << 26;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
         };

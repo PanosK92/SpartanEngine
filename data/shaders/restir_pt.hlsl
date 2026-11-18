@@ -7,7 +7,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===================
 #include "common.hlsl"
-#include "common_road.hlsl"
 #include "common_decals.hlsl"
 #include "common_ray_hit.hlsl"
 #include "restir_reservoir.hlsl"

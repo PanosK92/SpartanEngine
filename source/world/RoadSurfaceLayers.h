@@ -18,63 +18,52 @@ namespace spartan::layered_road_surface
             && entity->GetParent()->GetObjectName()==config.layered_roads_parent;
     }
 
-    inline std::shared_ptr<Material> BaseMaterial(int layer)
+    inline std::shared_ptr<Material> MaterialFor(int layer)
     {
         const world_systems::Config& config=world_systems::GetConfig();
-        const char* suffixes[]={"_asphalt","_road_paint","_road_shoulder"};
+        const char* suffixes[]={"_asphalt_baked","_road_paint_baked","_road_shoulder"};
         const std::string name=config.layered_roads_material_prefix+suffixes[layer];
         auto material=ResourceCache::GetByName<Material>(name);
         if (material) return material;
         material=std::make_shared<Material>();
         material->SetObjectName(name);
-        std::string base=config.layered_roads_material_dir;
-        if (!base.empty() && base.back()!='/') base+='/';
-        const std::string asset=layer==2 ? "gravel_road" : "asphalt_track";
-        const std::string size=layer==2 ? "2k" : "4k";
-        auto texture=[&](MaterialTextureType type,const char* channel,const char* extension=".jpg")
+
+        std::filesystem::path directory=config.layered_roads_material_dir;
+        std::string prefix, suffix;
+        if (layer==2)
         {
-            material->SetTexture(type,base+asset+"_"+channel+"_"+size+extension);
+            prefix="gravel_road_";
+            suffix="_2k.jpg";
+        }
+        else
+        {
+            directory /= "baked";
+            if (!std::filesystem::is_regular_file(directory / "asphalt_diff.jpg"))
+                directory=std::filesystem::path(ResourceCache::GetResourceDirectory(ResourceDirectory::Textures)) / "island_roads";
+            prefix=layer==0 ? "asphalt_" : "paint_";
+            suffix=".jpg";
+        }
+        auto texture=[&](MaterialTextureType type,const char* channel)
+        {
+            material->SetTexture(type,(directory/(prefix+channel+suffix)).generic_string());
         };
-        // Paint samples the asphalt diffuse untinted, road_weathering composes it over the
-        // asphalt where the paint is worn or ragged. Both share the height for parallax.
         texture(MaterialTextureType::Color,"diff");
         texture(MaterialTextureType::Normal,"nor_gl");
         texture(MaterialTextureType::Roughness,"rough");
         texture(MaterialTextureType::Occlusion,"ao");
-        if (layer!=2) texture(MaterialTextureType::Height,"height",".png");
-        material->SetColor(layer==1 ? Color(1,1,1,1) :
-            layer==2 ? Color(.66f,.63f,.58f,1) : Color(1.6f,1.65f,1.7f,1));
+        if (layer!=2) texture(MaterialTextureType::Height,"height");
+        material->SetColor(layer==2 ? Color(.66f,.63f,.58f,1) : Color(1,1,1,1));
         material->SetProperty(MaterialProperty::Metalness,0);
         material->SetProperty(MaterialProperty::Roughness,1.0f);
         material->SetProperty(MaterialProperty::Normal,layer==2 ? .55f : 1.0f);
-        // POM depth is height * 0.04 uv, 1.5 m per uv, so ~7 mm of aggregate relief.
-        if (layer!=2) material->SetProperty(MaterialProperty::Height,.12f);
+        // The maps encode the static surface. Height remains available for water pooling.
+        if (layer!=2) material->SetProperty(MaterialProperty::Height,0.0f);
         material->SetProperty(MaterialProperty::TerrainBlend,layer==2 ? .8f : 0);
         material->SetProperty(MaterialProperty::TerrainCoating,layer==2 ? 1.0f : 0);
         material->SetProperty(MaterialProperty::IsRoadSurface,layer==0 ? 1.0f : 0.0f);
         material->SetProperty(MaterialProperty::IsRoadPaint,layer==1 ? 1.0f : 0.0f);
         material->SetProperty(MaterialProperty::CullMode,static_cast<float>(RHI_CullMode::None));
-        return material;
+        return ResourceCache::Cache(material);
     }
 
-    // Asphalt and paint get a runtime clone per road width so the shader knows where the
-    // edges are (dust, crumbling, edge cracks). Clones share the packed textures of the
-    // base, so a width costs a material slot, not a 4k repack.
-    inline std::shared_ptr<Material> MaterialFor(int layer,float width)
-    {
-        std::shared_ptr<Material> base=BaseMaterial(layer);
-        const int quarter_metres=static_cast<int>(width*4.0f+0.5f);
-        if (layer==2 || quarter_metres<=0) return base;
-
-        const std::string name=base->GetObjectName()+"_w"+std::to_string(quarter_metres);
-        if (auto variant=ResourceCache::GetByName<Material>(name)) return variant;
-
-        if (base->GetResourceState()==ResourceState::Max) base->PrepareForGpu();
-        if (base->GetResourceState()!=ResourceState::PreparedForGpu) return base;
-
-        std::shared_ptr<Material> variant=base->Clone(name);
-        variant->SetObjectName(name);
-        variant->SetProperty(MaterialProperty::RoadHalfWidth,quarter_metres*.125f);
-        return ResourceCache::Cache(variant);
-    }
 }

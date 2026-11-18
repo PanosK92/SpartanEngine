@@ -101,8 +101,8 @@ namespace spartan
         std::vector<Part> parts;
         bool deformed = false, has_shape = false;
         Vector3 previous_normal;
-        float previous_distance = 0, previous_stiffness = 0;
-        float previous_pressure = 0, previous_reference_stiffness = 0, previous_ambient_pressure = 0;
+        float previous_distance = 0;
+        float previous_pressure = 0, previous_reference_stiffness = 0;
         std::array<bool, car::tire_cage::node_count> active_cells{};
     };
 
@@ -2218,40 +2218,30 @@ namespace spartan
         const Vector3 point = rotation.Conjugate() * (TransformVehiclePointToRender(from_px_vec3(state.contact_point)) - hub);
         float distance = -normal.Dot(point);
         grounded &= car::prepare_tire_contact_plane(normal, distance, radius);
-        const float stiffness = car::loaded_tire_stiffness(spec, state.pressure_bar) / std::max(spec.tire_vertical_stiffness, 1.0f);
-        const float ambient_bar = VehicleState().vehicle_simulation->ambient_pressure / 100000.0f;
         // At rest, keep the solved shape until the support plane moves by a
         // tenth of a millimetre. Compare to the last solve so motion accumulates.
         const bool upload = !visual->has_shape || grounded != visual->deformed || (grounded &&
             ((normal - visual->previous_normal).LengthSquared() > 1e-6f ||
              std::abs(distance - visual->previous_distance) > 0.0001f ||
-             std::abs(stiffness - visual->previous_stiffness) > 0.001f ||
              std::abs(state.pressure_bar - visual->previous_pressure) > 0.001f ||
-             std::abs(spec.tire_vertical_stiffness - visual->previous_reference_stiffness) > 1.0f ||
-             std::abs(ambient_bar - visual->previous_ambient_pressure) > 0.001f));
+             std::abs(spec.tire_vertical_stiffness - visual->previous_reference_stiffness) > 1.0f));
         const auto previous_cells = visual->active_cells;
         if (upload)
         {
             SP_PROFILE_CPU_START("tire_cage_solve");
-            visual->cage.solve(normal, distance, stiffness, grounded,
-                state.pressure_bar, spec.tire_vertical_stiffness, ambient_bar);
+            visual->cage.solve(normal, distance, grounded, state.pressure_bar, spec.tire_vertical_stiffness);
             SP_PROFILE_CPU_END();
             visual->previous_normal = normal;
             visual->previous_distance = distance;
-            visual->previous_stiffness = stiffness;
             visual->previous_pressure = state.pressure_bar;
             visual->previous_reference_stiffness = spec.tire_vertical_stiffness;
-            visual->previous_ambient_pressure = ambient_bar;
             visual->has_shape = true;
             visual->active_cells.fill(false);
             for (int band = 0; band < car::tire_cage::bands - 1; ++band)
                 for (int lane = 0; lane < car::tire_cage::lanes - 1; ++lane)
                     for (int a = 0; a < car::tire_cage::sectors; ++a)
-                        for (int r = 0; r < 2; ++r)
-                            for (int x = 0; x < 2; ++x)
-                                for (int t = 0; t < 2; ++t)
-                                    visual->active_cells[car::tire_cage::index(band, lane, a)] |=
-                                        visual->cage.displacement[car::tire_cage::index(band + r, lane + x, a + t)].LengthSquared() > 1e-12f;
+                        visual->active_cells[car::tire_cage::index(band, lane, a)] =
+                            visual->cage.active_sectors[a] || visual->cage.active_sectors[(a + 1) % car::tire_cage::sectors];
         }
         for (auto& part : visual->parts)
         {
@@ -2262,7 +2252,8 @@ namespace spartan
             // meshlet path: rest-pose cone/bounds tests cannot reject this tire.
             const BoundingBox local = part.source->GetSubMesh(part.submesh).lods[0].aabb;
             const BoundingBox world = local * entity->GetMatrix();
-            render->SetBoundingBoxOverride(BoundingBox(world.GetMin() - Vector3(0.06f), world.GetMax() + Vector3(0.06f)));
+            const BoundingBox bounds(world.GetMin() - Vector3(0.06f), world.GetMax() + Vector3(0.06f));
+            if (!render->HasBoundingBoxOverride() || !(render->GetBoundingBox() == bounds)) render->SetBoundingBoxOverride(bounds);
             const uint32_t current_lod = render->GetLodIndex();
             const bool lod_changed = current_lod != part.previous_lod;
             if (upload || lod_changed)
@@ -2278,15 +2269,16 @@ namespace spartan
                 const float plane_distance = normal.Dot(wheel_origin) + distance;
                 const Vector3 contact_direction = part.from_wheel * normal - origin;
                 SP_PROFILE_CPU_START("tire_mesh_prepare");
-                // Transform the 576 cage displacements once instead of applying
-                // three matrices to every affected render vertex.
+                // Only contact sectors need a displacement transform. Clear the others
+                // because a vertex can interpolate across the patch boundary.
                 auto& local_displacement = part.local_displacement;
                 auto& dirty_cells = part.dirty_cells;
                 uint32_t dirty_count = 0;
                 std::fill(part.dirty_blocks.begin(), part.dirty_blocks.end(), 0);
                 for (uint16_t cell = 0; cell < car::tire_cage::node_count; ++cell)
                 {
-                    local_displacement[cell] = part.from_wheel * visual->cage.displacement[cell] - origin;
+                    local_displacement[cell] = visual->cage.active_sectors[cell % car::tire_cage::sectors]
+                        ? part.from_wheel * visual->cage.displacement[cell] - origin : Vector3::Zero;
                     if ((lod_changed || visual->active_cells[cell] || previous_cells[cell]) &&
                         part.cell_offsets[cell] != part.cell_offsets[cell + 1])
                     {
@@ -2309,13 +2301,7 @@ namespace spartan
                             continue;
                         }
                         Vector3 p = bound.position, t = bound.tangent, b = bound.bitangent;
-                        for (int k = 0; k < 8; ++k)
-                        {
-                            const Vector3& d = local_displacement[bound.weights.nodes[k]];
-                            p += d * bound.weights.weight[k];
-                            t += d * bound.weights.tangent_weight[k];
-                            b += d * bound.weights.bitangent_weight[k];
-                        }
+                        car::tire_cage::skin(local_displacement, bound.weights, p, t, b);
                         // Contact belongs to actual rubber vertices, not to the
                         // enclosing cage. Resolve interpolation error against
                         // the same physical support plane, including its tangent
@@ -2328,13 +2314,15 @@ namespace spartan
                         vertex.set_tangent(t.LengthSquared() > 1e-12f ? t : original[bound.vertex_index].get_tangent());
                     }
                 };
-                // Cells have very different vertex counts. Split dense cells,
-                // then let workers pull bounded jobs across all four wheels.
-                for (uint32_t c = 0; c < dirty_count; ++c)
+                // Combine adjacent vertex ranges before splitting work across wheels.
+                for (uint32_t c = 0; c < dirty_count;)
                 {
-                    const uint16_t cell = dirty_cells[c];
-                    const uint32_t last = part.cell_offsets[cell + 1];
-                    for (uint32_t first = part.cell_offsets[cell]; first < last; first += 1024)
+                    const uint16_t cell = dirty_cells[c++];
+                    const uint32_t begin = part.cell_offsets[cell];
+                    uint32_t last = part.cell_offsets[cell + 1];
+                    while (c < dirty_count && part.cell_offsets[dirty_cells[c]] == last)
+                        last = part.cell_offsets[dirty_cells[c++] + 1];
+                    for (uint32_t first = begin; first < last; first += 1024)
                     {
                         const uint32_t end = std::min(first + 1024, last);
                         if (batch) batch->skin.push_back([skin_range, first, end]() { skin_range(first, end); });

@@ -9,7 +9,6 @@ Commercial use requires written permission and negotiated payment terms.
 #define SPARTAN_COMMON_RAY_SURFACE
 
 //= INCLUDES =====================
-#include "common_road.hlsl"
 #include "common_decals.hlsl"
 #include "common_puddles.hlsl"
 #include "common_ray_hit.hlsl"
@@ -151,13 +150,6 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
         // the normal behind the wall and the visibility rays from the hit start outside the room
         normal_sample     = normalize(normal_sample * 2.0f - 1.0f);
         // same road low pass removal as the g-buffer
-        if (mat.flags & ((1u << 22) | (1u << 23)))
-        {
-            uint width, height, levels;
-            material_textures[NonUniformResourceIndex(normal_texture_index)].GetDimensions(0, width, height, levels);
-            float low_mip     = max(float(levels) - 5.0f, normal_mip);
-            normal_sample.xy -= material_textures[NonUniformResourceIndex(normal_texture_index)].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, low_mip).xy * 2.0f - 1.0f;
-        }
         if (mat.is_normal_green_up())
             normal_sample.y *= -uv_handedness(normal_world, tangent_world, edge1_world, edge2_world, (uv1 - uv0) * geo.uv_tiling, (uv2 - uv0) * geo.uv_tiling);
         normal_sample.z   = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
@@ -235,7 +227,6 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
         emission = mat.emissive_color.rgb * photometric_to_radiometric(lighting_emissive_nits_texture);
     }
 
-    road_weathering(mat.flags, hit_pos, texcoord, geometric, normalize(mul(tangent_object, obj_to_world)), .6, albedo, roughness, exp2(albedo_mip) * road_asphalt_repeat / 4096.0);
     float occlusion         = terrain_shaded ? terrain.occlusion : 1.0f;
     float3 decal_tangent    = normalize(tangent_world - geometric * dot(tangent_world, geometric));
     float3 decal_bitangent  = normalize(cross(geometric, decal_tangent));

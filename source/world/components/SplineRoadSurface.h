@@ -10,19 +10,27 @@ namespace spartan::road_surface
     using math::Vector2;
     using math::Vector3;
     using math::Quaternion;
-    // Metres per asphalt texture repeat, puts the aggregate at its real 5-12 mm stone size.
-    // Must match road_asphalt_repeat in common_road.hlsl.
-    constexpr float asphalt_repeat=1.5f;
+    // Physical dimensions of the baked material tiles.
+    constexpr float asphalt_width = 36.0f, asphalt_length = 27.0f;
+    constexpr float paint_width_metres = 0.15f, paint_length = 12.0f;
+
+    // The first eight metres of the atlas are unmarked asphalt for junctions.
+    inline float DeckU(float lateral, float width, float segment_width)
+    {
+        const bool wide = road_cross_section::FourLanes(segment_width);
+        const float start = wide ? 21.0f : segment_width >= 6.0f ? 13.0f : 8.0f;
+        const float span = wide ? 15.0f : segment_width >= 6.0f ? 8.0f : 5.0f;
+        return (start + (.5f + lateral / std::max(width, .001f)) * span) / asphalt_width;
+    }
 
     // The application supplies authored road styling; the spline only builds geometry.
     inline bool (*enabled)(Entity*) = nullptr;
-    // width is the asphalt width in metres, 0 where it varies along the road
-    inline std::shared_ptr<Material> (*material_for)(int,float) = nullptr;
+    inline std::shared_ptr<Material> (*material_for)(int) = nullptr;
     inline bool Enabled(Entity* entity) { return enabled && material_for && enabled(entity); }
-    inline std::shared_ptr<Material> MaterialFor(int layer,float width) { return material_for ? material_for(layer,width) : nullptr; }
+    inline std::shared_ptr<Material> MaterialFor(int layer) { return material_for ? material_for(layer) : nullptr; }
 
     inline void SetLayer(Entity* parent,const char* name,
-        const std::shared_ptr<Mesh>& mesh,int layer,float width)
+        const std::shared_ptr<Mesh>& mesh,int layer)
     {
         Entity* child=parent->GetChildByName(name);
         if (child) {child->RemoveComponent<Physics>();child->RemoveComponent<Render>();}
@@ -36,7 +44,7 @@ namespace spartan::road_surface
         mesh->SetObjectName(std::string(name)+"_"+std::to_string(parent->GetObjectId()));
         mesh->CreateGpuBuffers();
         Render* render=child->AddComponent<Render>();
-        render->SetOwnedMesh(mesh);render->SetMaterial(MaterialFor(layer,width));
+        render->SetOwnedMesh(mesh);render->SetMaterial(MaterialFor(layer));
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend,layer!=2);
         if (layer==1) render->SetFlag(RenderFlags::CastsShadows,false);
         if (layer==2)
@@ -92,12 +100,12 @@ namespace spartan::road_surface
                         : ar*(1-p.y)+bl*(1-p.x)+br*(p.x+p.y-1);
                     const Vector3 up=(a.up+(b.up-a.up)*p.y).Normalized();
                     const Vector3 right=(a.right+(b.right-a.right)*p.y).Normalized();
-                    // 3 mm is real thermoplastic thickness. U matches the asphalt
-                    // (lateral metres / repeat) so the paint carries the grain beneath it.
                     const float width=width_a+(width_b-width_a)*p.y;
-                    const float r=asphalt_repeat;
-                    vertices.emplace_back(position+up*.003f,
-                        Vector2((p.x-.5f)*width/r,(a.distance+span*p.y-floorf(start/r)*r)/r),up,right);
+                    const float centre=lane*road_cross_section::EdgeOffset(width)+fixed_offset;
+                    const float lateral=(p.x-.5f)*width-centre;
+                    const Vector2 uv(.5f+lateral/paint_width_metres,
+                        (a.distance+span*p.y)/paint_length-floorf(start/paint_length));
+                    vertices.emplace_back(position+up*.003f,uv,up,right);
                 }
                 for (uint32_t i=1;i+1<static_cast<uint32_t>(polygon.size());++i)
                     indices.insert(indices.end(),{base,base+i,base+i+1});

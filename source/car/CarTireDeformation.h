@@ -2,9 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <array>
-#include <vector>
 #include <cstdint>
-#include <cstring>
 #include "../math/Vector3.h"
 
 namespace car
@@ -69,91 +67,41 @@ namespace car
         return std::clamp(deflection, 0.0f, tire_compression_limit(radius));
     }
 
-    // Sparse, quasi-static spring cage. The vehicle's load-bearing contact
-    // spring supplies hub/road separation; this cage resolves the tire shape at
-    // that separation without applying a second normal force to the chassis.
-    // This is not a second vehicle solver or a puncture/tearing simulation.
+    // Visual lattice in the rotating wheel frame. The contact plane supplies
+    // tread compression, and the shortened shoulder-to-bead span bows outward.
     struct tire_cage
     {
         using V = spartan::math::Vector3;
         static constexpr int sectors = 64, lanes = 3, bands = 5;
         static constexpr int node_count = sectors * lanes * bands;
-        struct beam { int a, b; V axis; float stiffness; bool pneumatic; };
         struct binding
         {
             uint16_t nodes[8];
             float weight[8], tangent_weight[8], bitangent_weight[8];
         };
-        std::array<V, node_count> rest{}, position{}, displacement{};
-        std::vector<beam> beams;
-        struct face { int a, b, c; };
-        std::vector<face> cavity_faces;
+        std::array<V, node_count> displacement{};
         float radius = 0, width = 0;
         static constexpr int contact_lanes = 9;
-        struct contact_sample { V point; binding weights{}; float radial = 0, inverse_mass = 0; };
+        struct contact_sample { V point; float radial = 0; };
         std::array<contact_sample, sectors * contact_lanes> contact_samples{};
-        bool has_contact_samples = false;
-        bool support_cache_valid = false;
-        float support_pressure = 0, support_stiffness = 0, support_bow = 0, support_volume = 0;
+        std::array<V, sectors> radial_axis{};
+        std::array<bool, sectors> active_sectors{};
         static int index(int r, int x, int a) { return (r * lanes + x) * sectors + (a % sectors); }
-        static bool pinned(int i) { return i < lanes * sectors; }
 
         void initialize(float r, float w)
         {
-            radius = r; width = w; beams.clear(); cavity_faces.clear();
-            contact_samples = {}; has_contact_samples = false; support_cache_valid = false;
-            for (int band = 0; band < bands; ++band)
-                for (int lane = 0; lane < lanes; ++lane)
-                    for (int a = 0; a < sectors; ++a)
-                    {
-                        float angle = a * (spartan::math::pi_2 / sectors);
-                        float radial = radius * (0.73f + 0.27f * band / (bands - 1));
-                        rest[index(band, lane, a)] = V(width * (float(lane) / (lanes - 1) - 0.5f),
-                            radial * std::cos(angle), radial * std::sin(angle));
-                    }
-            auto connect = [&](int a, int b, float stiffness, bool pneumatic)
-            {
-                beams.push_back({a, b, (rest[b] - rest[a]).Normalized(), stiffness, pneumatic});
-            };
-            for (int band = 1; band < bands; ++band)
-                for (int lane = 0; lane < lanes; ++lane)
-                    for (int a = 0; a < sectors; ++a)
-                    {
-                        const int i = index(band, lane, a);
-                        connect(i, index(band - 1, lane, a), 1.0f, true);
-                        connect(i, index(band, lane, a + 1), 2.0f, false);
-                        // Diagonals resist shear; cross-tire beams couple the shoulders.
-                        connect(i, index(band - 1, lane, a + 1), 0.35f, true);
-                        connect(index(band - 1, lane, a), index(band, lane, a + 1), 0.35f, true);
-                        if (lane + 1 < lanes) connect(i, index(band, lane + 1, a), 0.8f, false);
-                    }
-            // Closed pneumatic envelope, including the rigid inner rim surface.
-            auto quad = [&](int a, int b, int c, int d, V outward)
-            {
-                if ((rest[b] - rest[a]).Cross(rest[c] - rest[a]).Dot(outward) < 0)
-                    std::swap(b, d);
-                cavity_faces.push_back({a, b, c});
-                cavity_faces.push_back({a, c, d});
-            };
+            radius = r;
+            width = w;
+            contact_samples = {};
             for (int a = 0; a < sectors; ++a)
             {
-                for (int lane = 0; lane < lanes - 1; ++lane)
-                    for (int band : {0, bands - 1})
-                        quad(index(band, lane, a), index(band, lane + 1, a),
-                            index(band, lane + 1, a + 1), index(band, lane, a + 1),
-                            V(0, rest[index(band, lane, a)].y, rest[index(band, lane, a)].z) * (band ? 1.0f : -1.0f));
-                for (int band = 0; band < bands - 1; ++band)
-                    for (int lane : {0, lanes - 1})
-                        quad(index(band, lane, a), index(band + 1, lane, a),
-                            index(band + 1, lane, a + 1), index(band, lane, a + 1), V(lane ? 1.0f : -1.0f, 0, 0));
+                const float angle = a * (spartan::math::pi_2 / sectors);
+                radial_axis[a] = V(0, std::cos(angle), std::sin(angle));
             }
-            position = rest;
-            displacement.fill(V(0.0f));
         }
 
-        // The cage encloses the rubber; its outer corners are not necessarily
-        // on the tire surface. Measure the crown at its axial sample locations
-        // instead of letting those empty corners collide with the road.
+        // Measure the imported crown once. Rounded shoulders and camber can
+        // put the first contacting piece of tread between two lattice lanes.
         void include_contact_vertex(V p)
         {
             const float radial = std::sqrt(p.y * p.y + p.z * p.z);
@@ -163,232 +111,62 @@ namespace car
             const int sector = int(angle * sectors / spartan::math::pi_2 + 0.5f) % sectors;
             const int lane = std::clamp(int((p.x / width + 0.5f) * (contact_lanes - 1) + 0.5f), 0, contact_lanes - 1);
             auto& sample = contact_samples[lane * sectors + sector];
-            if (radial > sample.radial)
-            {
-                sample.point = p; sample.radial = radial;
-                sample.weights = bind(p, V(0.0f), V(0.0f));
-                sample.inverse_mass = 0;
-                for (int k = 0; k < 8; ++k)
-                    if (!pinned(sample.weights.nodes[k]))
-                        sample.inverse_mass += sample.weights.weight[k] * sample.weights.weight[k];
-                has_contact_samples = true;
-            }
+            if (radial > sample.radial) sample = {p, radial};
         }
 
-        void project_contacts(V normal, float distance)
+        // The caller normalizes and travel-limits the plane once for both
+        // lattice deformation and the final tread-vertex projection.
+        void solve(V normal, float distance, bool grounded, float pressure_bar, float reference_stiffness)
         {
-            for (const auto& sample : contact_samples)
-            {
-                if (sample.radial == 0) continue;
-                V p = sample.point;
-                const float inverse_mass = sample.inverse_mass;
-                for (int k = 0; k < 8; ++k)
-                {
-                    const int node = sample.weights.nodes[k];
-                    const float weight = sample.weights.weight[k];
-                    p += (position[node] - rest[node]) * weight;
-                }
-                const float penetration = -(normal.Dot(p) + distance);
-                if (penetration <= 0 || inverse_mass < 1e-8f) continue;
-                // Embedded surface contact: distribute its correction through
-                // the binding Jacobian, preserving the rim's pinned nodes.
-                for (int k = 0; k < 8; ++k)
-                    if (!pinned(sample.weights.nodes[k]))
-                        position[sample.weights.nodes[k]] += normal * (penetration * sample.weights.weight[k] / inverse_mass);
-            }
-        }
-
-        // Reduced membrane strip, loaded uniformly by air pressure. A parabola
-        // has T = q*h*h/(8*b), where T is cord tension, h its chord and b its
-        // midpoint bow. Match that tension to EA*(arc_length/rest_length - 1).
-        // Pressure selects the outward tensile equilibrium; no displacement
-        // clamp or artist-authored bulge curve selects a buckling direction.
-        static float membrane_bow(float chord, float rest_length, float axial_rigidity, float line_pressure)
-        {
-            if (line_pressure <= 0 || chord <= 1e-6f) return 0;
-            auto residual = [&](float bow, float* derivative = nullptr)
-            {
-                const float slope = 4.0f * bow / chord;
-                const float root = std::sqrt(1.0f + slope * slope);
-                const float inverse_sinh = std::asinh(slope);
-                const float arc = slope < 1e-3f ? chord * (1.0f + slope * slope / 6.0f) :
-                    0.5f * chord * (root + inverse_sinh / slope);
-                const float tension = axial_rigidity * std::max(arc / rest_length - 1.0f, 0.0f);
-                if (derivative)
-                {
-                    const float arc_derivative = slope < 1e-3f ? 4.0f * slope / 3.0f :
-                        2.0f * (slope * root - inverse_sinh) / (slope * slope);
-                    const float tension_derivative = arc > rest_length ? axial_rigidity * arc_derivative / rest_length : 0.0f;
-                    *derivative = 8.0f * (tension + bow * tension_derivative) / (chord * chord);
-                }
-                return 8.0f * tension * bow / (chord * chord) - line_pressure;
-            };
-            float lo = 0, hi = std::max(chord, rest_length);
-            while (residual(hi) < 0) hi *= 2;
-            float bow = (lo + hi) * 0.5f;
-            for (int i = 0; i < 24; ++i)
-            {
-                // Safeguarded Newton solves the same tensile equilibrium as bisection,
-                // retaining the bracket for slack strips and near-zero derivatives.
-                float derivative;
-                const float value = residual(bow, &derivative);
-                if (value < 0) lo = bow; else hi = bow;
-                const float correction = derivative > 0 ? value / derivative : hi - lo;
-                if (std::abs(correction) < 1e-7f || hi - lo < 1e-7f)
-                    return bow;
-                const float next = bow - correction;
-                bow = next > lo && next < hi ? next : (lo + hi) * 0.5f;
-            }
-            return (lo + hi) * 0.5f;
-        }
-
-        void support_sidewalls(V normal, float distance, float pressure_bar, float reference_stiffness, float ambient_bar, int iterations = 6)
-        {
-            const float span = radius * 0.27f;
-            const float pitch = spartan::math::pi_2 * radius * 0.865f / sectors;
-            // Effective strip compliance estimated from the calibrated radial
-            // spring, distributed by strip width. Tire-specific cord data would
-            // improve this reduced model; this is not a carcass FE simulation.
-            const float ea = std::max(reference_stiffness, 1.0f) * pitch / width * span;
-            const float base_pressure = std::max(pressure_bar, 0.0f) * 100000.0f;
-            // The unloaded envelope is invariant across relaxation passes and
-            // frames with the same inflation/stiffness. Geometry resets this cache.
-            const bool refresh_support = !support_cache_valid || support_pressure != pressure_bar || support_stiffness != reference_stiffness;
-            const float base_bow = refresh_support ? membrane_bow(span, span, ea, base_pressure * pitch) : support_bow;
-            auto volume = [&](const std::array<V, node_count>& points)
-            {
-                // Shared vertices occur in several faces. Inflate each point
-                // once, instead of reconstructing it three times per triangle.
-                std::array<V, node_count> physical;
-                for (int i = 0; i < node_count; ++i)
-                {
-                    V p = points[i];
-                    const int band = i / (lanes * sectors), lane = (i / sectors) % lanes;
-                    const float t = float(band) / (bands - 1);
-                    if (lane != 1) p.x += (lane ? 1.0f : -1.0f) * 4.0f * base_bow * t * (1.0f - t);
-                    physical[i] = p;
-                }
-                double result = 0;
-                for (const face& f : cavity_faces)
-                    result += physical[f.a].Dot(physical[f.b].Cross(physical[f.c])) / 6.0;
-                return static_cast<float>(result);
-            };
-            const float rest_volume = refresh_support ? volume(rest) : support_volume;
-            if (refresh_support)
-            {
-                support_pressure = pressure_bar;
-                support_stiffness = reference_stiffness;
-                support_bow = base_bow;
-                support_volume = rest_volume;
-                support_cache_valid = true;
-            }
-            float pressure = base_pressure;
-            for (int iteration = 0; iteration < iterations; ++iteration)
-            {
-                // Unloaded sectors and the opposite shoulder often have the
-                // exact same chord. Reuse their tensile equilibrium at this
-                // pressure; no quantization or change to solver tolerances.
-                struct BowCache { float length = -1, bow = 0; };
-                std::array<BowCache, 128> bows;
-                for (int lane : {0, lanes - 1})
-                    for (int a = 0; a < sectors; ++a)
-                    {
-                        const V bead = position[index(0, lane, a)];
-                        const V shoulder = position[index(bands - 1, lane, a)];
-                        const V chord = shoulder - bead;
-                        const float length = chord.Length();
-                        const V axis(lane ? 1.0f : -1.0f, 0, 0);
-                        const V outward = (axis - chord * (axis.Dot(chord) / std::max(chord.LengthSquared(), 1e-12f))).Normalized();
-                        uint32_t length_bits;
-                        memcpy(&length_bits, &length, sizeof(length_bits));
-                        BowCache& cached = bows[(length_bits ^ (length_bits >> 7)) & 127u];
-                        if (cached.length != length)
-                        {
-                            cached.length = length;
-                            cached.bow = membrane_bow(length, span, ea, pressure * pitch);
-                        }
-                        const float bow = cached.bow;
-                        for (int band = 1; band < bands - 1; ++band)
-                        {
-                            const float t = float(band) / (bands - 1);
-                            // The imported mesh is already inflated. Subtract
-                            // its unloaded equilibrium, rather than inflating it twice.
-                            V p = bead + chord * t + (outward * bow - axis * base_bow) * (4.0f * t * (1.0f - t));
-                            if (!has_contact_samples) p += normal * std::max(-(normal.Dot(p) + distance), 0.0f);
-                            position[index(band, lane, a)] = p;
-                        }
-                    }
-                // Fixed-temperature gas law over this quasi-static shape solve.
-                // pressure_bar already includes the simulated core temperature.
-                if (iteration + 1 == iterations) break;
-                const float current_volume = volume(position);
-                if (current_volume <= 0) break;
-                const float gas_pressure = std::max((base_pressure + ambient_bar * 100000.0f) *
-                    rest_volume / current_volume - ambient_bar * 100000.0f, 0.0f);
-                pressure = 0.5f * (pressure + gas_pressure);
-            }
-        }
-
-        void solve(V normal, float distance, float stiffness_ratio, bool grounded,
-                   float pressure_bar, float reference_stiffness, float ambient_bar)
-        {
-            position = rest;
             displacement.fill(V(0.0f));
-            if (!grounded || !prepare_tire_contact_plane(normal, distance, radius)) return;
-            const float pneumatic = std::clamp(stiffness_ratio, 0.05f, 8.0f);
-            // Spring coefficients and the Jacobi diagonal do not change during
-            // a solve. Compute them once, not for every relaxation iteration.
-            std::array<float, node_count> step{};
-            step.fill(0.08f * pneumatic);
-            std::array<float, (bands - 1) * sectors * (lanes * 4 + lanes - 1)> coefficients;
-            for (size_t j = 0; j < beams.size(); ++j)
+            active_sectors.fill(false);
+            if (!grounded) return;
+            const float span = radius * 0.27f;
+            // Small-slope parabolic membrane under inflation at rest.
+            const float unloaded_bow = span * std::cbrt(3.0f / 64.0f * std::max(pressure_bar, 0.0f) *
+                100000.0f * width / std::max(reference_stiffness, 1.0f));
+            for (int a = 0; a < sectors; ++a)
             {
-                const beam& b = beams[j];
-                const float k = b.stiffness * (b.pneumatic ? pneumatic : 1.0f);
-                coefficients[j] = k;
-                step[b.a] += k;
-                step[b.b] += k;
+                float depth[lanes] = {};
+                bool sampled[lanes] = {};
+                for (int j = 0; j < contact_lanes; ++j)
+                {
+                    const auto& sample = contact_samples[j * sectors + a];
+                    if (sample.radial == 0) continue;
+                    const int lane = (j + 2) / 4;
+                    sampled[lane] = true;
+                    depth[lane] = std::max(depth[lane], -normal.Dot(sample.point) - distance);
+                }
+                for (int lane = 0; lane < lanes; ++lane)
+                {
+                    if (!sampled[lane])
+                    {
+                        const V tread = radial_axis[a] * radius + V((lane - 1) * width * 0.5f, 0, 0);
+                        depth[lane] = std::max(0.0f, -normal.Dot(tread) - distance);
+                    }
+                    if (depth[lane] <= 0) continue;
+                    active_sectors[a] = true;
+                    V lift = normal * depth[lane];
+                    // Camber shears the free tread sideways relative to the pinned bead.
+                    lift.x += normal.x * depth[lane] * 1.5f;
+                    const V chord = radial_axis[a] * span + lift;
+                    // Preserve the approximate sidewall arc length as its chord
+                    // shortens. Subtract the bow already baked into the rubber.
+                    const float slack = std::max(0.0f, span * span - chord.LengthSquared());
+                    V bow(0.0f);
+                    if (lane != 1)
+                    {
+                        const V axis(float(lane - 1), 0, 0);
+                        const V outward = (axis - chord * (axis.Dot(chord) / std::max(chord.LengthSquared(), 1e-12f))).Normalized();
+                        bow = outward * std::sqrt(unloaded_bow * unloaded_bow + 0.1875f * slack) - axis * unloaded_bow;
+                    }
+                    for (int band = 1; band < bands; ++band)
+                    {
+                        const float t = float(band) / (bands - 1);
+                        displacement[index(band, lane, a)] = lift * t + bow * (4.0f * t * (1.0f - t));
+                    }
+                }
             }
-            for (float& value : step) value = 0.7f / value;
-            std::array<bool, node_count> moving{};
-            for (int iteration = 0; iteration < 32; ++iteration)
-            {
-                std::array<V, node_count> force{};
-                for (int i = 0; i < node_count; ++i)
-                {
-                    // Weak bending restraint keeps unloaded arcs circular.
-                    force[i] = (rest[i] - position[i]) * (0.08f * pneumatic);
-                }
-                for (size_t j = 0; j < beams.size(); ++j)
-                {
-                    const beam& b = beams[j];
-                    // Unloaded arcs remain exactly at rest; ignore sub-10 nm numerical motion.
-                    if (!moving[b.a] && !moving[b.b]) continue;
-                    // Springs act along their rest axis. Length springs buckle once the
-                    // flattened patch compresses the circumferential beams, and the solve
-                    // then jumps between buckled shapes as pressure or load changes.
-                    const V stretch = (position[b.b] - rest[b.b]) - (position[b.a] - rest[b.a]);
-                    V f = b.axis * (coefficients[j] * stretch.Dot(b.axis));
-                    force[b.a] += f; force[b.b] -= f;
-                }
-                for (int i = lanes * sectors; i < node_count; ++i)
-                {
-                    position[i] += force[i] * step[i];
-                    if (!has_contact_samples) position[i] += normal * std::max(-(normal.Dot(position[i]) + distance), 0.0f);
-                }
-                // Couple the supported membrane back to the tread cage during
-                // relaxation, so unsupported sidewall buckling cannot steer the shoulders.
-                if (iteration % 4 == 3)
-                    support_sidewalls(normal, distance, pressure_bar, reference_stiffness, ambient_bar, 1);
-                if (has_contact_samples)
-                    project_contacts(normal, distance);
-                if (iteration + 1 < 32)
-                    for (int i = lanes * sectors; i < node_count; ++i)
-                        moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
-            }
-            support_sidewalls(normal, distance, pressure_bar, reference_stiffness, ambient_bar);
-            if (has_contact_samples) project_contacts(normal, distance);
-            for (int i = 0; i < node_count; ++i) displacement[i] = position[i] - rest[i];
         }
 
         // Bind once. Per-frame mesh work is only weighted skinning, never beam
@@ -426,15 +204,20 @@ namespace car
             return result;
         }
 
-        void skin(const binding& b, V& p, V& tangent, V& bitangent) const
+        static void skin(const std::array<V, node_count>& local_displacement, const binding& b,
+                         V& p, V& tangent, V& bitangent)
         {
+            __m128 position = p.Simd(), du = tangent.Simd(), dv = bitangent.Simd();
             for (int i = 0; i < 8; ++i)
             {
-                const V& d = displacement[b.nodes[i]];
-                p += d * b.weight[i];
-                tangent += d * b.tangent_weight[i];
-                bitangent += d * b.bitangent_weight[i];
+                const __m128 offset = local_displacement[b.nodes[i]].Simd();
+                position = _mm_fmadd_ps(offset, _mm_set1_ps(b.weight[i]), position);
+                du = _mm_fmadd_ps(offset, _mm_set1_ps(b.tangent_weight[i]), du);
+                dv = _mm_fmadd_ps(offset, _mm_set1_ps(b.bitangent_weight[i]), dv);
             }
+            p = V(position);
+            tangent = V(du);
+            bitangent = V(dv);
         }
     };
 }
