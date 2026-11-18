@@ -69083,7 +69083,7 @@
     </Entity>
    </Entity>
    <Entity name="player_car" id="2411005043703651744" active="true" position="6213.84 13.5 -2858.71" rotation="0 -0.642787 0 0.766045" scale="1 1 1" tags="focal_point,player_car,current_car,player_garage_hub_display">
-    <prefab file="project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab" telemetry="true" camera_follows="true" />
+    <prefab file="project/game_resources/cars/rubra/rubra.prefab" telemetry="true" camera_follows="true" />
     <car_reset spawn_point_entity_id="2411005043703651745" />
     <Entity name="player_car_spawn" id="2411005043703651745" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
      <spawn_point />
