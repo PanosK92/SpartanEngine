@@ -27,8 +27,8 @@ namespace spartan::math
         // each plane is (normal, d)
         __m128 planes[8] =
         {
-            _mm_add_ps(c3, c2), // near
-            _mm_sub_ps(c3, c2), // far
+            _mm_sub_ps(c3, c2), // near
+            c2,                 // far
             _mm_add_ps(c3, c0), // left
             _mm_sub_ps(c3, c0), // right
             _mm_sub_ps(c3, c1), // top
