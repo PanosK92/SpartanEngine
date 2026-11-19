@@ -8,6 +8,8 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =================================
 #include "pch.h"
 #include <filesystem>
+#include <charconv>
+#include "../../../third_party/lz4/lz4.h"
 #include <cctype>
 #include "../../profiling/Profiler.h"
 #include <algorithm>
@@ -79,6 +81,45 @@ namespace spartan
                 busy.fetch_sub(1, memory_order_acq_rel);
             }
         };
+
+        // A fixed-size normalized mask follows a terrain through changes to its sample density.
+        // Compress before embedding in XML so world saves and editor history own the same bytes.
+        string encode_paint(const vector<uint8_t>& pixels)
+        {
+            if (pixels.empty()) return {};
+            const int size = static_cast<int>(pixels.size());
+            vector<char> packed(LZ4_compressBound(size));
+            const int count = LZ4_compress_default(reinterpret_cast<const char*>(pixels.data()), packed.data(), size, static_cast<int>(packed.size()));
+            constexpr char digits[] = "0123456789abcdef";
+            string encoded(count * 2, '0');
+            for (int i = 0; i < count; ++i)
+            {
+                const uint8_t byte = static_cast<uint8_t>(packed[i]);
+                encoded[2 * i] = digits[byte >> 4];
+                encoded[2 * i + 1] = digits[byte & 15];
+            }
+            return encoded;
+        }
+
+        vector<uint8_t> decode_paint(const string& encoded)
+        {
+            constexpr int size = Terrain::paint_resolution * Terrain::paint_resolution;
+            if (encoded.empty() || encoded.size() % 2 || encoded.size() / 2 > LZ4_compressBound(size))
+                return {};
+            vector<char> packed(encoded.size() / 2);
+            for (size_t i = 0; i < packed.size(); ++i)
+            {
+                const char* hex = encoded.data() + 2 * i;
+                uint8_t byte = 0;
+                auto result = from_chars(hex, hex + 2, byte, 16);
+                if (result.ec != errc{} || result.ptr != hex + 2) return {};
+                packed[i] = static_cast<char>(byte);
+            }
+            vector<uint8_t> pixels(size);
+            if (LZ4_decompress_safe(packed.data(), reinterpret_cast<char*>(pixels.data()), static_cast<int>(packed.size()), size) != size)
+                return {};
+            return pixels;
+        }
 
         string get_terrain_cache_directory()
         {
@@ -980,6 +1021,7 @@ namespace spartan
                     // no render component owns a layer, so nothing else would ever pack its orm, compress
                     // it or upload it, the call guards itself against a second pass
                     layer->PrepareForGpu();
+                    BindLayerPaint(i);
                 }
             }
 
@@ -1017,6 +1059,8 @@ namespace spartan
         {
             params.layer_materials[i] = m_layer_materials[i].get();
             params.layer_rules[i]     = m_layer_rules[i];
+            if (m_paint_textures[i])
+                params.layer_rules[i].flags |= TerrainLayerFlags_Painted;
         }
 
         Renderer::SetTerrain(params);
@@ -1292,11 +1336,17 @@ namespace spartan
 
         // surface layer rules, these are authored per world exactly like the scatter rules are
         pugi::xml_node layers_node = node.append_child("layers");
-        for (const TerrainLayerRule& rule : m_layer_rules)
+        for (uint32_t i = 0; i < terrain_layer_max; ++i)
         {
             pugi::xml_node rule_node = layers_node.append_child("layer");
 
-            SaveLayerRule(rule_node, rule);
+            SaveLayerRule(rule_node, m_layer_rules[i]);
+            if (!m_paint_pixels[i].empty())
+            {
+                if (m_paint_encoded[i].empty())
+                    m_paint_encoded[i] = encode_paint(m_paint_pixels[i]);
+                rule_node.append_attribute("paint_512_lz4") = m_paint_encoded[i].c_str();
+            }
         }
 
         // scatter layers, the whole prop rule set travels with the world
@@ -1395,6 +1445,9 @@ namespace spartan
 
         // surface layer rules, a world saved before they travelled with it keeps the defaults
         m_layer_rules = TerrainLayerDefaults::Get();
+        m_paint_textures = {};
+        m_paint_pixels = {};
+        m_paint_encoded = {};
         if (pugi::xml_node layers_node = node.child("layers"))
         {
             uint32_t rule_index = 0;
@@ -1403,6 +1456,13 @@ namespace spartan
                  rule_node = rule_node.next_sibling("layer"), rule_index++)
             {
                 LoadLayerRule(rule_node, m_layer_rules[rule_index]);
+                if (auto paint = rule_node.attribute("paint_512_lz4"))
+                {
+                    m_paint_encoded[rule_index] = paint.as_string();
+                    m_paint_pixels[rule_index] = decode_paint(m_paint_encoded[rule_index]);
+                    if (m_paint_pixels[rule_index].empty())
+                        SP_LOG_WARNING("Invalid paint mask on terrain layer %u", rule_index);
+                }
             }
         }
 
@@ -2840,6 +2900,111 @@ namespace spartan
         return nullptr;
     }
 
+    void Terrain::BindLayerPaint(uint32_t layer)
+    {
+        if (!m_layer_materials[layer]) return;
+        auto& texture = m_paint_textures[layer];
+        if (!texture && !m_paint_pixels[layer].empty())
+        {
+            texture = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, paint_resolution, paint_resolution, 1, 1,
+                RHI_Format::R8_Unorm, RHI_Texture_Srv, "terrain_layer_paint", to_single_mip_slice(m_paint_pixels[layer]));
+            texture->PrepareForGpu();
+        }
+        m_layer_materials[layer]->SetTexture(MaterialTextureType::Packed, texture.get(), 1, false);
+    }
+
+    void Terrain::MarkPaintDirty(const TerrainDirtyRect& rect)
+    {
+        if (rect.IsEmpty() || m_dense_width < 2 || m_dense_height < 2) return;
+        const float sx = float(m_dense_width - 1) / (paint_resolution - 1);
+        const float sz = float(m_dense_height - 1) / (paint_resolution - 1);
+        const int x0 = max(0, int(floorf((rect.x0 - 1) * sx)));
+        const int z0 = max(0, int(floorf((rect.z0 - 1) * sz)));
+        const int x1 = min(int(m_dense_width - 1), int(ceilf((rect.x1 + 1) * sx)));
+        const int z1 = min(int(m_dense_height - 1), int(ceilf((rect.z1 + 1) * sz)));
+        m_prop_mask_bake_dirty.Merge(x0, z0, x1, z1);
+        m_props_dirty.Merge(x0, z0, x1, z1);
+    }
+
+    void Terrain::FinishLayerPaint(uint32_t layer)
+    {
+        if (layer >= terrain_layer_max) return;
+        auto& pixels = m_paint_pixels[layer];
+        if (!pixels.empty() && none_of(pixels.begin(), pixels.end(), [](uint8_t v) { return v != 0; }))
+        {
+            pixels.clear();
+            m_paint_encoded[layer].clear();
+            m_paint_textures[layer].reset();
+            BindLayerPaint(layer);
+            PushToRenderer();
+        }
+        if (FlushPendingPropMask()) WorldHelpers::RefreshTerrainGpuScatter(this);
+        FlushPendingProps();
+    }
+
+    void Terrain::RestoreLayerPaint(uint32_t layer, const vector<uint8_t>& pixels)
+    {
+        if (layer >= terrain_layer_max || (!pixels.empty() && pixels.size() != paint_resolution * paint_resolution)) return;
+        TerrainDirtyRect dirty;
+        const auto& old = m_paint_pixels[layer];
+        for (int i = 0; i < paint_resolution * paint_resolution; ++i)
+        {
+            if ((old.empty() ? 0 : old[i]) != (pixels.empty() ? 0 : pixels[i]))
+                dirty.Merge(i % paint_resolution, i / paint_resolution, i % paint_resolution, i / paint_resolution);
+        }
+        m_paint_pixels[layer] = pixels;
+        m_paint_encoded[layer].clear();
+        m_paint_textures[layer].reset();
+        BindLayerPaint(layer);
+        PushToRenderer();
+        MarkPaintDirty(dirty);
+        FinishLayerPaint(layer);
+    }
+
+    void Terrain::PaintLayer(uint32_t layer, const Vector3& center, const TerrainBrush& brush, float opacity, bool erase)
+    {
+        if (!IsLayerEnabled(layer) || brush.radius <= 0 || m_world_mapping.z <= 0 || m_world_mapping.w <= 0) return;
+        const auto local = center - GetEntity()->GetMatrix().GetTranslation();
+        constexpr int last = paint_resolution - 1;
+        const float sx = last * m_world_mapping.z, sz = last * m_world_mapping.w;
+        const float cx = (local.x - m_world_mapping.x) * sx, cz = (local.z - m_world_mapping.y) * sz;
+        const int x0 = max(0, static_cast<int>(floorf(cx - brush.radius * sx)));
+        const int z0 = max(0, static_cast<int>(floorf(cz - brush.radius * sz)));
+        const int x1 = min(last, static_cast<int>(ceilf(cx + brush.radius * sx)));
+        const int z1 = min(last, static_cast<int>(ceilf(cz + brush.radius * sz)));
+        auto& pixels = m_paint_pixels[layer];
+        if (erase && pixels.empty()) return;
+        TerrainDirtyRect dirty;
+        for (int z = z0; z <= z1; ++z)
+        {
+            for (int x = x0; x <= x1; ++x)
+            {
+                const uint8_t alpha = static_cast<uint8_t>(roundf(255 * clamp(opacity, 0.0f, 1.0f) * brush.Weight((x - cx) / sx, (z - cz) / sz)));
+                if (!alpha) continue;
+                if (pixels.empty()) pixels.resize(paint_resolution * paint_resolution);
+                auto& pixel = pixels[z * paint_resolution + x];
+                const uint8_t next = erase ? min(pixel, static_cast<uint8_t>(255 - alpha)) : max(pixel, alpha);
+                if (pixel == next) continue;
+                pixel = next;
+                dirty.Merge(x, z, x, z);
+            }
+        }
+        if (dirty.IsEmpty()) return;
+        MarkPaintDirty(dirty);
+        m_paint_encoded[layer].clear();
+        if (!m_paint_textures[layer])
+        {
+            BindLayerPaint(layer);
+            PushToRenderer();
+            return;
+        }
+        const int width = dirty.x1 - dirty.x0 + 1, height = dirty.z1 - dirty.z0 + 1;
+        vector<uint8_t> patch(width * height);
+        for (int row = 0; row < height; ++row)
+            memcpy(patch.data() + row * width, pixels.data() + (dirty.z0 + row) * paint_resolution + dirty.x0, width);
+        Renderer::QueueTextureRegionUpload(m_paint_textures[layer], dirty.x0, dirty.z0, width, height, patch.data());
+    }
+
     void Terrain::ApplyBrush(const Vector3& world_center, const TerrainBrush& brush)
     {
         m_sculpt_snapshot.reset();
@@ -2884,6 +3049,7 @@ namespace spartan
             }
         }
 
+        EnsureSculptGrid();
         TerrainSystem::ApplyBrush(
             m_positions,
             &m_height_data,
@@ -2891,12 +3057,12 @@ namespace spartan
             m_dense_height,
             mapping,
             local_center,
-            brush
+            brush,
+            &m_sculpt
         );
 
         // the layer is what survives a regenerate, the seed is what the pads paint from, both
         // have to carry the stroke or a pad passing over it later would wipe it
-        EnsureSculptGrid();
         const bool seed_ok = m_positions_seed.size() == m_positions.size();
         for (int32_t z = z0; z <= z1; z++)
         {

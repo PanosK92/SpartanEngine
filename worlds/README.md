@@ -34,7 +34,7 @@ publish the package. Read it before touching assets.
 | `visual_scripting_example.world` | The visual scripting tutorial, four stations with commented graphs |
 | `liminal_space_example.world` | An infinite procedural floor of buildings streamed in chunks, with a stalker and a soundscape |
 | `dreamcore_example.world` | A procedural walkable tile city over the ocean |
-| `terrain_example.world` | An island sculpted from a flat terrain, with signs that explain the Terrain tool step by step |
+| `terrain_example.world` | A sculpted island with six hands-on workshop boards, an editable dirt trail and brush-stamped rock |
 | `weather_example.world` | A coastal observatory with a harbour light, a wind-driven anemometer and four weather presets |
 | `audio_example.world` | A listening courtyard with a stereo panning fountain, a flyby pitch meter and matching bell strikes outdoors and in Resonance Hall |
 | `particles_example.world` | Walk-through particle studies with a layered hearth, sparks, steam, snow and a spillway. Keys 1–9 toggle individual effects, 0 restores them all, and Space fires the burst chamber |

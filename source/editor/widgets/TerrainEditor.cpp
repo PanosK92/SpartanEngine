@@ -241,6 +241,7 @@ void TerrainEditor::OnTick()
     editor_history::terrain_jobs = m_scatter_running;
     m_alpha = m_opacity < 1.0f ? m_opacity : k_widget_default_property;
 
+    if (Engine::IsFlagSet(EngineMode::Playing)) m_sculpt_enabled = false;
     s_sculpt_active = m_visible && m_sculpt_enabled;
     TickSculpting();
 
@@ -266,6 +267,7 @@ void TerrainEditor::OnTickVisible()
     uint32_t mode = static_cast<uint32_t>(m_mode);
     if (segmented_control("mode", { "Shape", "Ground", "Life", "Analysis" }, &mode))
     {
+        m_sculpt_enabled = false;
         m_mode = static_cast<Mode>(mode);
     }
 
@@ -402,18 +404,18 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
 
     ImGui::SameLine(0.0f, spacing);
 
-    ImGui::BeginDisabled(!terrain->HasHeightfield());
+    ImGui::BeginDisabled(!terrain->HasHeightfield() || (m_mode == Mode::Ground && !terrain->IsLayerEnabled(m_ground_selected) && !m_sculpt_enabled));
     if (m_sculpt_enabled)
     {
-        if (primary_button("Sculpting", ImVec2(width, 0.0f)))
+        if (primary_button(m_mode == Mode::Ground ? "Painting" : "Sculpting", ImVec2(width, 0.0f)))
         {
             m_sculpt_enabled = false;
         }
     }
-    else if (ImGuiSp::button("Sculpt", ImVec2(width, 0.0f)))
+    else if (ImGuiSp::button(m_mode == Mode::Ground ? "Paint" : "Sculpt", ImVec2(width, 0.0f)))
     {
         m_sculpt_enabled = true;
-        m_mode           = Mode::Shape;
+        if (m_mode != Mode::Ground) m_mode = Mode::Shape;
     }
     ImGui::EndDisabled();
     ImGuiSp::tooltip("paint the surface with the brush in the viewport, left mouse paints and right mouse still looks");
@@ -800,9 +802,71 @@ void TerrainEditor::DrawShape(Terrain* terrain)
     card_end();
 }
 
+void TerrainEditor::DrawBrushTip()
+{
+    vector<string> tips = { "Round", "Ring", "Ridge" };
+    const uint32_t first_stamp = static_cast<uint32_t>(TerrainBrushTip::Imported);
+    for (const Stamp& stamp : m_stamps)
+        tips.push_back(FileSystem::GetFileNameFromFilePath(stamp.path));
+    uint32_t tip = m_brush.tip == TerrainBrushTip::Imported ? first_stamp + m_stamp_index : static_cast<uint32_t>(m_brush.tip);
+    if (property_combo("Tip", tips, &tip, "shape of the brush inside the radius"))
+    {
+        m_brush.tip = static_cast<TerrainBrushTip>(min(tip, first_stamp));
+        if (tip >= first_stamp)
+        {
+            m_stamp_index = tip - first_stamp;
+            m_brush.stamp = m_stamps[m_stamp_index].pixels;
+        }
+    }
+    if (m_brush.tip == TerrainBrushTip::Imported || m_brush.tip == TerrainBrushTip::Ridge)
+        property_float("Rotation", &m_brush.rotation, 1.0f, -180.0f, 180.0f, "turn the tip around its center", "%.0f deg");
+
+    // Show the sampled footprint, including rotation, falloff and the circular crop on imported tips.
+    constexpr int samples = 32;
+    const float size = ImGui::EditorUi::scaled(52.0f);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    for (int y = 0; y < samples; ++y)
+    {
+        for (int x = 0; x < samples; ++x)
+        {
+            const float dx = m_brush.radius * ((2.0f * x + 1) / samples - 1);
+            const float dz = m_brush.radius * ((2.0f * y + 1) / samples - 1);
+            const int gray = static_cast<int>(255.0f * m_brush.Weight(dx, dz));
+            const float cell = size / samples;
+            draw->AddRectFilled(ImVec2(origin.x + x * cell, origin.y + y * cell),
+                ImVec2(origin.x + (x + 1) * cell, origin.y + (y + 1) * cell), IM_COL32(gray, gray, gray, 255));
+        }
+    }
+    ImGui::Dummy(ImVec2(size, size));
+    ImGui::SameLine();
+    if (ImGuiSp::button("Import brush image"))
+    {
+        Browse([this](const string& path)
+        {
+            m_stamp_error = "Could not read the brush image.";
+            if (!m_brush.LoadStamp(path)) return;
+            auto it = find_if(m_stamps.begin(), m_stamps.end(), [&](const Stamp& item) { return item.path == path; });
+            if (it == m_stamps.end())
+            {
+                m_stamp_index = static_cast<uint32_t>(m_stamps.size());
+                m_stamps.push_back({ path, m_brush.stamp });
+            }
+            else
+            {
+                m_stamp_index = static_cast<uint32_t>(it - m_stamps.begin());
+                it->pixels = m_brush.stamp;
+            }
+            m_stamp_error.clear();
+        });
+    }
+    ImGuiSp::tooltip("white applies the brush, black protects the ground; square grayscale PNGs work well");
+    if (!m_stamp_error.empty()) layout::caption(m_stamp_error.c_str());
+}
+
 void TerrainEditor::DrawSculpt(Terrain* terrain)
 {
-    card_begin("Sculpt", "raise, lower, smooth or flatten by hand, the surface rebuilds as you release");
+    card_begin("Sculpt", "choose a height operation and a brush tip, then drag on the terrain");
     {
         if (property_toggle("Brush Active", &m_sculpt_enabled, "while this is on the left mouse button paints instead of selecting"))
         {
@@ -812,12 +876,12 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
         ImGui::BeginDisabled(!m_sculpt_enabled);
         {
             uint32_t mode = static_cast<uint32_t>(m_brush.mode);
-            layout::begin_property("Mode", "raise and lower push the ground, smooth averages it, flatten pulls it towards the target height");
-            if (segmented_control("brush_mode", { "Raise", "Lower", "Smooth", "Flatten" }, &mode, ImGui::CalcItemWidth()))
+            if (property_combo("Mode", { "Raise", "Lower", "Smooth", "Flatten", "Terrace", "Noise", "Restore" }, &mode, "terrace pulls each sample toward its nearest elevation step"))
             {
                 m_brush.mode = static_cast<TerrainBrushMode>(mode);
             }
 
+            DrawBrushTip();
             property_float("Radius", &m_brush.radius, 0.5f, 1.0f, 2000.0f, "brush footprint on the ground", "%.0f m");
 
             // a brush that fits between two samples moves nothing, which reads as a broken tool
@@ -832,8 +896,16 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
             }
             property_float("Strength", &m_strength_per_second, 0.1f, 0.1f, 200.0f, "meters moved per second of holding the button", "%.1f");
             property_float("Falloff", &m_brush.falloff, 0.01f, 0.0f, 1.0f, "0 is a hard edged stamp, 1 fades all the way to the center", "%.2f");
-            property_float("Target Height", &m_brush.target_height, 0.1f, -1000.0f, 1000.0f, "the height flatten pulls towards", "%.0f m");
+            if (m_brush.mode == TerrainBrushMode::Noise)
+                property_float("Feature size", &m_brush.noise_scale, 0.5f, 0.5f, 500.0f, "distance between larger features of the noise field", "%.1f m");
+            if (m_brush.mode == TerrainBrushMode::Restore)
+                layout::caption("Brush away sculpt edits to reveal the generated surface.");
+            if (m_brush.mode == TerrainBrushMode::Terrace)
+                property_float("Step height", &m_brush.terrace_step, 0.25f, 0.25f, 200.0f, "vertical distance between terraces", "%.2f m");
+            if (m_brush.mode == TerrainBrushMode::Flatten)
+                property_float("Target Height", &m_brush.target_height, 0.1f, -1000.0f, 1000.0f, "the height flatten pulls towards", "%.0f m");
 
+            layout::caption("Shift reverses Raise and Lower. Ctrl-click samples a height for Flatten.");
             const int tile = ResolveSelectedTileIndex();
             if (tile >= 0)
             {
@@ -1035,6 +1107,17 @@ void TerrainEditor::DrawGround(Terrain* terrain)
     }
     card_end();
 
+    card_begin("Layer painting", "Select a layer above and click Paint. Drag on the terrain to apply the mask.");
+    property_text("Layer", terrain->GetLayerRules()[m_ground_selected].name.c_str(), "the selected ground material");
+    if (!terrain->IsLayerEnabled(m_ground_selected))
+        layout::caption("Select an enabled layer with textures to paint.");
+    property_toggle("Erase", &m_paint_erase, "remove this layer's paint to reveal the underlying mix");
+    property_float("Opacity", &m_paint_opacity, 0.01f, 0.0f, 1.0f, "maximum coverage of a dab", "%.2f");
+    property_float("Radius", &m_brush.radius, 0.5f, 1.0f, 2000.0f, "brush footprint on the ground", "%.1f m");
+    property_float("Falloff", &m_brush.falloff, 0.01f, 0.0f, 1.0f, "soften the outer edge", "%.2f");
+    DrawBrushTip();
+    layout::caption("Ctrl-click picks the ground layer. Hold Shift to switch between paint and erase.");
+    card_end();
     DrawGroundLayer(terrain, m_ground_selected);
 }
 
@@ -1822,9 +1905,37 @@ void TerrainEditor::DrawBrushRing(const Terrain* terrain, const Vector3& hit) co
 
 void TerrainEditor::TickSculpting()
 {
-    if (m_sculpt_epoch != CommandStack::Epoch()) m_sculpt_before.reset();
+    const auto previous_hit = m_last_paint_hit;
+    m_last_paint_hit.reset();
+    if (m_sculpt_epoch != CommandStack::Epoch())
+    {
+        m_sculpt_before.reset();
+        m_paint_before.reset();
+    }
     // Finish even if the brush leaves the terrain, the window closes or selection changes.
     Terrain* selected_terrain = ResolveTerrain();
+    if (m_paint_before && (!Input::GetKey(KeyCode::Click_Left) || !m_sculpt_enabled || !m_visible ||
+        m_mode != Mode::Ground || m_ground_selected != m_paint_layer || !selected_terrain ||
+        selected_terrain->GetEntity()->GetObjectId() != m_sculpt_entity_id))
+    {
+        const auto id = m_sculpt_entity_id;
+        const auto layer = m_paint_layer;
+        if (auto entity = World::GetEntityById(id))
+        {
+            if (auto terrain = entity->GetComponent<Terrain>(); terrain && terrain->GetLayerPaint(layer) != *m_paint_before)
+            {
+                terrain->FinishLayerPaint(layer);
+                auto restore = [id, layer](const vector<uint8_t>& pixels)
+                {
+                    if (auto entity = World::GetEntityById(id))
+                        if (auto terrain = entity->GetComponent<Terrain>()) terrain->RestoreLayerPaint(layer, pixels);
+                };
+                editor_history::Record("paint:" + to_string(id), [restore, before = std::move(*m_paint_before)] { restore(before); },
+                    [restore, after = terrain->GetLayerPaint(layer)] { restore(after); }, [id] { return editor_history::Ready(id); }, false);
+            }
+        }
+        m_paint_before.reset();
+    }
     if (m_sculpt_before && (!Input::GetKey(KeyCode::Click_Left) || !m_sculpt_enabled || !m_visible ||
         !selected_terrain || selected_terrain->GetEntity()->GetObjectId() != m_sculpt_entity_id))
     {
@@ -1882,7 +1993,43 @@ void TerrainEditor::TickSculpting()
 
     if (Input::GetKey(KeyCode::Click_Left) && !Input::GetKey(KeyCode::Click_Right))
     {
+        const bool shift = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Shift_Right);
+        if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
+        {
+            if (m_mode == Mode::Ground)
+            {
+                TerrainSurfaceSample sample;
+                if (terrain->SampleSurface(hit.x, hit.z, sample)) m_ground_selected = sample.dominant_layer;
+            }
+            else
+            {
+                m_brush.mode = TerrainBrushMode::Flatten;
+                m_brush.target_height = (terrain->GetEntity()->GetMatrix().Inverted() * hit).y;
+            }
+            return;
+        }
+        if (m_mode == Mode::Ground)
+        {
+            if (!terrain->IsLayerEnabled(m_ground_selected)) return;
+            const bool continuing = m_paint_before && previous_hit.has_value();
+            if (!m_paint_before)
+            {
+                m_paint_layer = m_ground_selected;
+                m_paint_before = make_unique<vector<uint8_t>>(terrain->GetLayerPaint(m_paint_layer));
+                m_sculpt_entity_id = terrain->GetEntity()->GetObjectId();
+                m_sculpt_epoch = CommandStack::Epoch();
+            }
+            const Vector3 start = continuing ? *previous_hit : hit;
+            const Vector3 delta = hit - start;
+            const int steps = clamp(static_cast<int>(ceilf(delta.Length() / max(0.25f * m_brush.radius, 0.25f))), 1, 512);
+            for (int i = 1; i <= steps; ++i)
+                terrain->PaintLayer(m_paint_layer, start + delta * (float(i) / steps), m_brush, m_paint_opacity, m_paint_erase != shift);
+            m_last_paint_hit = hit;
+            return;
+        }
         TerrainBrush stroke = m_brush;
+        if (shift && stroke.mode == TerrainBrushMode::Raise) stroke.mode = TerrainBrushMode::Lower;
+        else if (shift && stroke.mode == TerrainBrushMode::Lower) stroke.mode = TerrainBrushMode::Raise;
         const float dt      = static_cast<float>(Timer::GetDeltaTimeRealSec());
         stroke.strength     = m_strength_per_second * dt;
         if (!m_sculpt_before)

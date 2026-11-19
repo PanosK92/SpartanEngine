@@ -32,7 +32,8 @@ namespace spartan
         TerrainLayerFlags_Woodland  = 1u << 6, // shared terrain-derived woodland footprint
         TerrainLayerFlags_Open      = 1u << 7, // meadow cover recedes inside woodland
         TerrainLayerFlags_Sand      = 1u << 16, // loose grains, set from TerrainLayerRule::sand, bits 8 to 15 belong to the surface material
-        TerrainLayerFlags_Clearing  = 1u << 17  // bare ground between the grass pockets, set from TerrainLayerRule::clearing
+        TerrainLayerFlags_Clearing  = 1u << 17, // bare ground between the grass pockets, set from TerrainLayerRule::clearing
+        TerrainLayerFlags_Painted   = 1u << 18  // runtime mask in the layer material's second packed slot
     };
 
     // viewport debug views, packed into bits 12 to 15 of the surface material's terrain_flags

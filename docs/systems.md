@@ -58,7 +58,7 @@ The [`Spline`](../source/world/components/Spline.h) component is a Catmull-Rom s
 
 The [`Terrain`](../source/world/components/Terrain.h) component builds a heightfield with sculpt layers, a physics heightfield, and GPU-scattered vegetation (grass, flowers, trees with impostors). The **Terrain** editor panel sculpts and paints. Tires deform soft terrain (`terrain.deformation*` cvars), and vehicles push vegetation aside.
 
-[Terrain](terrain.md) is the full guide: creating a flat terrain, the brush, what to check when nothing seems to happen, and the Shape, Ground, Life and Analysis tabs. [`worlds/terrain_example.world`](../worlds/terrain_example.world) is an island made this way from a flat square: a raised hill, a pond dug below sea level, a flattened plateau and rough bumps next to smoothed ones, with signs that explain each step in plain language.
+[Terrain](terrain.md) is the full guide: creating a flat terrain, the brush, what to check when nothing seems to happen, and the Shape, Ground, Life and Analysis tabs. [`worlds/terrain_example.world`](../worlds/terrain_example.world) is an island made this way from a flat square: a raised hill, a pond dug below sea level, a flattened plateau and rough bumps next to smoothed ones, with signs that explain each step. Its dirt trail and stamped rock patch demonstrate per-layer painting, erasing and brush-image import.
 
 ## Environment and weather
 

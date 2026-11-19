@@ -22,7 +22,7 @@ All panels dock and are listed under **View**. They are registered in [`EditorWi
 | **Shader Editor** | Edit and hot-reload HLSL |
 | **Script Editor** | Edit and reload Lua |
 | **Visual Script** | Node graph editor for [visual scripts](visual_scripting.md); open it with **Edit graph** on a Script component |
-| **Terrain** | Create, sculpt and dress terrain (see [Terrain](terrain.md)) |
+| **Terrain** | Create terrain, sculpt with brush tips, paint material layers and place vegetation (see [Terrain](terrain.md)) |
 | **Sequencer** | Cinematic timeline (see [Engine systems](systems.md#cinematics)) |
 | **Asset Viewer** | Inspect and edit a single asset in isolation |
 | **Tree Creator** | Procedural tree species |
@@ -64,7 +64,7 @@ In play mode, the physics toys sit behind **Alt** so a plain click stays free fo
 
 ## Undo and redo
 
-Every edit is a `Command` with `OnApply` and `OnRevert` pushed onto the [`CommandStack`](../source/commands/CommandStack.h) (128 steps). Transform drags, entity deletion, component and material edits, terrain sculpting and sequencer edits are all undoable. New editor features should record their edits through the scopes in [`EditorHistory.h`](../source/editor/EditorHistory.h).
+Every edit is a `Command` with `OnApply` and `OnRevert` pushed onto the [`CommandStack`](../source/commands/CommandStack.h) (128 steps). Transform drags, entity deletion, component and material edits, terrain sculpting, material paint strokes and sequencer edits are all undoable. New editor features should record their edits through the scopes in [`EditorHistory.h`](../source/editor/EditorHistory.h).
 
 ## Game builder
 

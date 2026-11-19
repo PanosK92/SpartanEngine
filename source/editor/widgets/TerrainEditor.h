@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 //===================================
 
@@ -55,6 +56,7 @@ private:
     void DrawActionBar(spartan::Terrain* terrain);
     void DrawOpacity(float width);
     void DrawShape(spartan::Terrain* terrain);
+    void DrawBrushTip();
     void DrawSculpt(spartan::Terrain* terrain);
     void DrawGround(spartan::Terrain* terrain);
     void DrawGroundLayer(spartan::Terrain* terrain, uint32_t index);
@@ -93,6 +95,19 @@ private:
     std::unique_ptr<spartan::TerrainSculptLayer> m_sculpt_before;
     uint64_t m_sculpt_entity_id = 0;
     uint64_t m_sculpt_epoch = 0;
+    std::unique_ptr<std::vector<uint8_t>> m_paint_before;
+    uint32_t m_paint_layer = 0;
+    std::optional<spartan::math::Vector3> m_last_paint_hit;
+    float m_paint_opacity = 1.0f;
+    bool m_paint_erase = false;
+    struct Stamp
+    {
+        std::string path;
+        std::shared_ptr<const std::vector<uint8_t>> pixels;
+    };
+    std::vector<Stamp> m_stamps;
+    uint32_t m_stamp_index = 0;
+    std::string m_stamp_error;
     bool m_sculpt_enabled       = false;
     bool m_heights_dirty        = false;
     uint32_t m_flat_resolution  = 256;

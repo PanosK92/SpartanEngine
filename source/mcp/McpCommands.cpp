@@ -2110,10 +2110,32 @@ namespace spartan
             {
                 brush.mode = TerrainBrushMode::Flatten;
             }
-            else
+            else if (mode == "terrace")
             {
-                return json_error("mode must be raise, lower, smooth or flatten");
+                brush.mode = TerrainBrushMode::Terrace;
             }
+            else if (mode == "noise")
+                brush.mode = TerrainBrushMode::Noise;
+            else if (mode == "restore")
+                brush.mode = TerrainBrushMode::Restore;
+            else if (mode != "paint" && mode != "erase")
+            {
+                return json_error("mode must be raise, lower, smooth, flatten, terrace, noise, restore, paint or erase");
+            }
+
+            const std::string tip = to_lower_copy(get_argument(request, "tip").value_or("round"));
+            if (tip == "ring") brush.tip = TerrainBrushTip::Ring;
+            else if (tip == "ridge") brush.tip = TerrainBrushTip::Ridge;
+            else if (tip != "round") return json_error("tip must be round, ring or ridge");
+
+            if (const auto path = get_argument(request, "stamp"); path && !brush.LoadStamp(*path))
+                return json_error("unable to read stamp image");
+            uint64_t layer = 0;
+            const bool painting = mode == "paint" || mode == "erase";
+            if (painting && (!parse_uint64(get_argument(request, "layer").value_or(""), layer) ||
+                layer >= terrain_layer_max || !terrain->IsLayerEnabled(static_cast<uint32_t>(layer))))
+                return json_error("paint and erase require an enabled layer index");
+            float opacity = 1.0f;
 
             auto read_float = [&request, &error](const char* name, float& value)
             {
@@ -2127,6 +2149,10 @@ namespace spartan
             read_float("amount", brush.strength);
             read_float("falloff", brush.falloff);
             read_float("target_height", brush.target_height);
+            read_float("feature_size", brush.noise_scale);
+            read_float("step_height", brush.terrace_step);
+            read_float("rotation", brush.rotation);
+            read_float("opacity", opacity);
             if (!error.empty())
             {
                 return json_error(error);
@@ -2163,13 +2189,24 @@ namespace spartan
                     {
                         continue;
                     }
-                    terrain->ApplyBrush(math::Vector3(points[i], height, points[i + 1]), brush);
+                    const math::Vector3 center(points[i], height, points[i + 1]);
+                    if (painting)
+                        terrain->PaintLayer(static_cast<uint32_t>(layer), center, brush, opacity, mode == "erase");
+                    else
+                        terrain->ApplyBrush(center, brush);
                     applied++;
                 }
             }
 
-            terrain->FlushHeightEdits(true);
-            terrain->FlushPendingProps();
+            if (painting)
+            {
+                terrain->FinishLayerPaint(static_cast<uint32_t>(layer));
+            }
+            else
+            {
+                terrain->FlushHeightEdits(true);
+                terrain->FlushPendingProps();
+            }
 
             std::string json = "{\"ok\":true,\"dabs\":" + std::to_string(applied);
             json += ",\"heights\":[";

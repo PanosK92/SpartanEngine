@@ -16,6 +16,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "TerrainPlacement.h"
 #include "../rhi/RHI_Texture.h"
 #include "../core/ThreadPool.h"
+SP_WARNINGS_OFF
+#define FREEIMAGE_LIB
+#include <FreeImage/FreeImage.h>
+SP_WARNINGS_ON
 #include <random>
 #include <algorithm>
 #include <atomic>
@@ -1706,6 +1710,54 @@ namespace spartan
         return false;
     }
 
+    bool TerrainBrush::LoadStamp(const string& path)
+    {
+        const auto format = FreeImage_GetFileType(path.c_str(), 0);
+        if (format == FIF_UNKNOWN || !FreeImage_FIFSupportsReading(format)) return false;
+        using Bitmap = unique_ptr<FIBITMAP, decltype(&FreeImage_Unload)>;
+        Bitmap source(FreeImage_Load(format, path.c_str()), FreeImage_Unload);
+        if (!source) return false;
+        Bitmap gray(FreeImage_ConvertToGreyscale(source.get()), FreeImage_Unload);
+        if (!gray) return false;
+        constexpr int size = stamp_size;
+        Bitmap scaled(FreeImage_Rescale(gray.get(), size, size, FILTER_BILINEAR), FreeImage_Unload);
+        if (!scaled) return false;
+        auto pixels = make_shared<vector<uint8_t>>(size * size);
+        for (int y = 0; y < size; ++y)
+            memcpy(pixels->data() + y * size, FreeImage_GetScanLine(scaled.get(), size - 1 - y), size);
+        stamp = pixels;
+        tip = TerrainBrushTip::Imported;
+        return true;
+    }
+
+    float TerrainBrush::Weight(float dx, float dz) const
+    {
+        const float distance = sqrtf(dx * dx + dz * dz);
+        const float edge = brush_falloff_weight(distance, radius, falloff);
+        if (edge <= 0.0f || tip == TerrainBrushTip::Round)
+            return edge;
+
+        if (tip == TerrainBrushTip::Ring)
+            return edge * max(0.0f, 1.0f - fabsf(distance / radius - 0.65f) / 0.35f);
+
+        const float angle = rotation * deg_to_rad;
+        const float u = (dx * cosf(angle) + dz * sinf(angle)) / radius;
+        if (tip == TerrainBrushTip::Ridge)
+            return edge * max(0.0f, 1.0f - fabsf(u) * 3.0f);
+
+        if (!stamp || stamp->size() != stamp_size * stamp_size)
+            return 0.0f;
+        const float v = (dz * cosf(angle) - dx * sinf(angle)) / radius;
+        const float x = clamp(u * 0.5f + 0.5f, 0.0f, 1.0f) * (stamp_size - 1);
+        const float z = clamp(v * 0.5f + 0.5f, 0.0f, 1.0f) * (stamp_size - 1);
+        const int x0 = static_cast<int>(x), z0 = static_cast<int>(z);
+        const int x1 = min(x0 + 1, stamp_size - 1), z1 = min(z0 + 1, stamp_size - 1);
+        const auto& pixels = *stamp;
+        const float a = lerp(float(pixels[z0 * stamp_size + x0]), float(pixels[z0 * stamp_size + x1]), x - x0);
+        const float b = lerp(float(pixels[z1 * stamp_size + x0]), float(pixels[z1 * stamp_size + x1]), x - x0);
+        return edge * lerp(a, b, z - z0) / 255.0f;
+    }
+
     void TerrainSystem::ApplyBrush(
         vector<Vector3>& positions,
         vector<float>* height_data,
@@ -1713,7 +1765,8 @@ namespace spartan
         uint32_t height,
         const TerrainGridMapping& mapping,
         const Vector3& world_center,
-        const TerrainBrush& brush
+        const TerrainBrush& brush,
+        const TerrainSculptLayer* sculpt
     )
     {
         if (positions.empty() || width < 2 || height < 2 || brush.radius <= 0.0f)
@@ -1761,8 +1814,7 @@ namespace spartan
                 Vector3& pos = positions[idx];
                 float dx = pos.x - world_center.x;
                 float dz = pos.z - world_center.z;
-                float dist = sqrtf(dx * dx + dz * dz);
-                float weight = brush_falloff_weight(dist, brush.radius, brush.falloff);
+                float weight = brush.Weight(dx, dz);
                 if (weight <= 0.0f)
                 {
                     continue;
@@ -1778,9 +1830,20 @@ namespace spartan
                 {
                     pos.y -= delta;
                 }
-                else if (brush.mode == TerrainBrushMode::Flatten)
+                else if (brush.mode == TerrainBrushMode::Noise)
                 {
-                    pos.y = lerp(pos.y, brush.target_height, clamp(weight * (brush.strength / 10.0f), 0.0f, 1.0f));
+                    const float scale = max(brush.noise_scale, 0.01f);
+                    pos.y += delta * (2.0f * erosion_fbm(pos.x / scale, pos.z / scale, 1147u, 3u) - 1.0f);
+                }
+                else if (brush.mode == TerrainBrushMode::Restore && sculpt)
+                {
+                    pos.y -= sculpt->GetCell(x, z) * clamp(delta / 10.0f, 0.0f, 1.0f);
+                }
+                else if (brush.mode == TerrainBrushMode::Flatten || brush.mode == TerrainBrushMode::Terrace)
+                {
+                    const float step = max(brush.terrace_step, 0.01f);
+                    const float target = brush.mode == TerrainBrushMode::Terrace ? roundf(pos.y / step) * step : brush.target_height;
+                    pos.y = lerp(pos.y, target, clamp(weight * (brush.strength / 10.0f), 0.0f, 1.0f));
                 }
                 else if (brush.mode == TerrainBrushMode::Smooth)
                 {

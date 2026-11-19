@@ -332,6 +332,11 @@ namespace spartan
         bool HasRoadCarve() const { return !m_road_carve_delta.empty(); }
         // world-space unit normal at xz, returns false if no heightfield
         bool SampleNormal(float world_x, float world_z, math::Vector3& normal_out) const;
+        static constexpr int paint_resolution = 512;
+        const std::vector<uint8_t>& GetLayerPaint(uint32_t layer) const { return m_paint_pixels.at(layer); }
+        void RestoreLayerPaint(uint32_t layer, const std::vector<uint8_t>& pixels);
+        void FinishLayerPaint(uint32_t layer);
+        void PaintLayer(uint32_t layer, const math::Vector3& center, const TerrainBrush& brush, float opacity, bool erase);
         void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
         // incremental edit path, every height edit marks the dense cells it touched and one flush
         // repairs only that region, mesh, normals and the gpu height texture every call, collision
@@ -725,6 +730,11 @@ namespace spartan
         // unpadded heightfield, procedural ground plus the sculpt layer, live pads restore from this
         std::vector<math::Vector3> m_positions_seed;
         // hand sculpting, survives generate, saved with the world, never cleared by Clear()
+        std::array<std::vector<uint8_t>, terrain_layer_max> m_paint_pixels;
+        std::array<std::shared_ptr<RHI_Texture>, terrain_layer_max> m_paint_textures;
+        std::array<std::string, terrain_layer_max> m_paint_encoded;
+        void BindLayerPaint(uint32_t layer);
+        void MarkPaintDirty(const TerrainDirtyRect& rect);
         TerrainSculptLayer m_sculpt;
         mutable std::shared_ptr<const TerrainSculptLayer> m_sculpt_snapshot;
         // pads under buildings, replayed after generate from the seed heightfield

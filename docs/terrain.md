@@ -2,7 +2,9 @@
 
 The [`Terrain`](../source/world/components/Terrain.h) component is a heightfield with a hand sculpt layer, collision, eight rule driven ground materials and scattered vegetation and rocks. The **Terrain** editor panel is where all of it is authored. It opens from the Terrain button in the toolbar or from View > Widgets > Terrain.
 
-The fastest way to learn it is [`worlds/terrain_example.world`](../worlds/terrain_example.world): an island sculpted from a flat square, with signs that explain every step. Open it, read the two boards at the start, then try the brush on it.
+The fastest way to learn it is [`worlds/terrain_example.world`](../worlds/terrain_example.world): an island sculpted from a flat square, with signs that explain every step. Spawn faces **Brush Tips** and **Layer Paint**. Walk the center aisle to **Import a Stamp** and **Pick and Erase**, then **Terrace and Noise** and **Flatten and Restore**. Each box gives a short exercise to try on the surrounding ground.
+
+![Six terrain workshop stations facing the entrance to the painted trail](images/terrain_painting.jpg)
 
 ## Sculpting your first terrain
 
@@ -11,7 +13,7 @@ This works in edit mode, so stop the game first.
 1. Open a world that has no terrain yet, then open the **Terrain** panel.
 2. Press **Create flat terrain**. Flat resolution times cell size is the edge length in meters, the default 256 samples at 2 m is about 510 m. The ground appears after a few seconds.
 3. Press **Sculpt** in the bar at the top of the panel. It opens the Shape tab and arms the brush.
-4. Pick a mode: **Raise**, **Lower**, **Smooth** or **Flatten**.
+4. Choose **Raise** and start on flat ground. Hold Shift to lower the same spot without changing tools.
 5. Move the mouse over the ground in the viewport. A circle shows the brush.
 6. Hold the left mouse button and drag to paint. The right mouse button still flies the camera with W A S D.
 7. Ctrl+Z undoes a stroke. Ctrl+S saves the world.
@@ -23,7 +25,9 @@ The brush settings:
 | Radius | The brush size in meters |
 | Strength | How fast the ground moves, in meters per second of holding the button |
 | Falloff | 0 is a hard edged stamp, 1 fades smoothly from the center to the rim |
-| Target Height | The height Flatten pulls the ground towards |
+| Target Height | Elevation for Flatten. Ctrl-click the ground with the sculpt brush to switch to Flatten and sample that height. |
+| Step height | Vertical interval between terraces |
+| Feature size | Horizontal size of the larger hills and dips made by Noise |
 
 ## When nothing seems to happen
 
@@ -39,7 +43,7 @@ The summary at the top shows the size, the sample and tile counts and how many p
 | Tab | What it holds |
 | --- | ------------- |
 | **Shape** | The height map, elevation band and sea level, resolution, shoreline tools, the brush and the sculpt layer |
-| **Ground** | The ground materials and the rules that decide where each one appears |
+| **Ground** | Material layers, brush painting, erasing and the procedural rules under each mask |
 | **Life** | The scatter layers: trees, rocks, flowers, grass and pebbles |
 | **Analysis** | Debug views of what the rules read, the baked maps and texture reloads |
 
@@ -49,9 +53,17 @@ A terrain starts either flat or from a height map, an 8 bit grayscale image wher
 
 Brush work lives in the **sculpt layer**, apart from the generated ground. It is reapplied after every Generate and saved with the world as `terrain_sculpt.bin` in the world's resource folder (`binaries/project/<world>_resources/`). **Clear Sculpt Layer** removes all of it, and selecting a `tile_N` child in the hierarchy offers a reset for that one tile.
 
+Choose **Raise** or **Lower** to move ground, **Smooth** to average neighboring samples, or **Flatten** to bring them toward one elevation. **Terrace** pulls each point to the nearest multiple of **Step height**. **Noise** roughens a surface with hills and dips anchored to the terrain. **Restore** brushes away the accumulated sculpt displacement toward the original generated height. On the example island this can expose the flat starting terrain. Undo restores the stroke.
+
+Use **Round** for an even footprint, **Ring** for a raised rim and **Ridge** for a narrow crest. **Rotation** turns directional tips. **Import brush image** reads a grayscale mask, fitted to a 128 × 128 square inside the brush circle. White gives full strength and black leaves the ground untouched. A preview shows the sampled footprint. Imported images stay in the Tip menu for the editor session. Try the [striated rock tip](../data/brushes/striated_rock.png) on a hillside with Raise. In an installed project the same image is available at `project/terrain_example_resources/brushes/striated_rock.png`.
+
 ### Ground
 
 Eight procedural materials share the surface, each one claims the ground its rule scores highest on. A rule has a slope band, an altitude band and a priority, plus optional responses to curvature, water flow, occlusion, sun exposure, wear, deposition and talus. A layer needs a folder of the same name under `project/materials/` holding albedo, normal, roughness, occlusion and height textures. The global Surface card controls snow, wetness and blend quality live.
+
+The rock streaks west of the trail were sculpted and painted with the same striated rock tip. To extend the dirt trail in the example, choose **Ground**, select **dirt** in **Layers** and click **Paint**. Set **Radius** to 4 m and drag in the viewport. **Opacity** caps the strength of each dab. Overlapping strokes on the same layer hold that strength. **Erase** removes the selected mask and reveals the material mix beneath it. Ctrl-click the ground to pick its dominant layer. Shift temporarily reverses paint and erase. The brush tips, falloff and rotation also work here. Release the mouse to refresh placement on the edited ground. Ctrl+Z undoes one stroke.
+
+Each painted layer has a 512 × 512 grayscale mask spanning the terrain. World saves embed those masks, so paint survives regeneration and reopening. The imported tip is only needed to make new marks.
 
 ### Life
 

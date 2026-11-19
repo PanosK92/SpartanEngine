@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =================
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -28,8 +29,13 @@ namespace spartan
         Raise,
         Lower,
         Smooth,
-        Flatten
+        Flatten,
+        Terrace,
+        Noise,
+        Restore
     };
+
+    enum class TerrainBrushTip { Round, Ring, Ridge, Imported };
 
     struct TerrainBrush
     {
@@ -37,6 +43,14 @@ namespace spartan
         float radius          = 50.0f;
         float strength        = 5.0f;
         float falloff         = 0.5f;
+        TerrainBrushTip tip   = TerrainBrushTip::Round;
+        static constexpr int stamp_size = 128;
+        std::shared_ptr<const std::vector<uint8_t>> stamp;
+        float rotation        = 0.0f; // degrees about the vertical axis
+        float noise_scale     = 10.0f; // feature size in terrain metres
+        float terrace_step    = 5.0f;
+        float Weight(float dx, float dz) const;
+        bool LoadStamp(const std::string& path);
         float target_height   = 0.0f;
     };
 
@@ -335,7 +349,8 @@ namespace spartan
             uint32_t height,
             const TerrainGridMapping& mapping,
             const math::Vector3& world_center,
-            const TerrainBrush& brush
+            const TerrainBrush& brush,
+            const TerrainSculptLayer* sculpt = nullptr
         );
 
         // weighted height edit, weights is dense width*height or null for 1

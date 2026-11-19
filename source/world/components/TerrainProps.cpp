@@ -716,6 +716,7 @@ namespace spartan
             for (uint32_t i = 0; i < terrain_layer_max; ++i)
             {
                 const auto& rule = m_layer_rules[i];
+                if (!m_paint_pixels[i].empty()) key.Add(m_paint_pixels[i]);
                 key.Add(IsLayerEnabled(i)); key.Add(rule.name); key.Add(rule.flags);
                 key.Add(rule.slope_min); key.Add(rule.slope_max); key.Add(rule.height_min); key.Add(rule.height_max);
                 key.Add(rule.curvature_influence); key.Add(rule.flow_influence); key.Add(rule.occlusion_influence);
@@ -1019,6 +1020,18 @@ namespace spartan
                     {
                         const float breakup = terrain_jitter(perlin, world_x, world_z, 3.1f + static_cast<float>(shader_index) * 2.3f);
                         scores[layer]      *= lerp(0.55f, 1.45f, saturate(breakup * 0.5f + 0.5f));
+                    }
+                    const auto& mask = m_paint_pixels[layer];
+                    if (!mask.empty())
+                    {
+                        const float px = float(ax * (paint_resolution - 1)) / max(m_map_width - 1u, 1u);
+                        const float pz = float(az * (paint_resolution - 1)) / max(m_map_height - 1u, 1u);
+                        const int x0 = int(px), z0 = int(pz);
+                        const int x1 = min(x0 + 1, paint_resolution - 1), z1 = min(z0 + 1, paint_resolution - 1);
+                        const float a = lerp(float(mask[z0 * paint_resolution + x0]), float(mask[z0 * paint_resolution + x1]), px - x0);
+                        const float b = lerp(float(mask[z1 * paint_resolution + x0]), float(mask[z1 * paint_resolution + x1]), px - x0);
+                        const float paint = lerp(a, b, pz - z0) / 255.0f;
+                        scores[layer] += paint / max(1.0f - paint, 0.0001f);
                     }
                     shader_index++;
                 }

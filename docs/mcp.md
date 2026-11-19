@@ -46,7 +46,7 @@ Run `npm install` in `tools/mcp/spartan_engine` once. Server options: `--host`, 
 | Entities and components | `entity_find`, `entity_resolve`, `entity_create_primitive`, `entity_set_transform_batch`, `component_get`, `component_set` |
 | Content | `mesh_generate`, `compound_create`, `material_textured_create`, `texture_generate`, `entity_create_light`, `prefab_save`, `prefab_load` |
 | Roads and layout | `spline_create_road`, `spline_connect`, `spline_junction`, `district_blockout`, `city_blockout` |
-| Terrain | `terrain_create` (flat terrain, built on a worker), `terrain_get`, `terrain_sculpt` (raise, lower, smooth or flatten at world points), `terrain_scatter_get`, `terrain_scatter_set` |
+| Terrain | `terrain_create` (flat terrain, built on a worker), `terrain_get`, `terrain_sculpt` (raise, lower, smooth, flatten, terrace, noise, restore, paint or erase at world points), `terrain_surface_sample`, `terrain_scatter_get`, `terrain_scatter_set` |
 | Seeing | `camera_set_view`, `screenshot_take`, `screenshot_compare`, `viewpoint_save`, `viewpoint_capture`, `scene_visual_review` |
 | Vehicles | `vehicle_list`, `vehicle_enter`, `vehicle_set_input`, `vehicle_telemetry`, `vehicle_validate`, `vehicle_dyno` |
 | Cinematics | `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_render` |
@@ -54,6 +54,8 @@ Run `npm install` in `tools/mcp/spartan_engine` once. Server options: `--host`, 
 | Scripting | `execute_lua` (edit mode only), and the `visual_script_*` bridge commands through `engine_command` to build [visual scripts](visual_scripting.md#using-it-from-tools) |
 | Headless | `headless_start`, `headless_stop`, `headless_smoke_test` run a private hidden instance |
 | Escape hatch | `engine_command` sends any bridge command by name |
+
+For a terrain brush stroke, pass `points` as alternating world X and Z coordinates. Choose `tip` from `round`, `ring` and `ridge`, or pass `stamp` with an image file path. `rotation` is in degrees. Use `step_height` with terrace and `feature_size` with noise. Paint and erase take a zero-based `layer` index and `opacity` from 0 to 1. For example, `{"mode":"paint","layer":3,"points":[0,-110,2,-108],"radius":4,"opacity":0.8}` extends the terrain example's dirt trail. Use `terrain_surface_sample` to check the dominant layer and vegetation masks, then `world_save` to keep the edit.
 
 `search_capabilities` finds the right tool for a task. Bugs and UX improvements that agents want fixed are collected in [`ADVICE_TO_MAINTAINERS.md`](../tools/mcp/spartan_engine/ADVICE_TO_MAINTAINERS.md) (`advice_to_maintainers_read`, `advice_to_maintainers_append`, `advice_to_maintainers_resolve`).
 

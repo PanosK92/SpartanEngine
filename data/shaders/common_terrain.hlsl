@@ -555,6 +555,15 @@ TerrainLayerPick terrain_pick_layers(
             float breakup = terrain_jitter(position_world, 3.1f + (float)i * 2.3f);
             score *= lerp(0.55f, 1.45f, saturate(breakup * 0.5f + 0.5f));
         }
+        if ((layer.terrain_flags & (1u << 18)) != 0)
+        {
+            float2 uv = saturate((position_world.xz - surface.terrain_world_mapping.xy) * surface.terrain_world_mapping.zw);
+            // Mask endpoints coincide with the terrain bounds (Terrain::paint_resolution).
+            uv = (uv * 511.0f + 0.5f) / 512.0f;
+            uint mask = layer.texture_indices[material_texture_index_packed + 1];
+            float paint = material_textures[NonUniformResourceIndex(mask)].SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+            score += paint / max(1.0f - paint, 0.0001f);
+        }
         if (score > 0.0f)
         {
             pick.count = min(pick.count + 1u, keep);
