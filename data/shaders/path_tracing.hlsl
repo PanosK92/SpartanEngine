@@ -13,6 +13,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_reservoir.hlsl"
 #include "rt_visibility.hlsl"
 
+// This pass always binds an RGBA32F history, including for typed UAV loads.
+[[vk::image_format("rgba32f")]] RWTexture2D<float4> pt_history : register(u0);
+
 RaySurface pt_trace(RayDesc ray, float2 cone)
 {
 #ifdef PATH_TRACING_SKY_ONLY
@@ -55,51 +58,61 @@ float3 pt_transmittance(float3 color, float absorption, float distance)
     return exponent > 0.0f ? pow(saturate(color), exponent) : 1.0f;
 }
 
-float pt_dielectric_fresnel(float cos_i, float eta, out float sin_t2)
+// Summing internal reflections at both faces of a thin dielectric sheet.
+float pt_sheet_reflectance(float cos_i, float ior)
 {
-    sin_t2      = eta * eta * (1.0f - cos_i * cos_i);
-    float cos_t = sqrt(max(0.0f, 1.0f - sin_t2));
-    float rs    = (eta * cos_i - cos_t) / max(eta * cos_i + cos_t, 1e-6f);
-    float rp    = (cos_i - eta * cos_t) / max(cos_i + eta * cos_t, 1e-6f);
-    return sin_t2 >= 1.0f ? 1.0f : 0.5f * (rs * rs + rp * rp);
+    float cos_t;
+    float f = restir_dielectric_fresnel(1.0f / ior, cos_i, cos_t);
+    return 2.0f * f / (1.0f + f);
 }
 
-// the gltf sheen and clear coat layers over the base lobes, the same lobes as the raster brdf, f times cos,
-// the coat lobe itself is left out when the caller sampled the coat on its own
-float3 pt_layers_evaluate(MaterialParameters mat, RaySurface surface, float3 v, float3 l, float3 base, bool coat_lobe)
+// A resolved volume supplies its own chord length. An authored optical shell can be
+// much thinner than the mesh used to display it (for example a coated glass sample).
+float3 pt_medium_transmittance(RestirMediumState medium, float distance, float cosine)
 {
-    float3 n      = surface.normal;
-    float  n_dot_l = dot(n, l);
-    float  n_dot_v = dot(n, v);
-    if (n_dot_l <= 0.0f || n_dot_v <= 0.0f)
-        return base;
-
-    float3 h       = normalize(v + l);
-    float  n_dot_h = saturate(dot(n, h));
-    float  v_dot_h = saturate(dot(v, h));
-    float3 result  = base;
-
-    float sheen_weight = max(mat.sheen_color.r, max(mat.sheen_color.g, mat.sheen_color.b));
-    if (mat.sheen > 0.0f && sheen_weight > 0.0f)
-    {
-        float3 sheen = D_Charlie(max(mat.sheen_color.w, 0.07f), n_dot_h) * V_Neubelt(n_dot_v, n_dot_l) * mat.sheen_color.rgb;
-        result       = result * (1.0f - sheen_weight * 0.5f) + sheen * n_dot_l;
-    }
-
-    if (mat.clearcoat > 0.0f)
-    {
-        result *= coat_transmission(mat.clearcoat, n_dot_v, n_dot_l);
-        if (coat_lobe)
-        {
-            float a2 = max(mat.clearcoat_roughness * mat.clearcoat_roughness, 1e-4f);
-            result  += D_GGX(n_dot_h, a2) * V_Kelemen(v_dot_h) * F_Schlick(0.04f, 1.0f, v_dot_h) * mat.clearcoat * n_dot_l;
-        }
-    }
-    return result;
+    uint index = restir_medium_material(medium.slots.x);
+    if (index == RESTIR_NO_MEDIUM) return 1.0f;
+    MaterialParameters mat = material_parameters[index];
+    if (mat.thickness > 0.0f && (mat.flags & (1u << 13u)) == 0)
+        distance = min(distance, mat.thickness / max(abs(cosine), 1e-4f));
+    return restir_medium_transmittance(medium, distance);
 }
 
-// light reaches the shading point through blended surfaces and glass, volumes are crossed without their bend,
-// a delta sun is never found through refraction and glass would cast black shadows the raster path does not
+// A frosted sheet scatters about the forward direction. Folding its GGX reflection
+// lobe across the tangent plane preserves solid angle and avoids entering a fictitious volume.
+float3 pt_sheet_evaluate(RaySurface surface, MaterialParameters mat, float3 v, float3 l)
+{
+    float alpha = restir_dielectric_alpha(surface.roughness);
+    bool transmitted = dot(surface.geometric_normal, l) < 0.0f;
+    if (transmitted) l = reflect(l, surface.normal);
+    float nv = dot(surface.normal, v);
+    float nl = dot(surface.normal, l);
+    if (alpha == 0.0f || min(nv, nl) <= 0.0f) return 0.0f;
+    float3 h = normalize(v + l);
+    float a2 = alpha * alpha;
+    float d = restir_dielectric_ndf(world_to_local(h, surface.normal), alpha);
+    float f = pt_sheet_reflectance(saturate(dot(v, h)), max(mat.ior, 1.0f));
+    float3 factor = transmitted ? (1.0f - f) * pt_transmittance(surface.albedo, mat.absorption, mat.thickness) : f;
+    return factor * d * restir_v_smithggx_cos(nv, nl, a2);
+}
+
+PathSurface pt_bsdf_surface(RaySurface hit, MaterialParameters mat)
+{
+    PathSurface surface = (PathSurface)0;
+    surface.hit_normal = hit.normal;
+    surface.geometric_normal = hit.geometric_normal;
+    surface.material_index = hit.material_index;
+    surface.albedo = hit.albedo;
+    surface.roughness = hit.roughness;
+    surface.metallic = hit.metallic;
+    surface.layered = restir_layered(mat);
+    surface.front_facing = hit.front_face;
+    surface.ior = max(mat.ior, 1.0f);
+    return surface;
+}
+
+// A straight shadow connection can cross alpha coverage and thin panes. Solid glass
+// changes direction at the boundary and is handled by sampling the dielectric BSDF.
 float3 pt_visibility(float3 origin, float3 direction, float distance)
 {
     float3 transmittance = 1.0f;
@@ -120,16 +133,10 @@ float3 pt_visibility(float3 origin, float3 direction, float distance)
         {
             transmittance *= 1.0f - surface.alpha;
         }
-        else if (pt_is_dielectric(mat))
+        else if (pt_is_dielectric(mat) && mat.is_thin_walled())
         {
-            bool thin = mat.is_thin_walled();
-            float sin_t2;
-            float fresnel  = pt_dielectric_fresnel(saturate(dot(-direction, surface.normal)), 1.0f / max(mat.ior, 1.0001f), sin_t2);
-            transmittance *= 1.0f - fresnel;
-            if (thin)
-                transmittance *= pt_transmittance(surface.albedo, mat.absorption, mat.thickness);
-            else if (!surface.front_face)
-                transmittance *= pt_transmittance(mat.color.rgb, mat.absorption, mat.thickness);
+            float reflectance = pt_sheet_reflectance(saturate(dot(-direction, surface.normal)), max(mat.ior, 1.0f));
+            transmittance *= (1.0f - reflectance) * pt_transmittance(surface.albedo, mat.absorption, mat.thickness);
         }
         else
         {
@@ -147,129 +154,137 @@ float3 pt_visibility(float3 origin, float3 direction, float distance)
     return 0.0f;
 }
 
-float3 pt_direct(RaySurface surface, float3 view_dir, inout uint seed)
+float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout uint seed, bool dielectric, float eta, RestirMediumState medium)
 {
-    float3 result = 0.0f;
     float3 shading_pos = surface.position;
-    float3 shading_normal = surface.normal;
-    float3 ray_origin_light = shading_pos + surface.geometric_normal * compute_ray_offset(shading_pos);
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    // analytical lights
-    for (uint light_idx = 0; light_idx < light_count; light_idx++)
+    if (light_count == 0)
+        return 0.0f;
+    // Select one analytic light and divide by its discrete selection probability.
+    uint light_idx = min(uint(random_float(seed) * light_count), light_count - 1);
+    LightParameters light = light_parameters[light_idx];
+
+    if (light.intensity <= 0.0f)
+        return 0.0f;
+
+    uint light_flags    = light.flags;
+    bool is_directional = (light_flags & (1u << 0)) != 0;
+    bool is_point       = (light_flags & (1u << 1)) != 0;
+    bool is_spot        = (light_flags & (1u << 2)) != 0;
+    bool is_area        = (light_flags & (1u << 6)) != 0;
+
+    float3 light_color = light.color.rgb;
+    float3 light_dir;
+    float  light_dist;
+    float  light_pdf    = 1.0f;
+    float  attenuation  = 1.0f;
+
+    if (is_directional)
     {
-        LightParameters light = light_parameters[light_idx];
+        light_dir  = -light.direction;
+        light_dist = 1e15f;
+        light_pdf  = 1.0f;
+    }
+    else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
+    {
+        float3 light_normal = light.direction;
+        // Use the authored roll, matching the primary rectangle and shadows.
+        float3 light_right = normalize(light.direction_right);
+        float3 light_up = normalize(cross(light_normal, light_right));
 
-        if (light.intensity <= 0.0f)
-            continue;
+        // urena 2013 spherical rectangle solid angle sampling
+        float3 ex          = light_right * light.area_width;
+        float3 ey          = light_up    * light.area_height;
+        float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
 
-        uint light_flags    = light.flags;
-        bool is_directional = (light_flags & (1u << 0)) != 0;
-        bool is_point       = (light_flags & (1u << 1)) != 0;
-        bool is_spot        = (light_flags & (1u << 2)) != 0;
-        bool is_area        = (light_flags & (1u << 6)) != 0;
+        float2 xi = random_float2(seed);
+        float3 light_sample_pos;
+        float  solid_angle;
+        sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
 
-        float3 light_color = light.color.rgb;
-        float3 light_dir;
-        float  light_dist;
-        float  light_pdf    = 1.0f;
-        float  attenuation  = 1.0f;
+        if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
+            return 0.0f;
 
-        if (is_directional)
+        float3 to_light = light_sample_pos - shading_pos;
+        light_dist      = length(to_light);
+        if (light_dist < 1e-3f)
+            return 0.0f;
+        light_dir       = to_light / light_dist;
+
+        float cos_light = dot(-light_dir, light_normal);
+        if (cos_light <= 0.0f)
+            return 0.0f;
+
+        light_pdf   = 1.0f / solid_angle;
+        // the 1/d^2 term is baked into the solid angle pdf, only the artistic range window applies
+        attenuation = restir_range_window(light_dist, light.range);
+    }
+    else if (is_point || is_spot)
+    {
+        float3 to_light = light.position - shading_pos;
+        light_dist      = length(to_light);
+        if (light_dist <= 0.0f) return 0.0f;
+        light_dir       = to_light / light_dist;
+        light_pdf       = 1.0f;
+
+        if (light.range <= 0.0f || light_dist >= light.range)
         {
-            light_dir  = -light.direction;
-            light_dist = 1000.0f;
-            light_pdf  = 1.0f;
-        }
-        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-        {
-            float3 light_normal = light.direction;
-            // Use the authored roll, matching the primary rectangle and shadows.
-            float3 light_right = normalize(light.direction_right);
-            float3 light_up = normalize(cross(light_normal, light_right));
-
-            // urena 2013 spherical rectangle solid angle sampling
-            float3 ex          = light_right * light.area_width;
-            float3 ey          = light_up    * light.area_height;
-            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
-
-            float2 xi = random_float2(seed);
-            float3 light_sample_pos;
-            float  solid_angle;
-            sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
-
-            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
-                continue;
-
-            float3 to_light = light_sample_pos - shading_pos;
-            light_dist      = length(to_light);
-            if (light_dist < 1e-3f)
-                continue;
-            light_dir       = to_light / light_dist;
-
-            float cos_light = dot(-light_dir, light_normal);
-            if (cos_light <= 0.0f)
-                continue;
-
-            light_pdf   = 1.0f / solid_angle;
-            // the 1/d^2 term is baked into the solid angle pdf, only the artistic range window applies
-            attenuation = restir_range_window(light_dist, light.range);
-        }
-        else if (is_point || is_spot)
-        {
-            float3 to_light = light.position - shading_pos;
-            light_dist      = length(to_light);
-            light_dir       = to_light / light_dist;
-            light_pdf       = 1.0f;
-
-            if (light.range <= 0.0f || light_dist >= light.range)
-            {
-                continue;
-            }
-
-            attenuation = restir_range_window(light_dist, light.range) / (light_dist * light_dist + 0.0001f);
-
-            if (is_spot)
-            {
-                attenuation *= light_spot_factor(light_flags, -light_dir, light.direction, light.direction_right, light.angle);
-            }
-        }
-        else
-        {
-            continue;
+            return 0.0f;
         }
 
-        float n_dot_l = dot(shading_normal, light_dir);
-        if (n_dot_l <= 0.0f)
-            continue;
+        attenuation = restir_range_window(light_dist, light.range) / (light_dist * light_dist + 0.0001f);
 
-        float3 visibility = pt_visibility(ray_origin_light, light_dir, light_dist);
-        if (all(visibility <= 0.0f))
-            continue;
-
-        // The selected incident radiance is independent of the incoming RC view.
-        float  brdf_pdf;
-        float3 brdf = evaluate_brdf(surface.albedo, surface.roughness, surface.metallic, shading_normal, view_dir, light_dir, brdf_pdf, 1.0f);
-        brdf        = pt_layers_evaluate(material_parameters[surface.material_index], surface, view_dir, light_dir, brdf, true);
-
-        // analytical lights are not in the bvh, single strategy mis weight of 1 is correct
-        float mis_weight = 1.0f;
-
-        float3 Li = light_color * light.intensity * attenuation * visibility;
-        result += brdf * Li / max(light_pdf, 1e-6f);
+        if (is_spot)
+        {
+            attenuation *= light_spot_factor(light_flags, -light_dir, light.direction, light.direction_right, light.angle);
+        }
+    }
+    else
+    {
+        return 0.0f;
     }
 
-    return result;
+    float pdf;
+    MaterialParameters mat = material_parameters[bsdf.material_index];
+    bool sheet = dielectric && mat.is_thin_walled();
+    float3 brdf = sheet ? pt_sheet_evaluate(surface, mat, view_dir, light_dir) :
+        restir_surface_evaluate(bsdf, view_dir, light_dir, pdf, 1.0f, dielectric, eta);
+    float3 incoming = light_color * light.intensity * attenuation * (float(light_count) / light_pdf);
+    float3 scattered = 0.0f;
+    if (!dielectric && is_subsurface_diffusion_enabled() && mat.has_subsurface_profile())
+    {
+        float entry = saturate(0.3f - dot(surface.normal, light_dir));
+        if (entry > 0.0f)
+        {
+            float safety = is_area ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f : 0.01f;
+            scattered = incoming * rt_subsurface_transmittance(shading_pos, surface.geometric_normal, light_dir,
+                light_dist, safety, mat.subsurface_radius) * surface.albedo * (1.0f - surface.metallic) *
+                (0.96f * INV_PI * entry * saturate(mat.subsurface_scattering));
+        }
+    }
+    if (!any(brdf > 0.0f)) return scattered;
+    bool transmission = dot(surface.geometric_normal, light_dir) < 0.0f;
+    if (dielectric && !sheet && transmission)
+        restir_medium_cross(medium, bsdf.material_index, 0u, bsdf.front_facing);
+    float side = transmission ? -1.0f : 1.0f;
+    float3 origin = shading_pos + side * surface.geometric_normal * compute_ray_offset(shading_pos);
+    float3 visibility = pt_visibility(origin, light_dir, light_dist) * pt_medium_transmittance(medium, light_dist, dot(surface.geometric_normal, light_dir));
+    return scattered + brdf * visibility * incoming;
 }
 
 [numthreads(8, 8, 1)]
 void main_cs(uint3 tid : SV_DispatchThreadID)
 {
     uint2 size;
-    tex_uav.GetDimensions(size.x, size.y);
-    if (any(tid.xy >= size)) return;
+    pt_history.GetDimensions(size.x, size.y);
+    uint stride = pass_uint(pass_path_tracing::stride);
+    uint phase = pass_uint(pass_path_tracing::phase);
+    uint2 block = tid.xy * stride;
+    uint2 pixel = block + uint2(phase % stride, phase / stride);
+    if (any(pixel >= size)) return;
     uint samples = pass_uint(pass_path_tracing::samples);
-    uint seed = pcg_hash(tid.x + tid.y * size.x) ^ pcg_hash(samples + 1u);
-    float2 uv = (float2(tid.xy) + random_float2(seed)) / float2(size);
+    uint seed = create_seed_for_pass(pixel, samples, 0u);
+    float2 uv = (float2(pixel) + random_float2(seed)) / float2(size);
     RayDesc ray;
     // Reverse-Z near/far points also generate parallel rays for orthographic cameras.
     ray.Origin = get_position(1.0f, uv);
@@ -280,83 +295,82 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 radiance = 0.0f;
     float3 throughput = 1.0f;
     uint max_bounces = pass_uint(pass_path_tracing::bounces);
-    for (uint bounce = 0; bounce <= max_bounces; ++bounce)
+    RestirMediumState medium = (RestirMediumState)0;
+    uint bounce = 0;
+    uint transparent_hits = 0;
+    while (bounce <= max_bounces)
     {
         RaySurface surface = pt_trace(ray, cone);
         if (!surface.hit)
         {
-            radiance += throughput * sample_sky(ray.Direction);
+            // The camera sees the visible sun disc. Its lighting at scattering vertices is sampled analytically.
+            float3 sky = bounce == 0 ? tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(ray.Direction), 0).rgb
+                                     : sample_sky(ray.Direction);
+            radiance += throughput * sky;
             break;
         }
-        radiance += throughput * surface.emission;
         MaterialParameters mat = material_parameters[surface.material_index];
         bool is_dielectric = pt_is_dielectric(mat);
 
-        float3 direction;
+        throughput *= pt_medium_transmittance(medium, surface.hit_distance, dot(surface.geometric_normal, ray.Direction));
         if (pt_is_blended(mat) && random_float(seed) >= surface.alpha)
         {
-            if (bounce == max_bounces) break;
-            direction = ray.Direction;
+            if (++transparent_hits > 32) break;
+            cone = ray_cone_propagate(cone, surface.hit_distance);
+            ray.Origin = surface.position - surface.geometric_normal * compute_ray_offset(surface.position);
+            continue;
         }
-        // glass ignores metalness like the raster glass does, authored car glass carries high metalness
+        radiance += throughput * surface.emission;
+        PathSurface bsdf = pt_bsdf_surface(surface, mat);
+        float3 direction;
+        if (is_dielectric && mat.is_thin_walled())
+        {
+            float alpha = restir_dielectric_alpha(surface.roughness);
+            if (alpha > 0.0f)
+                radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, true, 1.0f, medium);
+            if (bounce == max_bounces) break;
+            float3 wi = world_to_local(-ray.Direction, surface.normal);
+            if (wi.z <= 0.0f) break;
+            float3 h = alpha > 0.0f ? sample_ggx_vndf(wi, random_float2(seed), alpha) : float3(0, 0, 1);
+            float3 wo = reflect(-wi, h);
+            if (wo.z <= 0.0f) break;
+            if (alpha > 0.0f)
+            {
+                float a2 = alpha * alpha;
+                float gi = sqrt(a2 + (1.0f - a2) * wi.z * wi.z);
+                float go = sqrt(a2 + (1.0f - a2) * wo.z * wo.z);
+                throughput *= wo.z * (wi.z + gi) / (wo.z * gi + wi.z * go);
+            }
+            bool transmit = random_float(seed) >= pt_sheet_reflectance(saturate(dot(wi, h)), bsdf.ior);
+            if (transmit)
+            {
+                wo.z = -wo.z;
+                throughput *= pt_transmittance(surface.albedo, mat.absorption, mat.thickness);
+            }
+            direction = local_to_world(wo, surface.normal);
+            if ((dot(direction, surface.geometric_normal) < 0.0f) != transmit) break;
+        }
         else if (is_dielectric)
         {
+            float eta = restir_surface_eta(bsdf, medium);
+            radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, true, eta, medium);
             if (bounce == max_bounces) break;
-            bool thin        = mat.is_thin_walled();
-            float3 n         = surface.normal;
-            float alpha      = restir_dielectric_alpha(surface.roughness);
-            float3 h         = alpha > 0.0f ? local_to_world(sample_ggx_vndf(world_to_local(-ray.Direction, n), random_float2(seed), alpha), n) : n;
-            float ior        = max(mat.ior, 1.0001f);
-            float eta        = (thin || surface.front_face) ? 1.0f / ior : ior;
-            float sin_t2;
-            float fresnel    = pt_dielectric_fresnel(saturate(dot(-ray.Direction, h)), eta, sin_t2);
-            float3 reflected = reflect(ray.Direction, h);
-            if (random_float(seed) < fresnel)
-            {
-                direction = reflected;
-                if (dot(direction, surface.geometric_normal) <= 0.0f) break;
-            }
-            else if (thin)
-            {
-                // both interfaces of a thin shell cancel the bend, roughness still spreads the ray
-                direction   = reflect(reflected, surface.geometric_normal);
-                throughput *= pt_transmittance(surface.albedo, mat.absorption, mat.thickness);
-                if (dot(direction, surface.geometric_normal) >= 0.0f) break;
-            }
-            else
-            {
-                // no eta squared radiance scale, every emitter is outside so entry and exit cancel, and the scaled
-                // down throughput inside dense glass would make russian roulette kill most paths
-                direction = normalize(refract(ray.Direction, h, eta));
-                if (dot(direction, surface.geometric_normal) >= 0.0f) break;
-                // a volume tints once per crossing over its authored thickness, like the raster glass and the gltf reference,
-                // the traced distance would ignore that the gltf thickness and the mesh size disagree
-                if (!surface.front_face)
-                    throughput *= pt_transmittance(mat.color.rgb, mat.absorption, mat.thickness);
-            }
+            RestirSurfaceSample scatter = restir_surface_sample(bsdf, -ray.Direction, random_float3(seed), 1.0f, true, eta);
+            if (!scatter.valid) break;
+            direction = scatter.direction;
+            throughput *= scatter.weight;
+            restir_surface_cross_medium(medium, bsdf, scatter);
         }
         else
         {
-            radiance += throughput * pt_direct(surface, -ray.Direction, seed);
+            radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, false, 1.0f, medium);
             if (bounce == max_bounces) break;
-            float3 v = -ray.Direction;
-            // the coat is picked by its fresnel, the vndf sample of it carries a weight of about one
-            float coat_pick = mat.clearcoat > 0.0f ? mat.clearcoat * F_Schlick(0.04f, 1.0f, saturate(dot(surface.normal, v))) : 0.0f;
-            if (random_float(seed) < coat_pick)
-            {
-                float3 h  = local_to_world(sample_ggx_vndf(world_to_local(v, surface.normal), random_float2(seed), max(mat.clearcoat_roughness, 0.01f)), surface.normal);
-                direction = reflect(ray.Direction, h);
-                if (dot(direction, surface.geometric_normal) <= 0.0f || dot(direction, surface.normal) <= 0.0f) break;
-            }
-            else
-            {
-                float pdf;
-                direction = sample_brdf(surface.albedo, surface.roughness, surface.metallic, surface.normal, v, random_float2(seed), pdf, 1.0f);
-                if (pdf <= 1e-8f || dot(direction, surface.geometric_normal) <= 0.0f) break;
-                float unused_pdf;
-                float3 base = evaluate_brdf(surface.albedo, surface.roughness, surface.metallic, surface.normal, v, direction, unused_pdf, 1.0f);
-                throughput *= pt_layers_evaluate(mat, surface, v, direction, base, false) / (pdf * (1.0f - coat_pick));
-            }
+            float pdf;
+            direction = sample_reflection_brdf(surface.albedo, surface.roughness, surface.metallic,
+                surface.normal, surface.geometric_normal, -ray.Direction, random_float2(seed), pdf, 1.0f);
+            if (!(pdf > 0.0f)) break;
+            float eval_pdf;
+            throughput *= restir_surface_evaluate(bsdf, -ray.Direction, direction, eval_pdf, 1.0f) / pdf;
         }
         if (any(isnan(throughput)) || any(isinf(throughput))) break;
         if (bounce >= 3)
@@ -370,11 +384,20 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         float side = dot(direction, surface.geometric_normal) >= 0.0f ? 1.0f : -1.0f;
         ray.Origin = surface.position + side * surface.geometric_normal * compute_ray_offset(surface.position);
         ray.Direction = direction;
+        ++bounce;
     }
     if (any(isnan(radiance)) || any(isinf(radiance))) radiance = 0.0f;
-    // Never read uninitialised history after a reset. FP32 running means retain dim indirect light.
-    float3 average = radiance;
-    if (samples > 0)
-        average = lerp(tex[tid.xy].rgb, radiance, 1.0f / (float(samples) + 1.0f));
-    tex_uav[tid.xy] = float4(average, 1.0f);
+    if (samples == 0 && phase == 0)
+    {
+        // Navigation preview. Each following phase overwrites its own pixel before any averaging.
+        for (uint y = block.y; y < min(block.y + stride, size.y); ++y)
+            for (uint x = block.x; x < min(block.x + stride, size.x); ++x)
+                pt_history[uint2(x, y)] = float4(radiance, 1.0f);
+    }
+    else
+    {
+        if (samples > 0)
+            radiance = lerp(pt_history[pixel].rgb, radiance, 1.0f / (float(samples) + 1.0f));
+        pt_history[pixel] = float4(radiance, 1.0f);
+    }
 }

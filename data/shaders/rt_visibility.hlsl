@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #ifndef SPARTAN_RT_VISIBILITY
 #define SPARTAN_RT_VISIBILITY
 #include "common.hlsl"
+#include "subsurface_scattering.hlsl"
 
 #ifdef RAY_TRACING_ENABLED
 
@@ -239,6 +240,20 @@ RtTransmittance rt_trace_transmittance(float3 origin, float3 direction, float t_
 float rt_trace_nearest(float3 origin, float3 direction, float t_max)
 {
     return rt_trace_foliage_shadow(origin, direction, t_max);
+}
+
+// Measure a scattering slab toward the light, then test visibility beyond its far surface.
+float3 rt_subsurface_transmittance(float3 position, float3 normal, float3 l, float distance, float safety, float3 radius)
+{
+    float max_thickness = 16.0f * max(radius.r, max(radius.g, radius.b));
+    const float inset = 0.0005f;
+    float3 origin = position - normal * inset;
+    float exit = rt_trace_nearest(origin, l, min(distance, max_thickness));
+    if (exit < 0.0f) return 0.0f;
+    float clearance = distance - exit - safety;
+    if (clearance > 0.002f && rt_trace_visibility(origin + l * (exit + 0.001f), l, clearance) <= 0.0f)
+        return 0.0f;
+    return subsurface_burley_transmittance(exit + inset, radius);
 }
 
 #endif

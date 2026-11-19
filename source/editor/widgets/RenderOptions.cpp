@@ -667,6 +667,16 @@ namespace
             {
                 cvar_slider("Resolution", "r.restir_pt_scale", "Share of the render resolution that is path traced. Lower is faster and noisier.", 0.1f, 1.0f, "%.0f%%", 100.0f, 0.0f, 1);
             }
+            else
+            {
+                cvar_slider("Max bounces", "r.path_tracing_bounces", "Maximum scattering events per camera path. Changing this restarts accumulation.", 1.0f, 32.0f, "%.0f");
+                if (section_unfiltered() && ensure_rows())
+                {
+                    char progress[80];
+                    snprintf(progress, sizeof(progress), "%u completed samples per pixel", Renderer::GetPathTracingSampleCount());
+                    row_note(progress, style::color_text_faint);
+                }
+            }
             ImGui::EndDisabled();
 
             const bool path_tracing_enabled = rt_supported &&

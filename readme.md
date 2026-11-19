@@ -120,11 +120,18 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
 <p align="center"><sub>Expand a section for the full breakdown.</sub></p>
 
 <details>
-<summary><b>Lighting and global illumination</b> &nbsp;·&nbsp; <sub>ReSTIR, ray tracing, subsurface scattering, IES profiles, clouds, fog, FFT ocean</sub></summary>
+<summary><b>Lighting and global illumination</b> &nbsp;·&nbsp; <sub>Hybrid, ReSTIR PT and Reference path tracer</sub></summary>
 
 <br/>
 
-- **ReSTIR path tracing** with spatiotemporal reservoir resampling for real-time multi-bounce global illumination
+Choose among three lighting modes in **Render Options → Lighting**. Both path tracing modes require hardware ray tracing.
+
+- **Hybrid** uses rasterized deferred lighting with optional ray-traced reflections and shadows.
+- **ReSTIR PT** uses path tracing with spatiotemporal reservoir resampling for real-time multi-bounce global illumination.
+- **Reference path tracer** traces independent camera paths and progressively averages samples while the scene is still, giving you a lighting reference for the other two modes.
+
+**Lighting features**
+
 - **Clustered deferred shading** with a GPU-built logarithmic-Z grid and cone-vs-AABB culling for spots, so many local lights cost near-constant time per pixel
 - **IES photometric light profiles** (LM-63): spot lights emit the measured beam of a real fixture, from car headlights with regulation cut-offs to architectural downlights, with correct lumens and candela across direct lighting, volumetric fog and path tracing. A feature usually reserved for the big commercial engines
 - **Hardware ray-traced reflections and shadows** via ray queries

@@ -132,16 +132,16 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
-        void BuildAccelerationStructure();
+        void BuildAccelerationStructure(bool finest = false);
         void RefitAccelerationStructure();
-        bool HasAccelerationStructure() const
+        bool HasAccelerationStructure(bool finest = false) const
         {
             if (!m_scene->mesh)
             {
                 return false;
             }
 
-            return m_scene->mesh->HasBlas(m_scene->sub_mesh_index);
+            return m_scene->mesh->HasBlas(m_scene->sub_mesh_index, finest && !m_allow_blas_update);
         }
         void InvalidateAccelerationStructure();
         uint64_t GetAccelerationStructureDeviceAddress() const;

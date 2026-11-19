@@ -1710,7 +1710,7 @@ namespace spartan
         };
 
         // wrappers to bind default arguments for functions with extra parameters
-        auto gen_sphere   = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_sphere(v, i);   };
+        auto gen_sphere   = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_sphere(v, i, 1.0f, 96, 48);   };
         auto gen_cylinder = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_cylinder(v, i); };
         auto gen_cone     = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_cone(v, i);     };
 

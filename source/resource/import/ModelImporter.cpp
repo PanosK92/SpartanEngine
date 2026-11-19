@@ -2383,7 +2383,8 @@ namespace spartan
         // Small rigid parts such as tires can arrive with more triangles than
         // an entire vehicle. Preserve seams and bound the error at the finest
         // resolution before the same surface feeds streaming and ray tracing.
-        if (!ctx.mesh->GetSkeleton() && !assimp_mesh->mNumAnimMeshes && indices.size() >= 25000u * 3u)
+        const bool preserve_source = (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::PreserveSourceGeometry)) != 0;
+        if (!preserve_source && !ctx.mesh->GetSkeleton() && !assimp_mesh->mNumAnimMeshes && indices.size() >= 25000u * 3u)
         {
             const BoundingBox local(vertices.data(), static_cast<uint32_t>(vertices.size()));
             const auto& owners = ctx.mesh_jobs[sub_mesh_index].entities;
@@ -2398,7 +2399,17 @@ namespace spartan
                 geometry_processing::simplify(indices, vertices, 4096u * 3u, true, false, false, 0.00035f);
             }
         }
-        ctx.mesh->AddGeometry(vertices, indices, sub_mesh_index);
+        if (preserve_source && !ctx.mesh->GetSkeleton() && !assimp_mesh->mNumAnimMeshes)
+        {
+            // A raster hit and a ray leaving it must agree on the surface of a preserved scan.
+            if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
+                geometry_processing::weld_and_optimize(vertices, indices);
+            ctx.mesh->AddResidentGeometry(vertices, indices, sub_mesh_index);
+        }
+        else
+        {
+            ctx.mesh->AddGeometry(vertices, indices, sub_mesh_index);
+        }
     }
 
     void ModelImporter::ParseSkeleton(ImportContext& ctx)

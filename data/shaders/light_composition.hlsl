@@ -116,6 +116,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         float4 lighting = tex3.Load(int3(thread_id.xy, 0));
         light_specular = lighting.a >= 0.0f ? lighting.rgb : 0.0f;
+        if (surface.has_subsurface_profile() && surface.is_opaque())
+            light_diffuse = tex6.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
             light_specular = compose_traced_ocean(surface, light_specular);
         light_emissive = surface.emissive;

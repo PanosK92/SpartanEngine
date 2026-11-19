@@ -694,14 +694,14 @@ namespace spartan
         return m_scene->mesh->GetObjectName();
     }
 
-    void Render::BuildAccelerationStructure()
+    void Render::BuildAccelerationStructure(bool finest)
     {
         if (!m_scene->mesh)
         {
             return;
         }
 
-        m_scene->mesh->BuildAccelerationStructure(m_scene->sub_mesh_index, m_allow_blas_update);
+        m_scene->mesh->BuildAccelerationStructure(m_scene->sub_mesh_index, m_allow_blas_update, finest);
     }
 
     void Render::RefitAccelerationStructure()

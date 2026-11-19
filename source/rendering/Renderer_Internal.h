@@ -178,14 +178,15 @@ namespace spartan
             uint64_t brdf_lut_shader_hash = 0;
             struct PathTracingState
             {
-                std::shared_ptr<RHI_Texture> accumulation[2];
+                std::shared_ptr<RHI_Texture> accumulation;
                 math::Matrix camera;
                 uint64_t scene_revision = 0;
                 uint64_t accumulated_revision = 0;
                 uint64_t shader_hash = 0;
                 uint32_t samples = 0;
                 uint32_t bounces = 0;
-                uint32_t current = 0;
+                uint32_t phase = 0;
+                bool subsurface = false;
             } path_tracing;
 
             bool atmosphere_lut_produced = false;

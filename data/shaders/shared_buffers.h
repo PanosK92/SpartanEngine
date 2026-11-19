@@ -522,7 +522,8 @@ namespace pass_path_tracing
 {
     static const SHARED_UINT samples = 0; // previous samples, zero discards history
     static const SHARED_UINT bounces = 1;
-    static const SHARED_UINT has_scene = 2;
+    static const SHARED_UINT stride = 2;
+    static const SHARED_UINT phase = 3;
 }
 
 namespace pass_restir_temporal

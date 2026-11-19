@@ -1778,6 +1778,7 @@ namespace spartan
                 edited |= edit_cluster(*affected[i], reader);
             if (edited) changed.store(true, memory_order_relaxed);
         }, (count + batch_size - 1) / batch_size);
+        if (changed.load(memory_order_relaxed)) InvalidateBlas(sub_mesh_index);
         return changed.load(memory_order_relaxed);
     }
 
@@ -2468,7 +2469,74 @@ namespace spartan
         return GeometryBuffer::GetIndexBuffer();
     }
 
-    void Mesh::BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update)
+    bool Mesh::NeedsReferenceGeometry(uint32_t index) const
+    {
+        const SubMesh& sub = m_sub_meshes[index];
+        return !m_dynamic && !IsSkinned() && !sub.clusters.empty() && !sub.HasResidentRootOnly();
+    }
+
+    GeometryRange Mesh::GetBlasRange(uint32_t index, bool pending) const
+    {
+        if (index < m_reference_geometry.size() && (m_reference_geometry[index].built ||
+            (pending && m_reference_geometry[index].range.index_count != 0)))
+            return m_reference_geometry[index].range;
+
+        GeometryRange range = m_sub_meshes[index].root;
+        range.vertex_offset += GetRenderVertexOffset();
+        range.index_offset += m_global_index_offset;
+        return range;
+    }
+
+    bool Mesh::PrepareReferenceGeometry(uint32_t index)
+    {
+        m_reference_geometry.resize(m_sub_meshes.size());
+        auto& detail = m_reference_geometry[index];
+        if (detail.failed) return false;
+        if (detail.range.index_count != 0)
+            return GeometryBuffer::IsResident(detail.range.vertex_offset + detail.range.vertex_count,
+                detail.range.index_offset + detail.range.index_count);
+
+        if (!detail.pending.valid())
+        {
+            auto owner = weak_from_this();
+            auto decode = make_shared<packaged_task<ReferenceGeometry::Decoded()>>([owner, index]()
+            {
+                ReferenceGeometry::Decoded result;
+                auto mesh = static_pointer_cast<Mesh>(owner.lock());
+                if (!mesh || !mesh->ReadGeometry(index, &result.indices, &result.vertices))
+                    return ReferenceGeometry::Decoded{};
+                return result;
+            });
+            detail.pending = decode->get_future();
+            ThreadPool::AddTask([decode]() { (*decode)(); });
+            return false;
+        }
+        if (detail.pending.wait_for(chrono::seconds(0)) != future_status::ready) return false;
+
+        ReferenceGeometry::Decoded result;
+        try
+        {
+            result = detail.pending.get();
+        }
+        catch (const exception& e)
+        {
+            SP_LOG_ERROR("Reference geometry job failed for %s: %s", m_object_name.c_str(), e.what());
+        }
+        if (result.indices.empty() || result.vertices.empty())
+        {
+            SP_LOG_ERROR("Cannot decode reference geometry for %s, submesh %u", m_object_name.c_str(), index);
+            detail.failed = true;
+            return false;
+        }
+        auto& range = detail.range;
+        range.vertex_count = static_cast<uint32_t>(result.vertices.size());
+        range.index_count = static_cast<uint32_t>(result.indices.size());
+        range.vertex_offset = GeometryBuffer::AppendVertices(result.vertices.data(), range.vertex_count);
+        range.index_offset = GeometryBuffer::AppendIndices(result.indices.data(), range.index_count);
+        return false; // BuildIfDirty publishes the new ranges before the next build attempt.
+    }
+
+    void Mesh::BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update, bool finest)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
@@ -2505,7 +2573,7 @@ namespace spartan
         {
             const uint32_t i = sub_mesh_index;
             // skip if already built
-            if (m_blas[i])
+            if (HasBlas(i, finest && !allow_update))
             {
                 return;
             }
@@ -2517,7 +2585,10 @@ namespace spartan
                 return;
             }
 
-            const auto& range = m_sub_meshes[i].root; // trace the pinned virtual root
+            const bool use_detail = finest && !allow_update && NeedsReferenceGeometry(i) &&
+                (i >= m_reference_geometry.size() || !m_reference_geometry[i].failed);
+            if (use_detail && !PrepareReferenceGeometry(i)) return;
+            const GeometryRange range = use_detail ? m_reference_geometry[i].range : GetBlasRange(i);
 
             // skip degenerate sub-meshes, passing zero counts to vkGetAccelerationStructureBuildSizesKHR
             // can produce garbage build sizes and crash the driver mid-burst
@@ -2527,9 +2598,8 @@ namespace spartan
                 return;
             }
 
-            // compute global offsets: mesh base offset + range-relative offset
-            uint32_t global_vertex_offset = m_global_vertex_offset + range.vertex_offset;
-            uint32_t global_index_offset  = m_global_index_offset + range.index_offset;
+            const uint32_t global_vertex_offset = range.vertex_offset;
+            const uint32_t global_index_offset = range.index_offset;
 
             // a loader thread can publish a mesh after this frame's geometry upload, its range may lie past the
             // end of the current gpu buffer, so the build waits until the range is resident and retries next frame
@@ -2555,6 +2625,7 @@ namespace spartan
             string blas_name = m_object_name + "_blas_" + to_string(i);
             m_blas[i] = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, blas_name.c_str());
             m_blas[i]->BuildBottomLevel(geometries, primitive_counts, allow_update);
+            if (use_detail) m_reference_geometry[i].built = true;
         }
     }
 
@@ -2565,6 +2636,7 @@ namespace spartan
 
     void Mesh::InvalidateBlas(uint32_t sub_mesh_index)
     {
+        if (sub_mesh_index < m_reference_geometry.size()) m_reference_geometry[sub_mesh_index] = {};
         if (sub_mesh_index < m_blas.size())
         {
             m_blas[sub_mesh_index].reset();
@@ -2575,6 +2647,7 @@ namespace spartan
     {
         // Geometry edits and world teardown invalidate the built geometry. Moving
         // unchanged input buffers alone does not invalidate a completed BLAS.
+        m_reference_geometry.clear();
         for (auto& blas : m_blas)
         {
             blas.reset();
@@ -2605,10 +2678,9 @@ namespace spartan
             return;
         }
 
-        const auto& range = m_sub_meshes[sub_mesh_index].root;
-
-        uint32_t global_vertex_offset = m_global_vertex_offset + range.vertex_offset;
-        uint32_t global_index_offset  = m_global_index_offset + range.index_offset;
+        const GeometryRange range = GetBlasRange(sub_mesh_index);
+        uint32_t global_vertex_offset = range.vertex_offset;
+        uint32_t global_index_offset  = range.index_offset;
         if (!GeometryBuffer::IsResident(global_vertex_offset + range.vertex_count, global_index_offset + range.index_count))
         {
             return;

@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =====================
 #include <vector>
 #include <mutex>
+#include <future>
 #include <atomic>
 #include <memory>
 #include <span>
@@ -202,7 +203,7 @@ namespace spartan
         void CreateGpuBuffers();
         // the global geometry buffer was emptied, upload again so the offsets point into the new one
         void ReuploadGpuBuffers();
-        void BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update = false);
+        void BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update = false, bool finest = false);
         RHI_Buffer* GetIndexBuffer();
         RHI_Buffer* GetVertexBuffer();
 
@@ -260,14 +261,17 @@ namespace spartan
 
             return m_blas[sub_mesh_index].get();
         }
-        bool HasBlas(uint32_t sub_mesh_index) const
+        // Global vertex/index offsets of the triangles currently in the BLAS.
+        GeometryRange GetBlasRange(uint32_t sub_mesh_index, bool pending = false) const;
+        bool HasBlas(uint32_t sub_mesh_index, bool finest = false) const
         {
             if (sub_mesh_index >= m_blas.size())
             {
                 return false;
             }
 
-            return m_blas[sub_mesh_index] != nullptr;
+            return m_blas[sub_mesh_index] && (!finest || !NeedsReferenceGeometry(sub_mesh_index) ||
+                (sub_mesh_index < m_reference_geometry.size() && (m_reference_geometry[sub_mesh_index].built || m_reference_geometry[sub_mesh_index].failed)));
         }
         void InvalidateBlas(uint32_t sub_mesh_index);
         void InvalidateAllBlas();
@@ -316,6 +320,24 @@ namespace spartan
         uint32_t m_global_meshlet_capacity        = 0;
         uint32_t m_global_meshlet_vertex_capacity = 0;
         uint32_t m_global_meshlet_micro_capacity  = 0;
+
+        // Decoded finest pages have their own addresses in the world geometry arena.
+        // The root remains available to rasterization and deformable BLAS builds.
+        struct ReferenceGeometry
+        {
+            GeometryRange range{};
+            bool built = false;
+            bool failed = false;
+            struct Decoded
+            {
+                std::vector<RHI_Vertex_PosTexNorTan> vertices;
+                std::vector<uint32_t> indices;
+            };
+            std::future<Decoded> pending;
+        };
+        bool NeedsReferenceGeometry(uint32_t index) const;
+        bool PrepareReferenceGeometry(uint32_t index);
+        std::vector<ReferenceGeometry> m_reference_geometry;
 
         // acceleration structures
         std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh

@@ -169,27 +169,9 @@ float3 subsurface_transmission(Surface surface, Light light)
         l             = (target - surface.position) / max(distance_max, 1e-4f);
     }
 
-    // past this the reddest channel is under half a percent, most of a head ends here
-    float radius_max    = max(max(surface.subsurface_radius.x, surface.subsurface_radius.y), surface.subsurface_radius.z);
-    float thickness_max = radius_max * 16.0f;
-    const float inset   = 0.0005f;
-    float3 origin       = surface.position - surface.normal * inset;
-    float exit          = rt_trace_nearest(origin, l, min(distance_max, thickness_max));
-    if (exit < 0.0f)
-    {
-        return 0.0f;
-    }
-
-    // stop before the fixture around the emitter, like the shadow rays
-    float emitter_safety = light.is_area() ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f : 0.01f;
-    float thickness      = exit + inset;
-    float clearance      = distance_max - exit - emitter_safety;
-    if (clearance > 0.002f && rt_trace_visibility(origin + l * (exit + 0.001f), l, clearance) <= 0.0f)
-    {
-        return 0.0f;
-    }
-
-    return light.radiance * entry * INV_PI * subsurface_burley_transmittance(thickness, surface.subsurface_radius);
+    float safety = light.is_area() ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f : 0.01f;
+    return light.radiance * entry * INV_PI * rt_subsurface_transmittance(
+        surface.position, surface.normal, l, distance_max, safety, surface.subsurface_radius);
 }
 #endif
 
@@ -241,6 +223,17 @@ void evaluate_light(
 
     // raw light energy without n_dot_l, sss needs it since light.radiance bakes n_dot_l in
     float3 light_radiance_raw = light.color * light.intensity * light.attenuation;
+
+    // ReSTIR already supplies reflected radiance. Only integrate the missing transmission lobe.
+    if (is_restir_pt_enabled())
+    {
+#ifdef RAY_TRACING_ENABLED
+        light.radiance = light_radiance_raw;
+        out_diffuse += subsurface_transmission(surface, light) * saturate(surface.subsurface_scattering) *
+            (1.0f - surface.metallic) * (1.0f - surface.F0);
+#endif
+        return;
+    }
 
     float3 L_shadow        = 1.0f;
     float3 L_specular_sum  = 0.0f;
@@ -483,6 +476,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, resolution_out, true, true);
     float3 out_diffuse  = 0.0f;
     float3 out_specular = 0.0f;
+
+    if (is_restir_pt_enabled() && (!surface.has_subsurface_profile() || !surface.is_opaque()))
+    {
+        tex_uav[thread_id.xy] = 0.0f;
+        return;
+    }
 
     // glass skips alpha on specular and zeroes diffuse, alpha blended surfaces are premultiplied like opaque ones
     // ao is not applied to direct light, it only modulates indirect, contact comes from micro_shadow

@@ -1770,10 +1770,9 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_light_diffuse);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
+            m_pass_state.subsurface_scattered = RHI_CommandList::IsPipelineReady();
         }
         RHI_CommandList::EndPass();
-
-        m_pass_state.subsurface_scattered = true;
     }
 
     void Renderer::Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
@@ -1797,6 +1796,8 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             if (IsRestirActive())
             {
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, scattered ?
+                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_scattered) : GetStandardTexture(Renderer_StandardTexture::Black));
                 RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
                 RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
                 RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));

@@ -381,6 +381,15 @@ namespace spartan
         bool ray_tracing_pending_blas = false;
         bool ray_tracing_membership_dirty = false;
 
+        bool needs_finest_blas(Render* render, bool reference)
+        {
+            // A detailed raster receiver inside its coarse ray proxy shadows itself.
+            Material* material = render->GetMaterial();
+            return reference || (cvar_restir_pt.GetValueAs<bool>() && material &&
+                material->GetProperty(MaterialProperty::SubsurfaceRadius) > 0.0f &&
+                material->GetProperty(MaterialProperty::SubsurfaceScattering) > 0.0f);
+        }
+
         void prepare_ray_tracing_renders()
         {
             SP_PROFILE_CPU();
@@ -391,7 +400,8 @@ namespace spartan
             ray_tracing_build_work.clear();
             ray_tracing_instanced_renders.clear();
             ray_tracing_pending_blas = false;
-            const bool full_transport = Renderer::IsPathTracingActive() || (cvar_restir_pt.GetValueAs<bool>() && !Renderer::IsStereoView());
+            const bool reference = Renderer::IsPathTracingActive();
+            const bool full_transport = reference || (cvar_restir_pt.GetValueAs<bool>() && !Renderer::IsStereoView());
             Camera* camera = Renderer::GetViewCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
@@ -415,10 +425,12 @@ namespace spartan
                     const RenderSceneData& data = *entries[i];
                     if (!data.active.load(memory_order_relaxed) || (!full_transport && (data.flags & RenderFlags::ExcludeFromRayTracing))) continue;
                     Render* render = data.render;
+                    // Empty render components have no BLAS to build and cannot invalidate a static reference.
+                    if (reference && (!render->GetMaterial() || render->GetIndexCount() == 0)) continue;
                     // Prepare resident geometry independently of TLAS visibility. Otherwise
                     // travelling across a culling boundary starts another BLAS burst and
                     // temporarily disables ray-traced lighting for the whole frame.
-                    const bool missing = !render->HasAccelerationStructure();
+                    const bool missing = !render->HasAccelerationStructure(needs_finest_blas(render, reference));
                     batch.missing |= missing;
                     if (missing) batch.builds.push_back(render);
                     // Keep the same off-screen shadow/reflection visibility budget.
@@ -5403,8 +5415,9 @@ namespace spartan
         instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
 
         geometry_info                = {};
-        geometry_info.vertex_offset  = render->GetVertexOffset();
-        geometry_info.index_offset   = render->GetIndexOffset();
+        const GeometryRange range    = render->GetMesh()->GetBlasRange(render->GetSubMeshIndex());
+        geometry_info.vertex_offset  = range.vertex_offset;
+        geometry_info.index_offset   = range.index_offset;
         geometry_info.material_index = instance.instance_custom_index;
         const Matrix inverse = m.Inverted();
         geometry_info.object_to_world_0 = Vector4(m.m00, m.m01, m.m02, m.m30);
@@ -5603,21 +5616,26 @@ namespace spartan
             const auto blas_start = chrono::steady_clock::now();
             uint64_t blas_triangles = 0;
 
+            const bool reference = IsPathTracingActive();
+            uint32_t attempts = 0;
             uint32_t blas_built     = 0;
             uint32_t blas_remaining = 0;
             const uint32_t blas_total = static_cast<uint32_t>(ray_tracing_renders.size());
             for (Render* render : ray_tracing_build_work)
             {
-                if (!render->HasAccelerationStructure())
+                const bool finest = needs_finest_blas(render, reference);
+                if (!render->HasAccelerationStructure(finest))
                 {
-                    const uint32_t triangles = render->GetIndexCount() / 3;
+                    const uint32_t triangles = finest && render->GetMesh() && render->GetIndexCount() ?
+                        render->GetMesh()->GetBlasRange(render->GetSubMeshIndex(), true).index_count / 3 : render->GetIndexCount() / 3;
                     const double elapsed_ms = chrono::duration<double, milli>(chrono::steady_clock::now() - blas_start).count();
                     // Always allow one build to make progress, even for a large mesh.
-                    if (blas_built == 0 || (blas_built < blas_builds_per_frame &&
-                        blas_triangles + triangles <= blas_triangles_per_frame && elapsed_ms < blas_cpu_budget_ms))
+                    if ((!finest || attempts < blas_builds_per_frame) && (blas_built == 0 || (blas_built < blas_builds_per_frame &&
+                        blas_triangles + triangles <= blas_triangles_per_frame && elapsed_ms < blas_cpu_budget_ms)))
                     {
-                        render->BuildAccelerationStructure();
-                        if (render->HasAccelerationStructure())
+                        ++attempts;
+                        render->BuildAccelerationStructure(finest);
+                        if (render->HasAccelerationStructure(finest))
                         {
                             blas_built++;
                             blas_triangles += triangles;
@@ -5853,6 +5871,7 @@ namespace spartan
                     if (!material) continue;
                     const uint64_t device_address = render->GetAccelerationStructureDeviceAddress();
                     if (!device_address || !render->GetVertexBuffer() || !render->GetIndexBuffer()) continue;
+                    const GeometryRange range = render->GetMesh()->GetBlasRange(render->GetSubMeshIndex());
                     const Matrix& m = entity->GetMatrix();
                     const uint64_t transform_revision = entity->GetTransformRevision();
                     const bool transform_changed = cache.entity_id != entity->GetObjectId() ||
@@ -5871,8 +5890,8 @@ namespace spartan
                         cache.instance.instance_custom_index != material->GetIndex() ||
                         cache.instance.flags != ((static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) == RHI_CullMode::None ? 2u : 0u) | (material->IsAlphaTested() ? 8u : 4u)) ||
                         cache.instance.mask != tlas_instance_mask(render, material) ||
-                        cache.geometry.vertex_offset != render->GetVertexOffset() ||
-                        cache.geometry.index_offset != render->GetIndexOffset())
+                        cache.geometry.vertex_offset != range.vertex_offset ||
+                        cache.geometry.index_offset != range.index_offset)
                     {
                         cache.entity_id = entity->GetObjectId();
                         cache.transform_revision = transform_revision;
@@ -7240,6 +7259,12 @@ namespace spartan
         const bool clouds_prepared = early_work_recorded ? clouds_prepared_early : Pass_Clouds_Prepare(eye_layer);
         if (IsRestirActive())
         {
+            m_pass_state.subsurface_scattered = false;
+            if (cvar_subsurface_scattering.GetValueAs<bool>() && m_pass_state.subsurface_profiles_present)
+            {
+                Pass_Light(false, eye_layer);
+                Pass_Light_Subsurface(eye_layer);
+            }
             Pass_Light_Composition(false, eye_layer);
         }
         else
@@ -7329,6 +7354,7 @@ namespace spartan
     void Renderer::ResetPathTracing()
     {
         m_pass_state.path_tracing.samples = 0;
+        m_pass_state.path_tracing.phase = 0;
     }
 
     void Renderer::Pass_PathTracing(bool sky_changed)
@@ -7337,41 +7363,45 @@ namespace spartan
         RHI_Texture* output = GetRenderTarget(Renderer_RenderTarget::frame_output);
         const bool has_scene = m_tlas && m_tlas->GetRhiResource();
         RHI_Shader* shader = GetShader(has_scene ? Renderer_Shader::path_tracing_c : Renderer_Shader::path_tracing_sky_c);
-        if (!GetViewCamera() || frame_is_loading || ray_tracing_pending_blas || m_pass_state.skip_rt_trace || !shader || !shader->IsCompiled())
+        if (!GetViewCamera() || (!has_scene && frame_is_loading) || m_pass_state.skip_rt_trace || !shader || !shader->IsCompiled())
         {
-            history.samples = 0;
+            ResetPathTracing();
             RHI_CommandList::ClearTexture(output, Color::standard_black);
             return;
         }
 
-        // Trace at output resolution: pixel filtering is stochastic, no raster AA/upscaler is involved.
-        if (!history.accumulation[0] || history.accumulation[0]->GetWidth() != output->GetWidth() ||
-            history.accumulation[0]->GetHeight() != output->GetHeight())
+        if (!history.accumulation || history.accumulation->GetWidth() != output->GetWidth() ||
+            history.accumulation->GetHeight() != output->GetHeight())
         {
-            for (uint32_t i = 0; i < 2; ++i)
-                history.accumulation[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
-                    output->GetWidth(), output->GetHeight(), 1, 1, RHI_Format::R32G32B32A32_Float,
-                    RHI_Texture_Srv | RHI_Texture_Uav, i == 0 ? "path_tracing_a" : "path_tracing_b");
-            history.samples = 0;
+            history.accumulation = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
+                output->GetWidth(), output->GetHeight(), 1, 1, RHI_Format::R32G32B32A32_Float,
+                RHI_Texture_Srv | RHI_Texture_Uav, "path_tracing_history");
+            ResetPathTracing();
         }
         const float requested_bounces = cvar_path_tracing_bounces.GetValue();
         const uint32_t bounces = static_cast<uint32_t>(std::isfinite(requested_bounces) ? std::clamp(requested_bounces, 1.0f, 32.0f) : 8.0f);
         const Matrix& camera = view().frame.view_projection_unjittered;
+        const bool subsurface = cvar_subsurface_scattering.GetValueAs<bool>();
         if (history.camera != camera || history.accumulated_revision != history.scene_revision ||
-            history.shader_hash != shader->GetHash() || history.bounces != bounces || sky_changed)
-            history.samples = 0;
+            history.shader_hash != shader->GetHash() || history.bounces != bounces || history.subsurface != subsurface || sky_changed)
+            ResetPathTracing();
         history.camera = camera;
         history.accumulated_revision = history.scene_revision;
         history.shader_hash = shader->GetHash();
         history.bounces = bounces;
+        history.subsurface = subsurface;
 
-        RHI_Texture* target = history.accumulation[history.current].get();
+        RHI_Texture* target = history.accumulation.get();
         // Stop before the sample count loses integer precision in the FP32 running mean.
         if (history.samples < (1u << 24))
         {
-            target = history.accumulation[history.current ^ 1u].get();
+            // One pixel per block per frame. Keep the number of camera paths bounded even at 4K.
+            uint32_t stride = 1;
+            auto blocks = [&](uint32_t pixels) { return (pixels + stride - 1) / stride; };
+            while (static_cast<uint64_t>(blocks(output->GetWidth())) * blocks(output->GetHeight()) > 65536)
+                ++stride;
+
             RHI_CommandList::BeginPass("path_tracing");
-            SetCommonTextures();
             RHI_CommandList::SetShader(shader);
             if (has_scene)
             {
@@ -7380,15 +7410,25 @@ namespace spartan
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, history.accumulation[history.current].get());
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, target);
             m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
             m_pcb_pass_cpu.set(pass_path_tracing::bounces, bounces);
-            m_pcb_pass_cpu.set(pass_path_tracing::has_scene, has_scene);
-            RHI_CommandList::Dispatch(target);
+            m_pcb_pass_cpu.set(pass_path_tracing::stride, stride);
+            m_pcb_pass_cpu.set(pass_path_tracing::phase, history.phase);
+            RHI_CommandList::Dispatch((blocks(output->GetWidth()) + 7) / 8, (blocks(output->GetHeight()) + 7) / 8);
+            const bool traced = RHI_CommandList::IsPipelineReady();
             RHI_CommandList::EndPass();
-            history.current ^= 1u;
-            ++history.samples;
+            if (!traced)
+            {
+                ResetPathTracing();
+                RHI_CommandList::ClearTexture(output, Color::standard_black);
+                return;
+            }
+            if (++history.phase == stride * stride)
+            {
+                history.phase = 0;
+                ++history.samples;
+            }
         }
 
         // Exposure and display encoding are still required to display linear radiance.
@@ -7495,6 +7535,12 @@ namespace spartan
         }
 
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        // Refresh the entire panorama on entering reference mode or editing the scene.
+        // A single rolling sky update would only replace one sixteenth of the previous environment.
+        if (IsPathTracingActive() && (!m_pass_state.path_tracing.accumulation ||
+            m_pass_state.path_tracing.accumulated_revision != m_pass_state.path_tracing.scene_revision ||
+            view().frame.camera_position != view().frame.camera_position_previous))
+            m_pass_state.sky.first_frame = true;
         const bool update_skysphere =
             secondary_render_root_active
                 ? false
@@ -7542,17 +7588,18 @@ namespace spartan
             if (RHI_Device::IsRecording(RHI_Frame_List::ComputeB))
                 RHI_Device::Submit(RHI_Frame_List::ComputeB, nullptr, false);
             RHI_Device::Bind(RHI_Frame_List::Graphics);
-            if (update_skysphere)
+            // Hold the converged panorama fixed while integrating this lighting solution.
+            const bool refresh_sky = m_pass_state.sky.warmup_this_frame || !m_pass_state.path_tracing.accumulation;
+            if (refresh_sky)
                 Pass_Skysphere();
-            Pass_PathTracing(update_skysphere);
+            Pass_PathTracing(refresh_sky);
             Pass_Text(rt_output, true);
             return;
         }
         if (!secondary_render_root_active)
         {
-            m_pass_state.path_tracing.accumulation[0].reset();
-            m_pass_state.path_tracing.accumulation[1].reset();
-            m_pass_state.path_tracing.samples = 0;
+            m_pass_state.path_tracing.accumulation.reset();
+            ResetPathTracing();
         }
 
         // the sky is first read by the reflection trace, on its own list the scatter work the gbuffer waits on queues ahead of it
