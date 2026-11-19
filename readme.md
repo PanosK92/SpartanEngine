@@ -146,7 +146,7 @@ Choose among three lighting modes in **Render Options → Lighting**. Both path 
 </details>
 
 <details>
-<summary><b>Rendering architecture</b> &nbsp;·&nbsp; <sub>bindless, GPU-driven, meshlets, universal HLSL</sub></summary>
+<summary><b>Rendering architecture</b> &nbsp;·&nbsp; <sub>virtualized geometry, bindless resources, GPU-driven rendering, universal HLSL</sub></summary>
 
 <br/>
 
@@ -155,7 +155,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 - **Zero-binding draw path**: all per-draw data lives in a single bindless storage buffer, push constants carry only an index
 - **Single global vertex and index buffer** for all geometry (inspired by id Tech), with **vertex pulling** that bypasses the Input Assembler and is shared by rasterization and ray tracing
 - **GPU-driven indirect rendering** with per-meshlet frustum, Hi-Z occlusion and backface cone culling; the CPU issues a single `DrawIndexedIndirectCount` per pass
-- **Meshlet clustering** via meshoptimizer, with mesh shaders when available and a vertex-pulling fallback
+- **Virtualized geometry** organizes meshes into a hierarchy of clusters built with meshoptimizer. The renderer streams geometry in pages and selects detail based on how large each region appears on screen. Mesh shaders and vertex pulling are both supported.
 - **Bindless everything**: materials, lights, samplers, uber shaders, minimal PSO permutations
 - **Universal HLSL** compiled for Vulkan (SPIR-V), DirectX 12, Metal (Metal Shader Converter) and WebGPU (SPIR-V to WGSL through Tint)
 - **GPU-side asset processing**: mip generation (FidelityFX SPD) and texture compression (Compressonator) at load time, not baked offline
@@ -174,7 +174,7 @@ Geometry, materials, textures, lights, transforms and bounds live in persistent,
 - **AMD FSR 3.1 frame generation** (FidelityFX SDK 1.1.4) on Vulkan and D3D12, works on any vendor's GPU, with frame-generation-aware fps, latency and frame rate limiting
 - **TAAU**: temporal anti-aliasing with built-in upsampling, Halton jitter and variance-clipped history
 - **Variable rate shading** and **dynamic resolution scaling**
-- **Foliage impostors** as the final GPU LOD, so dense forests stay cheap at distance
+- **Foliage impostors** let the virtualized geometry system draw distant trees with textured cards that preserve their silhouettes.
 - **Texture streaming** within a fixed memory budget
 - **Custom GPU breadcrumbs** for crash tracing and post-mortem debugging
 - **Physically based camera** with auto-exposure and physical light units (lux, lumens and kelvin)
