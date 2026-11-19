@@ -128,7 +128,7 @@ Choose among three lighting modes in **Render Options → Lighting**. Both path 
 
 - **Hybrid** uses rasterized deferred lighting with optional ray-traced reflections and shadows.
 - **ReSTIR PT** uses path tracing with spatiotemporal reservoir resampling for real-time multi-bounce global illumination.
-- **Reference path tracer** traces independent camera paths and progressively averages samples while the scene is still, giving you a lighting reference for the other two modes.
+- **Reference path tracer** traces independent camera paths and progressively averages samples while the scene is still, giving you a lighting reference for the other two modes. An optional NRD preview filters each completed sample. Switch it off to inspect the raw accumulation.
 
 **Lighting features**
 

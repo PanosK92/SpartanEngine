@@ -1579,6 +1579,8 @@ namespace spartan
             { Renderer_Shader::nrd_unpack_shadows_c,                  RHI_Shader_Type::Compute,       "nrd_unpack_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::path_tracing_sky_c,                  RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_SKY_ONLY",       true,  true },
             { Renderer_Shader::path_tracing_c,                      RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::path_tracing_guided_c,                   RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_GUIDES",         true,  true },
+            { Renderer_Shader::path_tracing_nrd_resolve_c,              RHI_Shader_Type::Compute,       "path_tracing_nrd_resolve.hlsl",        RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_ray_generation_r,            RHI_Shader_Type::RayGeneration, "restir_pt.hlsl",                       RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_ray_miss_r,                  RHI_Shader_Type::RayMiss,       "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_MISS",                   true,  true },
             { Renderer_Shader::restir_pt_ray_hit_r,                   RHI_Shader_Type::RayHit,        "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_HIT",                    true,  true },

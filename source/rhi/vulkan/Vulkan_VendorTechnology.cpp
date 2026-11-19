@@ -669,6 +669,7 @@ namespace spartan
             nrd_common::view_history view_history;
         };
 
+        nrd_pool pool_reference;
         nrd_pool pool_gi;
         nrd_pool pool_reflections;
         nrd_pool pool_reflections_right; // stereo, the right eye needs its own temporal history
@@ -705,6 +706,7 @@ namespace spartan
 
         void context_destroy()
         {
+            pool_destroy(pool_reference);
             pool_destroy(pool_gi);
             pool_destroy(pool_reflections);
             pool_destroy(pool_reflections_right);
@@ -732,8 +734,8 @@ namespace spartan
 
             nri::QueueFamilyVKDesc queue_family = {};
             queue_family.queueNum    = 1;
-            queue_family.queueType   = nri::QueueType::COMPUTE;
-            queue_family.familyIndex = RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute);
+            queue_family.queueType   = preset == Nrd_Preset::Reference ? nri::QueueType::GRAPHICS : nri::QueueType::COMPUTE;
+            queue_family.familyIndex = RHI_Device::GetQueueIndex(preset == Nrd_Preset::Reference ? RHI_Queue_Type::Graphics : RHI_Queue_Type::Compute);
 
             nri::DeviceCreationVKDesc device_desc = {};
             device_desc.vkInstance       = RHI_Context::instance;
@@ -755,6 +757,11 @@ namespace spartan
             {
                 denoisers[0] = { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR };
                 pool_name    = "NRD_Reflections";
+            }
+            else if (preset == Nrd_Preset::Reference)
+            {
+                denoisers[0] = { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE };
+                pool_name = "NRD_Reference";
             }
             else if (preset == Nrd_Preset::Shadows)
             {
@@ -804,7 +811,7 @@ namespace spartan
                 return eye == 1 ? pool_reflections_right : pool_reflections;
             }
 
-            return pool_shadows;
+            return preset == Nrd_Preset::Reference ? pool_reference : pool_shadows;
         }
     }
 
@@ -1596,7 +1603,7 @@ namespace spartan
         }
 
         const bool already_set   = pool.last_settings_frame == engine_frame;
-        const bool reset_history = nrd_common::resolve_history_reset(pool.reset_history, engine_frame, pool.last_settings_frame);
+        const bool reset_history = nrd_common::resolve_history_reset(pool.reset_history || preset == Nrd_Preset::Reference, engine_frame, pool.last_settings_frame);
         pool.reset_history = false;
 
         // setcommonsettings once per pool per frame, nrd integration asserts frameindex advances by 1
@@ -1604,10 +1611,10 @@ namespace spartan
         {
             const uint32_t rect_width = preset == Nrd_Preset::Gi
                 ? nrd_common::get_gi_rect_dimension(width, common::cb_frame->resolution_render.x, common::cb_frame->resolution_scale)
-                : RHI_Device::ScaleDimension(width, common::resolution_scale);
+                : preset == Nrd_Preset::Reference ? width : RHI_Device::ScaleDimension(width, common::resolution_scale);
             const uint32_t rect_height = preset == Nrd_Preset::Gi
                 ? nrd_common::get_gi_rect_dimension(height, common::cb_frame->resolution_render.y, common::cb_frame->resolution_scale)
-                : RHI_Device::ScaleDimension(height, common::resolution_scale);
+                : preset == Nrd_Preset::Reference ? height : RHI_Device::ScaleDimension(height, common::resolution_scale);
             const bool has_prev        = pool.rect_width_prev != 0 && pool.rect_height_prev != 0 && !reset_history;
 
             nrd::CommonSettings common_settings = {};
@@ -1655,6 +1662,14 @@ namespace spartan
             snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_specular_in, false));
             snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_specular_out, true));
         }
+        else if (preset == Nrd_Preset::Reference)
+        {
+            nrd::ReblurSettings reblur = nrd_common::reference_settings();
+            if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
+                return false;
+            snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out, true));
+        }
         else if (preset == Nrd_Preset::Reflections)
         {
             denoiser_id = nrd_common::id_reflections;
@@ -1691,7 +1706,7 @@ namespace spartan
 
         nri::CommandBufferVKDesc cmd_desc = {};
         cmd_desc.vkCommandBuffer = cmd_list->GetRhiResource();
-        cmd_desc.queueType       = nri::QueueType::COMPUTE;
+        cmd_desc.queueType       = preset == Nrd_Preset::Reference ? nri::QueueType::GRAPHICS : nri::QueueType::COMPUTE;
 
         const nrd::Identifier denoisers[] = { denoiser_id };
         pool.integration.DenoiseVK(denoisers, 1, cmd_desc, snapshot);

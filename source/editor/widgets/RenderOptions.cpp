@@ -669,6 +669,9 @@ namespace
             }
             else
             {
+#ifdef _WIN32
+                cvar_toggle("NRD denoised preview", "r.path_tracing_denoise", "Filter each completed sample using ray-traced surface guides. Toggle off to see the raw accumulation.");
+#endif
                 cvar_slider("Max bounces", "r.path_tracing_bounces", "Maximum scattering events per camera path. Changing this restarts accumulation.", 1.0f, 32.0f, "%.0f");
                 if (section_unfiltered() && ensure_rows())
                 {

@@ -13,6 +13,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_reservoir.hlsl"
 #include "rt_visibility.hlsl"
 
+#ifdef PATH_TRACING_GUIDES
+#include "nrd/NRD.hlsli"
+[[vk::image_format("unknown")]] RWTexture2D<float4> pt_material_factor : register(u68);
+#endif
+
 // This pass always binds an RGBA32F history, including for typed UAV loads.
 [[vk::image_format("rgba32f")]] RWTexture2D<float4> pt_history : register(u0);
 
@@ -296,6 +301,12 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 throughput = 1.0f;
     uint max_bounces = pass_uint(pass_path_tracing::bounces);
     RestirMediumState medium = (RestirMediumState)0;
+#ifdef PATH_TRACING_GUIDES
+    float view_z = max(buffer_frame.camera_far, 1.0f) * 2.0f;
+    float4 normal_roughness = NRD_FrontEnd_PackNormalAndRoughness(float3(0, 0, 1), 1.0f, 0.0f);
+    float3 material_factor = 1.0f;
+    float secondary_distance = 1e15f;
+#endif
     uint bounce = 0;
     uint transparent_hits = 0;
     while (bounce <= max_bounces)
@@ -320,6 +331,19 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
             ray.Origin = surface.position - surface.geometric_normal * compute_ray_offset(surface.position);
             continue;
         }
+#ifdef PATH_TRACING_GUIDES
+        if (bounce == 0)
+        {
+            view_z = abs(mul(float4(surface.position, 1.0f), buffer_frame.view).z);
+            normal_roughness = NRD_FrontEnd_PackNormalAndRoughness(surface.normal,
+                sqrt(ggx_alpha_from_roughness(max(surface.roughness, 0.04f))), 0.0f);
+            // Preserve diffuse texture detail. Glass, emission and metal carry radiance independent of diffuse albedo.
+            if (!is_dielectric && !any(surface.emission > 0.0f))
+                material_factor = lerp(max(surface.albedo, 0.04f), 1.0f, surface.metallic);
+        }
+        if (bounce == 1)
+            secondary_distance = surface.hit_distance;
+#endif
         radiance += throughput * surface.emission;
         PathSurface bsdf = pt_bsdf_surface(surface, mat);
         float3 direction;
@@ -400,4 +424,12 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
             radiance = lerp(pt_history[pixel].rgb, radiance, 1.0f / (float(samples) + 1.0f));
         pt_history[pixel] = float4(radiance, 1.0f);
     }
+#ifdef PATH_TRACING_GUIDES
+    // These guides describe the sampled camera path. NRD consumes them only after a complete pixel sweep.
+    tex_uav2[pixel] = normal_roughness;
+    tex_uav3[pixel] = float4(view_z, 0, 0, 0);
+    float hit_dist = REBLUR_FrontEnd_GetNormHitDist(secondary_distance, view_z, float3(3.0f, 0.1f, 20.0f), 1.0f);
+    tex_uav4[pixel] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(radiance / material_factor, hit_dist, true);
+    pt_material_factor[pixel] = float4(material_factor, 1.0f);
+#endif
 }

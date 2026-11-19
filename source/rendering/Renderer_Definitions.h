@@ -483,6 +483,8 @@ namespace spartan
         nrd_unpack_shadows_c,
         path_tracing_c,
         path_tracing_sky_c,
+        path_tracing_guided_c,
+        path_tracing_nrd_resolve_c,
 
         // restir path tracing gi
         restir_pt_ray_generation_r,

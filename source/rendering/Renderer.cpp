@@ -7355,6 +7355,8 @@ namespace spartan
     {
         m_pass_state.path_tracing.samples = 0;
         m_pass_state.path_tracing.phase = 0;
+        m_pass_state.path_tracing.denoiser.preview_valid = false;
+        m_pass_state.path_tracing.denoiser.complete_guides = false;
     }
 
     void Renderer::Pass_PathTracing(bool sky_changed)
@@ -7373,6 +7375,7 @@ namespace spartan
         if (!history.accumulation || history.accumulation->GetWidth() != output->GetWidth() ||
             history.accumulation->GetHeight() != output->GetHeight())
         {
+            history.denoiser = {};
             history.accumulation = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
                 output->GetWidth(), output->GetHeight(), 1, 1, RHI_Format::R32G32B32A32_Float,
                 RHI_Texture_Srv | RHI_Texture_Uav, "path_tracing_history");
@@ -7391,6 +7394,33 @@ namespace spartan
         history.bounces = bounces;
         history.subsurface = subsurface;
 
+        auto& denoiser = history.denoiser;
+        RHI_Shader* guided_shader = GetShader(Renderer_Shader::path_tracing_guided_c);
+        RHI_Shader* resolve_shader = GetShader(Renderer_Shader::path_tracing_nrd_resolve_c);
+        bool guided = false;
+#ifdef _WIN32
+        guided = has_scene && cvar_path_tracing_denoise.GetValueAs<bool>() && guided_shader && guided_shader->IsCompiled() &&
+            resolve_shader && resolve_shader->IsCompiled();
+#endif
+        if (!guided)
+            denoiser = {};
+        else if (!denoiser.preview)
+        {
+            auto texture = [&](RHI_Format format, const char* name, uint32_t flags = 0)
+            {
+                return make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, output->GetWidth(), output->GetHeight(),
+                    1, 1, format, RHI_Texture_Srv | RHI_Texture_Uav | flags, name);
+            };
+            denoiser.motion  = texture(RHI_Format::R16G16_Float, "reference_nrd_motion", RHI_Texture_ClearBlit);
+            denoiser.normal  = texture(RHI_Format::R10G10B10A2_Unorm, "reference_nrd_normal");
+            denoiser.depth   = texture(RHI_Format::R32_Float, "reference_nrd_viewz");
+            denoiser.factor  = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_factor");
+            denoiser.input   = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_input");
+            denoiser.output  = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_output");
+            denoiser.preview = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_preview");
+            // Motion is zero in a static accumulation. A camera or scene edit starts a new sweep.
+            RHI_CommandList::ClearTexture(denoiser.motion.get(), Color::standard_black);
+        }
         RHI_Texture* target = history.accumulation.get();
         // Stop before the sample count loses integer precision in the FP32 running mean.
         if (history.samples < (1u << 24))
@@ -7402,7 +7432,16 @@ namespace spartan
                 ++stride;
 
             RHI_CommandList::BeginPass("path_tracing");
-            RHI_CommandList::SetShader(shader);
+            RHI_CommandList::SetShader(guided ? guided_shader : shader);
+            if (guided)
+            {
+                if (history.phase == 0)
+                    denoiser.complete_guides = true;
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, denoiser.normal.get());
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, denoiser.depth.get());
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, denoiser.input.get());
+                RHI_CommandList::SetTexture("pt_material_factor", denoiser.factor.get());
+            }
             if (has_scene)
             {
                 RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, m_tlas.get());
@@ -7418,21 +7457,41 @@ namespace spartan
             RHI_CommandList::Dispatch((blocks(output->GetWidth()) + 7) / 8, (blocks(output->GetHeight()) + 7) / 8);
             const bool traced = RHI_CommandList::IsPipelineReady();
             RHI_CommandList::EndPass();
-            if (!traced)
+            if (!traced && history.samples == 0 && history.phase == 0)
             {
-                ResetPathTracing();
                 RHI_CommandList::ClearTexture(output, Color::standard_black);
                 return;
             }
-            if (++history.phase == stride * stride)
+            if (traced && ++history.phase == stride * stride)
             {
                 history.phase = 0;
                 ++history.samples;
+                if (guided && denoiser.complete_guides)
+                {
+                    RHI_CommandList::BeginPass("reference_nrd");
+                    denoiser.preview_valid = RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Reference, denoiser.motion.get(),
+                        denoiser.normal.get(), denoiser.depth.get(), denoiser.input.get(), denoiser.output.get());
+                    if (denoiser.preview_valid)
+                    {
+                        RHI_CommandList::SetShader(resolve_shader);
+                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, target);
+                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, denoiser.depth.get());
+                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, denoiser.output.get());
+                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, denoiser.factor.get());
+                        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, denoiser.preview.get());
+                        m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
+                        RHI_CommandList::Dispatch(denoiser.preview.get());
+                        denoiser.preview_valid = RHI_CommandList::IsPipelineReady();
+                    }
+                    RHI_CommandList::EndPass();
+                }
             }
         }
+        if (denoiser.preview_valid)
+            target = denoiser.preview.get();
 
         // Exposure and display encoding are still required to display linear radiance.
-        Pass_AutoExposure(target);
+        Pass_AutoExposure(history.accumulation.get());
         Pass_Tonemap(target, output);
         RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::auto_exposure),
             GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous), false);
@@ -7598,6 +7657,7 @@ namespace spartan
         }
         if (!secondary_render_root_active)
         {
+            m_pass_state.path_tracing.denoiser = {};
             m_pass_state.path_tracing.accumulation.reset();
             ResetPathTracing();
         }

@@ -218,6 +218,19 @@ namespace spartan
             settings.enableAntiFirefly                 = true;
         }
 
+        inline nrd::ReblurSettings reference_settings()
+        {
+            // The reference input already averages all camera samples. Only filter spatially.
+            nrd::ReblurSettings settings = {};
+            settings.maxAccumulatedFrameNum = 1;
+            settings.maxFastAccumulatedFrameNum = 1;
+            settings.historyFixFrameNum = 0;
+            settings.maxStabilizedFrameNum = 0;
+            settings.maxBlurRadius = 12.0f;
+            settings.diffusePrepassBlurRadius = 8.0f;
+            return settings;
+        }
+
         // rt reflections, roughness guided specular reblur
         inline void fill_preset_reflections(nrd::ReblurSettings& settings, float delta_time, bool checkerboard)
         {

@@ -219,6 +219,7 @@ namespace spartan
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections", on_ray_traced_reflections_change);
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights", on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_path_tracing                   ("r.path_tracing",                   0.0f,   "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);
+    TConsoleVar<float> cvar_path_tracing_denoise           ("r.path_tracing_denoise",           0.0f,   "display a spatial NRD preview of completed reference samples");
     TConsoleVar<float> cvar_path_tracing_bounces           ("r.path_tracing_bounces",           8.0f,   "maximum path scattering events (1-32)");
     TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,   "unified ReSTIR path tracing for direct and indirect surface lighting", on_restir_change);
     TConsoleVar<float> cvar_restir_pt_async                ("r.restir_pt_async",                0.0f,   "run ReSTIR tracing and denoising on a separate compute list");

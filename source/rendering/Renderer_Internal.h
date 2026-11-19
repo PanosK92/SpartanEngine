@@ -179,6 +179,12 @@ namespace spartan
             struct PathTracingState
             {
                 std::shared_ptr<RHI_Texture> accumulation;
+                struct Denoiser
+                {
+                    std::shared_ptr<RHI_Texture> motion, normal, depth, factor, input, output, preview;
+                    bool complete_guides = false;
+                    bool preview_valid = false;
+                } denoiser;
                 math::Matrix camera;
                 uint64_t scene_revision = 0;
                 uint64_t accumulated_revision = 0;

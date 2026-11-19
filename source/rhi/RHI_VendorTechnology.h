@@ -24,6 +24,7 @@ namespace spartan
     {
         Gi,          // reblur diffuse, restir gi
         Reflections, // reblur specular, rt reflections
+        Reference,   // spatial reblur of accumulated reference radiance
         Shadows      // sigma, directional rt shadows
     };
 

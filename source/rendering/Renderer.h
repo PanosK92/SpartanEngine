@@ -88,6 +88,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_ray_traced_shadows;
     extern TConsoleVar<float> cvar_path_tracing;
     extern TConsoleVar<float> cvar_path_tracing_bounces;
+    extern TConsoleVar<float> cvar_path_tracing_denoise;
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
     extern TConsoleVar<float> cvar_restir_pt_async;
