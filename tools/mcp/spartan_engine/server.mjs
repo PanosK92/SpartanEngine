@@ -5764,7 +5764,6 @@ const tree_view_schema = {
   yaw: z.number().optional().describe("preview orbit yaw in degrees"),
   pitch: z.number().min(-83).max(83).optional().describe("preview orbit pitch in degrees, positive looks down"),
   zoom: z.number().min(0.2).max(8).optional().describe("1 frames the whole tree, larger moves closer"),
-  lod: z.number().int().min(0).optional().describe("preview a single mesh LOD"),
 };
 
 register_tool(
@@ -5793,7 +5792,7 @@ register_tool(
 register_tool(
   server,
   "tree_generate",
-  "Generate a tree in the Tree Creator preview from a species preset and the simple controls (age, leafiness, branchiness, wildness, season, seed, quality). Unnamed controls keep their current values. Returns triangle and vertex counts per LOD, height and crown width.",
+  "Generate a tree in the Tree Creator preview from a species preset and the simple controls (age, leafiness, branchiness, wildness, season, seed, quality). Unnamed controls keep their current values. Returns triangle and vertex counts, height and crown width.",
   {
     ...tree_controls_schema,
     ...tree_view_schema,
@@ -5804,7 +5803,7 @@ register_tool(
 
 register_local_tool("tree_preview_capture", {
   title: "tree preview capture",
-  description: "Render the Tree Creator preview to a PNG (inside project/mcp/library/thumbnails/) and return it as image content. Optional yaw, pitch (degrees), zoom and lod change the preview view first.",
+  description: "Render the Tree Creator preview to a PNG (inside project/mcp/library/thumbnails/) and return it as image content. Optional yaw, pitch (degrees), and zoom change the preview view first.",
   inputSchema: {
     path: z.string().optional().describe("png file name"),
     width: z.number().int().min(128).max(2048).optional(),
@@ -5861,7 +5860,7 @@ register_local_tool("tree_preview_capture", {
 register_tool(
   server,
   "tree_export",
-  "Generate a tree (same controls as tree_generate) and export it to project/models/trees/<name>/ as a .prefab with a .mesh (meshoptimizer LODs, foliage impostor as the last LOD), bark and foliage materials, textures and a trunk capsule collider. variations exports several seeds at once. Load the result with prefab_load or scatter it by prefab path.",
+  "Generate a tree (same controls as tree_generate) and export it to project/models/trees/<name>/ as a .prefab with a .mesh (streamable virtual geometry), bark and foliage materials, textures and a trunk capsule collider. variations exports several seeds at once. Load the result with prefab_load or scatter it by prefab path.",
   {
     ...tree_controls_schema,
     name: z.string().optional().describe("folder and file name, defaults to <species>_<seed>"),
@@ -5936,7 +5935,7 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_set_display",
-  "Set Asset Viewer shading, backdrop, statistics, turntable, LOD, and framing options.",
+  "Set Asset Viewer shading, backdrop, statistics, turntable and framing options.",
   {
     shading: z.enum(["solid", "wire", "vertices"]).optional(),
     backdrop: z
@@ -5944,7 +5943,6 @@ register_tool(
       .optional(),
     show_stats: z.boolean().optional(),
     auto_rotate: z.boolean().optional(),
-    preview_lod: z.number().int().min(0).optional(),
     frame: z.boolean().optional(),
     reset_camera: z.boolean().optional(),
   },
@@ -5975,18 +5973,15 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_mesh",
-  "Edit the loaded mesh in memory by simplifying, optimizing, building LODs, reverting, or changing options.",
+  "Edit the loaded mesh in memory by simplifying, optimizing, reverting, or changing options.",
   {
     action: z.enum([
       "simplify",
       "optimize",
-      "build_lods",
       "revert",
       "set_options",
     ]),
     target_ratio: z.number().min(0.01).max(1).optional(),
-    generate_lods_on_save: z.boolean().optional(),
-    preview_lod: z.number().int().min(0).optional(),
     confirm: z.boolean().optional(),
   },
   "asset_viewer_mesh",
@@ -6739,7 +6734,6 @@ register_tool(
   {
     id: z.string(),
     path: z.string().optional(),
-    generate_lods: z.boolean().optional(),
   },
   "entity_make_game_ready",
   { annotations: edit_tool },

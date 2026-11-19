@@ -22,6 +22,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <vector>
 #include "../../rhi/RHI_Definitions.h"
 #include "../../math/Matrix.h"
+#include "../../rendering/Instance.h"
 #include "../../math/Quaternion.h"
 #include "../../math/Ray.h"
 #include "../../math/Vector4.h"
@@ -403,7 +404,7 @@ namespace spartan
         void BakeTerrainMaps(bool allow_cache);
         void UploadTerrainMaps();
         void BuildCpuMesh();
-        void BuildTileMesh(Mesh& mesh, const bool generate_lods);
+        void BuildTileMesh(Mesh& mesh, const bool stream_geometry);
         void CommitGpu();
         void CommitProps();
         void FinishGenerate();
@@ -649,7 +650,7 @@ namespace spartan
         bool m_road_carve_dirty     = false;
         bool m_road_carve_dirty_all = false;
         // full scatter instances, live pads hide from this and restore when the pad leaves
-        std::unordered_map<uint64_t, std::vector<math::Matrix>> m_prop_instance_seed;
+        std::unordered_map<uint64_t, std::vector<Instance>> m_prop_instance_seed;
         std::unordered_map<uint64_t, bool> m_prop_entity_seed;
         std::vector<uint8_t> m_layer_dominant;   // one surface layer index per analysis cell
         std::vector<uint8_t> m_height_gpu_bytes;

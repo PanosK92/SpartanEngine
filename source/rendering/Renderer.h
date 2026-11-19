@@ -113,10 +113,8 @@ namespace spartan
     extern TConsoleVar<float> cvar_resolution_scale;
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_hiz_occlusion;
-    extern TConsoleVar<float> cvar_gpu_lod;
     extern TConsoleVar<float> cvar_tessellation_gpu_driven;
     extern TConsoleVar<float> cvar_meshlet_cull_skinned;
-    extern TConsoleVar<float> cvar_foliage_impostors;
     extern TConsoleVar<float> cvar_meshlet_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize_cap;

@@ -54,19 +54,19 @@ StructuredBuffer<MeshletBounds> meshlet_bounds   : register(t43);
 
 // dequant helpers, kept in one place so the meshlet cull, triangle cull and the visible-triangle vertex pull stay in lockstep
 // the lod aabb (min, extent, diag) lives on DrawData per renderable, build_meshlets quantized the bounds against the same aabb on the cpu so this round trip is loss-free for the conservative sphere
-float3 meshlet_decode_center(MeshletBounds mb, float3 lod_aabb_min, float3 lod_aabb_extent)
+float3 meshlet_decode_center(MeshletBounds mb, float3 geometry_bounds_min, float3 geometry_bounds_extent)
 {
     uint cx = mb.center_xy & 0xFFFFu;
     uint cy = (mb.center_xy >> 16) & 0xFFFFu;
     uint cz = mb.center_z_radius & 0xFFFFu;
     float3 t = float3(cx, cy, cz) * (1.0f / 65535.0f);
-    return lod_aabb_min + t * lod_aabb_extent;
+    return geometry_bounds_min + t * geometry_bounds_extent;
 }
 
-float meshlet_decode_radius(MeshletBounds mb, float lod_aabb_diag)
+float meshlet_decode_radius(MeshletBounds mb, float geometry_bounds_diag)
 {
     uint r = (mb.center_z_radius >> 16) & 0xFFFFu;
-    return float(r) * (1.0f / 65535.0f) * lod_aabb_diag;
+    return float(r) * (1.0f / 65535.0f) * geometry_bounds_diag;
 }
 
 uint meshlet_decode_first_index(MeshletBounds mb)
@@ -100,8 +100,6 @@ uint meshlet_micro_index_load(uint corner)
     return (meshlet_micro_indices[corner >> 2u] >> ((corner & 3u) * 8u)) & 0xFFu;
 }
 
-// foliage impostor atlases, per texel and layer word 0 is the source uv and word 1 the packed normal, depth and coverage
-StructuredBuffer<uint> impostor_texels : register(t76);
 
 // per-instance cull tasks populated by the cpu
 StructuredBuffer<CullTask> cull_tasks : register(t44);

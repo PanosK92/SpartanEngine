@@ -132,7 +132,7 @@ namespace spartan::road_details
                 Vector3(0,0,i<3 ? -1.0f : 1.0f),Vector3::Right);
         }
         std::vector<uint32_t> indices = {0,1,2,5,4,3};
-        triangle->AddGeometry(vertices,indices,false);
+        triangle->AddGeometry(vertices,indices);
         triangle->CreateGpuBuffers();
     }
 
@@ -269,7 +269,7 @@ namespace spartan::road_details
             }
             auto mesh=std::make_shared<Mesh>();
             mesh->SetObjectName("roadside_furniture_"+std::to_string(batch->GetObjectId()));
-            mesh->AddGeometry(vertices,indices,false);
+            mesh->AddGeometry(vertices,indices);
             mesh->CreateGpuBuffers();
             render->SetOwnedMesh(mesh);
         }
@@ -277,15 +277,15 @@ namespace spartan::road_details
         {
             Vector3 origin;
             size_t finish;
-            road_guardrail::GeometryLods lods;
+            road_guardrail::Geometry geometry;
             std::shared_ptr<Mesh> mesh;
         };
         std::vector<GuardrailBatch> guardrails;
         std::array<std::vector<Matrix>, road_guardrail::ModuleCount> hardware;
         progress.SetStep("Placing guardrails");
-        road_guardrail::Build(road,spline,junctions,[&](const Vector3& origin,size_t finish,road_guardrail::GeometryLods& lods)
+        road_guardrail::Build(road,spline,junctions,[&](const Vector3& origin,size_t finish,road_guardrail::Geometry& geometry)
         {
-            guardrails.push_back({origin, finish, std::move(lods), {}});
+            guardrails.push_back({origin, finish, std::move(geometry), {}});
         },[&](const Vector3& origin,road_guardrail::Module module,const std::vector<Matrix>& instances)
         {
             const Matrix transform(origin, Quaternion::Identity, Vector3::One);
@@ -294,7 +294,7 @@ namespace spartan::road_details
         PublishGuardrailInstances(group, hardware);
         if (!guardrails.empty())
         {
-            progress.SetStep("Building guardrail meshes and LODs");
+            progress.SetStep("Building guardrail geometry");
             std::atomic<uint32_t> next{0};
             ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
             {
@@ -302,24 +302,12 @@ namespace spartan::road_details
                 {
                     auto& batch = guardrails[i];
                     batch.mesh = std::make_shared<Mesh>();
-                    batch.mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0) |
+                    batch.mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PreserveSourceGeometry) |
                         static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
-                    auto& base = batch.lods[0];
-                    batch.mesh->AddGeometry(base.vertices, base.indices, false);
-                    size_t previous_count = base.indices.size();
-                    for (uint32_t lod = 1; lod < mesh_lod_count; ++lod)
-                    {
-                        auto& level = batch.lods[lod];
-                        if (level.indices.size() >= previous_count * mesh_lod_min_reduction) break;
-                        geometry_processing::weld_and_optimize(level.vertices, level.indices);
-                        batch.mesh->AddLod(level.vertices, level.indices, 0);
-                        previous_count = level.indices.size();
-                    }
-                    for (auto& level : batch.lods)
-                    {
-                        std::vector<RHI_Vertex_PosTexNorTan>().swap(level.vertices);
-                        std::vector<uint32_t>().swap(level.indices);
-                    }
+                    auto& surface = batch.geometry;
+                    geometry_processing::weld_and_optimize(surface.vertices, surface.indices);
+                    batch.mesh->AddGeometry(surface.vertices, surface.indices);
+                    surface = {};
                 }
             }, static_cast<uint32_t>(guardrails.size()));
             progress.SetStep("Publishing guardrail geometry");
@@ -652,7 +640,7 @@ namespace spartan::road_details
         if (World::IsPreparing() && !hazard_signature)
             if (auto found = preparation_keys.find(entity->GetObjectId()); found != preparation_keys.end()) return found->second;
         generated_cache::Hash recipe;
-        recipe.Add(uint32_t(7)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
+        recipe.Add(uint32_t(7)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(GeometryRange));
         recipe.Add(road_guardrail::asset_hash);
         recipe.Add(spline->GetRoadFrames()); recipe.Add(spline->GetControlPointCount());
         for (const auto& f : spline->GetRoadFrames()) recipe.Add(spline->GetSidewalkWidthAt(f.t));

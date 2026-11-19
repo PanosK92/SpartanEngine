@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include "pch.h"
 #include "../error_handling/CrashHandler.h"
+#include "../geometry/Mesh.h"
 #ifdef SP_RUNTIME
 #include "runtime/Runtime.h"
 #else
@@ -145,6 +146,12 @@ int main(int argc, char** argv)
     std::vector<std::string> args(argv, argv + argc);
 #endif
     const auto has_argument = [&](const char* argument) { return std::find(args.begin(), args.end(), argument) != args.end(); };
+    auto upgrade = std::find(args.begin(), args.end(), "--upgrade-geometry");
+    if (upgrade != args.end())
+    {
+        spartan::CrashHandler::SetInteractive(false);
+        return ++upgrade != args.end() ? spartan::Mesh::UpgradeGeometryDirectory(*upgrade) : 1;
+    }
     spartan::CrashHandler::SetInteractive(!(has_argument("--headless") || has_argument("-headless") || has_argument("--ci-smoke-test") || has_argument("--bake-shaders") ||
         (has_argument("--mcp-control") && has_argument("--mcp-hidden"))));
 #ifdef SP_RUNTIME

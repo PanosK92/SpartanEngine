@@ -56,6 +56,11 @@ namespace
         bool point_sampling    = false;
         uint32_t visualisation_flags = 0;
 
+        bool geometry_preview = false;
+        bool owns_debug_writer = false;
+        float previous_meshlet_mode = 0.0f;
+        float previous_cluster_mode = 0.0f;
+
         // canvas
         float  zoom            = 1.0f;
         ImVec2 pan             = ImVec2(0.0f, 0.0f);
@@ -236,6 +241,28 @@ namespace
         }
     }
 
+    void set_geometry_preview(bool enabled)
+    {
+        if (s.geometry_preview == enabled)
+            return;
+        s.geometry_preview = enabled;
+        s.request_fit = true;
+        if (enabled)
+        {
+            s.previous_meshlet_mode = cvar_meshlet_visualize.GetValue();
+            s.previous_cluster_mode = cvar_cluster_visualize.GetValue();
+            cvar_cluster_visualize.SetValue(0.0f);
+            cvar_meshlet_visualize.SetValue(1.0f);
+            s.mip_level = 0;
+            s.array_level = 0;
+        }
+        else
+        {
+            cvar_meshlet_visualize.SetValue(s.previous_meshlet_mode);
+            cvar_cluster_visualize.SetValue(s.previous_cluster_mode);
+        }
+    }
+
     void select_texture(const texture_entry& entry)
     {
         if (!entry.tex || s.selected_object_id == entry.tex->GetObjectId())
@@ -243,6 +270,12 @@ namespace
             return;
         }
 
+        if (s.owns_debug_writer && entry.tex != Renderer::GetRenderTarget(Renderer_RenderTarget::debug_output))
+        {
+            cvar_meshlet_visualize.SetValue(0.0f);
+            cvar_cluster_visualize.SetValue(0.0f);
+            s.owns_debug_writer = false;
+        }
         s.selected_object_id = entry.tex->GetObjectId();
         s.mip_level          = 0;
         s.array_level        = 0;
@@ -459,7 +492,7 @@ namespace
 
         const float row_height = ImGui::EditorUi::scaled(44.0f);
         const float thumb_size = row_height - ImGui::EditorUi::scaled(8.0f);
-        const bool  selected   = (s.selected_object_id == e.tex->GetObjectId());
+        const bool  selected   = !s.geometry_preview && (s.selected_object_id == e.tex->GetObjectId());
 
         ImGui::PushID(idx);
 
@@ -467,6 +500,7 @@ namespace
         ImVec2 row_min = ImGui::GetCursorScreenPos();
         if (ImGui::Selectable("##row", selected, 0, ImVec2(0.0f, row_height)))
         {
+            set_geometry_preview(false);
             select_texture(e);
         }
 
@@ -516,13 +550,14 @@ namespace
         {
             return;
         }
-        const bool selected = (s.selected_object_id == e.tex->GetObjectId());
+        const bool selected = !s.geometry_preview && (s.selected_object_id == e.tex->GetObjectId());
         const float total_h = card_size + ImGui::GetTextLineHeight() + ImGui::EditorUi::scaled(6.0f);
 
         ImGui::PushID(idx);
         ImVec2 card_min = ImGui::GetCursorScreenPos();
         if (ImGui::Selectable("##card", selected, 0, ImVec2(card_size, total_h)))
         {
+            set_geometry_preview(false);
             select_texture(e);
         }
 
@@ -554,6 +589,9 @@ namespace
         ImGui::BeginChild("##browser_panel", ImVec2(width, height), ImGuiChildFlags_Borders);
         ImGui::PopStyleVar();
 
+        if (ImGui::Selectable("Virtualized geometry (debug view)", s.geometry_preview))
+            set_geometry_preview(!s.geometry_preview);
+        editor_ui::toolbar::tooltip("Generated from visible meshlets. Select a texture to return to the texture preview.");
         draw_type_filter();
 
         ImGui::BeginChild("##entries_scroll", ImVec2(0, 0), false);
@@ -683,7 +721,7 @@ namespace
                 payload.type = ImGuiSp::DragPayloadType::Texture;
                 payload.set_paths(tex->GetResourceFilePath().c_str(), tex->GetResourceFilePath().c_str());
                 ImGuiSp::create_drag_drop_payload(payload);
-                ImGui::TextUnformatted(tex->GetObjectName().c_str());
+                ImGui::TextUnformatted(s.geometry_preview ? "Virtualized geometry (debug view)" : tex->GetObjectName().c_str());
                 ImGui::EndDragDropSource();
             }
 
@@ -830,6 +868,7 @@ namespace
 
         if (editor_ui::property_combo("Writer", debug_texture_modes, &combined_mode, "Picks which pass writes this texture, only one is active at a time"))
         {
+            s.owns_debug_writer = true;
             uint32_t new_meshlet = (combined_mode >= 1u && combined_mode <= 4u) ? combined_mode      : 0u;
             uint32_t new_cluster = (combined_mode >= 5u && combined_mode <= 6u) ? combined_mode - 4u : 0u;
             spartan::ConsoleRegistry::Get().SetValueFromString("r.meshlet_visualize", std::to_string(static_cast<float>(new_meshlet)));
@@ -927,11 +966,22 @@ namespace
             ImGui::PushFont(Editor::font_bold, 0.0f);
         }
         ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextUnformatted(tex->GetObjectName().c_str());
+        ImGui::TextUnformatted(s.geometry_preview ? "Virtualized geometry (debug view)" : tex->GetObjectName().c_str());
         ImGui::PopTextWrapPos();
         if (Editor::font_bold)
         {
             ImGui::PopFont();
+        }
+
+        if (s.geometry_preview)
+        {
+            ImGui::TextWrapped("Generated preview of the visible meshlets in indirect geometry draws.");
+            static const std::vector<std::string> modes = { "Meshlet colors", "Meshlet wireframe", "Triangle colors", "Triangle wireframe" };
+            uint32_t mode = std::clamp(cvar_meshlet_visualize.GetValueAs<uint32_t>(), 1u, 4u) - 1;
+            if (editor_ui::property_combo("View", modes, &mode))
+                cvar_meshlet_visualize.SetValue(static_cast<float>(mode + 1));
+            ImGui::EndChild();
+            return;
         }
 
         struct usage
@@ -1080,6 +1130,16 @@ TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 
 void TextureViewer::OnTick()
 {
+    if (!m_visible)
+    {
+        set_geometry_preview(false);
+        if (s.owns_debug_writer)
+        {
+            cvar_meshlet_visualize.SetValue(0.0f);
+            cvar_cluster_visualize.SetValue(0.0f);
+            s.owns_debug_writer = false;
+        }
+    }
     s.visualisation_flags = 0;
     s.texture_current     = nullptr;
 }
@@ -1141,6 +1201,8 @@ void TextureViewer::OnTickVisible()
     float center_w = std::max(min_center, total_w - s.left_panel_width - s.right_panel_width - gutters);
 
     draw_browser_panel(s.left_panel_width, body_h);
+    if (s.geometry_preview)
+        s.texture_current = spartan::Renderer::GetRenderTarget(spartan::Renderer_RenderTarget::debug_output);
     ImGui::SameLine(0.0f, 0.0f);
     draw_h_splitter("##splitter_left",  &s.left_panel_width,  min_left,  std::max(min_left,  total_w - min_center - s.right_panel_width - gutters), body_h, +1.0f);
     ImGui::SameLine(0.0f, 0.0f);

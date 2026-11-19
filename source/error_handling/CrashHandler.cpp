@@ -260,6 +260,7 @@ namespace spartan
         HANDLE file = create_dump_file(dump_path, path_capacity, process_id);
         bool saved = false;
         bool full_memory = false;
+        bool stack_dump = false;
         if (file != INVALID_HANDLE_VALUE && context_read)
         {
             EXCEPTION_POINTERS pointers = { &context.exception, &context.registers };
@@ -271,7 +272,16 @@ namespace spartan
             const MINIDUMP_TYPE flags = static_cast<MINIDUMP_TYPE>(memory_flags | MiniDumpWithFullMemoryInfo |
                 MiniDumpWithHandleData | MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules | MiniDumpIgnoreInaccessibleMemory);
             saved = MiniDumpWriteDump(process, process_id, file, flags, &info, nullptr, nullptr) != FALSE;
-            if (!saved) error = GetLastError();
+            if (!saved)
+            {
+                // A large dump can exceed the writer's limits. Drop the partial
+                // contents before retrying with just the threads, stacks and modules.
+                LARGE_INTEGER start = {};
+                if (SetFilePointerEx(file, start, nullptr, FILE_BEGIN) && SetEndOfFile(file))
+                    stack_dump = MiniDumpWriteDump(process, process_id, file, MiniDumpNormal, &info, nullptr, nullptr) != FALSE;
+                saved = stack_dump;
+                if (!saved) error = GetLastError();
+            }
         }
         else if (file == INVALID_HANDLE_VALUE)
         {
@@ -279,14 +289,14 @@ namespace spartan
         }
         if (file != INVALID_HANDLE_VALUE) CloseHandle(file);
         if (process) CloseHandle(process);
-        if (!saved && dump_path[0]) DeleteFileW(dump_path);
+        if (!saved && file != INVALID_HANDLE_VALUE) DeleteFileW(dump_path);
 
         // A companion report is readable without a debugger and identifies the matching binary/symbols.
         char report[2048];
         context.reason[sizeof(context.reason) - 1] = '\0';
         snprintf(report, sizeof(report), "Engine crash\nBuild: %s %s\nProcess: %lu\nThread: %lu\nException: 0x%08lx\nAddress: %p\nReason: %s\nDump saved: %s\nWindows error: 0x%08lx\nOpen the .dmp with the matching executable and PDB in Visual Studio or WinDbg.\n",
             __DATE__, __TIME__, process_id, thread_id, context.exception.ExceptionCode, context.exception.ExceptionAddress,
-            context_read ? context.reason : "Could not read the crashing process", saved ? (full_memory ? "yes (full memory)" : "yes (reduced, low disk space)") : "no", error);
+            context_read ? context.reason : "Could not read the crashing process", saved ? (stack_dump ? "yes (stacks)" : full_memory ? "yes (full memory)" : "yes (reduced, low disk space)") : "no", error);
         bool report_saved = false;
         if (dump_path[0])
         {

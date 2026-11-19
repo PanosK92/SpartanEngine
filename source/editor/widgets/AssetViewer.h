@@ -122,8 +122,6 @@ public:
         float pitch = 0.0f;
         float zoom = 1.0f;
         float mesh_target_ratio = 0.5f;
-        int preview_lod = 0;
-        int lod_count = 0;
         PreviewShading shading = PreviewShading::Solid;
         PreviewBackdrop backdrop = PreviewBackdrop::Slate;
         bool visible = false;
@@ -131,9 +129,6 @@ public:
         bool auto_rotate = false;
         bool mesh_editable = false;
         bool mesh_modified = false;
-        bool mesh_lods_built = false;
-        bool mesh_lods_attempted = false;
-        bool mesh_generate_lods = true;
         bool has_preview_content = false;
     };
 
@@ -206,7 +201,6 @@ public:
         std::optional<PreviewBackdrop> backdrop;
         std::optional<bool> show_stats;
         std::optional<bool> auto_rotate;
-        std::optional<int> preview_lod;
         bool frame = false;
         bool reset = false;
     };
@@ -215,7 +209,6 @@ public:
     {
         Simplify,
         Optimize,
-        BuildLods,
         Revert,
         SetOptions
     };
@@ -224,8 +217,6 @@ public:
     {
         MeshAction action = MeshAction::SetOptions;
         std::optional<float> target_ratio;
-        std::optional<bool> generate_lods;
-        std::optional<int> preview_lod;
         bool confirm = false;
     };
 
@@ -375,9 +366,7 @@ private:
     {
         std::string path;
         std::vector<WorkingSubMesh> meshes;
-        std::vector<std::vector<WorkingSubMesh>> lods;
-        bool modified, built, attempted, scanned;
-        int preview_lod;
+        bool modified;
     };
     GeometryState CaptureGeometry() const;
     void RestoreGeometry(const GeometryState& state);
@@ -490,13 +479,11 @@ private:
     bool ApplyLibraryCleanup();
     void DrawCleanupConfirmation();
     void LoadWorkingGeometry();
-    void LoadExistingLods();
     void FlattenWorkingGeometry();
     bool EnsurePreviewMeshes();
     void RefreshPreviewMeshGeometry();
     void SimplifyWorkingGeometry(float ratio);
     void OptimizeWorkingGeometry();
-    void BuildWorkingLods();
     bool SaveWorkingGeometry();
     // registers a mesh file with the optimize tools, a prefab calls this once per mesh its parts use
     bool AddWorkingMesh(
@@ -511,7 +498,7 @@ private:
     void CollectPreviewRenderSlots(spartan::Entity* root);
     // collapses every part of the loaded prefab that shares a material into one sub mesh and
     // rewrites the prefab, the report is what the confirmation and the status line show
-    bool BakePrefabByMaterial(bool generate_lods);
+    bool BakePrefabByMaterial();
     // what the bake would collapse, computed from the preview without touching anything
     BakeSummary PreviewBakeSummary() const;
     std::vector<spartan::Material*> PreviewMaterials() const;
@@ -606,27 +593,12 @@ private:
     std::shared_ptr<spartan::RHI_Texture> m_texture;
     // the authoritative editable geometry, one entry per sub mesh
     std::vector<WorkingSubMesh> m_working_sub_meshes;
-    // the lod chain built from the working geometry, [lod][sub mesh], lod 0 is the working
-    // geometry itself, built on demand so switching the preview level is instant
-    std::vector<std::vector<WorkingSubMesh>> m_working_lods;
     // flattened view of whatever the preview is showing, kept for the counts and the preview mesh
     std::vector<spartan::RHI_Vertex_PosTexNorTan> m_working_vertices;
     std::vector<uint32_t> m_working_indices;
     std::vector<std::string> m_missing_dependencies;
     bool m_working_modified = false;
     bool m_working_editable = false;
-    bool m_working_generate_lods = true;
-    // whether a chain was ever asked for, an empty chain means nothing could be reduced rather than
-    // nothing was tried, and the panel has to say which
-    bool m_working_lods_attempted = false;
-    // true only when the chain was built here, the mesh's own saved chain is previewable but is not
-    // itself a pending change, so it must not make the save button live
-    bool m_working_lods_built = false;
-    // the mesh's saved chain costs roughly another copy of the geometry to read, so it is read when the
-    // optimize panel is first opened rather than on every selection
-    bool m_working_lods_scanned = false;
-    // which level of the built lod chain the preview shows, 0 is the working geometry
-    int m_preview_lod = 0;
     float m_target_ratio = 0.5f;
     // the preview root is tracked by id, a raw pointer dangles the moment the
     // world removes the entity behind our back
@@ -649,7 +621,6 @@ private:
     int m_inspector_tab = 0;
     // the bake rewrites the prefab and its mesh files, so it is confirmed like a save
     bool m_bake_confirmation_open = false;
-    bool m_bake_generate_lods = true;
     // section of the linked file panel, 0 is overview and 1 is the mesh optimize tools
     int m_dependency_tab = 0;
     int m_preview_mode = 0;

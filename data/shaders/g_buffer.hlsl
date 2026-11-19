@@ -318,54 +318,6 @@ float3 compute_grass_color(float height_percent, float variation)
     return lerp(root_tint, leaf_tint, t);
 }
 
-// tuft impostor cards, the outer grass ring draws one per cell instead of blades. the tufts are cut
-// out analytically so there is no atlas to bake, and a tuft thinner than a pixel dithers its coverage
-// instead of dropping out, which keeps the field at the same density however far the card is
-static const uint  grass_card_tufts      = 32;
-static const float grass_card_tuft_width = 0.035f; // in card widths, a card spans one and a half cells
-static const float grass_card_root_hidden = 0.3f;  // blade height the visible part of a card starts at
-
-bool grass_card_cutout(float2 uv, float card_variation, float footprint, float dither, out float height_percent, out float width_percent, out float variation)
-{
-    height_percent = uv.y;
-    width_percent  = 0.5f;
-    variation      = card_variation;
-
-    uint seed = (uint)(card_variation * 65535.0f) * 0x9e3779b9u + 0x68bc21u;
-    [loop]
-    for (uint i = 0; i < grass_card_tufts; i++)
-    {
-        uint  h        = hash_mix(seed + i * 0x85ebca6bu);
-        float tuft_top = lerp(0.45f, 1.0f, hash_unit(hash_mix(h ^ 0x27d4eb2du)));
-        float v        = uv.y / tuft_top;
-        if (v >= 1.0f)
-        {
-            continue;
-        }
-
-        float center = lerp(0.08f, 0.92f, hash_unit(h));
-        float lean   = (hash_unit(hash_mix(h ^ 0x165667b1u)) - 0.5f) * 0.25f;
-        float width  = grass_card_tuft_width * lerp(0.6f, 1.4f, hash_unit(hash_mix(h ^ 0xd3a2646cu)));
-
-        // a tuft tapers to a point, widening it to a pixel keeps it from sparkling and the dither
-        // pays back the area the widening added, so coverage stays what the tuft actually hides
-        float half_width     = width * 0.5f * pow(1.0f - v, 0.7f);
-        float half_resolved  = max(half_width, footprint * 0.5f);
-        float offset         = uv.x - (center + lean * v * v);
-        float tuft_dither    = frac(dither + hash_unit(hash_mix(h ^ 0x9e3779b9u)));
-        if (abs(offset) < half_resolved && tuft_dither < half_width / half_resolved)
-        {
-            // the lower part of a tuft sits in the thatch of its neighbours, the dark root never shows from afar
-            height_percent = lerp(grass_card_root_hidden, 1.0f, v);
-            width_percent  = saturate(0.5f + offset / (2.0f * half_resolved));
-            variation      = lerp(card_variation, hash_unit(hash_mix(h ^ 0x3c6ef372u)), 0.5f);
-            return true;
-        }
-    }
-
-    return false;
-}
-
 // grass seen from past its last ring, the terrain under a meadow takes on the colour of the carpet the
 // blades and cards would have drawn, gated by the same biome, ground, slope and patch rules the
 // populate pass uses so a meadow keeps its outline to the horizon for the cost of a few taps
@@ -535,9 +487,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     // pull the per-instance transform from the dedicated procedural grass buffer
     // lod_base lets the same vs handle all three lod rings
-    // Coarse blades occupy the same allocation from its end, in reverse order.
-    uint reverse_count = pass_uint(pass_grass_draw::reverse_count);
-    uint slot = pass_uint(pass_grass_draw::lod_base) + (reverse_count > 0u ? reverse_count - 1u - instance_id : instance_id);
+    uint slot = pass_uint(pass_grass_draw::lod_base) + instance_id;
     GrassInstance gi = grass_instances[slot];
     input.instance_transform = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
         (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
@@ -643,7 +593,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // which lights that face away from the viewer. flipping normal and tangent keeps the
     // shading frame towards the camera. opaque shells such as the car body use draw flag
     // bit 3, the same two-sided bit the meshlet cull reads. procedural blades flip later.
+#ifdef INDIRECT_DRAW
     const bool is_impostor = (vertex.draw_flags & draw_flag_impostor) != 0u;
+#else
+    const bool is_impostor = false;
+#endif
     if (!is_front_face && !is_impostor && !surface.is_grass_blade() && !surface.is_flower() &&
         (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || material.subsurface_scattering > 0.0f || (vertex.draw_flags & 8u) != 0u))
     {
@@ -682,33 +636,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     face_normal = face_normal_length_sq > 0.0f ? face_normal * rsqrt(face_normal_length_sq) : normalize(vertex.normal);
     face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
 
-#if defined(GRASS_SPECIALIZED) && !defined(GRASS_OPAQUE)
-    // the outer ring draws tuft impostor cards, the tufts are cut out before anything is shaded and then
-    // hand the blade shading below the same height, width and variation a real blade would carry
-    float card_footprint = max(abs(ddx(vertex.uv_misc.x)), abs(ddy(vertex.uv_misc.x)));
-    if (pass_float(pass_grass_draw::card_width) > 0.0f)
-    {
-        float tuft_height;
-        float tuft_width;
-        float tuft_variation;
-        float dither = noise_interleaved_gradient(vertex.position.xy);
-        if (!grass_card_cutout(vertex.uv_misc.xy, vertex.uv_misc.w, card_footprint, dither, tuft_height, tuft_width, tuft_variation))
-        {
-            discard;
-        }
-        vertex.uv_misc.z     = tuft_height;
-        vertex.uv_misc.w     = tuft_variation;
-        vertex.width_percent = tuft_width;
-    }
-#endif
-
     // impostor texels name the source uv and carry the crown normal, the prepass already cut the silhouette with the same pick
     float impostor_mip = 0.0f;
     if (is_impostor)
     {
         float2 impostor_uv;
         float3 normal_frame;
-        impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), get_alpha_threshold(position_world), impostor_uv, normal_frame, impostor_mip);
+        impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), get_alpha_threshold(position_world, material.alpha_cutoff), impostor_uv, normal_frame, impostor_mip);
         float3 bitangent  = cross(vertex.normal, vertex.tangent);
         normal            = normalize(normal_frame.x * vertex.tangent + normal_frame.y * bitangent + normal_frame.z * vertex.normal);
         vertex.uv_misc.xy = impostor_uv;
@@ -864,7 +798,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float4 albedo_sample = 1.0f;
     if (!terrain_shaded && surface.has_texture_albedo())
     {
-        albedo_sample     = is_impostor
+        albedo_sample = is_impostor
             ? GET_TEXTURE(material_texture_index_albedo).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy, impostor_mip)
             : sample_texture(vertex, material_texture_index_albedo);
         if (material.is_albedo_srgb())

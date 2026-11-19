@@ -266,14 +266,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // fall back to the temporal stage estimate only when the reservoir is genuinely empty, see
     // the matching comment in restir_pt_temporal, a value keyed fallback lifts every dark pixel
     // and flips estimators frame to frame
+    float4 temporal_stage = tex_uav[pixel];
     if (combined.M <= 0.0f)
     {
-        float4 temporal_stage = tex_uav[pixel];
-        gi       = temporal_stage.rgb;
-        hit_dist = temporal_stage.a;
+        gi = temporal_stage.rgb;
+        hit_dist = restir_specular_output[pixel].a;
     }
 
     // emissive nee and indirect lighting are already carried by the reservoir
-    tex_uav[pixel] = float4(gi, hit_dist);
+    tex_uav[pixel] = float4(gi, temporal_stage.a);
     restir_specular_output[pixel] = float4(clamp(specular, 0.0f, gi), hit_dist);
 }

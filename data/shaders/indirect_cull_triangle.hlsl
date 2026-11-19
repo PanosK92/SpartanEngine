@@ -45,12 +45,12 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
             gs_mb             = meshlet_bounds[gs_mi.meshlet_index];
             gs_world_xform    = mul(pull_instance_transform(gs_draw.instance_offset, gs_mi.instance_index), gs_draw.transform);
             gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-            gs_deformed       = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u || (gs_draw.flags & (1u << 14)) != 0u;
+            gs_deformed       = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
             // alpha-tested is uniform across the workgroup since every thread shares this meshlet instance, it routes survivors to the alpha half
             gs_is_alpha       = (gs_draw.flags & 16u) != 0u;
             // first_index and triangle_count come out of the compressed bounds, the helpers stay in lockstep with the cpu packer in build_meshlets
             gs_triangle_count = meshlet_decode_triangle_count(gs_mb);
-            gs_base_index_pos = gs_draw.lod_first_index + meshlet_decode_first_index(gs_mb);
+            gs_base_index_pos = gs_draw.geometry_first_index + meshlet_decode_first_index(gs_mb);
         }
         else
         {
@@ -67,9 +67,9 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
     {
         // load the three vertex indices for this triangle from the global index buffer
         uint base_index_pos = gs_base_index_pos + triangle_idx * 3u;
-        uint i0 = geometry_indices[base_index_pos + 0u] + gs_draw.lod_vertex_offset;
-        uint i1 = geometry_indices[base_index_pos + 1u] + gs_draw.lod_vertex_offset;
-        uint i2 = geometry_indices[base_index_pos + 2u] + gs_draw.lod_vertex_offset;
+        uint i0 = geometry_indices[base_index_pos + 0u] + gs_draw.geometry_vertex_offset;
+        uint i1 = geometry_indices[base_index_pos + 1u] + gs_draw.geometry_vertex_offset;
+        uint i2 = geometry_indices[base_index_pos + 2u] + gs_draw.geometry_vertex_offset;
 
         PulledVertex v0 = load_pulled_vertex(i0);
         PulledVertex v1 = load_pulled_vertex(i1);
@@ -91,7 +91,7 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
             keep               = dot(face_normal, view_dir) <= 0.0f;
         }
 
-        // Rest-pose triangles cannot reject wind motion or camera-facing impostors. The
+        // Rest-pose triangles cannot reject wind motion. The
         // instance and meshlet passes already tested the expanded motion bounds.
         if (keep && !gs_deformed)
         {

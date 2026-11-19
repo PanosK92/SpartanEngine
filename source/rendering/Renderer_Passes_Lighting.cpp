@@ -39,7 +39,7 @@ namespace spartan
             "Skip zero-contribution lights in reflections and back-facing local shadow rays");
 
         TConsoleVar<bool> cvar_ray_traced_shadows_checkerboard("r.ray_traced_shadows_checkerboard", true,
-            "Trace half the shadow pixels in a checkerboard, a depth and normal aware fill reconstructs the rest");
+            "Interleave ray-traced shadow samples over four frames and reconstruct with depth and normals");
 
         TConsoleVar<bool> cvar_ray_traced_reflections_checkerboard("r.ray_traced_reflections_checkerboard", true,
             "Trace and shade half the reflection pixels in a checkerboard, nrd reconstructs the rest");
@@ -473,7 +473,8 @@ namespace spartan
                 checkerboard            = cvar_ray_traced_shadows_checkerboard.GetValueAs<bool>() && tex_shadows_local && shader_fill && shader_fill->IsCompiled();
                 uint32_t width          = tex_shadows->GetWidth();
                 uint32_t height         = tex_shadows->GetHeight();
-                RHI_CommandList::TraceRays(checkerboard ? (width + 1) / 2 : width, height);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::TraceRays(checkerboard ? (width + 1) / 2 : width, checkerboard ? (height + 1) / 2 : height);
             }
             RHI_CommandList::EndMarker();
 
@@ -483,13 +484,12 @@ namespace spartan
                 RHI_CommandList::BeginMarker("checkerboard_fill");
                 {
                     const uint32_t thread_group_size = 8;
-                    const uint32_t packed_width      = (tex_shadows->GetWidth() + 1) / 2;
                     RHI_CommandList::SetShader(GetShader(Renderer_Shader::ray_traced_shadows_fill_c), "ray_traced_shadows_fill");
                     SetCommonTextures();
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu); // the slot table the trace used
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
-                    RHI_CommandList::Dispatch((packed_width + thread_group_size - 1) / thread_group_size, (tex_shadows->GetHeight() + thread_group_size - 1) / thread_group_size);
+                    RHI_CommandList::Dispatch((tex_shadows->GetWidth() + thread_group_size - 1) / thread_group_size, (tex_shadows->GetHeight() + thread_group_size - 1) / thread_group_size);
                 }
                 RHI_CommandList::EndMarker();
             }
@@ -1795,7 +1795,20 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
+            if (IsRestirActive())
+            {
+                RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+                RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+                RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+                RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+                RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::sky_sh));
+            }
+            else
+            {
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
+            }
             if (is_transparent_pass)
             {
                 RHI_Texture* tex_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);

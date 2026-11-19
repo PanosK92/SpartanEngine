@@ -483,14 +483,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // this on a small gi value instead swaps in a different estimator exactly on the pixels
     // where the resampled one came out dark, which is a one sided lift of every shadowed pixel
     // and reads as boiling because the switch flips frame to frame
+    float4 trace_stage = tex_uav[pixel];
     if (combined.M <= 0.0f)
     {
-        float4 trace_stage = tex_uav[pixel];
-        gi       = trace_stage.rgb;
-        hit_dist = trace_stage.a;
+        gi = trace_stage.rgb;
+        hit_dist = restir_specular_output[pixel].a;
     }
 
-    tex_uav[pixel] = float4(gi, hit_dist);
+    tex_uav[pixel] = float4(gi, trace_stage.a);
     restir_specular_output[pixel] = float4(clamp(specular, 0.0f, gi), hit_dist);
 
 }

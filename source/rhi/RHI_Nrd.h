@@ -202,11 +202,10 @@ namespace spartan
             settings.hitDistanceParameters.A           = restir_hit_distance_a;
             settings.hitDistanceParameters.B           = restir_hit_distance_b;
             settings.hitDistanceParameters.C           = restir_hit_distance_c;
-            settings.diffusePrepassBlurRadius          = 8.0f;
+            // Use REBLUR's default diffuse prepass and maximum blur radii for one-sample lighting.
             // The unified reservoir supplies a stochastic glossy signal too.
             // Filter it before temporal accumulation, as in the reflection preset.
             settings.specularPrepassBlurRadius         = 30.0f;
-            settings.maxBlurRadius                     = 16.0f;
             settings.minBlurRadius                     = 1.0f;
             // Quarter-resolution indirect light needs a longer history than reflections.
             // ReBLUR antilag and disocclusion still discard stale lighting and moving surfaces.

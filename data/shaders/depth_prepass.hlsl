@@ -43,6 +43,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     float3 position_relative_previous = 0.0f;
     gbuffer_vertex vertex             = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
     vertex.material_index          = _draw.material_index;
+
 #ifdef INDIRECT_DRAW
     if ((_draw.flags & draw_flag_impostor) != 0u)
     {
@@ -64,7 +65,7 @@ void main_ps(gbuffer_vertex vertex)
     pass_load_draw_data_from_vertex(vertex.material_index);
 
     MaterialParameters material = GetMaterial();
-    const bool is_impostor      = vertex.uv_misc.z < -0.5f;
+    const bool is_impostor = vertex.uv_misc.z < -0.5f;
     if (!material.is_alpha_tested() && !is_impostor)
         return;
 

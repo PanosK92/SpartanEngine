@@ -69,19 +69,15 @@ namespace
 void AssetViewer::LoadWorkingGeometry()
 {
     m_working_sub_meshes.clear();
-    m_working_lods.clear();
     m_working_vertices.clear();
     m_working_indices.clear();
     m_working_modified = false;
     m_working_editable = false;
-    m_working_lods_attempted = false;
-    m_preview_lod = 0;
     if (m_working_meshes.empty())
     {
         return;
     }
 
-    // only lod 0, the lods sit back to back with lod local indices so drawing them raw misplaces every triangle
     for (
         uint32_t mesh_index = 0;
         mesh_index < static_cast<uint32_t>(m_working_meshes.size());
@@ -95,7 +91,7 @@ void AssetViewer::LoadWorkingGeometry()
             sub_mesh++
         )
         {
-            if (mesh->GetSubMesh(sub_mesh).lods.empty())
+            if (mesh->GetSubMesh(sub_mesh).root.index_count == 0)
             {
                 continue;
             }
@@ -122,79 +118,9 @@ void AssetViewer::LoadWorkingGeometry()
     }
 
     m_working_editable = !m_working_sub_meshes.empty();
-    m_working_lods_scanned = false;
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
     m_preview_dirty = true;
-}
-
-// reads the levels the mesh already carries so the picker exists the moment a mesh is selected, having
-// it appear only after pressing build meant a mesh that shipped with a full chain looked like it had none
-void AssetViewer::LoadExistingLods()
-{
-    m_working_lods.clear();
-    m_working_lods_built = false;
-    if (m_working_meshes.empty() || m_working_sub_meshes.empty())
-    {
-        return;
-    }
-
-    const auto source_mesh =
-        [this](const WorkingSubMesh& working)
-        {
-            return m_working_meshes[working.source_mesh].mesh.get();
-        };
-
-    // the chain is only as deep as the shallowest sub mesh, a level that exists for one part and not
-    // another would silently drop the parts that ran out of levels
-    uint32_t depth =
-        source_mesh(m_working_sub_meshes.front())->GetLodCount(
-            m_working_sub_meshes.front().source_sub_mesh
-        );
-    for (const WorkingSubMesh& working : m_working_sub_meshes)
-    {
-        depth = min(
-            depth,
-            source_mesh(working)->GetLodCount(working.source_sub_mesh)
-        );
-    }
-    if (depth < 2)
-    {
-        return;
-    }
-
-    vector<vector<WorkingSubMesh>> levels;
-    for (uint32_t lod = 0; lod < depth; lod++)
-    {
-        vector<WorkingSubMesh> level;
-        for (const WorkingSubMesh& source : m_working_sub_meshes)
-        {
-            WorkingSubMesh working;
-            working.source_mesh = source.source_mesh;
-            working.source_sub_mesh = source.source_sub_mesh;
-            working.source_vertex_count = source.source_vertex_count;
-            working.source_index_count = source.source_index_count;
-            if (
-                !source_mesh(source)->GetGeometryLod(
-                    source.source_sub_mesh,
-                    lod,
-                    &working.indices,
-                    &working.vertices
-                ) ||
-                working.vertices.empty() ||
-                working.indices.size() < 3
-            )
-            {
-                return;
-            }
-
-            level.emplace_back(move(working));
-        }
-
-        levels.emplace_back(move(level));
-    }
-
-    m_working_lods = move(levels);
 }
 
 void AssetViewer::FlattenWorkingGeometry()
@@ -204,13 +130,7 @@ void AssetViewer::FlattenWorkingGeometry()
 
     // the preview draws one mesh, so whatever level is selected gets concatenated with rebased
     // indices, the per sub mesh copies stay untouched and remain what gets baked
-    const vector<WorkingSubMesh>& source =
-        (
-            m_preview_lod > 0 &&
-            m_preview_lod < static_cast<int>(m_working_lods.size())
-        )
-            ? m_working_lods[m_preview_lod]
-            : m_working_sub_meshes;
+    const auto& source = m_working_sub_meshes;
 
     for (const WorkingSubMesh& working : source)
     {
@@ -246,7 +166,7 @@ bool AssetViewer::EnsurePreviewMeshes()
         sources.push_back(working.mesh.get());
     }
 
-    // the pool survives simplify, revert and lod switches, rebuilding it per edit would grow the
+    // the pool survives simplify and revert, rebuilding it per edit would grow the
     // global geometry buffer without bound because it only ever appends
     if (
         m_preview_meshes.size() == m_working_sub_meshes.size() &&
@@ -286,7 +206,7 @@ bool AssetViewer::EnsurePreviewMeshes()
             &indices,
             &vertices
         );
-        scratch->AddGeometry(vertices, indices, false);
+        scratch->AddGeometry(vertices, indices);
         scratch->CreateGpuBuffers();
         m_preview_meshes.push_back(move(scratch));
     }
@@ -303,10 +223,9 @@ void AssetViewer::RefreshPreviewMeshGeometry()
 
     // an untouched asset draws straight from the cached mesh, the scratch pool costs a geometry
     // buffer allocation per asset and that buffer only ever appends, so it stays unallocated until
-    // there is an actual edit or a lod level to show
+    // there is an edit to preview
     const bool wants_scratch =
-        m_working_modified ||
-        m_preview_lod > 0;
+        m_working_modified;
     if (!wants_scratch)
     {
         for (const PreviewRenderSlot& slot : m_preview_render_slots)
@@ -341,13 +260,7 @@ void AssetViewer::RefreshPreviewMeshGeometry()
         return;
     }
 
-    const vector<WorkingSubMesh>& source =
-        (
-            m_preview_lod > 0 &&
-            m_preview_lod < static_cast<int>(m_working_lods.size())
-        )
-            ? m_working_lods[m_preview_lod]
-            : m_working_sub_meshes;
+    const auto& source = m_working_sub_meshes;
 
     for (size_t index = 0; index < m_preview_meshes.size(); index++)
     {
@@ -405,8 +318,7 @@ void AssetViewer::RefreshPreviewMeshGeometry()
 
 AssetViewer::GeometryState AssetViewer::CaptureGeometry() const
 {
-    return {m_loaded_path, m_working_sub_meshes, m_working_lods, m_working_modified,
-        m_working_lods_built, m_working_lods_attempted, m_working_lods_scanned, m_preview_lod};
+    return {m_loaded_path, m_working_sub_meshes, m_working_modified};
 }
 
 void AssetViewer::RestoreGeometry(const GeometryState& state)
@@ -417,12 +329,7 @@ void AssetViewer::RestoreGeometry(const GeometryState& state)
         if (!PreviewPath(state.path, error)) { SP_LOG_WARNING("Cannot restore mesh edit: %s", error.c_str()); return; }
     }
     m_working_sub_meshes = state.meshes;
-    m_working_lods = state.lods;
     m_working_modified = state.modified;
-    m_working_lods_built = state.built;
-    m_working_lods_attempted = state.attempted;
-    m_working_lods_scanned = state.scanned;
-    m_preview_lod = state.preview_lod;
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
     m_visible = true;
@@ -483,13 +390,6 @@ void AssetViewer::SimplifyWorkingGeometry(const float ratio)
     }
 
     m_working_modified = true;
-    m_preview_lod = 0;
-    // the mesh's saved chain was derived from geometry that no longer exists, leaving it in the picker
-    // would offer levels that do not match the lod 0 on screen, and it must not be read back either
-    m_working_lods.clear();
-    m_working_lods_built = false;
-    m_working_lods_attempted = false;
-    m_working_lods_scanned = true;
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
     RecordGeometry(before);
@@ -512,124 +412,6 @@ void AssetViewer::OptimizeWorkingGeometry()
     }
 
     m_working_modified = true;
-    m_working_lods.clear();
-    m_working_lods_built = false;
-    m_working_lods_attempted = false;
-    m_working_lods_scanned = true;
-    m_preview_lod = 0;
-    FlattenWorkingGeometry();
-    RefreshPreviewMeshGeometry();
-    RecordGeometry(before);
-}
-
-void AssetViewer::BuildWorkingLods()
-{
-    const auto before = CaptureGeometry();
-    m_working_lods.clear();
-    m_working_lods_built = false;
-    m_working_lods_scanned = true;
-    m_preview_lod = 0;
-    m_working_lods_attempted = true;
-    if (m_working_sub_meshes.empty())
-    {
-        return;
-    }
-
-    // mirrors the reduction curve mesh uses when it bakes lods, so what the picker shows is what
-    // the saved file gets rather than an approximation of it
-    static const float screen_thresholds[mesh_lod_count] =
-    {
-        0.05f,
-        0.025f,
-        0.012f,
-        0.006f,
-        0.003f
-    };
-
-    m_working_lods.push_back(m_working_sub_meshes);
-    for (
-        uint32_t lod = 1;
-        lod < mesh_lod_count;
-        lod++
-    )
-    {
-        vector<WorkingSubMesh> level = m_working_lods.back();
-        const float target_ratio =
-            screen_thresholds[lod] / screen_thresholds[0];
-
-        uint64_t previous_indices = 0;
-        for (const WorkingSubMesh& working : level)
-        {
-            previous_indices += working.indices.size();
-        }
-
-        for (size_t index = 0; index < level.size(); index++)
-        {
-            WorkingSubMesh& working = level[index];
-            if (working.indices.size() <= 64)
-            {
-                continue;
-            }
-
-            // the target is relative to the original rather than to the previous level, so a level
-            // that fails to reduce does not drag every level below it up with it
-            const size_t target = max<size_t>(
-                64,
-                static_cast<size_t>(
-                    static_cast<float>(
-                        m_working_sub_meshes[index].indices.size()
-                    ) *
-                    target_ratio
-                )
-            );
-            if (target >= working.indices.size())
-            {
-                continue;
-            }
-
-            geometry_processing::simplify(
-                working.indices,
-                working.vertices,
-                target,
-                true,
-                false,
-                true,
-                mesh_lod_max_error[lod] - mesh_lod_max_error[lod - 1]
-            );
-        }
-
-        uint64_t level_indices = 0;
-        for (const WorkingSubMesh& working : level)
-        {
-            level_indices += working.indices.size();
-        }
-
-        // a level that barely moved is a duplicate of the one above it, keeping it would put two
-        // identical looking entries in the picker and two identical ranges in the saved file
-        if (
-            level_indices >=
-            static_cast<uint64_t>(
-                static_cast<float>(previous_indices) *
-                mesh_lod_min_reduction
-            )
-        )
-        {
-            break;
-        }
-
-        m_working_lods.push_back(move(level));
-    }
-
-    // a single entry means nothing could be reduced, so there is no chain worth showing
-    if (m_working_lods.size() < 2)
-    {
-        m_working_lods.clear();
-    }
-    else
-    {
-        m_working_lods_built = true;
-    }
-
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
     RecordGeometry(before);
@@ -658,7 +440,7 @@ bool AssetViewer::SaveWorkingGeometry()
         const WorkingMesh& source = m_working_meshes[mesh_index];
 
         // bake into a standalone mesh so the cached resource is untouched until the
-        // file is reloaded below, lods are rebuilt from the edited geometry
+        // file is reloaded below with freshly cooked geometry pages
         Mesh baked;
         baked.SetObjectName(
             FileSystem::GetFileNameWithoutExtensionFromFilePath(
@@ -666,13 +448,7 @@ bool AssetViewer::SaveWorkingGeometry()
             )
         );
 
-        // inherit the import flags so the rebuilt file keeps the behaviour the original was authored
-        // with, only the lod flag follows the checkbox
         baked.SetFlags(source.mesh->GetFlags());
-        baked.SetFlag(
-            static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods),
-            m_working_generate_lods
-        );
 
         // sub mesh order has to survive the bake, the prefab and the materials reference sub meshes by
         // index, so slots are reserved up front and written in place
@@ -693,7 +469,6 @@ bool AssetViewer::SaveWorkingGeometry()
             baked.AddGeometry(
                 vertices,
                 indices,
-                m_working_generate_lods,
                 working.source_sub_mesh
             );
             written++;
@@ -836,7 +611,7 @@ AssetViewer::BakeSummary AssetViewer::PreviewBakeSummary() const
     return summary;
 }
 
-bool AssetViewer::BakePrefabByMaterial(const bool generate_lods)
+bool AssetViewer::BakePrefabByMaterial()
 {
     if (
         m_selected_asset < 0 ||
@@ -847,7 +622,7 @@ bool AssetViewer::BakePrefabByMaterial(const bool generate_lods)
         m_status = "Select a prefab to bake.";
         return false;
     }
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         m_status =
             "Save or revert the mesh changes before baking.";
@@ -924,8 +699,7 @@ bool AssetViewer::BakePrefabByMaterial(const bool generate_lods)
     const game_ready::MergeReport report =
         game_ready::MergeRenderersByMaterial(
             root,
-            mesh_path,
-            generate_lods
+            mesh_path
         );
     if (!report.ok)
     {
@@ -1061,14 +835,10 @@ void AssetViewer::DrawBakeConfirmation()
             bake.skipped == 1 ? "" : "s"
         );
     }
-    ImGui::Checkbox(
-        "Generate LODs for the merged mesh",
-        &m_bake_generate_lods
-    );
     ImGui::Spacing();
     if (ImGuiSp::button("Bake and overwrite"))
     {
-        BakePrefabByMaterial(m_bake_generate_lods);
+        BakePrefabByMaterial();
         ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();
@@ -1089,16 +859,6 @@ void AssetViewer::DrawMeshTools()
         return;
     }
 
-    // the levels already in the mesh are read on first sight of this panel, so a mesh that ships with a
-    // chain can be paged through without building anything
-    if (!m_working_lods_scanned)
-    {
-        m_working_lods_scanned = true;
-        LoadExistingLods();
-    }
-
-    // the mesh wide counts include every lod, so lod 0 is summed instead or the reduction readout
-    // compares the edit against geometry it never touched
     uint64_t source_vertices = 0;
     uint64_t source_indices = 0;
     uint64_t working_vertices = 0;
@@ -1111,8 +871,6 @@ void AssetViewer::DrawMeshTools()
         working_indices += working.indices.size();
     }
     const uint64_t source_triangles = source_indices / 3;
-    // the lod picker changes what the viewport shows, not what the edit is, so these track the
-    // working geometry rather than the flattened preview
     const uint64_t working_triangles = working_indices / 3;
     const float reduction = source_triangles > 0
         ? 1.0f -
@@ -1133,7 +891,7 @@ void AssetViewer::DrawMeshTools()
         ImGuiChildFlags_None
     );
 
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         const ImVec4 accent = ImGui::Style::color_accent_1;
         ImGui::PushStyleColor(
@@ -1254,200 +1012,12 @@ void AssetViewer::DrawMeshTools()
         OptimizeWorkingGeometry();
     }
     ImGui::Spacing();
-    ImGui::TextUnformatted("2  BUILD LEVELS OF DETAIL");
-    ImGui::Separator();
-    ImGui::Checkbox(
-        "Generate LODs when saving",
-        &m_working_generate_lods
-    );
-    ImGuiSp::tooltip(
-        "Rebuild lower detail levels from the edited geometry"
-    );
-    if (
-        ImGuiSp::button(
-            m_working_lods.empty() ? "Build LODs" : "Rebuild LODs",
-            ImVec2(-1.0f, 0.0f)
-        )
-    )
-    {
-        BuildWorkingLods();
-    }
-    ImGuiSp::tooltip(
-        "Preview the chain that saving would bake, this does not change the mesh"
-    );
-
-    if (!m_working_lods.empty())
-    {
-        const int lod_count =
-            static_cast<int>(m_working_lods.size());
-        m_preview_lod = clamp(m_preview_lod, 0, lod_count - 1);
-
-        const auto lod_triangles =
-            [this](const int lod)
-            {
-                uint64_t indices = 0;
-                for (
-                    const WorkingSubMesh& working :
-                    m_working_lods[static_cast<size_t>(lod)]
-                )
-                {
-                    indices += working.indices.size();
-                }
-                return indices / 3;
-            };
-
-        // each entry carries its own cost, so choosing a level is a comparison rather than a guess
-        const auto lod_label =
-            [&](const int lod)
-            {
-                const uint64_t triangles = lod_triangles(lod);
-                string label =
-                    "LOD " +
-                    to_string(lod) +
-                    "  -  " +
-                    compact_count(triangles) +
-                    " triangles";
-                if (lod == 0)
-                {
-                    return label + "  (full detail)";
-                }
-
-                const int removed = source_triangles > 0
-                    ? static_cast<int>(
-                        (
-                            1.0f -
-                            static_cast<float>(triangles) /
-                            static_cast<float>(source_triangles)
-                        ) *
-                        100.0f
-                    )
-                    : 0;
-                return label + "  (-" + to_string(removed) + "%)";
-            };
-
-        ImGui::TextDisabled(
-            m_working_lods_built
-                ? "Showing in the viewport, not saved yet"
-                : "Showing in the viewport, saved in this mesh"
-        );
-        ImGui::SetNextItemWidth(-1.0f);
-        if (
-            ImGui::BeginCombo(
-                "##preview_lod",
-                lod_label(m_preview_lod).c_str()
-            )
-        )
-        {
-            for (int lod = 0; lod < lod_count; lod++)
-            {
-                const bool selected = lod == m_preview_lod;
-                if (
-                    ImGui::Selectable(
-                        lod_label(lod).c_str(),
-                        selected
-                    ) &&
-                    !selected
-                )
-                {
-                    m_preview_lod = lod;
-                    FlattenWorkingGeometry();
-                    RefreshPreviewMeshGeometry();
-                }
-                if (selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
-        }
-        ImGuiSp::tooltip(
-            "Switch the preview between the levels that saving would bake"
-        );
-
-        // stepping is how the levels get compared, hunting the same entry in a dropdown each time is
-        // what makes a chain of five feel like work
-        const float step_width =
-            (
-                ImGui::GetContentRegionAvail().x -
-                4.0f * ui_scale()
-            ) *
-            0.5f;
-        const bool at_first = m_preview_lod <= 0;
-        const bool at_last = m_preview_lod >= lod_count - 1;
-        int stepped = m_preview_lod;
-        if (at_first)
-        {
-            ImGui::BeginDisabled();
-        }
-        if (
-            ImGuiSp::button(
-                "More detail",
-                ImVec2(step_width, 0.0f)
-            )
-        )
-        {
-            stepped = m_preview_lod - 1;
-        }
-        if (at_first)
-        {
-            ImGui::EndDisabled();
-        }
-        ImGui::SameLine(0.0f, 4.0f * ui_scale());
-        if (at_last)
-        {
-            ImGui::BeginDisabled();
-        }
-        if (
-            ImGuiSp::button(
-                "Less detail",
-                ImVec2(step_width, 0.0f)
-            )
-        )
-        {
-            stepped = m_preview_lod + 1;
-        }
-        if (at_last)
-        {
-            ImGui::EndDisabled();
-        }
-        if (stepped != m_preview_lod)
-        {
-            m_preview_lod = clamp(stepped, 0, lod_count - 1);
-            FlattenWorkingGeometry();
-            RefreshPreviewMeshGeometry();
-        }
-    }
-    else if (m_working_lods_attempted)
-    {
-        // pressing build and getting nothing back looks identical to never pressing it, which is the
-        // one state worth spelling out
-        ImGui::PushStyleColor(
-            ImGuiCol_Text,
-            ImGui::Style::color_accent_1
-        );
-        ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextUnformatted(
-            "This geometry is already too simple to reduce further, so there is "
-            "no chain to preview. Lower the simplification target first if you "
-            "want coarser levels."
-        );
-        ImGui::PopTextWrapPos();
-        ImGui::PopStyleColor();
-    }
-    else
-    {
-        ImGui::TextDisabled(
-            "This mesh has no saved levels, build a chain to preview one"
-        );
-    }
-
     ImGui::EndChild();
     ImGui::Separator();
-    ImGui::TextUnformatted("3  REVIEW AND SAVE");
+    ImGui::TextUnformatted("2  REVIEW AND SAVE");
 
     const bool can_save =
-        m_working_modified ||
-        m_working_lods_built;
+        m_working_modified;
     ImGui::TextDisabled(
         can_save
             ? "Changes are previewed but not saved"
@@ -1477,7 +1047,7 @@ void AssetViewer::DrawMeshTools()
         RecordGeometry(before);
     }
     ImGuiSp::tooltip(
-        "Discard simplification and rebuilt LOD previews"
+        "Discard the mesh edits"
     );
     ImGui::SameLine(0.0f, action_gap);
     if (
@@ -1502,8 +1072,6 @@ void AssetViewer::DrawMeshTools()
         )
     )
     {
-        // the lod picker only changes what is on screen, the bake always writes the working
-        // geometry as lod 0 and derives the rest from it
         ImGui::TextUnformatted(
             m_working_meshes.size() > 1
                 ? "Overwrite the prefab's mesh files?"
@@ -1516,11 +1084,10 @@ void AssetViewer::DrawMeshTools()
             reduction * 100.0f
         );
         ImGui::TextDisabled(
-            "%zu sub meshes in %zu file%s, LODs %s",
+            "%zu sub meshes in %zu file%s",
             m_working_sub_meshes.size(),
             m_working_meshes.size(),
-            m_working_meshes.size() == 1 ? "" : "s",
-            m_working_generate_lods ? "rebuilt" : "dropped"
+            m_working_meshes.size() == 1 ? "" : "s"
         );
         ImGui::Spacing();
         if (ImGuiSp::button("Save and overwrite"))

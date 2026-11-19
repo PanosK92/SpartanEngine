@@ -1846,7 +1846,9 @@ namespace spartan
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
                 bind_particle_fluid();
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch(tex_render, GetResolutionScale());
+                const uint32_t width = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
+                const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());
+                RHI_CommandList::Dispatch((width + 15u) / 16u, (height + 15u) / 16u);
             }
             RHI_CommandList::EndPass();
 

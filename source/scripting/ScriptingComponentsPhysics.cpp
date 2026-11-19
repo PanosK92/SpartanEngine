@@ -28,26 +28,26 @@ namespace spartan::scripting
     {
         void register_physics(sol::state_view State)
         {
-            visual::enumeration(State, "BodyType",
-                "Box",          BodyType::Box,
-                "Sphere",       BodyType::Sphere,
-                "Plane",        BodyType::Plane,
-                "Capsule",      BodyType::Capsule,
-                "Mesh",         BodyType::Mesh,
-                "MeshConvex",   BodyType::MeshConvex,
-                "Controller",   BodyType::Controller,
-                "Custom",       BodyType::Custom,
-                "Cloth",        BodyType::Cloth,
-                "Heightfield",  BodyType::Heightfield,
-                "Max",          BodyType::Max
-            );
+            visual::enumeration<BodyType>(State, "BodyType", {
+                {"Box",          BodyType::Box},
+                {"Sphere",       BodyType::Sphere},
+                {"Plane",        BodyType::Plane},
+                {"Capsule",      BodyType::Capsule},
+                {"Mesh",         BodyType::Mesh},
+                {"MeshConvex",   BodyType::MeshConvex},
+                {"Controller",   BodyType::Controller},
+                {"Custom",       BodyType::Custom},
+                {"Cloth",        BodyType::Cloth},
+                {"Heightfield",  BodyType::Heightfield},
+                {"Max",          BodyType::Max}
+            });
 
-            visual::enumeration(State, "ClothPinMode",
-                "Edge",          ClothPinMode::Edge,
-                "OppositeEdges", ClothPinMode::OppositeEdges,
-                "Border",        ClothPinMode::Border,
-                "None",          ClothPinMode::None
-            );
+            visual::enumeration<ClothPinMode>(State, "ClothPinMode", {
+                {"Edge",          ClothPinMode::Edge},
+                {"OppositeEdges", ClothPinMode::OppositeEdges},
+                {"Border",        ClothPinMode::Border},
+                {"None",          ClothPinMode::None}
+            });
 
             visual::usertype<Physics>(State, "Physics",
                 sol::base_classes,              sol::bases<Component>(),
@@ -95,12 +95,12 @@ namespace spartan::scripting
 
         void register_animator(sol::state_view state)
         {
-            visual::enumeration(state, "IkLimb",
-                "HandLeft",  IkLimb::HandLeft,
-                "HandRight", IkLimb::HandRight,
-                "FootLeft",  IkLimb::FootLeft,
-                "FootRight", IkLimb::FootRight
-            );
+            visual::enumeration<IkLimb>(state, "IkLimb", {
+                {"HandLeft",  IkLimb::HandLeft},
+                {"HandRight", IkLimb::HandRight},
+                {"FootLeft",  IkLimb::FootLeft},
+                {"FootRight", IkLimb::FootRight}
+            });
 
             visual::usertype<Animator>(state, "Animator",
                 sol::base_classes, sol::bases<Component>(),

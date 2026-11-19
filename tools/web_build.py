@@ -346,6 +346,12 @@ def engine_sources():
         if path.name == "pch.cpp":
             continue
         sources.append(path)
+    batched = set()
+    for batch in sources:
+        if batch.name.endswith(".unity.cpp"):
+            for member in re.findall(r'^#include "([^"]+\.cpp)"', batch.read_text(encoding="utf-8"), re.MULTILINE):
+                batched.add(batch.parent / member)
+    sources = [path for path in sources if path not in batched]
     def compile_priority(path):
         rel = path.relative_to(source).as_posix()
         if rel.startswith("scripting/Scripting"):

@@ -5,6 +5,8 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
+#pragma once
+
 // xcode prefixes every source with this header, the c sources (mimalloc, lz4, lzma) must not see it
 #ifdef __cplusplus
 
@@ -42,6 +44,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <future>
+#include <any>
+#include <span>
+#include <memory_resource>
+#include <deque>
 //===========================
 
 // common

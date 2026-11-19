@@ -62,7 +62,7 @@ namespace spartan
 
     namespace
     {
-        const MeshLod* get_mesh_lod(Mesh* mesh, uint32_t sub_mesh_index, uint32_t lod)
+        const GeometryRange* get_geometry_range(Mesh* mesh, uint32_t sub_mesh_index)
         {
             if (!mesh || sub_mesh_index >= mesh->GetSubMeshCount())
             {
@@ -70,16 +70,7 @@ namespace spartan
             }
 
             const SubMesh& sub_mesh = mesh->GetSubMesh(sub_mesh_index);
-            if (lod == sub_mesh.lods.size() && sub_mesh.impostor)
-            {
-                return &sub_mesh.impostor->lod;
-            }
-            if (lod >= sub_mesh.lods.size())
-            {
-                return nullptr;
-            }
-
-            return &sub_mesh.lods[lod];
+            return sub_mesh.HasGeometry() ? &sub_mesh.root : nullptr;
         }
     }
 
@@ -106,7 +97,7 @@ namespace spartan
         RegisterAttribute("m_bounding_box_dirty", "bool", [this]() { return m_bounding_box_dirty; },
             [this](const std::any& value) { m_bounding_box_dirty = std::any_cast<bool>(value); InvalidateSpatialBounds(); });
         RegisterAttribute("m_instances", "vector<Instance>", [this]() { return m_scene->instances; },
-            [this](const std::any& value) { m_scene->instances = std::any_cast<vector<Instance>>(value); });
+            [this](const std::any& value) { SetInstances(std::any_cast<const vector<Instance>&>(value)); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, Matrix);
         RegisterAttribute("m_max_distance_render", "float", [this]() { return m_scene->max_distance_render; },
             [this](const std::any& value) { m_scene->max_distance_render = std::any_cast<float>(value); });
@@ -116,8 +107,6 @@ namespace spartan
             [this](const std::any& value) { m_scene->distance_squared = std::any_cast<float>(value); });
         RegisterAttribute("m_is_visible", "bool", [this]() { return m_scene->is_visible; },
             [this](const std::any& value) { m_scene->is_visible = std::any_cast<bool>(value); });
-        RegisterAttribute("m_lod_index", "uint32_t", [this]() { return m_scene->lod_index; },
-            [this](const std::any& value) { m_scene->lod_index = std::any_cast<uint32_t>(value); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_previous_lights, uint64_t);
     }
 
@@ -379,10 +368,10 @@ namespace spartan
             }
         }
 
-        // use the mesh lod aabb, copying every vertex here used to dominate entity load time
-        if (m_scene->mesh && GetLodCount() > 0)
+        // use the resident geometry bounds, copying every vertex here used to dominate entity load time
+        if (m_scene->mesh && HasGeometry())
         {
-            m_bounding_box_mesh = GetLodAabb(0);
+            m_bounding_box_mesh = GetGeometryBounds();
         }
 
         // update instance buffer and bounding boxes
@@ -424,11 +413,7 @@ namespace spartan
 
         CountWorldWork(WorldWork::render_visible, m_scene->is_visible);
         CountWorldWork(WorldWork::visibility_changes, was_visible != m_scene->is_visible);
-        // lod only matters for visible geometry, off-screen props skip the coverage math
-        if (m_scene->is_visible)
-        {
-            UpdateLodIndices();
-        }
+
     }
 
     void Render::UpdateFrustumAndDistanceCulling()
@@ -456,7 +441,7 @@ namespace spartan
         }
 
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        const float max_distance = UsesImpostor() ? FLT_MAX : m_scene->max_distance_render;
+        const float max_distance = m_scene->max_distance_render;
         const float max_distance_sq = max_distance * max_distance;
 
         if (!m_scene->is_visible && m_scene->distance_squared > max_distance_sq)
@@ -509,9 +494,9 @@ namespace spartan
 
         // Mesh construction already computed this bound. Reuse it so each
         // imported instance does not copy and scan the same vertex buffer.
-        if (GetLodCount() > 0)
+        if (HasGeometry())
         {
-            m_bounding_box_mesh = GetLodAabb(0);
+            m_bounding_box_mesh = GetGeometryBounds();
             m_bounding_box_dirty = true;
         }
 
@@ -537,7 +522,6 @@ namespace spartan
         m_scene->sub_mesh_index    = 0;
         m_bounding_box_mesh = BoundingBox::Unit;
         m_bounding_box_dirty = true;
-        m_scene->lod_index          = 0;
     }
 
     void Render::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
@@ -571,9 +555,9 @@ namespace spartan
         }
 
         // use the cached mesh bounds, copying vertices dominates large prefab loads
-        if (m_scene->mesh && GetLodCount() > 0)
+        if (m_scene->mesh && HasGeometry())
         {
-            const Vector3 size = GetLodAabb(0).GetSize();
+            const Vector3 size = GetGeometryBounds().GetSize();
             material->SetProperty(
                 MaterialProperty::WorldWidth,
                 size.x
@@ -604,61 +588,61 @@ namespace spartan
         return m_scene->material ? m_scene->material->GetObjectName() : "";
     }
 
-    uint32_t Render::GetIndexOffset(const uint32_t lod) const
+    uint32_t Render::GetIndexOffset() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return m_scene->mesh->GetGlobalIndexOffset() + mesh_lod->index_offset;
+            return m_scene->mesh->GetGlobalIndexOffset() + range->index_offset;
         }
 
         return 0;
     }
 
-    uint32_t Render::GetIndexCount(const uint32_t lod) const
+    uint32_t Render::GetIndexCount() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return mesh_lod->index_count;
+            return range->index_count;
         }
 
         return 0;
     }
 
-    uint32_t Render::GetVertexOffset(const uint32_t lod) const
+    uint32_t Render::GetVertexOffset() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return m_scene->mesh->GetGlobalVertexOffset() + mesh_lod->vertex_offset;
+            return m_scene->mesh->GetRenderVertexOffset() + range->vertex_offset;
         }
 
         return 0;
     }
 
-    uint32_t Render::GetVertexCount(const uint32_t lod) const
+    uint32_t Render::GetVertexCount() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return mesh_lod->vertex_count;
+            return range->vertex_count;
         }
 
         return 0;
     }
 
-    uint32_t Render::GetMeshletOffset(const uint32_t lod) const
+    uint32_t Render::GetMeshletOffset() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return mesh_lod->meshlet_offset;
+            return range->meshlet_offset;
         }
 
         return 0;
     }
 
-    uint32_t Render::GetMeshletCount(const uint32_t lod) const
+    uint32_t Render::GetMeshletCount() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return mesh_lod->meshlet_count;
+            return range->meshlet_count;
         }
 
         return 0;
@@ -669,11 +653,11 @@ namespace spartan
         return m_scene->mesh ? m_scene->mesh->GetGlobalMeshletOffset() : 0;
     }
 
-    const BoundingBox& Render::GetLodAabb(const uint32_t lod) const
+    const BoundingBox& Render::GetGeometryBounds() const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
+        if (const GeometryRange* range = get_geometry_range(m_scene->mesh, m_scene->sub_mesh_index))
         {
-            return mesh_lod->aabb;
+            return range->aabb;
         }
 
         return BoundingBox::Unit;
@@ -770,6 +754,9 @@ namespace spartan
         InvalidateSpatialBounds();
         m_instance_revision++;
         m_instance_bounds_group_of.clear();
+        m_instance_scale_bound = 0.0f;
+        for (const Instance& instance : instances)
+            m_instance_scale_bound = max({m_instance_scale_bound, abs(instance.scale_x), abs(instance.scale_y), abs(instance.scale_z)});
         // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none
         if (Physics* physics = GetEntity()->GetComponent<Physics>())
         {
@@ -818,6 +805,7 @@ namespace spartan
             return;
 
         m_scene->instances[index] = instance;
+        m_instance_scale_bound = max({m_instance_scale_bound, abs(instance.scale_x), abs(instance.scale_y), abs(instance.scale_z)});
         m_instance_revision++;
         if (m_global_instance_slot != 0)
         {
@@ -900,7 +888,7 @@ namespace spartan
         SetInstances(instances);
     }
 
-    uint32_t Render::GetLodCount() const
+    bool Render::HasGeometry() const
     {
         if (!m_scene->mesh)
         {
@@ -908,30 +896,7 @@ namespace spartan
         }
 
         // bounds checked, shutdown can clear submeshes while a dangling raw pointer still looks non null
-        return m_scene->mesh->GetLodCount(m_scene->sub_mesh_index);
-    }
-
-    bool Render::UsesImpostor() const
-    {
-        // Keep CPU visibility and GPU LOD submission in agreement. An unavailable or
-        // disabled impostor must not make the full mesh exempt from distance culling.
-        const uint32_t lod_count = GetLodCount();
-        return cvar_foliage_impostors.GetValueAs<bool>() && lod_count > 0 && lod_count < 7 &&
-            m_scene->mesh && !m_scene->mesh->IsSkinned() && !HasBoundingBoxOverride() &&
-            m_scene->material && !m_scene->material->IsTransparent() &&
-            !m_scene->material->IsTessellated() && GetImpostor();
-    }
-
-    const MeshImpostor* Render::GetImpostor() const
-    {
-        Mesh* mesh = m_scene->mesh;
-        if (!mesh || m_scene->sub_mesh_index >= mesh->GetSubMeshCount())
-        {
-            return nullptr;
-        }
-
-        const MeshImpostor* impostor = mesh->GetSubMesh(m_scene->sub_mesh_index).impostor.get();
-        return impostor && impostor->lod.meshlet_count > 0 ? impostor : nullptr;
+        return m_scene->mesh->HasGeometry(m_scene->sub_mesh_index);
     }
 
     void Render::SetFlag(const RenderFlags flag, const bool enable /*= true*/)
@@ -962,7 +927,6 @@ namespace spartan
         m_bounding_box_override = true;
         m_bounding_box_dirty = false;
         UpdateFrustumAndDistanceCulling();
-        UpdateLodIndices();
     }
 
     void Render::ClearBoundingBoxOverride()
@@ -977,7 +941,6 @@ namespace spartan
         m_bounding_box_dirty = true;
         UpdateAabb();
         UpdateFrustumAndDistanceCulling();
-        UpdateLodIndices();
     }
 
     void Render::UpdateAabb()
@@ -1114,102 +1077,4 @@ namespace spartan
         }
     }
 
-    void Render::UpdateLodIndices(Camera* view_camera)
-    {
-        CountWorldWork(WorldWork::lod_updates);
-        // screen coverage handles distance, object size and fov uniformly with no per-type special cases
-
-        const uint32_t lod_count = GetLodCount();
-        if (lod_count <= 1)
-        {
-            m_scene->lod_index = 0;
-            return;
-        }
-
-        Camera* camera = view_camera ? view_camera : World::GetCamera();
-        if (!camera)
-        {
-            m_scene->lod_index = lod_count - 1;
-            return;
-        }
-
-        const BoundingBox& box        = GetBoundingBox();
-        const Vector3 camera_position = camera->GetEntity()->GetPosition();
-
-        // camera inside bounding box = maximum detail
-        if (box.Contains(camera_position))
-        {
-            m_scene->lod_index = 0;
-            return;
-        }
-
-        // distance from camera to closest point on bounding box
-        Vector3 closest_point = box.GetClosestPoint(camera_position);
-        float distance        = max((closest_point - camera_position).Length(), 0.001f);
-
-        // an instanced renderable's box spans every instance it carries, so a tile of trees measures
-        // hundreds of metres across and scores full coverage from any distance, which pins the whole
-        // tile at lod 0 forever, the coverage has to come from the size of one instance while the box
-        // keeps supplying the distance
-        Vector3 measured_extents = box.GetExtents();
-        if (HasInstancing() && GetEntity() && !m_scene->instances.empty())
-        {
-            const Vector3 entity_scale = GetEntity()->GetScale();
-            const Vector3 inst_scale   = m_scene->instances[0].GetMatrix().GetScale();
-            const Vector3 mesh_extents = GetLodAabb(0).GetExtents();
-            measured_extents           = Vector3(
-                mesh_extents.x * abs(entity_scale.x * inst_scale.x),
-                mesh_extents.y * abs(entity_scale.y * inst_scale.y),
-                mesh_extents.z * abs(entity_scale.z * inst_scale.z)
-            );
-        }
-
-        // compute screen-space coverage: fraction of vertical screen space the object covers
-        // screen_fraction = (object_diameter) / (visible_height_at_distance)
-        // visible_height_at_distance = 2 * distance * tan(fov_v / 2)
-        float bounding_diameter = measured_extents.Length() * 2.0f;
-        float tan_half_fov      = tan(camera->GetFovVerticalRad() * 0.5f);
-        float screen_fraction   = bounding_diameter / (2.0f * distance * tan_half_fov);
-
-        // Keep full detail for close objects. Five-percent coverage kept large
-        // trees at LOD 0 hundreds of metres away, overwhelming the geometry passes.
-        // Keep these coverage thresholds in sync with sphere_lod_index.
-        static constexpr array<float, 5> screen_thresholds =
-        {
-            0.20f,
-            0.10f,
-            0.048f,
-            0.024f,
-            0.012f
-        };
-
-        // hysteresis against lod popping, a change requires passing the threshold by 10 percent in either direction
-        constexpr float hysteresis = 1.1f;
-
-        uint32_t new_lod = lod_count - 1;
-        for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(screen_thresholds.size())); i++)
-        {
-            float threshold = screen_thresholds[i];
-
-            // apply hysteresis based on relationship to current lod
-            if (i < m_scene->lod_index)
-            {
-                // upgrading to higher detail: raise the bar
-                threshold *= hysteresis;
-            }
-            else if (i == m_scene->lod_index)
-            {
-                // staying at current lod: lower the bar (easier to stay)
-                threshold /= hysteresis;
-            }
-
-            if (screen_fraction >= threshold)
-            {
-                new_lod = i;
-                break;
-            }
-        }
-
-        m_scene->lod_index = clamp(new_lod, 0u, lod_count - 1);
-    }
 }

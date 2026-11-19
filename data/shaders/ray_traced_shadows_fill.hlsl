@@ -21,14 +21,6 @@ static const float fill_depth_edge      = 0.1f;  // relative depth spread of the
 static const float fill_normal_power    = 8.0f;  // sharpness of the normal weight
 static const float fill_weight_epsilon  = 1e-4f;
 
-static const int2 fill_offsets[4] =
-{
-    int2(-1,  0),
-    int2( 1,  0),
-    int2( 0, -1),
-    int2( 0,  1)
-};
-
 // Reconstruct both inputs from this trace. SIGMA reprojects its own history
 // after packing and overwrites these textures with the filtered result.
 float4 fill_signal(float4 samples[4], float4 weights)
@@ -66,10 +58,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
 
-    // one thread per skipped pixel, the other pixel of the horizontal pair the trace took
-    uint2 pixel = reflections_checkerboard_pixel(thread_id.xy);
-    pixel.x    ^= 1u; // flip lowest bit to get the other pixel of the pair, the one that was skipped by the trace
-    if (any(pixel >= resolution))
+    uint2 pixel = thread_id.xy;
+    uint2 phase = min(uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u), resolution - 1u);
+    if (any(pixel >= resolution) || all((pixel & 1u) == phase))
     {
         return;
     }
@@ -96,20 +87,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float3 normal = get_normal(pixel);
 
-    // neighbours outside the screen take the one across, they are traced pixels too
+    // Read only traced texels. Clamp on the sample lattice so odd dimensions
+    // and screen edges never read values another fill thread is writing.
+    int2 first = int2(phase);
+    int2 last = first + 2 * ((int2(resolution) - 1 - first) / 2);
+    int2 lower = int2(pixel) - int2((pixel ^ phase) & 1u);
+    int2 upper = int2(pixel) + int2((pixel ^ phase) & 1u);
     uint2  neighbours[4];
     float4 depths;
     float4 normal_weights;
     [unroll]
     for (uint i = 0; i < 4; i++)
     {
-        int2 neighbour = int2(pixel) + fill_offsets[i];
-        if (neighbour.x < 0 || neighbour.x >= (int)resolution.x || neighbour.y < 0 || neighbour.y >= (int)resolution.y)
-        {
-            neighbour = int2(pixel) - fill_offsets[i];
-        }
-
-        neighbours[i]     = uint2(clamp(neighbour, int2(0, 0), int2(resolution) - 1));
+        int2 neighbour = int2((i & 1u) ? upper.x : lower.x, (i & 2u) ? upper.y : lower.y);
+        neighbours[i]     = uint2(clamp(neighbour, first, last));
         depths[i]         = get_linear_depth(neighbours[i]);
         normal_weights[i] = pow(saturate(dot(normal, get_normal(neighbours[i]))), fill_normal_power);
     }

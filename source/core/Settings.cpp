@@ -143,7 +143,7 @@ namespace spartan
         // diagnostic views are temporary, persisting them poisons the next launch
         bool is_persisted_cvar(string_view name)
         {
-            return name != "r.fog.debug" && name != "r.watermark" && !name.starts_with("car.dirt") && name != "car.scratch" && !name.starts_with("showroom.");
+            return name != "r.meshlet_visualize" && name != "r.cluster_visualize" && name != "r.fog.debug" && name != "r.watermark" && !name.starts_with("car.dirt") && name != "car.scratch" && !name.starts_with("showroom.");
         }
 
         // spartan.xml sections, in file order, a cvar lands in the first section whose name list contains it
@@ -168,9 +168,9 @@ namespace spartan
                 { "POST PROCESSING - camera and film effects",
                   { "r.bloom", "r.bloom_scatter", "r.motion_blur", "r.depth_of_field", "r.film_grain", "r.vhs", "r.chromatic_aberration", "r.dithering", "r.sharpness" } },
                 { "GEOMETRY - mesh shaders, culling and level of detail",
-                  { "r.mesh_shaders", "r.hiz_occlusion", "r.hiz_depth_bias", "r.meshlet_cull_skinned", "r.foliage_impostors", "r.tree_wind_cache_entries" } },
+                  { "r.mesh_shaders", "r.hiz_occlusion", "r.hiz_depth_bias", "r.meshlet_cull_skinned", "r.tree_wind_cache_entries" } },
                 { "GRASS",
-                  { "r.grass_specialized", "r.grass_lod_pixels", "r.grass_track_radius", "r.grass_track_recovery" } },
+                  { "r.grass_specialized", "r.grass_track_radius", "r.grass_track_recovery" } },
                 { "TEXTURES - streaming",
                   { "r.texture_streaming", "r.texture_streaming_budget_mb", "r.texture_streaming_upload_mb" } },
                 { "EDITOR - viewport helpers and overlays",

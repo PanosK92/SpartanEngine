@@ -130,7 +130,7 @@ namespace spartan::scripting::visual
         void add_owner(const std::string& name, bool is_usertype, std::type_index cpp);
         void add_base(const std::string& owner, std::type_index base);
         void add_function(FunctionCapture&& function);
-        void add_enum(const std::string& name, std::type_index cpp, std::vector<std::pair<std::string, int64_t>>&& values);
+        void add_enum(sol::state_view state, const char* name, std::type_index cpp, std::vector<std::pair<std::string, int64_t>>&& values);
         void add_enum_value(const std::string& name, const std::string& key, int64_t value);
 
         // forgets everything, the lua state is about to be registered again

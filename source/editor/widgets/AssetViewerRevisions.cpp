@@ -593,7 +593,7 @@ bool AssetViewer::LoadRevisionCandidate(string& error)
         error = "no active asset revision candidate was found";
         return false;
     }
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before previewing a revision";

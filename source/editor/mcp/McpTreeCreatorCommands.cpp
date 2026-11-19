@@ -44,12 +44,6 @@ namespace editor_mcp
 
         string stats_json(const TreeCreator::stats& stats)
         {
-            string lods = "[";
-            for (size_t i = 0; i < stats.lod_triangles.size(); i++)
-            {
-                lods += (i ? "," : "") + to_string(stats.lod_triangles[i]);
-            }
-            lods += "]";
             return
                 "{\"triangles\":" + to_string(stats.triangles) +
                 ",\"vertices\":" + to_string(stats.vertices) +
@@ -58,7 +52,6 @@ namespace editor_mcp
                 ",\"budget\":" + to_string(stats.budget) +
                 ",\"stems\":" + to_string(stats.stems) +
                 ",\"cards\":" + to_string(stats.cards) +
-                ",\"lod_triangles\":" + lods +
                 ",\"height\":" + number(stats.height) +
                 ",\"crown_width\":" + number(stats.crown_width) +
                 ",\"generate_ms\":" + number(stats.generate_ms) +
@@ -87,8 +80,7 @@ namespace editor_mcp
                 ",\"name\":" + quote(selected ? selected->name : "") +
                 ",\"controls\":" + controls_json(creator->GetControls()) +
                 ",\"stats\":" + stats_json(creator->GetStats()) +
-                ",\"preview\":{\"lod\":" + to_string(creator->GetPreviewLod()) +
-                ",\"yaw\":" + number(creator->GetPreviewYaw() * math::rad_to_deg) +
+                ",\"preview\":{\"yaw\":" + number(creator->GetPreviewYaw() * math::rad_to_deg) +
                 ",\"pitch\":" + number(creator->GetPreviewPitch() * math::rad_to_deg) +
                 ",\"zoom\":" + number(creator->GetPreviewZoom()) +
                 "}}";
@@ -177,15 +169,7 @@ namespace editor_mcp
             {
                 creator->SetPreviewView(yaw * math::deg_to_rad, pitch * math::deg_to_rad, zoom);
             }
-            if (const string* value = find(request, "lod"))
-            {
-                const optional<uint64_t> parsed = as_uint(value);
-                if (!parsed)
-                {
-                    return "lod must be a level index";
-                }
-                creator->SetPreviewLod(static_cast<int>(*parsed));
-            }
+
             return "";
         }
 
@@ -410,7 +394,6 @@ namespace editor_mcp
                         ",\"mesh\":" + quote(result.mesh) +
                         ",\"directory\":" + quote(result.directory) +
                         ",\"seed\":" + to_string(result.seed) +
-                        ",\"impostor\":" + boolean(result.impostor) +
                         ",\"stats\":" + stats_json(result.numbers) +
                         "}";
                 }

@@ -64,7 +64,6 @@ namespace spartan
         float max_distance_shadow = FLT_MAX;
         float distance_squared = 0.0f;
         uint32_t flags = RenderFlags::CastsShadows;
-        uint32_t lod_index = 0;
         uint32_t sub_mesh_index = 0;
         bool is_visible = false;
         bool has_decals = false;
@@ -80,7 +79,7 @@ namespace spartan
     // msvc's debug iterators grow std::vector past three pointers, the budget only holds for release containers
     static_assert(sizeof(RenderSceneData) == 128 || sizeof(std::vector<Instance>) > 3 * sizeof(void*), "Keep render scene data within two cache lines");
 
-    // makes an entity drawable, it owns the mesh, the material and the per-frame lod and visibility state
+    // makes an entity drawable, it owns the mesh, the material and the per-frame visibility state
     class Render : public Component
     {
     public:
@@ -119,19 +118,15 @@ namespace spartan
         void SetMesh(const MeshType type);
         void ClearMesh();
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
-        uint32_t GetLodCount() const;
-        // the per-lod getters address it as lod GetLodCount()
-        const MeshImpostor* GetImpostor() const;
-        bool UsesImpostor() const;
-        uint32_t GetLodIndex() const { return m_scene->lod_index; }
-        uint32_t GetIndexOffset(const uint32_t lod = 0) const;
-        uint32_t GetIndexCount(const uint32_t lod = 0) const;
-        uint32_t GetVertexOffset(const uint32_t lod = 0) const;
-        uint32_t GetVertexCount(const uint32_t lod = 0) const;
-        uint32_t GetMeshletOffset(const uint32_t lod = 0) const;
-        uint32_t GetMeshletCount(const uint32_t lod = 0) const;
+        bool HasGeometry() const;
+        uint32_t GetIndexOffset() const;
+        uint32_t GetIndexCount() const;
+        uint32_t GetVertexOffset() const;
+        uint32_t GetVertexCount() const;
+        uint32_t GetMeshletOffset() const;
+        uint32_t GetMeshletCount() const;
         uint32_t GetGlobalMeshletOffset() const;
-        const math::BoundingBox& GetLodAabb(const uint32_t lod = 0) const;
+        const math::BoundingBox& GetGeometryBounds() const;
         Mesh* GetMesh() const { return m_scene->mesh; }
         uint32_t GetSubMeshIndex() const { return m_scene->sub_mesh_index; }
         RHI_Buffer* GetIndexBuffer() const;
@@ -254,6 +249,7 @@ namespace spartan
         // instancing
         bool HasInstancing() const                  { return !m_scene->instances.empty(); }
         uint32_t GetInstanceCount()  const          { return m_scene->instances.empty() ? 1 : static_cast<uint32_t>(m_scene->instances.size()); }
+        float GetInstanceScaleBound() const         { return m_instance_scale_bound; }
         uint32_t GetGlobalInstanceOffset() const    { return m_global_instance_offset; }
         math::Matrix GetInstance(const uint32_t index, const bool to_world);
         math::Vector3 GetInstancePosition(uint32_t index, const math::Matrix& world) const;
@@ -316,7 +312,6 @@ namespace spartan
 
         void UpdateAabb();
         void UpdateFrustumAndDistanceCulling();
-        void UpdateLodIndices(Camera* view_camera = nullptr);
 
     private:
         friend class Entity;
@@ -350,6 +345,7 @@ namespace spartan
         uint32_t m_global_instance_slot_capacity = 0;
         // bumped by every instance edit, caches built from the instance list compare it
         uint64_t m_instance_revision = 0;
+        float m_instance_scale_bound = 0.0f;
         // inverse of m_instance_bounds_order, built on the first single instance edit
         std::vector<uint32_t> m_instance_bounds_group_of;
 

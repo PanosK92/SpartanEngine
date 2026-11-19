@@ -109,9 +109,9 @@ Vertex_PosUvNorTan pull_visible_triangle_vertex(uint vertex_id, out MeshletInsta
     _draw  = indirect_draw_data[meshlet_instance_draw_index(mi_out)];
 
     MeshletBounds mb      = meshlet_bounds[mi_out.meshlet_index];
-    uint global_index_pos = _draw.lod_first_index + meshlet_decode_first_index(mb) + triangle_idx * 3u + corner;
+    uint global_index_pos = _draw.geometry_first_index + meshlet_decode_first_index(mb) + triangle_idx * 3u + corner;
     uint local_vertex_id  = geometry_indices[global_index_pos];
-    uint global_vertex_id = local_vertex_id + _draw.lod_vertex_offset;
+    uint global_vertex_id = local_vertex_id + _draw.geometry_vertex_offset;
 
     return pull_vertex(global_vertex_id, mi_out.instance_index, _draw.instance_offset);
 }
@@ -563,8 +563,17 @@ TreeWindState unpack_tree_wind(float4 axis_drive, float4 phase_gust_micro)
 #ifdef CACHE_MESH_TREE_WIND
 groupshared TreeWindState mesh_tree_wind_current;
 groupshared TreeWindState mesh_tree_wind_previous;
-void cache_mesh_tree_wind(DrawData draw, uint instance_index, uint cache_slot_plus_one)
+groupshared float4x4 mesh_transform;
+#ifndef CACHE_MESH_TREE_WIND_CURRENT_ONLY
+groupshared float4x4 mesh_transform_previous;
+#endif
+void cache_mesh_instance(DrawData draw, uint instance_index, uint cache_slot_plus_one)
 {
+    float4x4 instance = pull_instance_transform(draw.instance_offset, instance_index);
+    mesh_transform = mul(instance, draw.transform);
+#ifndef CACHE_MESH_TREE_WIND_CURRENT_ONLY
+    mesh_transform_previous = mul(instance, draw.transform_previous);
+#endif
     if ((draw.flags & (1u << 14)) == 0u && (material_parameters[draw.material_index].flags & (1u << 9)) != 0u)
     {
         if (cache_slot_plus_one != 0u)
@@ -576,10 +585,9 @@ void cache_mesh_tree_wind(DrawData draw, uint instance_index, uint cache_slot_pl
 #endif
             return;
         }
-        float4x4 instance = pull_instance_transform(draw.instance_offset, instance_index);
-        mesh_tree_wind_current = evaluate_tree_wind(mul(instance, draw.transform), 0.0f);
+        mesh_tree_wind_current = evaluate_tree_wind(mesh_transform, 0.0f);
 #ifndef CACHE_MESH_TREE_WIND_CURRENT_ONLY
-        mesh_tree_wind_previous = evaluate_tree_wind(mul(instance, draw.transform_previous), -buffer_frame.delta_time);
+        mesh_tree_wind_previous = evaluate_tree_wind(mesh_transform_previous, -buffer_frame.delta_time);
 #endif
     }
 }
@@ -1033,11 +1041,7 @@ struct vertex_processing
             float branch_angle = response * branch_weight
                                * (1.2f + 2.5f * ws.gust + branch_wave * 1.2f)
                                * DEG_TO_RAD;
-            float3x3 branch_rotation = rotation_matrix(axis, branch_angle);
             float3 branch_pivot = instance_up * dot(offset, instance_up);
-            offset = branch_pivot + mul(branch_rotation, offset - branch_pivot);
-            vertex.normal = mul(branch_rotation, vertex.normal);
-            vertex.tangent = mul(branch_rotation, vertex.tangent);
 
             if (surface.has_texture_alpha_mask())
             {
@@ -1051,15 +1055,15 @@ struct vertex_processing
                 float flutter_angle = response * branch_weight * detail
                                     * (0.35f + ws.gust * 0.65f)
                                     * (flutter + ws.micro * 0.3f) * 0.045f / max(radius, 1.0f);
-                float3x3 leaf_rotation = rotation_matrix(axis, flutter_angle);
-                offset = branch_pivot + mul(leaf_rotation, offset - branch_pivot);
-                vertex.normal = mul(leaf_rotation, vertex.normal);
-                vertex.tangent = mul(leaf_rotation, vertex.tangent);
+                branch_angle += flutter_angle;
             }
 
-            position_world = instance_pos + mul(trunk_rotation, offset);
-            vertex.normal = normalize(mul(trunk_rotation, vertex.normal));
-            vertex.tangent = normalize(mul(trunk_rotation, vertex.tangent));
+            // The trunk, branch and leaf all rotate about the same axis. Their
+            // angles add; only the trunk acts on the branch pivot itself.
+            float3x3 combined = rotation_matrix(axis, trunk_angle + branch_angle);
+            position_world = instance_pos + mul(trunk_rotation, branch_pivot) + mul(combined, offset - branch_pivot);
+            vertex.normal = normalize(mul(combined, vertex.normal));
+            vertex.tangent = normalize(mul(combined, vertex.tangent));
 
             apply_vegetation_interaction(position_rest.xz, instance_pos, instance_up, vegetation_flex(position_rest - instance_pos, instance_up), time_offset, position_world);
         }
@@ -1086,42 +1090,6 @@ void impostor_frame_basis(float3 direction, out float3 right, out float3 up)
 }
 
 // a whole island of trees would otherwise reach the 2 px contribution cull as millions of specks, so
-// cards shorter than impostor_thin_pixels survive with the inverse square of how far they fall short
-// and the survivors widen by the same factor (capped) to hold the forest's screen coverage, the count
-// then grows with the log of the view distance instead of its square, same scheme as the grass cards
-static const float impostor_thin_pixels    = 16.0f;
-static const float impostor_thin_max_scale = 2.0f;
-
-// how many times shorter than impostor_thin_pixels the card is on screen, 1 when it is taller
-float impostor_thin_factor(float3 center_world, float radius_world)
-{
-    float distance = max(length(center_world - buffer_frame.camera_position), 1e-3f);
-    float pixels   = radius_world * get_render_resolution_active().x / (distance * tan(buffer_frame.camera_fov * 0.5f));
-    return max(1.0f, impostor_thin_pixels / max(pixels, 1e-3f));
-}
-
-float impostor_thin_scale(float thin_factor)
-{
-    return min(thin_factor, impostor_thin_max_scale);
-}
-
-// keyed by the instance's world position so the kept subset is stable across frames, views and both cull phases
-bool impostor_thin_keep(float3 root_world, float thin_factor)
-{
-    if (thin_factor <= 1.0f)
-    {
-        return true;
-    }
-
-    uint h = asuint(root_world.x) * 0x9e3779b1u ^ asuint(root_world.z) * 0x85ebca77u ^ asuint(root_world.y) * 0xc2b2ae3du;
-    h ^= h >> 16;
-    h *= 0x7feb352du;
-    h ^= h >> 15;
-    h *= 0x846ca68bu;
-    h ^= h >> 16;
-    return float(h) * (1.0f / 4294967296.0f) * thin_factor * thin_factor <= 1.0f;
-}
-
 // nearest baked frame for a mesh local view direction, views from below reuse the horizon ring
 uint2 impostor_nearest_frame(float3 view_local, uint frames)
 {
@@ -1153,13 +1121,13 @@ bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float 
     normal_frame = float3(0.0f, 0.0f, 1.0f);
     for (uint layer = 0; layer < layers; layer++)
     {
-        uint geometry = impostor_texels[base + layer * 2u + 1u];
+        uint geometry = meshlet_vertices[base + layer * 2u + 1u];
         if ((geometry & (1u << 31)) == 0u)
         {
             break;
         }
 
-        uint packed_uv = impostor_texels[base + layer * 2u];
+        uint packed_uv = meshlet_vertices[base + layer * 2u];
         float2 source  = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
         float2 layer_uv = _draw.impostor_uv_min + source * _draw.impostor_uv_scale;
         float a         = albedo_texture.SampleLevel(samplers[sampler_anisotropic_wrap], layer_uv, mip).a;
@@ -1240,9 +1208,18 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.width_percent = width_percent;
     
     // compose instance transform and apply to base transform
+#ifdef CACHE_MESH_TREE_WIND
+    transform = mesh_transform;
+#ifdef CACHE_MESH_TREE_WIND_CURRENT_ONLY
+    matrix transform_previous = transform;
+#else
+    matrix transform_previous = mesh_transform_previous;
+#endif
+#else
     matrix instance = input.instance_transform;
     transform = mul(instance, transform);
     matrix transform_previous = mul(instance, pass_get_transform_previous());
+#endif
 
     if (surface.is_grass_blade())
     {
@@ -1330,7 +1307,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         float3 up;
         impostor_frame_basis(direction, right, up);
 
-        float card_radius   = _draw.impostor_radius * impostor_thin_scale(impostor_thin_factor(center_world, _draw.impostor_radius * sqrt(max(axis_scale.x, max(axis_scale.y, axis_scale.z)))));
+        float card_radius = _draw.impostor_radius;
         float2 offset       = (input_uv * 2.0f - 1.0f) * card_radius;
         float3 card_local   = _draw.impostor_center + right * offset.x + up * offset.y;
         position            = mul(float4(card_local, 1.0f), transform).xyz;
@@ -1343,46 +1320,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     }
 
 #ifdef GRASS_INSTANCED
-    static const float grass_card_normal_facing = 0.6f;
-
-    // tuft impostor card, the quad turns about the root to face the camera and carries a whole tuft that
-    // the pixel shader cuts out of it, wind and tire pressure belong to the real blades nearer in
-    float card_width = pass_float(pass_grass_draw::card_width);
-    if (card_width > 0.0f)
-    {
-        float3 root     = transform[3].xyz;
-        float3 card_up  = normalize(transform[1].xyz);
-
-        // populate thinned the cards past this distance by the square of the same factor
-        float card_thin = pass_float(pass_grass_draw::card_thin);
-        if (card_thin > 0.0f)
-        {
-            card_width *= max(1.0f, length(root.xz - buffer_frame.camera_position.xz) / card_thin);
-        }
-        float  height   = material.local_height * length(transform[1].xyz);
-
-        // a tuft in a tire rut lies over like the blades it stands for, low but still there
-        float rut = terrain_deformation_offset(root.xz);
-        if (rut < 0.0f)
-        {
-            height *= 1.0f - saturate(-rut / 0.01f) * 0.8f;
-        }
-        float3 right    = cross(card_up, buffer_frame.camera_position - root);
-        right          *= rsqrt(max(dot(right, right), 1e-8f));
-        float3 right_previous = cross(card_up, buffer_frame.camera_position_previous - root);
-        right_previous       *= rsqrt(max(dot(right_previous, right_previous), 1e-8f));
-
-        position             = root + right * ((input_uv.x - 0.5f) * card_width) + card_up * (input_uv.y * height);
-        position_previous    = root + right_previous * ((input_uv.x - 0.5f) * card_width) + card_up * (input_uv.y * height);
-        // a camera facing normal is backlit whenever the sun is ahead, the blades it stands for face every way
-        // and seen from afar light like the canopy they form, so the normal leans most of the way to up
-        vertex.normal        = normalize(card_up + cross(right, card_up) * grass_card_normal_facing);
-        vertex.tangent       = right;
-        vertex.uv_misc.xy    = input_uv;
-        vertex.uv_misc.z     = input_uv.y;
-        vertex.width_percent = 0.5f;
-    }
-    else if (!surface.is_grass_blade() && !surface.is_flower())
+    if (!surface.is_grass_blade() && !surface.is_flower())
     {
         // pebbles and chips go down with the soil a tire presses, and the soil it pushes out buries them
         float rut = -abs(terrain_deformation_offset(transform[3].xz)) * terrain_deformation_visual_scale;
@@ -1391,7 +1329,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     }
 #endif
 
-    // wind, water and impostor edits are small offsets, carry them over without touching the precise part
+    // wind and water displacement are small offsets, carry them over without touching the precise part
     position_relative          += position - position_unmodified;
     position_relative_previous += position_previous - position_unmodified_previous;
 

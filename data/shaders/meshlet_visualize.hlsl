@@ -58,14 +58,13 @@ vis_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
     vis_vertex o;
     o.position      = base.position;
     o.meshlet_index = mi.meshlet_index;
-    // post-cull triangle id, monotonic across the visible-triangle list
-    o.draw_id       = vertex_id / 3u;
+    o.draw_id       = pass_uint(pass_visible_triangles::region_base);
     return o;
 }
 
-float4 main_ps(vis_vertex v) : SV_Target0
+float4 main_ps(vis_vertex v, uint primitive_id : SV_PrimitiveID) : SV_Target0
 {
     // f3_value.x: 0 = color by global meshlet index, 1 = color by post-cull draw id
-    uint id = pass_bool(pass_meshlet_visualize::color_by_draw_id) ? v.draw_id : v.meshlet_index;
+    uint id = pass_bool(pass_meshlet_visualize::color_by_draw_id) ? v.draw_id + primitive_id : v.meshlet_index;
     return float4(meshlet_color(id), 1.0f);
 }

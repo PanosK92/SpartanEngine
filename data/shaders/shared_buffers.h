@@ -365,13 +365,10 @@ namespace pass_depth_light
 namespace pass_grass_draw
 {
     static const SHARED_UINT uv_patch        = 0;  // float
-    static const SHARED_UINT reverse_count   = 1;  // uint, coarse blades fill the allocation from its end
     static const SHARED_UINT lod_base        = 2;  // uint
     static const SHARED_UINT tracks          = 3;  // float4, origin xz, 1 / size, valid
     static const SHARED_UINT tracks_previous = 7;  // float4, same layout
     static const SHARED_UINT body            = 11; // float4, active, center xz, contact radius
-    static const SHARED_UINT card_width      = 15; // float, metres, 0 draws blades, otherwise every instance is a tuft impostor card
-    static const SHARED_UINT card_thin       = 16; // float, metres, cards past it widen with distance, 0 keeps them at card_width
     static const SHARED_UINT blend_reach     = 17; // float, metres, detail past it sinks to its dirt line instead of blending with the ground, 0 blends all of it
 }
 
@@ -400,6 +397,9 @@ namespace pass_grass_indirect_args
 {
     static const SHARED_UINT lod_caps  = 0; // uint x 3
     static const SHARED_UINT lod_count = 3; // uint
+    static const SHARED_UINT cluster_pass = 4;
+    static const SHARED_UINT cluster_offsets = 5; // uint x 3
+    static const SHARED_UINT cluster_counts = 8; // uint x 3
 }
 
 namespace pass_grass_interaction
@@ -1042,7 +1042,7 @@ struct DecalParameters
 // flags bit 6: exclude this draw from terrain blending/coating
 // flags bit 7: part of the occupied car, its rain droplets answer the car's g forces
 // flags bits 8-10: lod index of this draw, bits 11-13: mesh lod count, instance cull keeps the instance only on the lod its screen coverage wants
-// lod_first_index/lod_vertex_offset hold the global geometry offsets for the lod (replaces what indirect_draw_args used to carry)
+// geometry_first_index/geometry_vertex_offset hold the global geometry offsets for the lod (replaces what indirect_draw_args used to carry)
 struct DrawData
 {
     SHARED_MATRIX transform;
@@ -1053,13 +1053,13 @@ struct DrawData
     SHARED_UINT   material_index    SHARED_DEFAULT(0);
     SHARED_UINT   is_transparent    SHARED_DEFAULT(0);
     SHARED_UINT   aabb_index        SHARED_DEFAULT(0);
-    SHARED_UINT   lod_first_index   SHARED_DEFAULT(0); // global first index into the geometry index buffer for this lod
+    SHARED_UINT   geometry_first_index   SHARED_DEFAULT(0); // global first index into the geometry index buffer for this lod
     SHARED_UINT   flags             SHARED_DEFAULT(0);
     SHARED_UINT   instance_offset   SHARED_DEFAULT(0); // offset into the global instance buffer
     SHARED_UINT   instance_index    SHARED_DEFAULT(0); // per-draw instance to fetch, vs uses this in place of sv_instanceid
-    SHARED_UINT   lod_vertex_offset SHARED_DEFAULT(0); // global vertex offset for this lod (added to lod-local indices)
-    SHARED_UINT   lod_meshlet_offset SHARED_DEFAULT(0); // global first meshlet index for this lod, phase b expands meshlets from here
-    SHARED_UINT   lod_meshlet_count  SHARED_DEFAULT(0); // meshlet count for this lod, phase b loops over this many meshlets per surviving instance
+    SHARED_UINT   geometry_vertex_offset SHARED_DEFAULT(0); // global vertex offset for this lod (added to lod-local indices)
+    SHARED_UINT   geometry_meshlet_offset SHARED_DEFAULT(0); // global first meshlet index for this lod, phase b expands meshlets from here
+    SHARED_UINT   geometry_meshlet_count  SHARED_DEFAULT(0); // meshlet count for this lod, phase b loops over this many meshlets per surviving instance
     SHARED_UINT   meshlet_vertex_base SHARED_DEFAULT(0); // 32-bit global base; MeshletBounds offsets remain mesh-local
     SHARED_UINT   meshlet_micro_base  SHARED_DEFAULT(0);
 
@@ -1073,9 +1073,9 @@ struct DrawData
 
     // lod-local aabb, the cull shader uses this to dequantize the compressed MeshletBounds center/radius
     // diag is the precomputed length(extent), it's the reference distance for the u16-normalized radius and saves a sqrt per cull task
-    SHARED_FLOAT3 lod_aabb_min                  SHARED_DEFAULT(spartan::math::Vector3::Zero);
-    SHARED_FLOAT  lod_aabb_diag                 SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT3 lod_aabb_extent               SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT3 geometry_bounds_min                  SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  geometry_bounds_diag                 SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 geometry_bounds_extent               SHARED_DEFAULT(spartan::math::Vector3::Zero);
     // per-instance gpu distance cull, squared so the cull shader avoids a sqrt, the cpu side fills it from renderable->GetMaxRenderDistance(),
     // a sentinel of zero disables the check and is used for renderables that should never be distance-culled (terrain tiles for example),
     // this is critical for consolidated world-spanning entities (forest trees, rocks) where the per-entity cpu check always passes and the
@@ -1083,6 +1083,9 @@ struct DrawData
     SHARED_FLOAT  max_render_distance_squared   SHARED_DEFAULT(0.0f);
     SHARED_UINT   previous_vertex_offset SHARED_DEFAULT(0); // relative arena offset, zero means unchanged pose
 
+    SHARED_FLOAT3 cluster_center SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  cluster_radius SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  cluster_error  SHARED_DEFAULT(0.0f);
     // foliage impostor, only read when flag bit 14 marks this draw as the camera facing card
     SHARED_UINT   impostor_texel_offset SHARED_DEFAULT(0);
     SHARED_UINT   impostor_layout       SHARED_DEFAULT(0); // frames | resolution << 8 | layers << 24
@@ -1092,17 +1095,21 @@ struct DrawData
     SHARED_FLOAT2 impostor_uv_scale     SHARED_DEFAULT(spartan::math::Vector2::One);
 };
 
-// One CPU record describes up to 64 consecutive instances at one LOD. GPU
+// One CPU record describes up to 64 consecutive instances of a geometry range. GPU
 // lanes expand the range; this avoids per-instance CPU writes and uploads.
 #define INSTANCE_CULL_BATCH_SIZE 64u
+// CullTask.refinement_draw stores this tag plus a resident refinement draw index.
+#define CULL_TASK_CLUSTER_REFINEMENT 0x40000000u
+#define CULL_TASK_LEVEL_SHIFT 20u
+#define CULL_TASK_LEVEL_MASK 0xfffffu
 #define INSTANCE_CULL_DISPATCH_WIDTH 65535u
 struct CullTask
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
-    SHARED_UINT lod_reference_draw_index SHARED_DEFAULT(0);
+    SHARED_UINT canopy_draw SHARED_DEFAULT(0); // index + 1; bit 31 marks sibling ranges
     SHARED_UINT instance_index SHARED_DEFAULT(0);
     SHARED_UINT instance_count SHARED_DEFAULT(1);
-    SHARED_UINT lod_draw_offsets SHARED_DEFAULT(0); // three bits per LOD, bit 31 enables selection
+    SHARED_UINT refinement_draw SHARED_DEFAULT(0); // optional tagged refinement draw
 };
 
 // emitted by the instance cull pass (phase a) for every surviving (renderable lod, instance) tuple
@@ -1132,7 +1139,7 @@ struct SurvivingInstance
 
 // a dispatch dimension is capped at 65535 groups, so mesh draws lay their meshlets out in rows of this many groups
 // triangle_dispatch_args slots 4 to 7 hold the grids of slots 0 to 3, a power of two keeps every grid within 2^22 groups
-#define MESH_GRID_WIDTH                 32768u
+#define MESH_GRID_WIDTH                 256u
 #define MESH_GRID_ARGS_SLOT             4u
 
 // gpu-driven shadow maps, one record per shadow casting draw, culled per (atlas slice, instance) by shadow_cull.hlsl
@@ -1164,23 +1171,6 @@ struct ShadowCaster
     SHARED_FLOAT  padding2             SHARED_DEFAULT(0.0f);
 };
 
-// gpu lod for non-instanced indirect draws, the instance cull picks the lod and patches it into the draw
-// a draw with draw_flag_gpu_lod keeps its lod table offset in impostor_texel_offset, impostors only exist on instanced draws
-#define draw_flag_gpu_lod (1u << 16)
-struct DrawLod
-{
-    SHARED_UINT   first_index            SHARED_DEFAULT(0);
-    SHARED_UINT   vertex_offset          SHARED_DEFAULT(0);
-    SHARED_UINT   meshlet_offset         SHARED_DEFAULT(0);
-    SHARED_UINT   meshlet_count          SHARED_DEFAULT(0);
-    SHARED_FLOAT3 aabb_min               SHARED_DEFAULT(spartan::math::Vector3::Zero);
-    SHARED_FLOAT  aabb_diag              SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT3 aabb_extent            SHARED_DEFAULT(spartan::math::Vector3::Zero);
-    SHARED_UINT   previous_vertex_offset SHARED_DEFAULT(0);
-};
-
-// tessellated draw, culled and given its lod on the gpu, the lods are uint4(index_count, first_index, vertex_offset, 0)
-// lod_extents is the extent of one instance, the coverage of an instanced tile has to come from a single instance
 #define tessellated_flag_skip_hiz 1u
 struct TessellatedDraw
 {
@@ -1188,12 +1178,12 @@ struct TessellatedDraw
     SHARED_FLOAT  max_distance_squared SHARED_DEFAULT(0.0f); // 0 disables the distance test
     SHARED_FLOAT3 bounds_max           SHARED_DEFAULT(spartan::math::Vector3::Zero);
     SHARED_UINT   flags                SHARED_DEFAULT(0);
-    SHARED_UINT   lod_offset           SHARED_DEFAULT(0);
-    SHARED_UINT   lod_count            SHARED_DEFAULT(1);
+    SHARED_UINT   index_count          SHARED_DEFAULT(0);
+    SHARED_UINT   first_index          SHARED_DEFAULT(0);
+    SHARED_UINT   vertex_offset        SHARED_DEFAULT(0);
     SHARED_UINT   first_instance       SHARED_DEFAULT(0);
     SHARED_UINT   instance_count       SHARED_DEFAULT(1);
-    SHARED_FLOAT3 lod_extents          SHARED_DEFAULT(spartan::math::Vector3::Zero);
-    SHARED_FLOAT  padding0             SHARED_DEFAULT(0.0f);
+    SHARED_UINT   padding[3]           SHARED_DEFAULT({});
 };
 
 // Optional root-wind cache, indexed by global instance. Overflow falls back to the mesh evaluator, which is not
@@ -1233,7 +1223,7 @@ static_assert(sizeof(MeshletInstance) == 12);
 #endif
 
 // per-meshlet bounding sphere and topology ranges
-// center/radius are quantized into the lod's local aabb (drawdata.lod_aabb_min, drawdata.lod_aabb_extent), the cull shader dequantizes on read
+// center/radius are quantized into the lod's local aabb (drawdata.geometry_bounds_min, drawdata.geometry_bounds_extent), the cull shader dequantizes on read
 // first_index is relative to the lod's index_offset within the global index buffer, triangle_count is packed into the high 7 bits
 // first_vertex is mesh-local in the unique-vertex remap buffer; DrawData supplies the global base, vertex_count occupies the high 7 bits
 // first_micro indexes the packed micro-index buffer (one uint local index per corner, 3 * triangle_count entries)
@@ -1467,8 +1457,6 @@ namespace spartan
     using Sb_SurvivingInstance = SurvivingInstance;
     using Sb_ShadowCaster      = ShadowCaster;
     static_assert(sizeof(Sb_ShadowCaster) == 80);
-    using Sb_DrawLod           = DrawLod;
-    static_assert(sizeof(Sb_DrawLod) == 48);
     using Sb_TessellatedDraw   = TessellatedDraw;
     static_assert(sizeof(Sb_TessellatedDraw) == 64);
     using Sb_MeshletInstance   = MeshletInstance;

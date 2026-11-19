@@ -192,7 +192,8 @@ namespace spartan
         void SkinFromLocalPose(
             Mesh* mesh,
             const Skeleton& skeleton,
-            const std::vector<math::Matrix>& local_matrices
+            const std::vector<math::Matrix>& local_matrices,
+            bool sample_clip = false
         );
         void ResolveFootIkJoints(const Skeleton& skeleton);
         void ApplyFootIk(

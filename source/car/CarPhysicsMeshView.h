@@ -70,7 +70,7 @@ namespace spartan
             {
                 auto mesh = std::make_shared<Mesh>();
                 mesh->SetObjectName("Physics assembly mesh");
-                mesh->AddGeometry(vertices, indices, false);
+                mesh->AddGeometry(vertices, indices);
                 mesh->CreateGpuBuffers();
                 return mesh;
             }

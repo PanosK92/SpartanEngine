@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ===============
 #include <sol/sol.hpp>
 #include <array>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <optional>
@@ -26,7 +27,7 @@ Commercial use requires written permission and negotiated payment terms.
 // registers exactly what sol2 would have
 //
 //   visual::usertype<Entity>(state, "Entity", "GetName", &Entity::GetObjectName, ...)   instead of state.new_usertype<Entity>(...)
-//   visual::enumeration(state, "KeyCode", "W", KeyCode::W, ...)                          instead of state.new_enum(...)
+//   visual::enumeration<KeyCode>(state, "KeyCode", {{"W", KeyCode::W}, ...})                          instead of state.new_enum(...)
 //   visual::table table(state, "World"); table["GetName"] = &World::GetName;            instead of state.create_named_table(...)
 //   visual::usertype_extension<Physics> type(state, "Physics"); type["X"] = ...;        instead of sol::usertype<Physics> type = state["Physics"]
 namespace spartan::scripting::visual
@@ -621,69 +622,6 @@ namespace spartan::scripting::visual
                 bind_entries<Owner>(owner, ut, std::forward<Rest>(rest)...);
             }
         }
-
-        template <typename E>
-        int64_t enum_value(const E& value)
-        {
-            if constexpr (std::is_enum_v<E>)
-            {
-                return static_cast<int64_t>(static_cast<std::underlying_type_t<E>>(value));
-            }
-            else
-            {
-                return static_cast<int64_t>(value);
-            }
-        }
-
-        template <typename K, typename E>
-        void bind_one_enum(std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, sol::table& target, K&& key, E&& value)
-        {
-            if constexpr (std::is_enum_v<std::decay_t<E>>)
-            {
-                cpp = typeid(std::decay_t<E>);
-            }
-            values.emplace_back(std::string(key), enum_value(value));
-            target.set(std::forward<K>(key), std::forward<E>(value));
-        }
-
-        inline void bind_enum_entries(std::vector<std::pair<std::string, int64_t>>&, std::type_index&, sol::table&)
-        {
-        }
-
-        template <typename K, typename E, typename... Rest>
-            requires (sizeof...(Rest) < 14)
-        void bind_enum_entries(std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, sol::table& target, K&& key, E&& value, Rest&&... rest)
-        {
-            bind_one_enum(values, cpp, target, std::forward<K>(key), std::forward<E>(value));
-            if constexpr (sizeof...(Rest) > 0)
-            {
-                bind_enum_entries(values, cpp, target, std::forward<Rest>(rest)...);
-            }
-        }
-
-        template <
-            typename K0, typename E0, typename K1, typename E1, typename K2, typename E2, typename K3, typename E3,
-            typename K4, typename E4, typename K5, typename E5, typename K6, typename E6, typename K7, typename E7,
-            typename... Rest>
-        void bind_enum_entries(
-            std::vector<std::pair<std::string, int64_t>>& values, std::type_index& cpp, sol::table& target,
-            K0&& k0, E0&& e0, K1&& k1, E1&& e1, K2&& k2, E2&& e2, K3&& k3, E3&& e3,
-            K4&& k4, E4&& e4, K5&& k5, E5&& e5, K6&& k6, E6&& e6, K7&& k7, E7&& e7,
-            Rest&&... rest)
-        {
-            bind_one_enum(values, cpp, target, std::forward<K0>(k0), std::forward<E0>(e0));
-            bind_one_enum(values, cpp, target, std::forward<K1>(k1), std::forward<E1>(e1));
-            bind_one_enum(values, cpp, target, std::forward<K2>(k2), std::forward<E2>(e2));
-            bind_one_enum(values, cpp, target, std::forward<K3>(k3), std::forward<E3>(e3));
-            bind_one_enum(values, cpp, target, std::forward<K4>(k4), std::forward<E4>(e4));
-            bind_one_enum(values, cpp, target, std::forward<K5>(k5), std::forward<E5>(e5));
-            bind_one_enum(values, cpp, target, std::forward<K6>(k6), std::forward<E6>(e6));
-            bind_one_enum(values, cpp, target, std::forward<K7>(k7), std::forward<E7>(e7));
-            if constexpr (sizeof...(Rest) > 0)
-            {
-                bind_enum_entries(values, cpp, target, std::forward<Rest>(rest)...);
-            }
-        }
     }
 
     template <typename T, typename... Args>
@@ -703,23 +641,16 @@ namespace spartan::scripting::visual
         return ut;
     }
 
-    template <typename... Args>
-    void enumeration(sol::state_view state, const char* name, Args&&... args)
+    template <typename E>
+    void enumeration(sol::state_view state, const char* name, std::initializer_list<std::pair<const char*, E>> entries)
     {
-        static_assert(sizeof...(Args) % 2 == 0, "enum entries come in name, value pairs");
-        constexpr size_t pair_count = sizeof...(Args) / 2;
         std::vector<std::pair<std::string, int64_t>> values;
-        values.reserve(pair_count);
-        std::type_index cpp = typeid(void);
-        sol::table target   = state.create_table(0, static_cast<int>(pair_count));
-        reflection::bind_enum_entries(values, cpp, target, std::forward<Args>(args)...);
-        detail::add_enum(name, cpp, std::move(values));
-        sol::table metatable = state.create_table_with(
-            sol::meta_function::new_index, sol::detail::fail_on_newindex,
-            sol::meta_function::index, target,
-            sol::meta_function::pairs, sol::stack::stack_detail::readonly_pairs
-        );
-        state.create_named_table(name, sol::metatable_key, metatable);
+        values.reserve(entries.size());
+        for (const auto& [key, value] : entries)
+        {
+            values.emplace_back(key, static_cast<int64_t>(value));
+        }
+        detail::add_enum(state, name, typeid(E), std::move(values));
     }
 
     // a named lua table whose functions are recorded as they are assigned

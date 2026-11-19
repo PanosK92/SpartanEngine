@@ -1785,19 +1785,14 @@ void Properties::ShowRender(spartan::Render* render) const
         return;
     }
 
-    const int lod_count         = render->GetLodCount();
     const uint32_t instances    = render->GetInstanceCount();
-    const double triangles      = lod_count > 0 ? render->GetIndexCount(0) / 3.0 : 0.0;
+    const double triangles      = render->GetIndexCount() / 3.0;
     const bool is_visible       = render->IsVisible();
     {
         char summary[96];
         if (instances > 1)
         {
             snprintf(summary, sizeof(summary), "%s tris \xC3\x97 %s instances", format::compact(triangles).c_str(), format::grouped(instances).c_str());
-        }
-        else if (lod_count > 1)
-        {
-            snprintf(summary, sizeof(summary), "%s tris \xC2\xB7 LOD %u of %d", format::compact(triangles).c_str(), render->GetLodIndex(), lod_count);
         }
         else
         {
@@ -1820,7 +1815,7 @@ void Properties::ShowRender(spartan::Render* render) const
         stat_strip("##render_stats",
         {
             { format::compact(triangles), "triangles" },
-            { format::compact(lod_count > 0 ? render->GetVertexCount(0) : 0), "vertices" },
+            { format::compact(render->GetVertexCount()), "vertices" },
             { format::grouped(instances), instances == 1 ? "instance" : "instances" },
             { is_visible ? "yes" : "no", "in view", is_visible ? design::ok() : ImGui::Style::color_text_muted }
         });
@@ -1916,54 +1911,6 @@ void Properties::ShowRender(spartan::Render* render) const
         }
 
         property_toggle("Cast shadows", &cast_shadows, "whether this object blocks light, thin or distant props can skip it to save shadow map work");
-
-        // level of detail, bars instead of a number table: each is sized by its triangles next to lod 0
-        if (lod_count > 1)
-        {
-            char summary[48];
-            snprintf(summary, sizeof(summary), "%d levels", lod_count);
-            if (layout::fold("Level of detail", true, summary))
-            {
-                const float row_h     = ImGui::GetFrameHeight();
-                const float pad       = ImGui::EditorUi::scaled(10.0f);
-                ImVec2 min, max;
-                ImDrawList* draw_list = canvas("##lod_bars", row_h * lod_count + pad * 2.0f, &min, &max);
-                const float label_w   = ImGui::CalcTextSize("LOD 0").x + pad;
-                const float text_w    = ImGui::CalcTextSize("000.0k tris  100%").x;
-                const float bar_x0    = min.x + pad + label_w;
-                const float bar_x1    = max.x - pad - text_w - pad;
-                const uint32_t in_use = render->HasInstancing() ? 0xffffffff : render->GetLodIndex();
-
-                for (int i = 0; i < lod_count; i++)
-                {
-                    const float y        = min.y + pad + row_h * i;
-                    const double tris    = render->GetIndexCount(i) / 3.0;
-                    const float fraction = triangles > 0.0 ? static_cast<float>(tris / triangles) : 0.0f;
-                    const bool active    = static_cast<uint32_t>(i) == in_use;
-                    const ImVec4 tint    = active ? design::accent_render() : ImGui::EditorUi::alpha(design::accent_render(), 0.35f);
-
-                    char text[48];
-                    snprintf(text, sizeof(text), "LOD %d", i);
-                    draw_list->AddText(ImVec2(min.x + pad, y + (row_h - ImGui::GetTextLineHeight()) * 0.5f), ImGui::EditorUi::color(active ? ImGui::Style::color_text : ImGui::Style::color_text_muted), text);
-
-                    const float bar_h = ImGui::EditorUi::scaled(6.0f);
-                    const float bar_y = y + (row_h - bar_h) * 0.5f;
-                    draw_list->AddRectFilled(ImVec2(bar_x0, bar_y), ImVec2(bar_x1, bar_y + bar_h), ImGui::EditorUi::color(ImGui::Style::color_surface), bar_h);
-                    draw_list->AddRectFilled(ImVec2(bar_x0, bar_y), ImVec2(bar_x0 + ImMax((bar_x1 - bar_x0) * fraction, bar_h), bar_y + bar_h), ImGui::EditorUi::color(tint), bar_h);
-
-                    snprintf(text, sizeof(text), "%s tris  %3.0f%%", format::compact(tris).c_str(), fraction * 100.0f);
-                    const ImVec2 size = ImGui::CalcTextSize(text);
-                    draw_list->AddText(ImVec2(max.x - pad - size.x, y + (row_h - size.y) * 0.5f), ImGui::EditorUi::color(active ? ImGui::Style::color_text : ImGui::Style::color_text_muted), text);
-                }
-
-                if (in_use != 0xffffffff)
-                {
-                    char text[96];
-                    snprintf(text, sizeof(text), "LOD %u is drawn right now, the next one takes over as the object gets smaller on screen.", in_use);
-                    layout::note(text, design::accent_render());
-                }
-            }
-        }
 
         // instancing
         if (instances > 1 || render->HasInstancing())

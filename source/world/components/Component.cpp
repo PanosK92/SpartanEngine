@@ -47,6 +47,40 @@ namespace spartan
         m_enabled    = true;
     }
 
+    std::string Component::TypeToString(ComponentType type)
+    {
+        switch (type)
+        {
+            #define X(type, str) case ComponentType::type: return #str;
+            SP_COMPONENT_LIST
+            #undef X
+            default:
+                assert(false && "TypeToString: Unknown ComponentType");
+                return {};
+        }
+    }
+
+    ComponentType Component::StringToType(const std::string& name)
+    {
+        #define X(type, str) if (name == #str) return ComponentType::type;
+        SP_COMPONENT_LIST
+        #undef X
+
+        SP_LOG_ERROR("Unsupported component in this application: %s", name.c_str());
+        return ComponentType::Max;
+    }
+
+    void Component::RegisterAttribute(const char* name, const char* type, std::function<std::any()>&& getter, std::function<void(std::any)>&& setter, bool writable)
+    {
+        Attribute attribute;
+        attribute.writable = writable;
+        attribute.name   = name;
+        attribute.type   = type;
+        attribute.getter = std::move(getter);
+        attribute.setter = std::move(setter);
+        m_attributes.emplace_back(std::move(attribute));
+    }
+
     void Component::SetAttributes(const std::vector<Attribute>& attributes)
     {
         SP_ASSERT(m_attributes.size() == attributes.size());

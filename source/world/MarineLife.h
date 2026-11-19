@@ -128,7 +128,7 @@ namespace spartan::marine_life
         auto mesh = std::make_shared<Mesh>();
         mesh->SetObjectName(std::string(habitats[species].name) + (tail ? " tail" : " body"));
         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-        mesh->AddGeometry(vertices, indices, false);
+        mesh->AddGeometry(vertices, indices);
         mesh->CreateGpuBuffers();
         return mesh;
     }

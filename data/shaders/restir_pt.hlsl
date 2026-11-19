@@ -126,6 +126,7 @@ void ray_gen()
     float hit_dist = restir_denoiser_hit_distance(reservoir, pos_ws, normal_ws, geometric_normal_ws,
         view_dir, albedo, roughness, metallic);
 
-    tex_uav[launch_id] = float4(canonical_gi, hit_dist);
+    // Diffuse filtering needs the primary scatter distance even on rough surfaces.
+    tex_uav[launch_id] = float4(canonical_gi, reservoir.sample.first_hit_distance);
     restir_specular_output[launch_id] = float4(canonical_gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic), hit_dist);
 }

@@ -10,12 +10,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_culling.hlsl"
 //============================
 
-StructuredBuffer<DrawLod>    draw_lods             : register(t86);
-RWStructuredBuffer<DrawData> indirect_draw_data_rw : register(u87);
-#if defined(API_WEBGPU)
-// webgpu can't alias one buffer through a read and a write binding in a dispatch, so reads go through the writable one
-#define indirect_draw_data indirect_draw_data_rw
-#endif
 // one bit per task lane, the early cull writes whether it drew the instance and the late cull reads it back
 // a stored bit, not a replayed test, because the early cull rewrites the lod bounds the test would read
 RWStructuredBuffer<uint>     instance_visibility   : register(u89);
@@ -48,7 +42,6 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
     bool     survives     = false;
     bool     drawn_early  = false;
-    bool     whole_instance = false;
     CullTask task         = (CullTask)0;
     uint     visible_word = task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + (thread_id.x >> 5u);
     uint     visible_bit  = 1u << (thread_id.x & 31u);
@@ -66,12 +59,32 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         bool skinned         = (draw.flags & 1u) != 0u;
         bool is_per_instance = (draw.flags & 2u) != 0u;
         bool skip_hiz        = (draw.flags & 32u) != 0u;
-        bool has_impostor    = (draw.flags & (1u << 15)) != 0u;
 
         // per-instance world transform, non-instanced draws keep draw.transform, instanced rebuild from the packed instance buffer
         float4x4 world_xform = is_per_instance
             ? mul(pull_instance_transform(draw.instance_offset, task.instance_index), draw.transform)
             : draw.transform;
+
+        // Choose the parent once for this canopy. All its cluster ranges use
+        // the same crown sphere, including ranges outside the camera frustum.
+        bool skip_range = false;
+        if (task.canopy_draw != 0u)
+        {
+            uint proxy_index = (task.canopy_draw & 0x7fffffffu) - 1u;
+            DrawData proxy = indirect_draw_data[proxy_index];
+            float3 center = mul(float4(proxy.cluster_center, 1.0f), world_xform).xyz;
+            float radius = proxy.cluster_radius * max_world_scale(world_xform);
+            float w = mul(float4(center, 1.0f), buffer_frame.view_projection).w;
+            float nearest = w - radius * abs(buffer_frame.projection[2][3]);
+            float diameter = radius * abs(buffer_frame.projection[1][1]) * get_render_resolution_active().y;
+            if (nearest > 0.0f && diameter <= proxy.cluster_error * nearest)
+            {
+                skip_range = (task.canopy_draw & 0x80000000u) != 0u;
+                draw = proxy;
+                task.draw_index = proxy_index;
+                task.refinement_draw = 0u;
+            }
+        }
 
         // instance bounding sphere, skinned uses the cpu-updated dynamic world aabb because deformation invalidates the static lod aabb
         float3 center_world;
@@ -84,15 +97,11 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         }
         else
         {
-            // All LOD candidates must use the same sphere. Reduced bounds otherwise
-            // disagree at thresholds, causing missing or simultaneously drawn LODs.
-            DrawData reference = indirect_draw_data[task.lod_reference_draw_index];
-            float3 center_local = reference.lod_aabb_min + reference.lod_aabb_extent * 0.5f;
-            center_world        = mul(float4(center_local, 1.0f), world_xform).xyz;
-            radius_world        = reference.lod_aabb_diag * 0.5f * max_world_scale(world_xform);
+            // The conservative range covers every resident version of these clusters.
+            center_world = mul(float4(draw.cluster_center, 1.0f), world_xform).xyz;
+            radius_world = draw.cluster_radius * max_world_scale(world_xform);
         }
 
-        float lod_radius = radius_world;
         bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
         if (wind_animated)
             radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
@@ -100,8 +109,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         // closest point on the instance sphere, origin distance was dropping roads and buildings
         // whose entity pivot sat hundreds of metres away from the mesh in front of the camera
         bool passes_distance = true;
-        // Baked impostors persist beyond the authored mesh render-distance limit.
-        if (!has_impostor && draw.max_render_distance_squared > 0.0f)
+        if (draw.max_render_distance_squared > 0.0f)
         {
             float3 to_camera = center_world - buffer_frame.camera_position;
             float dist_center = length(to_camera);
@@ -111,61 +119,40 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
         // frustum, then contribution, then hi-z, the hi-z test also rejects instances entirely behind the camera (the side planes alone do not)
         // contribution runs before hi-z because it reuses the same projection without sampling the hi-z pyramid
-        survives = passes_distance
+        survives = !skip_range && passes_distance
             && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
             && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX);
 
-        // One task covers the entire LOD chain. Offsets account for missing mesh LODs.
-        if (survives && (task.lod_draw_offsets & 0x80000000u) != 0u)
+        // Select an available cluster refinement independently for each instance.
+        if (survives && (task.refinement_draw & 0xc0000000u) == CULL_TASK_CLUSTER_REFINEMENT)
         {
-            uint lod_count = (draw.flags >> 11u) & 7u;
-            uint wanted_lod = has_impostor ? sphere_lod_index_impostor(center_world, lod_radius, lod_count) : sphere_lod_index(center_world, lod_radius, lod_count);
-            task.draw_index += (task.lod_draw_offsets >> (wanted_lod * 3u)) & 7u;
-
-            // distant cards thin out and the survivors widen, the hi-z test below needs the widened card
-            if (has_impostor && wanted_lod == lod_count - 1u)
+            float3 cluster_center = mul(float4(draw.cluster_center, 1.0f), world_xform).xyz;
+            float cluster_radius = draw.cluster_radius * max_world_scale(world_xform);
+            float clip_w = mul(float4(cluster_center, 1.0f), buffer_frame.view_projection).w;
+            float nearest = max(1e-4f, clip_w - cluster_radius * abs(buffer_frame.projection[2][3]));
+            float pixels = 0.5f * get_render_resolution_active().y * abs(buffer_frame.projection[1][1]);
+            uint first = task.refinement_draw & CULL_TASK_LEVEL_MASK;
+            uint count = 1u + ((task.refinement_draw >> CULL_TASK_LEVEL_SHIFT) & 15u);
+            float threshold = nearest / max(1e-8f, max_world_scale(world_xform) * pixels);
+            float error = draw.cluster_error;
+            for (uint j = 0; j < count && error > threshold; ++j)
             {
-                float thin_factor = impostor_thin_factor(center_world, lod_radius);
-                survives          = impostor_thin_keep(world_xform[3].xyz, thin_factor);
-                radius_world     *= impostor_thin_scale(thin_factor);
+                task.draw_index = first + j;
+                error = indirect_draw_data[task.draw_index].cluster_error;
             }
         }
 
-        uint meshlet_count = indirect_draw_data[task.draw_index].lod_meshlet_count;
-
-        // a non-instanced draw is a single thread, so it can rewrite its own draw to the lod its coverage wants
-        // the coverage comes from the lod 0 bounds in the table, the late cull runs this again and must pick the same lod
-        if (survives && (draw.flags & draw_flag_gpu_lod) != 0u)
-        {
-            uint lod_count     = (draw.flags >> 11u) & 7u;
-            DrawLod lod0       = draw_lods[draw.impostor_texel_offset];
-            float3 lod0_center = mul(float4(lod0.aabb_min + lod0.aabb_extent * 0.5f, 1.0f), world_xform).xyz;
-            float lod0_radius  = lod0.aabb_diag * 0.5f * max_world_scale(world_xform);
-            uint lod           = sphere_lod_index(lod0_center, lod0_radius, lod_count);
-            DrawLod pick       = draw_lods[draw.impostor_texel_offset + lod];
-
-            meshlet_count = pick.meshlet_count;
-            indirect_draw_data_rw[task.draw_index].lod_first_index        = pick.first_index;
-            indirect_draw_data_rw[task.draw_index].lod_vertex_offset      = pick.vertex_offset;
-            indirect_draw_data_rw[task.draw_index].lod_meshlet_offset     = pick.meshlet_offset;
-            indirect_draw_data_rw[task.draw_index].lod_meshlet_count      = pick.meshlet_count;
-            indirect_draw_data_rw[task.draw_index].lod_aabb_min           = pick.aabb_min;
-            indirect_draw_data_rw[task.draw_index].lod_aabb_diag          = pick.aabb_diag;
-            indirect_draw_data_rw[task.draw_index].lod_aabb_extent        = pick.aabb_extent;
-            indirect_draw_data_rw[task.draw_index].previous_vertex_offset = pick.previous_vertex_offset;
-            indirect_draw_data_rw[task.draw_index].flags                  = (draw.flags & ~(7u << 8u)) | (lod << 8u);
-        }
+        uint meshlet_count = indirect_draw_data[task.draw_index].geometry_meshlet_count;
 
         if (task_count <= 128u && (draw.flags & 2u) == 0u && meshlet_count >= 256u)
             meshlet_rows = min((meshlet_count + 63u) / 64u, meshlet_cull_rows);
-        whole_instance = (indirect_draw_data[task.draw_index].flags & (1u << 14)) != 0u;
         if (survives)
         {
             if (late)
             {
                 // the early cull keeps every meshlet of hi-z exempt and skinned instances, it left nothing behind for these
                 drawn_early = (instance_visibility[visible_word] & visible_bit) != 0u;
-                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned || whole_instance));
+                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned));
             }
             else
             {

@@ -44,7 +44,7 @@ using namespace asset_viewer_common;
 
 bool AssetViewer::Refresh(string& error)
 {
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before refreshing";
@@ -61,8 +61,7 @@ bool AssetViewer::ListAssets(
 )
 {
     if (
-        !m_working_modified &&
-        !m_working_lods_built
+        !m_working_modified
     )
     {
         RefreshCatalog(false);
@@ -389,7 +388,7 @@ bool AssetViewer::SetSelection(
     const bool changes_focus = focus != m_selected_asset;
     if (
         changes_focus &&
-        (m_working_modified || m_working_lods_built)
+        (m_working_modified)
     )
     {
         error =
@@ -441,31 +440,7 @@ bool AssetViewer::SetDisplay(
     string& error
 )
 {
-    if (request.preview_lod)
-    {
-        if (!m_working_editable)
-        {
-            error = "a previewed editable mesh is required";
-            return false;
-        }
-        if (!m_working_lods_scanned)
-        {
-            m_working_lods_scanned = true;
-            LoadExistingLods();
-        }
-        const int lod_count = max(
-            1,
-            static_cast<int>(m_working_lods.size())
-        );
-        if (
-            *request.preview_lod < 0 ||
-            *request.preview_lod >= lod_count
-        )
-        {
-            error = "preview_lod is out of range";
-            return false;
-        }
-    }
+
     if (request.frame && !HasPreviewContent())
     {
         error = "load a preview before framing it";
@@ -481,7 +456,6 @@ bool AssetViewer::SetDisplay(
         m_preview_yaw = 0.65f;
         m_preview_pitch = 0.35f;
         m_preview_zoom = 1.0f;
-        m_preview_lod = 0;
         m_texture_pan = math::Vector2::Zero;
     }
     if (request.shading)
@@ -500,12 +474,7 @@ bool AssetViewer::SetDisplay(
     {
         m_preview_auto_rotate = *request.auto_rotate;
     }
-    if (request.preview_lod)
-    {
-        m_preview_lod = *request.preview_lod;
-        FlattenWorkingGeometry();
-        RefreshPreviewMeshGeometry();
-    }
+
     if (request.frame)
     {
         RefreshPreviewBounds();
@@ -545,7 +514,7 @@ bool AssetViewer::PreviewPath(
         error = "linked resource was not found";
         return false;
     }
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         if (
             normalized_path(path) ==
@@ -606,7 +575,7 @@ bool AssetViewer::PreviewPath(
 
 bool AssetViewer::Reload(string& error)
 {
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before reloading";
@@ -672,24 +641,6 @@ bool AssetViewer::EditMesh(
         return false;
     }
     if (
-        request.generate_lods &&
-        request.action != MeshAction::SetOptions
-    )
-    {
-        error =
-            "generate_lods_on_save is only valid for set_options";
-        return false;
-    }
-    if (
-        request.preview_lod &&
-        request.action != MeshAction::SetOptions
-    )
-    {
-        error =
-            "preview_lod is only valid for set_options";
-        return false;
-    }
-    if (
         request.action == MeshAction::Revert &&
         !request.confirm
     )
@@ -698,23 +649,12 @@ bool AssetViewer::EditMesh(
             "confirm=true is required to discard mesh changes";
         return false;
     }
-    if (request.preview_lod)
-    {
-        DisplayRequest display;
-        display.preview_lod = request.preview_lod;
-        if (!SetDisplay(display, error))
-        {
-            return false;
-        }
-    }
+
     if (request.target_ratio)
     {
         m_target_ratio = *request.target_ratio;
     }
-    if (request.generate_lods)
-    {
-        m_working_generate_lods = *request.generate_lods;
-    }
+
 
     switch (request.action)
     {
@@ -725,15 +665,6 @@ bool AssetViewer::EditMesh(
         case MeshAction::Optimize:
             OptimizeWorkingGeometry();
             m_status = "Optimized working mesh geometry";
-            break;
-        case MeshAction::BuildLods:
-            BuildWorkingLods();
-            if (m_working_lods.empty())
-            {
-                error = "the mesh could not produce a reduced lod level";
-                return false;
-            }
-            m_status = "Built working mesh lods";
             break;
         case MeshAction::Revert:
         {
@@ -762,8 +693,7 @@ bool AssetViewer::SaveMesh(
         return false;
     }
     if (
-        !m_working_modified &&
-        !m_working_lods_built
+        !m_working_modified
     )
     {
         error = "there are no unsaved mesh changes";
@@ -787,7 +717,7 @@ bool AssetViewer::Rename(
     string& error
 )
 {
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before renaming";
@@ -822,7 +752,7 @@ bool AssetViewer::Rename(
             return false;
         }
         if (
-            (m_working_modified || m_working_lods_built) &&
+            (m_working_modified) &&
             normalized_path(linked_path) ==
                 normalized_path(m_loaded_path)
         )
@@ -868,7 +798,7 @@ bool AssetViewer::Rename(
         return false;
     }
     if (
-        (m_working_modified || m_working_lods_built) &&
+        (m_working_modified) &&
         m_selected_asset == index
     )
     {
@@ -896,7 +826,7 @@ bool AssetViewer::Delete(
         error = "confirm=true is required to delete assets";
         return false;
     }
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before deleting";
@@ -931,7 +861,7 @@ bool AssetViewer::Delete(
             return false;
         }
         if (
-            (m_working_modified || m_working_lods_built) &&
+            (m_working_modified) &&
             normalized_path(linked_path) ==
                 normalized_path(m_loaded_path)
         )
@@ -974,7 +904,7 @@ bool AssetViewer::Delete(
             return false;
         }
         if (
-            (m_working_modified || m_working_lods_built) &&
+            (m_working_modified) &&
             normalized_path(found->path) ==
                 normalized_path(m_loaded_path)
         )
@@ -1031,7 +961,7 @@ bool AssetViewer::ApplyCleanup(
             "cleanup generation is stale, scan again before applying";
         return false;
     }
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before applying cleanup";
@@ -1079,7 +1009,7 @@ void AssetViewer::SetPanelVisible(bool visible)
         // not saying it is finished with the asset it was reviewing
         Renderer::InvalidateSecondaryView();
     }
-    if (!m_working_modified && !m_working_lods_built)
+    if (!m_working_modified )
     {
         RefreshCatalog(m_visible);
     }
@@ -1090,7 +1020,7 @@ bool AssetViewer::SelectAsset(
     string& error
 )
 {
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         const bool same_asset =
             m_selected_asset >= 0 &&
@@ -1155,7 +1085,7 @@ bool AssetViewer::PreviewEntityById(
     string& error
 )
 {
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         error =
             "save or revert unsaved mesh changes before previewing an entity";
@@ -1330,17 +1260,9 @@ AssetViewer::PreviewStatus AssetViewer::GetPreviewStatus() const
         static_cast<PreviewBackdrop>(m_preview_backdrop);
     status.show_stats = m_preview_show_stats;
     status.auto_rotate = m_preview_auto_rotate;
-    status.preview_lod = m_preview_lod;
-    status.lod_count = max(
-        1,
-        static_cast<int>(m_working_lods.size())
-    );
     status.mesh_target_ratio = m_target_ratio;
     status.mesh_editable = m_working_editable;
     status.mesh_modified = m_working_modified;
-    status.mesh_lods_built = m_working_lods_built;
-    status.mesh_lods_attempted = m_working_lods_attempted;
-    status.mesh_generate_lods = m_working_generate_lods;
     status.has_preview_content = HasPreviewContent();
     status.selected_asset_ids.assign(
         m_selected_assets.begin(),

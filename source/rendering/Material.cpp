@@ -1086,10 +1086,12 @@ namespace spartan
 
     shared_ptr<Material> Material::Clone(const string& resource_name) const
     {
+        lock_guard<recursive_mutex> lock(m_mutex);
         shared_ptr<Material> clone = make_shared<Material>();
         clone->SetResourceName(resource_name);
         clone->SetPersistent(false);
         clone->m_textures      = m_textures;
+        clone->m_texture_owners = m_texture_owners;
         clone->m_properties    = m_properties;
         clone->m_flags         = m_flags;
         clone->m_needs_repack  = false;
@@ -1258,7 +1260,6 @@ namespace spartan
                         shared_ptr<RHI_Texture> placeholder = make_shared<RHI_Texture>();
                         placeholder->SetResourceFilePath(tex_path);
                         placeholder->SetFlag(RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream);
-                        m_deferred_textures.push_back(placeholder);
                         texture = placeholder;
                     }
                     else
@@ -1415,6 +1416,8 @@ namespace spartan
 
             if (texture_changed)
             {
+                // Preserve borrowed textures as well as those supplied by a shared owner.
+                m_texture_owners[array_index] = texture ? shared_ptr<RHI_Texture>(texture->weak_from_this().lock(), texture) : nullptr;
                 bump_revision();
             }
 
@@ -1538,6 +1541,12 @@ namespace spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture) + slot];
     }
 
+    Material::TextureBindings Material::GetTextureBindings() const
+    {
+        lock_guard<recursive_mutex> lock(m_mutex);
+        return m_texture_owners;
+    }
+
     static bool is_sampled_directly(Material* material, RHI_Texture* texture)
     {
         static constexpr MaterialTextureType sampled_types[] =
@@ -1584,7 +1593,7 @@ namespace spartan
         // keep alive if owned by shared_ptr so sync gpu work cannot free this mid-call
         shared_ptr<IResource> self_keep_alive = weak_from_this().lock();
 
-        array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> textures{};
+        TextureBindings textures;
         {
             lock_guard<recursive_mutex> lock(m_mutex);
 
@@ -1609,7 +1618,7 @@ namespace spartan
             }
 
             m_needs_repack = false;
-            textures       = m_textures;
+            textures       = m_texture_owners;
         }
 
         // gpu prep outside the material lock, ImmediateExecution and compress can take a while
@@ -1626,7 +1635,7 @@ namespace spartan
             for (uint32_t slot = 0; slot < slots_per_texture; slot++)
             {
                 RHI_Texture* texture =
-                    textures[type * slots_per_texture + slot];
+                    textures[type * slots_per_texture + slot].get();
                 if (!texture)
                 {
                     continue;
@@ -1865,12 +1874,14 @@ namespace spartan
 
     void Material::ClearPackedTextures()
     {
+        lock_guard<recursive_mutex> lock(m_mutex);
         // clear only packed texture slots - these are cached in ResourceCache and become
         // dangling pointers when ResourceCache::Shutdown() is called
         uint32_t packed_base_index = static_cast<uint32_t>(MaterialTextureType::Packed) * slots_per_texture;
         for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
         {
             m_textures[packed_base_index + slot] = nullptr;
+            m_texture_owners[packed_base_index + slot].reset();
         }
     }
 }

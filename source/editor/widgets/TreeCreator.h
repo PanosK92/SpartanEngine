@@ -37,14 +37,13 @@ class TreeCreator : public Widget
 public:
     struct stats
     {
-        uint32_t triangles         = 0; // lod 0, bark and foliage
+        uint32_t triangles         = 0; // bark and foliage
         uint32_t vertices          = 0;
         uint32_t bark_triangles    = 0;
         uint32_t foliage_triangles = 0;
         uint32_t budget            = 0;
         uint32_t stems             = 0;
         uint32_t cards             = 0;
-        std::vector<uint32_t> lod_triangles; // per level, bark plus foliage, clamped to each sub mesh
         float height               = 0.0f;
         float crown_width          = 0.0f;
         float generate_ms          = 0.0f;
@@ -57,7 +56,6 @@ public:
         std::string mesh;
         uint32_t seed = 0;
         stats numbers;
-        bool impostor = false;
     };
 
     TreeCreator(Editor* editor);
@@ -80,8 +78,6 @@ public:
     bool GenerateNow(std::string& error);
     const stats& GetStats() const { return m_stats; }
     void SetPreviewView(float yaw, float pitch, float zoom);
-    void SetPreviewLod(int lod);
-    int GetPreviewLod() const { return m_preview_lod; }
     float GetPreviewYaw() const { return m_yaw; }
     float GetPreviewPitch() const { return m_pitch; }
     float GetPreviewZoom() const { return m_zoom; }
@@ -122,7 +118,6 @@ private:
     void DestroyPreviewScene();
     void UpdatePreviewCamera();
     bool RequestPreviewRender(uint32_t width, uint32_t height);
-    spartan::Mesh* PreviewMeshForLod();
     void RefreshThumbnail(const std::string& id);
     spartan::RHI_Texture* GetThumbnail(const std::string& id);
 
@@ -138,10 +133,9 @@ private:
     std::string m_status;
     std::string m_load_errors;
 
-    // the tree being shown, its mesh and the per level copies the lod switcher draws
+    // the tree being shown, its mesh and its preview entities
     spartan::trees::result m_tree;
     std::shared_ptr<spartan::Mesh> m_mesh;
-    std::vector<std::shared_ptr<spartan::Mesh>> m_lod_meshes;
     std::shared_ptr<spartan::Material> m_bark_material;
     std::shared_ptr<spartan::Material> m_foliage_material;
     std::shared_ptr<spartan::Material> m_ground_material;
@@ -163,7 +157,6 @@ private:
     float m_yaw            = 0.65f;
     float m_pitch          = 0.12f;
     float m_zoom           = 1.0f;
-    int m_preview_lod      = 0;
     bool m_wind            = true;
     bool m_orbiting        = false;
     bool m_preview_dirty   = false;

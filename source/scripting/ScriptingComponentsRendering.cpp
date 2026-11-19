@@ -32,17 +32,20 @@ namespace spartan::scripting
     {
         void register_mesh(sol::state_view State)
         {
-            visual::enumeration(State, "MeshFlags",
-                "ImportRemoveRedundantData",       MeshFlags::ImportRemoveRedundantData,
-                "ImportLights",                    MeshFlags::ImportLights,
-                "ImportCombineMeshes",             MeshFlags::ImportCombineMeshes,
-                "ImportGenerateSmoothNormals",     MeshFlags::ImportGenerateSmoothNormals,
-                "PostProcessNormalizeScale",       MeshFlags::PostProcessNormalizeScale,
-                "PostProcessOptimize",             MeshFlags::PostProcessOptimize,
-                "PostProcessGenerateLods",         MeshFlags::PostProcessGenerateLods,
-                "PostProcessPreserveLod0",         MeshFlags::PostProcessPreserveLod0,
-                "PostProcessPreserveTerrainEdges", MeshFlags::PostProcessPreserveTerrainEdges
-            );
+            visual::enumeration<MeshFlags>(State, "MeshFlags", {
+                {"ImportRemoveRedundantData",       MeshFlags::ImportRemoveRedundantData},
+                {"ImportLights",                    MeshFlags::ImportLights},
+                {"ImportCombineMeshes",             MeshFlags::ImportCombineMeshes},
+                {"ImportGenerateSmoothNormals",     MeshFlags::ImportGenerateSmoothNormals},
+                {"PostProcessNormalizeScale",       MeshFlags::PostProcessNormalizeScale},
+                {"PostProcessOptimize",             MeshFlags::PostProcessOptimize},
+                {"PreserveSourceGeometry",          MeshFlags::PreserveSourceGeometry},
+                // Older project packages mask these Lua constants while loading character meshes.
+                // Both are inert. All static meshes are cooked from the authored surface.
+                {"PostProcessGenerateLods",         static_cast<MeshFlags>(0)},
+                {"PostProcessPreserveLod0",         static_cast<MeshFlags>(0)},
+                {"PostProcessPreserveTerrainEdges", MeshFlags::PostProcessPreserveTerrainEdges}
+            });
 
             visual::usertype<Mesh>(State, "Mesh",
                 "SaveToFile",               &Mesh::SaveToFile,
@@ -93,19 +96,19 @@ namespace spartan::scripting
 
         void register_render(sol::state_view State)
         {
-            visual::enumeration(State, "MeshType",
-                "Cube",     MeshType::Cube,
-                "Quad",     MeshType::Quad,
-                "Sphere",   MeshType::Sphere,
-                "Cylinder", MeshType::Cylinder,
-                "Cone",     MeshType::Cone,
-                "Max",      MeshType::Max
-            );
+            visual::enumeration<MeshType>(State, "MeshType", {
+                {"Cube",     MeshType::Cube},
+                {"Quad",     MeshType::Quad},
+                {"Sphere",   MeshType::Sphere},
+                {"Cylinder", MeshType::Cylinder},
+                {"Cone",     MeshType::Cone},
+                {"Max",      MeshType::Max}
+            });
 
-            visual::enumeration(State, "RenderFlags",
-                "CastsShadows",          RenderFlags::CastsShadows,
-                "ExcludeFromRayTracing", RenderFlags::ExcludeFromRayTracing
-            );
+            visual::enumeration<RenderFlags>(State, "RenderFlags", {
+                {"CastsShadows",          RenderFlags::CastsShadows},
+                {"ExcludeFromRayTracing", RenderFlags::ExcludeFromRayTracing}
+            });
 
             visual::usertype<Render>(State, "Render",
                 sol::base_classes,              sol::bases<Component>(),
@@ -164,47 +167,47 @@ namespace spartan::scripting
 
         void register_light(sol::state_view State)
         {
-            visual::enumeration(State, "LightType",
-                "Directional",              LightType::Directional,
-                "Point",                    LightType::Point,
-                "Spot",                     LightType::Spot,
-                "Area",                     LightType::Area,
-                "Max",                      LightType::Max
-            );
+            visual::enumeration<LightType>(State, "LightType", {
+                {"Directional",              LightType::Directional},
+                {"Point",                    LightType::Point},
+                {"Spot",                     LightType::Spot},
+                {"Area",                     LightType::Area},
+                {"Max",                      LightType::Max}
+            });
 
-            visual::enumeration(State, "LightIntensity",
-                "bulb_stadium",             LightIntensity::bulb_stadium,
-                "bulb_500_watt",            LightIntensity::bulb_500_watt,
-                "bulb_150_watt",            LightIntensity::bulb_150_watt,
-                "bulb_100_watt",            LightIntensity::bulb_100_watt,
-                "bulb_60_watt",             LightIntensity::bulb_60_watt,
-                "bulb_25_watt",             LightIntensity::bulb_25_watt,
-                "bulb_flashlight",          LightIntensity::bulb_flashlight,
-                "black_hole",               LightIntensity::black_hole,
-                "custom",                   LightIntensity::custom
-            );
+            visual::enumeration<LightIntensity>(State, "LightIntensity", {
+                {"bulb_stadium",             LightIntensity::bulb_stadium},
+                {"bulb_500_watt",            LightIntensity::bulb_500_watt},
+                {"bulb_150_watt",            LightIntensity::bulb_150_watt},
+                {"bulb_100_watt",            LightIntensity::bulb_100_watt},
+                {"bulb_60_watt",             LightIntensity::bulb_60_watt},
+                {"bulb_25_watt",             LightIntensity::bulb_25_watt},
+                {"bulb_flashlight",          LightIntensity::bulb_flashlight},
+                {"black_hole",               LightIntensity::black_hole},
+                {"custom",                   LightIntensity::custom}
+            });
 
-            visual::enumeration(State, "LightIntensityUnit",
-                "Lux",                      LightIntensityUnit::Lux,
-                "Lumens",                   LightIntensityUnit::Lumens
-            );
+            visual::enumeration<LightIntensityUnit>(State, "LightIntensityUnit", {
+                {"Lux",                      LightIntensityUnit::Lux},
+                {"Lumens",                   LightIntensityUnit::Lumens}
+            });
 
-            visual::enumeration(State, "LightFlags",
-                "Shadows",                  LightFlags::Shadows,
-                "ShadowsScreenSpace",       LightFlags::ShadowsScreenSpace,
-                "Volumetric",               LightFlags::Volumetric,
-                "DayNightCycle",            LightFlags::DayNightCycle,
-                "RealTimeCycle",            LightFlags::RealTimeCycle
-            );
+            visual::enumeration<LightFlags>(State, "LightFlags", {
+                {"Shadows",                  LightFlags::Shadows},
+                {"ShadowsScreenSpace",       LightFlags::ShadowsScreenSpace},
+                {"Volumetric",               LightFlags::Volumetric},
+                {"DayNightCycle",            LightFlags::DayNightCycle},
+                {"RealTimeCycle",            LightFlags::RealTimeCycle}
+            });
 
-            visual::enumeration(State, "LightPreset",
-                "dawn",                     LightPreset::dawn,
-                "day",                      LightPreset::day,
-                "dusk",                     LightPreset::dusk,
-                "night",                    LightPreset::night,
-                "david_lynch",              LightPreset::david_lynch,
-                "custom",                   LightPreset::custom
-            );
+            visual::enumeration<LightPreset>(State, "LightPreset", {
+                {"dawn",                     LightPreset::dawn},
+                {"day",                      LightPreset::day},
+                {"dusk",                     LightPreset::dusk},
+                {"night",                    LightPreset::night},
+                {"david_lynch",              LightPreset::david_lynch},
+                {"custom",                   LightPreset::custom}
+            });
 
             visual::usertype<Light>(State, "Light",
                 sol::base_classes,              sol::bases<Component>(),

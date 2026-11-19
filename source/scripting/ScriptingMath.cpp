@@ -22,11 +22,11 @@ namespace spartan::scripting
 {
     void register_math(sol::state_view state)
     {
-        visual::enumeration(state, "Intersection",
-            "Outside", Intersection::Outside,
-            "Inside",       Intersection::Inside,
-            "Intersects",   Intersection::Intersects
-            );
+        visual::enumeration<Intersection>(state, "Intersection", {
+            {"Outside", Intersection::Outside},
+            {"Inside",       Intersection::Inside},
+            {"Intersects",   Intersection::Intersects}
+            });
 
         visual::usertype<BoundingBox>(state, "BoundingBox",
             sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),

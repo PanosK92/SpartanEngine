@@ -83,6 +83,7 @@ build_assimp()
 {
     clone https://github.com/assimp/assimp.git "$assimp_tag" "$work/assimp"
     cmake_build "$work/assimp" "$work/assimp/build" \
+        -DASSIMP_NO_EXPORT=ON \
         -DBUILD_SHARED_LIBS=OFF -DASSIMP_BUILD_TESTS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_BUILD_SAMPLES=OFF \
         -DASSIMP_WARNINGS_AS_ERRORS=OFF -DASSIMP_BUILD_ZLIB=ON -DASSIMP_INSTALL=OFF -DASSIMP_INJECT_DEBUG_POSTFIX=OFF
     collect_static_libraries "$work/assimp/build"

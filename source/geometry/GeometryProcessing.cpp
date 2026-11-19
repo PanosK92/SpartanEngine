@@ -240,137 +240,6 @@ namespace spartan::geometry_processing
         vertices.assign(optimized_vertices.begin(), optimized_vertices.begin() + optimized_vertex_count);
     }
 
-    void thin_foliage_cards(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t target_index_count)
-    {
-        // a card is a handful of triangles, anything bigger is a branchlet or a sheet that must not be scaled
-        constexpr uint32_t card_triangles_max = 64;
-        // thinned cards win back most but not all of the lost cover, a full compensation reads as inflated
-        constexpr float cover     = 0.92f;
-        constexpr float scale_max = 1.6f;
-
-        const size_t index_count  = indices.size();
-        const size_t vertex_count = vertices.size();
-        if (target_index_count >= index_count || index_count < 12)
-        {
-            return;
-        }
-
-        std::vector<uint32_t> parent(vertex_count);
-        for (uint32_t i = 0; i < vertex_count; i++)
-        {
-            parent[i] = i;
-        }
-        auto find = [&parent](uint32_t v)
-        {
-            while (parent[v] != v)
-            {
-                parent[v] = parent[parent[v]];
-                v         = parent[v];
-            }
-            return v;
-        };
-        for (size_t i = 0; i < index_count; i += 3)
-        {
-            const uint32_t a = find(indices[i]);
-            parent[find(indices[i + 1])] = a;
-            parent[find(indices[i + 2])] = a;
-        }
-
-        struct Card
-        {
-            uint32_t triangles = 0;
-            uint32_t vertices  = 0;
-            math::Vector3 center = math::Vector3::Zero;
-            uint32_t rank      = 0;
-            bool keep          = true;
-        };
-        std::unordered_map<uint32_t, Card> cards;
-        for (size_t i = 0; i < index_count; i += 3)
-        {
-            cards[find(indices[i])].triangles++;
-        }
-        for (uint32_t v = 0; v < vertex_count; v++)
-        {
-            auto it = cards.find(find(v));
-            if (it == cards.end())
-            {
-                continue;
-            }
-            it->second.vertices++;
-            it->second.center += math::Vector3(vertices[v].pos[0], vertices[v].pos[1], vertices[v].pos[2]);
-        }
-
-        size_t small_indices = 0;
-        std::vector<Card*> small;
-        for (auto& [root, card] : cards)
-        {
-            card.center /= static_cast<float>(card.vertices);
-            if (card.triangles > card_triangles_max)
-            {
-                continue;
-            }
-            // the centre survives the scaling below, so hashing it gives every lod the same order and each one keeps a subset of the last
-            const int32_t qx = static_cast<int32_t>(std::floor(card.center.x * 256.0f));
-            const int32_t qy = static_cast<int32_t>(std::floor(card.center.y * 256.0f));
-            const int32_t qz = static_cast<int32_t>(std::floor(card.center.z * 256.0f));
-            uint32_t h = static_cast<uint32_t>(qx) * 73856093u ^ static_cast<uint32_t>(qy) * 19349663u ^ static_cast<uint32_t>(qz) * 83492791u;
-            h ^= h >> 16;
-            h *= 0x7feb352du;
-            h ^= h >> 15;
-            card.rank = h;
-            small.push_back(&card);
-            small_indices += card.triangles * 3;
-        }
-        if (small.empty())
-        {
-            return;
-        }
-
-        const size_t large_indices = index_count - small_indices;
-        const float keep = std::clamp(static_cast<float>(static_cast<double>(target_index_count) - static_cast<double>(large_indices)) / static_cast<float>(small_indices), 0.02f, 1.0f);
-        if (keep >= 1.0f)
-        {
-            return;
-        }
-        std::sort(small.begin(), small.end(), [](const Card* a, const Card* b) { return a->rank < b->rank; });
-        const size_t kept = std::max<size_t>(1, static_cast<size_t>(static_cast<float>(small.size()) * keep));
-        for (size_t i = kept; i < small.size(); i++)
-        {
-            small[i]->keep = false;
-        }
-
-        const float scale = std::clamp(cover / std::sqrt(keep), 1.0f, scale_max);
-        std::vector<RHI_Vertex_PosTexNorTan> scaled = vertices;
-        for (uint32_t v = 0; v < vertex_count; v++)
-        {
-            auto it = cards.find(find(v));
-            if (it == cards.end() || it->second.triangles > card_triangles_max)
-            {
-                continue;
-            }
-            const math::Vector3 c = it->second.center;
-            scaled[v].pos[0] = c.x + (vertices[v].pos[0] - c.x) * scale;
-            scaled[v].pos[1] = c.y + (vertices[v].pos[1] - c.y) * scale;
-            scaled[v].pos[2] = c.z + (vertices[v].pos[2] - c.z) * scale;
-        }
-
-        std::vector<uint32_t> thinned;
-        thinned.reserve(index_count);
-        for (size_t i = 0; i < index_count; i += 3)
-        {
-            if (cards[find(indices[i])].keep)
-            {
-                thinned.insert(thinned.end(), { indices[i], indices[i + 1], indices[i + 2] });
-            }
-        }
-
-        std::vector<RHI_Vertex_PosTexNorTan> compacted(vertex_count);
-        const size_t compacted_count = meshopt_optimizeVertexFetch(compacted.data(), thinned.data(), thinned.size(), scaled.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
-        compacted.resize(compacted_count);
-        indices  = std::move(thinned);
-        vertices = std::move(compacted);
-    }
-
     void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
     {
         size_t vertex_count = vertices.size();
@@ -480,20 +349,71 @@ namespace spartan::geometry_processing
         meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
     }
 
+    static void pack_culling_bounds(Sb_MeshletBounds& bounds, const meshopt_Bounds& meshlet_bounds,
+        const math::Vector3& aabb_min, const math::Vector3& aabb_extent_safe, float aabb_diag_safe)
+    {
+        const float center_quant_err_3d = 0.5f * aabb_diag_safe / 65535.0f;
+        // quantize center against the lod aabb, clamp first so any tiny float drift past the aabb edges doesn't underflow the unorm round
+        const float tx    = std::clamp((meshlet_bounds.center[0] - aabb_min.x) / aabb_extent_safe.x, 0.0f, 1.0f);
+        const float ty    = std::clamp((meshlet_bounds.center[1] - aabb_min.y) / aabb_extent_safe.y, 0.0f, 1.0f);
+        const float tz    = std::clamp((meshlet_bounds.center[2] - aabb_min.z) / aabb_extent_safe.z, 0.0f, 1.0f);
+        const uint32_t cx = static_cast<uint32_t>(tx * 65535.0f + 0.5f);
+        const uint32_t cy = static_cast<uint32_t>(ty * 65535.0f + 0.5f);
+        const uint32_t cz = static_cast<uint32_t>(tz * 65535.0f + 0.5f);
+
+        // expand radius by the center quantization error and the unorm step that radius itself will round to, then round up so the encoded sphere always covers the true sphere
+        const float radius_step    = aabb_diag_safe / 65535.0f;
+        const float radius_padded  = meshlet_bounds.radius + center_quant_err_3d + radius_step;
+        const float radius_norm    = std::clamp(radius_padded / aabb_diag_safe, 0.0f, 1.0f);
+        const uint32_t r_quant     = static_cast<uint32_t>(std::ceil(radius_norm * 65535.0f));
+        const uint32_t r           = r_quant > 0xFFFFu ? 0xFFFFu : r_quant;
+
+        bounds.center_xy        = cx | (cy << 16);
+        bounds.center_z_radius  = cz | (r << 16);
+
+        // pack the snorm cone axis xyz and cone cutoff into one uint, byte 0..2 axis, byte 3 cutoff
+        const uint32_t ax = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[0]));
+        const uint32_t ay = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[1]));
+        const uint32_t az = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[2]));
+        const uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_cutoff_s8));
+        bounds.cone_axis_cutoff = ax | (ay << 8) | (az << 16) | (cc << 24);
+    }
+
+    static math::Vector3 quantization_extent(const math::BoundingBox& bounds)
+    {
+        const math::Vector3 extent = bounds.GetMax() - bounds.GetMin();
+        return math::Vector3(std::max(extent.x, 1e-8f), std::max(extent.y, 1e-8f), std::max(extent.z, 1e-8f));
+    }
+
+    void refit_meshlet_bounds(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, const std::vector<uint32_t>& indices,
+        std::vector<Sb_MeshletBounds>& meshlets, const math::BoundingBox& bounds)
+    {
+        const math::Vector3 extent = quantization_extent(bounds);
+        const float diagonal = extent.Length();
+        for (auto& meshlet : meshlets)
+        {
+            const uint32_t first = meshlet.first_index_tri_count & MESHLET_FIRST_INDEX_MASK;
+            const uint32_t count = 3 * (meshlet.first_index_tri_count >> MESHLET_TRI_COUNT_SHIFT);
+            const auto culling = meshopt_computeClusterBounds(indices.data() + first, count, vertices.front().pos,
+                vertices.size(), sizeof(vertices.front()));
+            pack_culling_bounds(meshlet, culling, bounds.GetMin(), extent, diagonal);
+        }
+    }
+
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<Sb_MeshletBounds>& meshlets_out,
         std::vector<uint32_t>& unique_vertices_out,
         std::vector<uint32_t>& micro_indices_out,
-        math::BoundingBox& lod_aabb_out,
-        bool scan
+        math::BoundingBox& geometry_bounds_out,
+        bool scan, const math::BoundingBox* quantization_bounds
     )
     {
         meshlets_out.clear();
         unique_vertices_out.clear();
         micro_indices_out.clear();
-        lod_aabb_out = math::BoundingBox::Zero;
+        geometry_bounds_out = math::BoundingBox::Zero;
 
         const size_t index_count  = indices.size();
         const size_t vertex_count = vertices.size();
@@ -502,25 +422,10 @@ namespace spartan::geometry_processing
             return;
         }
 
-        // compute the lod-local aabb up-front, the compressed meshlet bounds quantize center/radius against it and the cull shader receives the same aabb via DrawData.lod_aabb_*
-        lod_aabb_out                       = math::BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-        const math::Vector3 aabb_min       = lod_aabb_out.GetMin();
-        const math::Vector3 aabb_extent    = lod_aabb_out.GetMax() - aabb_min;
-        // guard against zero-extent axes (single-plane or degenerate meshes) so the dequant doesn't divide by zero on the cpu or shader
-        const math::Vector3 aabb_extent_safe(
-            aabb_extent.x > 1e-8f ? aabb_extent.x : 1e-8f,
-            aabb_extent.y > 1e-8f ? aabb_extent.y : 1e-8f,
-            aabb_extent.z > 1e-8f ? aabb_extent.z : 1e-8f
-        );
-        const float aabb_diag              = aabb_extent_safe.Length();
-        const float aabb_diag_safe         = aabb_diag > 1e-8f ? aabb_diag : 1e-8f;
-        // worst-case center quantization error magnitude, half a step per axis combined in 3d
-        const math::Vector3 center_step(
-            aabb_extent_safe.x / 65535.0f,
-            aabb_extent_safe.y / 65535.0f,
-            aabb_extent_safe.z / 65535.0f
-        );
-        const float center_quant_err_3d    = center_step.Length() * 0.5f;
+        // compute the lod-local aabb up-front, the compressed meshlet bounds quantize center/radius against it and the cull shader receives the same aabb via DrawData.geometry_bounds_*
+        geometry_bounds_out                       = quantization_bounds ? *quantization_bounds : math::BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+        const math::Vector3 extent = quantization_extent(geometry_bounds_out);
+        const float diagonal = extent.Length();
 
         // worst case meshlet count, used for buffer allocation
         const size_t max_meshlets = meshopt_buildMeshletsBound(index_count, meshlet_max_vertices, meshlet_max_triangles);
@@ -609,30 +514,7 @@ namespace spartan::geometry_processing
                 sizeof(RHI_Vertex_PosTexNorTan)
             );
 
-            // quantize center against the lod aabb, clamp first so any tiny float drift past the aabb edges doesn't underflow the unorm round
-            const float tx    = std::clamp((meshlet_bounds.center[0] - aabb_min.x) / aabb_extent_safe.x, 0.0f, 1.0f);
-            const float ty    = std::clamp((meshlet_bounds.center[1] - aabb_min.y) / aabb_extent_safe.y, 0.0f, 1.0f);
-            const float tz    = std::clamp((meshlet_bounds.center[2] - aabb_min.z) / aabb_extent_safe.z, 0.0f, 1.0f);
-            const uint32_t cx = static_cast<uint32_t>(tx * 65535.0f + 0.5f);
-            const uint32_t cy = static_cast<uint32_t>(ty * 65535.0f + 0.5f);
-            const uint32_t cz = static_cast<uint32_t>(tz * 65535.0f + 0.5f);
-
-            // expand radius by the center quantization error and the unorm step that radius itself will round to, then round up so the encoded sphere always covers the true sphere
-            const float radius_step    = aabb_diag_safe / 65535.0f;
-            const float radius_padded  = meshlet_bounds.radius + center_quant_err_3d + radius_step;
-            const float radius_norm    = std::clamp(radius_padded / aabb_diag_safe, 0.0f, 1.0f);
-            const uint32_t r_quant     = static_cast<uint32_t>(std::ceil(radius_norm * 65535.0f));
-            const uint32_t r           = r_quant > 0xFFFFu ? 0xFFFFu : r_quant;
-
-            bounds.center_xy        = cx | (cy << 16);
-            bounds.center_z_radius  = cz | (r << 16);
-
-            // pack the snorm cone axis xyz and cone cutoff into one uint, byte 0..2 axis, byte 3 cutoff
-            const uint32_t ax = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[0]));
-            const uint32_t ay = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[1]));
-            const uint32_t az = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[2]));
-            const uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_cutoff_s8));
-            bounds.cone_axis_cutoff = ax | (ay << 8) | (az << 16) | (cc << 24);
+            pack_culling_bounds(bounds, meshlet_bounds, geometry_bounds_out.GetMin(), extent, diagonal);
 
             // pack first_index (25 bits) and triangle_count (7 bits)
             SP_ASSERT_MSG(first_index <= MESHLET_FIRST_INDEX_MAX,    "Meshlet first_index exceeds the 25-bit pack budget");

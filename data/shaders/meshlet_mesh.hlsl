@@ -22,9 +22,21 @@ static const bool want_alpha = true;
 static const bool want_alpha = false;
 #endif
 
+#ifdef MESHLET_VISUALIZE
+struct MeshletDebugVertex
+{
+    float4 position : SV_POSITION;
+    nointerpolation uint meshlet_index : TEXCOORD0;
+    nointerpolation uint triangle_base : TEXCOORD1;
+};
+#endif
+
 struct MeshPrimitive
 {
     bool cull_primitive : SV_CullPrimitive;
+#ifdef MESHLET_VISUALIZE
+    uint primitive_id : SV_PrimitiveID;
+#endif
 };
 
 groupshared MeshletInstance gs_mi;
@@ -37,7 +49,6 @@ groupshared uint            gs_first_micro;
 groupshared bool            gs_skip_backface;
 groupshared bool            gs_emit;
 groupshared float3          gs_world[MESHLET_MAX_VERTICES];
-groupshared float3          gs_ndc_w[MESHLET_MAX_VERTICES];
 
 [outputtopology("triangle")]
 [numthreads(MESH_SHADER_NUMTHREADS, 1, 1)]
@@ -45,7 +56,11 @@ void main_ms(
     uint3 group_id : SV_GroupID,
     uint3 thread_id : SV_GroupThreadID,
     out indices uint3 out_indices[MESHLET_MAX_TRIANGLES],
+#ifdef MESHLET_VISUALIZE
+    out vertices MeshletDebugVertex out_vertices[MESHLET_MAX_VERTICES],
+#else
     out vertices gbuffer_indirect_vertex out_vertices[MESHLET_MAX_VERTICES],
+#endif
     out primitives MeshPrimitive out_primitives[MESHLET_MAX_TRIANGLES]
 )
 {
@@ -83,7 +98,7 @@ void main_ms(
                 gs_first_vertex   = gs_draw.meshlet_vertex_base + meshlet_decode_first_vertex(gs_mb);
                 gs_first_micro    = gs_draw.meshlet_micro_base + gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
+                cache_mesh_instance(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
             }
         }
     }
@@ -109,7 +124,7 @@ void main_ms(
         }
 
         uint local_vertex_id  = meshlet_vertices[gs_first_vertex + v_index];
-        uint global_vertex_id = local_vertex_id + gs_draw.lod_vertex_offset;
+        uint global_vertex_id = local_vertex_id + gs_draw.geometry_vertex_offset;
         Vertex_PosUvNorTan input = pull_vertex(global_vertex_id, gs_mi.instance_index, gs_draw.instance_offset);
 
         float3 position_world             = 0.0f;
@@ -119,12 +134,23 @@ void main_ms(
         gbuffer_vertex vertex             = transform_to_world_space(input, gs_mi.instance_index, gs_draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
         vertex.material_index             = gs_draw.material_index;
         gbuffer_vertex clipped            = transform_to_clip_space(vertex, position_relative, position_relative_previous, 0);
-        out_vertices[v_index]          = pack_gbuffer_indirect(clipped, meshlet_instance_draw_index(gs_mi));
-        gs_world[v_index]              = position_world;
-        gs_ndc_w[v_index] = float3(clipped.position.xy / clipped.position.w, clipped.position.w);
+#ifdef MESHLET_VISUALIZE
+        MeshletDebugVertex debug_vertex;
+        debug_vertex.position = clipped.position;
+        debug_vertex.meshlet_index = gs_mi.meshlet_index;
+        debug_vertex.triangle_base = mi_idx * MESHLET_MAX_TRIANGLES;
+        out_vertices[v_index] = debug_vertex;
+#else
+        out_vertices[v_index] = pack_gbuffer_indirect(clipped, meshlet_instance_draw_index(gs_mi));
+#endif
+        if (!gs_skip_backface)
+            gs_world[v_index] = position_world;
     }
 
-    GroupMemoryBarrierWithGroupSync();
+    // Two-sided meshlets only need their topology. Fixed-function rasterization
+    // handles subpixel coverage without sharing projected vertices across lanes.
+    if (!gs_skip_backface)
+        GroupMemoryBarrierWithGroupSync();
 
     const uint triangle_loops = (MESHLET_MAX_TRIANGLES + MESH_SHADER_NUMTHREADS - 1) / MESH_SHADER_NUMTHREADS;
     [unroll]
@@ -154,22 +180,11 @@ void main_ms(
             cull = dot(face_normal, view_dir) > 0.0f;
         }
 
-        float3 p0 = gs_ndc_w[i0];
-        float3 p1 = gs_ndc_w[i1];
-        float3 p2 = gs_ndc_w[i2];
-
-        if (!cull && p0.z > 0.0f && p1.z > 0.0f && p2.z > 0.0f)
-        {
-            float2 n0 = p0.xy;
-            float2 n1 = p1.xy;
-            float2 n2 = p2.xy;
-            float2 ndc_min = min(n0, min(n1, n2));
-            float2 ndc_max = max(n0, max(n1, n2));
-            cull = triangle_misses_pixel_centers(ndc_min, ndc_max);
-        }
-
         MeshPrimitive prim;
         prim.cull_primitive     = cull;
+#ifdef MESHLET_VISUALIZE
+        prim.primitive_id = t_index;
+#endif
         out_primitives[t_index] = prim;
         out_indices[t_index]    = uint3(i0, i1, i2);
     }

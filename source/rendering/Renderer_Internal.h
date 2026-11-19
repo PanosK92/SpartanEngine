@@ -235,6 +235,8 @@ namespace spartan
                 RHI_Texture*     prop_mask  = nullptr;
                 GpuScatterParams params;
                 std::array<Sb_IndirectDrawArgs, renderer_max_gpu_scatter_lods> indirect_args_static{};
+                std::array<uint32_t, renderer_max_gpu_scatter_lods> vertex_counts{};
+                std::array<uint32_t, renderer_max_gpu_scatter_lods> cluster_offsets{}, cluster_counts{};
                 bool             args_baked = false;
             };
             std::array<GpuScatterSlot, renderer_max_gpu_scatter_slots> gpu_scatter{};
@@ -455,8 +457,6 @@ namespace spartan
             uint32_t m_indirect_render_count;
             std::vector<Sb_CullTask> m_cull_tasks;
             uint32_t m_cull_task_count;
-            std::vector<Sb_DrawLod> m_draw_lods;
-            bool m_draw_lods_uploaded = false;
             std::vector<uint32_t> m_tessellated_draws; // indices into m_draw_calls, args slot is the position in this list
             bool m_tessellated_gpu_culled = false;
             std::array<FrameResource, renderer_frame_resource_count> m_frame_resources;
@@ -468,6 +468,7 @@ namespace spartan
             uint32_t m_draw_data_count;
             bool m_draw_data_gpu_synced;
             std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
+            std::vector<std::shared_ptr<RHI_Texture>> bindless_texture_owners;
             std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
             std::array<Sb_Aabb, renderer_max_aabbs> m_bindless_aabbs;
             bool m_bindless_samplers_dirty = true;
@@ -509,8 +510,6 @@ namespace spartan
         inline auto& m_indirect_render_count = state().m_indirect_render_count;
         inline auto& m_cull_tasks = state().m_cull_tasks;
         inline auto& m_cull_task_count = state().m_cull_task_count;
-        inline auto& m_draw_lods = state().m_draw_lods;
-        inline auto& m_draw_lods_uploaded = state().m_draw_lods_uploaded;
         inline auto& m_tessellated_draws = state().m_tessellated_draws;
         inline auto& m_tessellated_gpu_culled = state().m_tessellated_gpu_culled;
         inline auto& m_frame_resources = state().m_frame_resources;

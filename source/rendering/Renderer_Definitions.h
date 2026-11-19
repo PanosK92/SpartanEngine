@@ -144,9 +144,8 @@ namespace spartan
 
     const uint32_t renderer_max_gpu_scatter_args      = renderer_max_gpu_scatter_slots * renderer_max_gpu_scatter_lods;
     // distance bands of a card ring, each walks blocks of cells twice as wide as the band before, has to match grass_populate.hlsl
-    const uint32_t renderer_gpu_scatter_card_bands    = 4;
     // per slot lod parameters, the protected vehicle region, the cell window of every ring, then the block window of every card band
-    const uint32_t renderer_gpu_scatter_parameter_count = renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args + renderer_max_gpu_scatter_slots * renderer_gpu_scatter_card_bands;
+    const uint32_t renderer_gpu_scatter_parameter_count = renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args;
     const uint32_t renderer_max_gpu_scatter_instances =
         renderer_gpu_scatter_base(renderer_max_gpu_scatter_slots - 1, renderer_max_gpu_scatter_lods - 1) +
         renderer_gpu_scatter_cap(renderer_max_gpu_scatter_slots - 1, renderer_max_gpu_scatter_lods - 1);
@@ -337,7 +336,6 @@ namespace spartan
         meshlet_micro_indices  = 59,
         tree_wind_cache       = 60,
         decals                = 66,
-        impostor_texels       = 76,
         rain_occlusion        = 68,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
@@ -527,6 +525,8 @@ namespace spartan
         meshlet_mesh_depth_alpha_m,
         meshlet_mesh_depth_late_m,
         meshlet_mesh_depth_alpha_late_m,
+        meshlet_visualize_m,
+        meshlet_visualize_alpha_m,
         meshlet_visualize_v,
         meshlet_visualize_p,
         grass_mesh_m,
@@ -800,6 +800,7 @@ namespace spartan
         GrassInstances,            // ring buffer of GrassInstance entries
         GrassLodParameters,        // per-slot screen error and protected vehicle region
         GrassCount,                // one uint per slot per lod, bumped atomically by the populate shader
+        GrassClusterArgs,          // indexed ranges selected for custom scatter meshes
         GrassIndirectArgs,         // one DrawIndexedIndirect entry per slot per lod, written by the args build shader
         GrassMeshGeometry,         // blade lod of every grass draw list for the mesh shader path, see grass_mesh_layout.hlsl
         GrassMeshArgs,             // mesh draw of every grass draw list, written by the args build shader
@@ -810,11 +811,9 @@ namespace spartan
         ShadowCounts,              // one counter per (slice, caster) plus the visible list allocator
         ShadowArgs,                // one DrawIndexedIndirect entry per (slice, caster)
         ShadowVisible,             // (draw data index, global instance) per surviving instance
-        DrawLods,                  // lod table of the non-instanced draws whose lod the instance cull picks
         CullPhase,                 // where the early cull survivors end in the meshlet and triangle lists
         InstanceVisibility,        // one bit per cull task lane, whether the early cull drew that instance
         TessellatedDraws,          // tessellated draws culled on the gpu
-        TessellatedLods,           // (index count, first index, vertex offset) per tessellated draw lod
         TessellatedArgs,           // two DrawIndexedIndirect entries per tessellated draw, early then late
         Max
     };
@@ -897,7 +896,6 @@ namespace spartan
         uint64_t material_id     = 0;
         uint32_t instance_index  = 0;
         uint32_t instance_count  = 0;
-        uint32_t lod_index       = 0;
         uint32_t draw_data_index = 0; // index into the bindless draw data buffer
         float distance_squared   = 0.0f;
         bool camera_visible      = false;

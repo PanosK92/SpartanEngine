@@ -26,15 +26,6 @@ namespace spartan::geometry_processing
         const float max_error = 1.0f // relative to the mesh extent, the target index count is not met past it
     );
 
-    // distance lod for leaf cards, error driven simplification prunes every card at once because each
-    // one is smaller than the error bound, this keeps a nested subset of whole cards instead and grows
-    // them about their centre so the crown keeps its cover, large connected pieces pass through untouched
-    void thin_foliage_cards(
-        std::vector<uint32_t>& indices,
-        std::vector<RHI_Vertex_PosTexNorTan>& vertices,
-        size_t target_index_count
-    );
-
     // direction of hemi-octahedral impostor frame (x, y) out of frames per axis, and the image plane basis it
     // was baked with, impostor.hlsl decodes the same way so a card lines up with the frame it samples
     math::Vector3 impostor_frame_direction(uint32_t x, uint32_t y, uint32_t frames);
@@ -73,14 +64,18 @@ namespace spartan::geometry_processing
     // builds per-lod meshlets and repacks the indices in meshlet order
     // also emits unique vertex remaps + micro-indices for the mesh shader path
     // the returned bounds match that order and reference the packed unique/micro outputs
+    void refit_meshlet_bounds(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, const std::vector<uint32_t>& indices,
+        std::vector<Sb_MeshletBounds>& meshlets, const math::BoundingBox& bounds);
+
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<Sb_MeshletBounds>& meshlets_out,
         std::vector<uint32_t>& unique_vertices_out,
         std::vector<uint32_t>& micro_indices_out,
-        math::BoundingBox& lod_aabb_out,
-        bool scan = false
+        math::BoundingBox& geometry_bounds_out,
+        bool scan = false,
+        const math::BoundingBox* quantization_bounds = nullptr
     );
 
     // splits a row major grid surface into tile_count x tile_count tiles, each tile is a rectangular

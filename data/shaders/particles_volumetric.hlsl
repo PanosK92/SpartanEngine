@@ -671,26 +671,12 @@ float3 evaluate_volume_lighting(float3 sample_pos, float3 ray_direction, uint2 p
     return lighting;
 }
 
-[numthreads(8, 8, 1)]
-void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance)
 {
-    uint2 pixel = dispatch_thread_id.xy;
-    float2 resolution_active = get_render_resolution_active();
-    if (pixel.x >= (uint)resolution_active.x || pixel.y >= (uint)resolution_active.y)
-    {
-        return;
-    }
-
     float2 uv = (float2(pixel) + 0.5f) / buffer_frame.resolution_render;
-    float depth_raw = tex_depth.Load(int3(pixel, 0)).r;
-    float3 scene_pos = get_position(depth_raw, render_uv_to_screen_uv(uv));
-    // The grid and ray parameter use radial distance, whereas linearized depth
-    // is distance along camera Z. Mixing them clips smoke before the ground,
-    // especially at the bottom of a wide-FOV chase camera.
-    float scene_distance = min(length(scene_pos - get_camera_position()), volume_max_distance);
     if (scene_distance <= 0.05f)
     {
-        return;
+        return float4(0, 0, 0, 1);
     }
 
     float transmittance = 1.0f;
@@ -780,14 +766,47 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         t += fine_step;
     }
 
-    if (any(scattering > 0.0f) || transmittance < 0.999f)
+    return float4(scattering, transmittance);
+}
+
+float3 particle_scene_position(uint2 pixel)
+{
+    float2 uv = (float2(pixel) + 0.5f) / buffer_frame.resolution_render;
+    return get_position(tex_depth.Load(int3(pixel, 0)).r, render_uv_to_screen_uv(uv));
+}
+
+[numthreads(8, 8, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    uint2 base = thread_id.xy * 2u;
+    uint2 dimensions = uint2(get_render_resolution_active());
+    if (any(base >= dimensions)) return;
+    uint phase = buffer_frame.frame & 3u;
+    uint2 origin = min(base + uint2(phase & 1u, phase >> 1u), dimensions - 1u);
+    float3 scene = particle_scene_position(origin);
+    float distance0 = min(length(scene - get_camera_position()), volume_max_distance);
+    float4 shared_medium = march_particle_volume(origin, scene, distance0);
+    // The 3D density grid varies slowly over a pixel quad. At silhouettes,
+    // integrate to the actual receiver so foreground objects still clip smoke.
+    [unroll] for (uint i = 0u; i < 4u; ++i)
     {
+        uint2 pixel = base + uint2(i & 1u, i >> 1u);
+        if (any(pixel >= dimensions)) continue;
+        float4 medium = shared_medium;
+        if (any(pixel != origin))
+        {
+            float3 other = particle_scene_position(pixel);
+            float d = min(length(other - get_camera_position()), volume_max_distance);
+            if (abs(d - distance0) > max(0.03f, 0.005f * min(d, distance0)))
+                medium = march_particle_volume(pixel, other, d);
+        }
+        if (!any(medium.rgb > 0.0f) && medium.a >= 0.999f) continue;
         float4 frame = tex_uav[pixel];
-        frame.rgb = frame.rgb * transmittance + scattering;
+        frame.rgb = frame.rgb * medium.a + medium.rgb;
         tex_uav[pixel] = frame;
 
         float4 bias = tex_uav2[pixel];
-        bias.r = max(bias.r, saturate(1.0f - transmittance));
+        bias.r = max(bias.r, saturate(1.0f - medium.a));
         tex_uav2[pixel] = bias;
     }
 }

@@ -128,37 +128,11 @@ namespace spartan
             mesh->SetObjectName("grass_blade");
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
 
-            const uint32_t segments[3] = { 6, 3, 1 };
-            uint32_t sub_mesh_index    = 0;
-            for (uint32_t lod = 0; lod < 3; lod++)
-            {
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                vector<uint32_t> indices;
-                geometry_generation::generate_foliage_grass_blade(&vertices, &indices, segments[lod]);
-
-                // the outer ring draws this lod as a tuft impostor card, which needs four corners, so the
-                // tip splits into a narrow flat top that still reads as a blade when cards are off
-                if (lod == 2 && vertices.size() == 3)
-                {
-                    RHI_Vertex_PosTexNorTan top_right = vertices[2];
-                    const float half_top              = (vertices[1].pos[0] - vertices[0].pos[0]) * 0.15f;
-                    vertices[2].pos[0]                = -half_top;
-                    vertices[2].set_uv(Vector2(0.0f, 1.0f));
-                    top_right.pos[0]                  = half_top;
-                    top_right.set_uv(Vector2(1.0f, 1.0f));
-                    vertices.push_back(top_right);
-                    indices = { 0, 1, 2, 2, 1, 3 };
-                }
-
-                if (lod == 0)
-                {
-                    mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                }
-                else
-                {
-                    mesh->AddLod(vertices, indices, sub_mesh_index);
-                }
-            }
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 6);
+            mesh->ReserveSubMeshes(1);
+            mesh->AddVirtualGeometry(vertices, indices, 0, true);
             mesh->CreateGpuBuffers();
 
             return mesh;
@@ -172,23 +146,11 @@ namespace spartan
             mesh->SetObjectName("pebble");
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
 
-            const uint32_t subdivisions[3] = { 1, 0, 0 };
-            uint32_t sub_mesh_index        = 0;
-            for (uint32_t lod = 0; lod < 3; lod++)
-            {
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                vector<uint32_t> indices;
-                geometry_generation::generate_pebble(&vertices, &indices, subdivisions[lod], 7u);
-
-                if (lod == 0)
-                {
-                    mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                }
-                else
-                {
-                    mesh->AddLod(vertices, indices, sub_mesh_index);
-                }
-            }
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+            geometry_generation::generate_pebble(&vertices, &indices, 1, 7u);
+            mesh->ReserveSubMeshes(1);
+            mesh->AddVirtualGeometry(vertices, indices, 0, true);
             mesh->CreateGpuBuffers();
 
             return mesh;
@@ -210,25 +172,11 @@ namespace spartan
             mesh->SetObjectName("flower");
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
 
-            const uint32_t petals[3] = { 3, 2, 1 };
-            const uint32_t rings[3]  = { 6, 4, 1 };
-            const uint32_t stems[3]  = { 3, 2, 1 };
-            uint32_t sub_mesh_index  = 0;
-            for (uint32_t lod = 0; lod < 3; lod++)
-            {
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                vector<uint32_t> indices;
-                geometry_generation::generate_foliage_flower(&vertices, &indices, petals[lod], rings[lod], stems[lod]);
-
-                if (lod == 0)
-                {
-                    mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                }
-                else
-                {
-                    mesh->AddLod(vertices, indices, sub_mesh_index);
-                }
-            }
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+            geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
+            mesh->ReserveSubMeshes(1);
+            mesh->AddVirtualGeometry(vertices, indices, 0, true);
             mesh->SetResourceFilePath(cache_path);
             FileSystem::CreateDirectory_(FileSystem::GetDirectoryFromFilePath(cache_path));
             mesh->SaveToFile(cache_path);
@@ -335,7 +283,7 @@ namespace spartan
 
             const uint32_t flags  = Mesh::GetDefaultFlags() |
                 static_cast<uint32_t>(MeshFlags::ImportCombineMeshes) |
-                static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0);
+                static_cast<uint32_t>(MeshFlags::PreserveSourceGeometry);
             shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(path, flags);
 
             return mesh ? mesh.get() : nullptr;
@@ -469,9 +417,8 @@ namespace spartan
             BoundingBox bounds;
             for (uint32_t i = 0; i < mesh->GetSubMeshCount(); ++i)
             {
-                const auto& lods = mesh->GetSubMesh(i).lods;
-                if (!lods.empty())
-                    bounds.Merge(lods[0].aabb);
+                const auto& sub = mesh->GetSubMesh(i);
+                if (sub.HasGeometry()) bounds.Merge(sub.root.aabb);
             }
             return bounds;
         }
@@ -827,7 +774,7 @@ namespace spartan
 
                         // how far the ground creeps over this prop, sized off this part's own mesh so a
                         // trunk gets the trunk's band and not the canopy's, the layer value trims it
-                        const float extent = mesh_extent_min(render->GetLodAabb(0), scale_typical);
+                        const float extent = mesh_extent_min(render->GetGeometryBounds(), scale_typical);
                         material->SetPropertyRuntime(
                             MaterialProperty::TerrainBlend,
                             layer.blend_height * derive_terrain_blend(extent, terrain_band)
@@ -856,14 +803,14 @@ namespace spartan
                     render->SetFlag(RenderFlags::CastsShadows, casts_shadows);
                     // trees and boulders enter the tlas per instance so ray traced shadows can replace
                     // the atlas, tiny props are dense and read fine with screen space shadows alone
-                    const bool tiny = mesh_extent_max(render->GetLodAabb(0), scale_typical) < scatter_ray_traced_extent_min;
+                    const bool tiny = mesh_extent_max(render->GetGeometryBounds(), scale_typical) < scatter_ray_traced_extent_min;
                     const bool grass_like =
                         render->GetMaterial() &&
                         (render->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f ||
                          render->GetMaterial()->GetProperty(MaterialProperty::IsFlower) != 0.0f);
                     render->SetFlag(RenderFlags::ExcludeFromRayTracing, !casts_shadows || tiny || grass_like);
 
-                    if (render->GetMeshletCount(0) == 0)
+                    if (render->GetMeshletCount() == 0)
                     {
                         SP_LOG_WARNING(
                             "terrain scatter '%s': '%s' has no meshlets, the opaque path will skip it",
@@ -1035,9 +982,9 @@ namespace spartan
             // how far the ground creeps over this prop, sized off the chip itself, the size range here
             // already carries mesh_scale so this is the world extent the ground has to climb
             float extent = 0.0f;
-            if (mesh->GetSubMeshCount() > 0 && !mesh->GetSubMesh(0).lods.empty())
+            if (mesh->GetSubMeshCount() > 0 && mesh->GetSubMesh(0).HasGeometry())
             {
-                extent = mesh_extent_min(mesh->GetSubMesh(0).lods[0].aabb, (params.size_min + params.size_max) * 0.5f);
+                extent = mesh_extent_min(mesh->GetSubMesh(0).root.aabb, (params.size_min + params.size_max) * 0.5f);
             }
             material->SetPropertyRuntime(
                 MaterialProperty::TerrainBlend,

@@ -35,6 +35,20 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "amd_fidelityfx_upscaler_vk.dll"),
 }
 
+-- An untargeted setup stages both native upscaler runtimes. Targeted generation
+-- keeps the other backends' installed SDK files intact during extraction.
+local function needs_vendor_file(name)
+    if ARG_API_GRAPHICS == "webgpu" then
+        return not (name:match("^amd_fidelityfx_") or name:match("^libxess%.")
+            or name:match("^nvsdk_ngx_") or name == "nvngx_dlss.dll")
+    elseif ARG_API_GRAPHICS == "vulkan" then
+        return not name:match("_dx12%.dll$")
+    elseif ARG_API_GRAPHICS == "d3d12" then
+        return not name:match("_vk%.dll$")
+    end
+    return true
+end
+
 -- FidelityFX SDK 1.1.4 signed runtime, fsr 3.1 frame generation; ffx api headers are vendored in third_party/fidelityfx.
 local FIDELITYFX_VERSION = "1.1.4"
 local FIDELITYFX_URL = "https://raw.githubusercontent.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/v" .. FIDELITYFX_VERSION .. "/PrebuiltSignedDLL/"
@@ -166,6 +180,21 @@ local function compute_sha256(p)
 
     local cmd
     if is_windows() then
+        -- Avoid starting a PowerShell runtime for every library on a clean setup.
+        -- Only the digest line is independent of the Windows display language.
+        local process = io.popen('""%SystemRoot%\\System32\\certutil.exe" -hashfile ' .. quote(p) .. ' SHA256 2>nul"', "r")
+        if process then
+            local digest
+            for line in process:lines() do
+                local hex = line:gsub("%s", "")
+                if #hex == 64 and hex:match("^%x+$") then
+                    digest = hex:lower()
+                end
+            end
+            if process:close() and digest then
+                return digest
+            end
+        end
         -- Use .NET directly: PowerShell 7's inherited module path can hide
         -- Get-FileHash from Windows PowerShell during project generation.
         local literal_path = shell_path(p):gsub("'", "''")
@@ -321,6 +350,15 @@ local function extract_archive()
     local seven_zip = ensure_7zr()
     local cmd = string.format('%s x %s -o%s -aoa -bso0 -bsp1',
         quote(seven_zip), quote(ARCHIVE_PATH), quote(LIBRARIES_DIR))
+    for _, dll in ipairs(RUNTIME_DLLS) do
+        local name = path.getname(dll)
+        if not needs_vendor_file(name) then
+            cmd = cmd .. " -x!" .. name
+        end
+    end
+    if ARG_API_GRAPHICS == "webgpu" then
+        cmd = cmd .. " -x!libxess.lib -x!nvsdk_ngx_s.lib -x!nvsdk_ngx_s_dbg.lib"
+    end
 
     print("extracting libraries.7z...")
     local ok = run(cmd)
@@ -613,7 +651,7 @@ local function ensure_fidelityfx_sdk()
     local function ensure_runtime(version, url, files)
         for _, entry in ipairs(files) do
             local destination = path.join(LIBRARIES_DIR, entry.name)
-            if compute_sha256(destination) ~= entry.sha256 then
+            if needs_vendor_file(entry.name) and compute_sha256(destination) ~= entry.sha256 then
                 local temporary = destination .. ".tmp"
                 print("downloading fidelityfx " .. version .. ": " .. entry.name)
                 local result, code = download_with_progress(url .. entry.name, temporary)
@@ -721,12 +759,16 @@ function setup.run()
     extract_archive()
 
     print("\n[4/7] ensuring upscaler and frame generation sdks...")
-    ensure_xess_sdk()
-    ensure_dlss_sdk()
-    ensure_fidelityfx_sdk()
+    if ARG_API_GRAPHICS ~= "webgpu" then
+        ensure_xess_sdk()
+        ensure_dlss_sdk()
+        ensure_fidelityfx_sdk()
+    end
 
     print("\n[5/7] ensuring d3d12 agility sdk...")
-    ensure_agility_sdk()
+    if ARG_API_GRAPHICS ~= "vulkan" then
+        ensure_agility_sdk()
+    end
 
     print("\n[6/7] ensuring steamworks sdk...")
     ensure_steamworks()
@@ -738,14 +780,19 @@ function setup.run()
 
     print("\n[7/7] copying runtime dlls into binaries/third_party...")
     for _, dll in ipairs(RUNTIME_DLLS) do
-        if file_exists(dll) then
-            copy_file(dll, path.join(RUNTIME_DIR, path.getname(dll)))
-        else
-            print("  missing runtime dll: " .. path.getname(dll))
+        local name = path.getname(dll)
+        if needs_vendor_file(name) then
+            if file_exists(dll) then
+                copy_file(dll, path.join(RUNTIME_DIR, name))
+            else
+                print("  missing runtime dll: " .. name)
+            end
         end
     end
 
-    stage_agility_runtime()
+    if ARG_API_GRAPHICS ~= "vulkan" then
+        stage_agility_runtime()
+    end
 
     if file_exists(STEAM_DLL) then
         copy_file(STEAM_DLL, path.join(RUNTIME_DIR, path.getname(STEAM_DLL)))

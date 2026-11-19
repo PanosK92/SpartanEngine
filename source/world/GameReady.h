@@ -68,8 +68,7 @@ namespace spartan
         // something, which is why the report names what it skipped
         MergeReport MergeRenderersByMaterial(
             Entity* root,
-            const std::string& mesh_file_path,
-            const bool generate_lods
+            const std::string& mesh_file_path
         );
     }
 }

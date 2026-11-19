@@ -38,8 +38,7 @@ float4 cortao_projection_terms()
 
 uint cortao_frame_seed()
 {
-    // Repeat within the shortest moving-surface histories so coarse mip selection converges quickly.
-    uint state = (buffer_frame.frame & 3u) * 747796405u + 2891336453u;
+    uint state = buffer_frame.frame * 747796405u + 2891336453u;
     uint word  = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
 }
@@ -181,10 +180,8 @@ struct history_tap
 
 // tex2 = history (bent offset * visibility, visibility), tex3 = history (view depth, age / max frames)
 // bilateral history: weight each of 4 prev neighbors by depth match instead of trusting bilinear; kills sub-pixel ghosting where neighbors straddle a depth discontinuity
-//  r_simple = |pv - view_z|: works for camera-attached geometry (dashboard, mirrors) where the surface moves with the camera so depth at the same uv is invariant
-//  r_motion = |pv - prev_expected_z|: works for world-static geometry under camera dolly (walls, buildings) where the velocity buffer tracks screen motion but depth differs by the camera's forward delta
 // weights are normalized so they sum to 1 over the accepted neighbors
-history_tap fetch_history(float2 prev_uv, float2 prev_size, float2 texture_size, float view_z, float prev_expected_z, float gate_lo, float gate_hi)
+history_tap fetch_history(float2 prev_uv, float2 prev_size, float2 texture_size, float expected_z, float gate_lo, float gate_hi)
 {
     history_tap h = (history_tap)0;
     if (any(prev_uv < 0.0f) || any(prev_uv > 1.0f))
@@ -209,10 +206,7 @@ history_tap fetch_history(float2 prev_uv, float2 prev_size, float2 texture_size,
     const float4 pa4       = float4(pa_g.w, pa_g.z, pa_g.x, pa_g.y);
     const float4 ph4       = float4(ph_g.w, ph_g.z, ph_g.x, ph_g.y);
 
-    const float  depth_scale = 1.0f / max(view_z, 1e-3f);
-    const float4 r_simple4   = abs(pv4 - view_z.xxxx) * depth_scale;
-    const float4 r_motion4   = abs(pv4 - prev_expected_z.xxxx) * depth_scale;
-    const float4 r4          = min(r_simple4, r_motion4);
+    const float4 r4 = abs(pv4 - expected_z) / max(expected_z, 1e-3f);
     const float4 depth_w4    = 1.0f - smoothstep(gate_lo.xxxx, gate_hi.xxxx, r4);
     const float4 w4          = spatial4 * depth_w4;
     const float  weight_sum  = dot(w4, 1.0f.xxxx);
@@ -338,7 +332,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     float3 hist_bent = cur_bent;
 
     const float3 prev_camera     = camera_previous(uv, depth_raw);
-    const float  prev_expected_z = ssao_view_depth(prev_camera.z);
+    // The velocity target stores the previous linear depth of this surface, including object motion.
+    const float object_prev_z = abs(tex_velocity[pixel].w);
+    const bool has_object_depth = object_prev_z > 0.0f && object_prev_z < FLT_MAX_16U;
+    const float prev_expected_z = has_object_depth ? min(object_prev_z, 65000.0f) : ssao_view_depth(prev_camera.z);
     const float2 velocity_matrix = prev_camera.xy - uv;
 
     // the matrix reprojection is exact for world static pixels, the velocity buffer carries the true per-object motion where they disagree (the dashboard moving on its suspension, other cars)
@@ -371,16 +368,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
     if (!skip_history && !too_fast)
     {
-        // two depth predictors, accept if either matches; dynamic surfaces move in world space between frames so neither matches, the velocity buffer already proves the surface was tracked, so the depth slack grows with motion
-        const float vel_slack = saturate(vel_px / 32.0f) * 0.012f;
+        // Allow extra depth error when only camera reprojection is available.
+        const float vel_slack = has_object_depth ? 0.0f : saturate(vel_px / 32.0f) * 0.012f;
         const float gate_lo   = 0.002f + vel_slack;
         const float gate_hi   = 0.01f  + vel_slack * 4.0f;
 
         // near a moving occluder the ao of a receiver is the sum of what the occluder casts, which moves with the occluder, and the static ao of the world, which moves with the receiver. the history is fetched along both and the one closer to the current frame wins, so the static ao (a kerb next to a turning car) is not dragged along with the occluder. a receiver history darker than the occluder's is what the trail of the occluder's darkening looks like, it has to beat the current noise to be taken
-        history_tap history = fetch_history(prev_uv, prev_size, texture_size, view_z, prev_expected_z, gate_lo, gate_hi);
+        history_tap history = fetch_history(prev_uv, prev_size, texture_size, prev_expected_z, gate_lo, gate_hi);
         if (mover_near > 0.0f)
         {
-            const history_tap surface_history = fetch_history(uv + surface_vel, prev_size, texture_size, view_z, prev_expected_z, gate_lo, gate_hi);
+            const history_tap surface_history = fetch_history(uv + surface_vel, prev_size, texture_size, prev_expected_z, gate_lo, gate_hi);
             const float       trail_margin    = surface_history.vis < history.vis ? (cur_sigma + 0.02f) * mover_close : 0.0f;
             if (surface_history.accept > 0.0f && (history.accept <= 0.0f || abs(surface_history.vis - cur_vis) + trail_margin < abs(history.vis - cur_vis)))
             {
@@ -420,13 +417,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
             const float clip_amount = abs(raw_hist - clamped);
             const float trust       = 1.0f - smoothstep(clip_lo, clip_hi, clip_amount);
             // speed only shortens the history, the history following the occluder lags the parts of it that move differently from its mean, so within its ao radius the history is kept short
-            const float max_age   = min(lerp(g_history_max_frames, 4.0f, fast_trust), lerp(lerp(g_history_max_frames, 8.0f, mover_near), 2.0f, mover_close));
+            const float fast_max_age = lerp(4.0f, 16.0f, has_object_depth ? depth_accept * trust : 0.0f);
+            const float max_age   = min(lerp(g_history_max_frames, fast_max_age, fast_trust), lerp(lerp(g_history_max_frames, 8.0f, mover_near), 2.0f, mover_close));
             const float eff_trust = lerp(1.0f, trust, aabb_strength);
             // occluder trail release, the brightening under a departing occluder is measured against the local aabb extent, history darker than every depth matched current sample is dropped outright while moving
             const float occluder_release = release_gate * max(smoothstep(0.03f, 0.10f, cur_vis - raw_hist - aabb_half), smoothstep(0.01f, 0.04f, v_min - raw_hist));
             const float eff_accept       = depth_accept * eff_trust * (1.0f - occluder_release);
 
-            new_age  = lerp(1.0f, min(prev_age + 1.0f, max_age), eff_accept);
+            // Scale the retained sample count once, then add this frame as one sample.
+            new_age  = 1.0f + min(prev_age, max_age - 1.0f) * eff_accept;
             hist_vis = clamped;
 
             float3 previous_bent = 0.0f;
@@ -438,8 +437,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
             }
             hist_bent = clamp(previous_bent, bent_min - 0.04f, bent_max + 0.04f);
 
-            const float alpha = 1.0f / max(new_age, 1.0f);
-            blend_current = lerp(1.0f, alpha, eff_accept);
+            blend_current = rcp(new_age);
         }
     }
 
@@ -606,16 +604,19 @@ float cortao_ign(float2 pixel)
     return frac(52.9829189f * frac(dot(pixel, float2(0.06711056f, 0.00583715f))));
 }
 
-// Four stratified phases rotate the sample spiral and ray basis. Per-pixel lattices decorrelate neighbours.
+// R3 low-discrepancy sequence for spiral rotation, radius dither and ray rotation.
+// Advance in fixed point so large frame counters retain sub-turn precision.
 cortao_float4 cortao_customNoise(cortao_int2 pixelCoords)
 {
     const float2 pixel = float2(pixelCoords);
-    const float  phase = float(buffer_frame.frame & 3u);
+    const uint frame = buffer_frame.frame;
+    const uint3 phase = frame * uint3(3518319155u, 2882110345u, 2360945575u);
+    const float3 rotation = float3(phase >> 8u) * (1.0f / 16777216.0f);
     return frac(float4(
         cortao_ign(pixel),
         dot(pixel, float2(0.2202203f, 0.3591321f)),
         dot(pixel, float2(0.1251447f, 0.6607579f)),
-        cortao_ign(float2(pixel.x, -pixel.y))) + phase * float4(0.25f, 0.75f, 0.75f, 0.5f));
+        cortao_ign(float2(pixel.x, -pixel.y))) + float4(rotation, 0.5f * float(frame & 1u)));
 }
 
 // tex3 = packed depth and normal mips, tex4 = bent normal table, tex3d = occluder table

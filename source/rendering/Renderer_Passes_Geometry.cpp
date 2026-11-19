@@ -39,20 +39,122 @@ namespace spartan
 {
     namespace
     {
+        struct ClusterDrawRange
+        {
+            uint32_t first_index, index_count, vertex_offset;
+            BoundingBox bounds;
+        };
+
+        float shadow_texel_density(Light* light, uint32_t slice, const BoundingBox& bounds)
+        {
+            if (!light->IsBoundsInViewFrustum(bounds, slice)) return 0.0f;
+            const Matrix vp = light->GetViewProjectionMatrix(slice);
+            const auto center = bounds.GetCenter(), extent = bounds.GetExtents();
+            const Vector3 w(vp.m03, vp.m13, vp.m23);
+            const float nearest = max(1e-4f, center.Dot(w) + vp.m33 -
+                (extent.x * abs(w.x) + extent.y * abs(w.y) + extent.z * abs(w.z)));
+            const auto& rect = light->GetAtlasRectangle(slice);
+            const float x = Vector3(vp.m00, vp.m10, vp.m20).Length() * rect.width;
+            const float y = Vector3(vp.m01, vp.m11, vp.m21).Length() * rect.height;
+            return 0.5f * max(x, y) / nearest;
+        }
+
+        template<typename ViewDensity>
+        bool cluster_draw_ranges(Mesh& mesh, uint32_t sub_index, const Matrix& transform, ViewDensity density, vector<ClusterDrawRange>& ranges)
+        {
+            ranges.clear();
+            const auto& sub = mesh.GetSubMesh(sub_index);
+            const auto& clusters = sub.clusters;
+            if (clusters.empty() || sub.HasResidentRootOnly()) return false;
+            const Vector3 scale = transform.GetScale();
+            const float max_scale = max({scale.x, scale.y, scale.z});
+            uint32_t first = mesh.GetGlobalIndexOffset() + sub.root.index_offset;
+            const uint32_t vertices = mesh.GetGlobalVertexOffset() + sub.root.vertex_offset;
+            bool refined = false;
+            for (const auto& cluster : clusters)
+            {
+                const auto world = cluster.bounds * transform;
+                ResidentGeometryPage page = {};
+                if (GeometryBuffer::SelectPage(cluster, max_scale * density(world), page))
+                {
+                    ranges.push_back({page.indices, page.index_count, page.vertices, world});
+                    refined = true;
+                }
+                else if (!ranges.empty() && ranges.back().vertex_offset == vertices &&
+                    ranges.back().first_index + ranges.back().index_count == first)
+                {
+                    ranges.back().index_count += cluster.index_count;
+                    ranges.back().bounds.Merge(world);
+                }
+                else ranges.push_back({first, cluster.index_count, vertices, world});
+                first += cluster.index_count;
+            }
+            return refined;
+        }
+
+        template<typename ViewDensity>
+        bool cluster_draw_ranges(Render* render, const Matrix& transform, ViewDensity density, vector<ClusterDrawRange>& ranges)
+        {
+            return render->GetMesh() && !render->HasBoundingBoxOverride() &&
+                cluster_draw_ranges(*render->GetMesh(), render->GetSubMeshIndex(), transform, density, ranges);
+        }
+
+        template<typename LightDensity>
+        bool cluster_shadow_ranges(Render* render, LightDensity density, vector<ClusterDrawRange>& ranges)
+        {
+            return !render->HasInstancing() && cluster_draw_ranges(render, render->GetEntity()->GetMatrix(), density, ranges);
+        }
+
+        template<typename Emit>
+        bool visit_view_clusters(Render* render, const Renderer_DrawCall& draw, Camera* camera, float height,
+            vector<ClusterDrawRange>& ranges, Emit emit)
+        {
+            const auto& sub = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex());
+            if (!camera || sub.clusters.empty() || sub.HasResidentRootOnly() || render->HasBoundingBoxOverride()) return false;
+            const float focal = abs(camera->GetProjectionMatrix().m11) * height * 0.5f;
+            const auto density = [&](const BoundingBox& box)
+            {
+                if (!camera->IsInViewFrustum(box)) return 0.0f;
+                if (camera->GetProjectionType() != Projection_Perspective) return focal;
+                const float depth = Vector3::Dot(box.GetCenter() - camera->GetEntity()->GetPosition(),
+                    camera->GetEntity()->GetForward()) - box.GetExtents().Length();
+                return focal / max(camera->GetNearPlane(), depth);
+            };
+            for (uint32_t j = 0; j < draw.instance_count; ++j)
+            {
+                const uint32_t instance = draw.instance_index + j;
+                Matrix transform = render->GetEntity()->GetMatrix();
+                if (render->HasInstancing()) transform = render->GetSceneData().instances[instance].GetMatrix() * transform;
+                const uint32_t first_instance = render->GetGlobalInstanceOffset() + instance;
+                if (cluster_draw_ranges(render, transform, density, ranges))
+                {
+                    for (const auto& range : ranges) emit(range, first_instance);
+                }
+                else
+                {
+                    emit(ClusterDrawRange{render->GetIndexOffset(), render->GetIndexCount(),
+                        render->GetVertexOffset(), render->GetGeometryBounds() * transform}, first_instance);
+                }
+            }
+            return true;
+        }
+
+        bool draw_view_clusters(Render* render, const Renderer_DrawCall& draw, Camera* camera, float height,
+            vector<ClusterDrawRange>& ranges)
+        {
+            return visit_view_clusters(render, draw, camera, height, ranges,
+                [](const ClusterDrawRange& range, uint32_t first_instance)
+                {
+                    RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset, first_instance, 1);
+                });
+        }
+
         TConsoleVar<bool> cvar_grass_specialized("r.grass_specialized", true,
             "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
         TConsoleVar<bool> cvar_gbuffer_scatter_first("r.gbuffer_scatter_first", true,
             "rasterize gpu scatter before the opaque g-buffer so the ground it hides is never shaded; disable for comparison");
-        TConsoleVar<float> cvar_grass_lod_pixels("r.grass_lod_pixels", 1.0f,
-            "estimated blade simplification error in output pixels; zero keeps authored mesh detail");
         TConsoleVar<float> cvar_grass_thin_distance("r.grass_thin_distance", 10.0f,
             "distance in metres past which a grass blade ring thins out towards the density of the ring after it, every blade nearer than that is kept; 0 keeps every blade");
-        TConsoleVar<float> cvar_grass_impostor_distance("r.grass_impostor_distance", 8000.0f,
-            "reach in metres of the outer grass ring, which draws tuft impostor cards instead of blades; 0 keeps blades there");
-        TConsoleVar<float> cvar_grass_impostor_thin("r.grass_impostor_thin", 300.0f,
-            "distance in metres past which impostor cards thin out with the square of distance and widen to keep the same coverage; 0 keeps every card");
-        TConsoleVar<float> cvar_grass_impostor_start("r.grass_impostor_start", 90.0f,
-            "distance in metres where tuft impostor cards take over from blades, the blade ring before them shrinks to meet it at the same density");
         TConsoleVar<float> cvar_scatter_blend_distance("r.scatter_blend_distance", 8.0f,
             "distance in metres past which scattered detail such as pebbles sinks to its dirt line instead of blending with the ground, handed over chip by chip up to twice as far; 0 blends every chip");
         // 12.5 cm cells retain tire detail across a much larger history field (32 MiB total).
@@ -208,84 +310,9 @@ namespace spartan
                    slot.heightmap->GetResourceState() == ResourceState::PreparedForGpu;
         }
 
-        // the outer ring of a grass slot draws tuft impostor cards instead of blades, one card per cell
-        // carries a whole tuft, so the ring can reach much further for a fraction of the instances
-        constexpr uint32_t gpu_scatter_card_lod = renderer_max_gpu_scatter_lods - 1;
-        // card width in cells, neighbours overlap so the tufts of adjacent cards interleave
-        constexpr float gpu_scatter_card_cells = 1.5f;
-
-        bool gpu_scatter_cards(const Renderer::PassState::GpuScatterSlot& slot)
+        float gpu_scatter_ring_radius(const Renderer::PassState::GpuScatterSlot& slot, const uint32_t ring)
         {
-            // TODO: off on metal, the population is correct (game.world, a 150 m ring is ~13k cards) but almost every card
-            // fragment discards, so almost none write depth and cards stacked towards the horizon never occlude each other,
-            // apple gpus can't remove hidden fragments that may discard, every layer gets shaded and the g-buffer command
-            // buffer runs past the os gpu time limit, which cancels it, cheap discards and cutouts without discard are fine,
-            // so a fix is fewer overlapping cards or a cutout that lets most of a card write depth
-            // it also costs performance, with the cards off the blade rings are no longer pulled in to the card start
-            // (gpu_scatter_ring_radius), so blades are drawn all the way out to 500 m, on game.world g_buffer_grass
-            // takes ~48 ms instead of ~22 ms with the card layout (cards not drawn)
-            if (Renderer::GetRhiApiType() == RHI_Api_Type::Metal)
-                return false;
-
-            return cvar_grass_impostor_distance.GetValue() > 0.0f &&
-                   cvar_grass_specialized.GetValue()              &&
-                   !Xr::IsSessionRunning()                        &&
-                   gpu_scatter_ready(slot)                        &&
-                   slot.material                                  &&
-                   slot.params.uv_patch == 0.0f                   &&
-                   slot.mesh->GetObjectName() == "grass_blade"    &&
-                   slot.mesh->GetLodCount(0) == 3                 &&
-                   slot.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
-                   slot.material->GetProperty(MaterialProperty::IsTerrain) == 0.0f    &&
-                   slot.material->GetProperty(MaterialProperty::IsWater) == 0.0f      &&
-                   slot.material->GetProperty(MaterialProperty::IsFlower) == 0.0f     &&
-                   slot.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f;
-        }
-
-        bool gpu_scatter_card_ring(const Renderer::PassState::GpuScatterSlot& slot, const uint32_t lod)
-        {
-            return lod == gpu_scatter_card_lod && slot.params.ring_radii_m[lod] > 0.0f && gpu_scatter_cards(slot);
-        }
-
-        // past this distance a card stands in for the ones thinned out around it, so its width grows with
-        // distance, has to match the scale populate and the vertex shader derive from the same number
-        float gpu_scatter_card_thin()
-        {
-            return max(cvar_grass_impostor_thin.GetValue(), 0.0f);
-        }
-
-        // the band walk in grass_populate.hlsl still ends in an experiment that counts its candidates and commits none,
-        // so a thinned card ring draws nothing, its dispatches are skipped until the walk hands them to populate_cell again
-        constexpr bool gpu_scatter_card_bands_emit = false;
-
-        float gpu_scatter_card_scale(const float distance)
-        {
-            const float thin = gpu_scatter_card_thin();
-            return thin > 0.0f ? max(1.0f, distance / thin) : 1.0f;
-        }
-
-        // blades past a few tens of metres are thinner than a pixel, so the blade ring in front of the cards
-        // is pulled in to where the cards start and the card ring reaches out as far as it is asked to
-        float gpu_scatter_ring_radius(const Renderer::PassState::GpuScatterSlot& slot, const uint32_t lod)
-        {
-            const float radius = slot.params.ring_radii_m[lod];
-            if (radius <= 0.0f || !gpu_scatter_card_ring(slot, gpu_scatter_card_lod))
-            {
-                return radius;
-            }
-
-            if (lod == gpu_scatter_card_lod)
-            {
-                return max(radius, cvar_grass_impostor_distance.GetValue());
-            }
-
-            if (lod == gpu_scatter_card_lod - 1)
-            {
-                const float inner = lod > 0 ? slot.params.ring_radii_m[lod - 1] : 0.0f;
-                return clamp(cvar_grass_impostor_start.GetValue(), min(inner + 10.0f, radius), radius);
-            }
-
-            return radius;
+            return slot.params.ring_radii_m[ring];
         }
 
         // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
@@ -416,7 +443,7 @@ namespace spartan
         Vector2 gpu_scatter_thin(const Renderer::PassState::GpuScatterSlot& state, const uint32_t slot, const uint32_t lod, const Vector3& eye)
         {
             const uint32_t next = lod + 1;
-            if (slot != 0 || next >= renderer_max_gpu_scatter_lods || gpu_scatter_card_ring(state, lod) || gpu_scatter_card_ring(state, next))
+            if (slot != 0 || next >= renderer_max_gpu_scatter_lods)
             {
                 return Vector2(0.0f, 0.0f);
             }
@@ -610,15 +637,9 @@ namespace spartan
             return any;
         }
 
-        void bind_impostor_texels()
-        {
-            RHI_Buffer* impostor_texels = GeometryBuffer::GetImpostorTexelBuffer();
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::impostor_texels, impostor_texels ? impostor_texels : GeometryBuffer::GetMeshletVertexBuffer());
-        }
 
         void bind_mesh_shader_geometry()
         {
-            bind_impostor_texels();
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::tree_wind_cache, Renderer::GetBuffer(Renderer_Buffer::TreeWindCache));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
@@ -635,7 +656,6 @@ namespace spartan
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, Renderer::GetBuffer(Renderer_Buffer::VisibleTriangles));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::cull_phase, Renderer::GetBuffer(Renderer_Buffer::CullPhase));
-            bind_impostor_texels();
         }
 
         void push_mesh_draw_constants(Pcb_Pass& pcb)
@@ -685,6 +705,7 @@ namespace spartan
         };
 
         vector<ShadowSlice> slices;
+        vector<ClusterDrawRange> cluster_ranges;
         uint32_t argument_count = 0;
         bool has_alpha_draws = false;
         for (Entity* entity_light : GetViewLightEntities())
@@ -765,18 +786,26 @@ namespace spartan
                     }
                     ShadowBatch& batch = slice.batches[it->second];
 
-                    const bool close_to_shadow      = draw_call.distance_squared < 100.0f * 100.0f;
-                    const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
-                    const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
-                    const uint32_t lod_index        = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f
-                        ? min(draw_call.lod_index + (light->GetLightType() == LightType::Directional ? 2u : 1u), render->GetLodCount() - 1)
-                        : (close_to_shadow ? draw_call.lod_index : lod_index_shadow);
+                    if (cluster_shadow_ranges(render, [&](const BoundingBox& bounds) { return shadow_texel_density(light, array_index, bounds); }, cluster_ranges))
+                    {
+                        for (const auto& range : cluster_ranges)
+                        {
+                            auto& args = batch.arguments.emplace_back();
+                            args.index_count = range.index_count;
+                            args.instance_count = 1;
+                            args.first_index = range.first_index;
+                            args.vertex_offset = static_cast<int32_t>(range.vertex_offset);
+                            args.first_instance = draw_call.draw_data_index;
+                            ++argument_count;
+                        }
+                        continue;
+                    }
 
                     Sb_IndirectDrawArgs& argument = batch.arguments.emplace_back();
-                    argument.index_count          = render->GetIndexCount(lod_index);
+                    argument.index_count          = render->GetIndexCount();
                     argument.instance_count       = 1;
-                    argument.first_index          = render->GetIndexOffset(lod_index);
-                    argument.vertex_offset        = static_cast<int32_t>(render->GetVertexOffset(lod_index));
+                    argument.first_index          = render->GetIndexOffset();
+                    argument.vertex_offset        = static_cast<int32_t>(render->GetVertexOffset());
                     argument.first_instance       = draw_call.draw_data_index;
                     argument_count++;
                 }
@@ -885,12 +914,6 @@ namespace spartan
                     RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
                     RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
 
-                    const bool close_to_shadow      = draw_call.distance_squared < 100.0f * 100.0f;
-                    const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
-                    const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
-                    const uint32_t lod_index        = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f
-                        ? min(draw_call.lod_index + (light->GetLightType() == LightType::Directional ? 2u : 1u), render->GetLodCount() - 1)
-                        : (close_to_shadow ? draw_call.lod_index : lod_index_shadow);
                     if (render->HasInstancing() && !render->HasBoundingBoxOverride())
                     {
                         // A tile may contain thousands of trees outside this
@@ -902,14 +925,11 @@ namespace spartan
                         const uint32_t end = draw_call.instance_index + draw_call.instance_count;
                         uint32_t run_start = draw_call.instance_index;
                         uint32_t run_count = 0;
-                        uint32_t run_lod = lod_index;
-                        Camera* view_camera = Renderer::GetViewCamera();
-                        const float tan_half_fov = view_camera ? tan(view_camera->GetFovVerticalRad() * 0.5f) : 0.57735f;
                         const auto flush_run = [&]()
                         {
                             if (run_count == 0) return;
-                            RHI_CommandList::DrawIndexed(render->GetIndexCount(run_lod), render->GetIndexOffset(run_lod),
-                                render->GetVertexOffset(run_lod), render->GetGlobalInstanceOffset() + run_start, run_count);
+                            RHI_CommandList::DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(),
+                                render->GetVertexOffset(), render->GetGlobalInstanceOffset() + run_start, run_count);
                             run_count = 0;
                         };
                         vector<uint32_t> visible_instances;
@@ -942,31 +962,33 @@ namespace spartan
                         sort(visible_instances.begin(), visible_instances.end());
                         for (const uint32_t instance : visible_instances)
                         {
-                            // A terrain tile's LOD says nothing about an individual tree's coverage.
-                            // Shadows need the silhouette, not the near-camera branch tessellation.
-                            uint32_t instance_lod = lod_index;
-                            if (wind && render->GetLodCount() > 1)
+                            const auto& sub = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex());
+                            if (!sub.clusters.empty() && !sub.HasResidentRootOnly() &&
+                                cluster_draw_ranges(render, render->GetSceneData().instances[instance].GetMatrix() *
+                                    render->GetEntity()->GetMatrix(),
+                                    [&](const BoundingBox& box) { return shadow_texel_density(light, slice.array_index, box); }, cluster_ranges))
                             {
-                                const BoundingBox bounds = render->GetInstanceBounds(instance);
-                                const float radius = bounds.GetExtents().Length();
-                                const float distance = max(Vector3::Distance(camera, bounds.GetCenter()), 0.1f);
-                                const float coverage = radius / (distance * tan_half_fov);
-                                instance_lod = coverage >= 0.4f ? 0u : coverage >= 0.2f ? 1u : coverage >= 0.1f ? 2u : coverage >= 0.05f ? 3u : 4u;
-                                instance_lod = min(instance_lod + (light->GetLightType() == LightType::Directional ? 2u : 1u), render->GetLodCount() - 1);
+                                flush_run();
+                                for (const auto& range : cluster_ranges)
+                                    RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset,
+                                        render->GetGlobalInstanceOffset() + instance, 1);
+                                continue;
                             }
-                            if (run_count != 0 && (instance != run_start + run_count || instance_lod != run_lod)) flush_run();
-                            if (run_count == 0)
-                            {
-                                run_start = instance;
-                                run_lod = instance_lod;
-                            }
+                            if (run_count && instance != run_start + run_count) flush_run();
+                            if (!run_count) run_start = instance;
                             ++run_count;
                         }
                         flush_run();
                     }
                     else
                     {
-                        RHI_CommandList::DrawIndexed(render->GetIndexCount(lod_index), render->GetIndexOffset(lod_index), render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
+                        if (cluster_shadow_ranges(render, [&](const BoundingBox& bounds) { return shadow_texel_density(light, slice.array_index, bounds); }, cluster_ranges))
+                        {
+                            for (const auto& range : cluster_ranges)
+                                RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset);
+                            return;
+                        }
+                        RHI_CommandList::DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset(), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
                     }
                 };
 
@@ -1053,6 +1075,7 @@ namespace spartan
         groups.clear();
         group_lookup.clear();
 
+        vector<ClusterDrawRange> cluster_ranges;
         uint64_t instance_total = 0;
         if (!slices.empty())
         {
@@ -1085,7 +1108,7 @@ namespace spartan
 
                 RHI_Buffer* vertex_buffer = render->GetVertexBuffer();
                 RHI_Buffer* index_buffer  = render->GetIndexBuffer();
-                if (!vertex_buffer || !index_buffer || render->GetLodCount() == 0)
+                if (!vertex_buffer || !index_buffer || !render->HasGeometry())
                 {
                     continue;
                 }
@@ -1103,39 +1126,58 @@ namespace spartan
                     group.alpha_tested  = alpha_tested;
                 }
 
-                const uint32_t lod_count = render->GetLodCount();
                 const bool wind = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f;
                 const bool per_instance = render->HasInstancing() && !render->HasBoundingBoxOverride();
-                const bool per_instance_lod = wind && per_instance && lod_count > 1 && lod_count <= 7;
-                const bool close_to_shadow = draw_call.distance_squared < 100.0f * 100.0f;
-                const uint32_t lod_local = wind ? min(draw_call.lod_index + 1u, lod_count - 1) : draw_call.lod_index;
-                const uint32_t lod_directional = wind ? min(draw_call.lod_index + 2u, lod_count - 1) :
-                    (close_to_shadow ? lod_local : min(render->GetLodIndex() + 1, lod_count - 1));
-                const BoundingBox& bounds = per_instance ? render->GetLodAabb(0) : render->GetBoundingBox();
-                // Candidate LODs share bounds and transforms. The GPU accepts each instance
-                // once per slice, choosing a coarser silhouette independently of the tile LOD.
-                for (uint32_t lod = per_instance_lod ? 1u : 0u; lod < (per_instance_lod ? lod_count : 1u); ++lod)
+                const BoundingBox& bounds = per_instance ? render->GetGeometryBounds() : render->GetBoundingBox();
+                auto& group_casters = groups[it->second].casters;
+                auto& root = group_casters.emplace_back();
+                root.draw_data_index = draw_call.draw_data_index;
+                root.instance_offset = render->HasInstancing() ? render->GetGlobalInstanceOffset() + draw_call.instance_index : 0u;
+                root.instance_count = draw_call.instance_count;
+                root.flags = (per_instance ? 0u : shadow_caster_flag_world_bounds) | (wind ? shadow_caster_flag_wind : 0u);
+                root.index_count_directional = root.index_count_local = render->GetIndexCount();
+                root.first_index_directional = root.first_index_local = render->GetIndexOffset();
+                root.vertex_offset_directional = root.vertex_offset_local = static_cast<int32_t>(render->GetVertexOffset());
+                root.bounds_min = bounds.GetMin();
+                root.bounds_max = bounds.GetMax();
+                root.max_shadow_distance = per_instance ? shadow_distance : 0.0f;
+                // A caster can be outside the camera view and still cover shadow texels.
+                // Choose the finest resolution requested by any light slice using this geometry.
+                auto light_density = [&](const BoundingBox& box)
                 {
-                    const uint32_t directional = per_instance_lod ? lod : lod_directional;
-                    const uint32_t local = per_instance_lod ? lod : lod_local;
-                    Sb_ShadowCaster& caster          = groups[it->second].casters.emplace_back();
-                    caster.draw_data_index           = draw_call.draw_data_index;
-                    caster.instance_offset           = render->HasInstancing() ? render->GetGlobalInstanceOffset() : 0u;
-                    caster.instance_count            = draw_call.instance_count;
-                    caster.flags                     = per_instance ? 0u : shadow_caster_flag_world_bounds;
-                    caster.flags                    |= wind ? shadow_caster_flag_wind : 0u;
-                    caster.flags                    |= per_instance_lod ? shadow_caster_flag_lod | (lod << shadow_caster_lod_shift) | (lod_count << shadow_caster_lod_count_shift) : 0u;
-                    caster.index_count_directional   = render->GetIndexCount(directional);
-                    caster.first_index_directional   = render->GetIndexOffset(directional);
-                    caster.vertex_offset_directional = static_cast<int32_t>(render->GetVertexOffset(directional));
-                    caster.index_count_local         = render->GetIndexCount(local);
-                    caster.first_index_local         = render->GetIndexOffset(local);
-                    caster.vertex_offset_local       = static_cast<int32_t>(render->GetVertexOffset(local));
-                    caster.bounds_min                = bounds.GetMin();
-                    caster.bounds_max                = bounds.GetMax();
-                    caster.max_shadow_distance       = per_instance ? shadow_distance : 0.0f;
+                    float density = 0;
+                    for (const auto& slice : slices)
+                        density = max(density, shadow_texel_density(slice.light, slice.array_index, box));
+                    return density;
+                };
+                bool refined = false;
+                const auto& sub = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex());
+                if (per_instance && !sub.clusters.empty() && !sub.HasResidentRootOnly())
+                {
+                    // The shadow pass needs an upper bound. This cached scale
+                    // also bounds a draw that covers only part of the instance list.
+                    const float scale = render->GetInstanceScaleBound();
+                    const Vector3 parent = render->GetEntity()->GetMatrix().GetScale();
+                    const float density = scale * max({abs(parent.x), abs(parent.y), abs(parent.z)}) * light_density(render->GetBoundingBox());
+                    refined = cluster_draw_ranges(render, Matrix::Identity, [&](const BoundingBox&) { return density; }, cluster_ranges);
                 }
-                // LOD candidates are exclusive, so do not multiply visible-buffer capacity by the LOD count.
+                else refined = cluster_shadow_ranges(render, light_density, cluster_ranges);
+                if (refined && (instance_total + uint64_t(draw_call.instance_count) * cluster_ranges.size()) *
+                    slices.size() <= shadow_visible_capacity_max)
+                {
+                    const auto proxy = group_casters.back();
+                    group_casters.pop_back();
+                    for (const auto& range : cluster_ranges)
+                    {
+                        auto& caster = group_casters.emplace_back(proxy);
+                        caster.index_count_directional = caster.index_count_local = range.index_count;
+                        caster.first_index_directional = caster.first_index_local = range.first_index;
+                        caster.vertex_offset_directional = caster.vertex_offset_local = static_cast<int32_t>(range.vertex_offset);
+                        caster.bounds_min = range.bounds.GetMin();
+                        caster.bounds_max = range.bounds.GetMax();
+                    }
+                    instance_total += uint64_t(draw_call.instance_count) * (cluster_ranges.size() - 1);
+                }
                 instance_total += draw_call.instance_count;
             }
         }
@@ -1303,7 +1345,6 @@ namespace spartan
     void Renderer::Pass_TessellatedCull(bool late)
     {
         static vector<Sb_TessellatedDraw> draws;
-        static vector<uint32_t> lods; // index count, first index, vertex offset, unused
         RHI_Shader* shader = GetShader(Renderer_Shader::tessellated_cull_c);
 
         // the late cull reuses the draws the early cull uploaded
@@ -1325,9 +1366,9 @@ namespace spartan
             }
 
             draws.clear();
-            lods.clear();
         }
 
+        vector<ClusterDrawRange> cluster_ranges;
         for (uint32_t i = 0; i < (late ? 0u : m_draw_call_count); i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -1338,6 +1379,23 @@ namespace spartan
                 continue;
             }
 
+            if (visit_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges,
+                [&](const ClusterDrawRange& range, uint32_t first_instance)
+                {
+                    auto& draw = draws.emplace_back();
+                    draw.bounds_min = range.bounds.GetMin();
+                    draw.bounds_max = range.bounds.GetMax();
+                    const float distance = render->GetMaxRenderDistance();
+                    draw.max_distance_squared = distance < sqrtf(FLT_MAX) ? distance * distance : 0.0f;
+                    draw.flags = render->GetEntity()->GetTimeSinceLastTransform() <= 0.1f ? tessellated_flag_skip_hiz : 0u;
+                    draw.index_count = range.index_count;
+                    draw.first_index = range.first_index;
+                    draw.vertex_offset = range.vertex_offset;
+                    draw.first_instance = first_instance;
+                    draw.instance_count = 1;
+                    m_tessellated_draws.push_back(i);
+                })) continue;
+
             const BoundingBox& bounds = render->GetBoundingBox();
             Sb_TessellatedDraw& draw  = draws.emplace_back();
             draw.bounds_min           = bounds.GetMin();
@@ -1346,34 +1404,11 @@ namespace spartan
             draw.max_distance_squared = (max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f) ? max_distance * max_distance : 0.0f;
             Entity* entity            = render->GetEntity();
             draw.flags                = (entity && entity->GetTimeSinceLastTransform() <= 0.1f) ? tessellated_flag_skip_hiz : 0u;
-            draw.lod_offset           = static_cast<uint32_t>(lods.size() / 4);
-            draw.lod_count            = max(min(render->GetLodCount(), 7u), 1u);
+            draw.index_count          = render->GetIndexCount();
+            draw.first_index          = render->GetIndexOffset();
+            draw.vertex_offset        = render->GetVertexOffset();
             draw.first_instance       = render->GetGlobalInstanceOffset() + draw_call.instance_index;
             draw.instance_count       = draw_call.instance_count;
-
-            // Render::UpdateLodIndices measures one instance of an instanced tile, not the tile
-            Vector3 extents = bounds.GetExtents();
-            if (render->HasInstancing() && entity && !render->GetSceneData().instances.empty())
-            {
-                const Vector3 entity_scale = entity->GetScale();
-                const Vector3 inst_scale   = render->GetInstance(0, false).GetScale();
-                const Vector3 mesh_extents = render->GetLodAabb(0).GetExtents();
-                extents = Vector3(
-                    mesh_extents.x * abs(entity_scale.x * inst_scale.x),
-                    mesh_extents.y * abs(entity_scale.y * inst_scale.y),
-                    mesh_extents.z * abs(entity_scale.z * inst_scale.z)
-                );
-            }
-            draw.lod_extents = extents;
-
-            for (uint32_t lod = 0; lod < draw.lod_count; lod++)
-            {
-                const uint32_t source = render->GetIndexCount(lod) != 0 ? lod : draw_call.lod_index;
-                lods.push_back(render->GetIndexCount(source));
-                lods.push_back(render->GetIndexOffset(source));
-                lods.push_back(render->GetVertexOffset(source));
-                lods.push_back(0u);
-            }
 
             m_tessellated_draws.push_back(i);
         }
@@ -1387,7 +1422,6 @@ namespace spartan
         // the args hold the early half then the late half, each draw lands in at most one
         const uint32_t draw_count = static_cast<uint32_t>(draws.size());
         RHI_Buffer* buffer_draws  = EnsureBufferCapacity(Renderer_Buffer::TessellatedDraws, sizeof(Sb_TessellatedDraw), draw_count, "tessellated_draws");
-        RHI_Buffer* buffer_lods   = EnsureBufferCapacity(Renderer_Buffer::TessellatedLods, sizeof(uint32_t) * 4, static_cast<uint32_t>(lods.size() / 4), "tessellated_lods");
         RHI_Buffer* buffer_args   = EnsureBufferCapacity(Renderer_Buffer::TessellatedArgs, sizeof(Sb_IndirectDrawArgs), draw_count * 2, "tessellated_args");
         RHI_Texture* tex_hiz      = GetRenderTarget(late ? Renderer_RenderTarget::gbuffer_depth_hiz_early : Renderer_RenderTarget::gbuffer_depth_hiz);
         const bool history_hiz    = m_pass_state.hiz_history_valid && cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
@@ -1397,13 +1431,11 @@ namespace spartan
             if (!late)
             {
                 RHI_CommandList::UpdateBuffer(buffer_draws, 0, draw_count * sizeof(Sb_TessellatedDraw), draws.data(), false);
-                RHI_CommandList::UpdateBuffer(buffer_lods, 0, lods.size() * sizeof(uint32_t), lods.data(), false);
             }
 
             RHI_CommandList::SetShader(shader);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_hiz);
             RHI_CommandList::SetBuffer("tessellated_draws", buffer_draws);
-            RHI_CommandList::SetBuffer("tessellated_lods", buffer_lods);
             RHI_CommandList::SetBuffer("tessellated_args", buffer_args);
 
             m_pcb_pass_cpu = {};
@@ -1431,14 +1463,6 @@ namespace spartan
         const float max_hiz_mip = static_cast<float>(tex_hiz->GetMipCount() - 1);
         const bool history_hiz  = m_pass_state.hiz_history_valid && cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
 
-        // the late cull runs this again, the lod table only needs to reach the gpu once a frame
-        RHI_Buffer* buffer_draw_lods = EnsureBufferCapacity(Renderer_Buffer::DrawLods, sizeof(Sb_DrawLod), max(static_cast<uint32_t>(m_draw_lods.size()), 1u), "draw_lods");
-        if (!m_draw_lods_uploaded && !m_draw_lods.empty())
-        {
-            RHI_CommandList::UpdateBuffer(buffer_draw_lods, 0, static_cast<uint32_t>(m_draw_lods.size() * sizeof(Sb_DrawLod)), m_draw_lods.data(), false);
-        }
-        m_draw_lods_uploaded = true;
-
         // the early survivors were consumed by the early meshlet cull, the late ones take their place
         if (late)
         {
@@ -1450,8 +1474,6 @@ namespace spartan
         RHI_CommandList::BeginPass(late ? "instance_cull_late" : "instance_cull");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::instance_cull_c));
-            RHI_CommandList::SetBuffer("draw_lods", buffer_draw_lods);
-            RHI_CommandList::SetBuffer("indirect_draw_data_rw", GetBuffer(Renderer_Buffer::IndirectDrawData));
             RHI_CommandList::SetBuffer("instance_visibility", EnsureBufferCapacity(Renderer_Buffer::InstanceVisibility, sizeof(uint32_t), m_cull_task_count * (INSTANCE_CULL_BATCH_SIZE / 32u), "instance_visibility"));
 
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_hiz);
@@ -1782,6 +1804,7 @@ namespace spartan
                 bool pipeline_set = false;
 
                 // the gpu culled list holds every tessellated draw, its args carry the visibility and the lod
+                vector<ClusterDrawRange> cluster_ranges;
                 const uint32_t tessellated_count = m_tessellated_gpu_culled ? static_cast<uint32_t>(m_tessellated_draws.size()) : m_draw_calls_prepass_count;
                 const uint32_t args_base         = late ? tessellated_count : 0u;
                 for (uint32_t i = 0; i < tessellated_count; i++)
@@ -1825,12 +1848,12 @@ namespace spartan
                     {
                         RHI_CommandList::DrawIndexedIndirect(GetBuffer(Renderer_Buffer::TessellatedArgs), (args_base + i) * sizeof(Sb_IndirectDrawArgs));
                     }
-                    else
+                    else if (!draw_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
                     {
                         RHI_CommandList::DrawIndexed(
-                            render->GetIndexCount(draw_call.lod_index),
-                            render->GetIndexOffset(draw_call.lod_index),
-                            render->GetVertexOffset(draw_call.lod_index),
+                            render->GetIndexCount(),
+                            render->GetIndexOffset(),
+                            render->GetVertexOffset(),
                             render->GetGlobalInstanceOffset() + draw_call.instance_index,
                             draw_call.instance_count
                         );
@@ -2009,6 +2032,7 @@ namespace spartan
 
         bool pipeline_set = false;
         // gpu culled tessellated draws all stay in the list, their args carry the visibility and the lod
+        vector<ClusterDrawRange> cluster_ranges;
         const bool gpu_tessellated = !is_transparent_pass && m_tessellated_gpu_culled;
         const uint32_t draw_count  = gpu_tessellated ? static_cast<uint32_t>(m_tessellated_draws.size()) : m_draw_call_count;
         for (uint32_t i = 0; i < draw_count; i++)
@@ -2061,6 +2085,11 @@ namespace spartan
             RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
             RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
 
+            if (!gpu_tessellated && draw_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
+            {
+                pso.clear_depth = rhi_depth_load;
+                continue;
+            }
             if (gpu_tessellated)
             {
                 // a draw lands in at most one of the early and late halves, the other holds zero instances
@@ -2073,9 +2102,9 @@ namespace spartan
             else
             {
                 RHI_CommandList::DrawIndexed(
-                    render->GetIndexCount(draw_call.lod_index),
-                    render->GetIndexOffset(draw_call.lod_index),
-                    render->GetVertexOffset(draw_call.lod_index),
+                    render->GetIndexCount(),
+                    render->GetIndexOffset(),
+                    render->GetVertexOffset(),
                     render->GetGlobalInstanceOffset() + draw_call.instance_index,
                     draw_call.instance_count
                 );
@@ -2145,8 +2174,8 @@ namespace spartan
             RHI_Buffer* instances = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
             RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instances);
             RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
-            RHI_CommandList::DrawIndexed(render->GetIndexCount(draw.lod_index), render->GetIndexOffset(draw.lod_index),
-                render->GetVertexOffset(draw.lod_index), render->GetGlobalInstanceOffset() + draw.instance_index, draw.instance_count);
+            RHI_CommandList::DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(),
+                render->GetVertexOffset(), render->GetGlobalInstanceOffset() + draw.instance_index, draw.instance_count);
         }
         if (pipeline_set)
             RHI_CommandList::EndPass();
@@ -2276,28 +2305,6 @@ namespace spartan
         static_assert(renderer_max_gpu_scatter_args == 9 && renderer_max_gpu_scatter_slots == 3);
         // per slot lod parameters, the protected vehicle region, the cell window of every ring, then the block window of every card band
         std::array<Vector4, renderer_gpu_scatter_parameter_count> detail_parameters{};
-        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; ++slot)
-        {
-            const auto& state = m_pass_state.gpu_scatter[slot];
-            if (gpu_scatter_ready(state) && state.material && state.mesh->GetObjectName() == "grass_blade" &&
-                state.mesh->GetLodCount(0) == 3 && !Xr::IsSessionRunning() &&
-                state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
-                state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
-                state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
-            {
-                const auto& bounds = state.mesh->GetSubMesh(0).lods[0].aabb;
-                detail_parameters[slot] = Vector4(bounds.GetSize().y,
-                    clamp(cvar_grass_lod_pixels.GetValue(), 0.0f, 2.0f), 0.0f, 0.0f);
-                if (detail_parameters[slot].y == 0.0f)
-                    detail_parameters[slot].x = 0.0f;
-            }
-            // z names the impostor ring plus one, zero when the slot draws blades everywhere
-            if (gpu_scatter_card_ring(state, gpu_scatter_card_lod))
-            {
-                detail_parameters[slot].z = static_cast<float>(gpu_scatter_card_lod + 1);
-                detail_parameters[slot].w = gpu_scatter_card_thin();
-            }
-        }
         const auto& detail = GetSurfaceInteraction();
         if (detail.id)
             detail_parameters[renderer_max_gpu_scatter_slots] = Vector4(detail.center, 32.0f);
@@ -2305,7 +2312,6 @@ namespace spartan
         // only the cells the view pyramid can reach get threads, the shader adds the window origin to
         // its thread id so every (cell, blade) keeps the hash and the placement it had on the full grid
         std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_args> cell_windows{};
-        std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_slots * renderer_gpu_scatter_card_bands> card_band_windows{};
         {
             const Vector3 eye              = Renderer::view().frame.camera_position;
             const bool perspective         = fabsf(Renderer::view().frame.projection.m33) < 0.5f;
@@ -2327,10 +2333,8 @@ namespace spartan
                 float root_radius = 0.0f;
                 if (state.mesh->GetSubMeshCount() > 0)
                 {
-                    for (const auto& mesh_lod : state.mesh->GetSubMesh(0).lods)
-                    {
-                        root_radius = max(root_radius, mesh_lod.aabb.GetCenter().Length() + mesh_lod.aabb.GetExtents().Length());
-                    }
+                    const auto& box = state.mesh->GetSubMesh(0).root.aabb;
+                    root_radius = box.GetCenter().Length() + box.GetExtents().Length();
                 }
                 const float largest_scale = clamp(max(state.params.size_min, state.params.size_max), 0.01f, 100.0f);
                 const float cull_radius   = max(1.5f, root_radius) * largest_scale * 1.05f;
@@ -2353,10 +2357,7 @@ namespace spartan
                         continue;
                     }
 
-                    const bool card_ring   = gpu_scatter_card_ring(state, lod);
-                    const float card_scale = card_ring ? gpu_scatter_card_scale(ring_radius) : 1.0f;
-                    const float card_reach = card_ring ? cell_size * gpu_scatter_card_cells * 0.5f * card_scale : 0.0f;
-                    const float margin     = (cull_radius * card_scale + card_reach) / max(sin_half_min, 0.05f) + 2.0f * cell_size;
+                    const float margin     = cull_radius / max(sin_half_min, 0.05f) + 2.0f * cell_size;
                     const float reach  = (static_cast<float>(cells_per_axis / 2u) + 1.0f) * cell_size;
                     const float y_min  = max(state.params.height_min, eye.y - 4000.0f) - cull_radius;
                     const float y_max  = min(state.params.height_max, eye.y + 4000.0f) + cull_height + cull_radius;
@@ -2399,67 +2400,6 @@ namespace spartan
                 detail_parameters[renderer_max_gpu_scatter_slots + 1 + arg] = Vector4(static_cast<float>(cell_windows[arg][0]), static_cast<float>(cell_windows[arg][1]), thin.x, thin.y);
             }
 
-            // past the thinning distance a card cell survives with 1 / scale^2, so the card ring runs in distance bands whose
-            // threads walk blocks of cells twice as wide as the band before, the window of a band is the ring window cut down
-            // to the band's reach, in blocks
-            const float card_thin = gpu_scatter_card_thin();
-            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
-            {
-                const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
-                if (!gpu_scatter_ready(state) || !gpu_scatter_card_ring(state, gpu_scatter_card_lod) || card_thin <= 0.0f)
-                {
-                    continue;
-                }
-
-                const float cell_size   = state.params.cell_size_m[gpu_scatter_card_lod];
-                const float ring_radius = gpu_scatter_ring_radius(state, gpu_scatter_card_lod);
-                if (cell_size <= 0.0f || ring_radius <= 0.0f)
-                {
-                    continue;
-                }
-
-                const std::array<uint32_t, 4>& window = cell_windows[renderer_gpu_scatter_arg_index(slot, gpu_scatter_card_lod)];
-                const uint32_t cells_per_axis = 2u * static_cast<uint32_t>(ceilf(ring_radius / cell_size)) + 2u;
-                const int half_cells          = static_cast<int>(cells_per_axis / 2u);
-                // reject_outer in grass_populate.hlsl never reaches past this
-                const float ring_reach        = ring_radius + max(cell_size * 10.0f, ring_radius * 0.42f);
-                for (uint32_t band = 0; band < renderer_gpu_scatter_card_bands; band++)
-                {
-                    const uint32_t block   = 1u << band;
-                    const bool last_band   = band + 1 == renderer_gpu_scatter_card_bands;
-                    const float band_min   = band == 0 ? 0.0f : card_thin * static_cast<float>(block);
-                    const float band_max   = card_thin * static_cast<float>(block * 2u);
-                    std::array<uint32_t, 4>& band_window = card_band_windows[slot * renderer_gpu_scatter_card_bands + band];
-                    band_window = { 0u, 0u, 0u, 0u };
-                    if (window[2] == 0 || window[3] == 0 || band_min > ring_reach)
-                    {
-                        continue;
-                    }
-
-                    int x0 = static_cast<int>(window[0]);
-                    int z0 = static_cast<int>(window[1]);
-                    int x1 = x0 + static_cast<int>(window[2]) - 1;
-                    int z1 = z0 + static_cast<int>(window[3]) - 1;
-                    if (!last_band)
-                    {
-                        const int reach_cells = static_cast<int>(ceilf(band_max / cell_size)) + 2;
-                        x0 = max(x0, half_cells - reach_cells);
-                        z0 = max(z0, half_cells - reach_cells);
-                        x1 = min(x1, half_cells + reach_cells);
-                        z1 = min(z1, half_cells + reach_cells);
-                    }
-                    if (x1 < x0 || z1 < z0)
-                    {
-                        continue;
-                    }
-
-                    const uint32_t bx0 = static_cast<uint32_t>(x0) / block;
-                    const uint32_t bz0 = static_cast<uint32_t>(z0) / block;
-                    band_window = { bx0, bz0, static_cast<uint32_t>(x1) / block - bx0 + 1u, static_cast<uint32_t>(z1) / block - bz0 + 1u };
-                    detail_parameters[renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args + slot * renderer_gpu_scatter_card_bands + band] =
-                        Vector4(static_cast<float>(bx0), static_cast<float>(bz0), 0.0f, 0.0f);
-                }
-            }
         }
 
         RHI_Buffer* detail_buffer = GetBuffer(Renderer_Buffer::GrassLodParameters);
@@ -2475,15 +2415,53 @@ namespace spartan
                 ? GetStandardTexture(Renderer_StandardTexture::Black)
                 : GetRenderTarget(m_pass_state.cull_late_active ? Renderer_RenderTarget::gbuffer_depth_hiz : Renderer_RenderTarget::gbuffer_depth_hiz_early);
 
-            // bake static portions of the per-lod indirect args once per slot (or whenever its mesh changes)
-            // these never change frame to frame so a single Update covers the lifetime of the slot
+            vector<Sb_IndirectDrawArgs> cluster_args;
+            vector<ClusterDrawRange> cluster_ranges;
             for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
                 PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
-                if (!gpu_scatter_ready(state) || state.args_baked)
+                if (!gpu_scatter_ready(state)) continue;
+                const auto& sub = state.mesh->GetSubMesh(0);
+                const auto& root = sub.root;
+                const float focal = abs(camera->GetProjectionMatrix().m11) * GetResolutionRender().y * 0.5f;
+                state.cluster_counts.fill(0);
+                if (!sub.HasResidentRootOnly() && !sub.clusters.empty())
                 {
-                    continue;
+                    for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
+                    {
+                        const float inner = ring ? gpu_scatter_ring_radius(state, ring - 1) : camera->GetNearPlane();
+                        const float density = focal * max(state.params.size_min, state.params.size_max) /
+                            (camera->GetProjectionType() == Projection_Perspective ? max(camera->GetNearPlane(), inner) : 1.0f);
+                        if (sub.clusters.size() > 1)
+                        {
+                            if (cluster_draw_ranges(*state.mesh, 0, Matrix::Identity, [&](const BoundingBox&) { return density; }, cluster_ranges))
+                            {
+                                state.cluster_offsets[ring] = static_cast<uint32_t>(cluster_args.size());
+                                state.cluster_counts[ring] = static_cast<uint32_t>(cluster_ranges.size());
+                                for (const auto& range : cluster_ranges)
+                                    cluster_args.push_back({range.index_count, 0, range.first_index, static_cast<int32_t>(range.vertex_offset), 0});
+                            }
+                            continue;
+                        }
+                        ResidentGeometryPage page = {};
+                        const bool ready = GeometryBuffer::SelectPage(sub.clusters.front(), density, page);
+                        auto& args = state.indirect_args_static[ring];
+                        const uint32_t first = ready ? page.indices : state.mesh->GetGlobalIndexOffset() + root.index_offset;
+                        const uint32_t base = ready ? page.vertices : state.mesh->GetGlobalVertexOffset() + root.vertex_offset;
+                        const uint32_t count = ready ? page.index_count : root.index_count;
+                        const uint32_t vertices = ready ? page.vertex_count : root.vertex_count;
+                        if (args.first_index != first || args.vertex_offset != static_cast<int32_t>(base) ||
+                            args.index_count != count || state.vertex_counts[ring] != vertices)
+                        {
+                            args.first_index = first;
+                            args.vertex_offset = static_cast<int32_t>(base);
+                            args.index_count = count;
+                            state.vertex_counts[ring] = vertices;
+                            state.args_baked = false;
+                        }
+                    }
                 }
+                if (state.args_baked) continue;
 
                 RHI_CommandList::UpdateBuffer(
                     buf_args,
@@ -2492,38 +2470,33 @@ namespace spartan
                     &state.indirect_args_static[0],
                     false
                 );
-                std::array<Sb_IndirectDrawArgs, renderer_max_gpu_scatter_lods> coarse_args = state.indirect_args_static;
-                coarse_args[0] = state.indirect_args_static[1];
-                RHI_CommandList::UpdateBuffer(buf_args,
-                    (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, 0)) * sizeof(Sb_IndirectDrawArgs),
-                    sizeof(coarse_args), coarse_args.data(), false);
-
                 // the same draw lists for the mesh shader path, which also needs each blade lod's vertex count
-                const vector<MeshLod>& lods = state.mesh->GetSubMesh(0).lods;
                 auto mesh_geometry          = [&](const Sb_IndirectDrawArgs& arguments, const uint32_t lod)
                 {
-                    const uint32_t lod_mesh = lod < lods.size() ? lod : 0u;
-                    return std::array<uint32_t, 4>{ arguments.first_index, arguments.index_count, static_cast<uint32_t>(arguments.vertex_offset), lods[lod_mesh].vertex_count };
+                    return std::array<uint32_t, 4>{ arguments.first_index, arguments.index_count, static_cast<uint32_t>(arguments.vertex_offset), state.vertex_counts[lod] };
                 };
-                std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> fine_geometry;
-                std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> coarse_geometry;
+                std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> ring_geometry;
                 for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
-                    fine_geometry[lod]   = mesh_geometry(state.indirect_args_static[lod], lod);
-                    coarse_geometry[lod] = mesh_geometry(coarse_args[lod], lod == 0 ? 1u : lod);
+                    ring_geometry[lod]   = mesh_geometry(state.indirect_args_static[lod], lod);
                 }
                 RHI_Buffer* buf_mesh_geometry = GetBuffer(Renderer_Buffer::GrassMeshGeometry);
                 RHI_CommandList::UpdateBuffer(buf_mesh_geometry,
-                    renderer_gpu_scatter_arg_index(slot, 0) * sizeof(fine_geometry[0]),
-                    sizeof(fine_geometry), fine_geometry.data(), false);
-                RHI_CommandList::UpdateBuffer(buf_mesh_geometry,
-                    (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, 0)) * sizeof(coarse_geometry[0]),
-                    sizeof(coarse_geometry), coarse_geometry.data(), false);
+                    renderer_gpu_scatter_arg_index(slot, 0) * sizeof(ring_geometry[0]),
+                    sizeof(ring_geometry), ring_geometry.data(), false);
                 state.args_baked = true;
             }
 
+            RHI_Buffer* cluster_buffer = nullptr;
+            if (!cluster_args.empty())
+            {
+                cluster_buffer = EnsureBufferCapacity(Renderer_Buffer::GrassClusterArgs, sizeof(Sb_IndirectDrawArgs),
+                    static_cast<uint32_t>(cluster_args.size()), "grass_cluster_args");
+                RHI_CommandList::UpdateBuffer(cluster_buffer, 0, cluster_args.size() * sizeof(Sb_IndirectDrawArgs), cluster_args.data(), false);
+            }
+
             // clear every counter on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops a frame of scatter
-            uint32_t zero_counts[renderer_max_gpu_scatter_args * 3] = {};
+            uint32_t zero_counts[renderer_max_gpu_scatter_args] = {};
             RHI_CommandList::UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0], false);
 
             // the terrain frame is shared, every slot scatters onto the same surface
@@ -2609,7 +2582,6 @@ namespace spartan
                 {
                     const float cell_size   = state.params.cell_size_m[lod];
                     const float ring_radius = gpu_scatter_ring_radius(state, lod);
-                    const bool card_ring    = gpu_scatter_card_ring(state, lod);
                     if (cell_size <= 0.0f || ring_radius <= 0.0f)
                     {
                         continue;
@@ -2662,35 +2634,10 @@ namespace spartan
                         // Every grass deformation preserves distance from the root, including
                         // tire and chassis bending. Bound any rotation of the actual mesh;
                         // the shader applies the maximum packed instance scale separately.
-                        const auto& lods = state.mesh->GetSubMesh(0).lods;
-                        const auto& bounds = lods[lod < lods.size() ? lod : 0u].aabb;
+                        const auto& bounds = state.mesh->GetSubMesh(0).root.aabb;
                         m_pcb_pass_cpu.set(pass_grass_populate::root_radius, bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f);
                     }
-                    // a card spans more than a cell, the cull sphere has to hold all of it
-                    if (card_ring)
-                    {
-                        const auto& bounds = state.mesh->GetSubMesh(0).lods[0].aabb;
-                        m_pcb_pass_cpu.set(pass_grass_populate::root_radius, cell_size * gpu_scatter_card_cells * 0.5f + bounds.GetSize().y);
-                    }
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-                    // a thinned card ring runs one dispatch per distance band, a thread per block of cells
-                    if (card_ring && gpu_scatter_card_thin() > 0.0f)
-                    {
-                        for (uint32_t band = 0; gpu_scatter_card_bands_emit && band < renderer_gpu_scatter_card_bands; band++)
-                        {
-                            const std::array<uint32_t, 4>& band_window = card_band_windows[slot * renderer_gpu_scatter_card_bands + band];
-                            if (band_window[2] == 0 || band_window[3] == 0)
-                            {
-                                continue;
-                            }
-
-                            m_pcb_pass_cpu.draw_index = (m_pcb_pass_cpu.draw_index & ~0xCu) | (band << 2);
-                            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                            RHI_CommandList::Dispatch((band_window[2] + 7u) / 8u, (band_window[3] + 7u) / 8u, 1);
-                        }
-                        continue;
-                    }
 
                     // one cell per thread, dispatch z carries the instance index inside the cell, the
                     // shader recomputes instances_per_cell so both formulas must match
@@ -2719,7 +2666,7 @@ namespace spartan
                     const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin *
                                            total_boost /
                                            std::max(cells_in_ring, 1.0f);
-                    const uint32_t blades_per_cell = card_ring ? 1u : std::max(
+                    const uint32_t blades_per_cell = std::max(
                         1u,
                         static_cast<uint32_t>(std::ceil(per_cell))
                     );
@@ -2759,9 +2706,22 @@ namespace spartan
                         m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_caps + lod, gpu_scatter_slot_cap(state, slot, lod));
                     }
                     m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_count, renderer_max_gpu_scatter_lods);
+                    m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_pass, 0u);
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
                     RHI_CommandList::Dispatch(1, 1, 1);
+                    if (cluster_buffer && (state.cluster_counts[0] || state.cluster_counts[1] || state.cluster_counts[2]))
+                    {
+                        for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
+                        {
+                            m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_offsets + ring, state.cluster_offsets[ring]);
+                            m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_counts + ring, state.cluster_counts[ring]);
+                        }
+                        m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_pass, 1u);
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_indirect_args, cluster_buffer);
+                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                        RHI_CommandList::Dispatch(1, 1, 1);
+                    }
                 }
             }
         }
@@ -3131,11 +3091,10 @@ namespace spartan
 
             // Both fine and coarse indirect draws use this pipeline. Larger custom meshes
             // retain their indexed draws when a single instance exceeds the shader's export arrays.
-            const auto& lods = mesh->GetSubMesh(0).lods;
-            const bool fits_mesh_group = all_of(lods.begin(), lods.end(), [](const MeshLod& level)
-            {
-                return level.vertex_count <= GRASS_MESH_MAX_VERTICES && level.index_count / 3u <= GRASS_MESH_MAX_TRIANGLES;
-            });
+            bool fits_mesh_group = true;
+            for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
+                fits_mesh_group &= state.vertex_counts[ring] <= GRASS_MESH_MAX_VERTICES &&
+                    state.indirect_args_static[ring].index_count / 3 <= GRASS_MESH_MAX_TRIANGLES;
 
             for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
             {
@@ -3150,15 +3109,14 @@ namespace spartan
                     state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f;
                 RHI_Shader* shader_vertex = grass_specialized ? grass_vertex : GetShader(Renderer_Shader::grass_gbuffer_v);
                 RHI_Shader* shader_pixel  = grass_specialized ? grass_pixel : GetShader(Renderer_Shader::gbuffer_p);
-                const bool card_ring = grass_specialized && gpu_scatter_card_ring(state, lod);
-                if (grass_specialized && !card_ring && opaque_pixel && opaque_pixel->IsCompiled())
+                if (grass_specialized && opaque_pixel && opaque_pixel->IsCompiled())
                     shader_pixel = opaque_pixel;
                 if (!shader_vertex || !shader_vertex->IsCompiled() || !shader_pixel || !shader_pixel->IsCompiled())
                 {
                     continue;
                 }
                 // card rings stay instanced, the card turns to face the camera in the vertex shader
-                const bool mesh_path = grass_specialized && grass_mesh_ready && fits_mesh_group && !gpu_scatter_card_ring(state, lod);
+                const bool mesh_path = grass_specialized && grass_mesh_ready && fits_mesh_group && !state.cluster_counts[lod];
                 pso.shaders[RHI_Shader_Type::Vertex]     = mesh_path ? nullptr : shader_vertex;
                 pso.shaders[RHI_Shader_Type::MeshShader] = mesh_path ? grass_mesh : nullptr;
                 pso.shaders[RHI_Shader_Type::Pixel]      = shader_pixel;
@@ -3190,16 +3148,12 @@ namespace spartan
                 }
 
                 // the mesh shader finds its draw list through draw_index, the instanced vertex shader ignores it
-                const uint32_t fine_list   = renderer_gpu_scatter_arg_index(slot, lod);
-                const uint32_t coarse_list = renderer_max_gpu_scatter_args + fine_list;
-                m_pcb_pass_cpu.draw_index     = mesh_path ? fine_list : 0;
+                const uint32_t ring_list   = renderer_gpu_scatter_arg_index(slot, lod);
+                m_pcb_pass_cpu.draw_index     = mesh_path ? ring_list : 0;
                 m_pcb_pass_cpu.is_transparent = 0;
                 m_pcb_pass_cpu.material_index = state.material->GetIndex();
                 m_pcb_pass_cpu.set(pass_grass_draw::uv_patch, state.params.uv_patch);
-                m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, 0u);
                 m_pcb_pass_cpu.set(pass_grass_draw::lod_base, lod_base);
-                m_pcb_pass_cpu.set(pass_grass_draw::card_width, card_ring ? state.params.cell_size_m[lod] * gpu_scatter_card_cells : 0.0f);
-                m_pcb_pass_cpu.set(pass_grass_draw::card_thin, card_ring ? gpu_scatter_card_thin() : 0.0f);
                 m_pcb_pass_cpu.set(pass_grass_draw::blend_reach, max(cvar_scatter_blend_distance.GetValue(), 0.0f));
                 for (uint32_t frame = 0; frame < 2; ++frame)
                 {
@@ -3214,28 +3168,19 @@ namespace spartan
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
                 if (mesh_path)
                 {
-                    RHI_CommandList::DrawMeshTasksIndirect(buf_mesh_args, fine_list * mesh_arg_stride);
+                    RHI_CommandList::DrawMeshTasksIndirect(buf_mesh_args, ring_list * mesh_arg_stride);
                 }
                 else
                 {
-                    RHI_CommandList::DrawIndexedIndirect(buf_args, fine_list * arg_stride);
+                    if (state.cluster_counts[lod])
+                    {
+                        RHI_Buffer* ranges = GetBuffer(Renderer_Buffer::GrassClusterArgs);
+                        for (uint32_t i = 0; i < state.cluster_counts[lod]; ++i)
+                            RHI_CommandList::DrawIndexedIndirect(ranges, (state.cluster_offsets[lod] + i) * arg_stride);
+                    }
+                    else RHI_CommandList::DrawIndexedIndirect(buf_args, ring_list * arg_stride);
                 }
 
-                // coarse blades of the near ring, the same allocation filled from its end
-                if (lod == 0)
-                {
-                    m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, gpu_scatter_lod_cap(slot, lod, state.params.density));
-                    m_pcb_pass_cpu.draw_index = mesh_path ? coarse_list : 0;
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    if (mesh_path)
-                    {
-                        RHI_CommandList::DrawMeshTasksIndirect(buf_mesh_args, coarse_list * mesh_arg_stride);
-                    }
-                    else
-                    {
-                        RHI_CommandList::DrawIndexedIndirect(buf_args, coarse_list * arg_stride);
-                    }
-                }
             }
         }
 
@@ -3261,6 +3206,14 @@ namespace spartan
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         if (!tex_depth || m_indirect_draw_count == 0)
         {
+            RHI_CommandList::ClearTexture(tex_debug, Color::standard_black);
+            return;
+        }
+
+        const bool mesh_path = use_mesh_shaders();
+        if (mesh_path && (!GetShader(Renderer_Shader::meshlet_visualize_m)->IsCompiled() ||
+                          !GetShader(Renderer_Shader::meshlet_visualize_alpha_m)->IsCompiled()))
+        {
             return;
         }
 
@@ -3275,7 +3228,10 @@ namespace spartan
 
             RHI_PipelineState pso;
             pso.name                             = "meshlet_visualize";
-            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::meshlet_visualize_v);
+            if (mesh_path)
+                pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(Renderer_Shader::meshlet_visualize_m);
+            else
+                pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::meshlet_visualize_v);
             pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::meshlet_visualize_p);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.rasterizer_state                 = rasterizer;
@@ -3288,27 +3244,36 @@ namespace spartan
             pso.clear_color[0]                   = Color::standard_black;
             RHI_CommandList::SetPipelineState(pso);
 
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cull_phase, GetBuffer(Renderer_Buffer::CullPhase));
-
             // wireframe shows both faces so rear edges of thin meshlets stay visible, solid mode leaves culling to the triangle cull pass
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
 
             // draw the opaque half then the alpha half
             const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
             m_pcb_pass_cpu.set(pass_meshlet_visualize::color_by_draw_id, color_by_draw_id);
-            m_pcb_pass_cpu.set(pass_visible_triangles::late, false);
+            if (mesh_path)
+            {
+                bind_mesh_shader_geometry();
+                push_mesh_draw_constants(m_pcb_pass_cpu);
+                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), MESH_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
+                pso.clear_color[0] = rhi_color_load;
+                pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(Renderer_Shader::meshlet_visualize_alpha_m);
+                RHI_CommandList::SetPipelineState(pso);
+                RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
+            }
+            else
+            {
+                bind_visible_triangle_geometry();
+                m_pcb_pass_cpu.set(pass_visible_triangles::late, false);
 
-            m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
+                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
 
-            m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+            }
         }
         RHI_CommandList::EndPass();
     }

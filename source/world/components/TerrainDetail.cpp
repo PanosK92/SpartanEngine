@@ -1250,12 +1250,11 @@ namespace spartan
             mesh = make_shared<Mesh>();
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessMeshletsScan), true);
             mesh->SetDynamic(true);
             mesh->SetPersistent(false);
-            mesh->AddGeometry(vertices, indices, false);
+            mesh->AddGeometry(vertices, indices);
             mesh->CreateGpuBuffers();
         }
         mesh->SetObjectName(name);

@@ -945,54 +945,13 @@ namespace spartan::trees
             detail.angle       *= 1.15f;
             bark                = mesh_bark(tree, s, detail);
         }
-        tree.bark_lods.push_back(move(bark));
-
-        // distance levels drop whole branch orders before meshoptimizer touches what is left, simplification
-        // alone collapses a thin branch into a spike while dropping it keeps the remaining silhouette clean
-        const uint32_t deepest = levels_used;
-        struct lod_step
-        {
-            float sides;
-            float radius;
-            int32_t level_drop;
-            float trunk_share;
-            float angle;
-        };
-        const lod_step steps[] =
-        {
-            { 0.65f, 2.2f,  0, 0.00f, 1.8f },
-            { 0.45f, 5.0f,  1, 0.05f, 2.6f },
-            { 0.30f, 10.0f, 2, 0.12f, 3.5f },
-            { 0.20f, 30.0f, 3, 0.30f, 5.0f }
-        };
-        for (const lod_step& step : steps)
-        {
-            bark_detail lod = detail;
-            lod.sides_scale             = max(0.15f, detail.sides_scale * step.sides);
-            lod.max_sides               = max(4u, static_cast<uint32_t>(detail.max_sides * max(step.sides, 0.35f)));
-            lod.min_radius              = detail.min_radius * step.radius;
-            lod.max_level               = static_cast<uint32_t>(max(0, static_cast<int32_t>(deepest) - step.level_drop));
-            lod.trunk_only_radius_ratio = step.trunk_share;
-            lod.angle                   = detail.angle * step.angle;
-            geometry level              = mesh_bark(tree, s, lod);
-            if (level.indices.size() > 192)
-            {
-                const size_t target = max<size_t>(96, level.indices.size() * 4 / 5);
-                geometry_processing::simplify(level.indices, level.vertices, target, true, false, false);
-            }
-            const geometry& previous = tree.bark_lods.back();
-            if (level.indices.empty() || level.indices.size() >= static_cast<size_t>(previous.indices.size() * mesh_lod_min_reduction))
-            {
-                continue;
-            }
-            tree.bark_lods.push_back(move(level));
-        }
+        tree.bark = move(bark);
 
         mesh_cards(tree, tree.foliage);
 
         // the bounds and the collider
         tree.bounds = BoundingBox(Vector3::Zero, Vector3::Zero);
-        for (const geometry* g : { &tree.bark_lods.front(), &tree.foliage })
+        for (const geometry* g : { &tree.bark, &tree.foliage })
         {
             if (!g->vertices.empty())
             {
@@ -1003,17 +962,17 @@ namespace spartan::trees
         return tree;
     }
 
-    shared_ptr<Mesh> build_mesh(result& tree, const string& name, const bool impostor)
+    shared_ptr<Mesh> build_mesh(result& tree, const string& name, const bool cache_mesh)
     {
         shared_ptr<Mesh> mesh = make_shared<Mesh>();
         mesh->SetObjectName(name);
         // no scale normalisation, a tree is authored in metres. a preview skips the cache, every slider move
-        // is a new tree, an export keeps it so the impostor baked here is the one its file finds on load
+        // is a new tree, an export can reuse the cooked mesh
         uint32_t flags =
             static_cast<uint32_t>(MeshFlags::PostProcessOptimize) |
-            static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0) |
-            static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-        if (!impostor)
+            static_cast<uint32_t>(MeshFlags::PreserveSourceGeometry) |
+            static_cast<uint32_t>(MeshFlags::FoliageCardClusters);
+        if (!cache_mesh)
         {
             flags |= static_cast<uint32_t>(MeshFlags::PostProcessSkipCache);
         }
@@ -1022,24 +981,9 @@ namespace spartan::trees
         const bool has_foliage = !tree.foliage.indices.empty();
         mesh->ReserveSubMeshes(has_foliage ? 2 : 1);
 
-        // bark, lod 0 through the regular path and the branch order levels after it
-        {
-            geometry lod0 = tree.bark_lods.front();
-            mesh->AddGeometry(lod0.vertices, lod0.indices, false, 0, true);
-            for (size_t i = 1; i < tree.bark_lods.size(); i++)
-            {
-                geometry level = tree.bark_lods[i];
-                geometry_processing::weld_and_optimize(level.vertices, level.indices);
-                mesh->AddLod(level.vertices, level.indices, 0);
-            }
-        }
-
-        // foliage, the card thinning lods and the impostor come from the mesh itself
-        if (has_foliage)
-        {
-            geometry foliage = tree.foliage;
-            mesh->AddGeometry(foliage.vertices, foliage.indices, true, 1, true, true, impostor);
-        }
+        mesh->AddGeometry(tree.bark.vertices, tree.bark.indices, 0u);
+        if (has_foliage && !mesh->AddVirtualGeometry(tree.foliage.vertices, tree.foliage.indices, 1u, false, true))
+            mesh->AddGeometry(tree.foliage.vertices, tree.foliage.indices, 1u);
 
         mesh->CreateGpuBuffers();
         return mesh;

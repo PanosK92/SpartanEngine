@@ -686,8 +686,7 @@ void AssetViewer::OnTickVisible()
         // write would silently throw the edits away
         if (
             !m_loaded_path.empty() &&
-            !m_working_modified &&
-            !m_working_lods_built &&
+            !m_working_modified  &&
             FileSystem::Exists(m_loaded_path)
         )
         {
@@ -1439,16 +1438,11 @@ void AssetViewer::ClearLoadedAsset()
     m_prefab_entity_count = 0;
     m_bake_confirmation_open = false;
     m_working_sub_meshes.clear();
-    m_working_lods.clear();
     m_working_vertices.clear();
     m_working_indices.clear();
     m_missing_dependencies.clear();
     m_working_modified = false;
     m_working_editable = false;
-    m_working_lods_built = false;
-    m_working_lods_attempted = false;
-    m_working_lods_scanned = false;
-    m_preview_lod = 0;
     m_target_ratio = 0.5f;
 }
 
@@ -2200,7 +2194,6 @@ void AssetViewer::PreviewEntity(Entity* entity)
     m_mesh.reset();
     m_working_meshes.clear();
     m_working_sub_meshes.clear();
-    m_working_lods.clear();
     m_working_vertices.clear();
     m_working_indices.clear();
     m_working_editable = false;
@@ -2237,8 +2230,6 @@ void AssetViewer::PreviewEntity(Entity* entity)
 pair<uint64_t, uint64_t>
 AssetViewer::GetPreviewGeometryCounts() const
 {
-    // the working copy is lod 0 of exactly what is being edited, the mesh totals below include every
-    // lod level and count a mesh once per part that draws it
     if (
         !m_working_vertices.empty() &&
         m_working_indices.size() >= 3
@@ -4709,7 +4700,7 @@ void AssetViewer::DrawDetails(float height)
         );
         ImGui::Spacing();
 
-        // a mesh reached by expanding a prefab is still a mesh, without this the simplify and lod
+        // a mesh reached by expanding a prefab is still a mesh, without this the mesh editing
         // controls are only reachable when the mesh happens to be a top level catalog entry
         const bool mesh_tools_available =
             m_working_editable &&
@@ -5141,8 +5132,7 @@ void AssetViewer::DrawPrefabOverview(const AssetEntry& asset)
     section_title("GAME READY");
     const bool can_bake =
         bake.renderers_before > bake.renderers_after &&
-        !m_working_modified &&
-        !m_working_lods_built &&
+        !m_working_modified  &&
         !asset.path.empty();
     if (bake.renderers_before > bake.renderers_after)
     {
@@ -5183,7 +5173,7 @@ void AssetViewer::DrawPrefabOverview(const AssetEntry& asset)
                 : "One draw call per material, nothing left to bake"
         );
     }
-    if (m_working_modified || m_working_lods_built)
+    if (m_working_modified)
     {
         ImGui::TextDisabled(
             "Save or revert the mesh changes in Optimize before baking"
@@ -5211,7 +5201,7 @@ void AssetViewer::DrawPrefabOverview(const AssetEntry& asset)
         "the parts that were merged away are removed from it"
     );
     ImGui::TextDisabled(
-        "Simplify and LODs for the whole prefab live in the Optimize tab"
+        "Edit the geometry of the whole prefab in the Optimize tab"
     );
 
     section_title("MATERIALS");

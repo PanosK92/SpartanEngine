@@ -398,14 +398,7 @@ namespace spartan
                 {
                     if (render->HasInstancing())
                     {
-                        vector<Matrix> transforms;
-                        const uint32_t count = render->GetInstanceCount();
-                        transforms.reserve(count);
-                        for (uint32_t i = 0; i < count; i++)
-                        {
-                            transforms.push_back(render->GetInstance(i, false));
-                        }
-                        m_prop_instance_seed[entity->GetObjectId()] = move(transforms);
+                        m_prop_instance_seed[entity->GetObjectId()] = render->GetSceneData().instances;
                     }
                     else if (entity->GetChildrenCount() == 0)
                     {
@@ -629,9 +622,9 @@ namespace spartan
             {
                 const Matrix world = entity->GetMatrix();
                 bool touches = false;
-                for (const Matrix& local : seed->second)
+                for (const Instance& local : seed->second)
                 {
-                    const Vector3 position = (local * world).GetTranslation();
+                    const Vector3 position = world * Vector3(local.position_x, local.position_y, local.position_z);
                     if (on_pad(position.x, position.z))
                     {
                         touches = true;
@@ -644,15 +637,15 @@ namespace spartan
                     continue;
                 }
 
-                vector<Matrix> kept;
+                vector<Instance> kept;
                 if (render->HasInstancing())
                 {
                     const uint32_t count = render->GetInstanceCount();
                     kept.reserve(count + seed->second.size());
                     for (uint32_t i = 0; i < count; i++)
                     {
-                        const Matrix local     = render->GetInstance(i, false);
-                        const Vector3 position = (local * world).GetTranslation();
+                        const Instance& local = render->GetInstanceData(i);
+                        const Vector3 position = world * Vector3(local.position_x, local.position_y, local.position_z);
                         if (!on_pad(position.x, position.z))
                         {
                             kept.push_back(local);
@@ -664,9 +657,9 @@ namespace spartan
                     kept.reserve(seed->second.size());
                 }
 
-                for (const Matrix& local : seed->second)
+                for (const Instance& local : seed->second)
                 {
-                    const Vector3 position = (local * world).GetTranslation();
+                    const Vector3 position = world * Vector3(local.position_x, local.position_y, local.position_z);
                     // The seed predates road filtering. Restoring a building's old
                     // footprint must not bring vegetation back onto a carriageway.
                     if (on_pad(position.x, position.z) && !IsOnRoad(position.x, position.z))

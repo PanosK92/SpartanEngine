@@ -79,14 +79,14 @@ namespace spartan
         {
             car::tire_cage::binding weights;
             Vector3 position, tangent, bitangent;
-            uint32_t vertex_index, lod_index;
+            uint32_t vertex_index;
         };
         struct Part
         {
             uint64_t entity_id;
             std::shared_ptr<Mesh> source, mesh;
+            std::shared_ptr<const std::vector<RHI_Vertex_PosTexNorTan>> rest_vertices;
             uint32_t submesh;
-            uint32_t previous_lod = UINT32_MAX;
             Matrix to_wheel, from_wheel;
             // Bindings are grouped by cage cell so unchanged arcs are never scanned.
             std::vector<BoundVertex> vertices;
@@ -1090,8 +1090,8 @@ namespace spartan
             const Mesh* mesh = render->GetMesh();
             source_key.Add(mesh ? mesh->GetObjectId() : uint64_t(0));
             source_key.Add(render->GetSubMeshIndex());
-            source_key.Add(render->GetIndexCount(0));
-            source_key.Add(render->GetVertexOffset(0));
+            source_key.Add(render->GetIndexCount());
+            source_key.Add(render->GetVertexOffset());
             source_key.Bytes(&mesh_to_body_matrices[i], sizeof(Matrix));
         }
 
@@ -2149,32 +2149,52 @@ namespace spartan
                 part.source = std::static_pointer_cast<Mesh>(render->GetMesh()->shared_from_this());
                 part.submesh = render->GetSubMeshIndex();
                 for (const auto& other : pending->parts)
-                    if (other.source == part.source) part.mesh = other.mesh;
-                if (!part.mesh) part.mesh = part.source->CreateSkinnedInstance();
-                if (!part.mesh) return; // retry after import has published the GPU geometry
+                    if (other.source == part.source)
+                    {
+                        part.mesh = other.mesh;
+                        part.rest_vertices = other.rest_vertices;
+                        break;
+                    }
+                if (!part.mesh)
+                {
+                    // The cage binds the authored surface once. It keeps its active
+                    // vertices resident so a streamed page cannot change cage indices.
+                    part.mesh = std::make_shared<Mesh>();
+                    part.mesh->SetDynamic(true);
+                    part.mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
+                    part.mesh->ReserveSubMeshes(part.source->GetSubMeshCount());
+                    for (uint32_t i = 0; i < part.source->GetSubMeshCount(); ++i)
+                    {
+                        std::vector<RHI_Vertex_PosTexNorTan> vertices;
+                        std::vector<uint32_t> indices;
+                        if (!part.source->ReadGeometry(i, &indices, &vertices)) return;
+                        part.mesh->AddResidentGeometry(vertices, indices, i);
+                    }
+                    part.mesh->CreateGpuBuffers();
+                    part.rest_vertices = std::make_shared<const std::vector<RHI_Vertex_PosTexNorTan>>(part.mesh->GetVertices());
+                }
                 part.mesh->SetResourceFilePath(part.source->GetResourceFilePath());
                 part.to_wheel = entity->GetMatrix() * wheel_frame.Inverted();
                 part.from_wheel = part.to_wheel.Inverted();
-                const auto& source_vertices = part.source->GetVertices();
-                for (const auto& lod : part.source->GetSubMesh(part.submesh).lods)
+                const auto& source_vertices = *part.rest_vertices;
+                const auto& surface = part.mesh->GetSubMesh(part.submesh).root;
                 {
                     auto& bindings = part.vertices;
-                    bindings.reserve(bindings.size() + lod.vertex_count);
-                    for (uint32_t j = 0; j < lod.vertex_count; ++j)
+                    bindings.reserve(surface.vertex_count);
+                    for (uint32_t j = 0; j < surface.vertex_count; ++j)
                     {
-                        const auto& vertex = source_vertices[lod.vertex_offset + j];
+                        const auto& vertex = source_vertices[surface.vertex_offset + j];
                         const Vector3 p = vertex.get_position(), n = vertex.get_normal();
                         Vector3 t = vertex.get_tangent();
                         if (t.LengthSquared() < 0.1f) t = n.Cross(std::abs(n.y) < 0.9f ? Vector3::Up : Vector3::Right).Normalized();
                         const Vector3 b = n.Cross(t).Normalized();
                         const Vector3 origin = part.to_wheel * Vector3::Zero;
                         TireVisualState::BoundVertex bound;
-                        bound.vertex_index = lod.vertex_offset + j;
-                        bound.lod_index = static_cast<uint32_t>(&lod - part.source->GetSubMesh(part.submesh).lods.data());
+                        bound.vertex_index = surface.vertex_offset + j;
                         bound.position = p;
                         bound.tangent = t;
                         bound.bitangent = b;
-                        if (bound.lod_index == 0) pending->cage.include_contact_vertex(part.to_wheel * p);
+                        pending->cage.include_contact_vertex(part.to_wheel * p);
                         bound.weights = pending->cage.bind(part.to_wheel * p,
                             part.to_wheel * t - origin, part.to_wheel * b - origin);
                         bindings.push_back(bound);
@@ -2249,16 +2269,14 @@ namespace spartan
             if (!render || render->GetMesh() != part.mesh.get()) continue;
             // A conservative world bound also selects the renderer's deformable
             // meshlet path: rest-pose cone/bounds tests cannot reject this tire.
-            const BoundingBox local = part.source->GetSubMesh(part.submesh).lods[0].aabb;
+            const BoundingBox local = part.source->GetSubMesh(part.submesh).root.aabb;
             const BoundingBox world = local * entity->GetMatrix();
             const BoundingBox bounds(world.GetMin() - Vector3(0.06f), world.GetMax() + Vector3(0.06f));
             if (!render->HasBoundingBoxOverride() || !(render->GetBoundingBox() == bounds)) render->SetBoundingBoxOverride(bounds);
-            const uint32_t current_lod = render->GetLodIndex();
-            const bool lod_changed = current_lod != part.previous_lod;
-            if (upload || lod_changed)
+            if (upload)
             {
                 auto& vertices = part.mesh->GetVertices();
-                const auto& original = part.source->GetVertices();
+                const auto& original = *part.rest_vertices;
                 const Vector3 origin = part.from_wheel * Vector3::Zero;
                 const Vector3 wheel_origin = part.to_wheel * Vector3::Zero;
                 const Vector3 plane_normal(
@@ -2278,7 +2296,7 @@ namespace spartan
                 {
                     local_displacement[cell] = visual->cage.active_sectors[cell % car::tire_cage::sectors]
                         ? part.from_wheel * visual->cage.displacement[cell] - origin : Vector3::Zero;
-                    if ((lod_changed || visual->active_cells[cell] || previous_cells[cell]) &&
+                    if ((visual->active_cells[cell] || previous_cells[cell]) &&
                         part.cell_offsets[cell] != part.cell_offsets[cell + 1])
                     {
                         dirty_cells[dirty_count++] = cell;
@@ -2286,13 +2304,11 @@ namespace spartan
                     }
                 }
                 auto skin_range = [&part, &vertices, &original, &local_displacement,
-                    visual_ptr = visual.get(), current_lod, grounded, plane_normal, plane_distance, contact_direction](uint32_t begin, uint32_t end)
+                    visual_ptr = visual.get(), grounded, plane_normal, plane_distance, contact_direction](uint32_t begin, uint32_t end)
                 {
                     for (uint32_t j = begin; j < end; ++j)
                     {
                         const auto& bound = part.vertices[j];
-                        // BLAS uses LOD 0; rasterization uses current_lod.
-                        if (bound.lod_index != 0 && bound.lod_index != current_lod) continue;
                         auto& vertex = vertices[bound.vertex_index];
                         if (!visual_ptr->active_cells[bound.weights.nodes[0]])
                         {
@@ -2329,7 +2345,7 @@ namespace spartan
                     }
                 }
                 SP_PROFILE_CPU_END();
-                auto upload_ranges = [&part, &vertices, render, dirty_count, current_lod]()
+                auto upload_ranges = [&part, &vertices, render, dirty_count]()
                 {
                     // Merge adjacent dirty blocks into uploads. This includes arcs
                     // leaving contact, whose vertices were restored above.
@@ -2341,22 +2357,16 @@ namespace spartan
                         const uint32_t begin = first * TireVisualState::Part::upload_block_size;
                         const uint32_t end = std::min(block * TireVisualState::Part::upload_block_size,
                             static_cast<uint32_t>(vertices.size()));
-                        const auto& lods = part.source->GetSubMesh(part.submesh).lods;
-                        for (uint32_t lod_index : {0u, current_lod})
-                        {
-                            const auto& lod = lods[lod_index];
-                            const uint32_t first_vertex = std::max(begin, lod.vertex_offset);
-                            const uint32_t last_vertex = std::min(end, lod.vertex_offset + lod.vertex_count);
-                            if (last_vertex > first_vertex)
-                                part.mesh->UploadVertexRange(first_vertex, last_vertex - first_vertex);
-                            if (current_lod == 0) break;
-                        }
+                        const auto& surface = part.mesh->GetSubMesh(part.submesh).root;
+                        const uint32_t first_vertex = std::max(begin, surface.vertex_offset);
+                        const uint32_t last_vertex = std::min(end, surface.vertex_offset + surface.vertex_count);
+                        if (last_vertex > first_vertex)
+                            part.mesh->UploadVertexRange(first_vertex, last_vertex - first_vertex);
                     }
                     if (dirty_count) render->SetNeedsBlasRefit(true);
                 };
                 if (batch && dirty_count) batch->uploads.push_back(upload_ranges);
                 else upload_ranges();
-                part.previous_lod = current_lod;
             }
 
         }

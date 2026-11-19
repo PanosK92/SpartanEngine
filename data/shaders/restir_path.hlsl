@@ -35,6 +35,8 @@ float3 restir_medium_transmittance(RestirMediumState medium, float distance)
     uint material = restir_medium_material(medium.slots.x);
     if (material == RESTIR_NO_MEDIUM || distance <= 0.0f) return 1.0f;
     MaterialParameters mat = material_parameters[material];
+    if (buffer_frame.ocean_enabled > 0.5f && (mat.flags & (1u << 13u)) != 0u)
+        return exp(-get_ocean_extinction() * distance);
     // The engine authors Beer-Lambert density in units of 1/50 metre.
     float exponent = max(mat.absorption, 0.0f) * distance * 50.0f;
     return exponent > 0.0f ? pow(saturate(mat.color.rgb), exponent) : 1.0f;

@@ -232,22 +232,32 @@ namespace spartan
         {
             return skinning_jobs[a].animator->m_bind_vertices.size() > skinning_jobs[b].animator->m_bind_vertices.size();
         });
-        atomic<uint32_t> next_job = 0;
-        ThreadPool::ParallelLoop([&next_job](uint32_t, uint32_t)
+        auto skin_job = [&](uint32_t i)
         {
-            for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < order.size();
-                i = next_job.fetch_add(1, memory_order_relaxed))
+            SkinningJob& job = skinning_jobs[order[i]];
+            Animator* animator = job.animator;
+            const auto& skeleton = job.mesh->GetSkeleton();
+            const auto* binding = job.mesh->GetSkeletalMeshBinding();
+            if (skeleton && binding)
+                job.succeeded = animation_evaluate::SkinMesh(*binding, animator->m_global_matrices,
+                    skeleton->bind_inverse_global_matrices, animator->m_bind_vertices,
+                    animator->m_skinned_vertices, animator->m_skin_matrices);
+        };
+        // A nested ParallelLoop runs inline. With only a few characters due,
+        // let their vertex loops use the pool instead of serializing each mesh.
+        if (order.size() <= ThreadPool::GetThreadCount() / 2)
+        {
+            for (uint32_t i = 0; i < order.size(); ++i) skin_job(i);
+        }
+        else
+        {
+            atomic<uint32_t> next_job = 0;
+            ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
             {
-                SkinningJob& job = skinning_jobs[order[i]];
-                Animator* animator = job.animator;
-                const auto& skeleton = job.mesh->GetSkeleton();
-                const auto* binding = job.mesh->GetSkeletalMeshBinding();
-                if (skeleton && binding)
-                    job.succeeded = animation_evaluate::SkinMesh(*binding, animator->m_global_matrices,
-                        skeleton->bind_inverse_global_matrices, animator->m_bind_vertices,
-                        animator->m_skinned_vertices, animator->m_skin_matrices);
-            }
-        }, static_cast<uint32_t>(skinning_jobs.size()));
+                for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < order.size();
+                    i = next_job.fetch_add(1, memory_order_relaxed)) skin_job(i);
+            }, static_cast<uint32_t>(order.size()));
+        }
         SP_PROFILE_CPU_END();
         SP_PROFILE_CPU_START("animation_publish_batch");
         for (SkinningJob& job : skinning_jobs)
@@ -1901,7 +1911,8 @@ namespace spartan
     void Animator::SkinFromLocalPose(
         Mesh* mesh,
         const Skeleton& skeleton,
-        const vector<Matrix>& local_matrices
+        const vector<Matrix>& local_matrices,
+        bool sample_clip
     )
     {
         if (!mesh || local_matrices.size() != skeleton.joint_count)
@@ -1930,6 +1941,20 @@ namespace spartan
             m_global_matrices
         );
 
+        if (mesh->HasCrowdPoses() && sample_clip)
+        {
+            const auto& renders = ResolveSkinRenders(mesh);
+            sample_clip = all_of(renders.begin(), renders.end(), [](const Render* render)
+            {
+                return render->HasFlag(RenderFlags::ExcludeFromRayTracing);
+            });
+        }
+        if (mesh->SelectCrowdPose(sample_clip ? m_clip_index : -1, m_time))
+        {
+            m_skin_published = true;
+            PublishPoseBounds(mesh);
+            return;
+        }
         EnsureDynamicBlas(mesh);
 
         if (batch_skinning)
@@ -2086,7 +2111,9 @@ namespace spartan
         m_last_local_matrices = local_matrices;
         if (!batch_skinning || IsSkinDue(mesh))
         {
-            SkinFromLocalPose(mesh, *skeleton, local_matrices);
+            const bool unmodified_clip = m_loop && !m_foot_ik_enabled && !m_inertializer.IsActive() &&
+                none_of(begin(m_limb_ik), end(m_limb_ik), [](const LimbIk& limb) { return limb.weight > 0.0f; });
+            SkinFromLocalPose(mesh, *skeleton, local_matrices, unmodified_clip);
         }
     }
 

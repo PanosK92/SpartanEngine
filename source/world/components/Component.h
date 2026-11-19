@@ -113,28 +113,9 @@ namespace spartan
         template <typename T>
         static constexpr ComponentType TypeToEnum() { return ComponentType::Max; }
 
-        static std::string TypeToString(ComponentType type)
-        {
-            switch (type)
-            {
-                #define X(type, str) case ComponentType::type: return #str;
-                SP_COMPONENT_LIST
-                #undef X
-                default:
-                    assert(false && "TypeToString: Unknown ComponentType");
-                    return {};
-            }
-        }
+        static std::string TypeToString(ComponentType type);
 
-        static ComponentType StringToType(const std::string& name)
-        {
-            #define X(type, str) if (name == #str) return ComponentType::type;
-            SP_COMPONENT_LIST
-            #undef X
-
-            SP_LOG_ERROR("Unsupported component in this application: %s", name.c_str());
-            return ComponentType::Max;
-        }
+        static ComponentType StringToType(const std::string& name);
 
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
@@ -161,16 +142,7 @@ namespace spartan
         [this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); }, false);     \
 
         // registers an attribute
-        void RegisterAttribute(const char* name, const char* type, std::function<std::any()>&& getter, std::function<void(std::any)>&& setter, bool writable = false)
-        {
-            Attribute attribute;
-            attribute.writable = writable;
-            attribute.name   = name;
-            attribute.type   = type;
-            attribute.getter = std::move(getter);
-            attribute.setter = std::move(setter);
-            m_attributes.emplace_back(attribute);
-        }
+        void RegisterAttribute(const char* name, const char* type, std::function<std::any()>&& getter, std::function<void(std::any)>&& setter, bool writable = false);
 
         // the type of the component
         ComponentType m_type = ComponentType::Max;

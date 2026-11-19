@@ -101,11 +101,11 @@ namespace spartan::scripting
 
         void register_text_3d(sol::state_view state)
         {
-            visual::enumeration(state, "Text3DAlignment",
-                "Left",   Text3DAlignment::Left,
-                "Center", Text3DAlignment::Center,
-                "Right",  Text3DAlignment::Right
-            );
+            visual::enumeration<Text3DAlignment>(state, "Text3DAlignment", {
+                {"Left",   Text3DAlignment::Left},
+                {"Center", Text3DAlignment::Center},
+                {"Right",  Text3DAlignment::Right}
+            });
 
             visual::usertype<Text3D>(state, "Text3D",
                 sol::base_classes,  sol::bases<Component>(),
@@ -208,19 +208,19 @@ namespace spartan::scripting
 
         void register_camera(sol::state_view state)
         {
-            visual::enumeration(state, "CameraExposureMode",
-                "manual",    CameraExposureMode::manual,
-                "automatic", CameraExposureMode::automatic
-            );
+            visual::enumeration<CameraExposureMode>(state, "CameraExposureMode", {
+                {"manual",    CameraExposureMode::manual},
+                {"automatic", CameraExposureMode::automatic}
+            });
 
-            visual::enumeration(state, "CameraFlags",
-                "CanBeControlled",       CameraFlags::CanBeControlled,
-                "IsControlled",          CameraFlags::IsControlled,
-                "WantsCursorHidden",     CameraFlags::WantsCursorHidden,
-                "IsDirty",               CameraFlags::IsDirty,
-                "PhysicalBodyAnimation", CameraFlags::PhysicalBodyAnimation,
-                "Flashlight",            CameraFlags::Flashlight
-            );
+            visual::enumeration<CameraFlags>(state, "CameraFlags", {
+                {"CanBeControlled",       CameraFlags::CanBeControlled},
+                {"IsControlled",          CameraFlags::IsControlled},
+                {"WantsCursorHidden",     CameraFlags::WantsCursorHidden},
+                {"IsDirty",               CameraFlags::IsDirty},
+                {"PhysicalBodyAnimation", CameraFlags::PhysicalBodyAnimation},
+                {"Flashlight",            CameraFlags::Flashlight}
+            });
 
             visual::usertype<Camera>(state, "Camera",
                 "GetFovHorizontalDeg",             &Camera::GetFovHorizontalDeg,

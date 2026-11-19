@@ -467,20 +467,20 @@ namespace spartan
         );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-            renderer_max_gpu_scatter_args * 3, nullptr, false, "grass_count"
+            renderer_max_gpu_scatter_args, nullptr, false, "grass_count"
         );
         at(buffers, Renderer_Buffer::GrassIndirectArgs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-            renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_indirect_args"
+            renderer_max_gpu_scatter_args, nullptr, false, "grass_indirect_args"
         );
         // the mesh shader grass draws, one entry per draw list like grass_indirect_args, see grass_mesh_layout.hlsl
         at(buffers, Renderer_Buffer::GrassMeshGeometry) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 4),
-            renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_mesh_geometry"
+            renderer_max_gpu_scatter_args, nullptr, false, "grass_mesh_geometry"
         );
         at(buffers, Renderer_Buffer::GrassMeshArgs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 4),
-            renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_mesh_args"
+            renderer_max_gpu_scatter_args, nullptr, false, "grass_mesh_args"
         );
     }
 
@@ -1551,6 +1551,8 @@ namespace spartan
             { Renderer_Shader::meshlet_mesh_depth_alpha_m,            RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_late_m,             RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_LATE", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_alpha_late_m,       RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, "DEPTH_LATE", true },
+            { Renderer_Shader::meshlet_visualize_m,                   RHI_Shader_Type::MeshShader, "meshlet_mesh.hlsl", RHI_Vertex_Type::Max, "MESHLET_VISUALIZE", true, false, nullptr, true },
+            { Renderer_Shader::meshlet_visualize_alpha_m,             RHI_Shader_Type::MeshShader, "meshlet_mesh.hlsl", RHI_Vertex_Type::Max, "MESHLET_VISUALIZE", true, false, "GBUFFER_ALPHA", true },
             { Renderer_Shader::meshlet_visualize_v,                   RHI_Shader_Type::Vertex,  "meshlet_visualize.hlsl"                                                     },
             { Renderer_Shader::meshlet_visualize_p,                   RHI_Shader_Type::Pixel,   "meshlet_visualize.hlsl"                                                     },
 
@@ -1731,7 +1733,7 @@ namespace spartan
             def.generate(&vertices, &indices);
             mesh->SetResourceFilePath(project_directory + def.name + EXTENSION_MESH);
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            mesh->AddGeometry(vertices, indices, false);
+            mesh->AddGeometry(vertices, indices);
             mesh->SetType(def.type);
             mesh->CreateGpuBuffers();
 

@@ -319,7 +319,7 @@ namespace spartan
                     for (uint32_t i = 0; i < mesh->GetSubMeshCount(); i++)
                     {
                         const SubMesh& sub_mesh = mesh->GetSubMesh(i);
-                        totals.lod0_indices += sub_mesh.lods.empty() ? 0 : sub_mesh.lods[0].index_count;
+                        totals.lod0_indices += sub_mesh.root.index_count == 0 ? 0 : sub_mesh.root.index_count;
                     }
                 }
                 groups[found->second].entities++;

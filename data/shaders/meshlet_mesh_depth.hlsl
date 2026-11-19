@@ -46,7 +46,6 @@ groupshared uint            gs_first_micro;
 groupshared bool            gs_skip_backface;
 groupshared bool            gs_emit;
 groupshared float3          gs_world[MESHLET_MAX_VERTICES];
-groupshared float3          gs_ndc_w[MESHLET_MAX_VERTICES];
 
 [outputtopology("triangle")]
 [numthreads(MESH_SHADER_NUMTHREADS, 1, 1)]
@@ -98,7 +97,7 @@ void main_ms(
                 gs_first_vertex   = gs_draw.meshlet_vertex_base + meshlet_decode_first_vertex(gs_mb);
                 gs_first_micro    = gs_draw.meshlet_micro_base + gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
+                cache_mesh_instance(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
             }
         }
     }
@@ -124,7 +123,7 @@ void main_ms(
         }
 
         uint local_vertex_id  = meshlet_vertices[gs_first_vertex + v_index];
-        uint global_vertex_id = local_vertex_id + gs_draw.lod_vertex_offset;
+        uint global_vertex_id = local_vertex_id + gs_draw.geometry_vertex_offset;
         Vertex_PosUvNorTan input = pull_vertex(global_vertex_id, gs_mi.instance_index, gs_draw.instance_offset);
 
         float3 position_world             = 0.0f;
@@ -151,11 +150,14 @@ void main_ms(
         out_v.position        = clipped.position;
         out_vertices[v_index] = out_v;
 #endif
-        gs_world[v_index] = position_world;
-        gs_ndc_w[v_index] = float3(clipped.position.xy / clipped.position.w, clipped.position.w);
+        if (!gs_skip_backface)
+            gs_world[v_index] = position_world;
     }
 
-    GroupMemoryBarrierWithGroupSync();
+    // Two-sided meshlets only need their topology. Fixed-function rasterization
+    // handles subpixel coverage without sharing projected vertices across lanes.
+    if (!gs_skip_backface)
+        GroupMemoryBarrierWithGroupSync();
 
     const uint triangle_loops = (MESHLET_MAX_TRIANGLES + MESH_SHADER_NUMTHREADS - 1) / MESH_SHADER_NUMTHREADS;
     [unroll]
@@ -182,20 +184,6 @@ void main_ms(
             float3 face_normal = cross(p1w - p0w, p2w - p0w);
             float3 view_dir    = p0w - buffer_frame.camera_position;
             cull = dot(face_normal, view_dir) > 0.0f;
-        }
-
-        float3 p0 = gs_ndc_w[i0];
-        float3 p1 = gs_ndc_w[i1];
-        float3 p2 = gs_ndc_w[i2];
-
-        if (!cull && p0.z > 0.0f && p1.z > 0.0f && p2.z > 0.0f)
-        {
-            float2 n0 = p0.xy;
-            float2 n1 = p1.xy;
-            float2 n2 = p2.xy;
-            float2 ndc_min = min(n0, min(n1, n2));
-            float2 ndc_max = max(n0, max(n1, n2));
-            cull = triangle_misses_pixel_centers(ndc_min, ndc_max);
         }
 
         MeshPrimitive prim;

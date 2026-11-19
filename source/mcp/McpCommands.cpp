@@ -5593,18 +5593,6 @@ namespace spartan
                 return json_error(error);
             }
 
-            bool generate_lods = true;
-            if (
-                const std::optional<std::string> value =
-                    get_argument(request, "generate_lods")
-            )
-            {
-                if (!parse_bool(*value, generate_lods))
-                {
-                    return json_error("generate_lods must be a boolean");
-                }
-            }
-
             // one mesh file for the whole hierarchy, named after what it came from unless asked otherwise
             const std::optional<std::string> requested_path =
                 get_argument(request, "path");
@@ -5626,8 +5614,7 @@ namespace spartan
             const game_ready::MergeReport report =
                 game_ready::MergeRenderersByMaterial(
                     entity,
-                    *resolved_path,
-                    generate_lods
+                    *resolved_path
                 );
             if (!report.ok)
             {
@@ -6390,7 +6377,7 @@ namespace spartan
                 ),
                 false
             );
-            mesh->AddGeometry(vertices, indices, false);
+            mesh->AddGeometry(vertices, indices);
             mesh->SaveToFile(*path);
             if (!FileSystem::IsFile(*path))
             {

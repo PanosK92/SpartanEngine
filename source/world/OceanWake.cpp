@@ -547,6 +547,8 @@ namespace spartan
 
         void clear_locked(State& s)
         {
+            if (!s.active && !s.origin_valid && s.bodies.empty())
+                return;
             if (!s.height.empty())
             {
                 fill(s.height.begin(), s.height.end(), 0.0f);
@@ -561,7 +563,7 @@ namespace spartan
             s.origin_valid = false;
             s.accumulator = 0.0f;
             s.quiet_time  = 0.0f;
-            s.upload_zero = s.active;
+            s.upload_zero |= s.active;
             s.active      = false;
         }
     }
@@ -597,8 +599,6 @@ namespace spartan
         body.current.assign(columns, columns + count);
         body.reported = true;
         body.idle     = 0;
-        s.active      = true;
-        s.quiet_time  = 0.0f;
     }
 
     void OceanWake::Tick(float dt, const Vector3& focus, float sea_level)
@@ -611,12 +611,33 @@ namespace spartan
             return;
         }
 
-        ensure_cells(s);
-        move_window(s, focus, sea_level);
+        // The splat kernel can reach two cells past a column. Bodies elsewhere in
+        // the world cannot excite this camera's finite simulation window.
+        const float radius = (res / 2 + 3) * cell_size;
+        bool local_source = false;
+        for (auto it = s.bodies.begin(); it != s.bodies.end();)
+        {
+            const auto reaches_window = [&](const OceanWakeColumn& column)
+            {
+                return column.volume > 0.0f && fabsf(column.x - focus.x) <= radius && fabsf(column.z - focus.z) <= radius;
+            };
+            const Body& body = it->second;
+            if (!any_of(body.current.begin(), body.current.end(), reaches_window) &&
+                !any_of(body.previous.begin(), body.previous.end(), reaches_window))
+            {
+                it = s.bodies.erase(it);
+                continue;
+            }
+            local_source |= body.reported;
+            ++it;
+        }
+        s.active |= local_source;
         if (!s.active)
         {
             return;
         }
+        ensure_cells(s);
+        move_window(s, focus, sea_level);
 
         // the source is the change of what each body holds out of the water since the last tick, a body that
         // just arrived or left adds nothing, otherwise a car spawned in the sea would throw a tsunami

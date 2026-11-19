@@ -110,6 +110,7 @@ namespace spartan
         uint64_t m_navigation_entity_id = 0; // 0 chooses the first active Navigation component
         std::shared_ptr<NavigationWorld> m_navigation; // consumer reference, never ticks the provider
         std::shared_ptr<Mesh> m_source_mesh;
+        std::shared_ptr<Mesh> m_crowd_geometry;
         math::Vector3 m_bounds_min = math::Vector3(454.5f, -10.0f, -793.9f);
         math::Vector3 m_bounds_max = math::Vector3(1414.5f, 80.0f, 166.1f);
         std::string m_model_file = "project/models/mannequiny/mannequiny.glb";

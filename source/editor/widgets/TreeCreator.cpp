@@ -158,28 +158,10 @@ namespace
             return output;
         }
 
-        uint32_t lod_count = 0;
-        for (uint32_t i = 0; i < mesh->GetSubMeshCount(); i++)
-        {
-            lod_count = max(lod_count, static_cast<uint32_t>(mesh->GetSubMesh(i).lods.size()));
-        }
-        output.lod_triangles.assign(lod_count, 0);
-        for (uint32_t i = 0; i < mesh->GetSubMeshCount(); i++)
-        {
-            const vector<MeshLod>& lods = mesh->GetSubMesh(i).lods;
-            if (lods.empty())
-            {
-                continue;
-            }
-            const uint32_t lod0 = lods[0].index_count / 3;
-            output.triangles += lod0;
-            output.vertices  += lods[0].vertex_count;
-            (i == 0 ? output.bark_triangles : output.foliage_triangles) = lod0;
-            for (uint32_t k = 0; k < lod_count; k++)
-            {
-                output.lod_triangles[k] += lods[min(k, static_cast<uint32_t>(lods.size()) - 1)].index_count / 3;
-            }
-        }
+        output.bark_triangles = static_cast<uint32_t>(tree.bark.indices.size() / 3);
+        output.foliage_triangles = static_cast<uint32_t>(tree.foliage.indices.size() / 3);
+        output.triangles = output.bark_triangles + output.foliage_triangles;
+        output.vertices = static_cast<uint32_t>(tree.bark.vertices.size() + tree.foliage.vertices.size());
         return output;
     }
 }
@@ -218,7 +200,6 @@ void TreeCreator::OnWorldUnloading()
     m_preview_rig_id    = 0;
     m_preview_camera_id = 0;
     m_mesh.reset();
-    m_lod_meshes.clear();
     m_bark_material.reset();
     m_foliage_material.reset();
     m_ground_material.reset();
@@ -336,17 +317,6 @@ void TreeCreator::SetPreviewView(const float yaw, const float pitch, const float
     m_preview_dirty = true;
 }
 
-void TreeCreator::SetPreviewLod(const int lod)
-{
-    const int count = static_cast<int>(m_stats.lod_triangles.size());
-    const int value = clamp(lod, 0, max(0, count - 1));
-    if (value != m_preview_lod)
-    {
-        m_preview_lod = value;
-        BuildPreviewScene();
-    }
-}
-
 void TreeCreator::RequestGenerate()
 {
     m_generate_pending = true;
@@ -399,7 +369,7 @@ bool TreeCreator::CollectJob(const bool wait)
 
 void TreeCreator::ApplyJob(job& finished)
 {
-    if (finished.tree.bark_lods.empty() || finished.tree.bark_lods.front().indices.empty())
+    if (finished.tree.bark.indices.empty())
     {
         m_status = "the species produced no geometry";
         return;
@@ -407,7 +377,6 @@ void TreeCreator::ApplyJob(job& finished)
 
     const auto start = chrono::steady_clock::now();
     m_mesh = trees::build_mesh(finished.tree, finished.recipe.id + "_tree_creator", false);
-    m_lod_meshes.clear();
     const float mesh_ms = chrono::duration<float, milli>(chrono::steady_clock::now() - start).count();
 
     // the textures only change with the species and the season
@@ -433,7 +402,6 @@ void TreeCreator::ApplyJob(job& finished)
 
     m_stats = measure(m_mesh.get(), finished.tree, finished.milliseconds + mesh_ms);
     m_tree  = move(finished.tree);
-    m_preview_lod = min(m_preview_lod, max(0, static_cast<int>(m_stats.lod_triangles.size()) - 1));
     BuildPreviewScene();
 
     if (is_default(finished.controls) && !FileSystem::Exists(thumbnail_path(finished.recipe.id)))
@@ -503,46 +471,10 @@ void TreeCreator::DestroyPreviewScene()
     m_orbiting          = false;
 }
 
-Mesh* TreeCreator::PreviewMeshForLod()
-{
-    if (!m_mesh || m_preview_lod <= 0)
-    {
-        return m_mesh.get();
-    }
-
-    const uint32_t level = static_cast<uint32_t>(m_preview_lod);
-    if (m_lod_meshes.size() <= level)
-    {
-        m_lod_meshes.resize(level + 1);
-    }
-    if (!m_lod_meshes[level])
-    {
-        // the renderer picks levels by distance, a scratch mesh holding only one level shows it up close
-        shared_ptr<Mesh> scratch = make_shared<Mesh>();
-        scratch->SetObjectName(m_mesh->GetObjectName() + "_lod" + to_string(level));
-        scratch->SetFlags(static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0) | static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
-        scratch->ReserveSubMeshes(m_mesh->GetSubMeshCount());
-        for (uint32_t i = 0; i < m_mesh->GetSubMeshCount(); i++)
-        {
-            const uint32_t count = m_mesh->GetLodCount(i);
-            vector<uint32_t> indices;
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            if (count == 0 || !m_mesh->GetGeometryLod(i, min(level, count - 1), &indices, &vertices))
-            {
-                continue;
-            }
-            scratch->AddGeometry(vertices, indices, false, i, true);
-        }
-        scratch->CreateGpuBuffers();
-        m_lod_meshes[level] = scratch;
-    }
-    return m_lod_meshes[level].get();
-}
-
 void TreeCreator::BuildPreviewScene()
 {
     DestroyPreviewScene();
-    Mesh* mesh = PreviewMeshForLod();
+    Mesh* mesh = m_mesh.get();
     if (!mesh || !m_bark_material || !m_foliage_material)
     {
         return;
@@ -725,7 +657,7 @@ void TreeCreator::RefreshThumbnail(const string& id)
 bool TreeCreator::ExportOne(const trees::species& recipe, const trees::controls& controls, const string& name, export_result& output, string& error)
 {
     trees::result tree = trees::generate(recipe, controls);
-    if (tree.bark_lods.empty() || tree.bark_lods.front().indices.empty())
+    if (tree.bark.indices.empty())
     {
         error = "the species produced no geometry";
         return false;
@@ -763,7 +695,7 @@ bool TreeCreator::ExportOne(const trees::species& recipe, const trees::controls&
         return false;
     }
 
-    // baked with the impostor, saved, then loaded back so the prefab references exactly what a world will load
+    // cooked, saved, then loaded back so the prefab references exactly what a world will load
     const string mesh_path = directory + folder + EXTENSION_MESH;
     {
         shared_ptr<Mesh> built = trees::build_mesh(tree, folder, true);
@@ -837,7 +769,6 @@ bool TreeCreator::ExportOne(const trees::species& recipe, const trees::controls&
     output.mesh      = mesh_path;
     output.seed      = controls.seed;
     output.numbers   = measure(mesh.get(), tree, 0.0f);
-    output.impostor  = mesh->GetSubMeshCount() > 1 && mesh->GetSubMesh(1).impostor != nullptr;
     return true;
 }
 
@@ -1194,30 +1125,15 @@ void TreeCreator::DrawPreview(const float width, const float height)
             }
             m_preview_dirty = true;
         }
-        for (int i = 0; i < static_cast<int>(m_stats.lod_triangles.size()); i++)
-        {
-            ImGui::SameLine(0.0f, 4.0f * scale);
-            const string label   = "LOD " + to_string(i);
-            const string tooltip = to_string(m_stats.lod_triangles[i]) + " triangles";
-            if (editor_ui::toolbar::pill(label.c_str(), m_preview_lod == i, ImGui::Style::color_accent_1, tooltip.c_str()))
-            {
-                SetPreviewLod(i);
-            }
-        }
-        if (!m_stats.lod_triangles.empty())
-        {
-            ImGui::SameLine(0.0f, 4.0f * scale);
-            editor_ui::toolbar::pill("Impostor", false, ImGui::Style::color_text_muted, "The last level is a baked impostor card, it replaces the leaves of instanced trees in the distance and is built on export");
-        }
+
     }
 
     // bottom left, the numbers that matter for a tree
     if (has_scene && m_mesh)
     {
-        const uint32_t shown = m_stats.lod_triangles.empty() ? 0 : m_stats.lod_triangles[min(static_cast<size_t>(m_preview_lod), m_stats.lod_triangles.size() - 1)];
         char text[256];
         snprintf(text, sizeof(text), "%u triangles  (budget %u)    bark %u  leaves %u    %.1f m tall, %.1f m wide    %.0f ms",
-            shown, m_stats.budget, m_stats.bark_triangles, m_stats.foliage_triangles, m_stats.height, m_stats.crown_width, m_stats.generate_ms);
+            m_stats.triangles, m_stats.budget, m_stats.bark_triangles, m_stats.foliage_triangles, m_stats.height, m_stats.crown_width, m_stats.generate_ms);
         const ImVec2 text_size = ImGui::CalcTextSize(text);
         const ImVec2 card_min(minimum.x + 10.0f * scale, maximum.y - text_size.y - 22.0f * scale);
         const ImVec2 card_max(card_min.x + text_size.x + 16.0f * scale, maximum.y - 8.0f * scale);
@@ -1303,7 +1219,7 @@ void TreeCreator::DrawControls(const float width, const float height)
         RequestGenerate();
     }
 
-    editor_ui::card_begin("Export", "A prefab with bark, leaves, a trunk collider and an impostor for distant forests");
+    editor_ui::card_begin("Export", "A prefab with bark, leaves and a trunk collider");
     const string hint = recipe->id + "_" + to_string(m_controls.seed);
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputTextWithHint("##tree_name", hint.c_str(), &m_export_name);

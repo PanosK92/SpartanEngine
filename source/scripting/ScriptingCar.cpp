@@ -135,12 +135,12 @@ namespace spartan::scripting
         sol::table values = body_types[sol::metatable_key][sol::meta_function::index];
         values["Vehicle"] = BodyType::Custom;
         visual::detail::add_enum_value("BodyType", "Vehicle", static_cast<int64_t>(BodyType::Custom));
-        visual::enumeration(State, "WheelIndex",
-            "FrontLeft",    WheelIndex::FrontLeft,
-            "FrontRight",   WheelIndex::FrontRight,
-            "RearLeft",     WheelIndex::RearLeft,
-            "RearRight",    WheelIndex::RearRight,
-            "Count",        WheelIndex::Count);
+        visual::enumeration<WheelIndex>(State, "WheelIndex", {
+            {"FrontLeft",    WheelIndex::FrontLeft},
+            {"FrontRight",   WheelIndex::FrontRight},
+            {"RearLeft",     WheelIndex::RearLeft},
+            {"RearRight",    WheelIndex::RearRight},
+            {"Count",        WheelIndex::Count}});
 
 
         visual::usertype_extension<Physics> type(State, "Physics");

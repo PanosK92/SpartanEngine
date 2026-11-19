@@ -57,10 +57,6 @@ static const float grass_cull_radius      = 1.5f;
 // to sit below the range or the tail of the distribution gets clipped by the atomic and blinks
 #define GRASS_FILL_MARGIN 0.85f
 
-// card ring distance bands, has to match renderer_gpu_scatter_card_bands, their block windows follow the
-// slot parameters, the vehicle region and the ring windows in grass_lod_parameters
-static const uint  grass_card_bands     = 4u;
-static const uint  grass_card_band_base = 13u;
 // squares without overflowing, a band that never ends
 static const float grass_band_unbounded = 1e18f;
 // candidates of one cell a blade ring thread walks, has to match gpu_scatter_blades_per_thread
@@ -414,15 +410,6 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     uint  blades_per_cell = max(1u, (uint)ceil(per_cell));
     float cell_keep       = saturate(per_cell / float(blades_per_cell));
 
-    // an impostor ring draws one tuft card per cell, the card itself carries the blades, the cpu
-    // dispatches a single thread per cell for it and the budget has nothing left to decide
-    bool card_ring = grass_lod_parameters[slot_index].z == float(lod_index + 1u);
-    if (card_ring)
-    {
-        blades_per_cell = 1u;
-        cell_keep       = 1.0f;
-    }
-
     if (cell_id.x >= cells_per_axis ||
         cell_id.y >= cells_per_axis ||
         blade_index >= blades_per_cell)
@@ -473,7 +460,7 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     float sc = hash_unit(h3);
 
     float2 cell_position = float2(jx, jz);
-    if (slot_index == 0u && !card_ring)
+    if (slot_index == 0u)
     {
         uint seed = hash_u32((uint)world_cell_x, (uint)world_cell_z, lod_index * 2654435761u);
         // Use the maximum FOV boost for the subdivision, not the current count.
@@ -515,20 +502,6 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     )
     {
         return false;
-    }
-
-    // past the thinning distance a card stands in for its neighbours, it survives with the inverse square
-    // of how much wider the vertex shader draws it, so screen coverage holds while the count only grows
-    // with the log of the reach, which is what lets the ring go out as far as the trees are drawn
-    if (card_ring)
-    {
-        float card_thin  = grass_lod_parameters[slot_index].w;
-        float card_scale = card_thin > 0.0f ? max(1.0f, sqrt(dist2) / card_thin) : 1.0f;
-        if (hash_unit(hash_mix(h0 ^ 0x5bd1e995u)) * card_scale * card_scale > 1.0f)
-        {
-            return false;
-        }
-        cull_radius *= card_scale;
     }
 
     // height reject, single centre tap, also yields world_y for the visibility cull below
@@ -763,64 +736,4 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
 }
 
 // whether a near ring blade can take the coarse geometry without its silhouette error showing, only lod 0 asks
-bool grass_candidate_coarse(GrassCandidate candidate, uint lod_index, uint slot_index)
-{
-    float2 world_xz       = candidate.position.xz;
-    float  world_y        = candidate.position.y;
-    float3 surface_normal = candidate.normal;
-    float  scale_01       = candidate.scale_01;
-    float  cull_radius    = candidate.cull_radius;
-    uint   h0             = candidate.hash;
-
-    bool coarse = false;
-    float4 detail = grass_lod_parameters[slot_index];
-    if (lod_index == 0u && detail.x > 0.0f && abs(buffer_frame.projection[3][3]) < 0.5f)
-    {
-        float3 root = float3(world_xz.x, world_y, world_xz.y);
-        float4 contact = grass_lod_parameters[3];
-        float3 to_contact = root - contact.xyz;
-        float4 clip = mul(float4(root, 1.0f), buffer_frame.view_projection_unjittered);
-        float scale = exp2(lerp(-6.643856f, 6.643856f, round(saturate(scale_01) * 255.0f) / 255.0f));
-        float focal_pixels = 0.5f * max(abs(buffer_frame.projection[0][0]) * buffer_frame.resolution_output.x,
-                                      abs(buffer_frame.projection[1][1]) * buffer_frame.resolution_output.y);
-        // Use both views so approaching a blade or changing FOV cannot simplify
-        // the previous geometry beyond the same motion-vector error budget.
-        float4 previous_clip = mul(float4(root, 1.0f), buffer_frame.view_projection_previous_unjittered);
-        float previous_focal = 0.5f * max(abs(buffer_frame.projection_previous[0][0]) * buffer_frame.resolution_output.x,
-                                        abs(buffer_frame.projection_previous[1][1]) * buffer_frame.resolution_output.y);
-        float pixels_per_height = detail.x * scale * max(
-            focal_pixels / max(clip.w - cull_radius, 0.001f),
-            previous_focal / max(previous_clip.w - cull_radius, 0.001f));
-        // A stable root hash spreads transitions; the budget is never exceeded.
-        float budget = detail.y * lerp(0.85f, 1.0f, hash_unit(hash_mix(h0 ^ 0x41c64e6du)));
-        coarse = pixels_per_height * 0.025f < budget && clip.w > 15.0f &&
-                 (contact.w <= 0.0f || dot(to_contact, to_contact) > contact.w * contact.w);
-        // Below the clamp angle (at most 75 degrees), the polynomial error
-        // bound is below 0.15; the clamped case is exactly 0.15. If that worst
-        // case already fits, both wind samples leave the LOD decision unchanged.
-        if (coarse && pixels_per_height * 0.150001f >= budget)
-        {
-            wind_sample current_wind = evaluate_wind(root, 0.0f);
-            wind_sample previous_wind = evaluate_wind(root, -buffer_frame.delta_time);
-            float response = grass_wind_response();
-            float pressure = max(current_wind.bend_strength, previous_wind.bend_strength);
-            float gust = max(current_wind.gust, previous_wind.gust);
-            // Upper envelope includes spring, ambient wobble, micro and gust flutter and the
-            // largest resting arch, at both motion-vector times. Clamping the bend
-            // introduces a kink, so use a larger error envelope in that case.
-            float angle = pressure * (1.03f * 55.0f * DEG_TO_RAD + 0.0175f) +
-                          response * (2.3f + 5.0f) * DEG_TO_RAD +
-                          22.0f * DEG_TO_RAD * (1.0f + response * (0.10f + 0.14f * gust));
-            float limit = max(0.0f, 75.0f * DEG_TO_RAD - acos(saturate(surface_normal.y)));
-            // Cantilever r(t)=t*R(A*t^1.5): chord error <= max|r''|/72
-            // for three segments. Padding covers the prebend and ribbon taper.
-            float error_fraction = angle >= limit ? 0.15f :
-                0.05208334f * angle + 0.03125f * angle * angle + 0.015f;
-            coarse = pixels_per_height * error_fraction < budget;
-        }
-    }
-
-    return coarse;
-}
-
 #endif // SPARTAN_GRASS_PLACEMENT

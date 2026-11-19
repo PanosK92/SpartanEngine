@@ -16,7 +16,6 @@ Commercial use requires written permission and negotiated payment terms.
 // writes [n, 2n) for the draws the early cull skipped, so every draw lands in at most one half
 
 StructuredBuffer<TessellatedDraw>    tessellated_draws : register(t80);
-StructuredBuffer<uint4>              tessellated_lods  : register(t81); // index count, first index, vertex offset, unused
 RWStructuredBuffer<IndirectDrawArgs> tessellated_args  : register(u82);
 
 // displacement pushes the surface along its normal by at most terrain_displacement_scale
@@ -58,16 +57,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         visible = sphere_hiz_visible_history(tex, center, radius, max_mip, depth_bias);
     }
 
-    // same coverage as Render::UpdateLodIndices, the distance to the closest point of the bounds and the size of one instance
-    float3 closest = clamp(buffer_frame.camera_position, draw.bounds_min, draw.bounds_max);
-    uint lod       = sphere_lod_index(closest, length(draw.lod_extents), draw.lod_count);
-    uint4 range    = tessellated_lods[draw.lod_offset + lod];
-
     IndirectDrawArgs args;
-    args.index_count    = range.x;
+    args.index_count    = draw.index_count;
     args.instance_count = visible ? draw.instance_count : 0u;
-    args.first_index    = range.y;
-    args.vertex_offset  = (int)range.z;
+    args.first_index    = draw.first_index;
+    args.vertex_offset  = (int)draw.vertex_offset;
     args.first_instance = draw.first_instance;
     tessellated_args[thread_id.x + (late ? draw_count : 0u)] = args;
 }

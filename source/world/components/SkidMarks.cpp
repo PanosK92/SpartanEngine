@@ -399,7 +399,8 @@ namespace spartan
         trail.mesh->SetObjectName(name);
         trail.mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         trail.mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-        trail.mesh->AddGeometry(vertices, indices, false);
+        trail.mesh->SetDynamic(true);
+        trail.mesh->AddGeometry(vertices, indices);
         trail.mesh->CreateGpuBuffers();
 
         // a standalone, identity-transform entity so world-space vertices are not transformed twice

@@ -12,6 +12,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Renderer.h"
 #include <map>
 #include "../geometry/GeneratedCache.h"
+#include "../geometry/Mesh.h"
+#include "../core/ThreadPool.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Device.h"
@@ -69,7 +71,6 @@ namespace spartan
         Stream<uint32_t> meshlet_vertices;
         Stream<uint8_t> meshlet_micro_indices;
         Stream<Instance> instances;
-        Stream<uint32_t> impostor_texels;
 
         // micro index packing, a corner is a meshlet local vertex id below MESHLET_MAX_VERTICES so a byte is enough
         // every append pads to a multiple of this so a mesh block never straddles a uint and sub-region uploads stay aligned
@@ -87,8 +88,6 @@ namespace spartan
         unique_ptr<RHI_Buffer> meshlet_vertex_buffer;
         unique_ptr<RHI_Buffer> meshlet_micro_index_buffer;
         unique_ptr<RHI_Buffer> instance_buffer;
-        unique_ptr<RHI_Buffer> impostor_texel_buffer;
-        uint32_t impostor_texel_capacity = 0;
 
         // actual gpu buffer element counts, only written after a successful alloc
         uint32_t vertex_capacity         = 0;
@@ -360,20 +359,6 @@ namespace spartan
         return base_offset;
     }
 
-    uint32_t GeometryBuffer::AppendImpostorTexels(const uint32_t* data, uint32_t count)
-    {
-        lock_guard<mutex> lock(buffer_mutex);
-
-        uint32_t base_offset = impostor_texels.size();
-        if (count > 0)
-        {
-            impostor_texels.tail.insert(impostor_texels.tail.end(), data, data + count);
-            dirty = true;
-        }
-
-        return base_offset;
-    }
-
     uint32_t GeometryBuffer::AppendInstances(const Instance* data, uint32_t count)
     {
         lock_guard<mutex> lock(buffer_mutex);
@@ -542,6 +527,212 @@ namespace spartan
             bytes[i] = static_cast<uint8_t>(data[i]);
 
         write(meshlet_micro_indices, &meshlet_micro_writes, meshlet_micro_index_buffer.get(), bytes.data(), offset, padded_count);
+    }
+
+    namespace
+    {
+        struct GeometryPageSlot
+        {
+            shared_ptr<const GeometryPageSource> source;
+            shared_ptr<GeometryPage> decoded;
+            future<void> read;
+            ResidentGeometryPage address = {};
+            uint64_t last_request = 0;
+            bool allocated = false;
+            bool uploaded = false;
+            bool failed = false;
+        };
+        // One pool shared by all cameras. Only the render thread mutates the slots.
+        TConsoleVar<float> page_budget("r.geometry_page_budget", 256.0f, "Maximum active streamed geometry pages; pool storage is reclaimed on world unload");
+        constexpr size_t geometry_reads_in_flight = 8;
+        vector<GeometryPageSlot> page_slots;
+        unordered_map<const GeometryPageSource*, size_t> page_lookup;
+        struct PageRequest
+        {
+            shared_ptr<const GeometryPageSource> source;
+            float error;
+        };
+        vector<PageRequest> page_requests;
+        size_t pending_page_reads = 0;
+        GeometryBuffer::PageStatistics page_statistics;
+    }
+
+    static uint32_t select_pages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors)
+    {
+        const float projected_error = cluster.error * density;
+        if (cluster.refinements.empty() || projected_error <= 1.0f) return 0;
+        size_t choice = 0;
+        while (choice + 1 < cluster.refinements.size() && cluster.refinements[choice + 1].error * density <= 1.0f) ++choice;
+        uint32_t count = 0;
+        for (size_t i = choice; i < cluster.refinements.size(); ++i)
+        {
+            const auto& level = cluster.refinements[i];
+            if (i == choice || errors)
+            {
+                const float priority = i + 1 < cluster.refinements.size() ? cluster.refinements[i + 1].error * density : projected_error;
+                const size_t index = level.page->request_index;
+                if (index < page_requests.size() && page_requests[index].source.get() == level.page.get())
+                    page_requests[index].error = max(page_requests[index].error, priority);
+                else
+                {
+                    level.page->request_index = page_requests.size();
+                    page_requests.push_back({level.page, priority});
+                }
+            }
+            const auto found = page_lookup.find(level.page.get());
+            if (found == page_lookup.end()) continue;
+            const auto& slot = page_slots[found->second];
+            if (!slot.uploaded || !GeometryBuffer::IsResident(slot.address.vertices + GeometryPage::max_corners,
+                slot.address.indices + GeometryPage::max_corners)) continue;
+            pages[count] = slot.address;
+            if (!errors) return 1;
+            errors[count++] = level.error;
+        }
+        return count;
+    }
+
+    uint32_t GeometryBuffer::SelectInstancePages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors)
+    {
+        return select_pages(cluster, density, pages, errors);
+    }
+
+    bool GeometryBuffer::SelectPage(const GeometryCluster& cluster, float density, ResidentGeometryPage& resident)
+    {
+        return select_pages(cluster, density, &resident, nullptr) != 0;
+    }
+
+    GeometryBuffer::PageStatistics GeometryBuffer::GetPageStatistics()
+    {
+        return page_statistics;
+    }
+
+    void GeometryBuffer::UploadReadyPages()
+    {
+        // Only transfer ownership at the frame boundary, before any camera records
+        // its draws. The graphics queue orders old vertex reads before the copies.
+        const uint64_t frame = Renderer::GetFrameNumber();
+        const size_t budget = static_cast<size_t>(clamp(page_budget.GetValue(), 1.0f, 4096.0f));
+        page_statistics.requested = static_cast<uint32_t>(page_requests.size());
+        auto& wanted = page_requests;
+        auto higher_priority = [](const PageRequest& a, const PageRequest& b)
+        {
+            return a.error == b.error ? less<const GeometryPageSource*>{}(a.source.get(), b.source.get()) : a.error > b.error;
+        };
+        const size_t keep = min(wanted.size(), budget);
+        partial_sort(wanted.begin(), wanted.begin() + keep, wanted.end(), higher_priority);
+        wanted.resize(keep);
+        for (const auto& request : wanted)
+        {
+            auto found = page_lookup.find(request.source.get());
+            if (found != page_lookup.end() && found->second < budget)
+            {
+                auto& slot = page_slots[found->second];
+                if (!slot.failed) slot.last_request = frame;
+            }
+        }
+        for (auto& slot : page_slots)
+        {
+            if (!slot.read.valid() || slot.read.wait_for(chrono::seconds(0)) != future_status::ready) continue;
+            try { slot.read.get(); }
+            catch (const exception&) { slot.decoded->meshlets.clear(); }
+            --pending_page_reads;
+            auto data = move(slot.decoded);
+            if (data->meshlets.empty())
+            {
+                slot.failed = true;
+                SP_LOG_WARNING("Failed to load virtual geometry page, retaining its coarse surface");
+                continue;
+            }
+            auto& address = slot.address;
+            address.vertex_count = static_cast<uint32_t>(data->vertices.size());
+            address.meshlet_count = static_cast<uint32_t>(data->meshlets.size());
+            address.index_count = static_cast<uint32_t>(data->indices.size());
+            if (!slot.allocated)
+            {
+                data->vertices.resize(GeometryPage::max_corners);
+                data->indices.resize(GeometryPage::max_corners);
+                data->meshlets.resize(GeometryPage::max_triangles);
+                data->remaps.resize(GeometryPage::max_corners);
+                data->micro.resize(GeometryPage::max_corners);
+                address.vertices = AppendVertices(data->vertices.data(), GeometryPage::max_corners);
+                address.indices = AppendIndices(data->indices.data(), GeometryPage::max_corners);
+                address.meshlets = AppendMeshletBounds(data->meshlets.data(), GeometryPage::max_triangles);
+                address.remaps = AppendMeshletVertices(data->remaps.data(), GeometryPage::max_corners);
+                address.micro = AppendMeshletMicroIndices(data->micro.data(), GeometryPage::max_corners);
+                slot.allocated = true;
+            }
+            else
+            {
+                UpdateVertices(data->vertices.data(), address.vertices, static_cast<uint32_t>(data->vertices.size()));
+                UpdateIndices(data->indices.data(), address.indices, static_cast<uint32_t>(data->indices.size()));
+                UpdateMeshletBounds(data->meshlets.data(), address.meshlets, address.meshlet_count);
+                UpdateMeshletVertices(data->remaps.data(), address.remaps, static_cast<uint32_t>(data->remaps.size()));
+                UpdateMeshletMicroIndices(data->micro.data(), address.micro, static_cast<uint32_t>(data->micro.size()));
+            }
+            slot.uploaded = true;
+            ++page_statistics.uploads;
+        }
+        for (size_t i = budget; i < page_slots.size(); ++i)
+        {
+            auto& slot = page_slots[i];
+            if (!slot.read.valid() && slot.source)
+            {
+                page_lookup.erase(slot.source.get());
+                slot.source.reset();
+                slot.uploaded = false;
+                ++page_statistics.evictions;
+            }
+        }
+        for (const auto& request : wanted)
+        {
+            if (pending_page_reads >= geometry_reads_in_flight) break;
+            const auto found = page_lookup.find(request.source.get());
+            if (found != page_lookup.end())
+            {
+                auto& slot = page_slots[found->second];
+                if (!slot.failed || frame - slot.last_request < 120) continue;
+                slot.source.reset();
+                page_lookup.erase(found);
+            }
+            size_t index = page_slots.size();
+            if (index < budget) page_slots.emplace_back();
+            else
+            {
+                uint64_t oldest = frame;
+                for (size_t i = 0; i < budget; ++i)
+                {
+                    const auto& slot = page_slots[i];
+                    if (!slot.source) { index = i; break; }
+                    if (!slot.read.valid() && slot.last_request < oldest)
+                    {
+                        oldest = slot.last_request;
+                        index = i;
+                    }
+                }
+                if (index >= budget) continue;
+            }
+            auto& slot = page_slots[index];
+            if (slot.source)
+            {
+                page_lookup.erase(slot.source.get());
+                ++page_statistics.evictions;
+            }
+            slot.source = request.source;
+            slot.last_request = frame;
+            slot.uploaded = slot.failed = false;
+            slot.decoded = make_shared<GeometryPage>();
+            slot.read = ThreadPool::AddTask([source = slot.source, page = slot.decoded]()
+            {
+                vector<uint8_t> bytes;
+                if (!source->Read(bytes) || !page->Decode(bytes)) page->meshlets.clear();
+            });
+            ++pending_page_reads;
+            page_lookup[slot.source.get()] = index;
+        }
+        page_statistics.resident = static_cast<uint32_t>(count_if(page_slots.begin(), page_slots.end(),
+            [](const auto& slot) { return slot.uploaded; }));
+        page_statistics.pending = static_cast<uint32_t>(pending_page_reads);
+        page_requests.clear();
     }
 
     void GeometryBuffer::BuildIfDirty()
@@ -748,29 +939,6 @@ namespace spartan
             );
         }
 
-        // impostor atlases grow on their own, a crown's atlas outweighs its geometry so it must not drag
-        // the other streams into a rebuild, and one tiny buffer always exists so the binding is never empty
-        const uint32_t impostor_texel_count = max(impostor_texels.size(), 1u);
-        if (!impostor_texel_buffer || impostor_texel_count > impostor_texel_capacity)
-        {
-            // Atlas texels can occupy hundreds of MiB. Reserve at most 16 MiB beyond the actual data.
-            const uint32_t slack = min<uint32_t>(static_cast<uint32_t>(impostor_texel_count * (growth_factor - 1.0f)), 16u * 1024u * 1024u / sizeof(uint32_t));
-            const uint32_t capacity = impostor_texel_count + slack;
-            auto replacement = make_unique<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,
-                sizeof(uint32_t),
-                capacity,
-                nullptr,
-                false,
-                "geometry_buffer_impostor_texels"
-            );
-            if (replacement->GetRhiResource())
-            {
-                adopt(impostor_texel_buffer, replacement, static_cast<uint64_t>(impostor_texels.committed) * sizeof(uint32_t));
-                impostor_texel_capacity = capacity;
-            }
-        }
-
         // Appends already store the exact packed micro bytes, including block padding.
         upload_tail(vertices, vertex_buffer.get());
         upload_tail(indices, index_buffer.get());
@@ -778,10 +946,6 @@ namespace spartan
         upload_tail(meshlet_vertices, meshlet_vertex_buffer.get());
         upload_tail(meshlet_micro_indices, meshlet_micro_index_buffer.get());
         upload_tail(instances, instance_buffer.get());
-        if (impostor_texel_buffer && impostor_texels.size() <= impostor_texel_capacity)
-        {
-            upload_tail(impostor_texels, impostor_texel_buffer.get());
-        }
         resident_vertices.store(vertices.committed, memory_order_release);
         resident_indices.store(indices.committed, memory_order_release);
 
@@ -796,8 +960,7 @@ namespace spartan
             meshlet_bounds.tail.capacity() * sizeof(Sb_MeshletBounds) +
             meshlet_vertices.tail.capacity() * sizeof(uint32_t) +
             meshlet_micro_indices.tail.capacity() +
-            instances.tail.capacity() * sizeof(Instance) +
-            impostor_texels.tail.capacity() * sizeof(uint32_t);
+            instances.tail.capacity() * sizeof(Instance) ;
         for (const auto& [offset, data] : vertex_writes) bytes += data.capacity() * sizeof(RHI_Vertex_PosTexNorTan);
         for (const auto& [offset, data] : instance_writes) bytes += data.capacity() * sizeof(Instance);
         for (const auto& [offset, data] : index_writes) bytes += data.capacity() * sizeof(uint32_t);
@@ -821,8 +984,7 @@ namespace spartan
             meshlet_bounds.tail.size() * sizeof(Sb_MeshletBounds) +
             meshlet_vertices.tail.size() * sizeof(uint32_t) +
             meshlet_micro_indices.tail.size() +
-            instances.tail.size() * sizeof(Instance) +
-            impostor_texels.tail.size() * sizeof(uint32_t);
+            instances.tail.size() * sizeof(Instance) ;
     }
 
     void GeometryBuffer::Reserve(
@@ -871,15 +1033,17 @@ namespace spartan
 
     void GeometryBuffer::Shutdown()
     {
+        page_requests.clear();
+        page_statistics = {};
+        page_lookup.clear();
+        page_slots.clear();
+        pending_page_reads = 0;
         vertex_buffer              = nullptr;
         index_buffer               = nullptr;
         meshlet_bounds_buffer      = nullptr;
         meshlet_vertex_buffer      = nullptr;
         meshlet_micro_index_buffer = nullptr;
         instance_buffer            = nullptr;
-        impostor_texel_buffer      = nullptr;
-        impostor_texel_capacity    = 0;
-        impostor_texels.reset();
         vertex_history.clear();
         history_snapshot.clear();
         history_snapshot_frame.store(UINT64_MAX, memory_order_release);
@@ -945,8 +1109,4 @@ namespace spartan
         return instance_buffer.get();
     }
 
-    RHI_Buffer* GeometryBuffer::GetImpostorTexelBuffer()
-    {
-        return impostor_texel_buffer.get();
-    }
 }

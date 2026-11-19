@@ -192,6 +192,7 @@ namespace spartan
         ~Material() = default;
 
         static const uint32_t slots_per_texture = 4;
+        using TextureBindings = std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture>;
 
         // iresource
         bool LoadFromFile(const std::string& file_path) override;
@@ -207,6 +208,7 @@ namespace spartan
         std::string GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot = 0);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
+        TextureBindings GetTextureBindings() const;
         const std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture>& GetTextures() const { return m_textures; }
         bool IsPackedFromDisk(const uint8_t slot) const { return m_packed_from_disk[slot]; }
 
@@ -268,10 +270,10 @@ namespace spartan
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         // per slot, the packed texture was loaded from disk and none of its sources changed since
         std::array<bool, slots_per_texture> m_packed_from_disk = {};
-        // sources registered by path only, decoded on demand when a repack needs them
-        std::vector<std::shared_ptr<RHI_Texture>> m_deferred_textures;
+        // A material can outlive the component or cache entry that supplied its textures.
+        TextureBindings m_texture_owners;
         // recursive, PrepareForGpu holds this while pack_textures calls SetTexture
         // GetTexture stays unlocked, draw/sort call it every frame
-        std::recursive_mutex m_mutex;
+        mutable std::recursive_mutex m_mutex;
     };
 }

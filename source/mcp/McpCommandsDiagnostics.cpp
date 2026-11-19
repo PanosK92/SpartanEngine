@@ -7,6 +7,10 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===================================
 #include "pch.h"
+#include "../rendering/GeometryBuffer.h"
+#include "../rendering/Renderer_Internal.h"
+#include "../world/components/Render.h"
+#include "../geometry/Mesh.h"
 #include "McpCommands.h"
 #include "McpCommandsCommon.h"
 #include "../commands/console/ConsoleCommands.h"
@@ -204,7 +208,7 @@ namespace spartan::mcp_diagnostics
                 ",\"stopping\":" + json_bool(Profiler::IsRecordingStopping()) + "}";
         }
 
-        std::string command_meshlet_snapshot(const McpRequest&)
+        std::string command_meshlet_snapshot(const McpRequest& request)
         {
             // Explicit diagnostic only: never stall the GPU in normal rendering
             // or contaminate an active timing capture with a synchronous read.
@@ -225,6 +229,32 @@ namespace spartan::mcp_diagnostics
             std::memcpy(&opaque_count, meshlets->GetMappedData(), sizeof(uint32_t));
             std::memcpy(&alpha_count, static_cast<const uint8_t*>(meshlets->GetMappedData()) + meshlets->GetStride(), sizeof(uint32_t));
             // slots 2 and 3 hold what the late (two-phase) cull added on top of the early survivors
+            if (get_argument(request, "breakdown") && !RHI_Device::IsRecording())
+            {
+                RHI_Buffer readback(RHI_Buffer_Type::Readback, sizeof(Sb_MeshletInstance), meshlet_list->GetElementCount(), nullptr, true, "meshlet_diagnostic");
+                RHI_CommandList::CopyBufferContents(meshlet_list, &readback, meshlet_list->GetObjectSize());
+                RHI_Device::QueueWaitAll();
+                const auto* entries = static_cast<const Sb_MeshletInstance*>(readback.GetMappedData());
+                std::unordered_map<std::string, uint32_t> counts;
+                for (uint32_t category = 0; entries && category < 2; ++category)
+                {
+                    for (uint32_t j = 0; j < (category ? alpha_count : opaque_count); ++j)
+                    {
+                        uint32_t index = entries[j + category * meshlet_list->GetElementCount()/2].draw_index_and_wind & 0x7fffffffu;
+                        if (index >= Renderer::m_indirect_draw_count) continue;
+                        Render* render = Renderer::m_indirect_renders[index];
+                        if (render && render->GetMesh())
+                            ++counts[render->GetMesh()->GetObjectName()];
+                    }
+                }
+                std::vector<std::pair<uint32_t, std::string>> sorted;
+                for (auto& [name, count] : counts) sorted.emplace_back(count, name);
+                std::sort(sorted.rbegin(), sorted.rend());
+                std::string json = "{\"ok\":true,\"meshes\":[";
+                for (size_t j = 0; j < std::min(size_t(20),sorted.size()); ++j)
+                    json += (j ? "," : "") + std::string("[") + json_string(sorted[j].second) + "," + std::to_string(sorted[j].first) + "]";
+                return json + "]}";
+            }
             uint32_t late_opaque_count = 0;
             uint32_t late_alpha_count = 0;
             if (meshlets->GetElementCount() >= 4)
@@ -462,6 +492,13 @@ namespace spartan::mcp_diagnostics
             json += ",\"gpu_stuttering\":" + json_bool(Profiler::IsGpuStuttering());
             json += ",\"update_interval_sec\":" + std::to_string(Profiler::GetUpdateInterval());
             json += ",\"visualized\":" + json_bool(Profiler::IsVisualized());
+
+            const auto pages = GeometryBuffer::GetPageStatistics();
+            json += ",\"geometry_pages\":{\"resident\":" + std::to_string(pages.resident);
+            json += ",\"pending\":" + std::to_string(pages.pending);
+            json += ",\"requested\":" + std::to_string(pages.requested);
+            json += ",\"uploads\":" + std::to_string(pages.uploads);
+            json += ",\"evictions\":" + std::to_string(pages.evictions) + "}";
 
             json += ",\"rhi\":{";
             json += "\"draw_calls\":" + std::to_string(Profiler::m_rhi_draw);

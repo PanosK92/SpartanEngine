@@ -115,6 +115,7 @@ namespace spartan
             walker.dead = false;
         }
         m_walkers.clear();
+        m_crowd_geometry.reset();
         m_source_mesh.reset();
     }
 
@@ -209,6 +210,7 @@ namespace spartan
             walker.dead = false;
         }
         m_walkers.clear();
+        m_crowd_geometry.reset();
         m_source_mesh.reset();
         m_next_spawn_index = 0;
         m_lod_timer = 0.0f;
@@ -333,7 +335,6 @@ namespace spartan
         }
 
         uint32_t flags = Mesh::GetDefaultFlags();
-        flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale);
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
 
@@ -424,7 +425,6 @@ namespace spartan
         }
 
         uint32_t flags = Mesh::GetDefaultFlags();
-        flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale);
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
 
@@ -442,6 +442,7 @@ namespace spartan
             Entity* root = m_source_mesh->GetRootEntity();
             root->SetTransient(true);
             root->SetActive(false);
+            m_crowd_geometry.reset();
             m_source_mesh.reset();
             return false;
         }
@@ -541,7 +542,8 @@ namespace spartan
             return false;
         }
 
-        shared_ptr<Mesh> instance_mesh = m_source_mesh->CreateSkinnedInstance();
+        if (!m_crowd_geometry) m_crowd_geometry = m_source_mesh->CreateCrowdGeometry();
+        shared_ptr<Mesh> instance_mesh = m_crowd_geometry->CreateSkinnedInstance();
         if (!instance_mesh)
         {
             World::RemoveEntityImmediate(entity);

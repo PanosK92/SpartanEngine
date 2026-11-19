@@ -58,15 +58,13 @@ void main_ms(
     _draw.material_index     = buffer_pass.material_index;
     _draw.uv_tiling          = float2(1.0f, 1.0f);
 
-    // coarse blades fill their allocation from its end, the same addressing as the instanced vertex shader
     uint lod_base      = pass_uint(pass_grass_draw::lod_base);
-    uint reverse_count = pass_uint(pass_grass_draw::reverse_count);
 
     // per blade, the instance transform and the bend of this frame and the previous one, for the motion vectors
     for (uint blade = thread_index; blade < blade_count; blade += grass_mesh_threads)
     {
         uint          instance_id = first_blade + blade;
-        uint          slot        = lod_base + (reverse_count > 0u ? reverse_count - 1u - instance_id : instance_id);
+        uint          slot        = lod_base + instance_id;
         GrassInstance gi          = grass_instances[slot];
         float4x4      transform   = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
             (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);

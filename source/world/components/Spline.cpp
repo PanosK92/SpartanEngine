@@ -3752,8 +3752,8 @@ namespace spartan
         // Cache the completed meshes together, before GPU publication. A hit skips
         // extrusion, welding, meshlet construction and bounds calculation for every layer.
         auto prepared_hash = cache_hash;
-        prepared_hash.Add(uint32_t(1)); // prepared spline format / mesh processing version
-        prepared_hash.Add(sizeof(MeshLod));
+        prepared_hash.Add(uint32_t(2)); // prepared spline format / mesh processing version
+        prepared_hash.Add(sizeof(GeometryRange));
         prepared_hash.Add(sizeof(Sb_MeshletBounds));
         const auto prepared_path = generated_cache::Path(World::GetResourceDirectory(), "spline_meshes", prepared_hash.value);
         shared_ptr<Mesh> deck_mesh, sidewalk_mesh, shoulder_mesh, paint_mesh;
@@ -3788,7 +3788,7 @@ namespace spartan
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
-                    mesh->AddGeometry(points, triangles, false);
+                    mesh->AddGeometry(points, triangles);
                 }
                 return mesh;
             };

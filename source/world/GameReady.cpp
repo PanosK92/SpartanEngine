@@ -163,7 +163,7 @@ namespace spartan::game_ready
 
         // reuses the resource already sitting at the path, a second merge onto the same file must not
         // strand the renderers that are pointing at the first one
-        shared_ptr<Mesh> acquire_mesh(const string& file_path, const bool generate_lods)
+        shared_ptr<Mesh> acquire_mesh(const string& file_path)
         {
             shared_ptr<Mesh> mesh = ResourceCache::GetByPath<Mesh>(file_path);
             if (mesh)
@@ -187,7 +187,6 @@ namespace spartan::game_ready
             // the geometry has already been welded and ordered by hand, and the post process optimizer
             // simplifies anything past a size threshold, which is quality this step promised not to spend
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), generate_lods);
             return mesh;
         }
 
@@ -229,8 +228,7 @@ namespace spartan::game_ready
 
     MergeReport MergeRenderersByMaterial(
         Entity* root,
-        const string& mesh_file_path,
-        const bool generate_lods
+        const string& mesh_file_path
     )
     {
         MergeReport report;
@@ -412,7 +410,7 @@ namespace spartan::game_ready
             filesystem::create_directories(output.parent_path());
         }
 
-        shared_ptr<Mesh> mesh = acquire_mesh(mesh_file_path, generate_lods);
+        shared_ptr<Mesh> mesh = acquire_mesh(mesh_file_path);
         if (!mesh)
         {
             report.error = "failed to create the merged mesh resource";
@@ -425,7 +423,6 @@ namespace spartan::game_ready
             mesh->AddGeometry(
                 group_vertices[index],
                 group_indices[index],
-                generate_lods,
                 static_cast<uint32_t>(index)
             );
         }

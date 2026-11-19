@@ -7,6 +7,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 // = INCLUDES ========
 #include "common.hlsl"
+#include "fog_volume.hlsl"
+#include "spherical_harmonics.hlsl"
+#include "ocean_whitewater.hlsl"
 //====================
 
 // catmull rom filtered sky panorama fetch, sky pixels magnify the 4k panorama ~2.5x at a
@@ -53,6 +56,35 @@ float3 sample_sky_catmull_rom(float2 uv)
     return clamp(result * rcp(weight_sum), sky_min, sky_max);
 }
 
+// The path estimator returns surface radiance. Integrate light scattered along
+// the submerged segment and let the resolved foam cover both surface lobes.
+float3 compose_traced_ocean(Surface surface, float3 radiance)
+{
+    float2 uv = render_uv_to_screen_uv(surface.uv);
+    float bed_depth = tex4.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    float end_distance = bed_depth > 0.0f ? length(get_position(bed_depth, uv) - get_camera_position()) : fog_far;
+    float incidence = saturate(abs(dot(surface.normal, surface.camera_to_pixel)));
+    float transmission = (1.0f - surface.F0.x) * (1.0f - pow(1.0f - incidence, 5.0f));
+    if (get_camera_position().y >= buffer_frame.ocean_sea_level)
+        radiance += transmission * fog_transmit_water_segment(0.0f, uv, surface.camera_to_pixel_length, end_distance);
+
+    float foam, churn;
+    ocean_whitewater(surface, foam, churn);
+    if (foam > 0.0f || churn > 0.0f)
+    {
+        float3 sky_sh[9];
+        sh_load_l2(tex5, sky_sh);
+        float3 irradiance = sh_irradiance_l2(surface.normal, sky_sh, 1.0f)
+            + get_sun_radiance() * saturate(dot(surface.normal, -light_parameters[0].direction));
+        float3 whitewater = max(irradiance, 0.0f) * INV_PI;
+        float bubbles = 0.14f * churn * churn * transmission;
+        radiance = lerp(radiance, whitewater * 0.75f * exp(-get_ocean_extinction() * 0.45f), bubbles);
+        foam *= saturate(ocean_shore_coverage(surface, uv) * 2.5f);
+        radiance = lerp(radiance, whitewater * lerp(0.55f, 0.85f, smoothstep(0.15f, 0.9f, foam)), saturate(foam));
+    }
+    return radiance;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -84,6 +116,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         float4 lighting = tex3.Load(int3(thread_id.xy, 0));
         light_specular = lighting.a >= 0.0f ? lighting.rgb : 0.0f;
+        if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
+            light_specular = compose_traced_ocean(surface, light_specular);
         light_emissive = surface.emissive;
         alpha = surface.alpha;
     }

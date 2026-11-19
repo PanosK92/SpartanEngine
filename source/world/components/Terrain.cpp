@@ -2297,6 +2297,12 @@ namespace spartan
         m_tile_offsets.resize(count);
         atomic<uint32_t> hits = 0;
         const string resources = World::GetResourceDirectory();
+        const auto tile_path = [&](uint64_t key)
+        {
+            auto path = generated_cache::Path(resources, "terrain_tiles", key);
+            if (!path.empty()) path.replace_extension(".mesh");
+            return path;
+        };
         ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
         {
             for (uint32_t i = begin; i < end; ++i)
@@ -2309,9 +2315,9 @@ namespace spartan
                 const Vector3& hi = m_positions[size_t(z1) * m_dense_width + x1];
                 m_tile_offsets[i] = Vector3((lo.x + hi.x) * 0.5f, 0, (lo.z + hi.z) * 0.5f);
                 generated_cache::Hash hash;
-                hash.Add(uint32_t(1)); // grid normals, UVs, tiling, LOD and meshlet policy/layout
+                hash.Add(uint32_t(2)); // native cluster pages with locked tile borders
                 hash.Add(sizeof(RHI_Vertex_PosTexNorTan)); hash.Add(sizeof(Sb_MeshletBounds));
-                hash.Add(sizeof(MeshLod)); hash.Add(mesh_lod_count);
+                hash.Add(GeometryPage::max_triangles);
                 hash.Add(m_dense_width); hash.Add(m_dense_height); hash.Add(axis); hash.Add(i);
                 // One cell of neighbours affects edge normals, even when its own tile is unchanged.
                 const uint32_t left = x0 ? x0 - 1 : 0;
@@ -2321,7 +2327,9 @@ namespace spartan
                         size_t(right - left + 1) * sizeof(Vector3));
                 keys[i] = hash.value;
                 auto tile = make_shared<Mesh>();
-                if (tile->LoadPrepared(generated_cache::Path(resources, "terrain_tiles", hash.value).string(), hash.value))
+                const auto path = tile_path(hash.value);
+                if (!path.empty() && filesystem::exists(path) && tile->LoadNativeCpu(path.string()) &&
+                    tile->GetSubMeshCount() == 1 && !tile->GetSubMesh(0).clusters.empty())
                 {
                     tiles[i] = move(tile);
                     hits.fetch_add(1, memory_order_relaxed);
@@ -2339,8 +2347,15 @@ namespace spartan
                     auto tile = make_shared<Mesh>();
                     tile->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                     tile->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
-                    tile->AddGeometry(m_tile_vertices[i], m_tile_indices[i], true);
-                    tile->SavePrepared(generated_cache::Path(resources, "terrain_tiles", keys[i]).string(), keys[i]);
+                    tile->ReserveSubMeshes(1);
+                    if (!tile->AddVirtualGeometry(m_tile_vertices[i], m_tile_indices[i], 0))
+                        tile->AddResidentGeometry(m_tile_vertices[i], m_tile_indices[i], 0);
+                    const auto path = tile_path(keys[i]);
+                    if (!path.empty())
+                    {
+                        filesystem::create_directories(path.parent_path());
+                        tile->SaveToFile(path.string());
+                    }
                     tiles[i] = move(tile);
                 }
             }, count);
@@ -2356,7 +2371,7 @@ namespace spartan
             hits.load(), count - hits.load(), timer.GetElapsedTimeMs());
     }
 
-    void Terrain::BuildTileMesh(Mesh& mesh, const bool generate_lods)
+    void Terrain::BuildTileMesh(Mesh& mesh, const bool stream_geometry)
     {
         const uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
         if (tile_count == 0)
@@ -2367,11 +2382,12 @@ namespace spartan
         // lod simplification and meshlet building dominate terrain generation, every tile is
         // independent so they run across the pool, the slot is reserved so tile i stays sub mesh i
         mesh.ReserveSubMeshes(tile_count);
-        ThreadPool::ParallelLoop([this, &mesh, generate_lods](const uint32_t start, const uint32_t end)
+        ThreadPool::ParallelLoop([this, &mesh, stream_geometry](const uint32_t start, const uint32_t end)
         {
             for (uint32_t tile_index = start; tile_index < end; tile_index++)
             {
-                mesh.AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], generate_lods, tile_index);
+                if (!stream_geometry || !mesh.AddVirtualGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], tile_index))
+                    mesh.AddResidentGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], tile_index);
             }
         }, tile_count);
     }
@@ -2450,6 +2466,7 @@ namespace spartan
             }
         }
 
+        const float mesh_ms = commit_timer.GetElapsedTimeMs();
         UploadHeightMapTextures();
         UploadTerrainMaps();
 
@@ -2463,13 +2480,17 @@ namespace spartan
         CreateTileEntities();
         m_progress.SetStep("Preparing terrain collision");
         RefreshPhysics();
+        const float collision_end_ms = commit_timer.GetElapsedTimeMs();
         RefreshLayers();
         PushToRenderer();
+        const float layers_end_ms = commit_timer.GetElapsedTimeMs();
         SpawnFlowRivers();
         DestroyPadOverlays();
         DestroyAllPadRefines();
         RebuildCommittedRefines();
         const float terrain_ms = commit_timer.GetElapsedTimeMs();
+        SP_LOG_INFO("Terrain commit breakdown: mesh %.2f ms, textures/tiles/collision %.2f ms, layers %.2f ms, rivers/refines %.2f ms",
+            mesh_ms, collision_end_ms - mesh_ms, layers_end_ms - collision_end_ms, terrain_ms - layers_end_ms);
         m_progress.SetStep("Preparing terrain-conforming roads");
         generated_cache::Hash road_surface_hash;
         road_surface_hash.Add(uint32_t(2));
@@ -3608,9 +3629,22 @@ namespace spartan
 
             const Vector3& offset = m_tile_offsets[tile_index];
             const SubMesh& sub    = m_mesh->GetSubMesh(tile_index);
-            bool tile_changed     = false;
-            for (const MeshLod& lod : sub.lods)
+            const auto edit = [&](RHI_Vertex_PosTexNorTan& vertex)
             {
+                const float lx = vertex.pos[0] + offset.x, lz = vertex.pos[2] + offset.z;
+                if (lx < local_min_x || lx > local_max_x || lz < local_min_z || lz > local_max_z) return false;
+                const float old_height = vertex.pos[1];
+                const uint32_t old_normal = vertex.nor;
+                vertex.pos[1] = TerrainSystem::SampleHeight(m_positions, m_dense_width, m_dense_height, lx, lz, mapping) - detail_drop(lx, lz);
+                vertex.set_normal(TerrainSystem::SampleNormal(m_positions, m_dense_width, m_dense_height, lx, lz, mapping));
+                return vertex.pos[1] != old_height || vertex.nor != old_normal;
+            };
+            const BoundingBox region(Vector3(local_min_x - offset.x, -FLT_MAX, local_min_z - offset.z),
+                Vector3(local_max_x - offset.x, FLT_MAX, local_max_z - offset.z));
+            bool tile_changed = m_mesh->EditClusterPages(tile_index, region, edit);
+            if (sub.HasGeometry())
+            {
+                const auto& lod = sub.root;
                 if (lod.vertex_count == 0)
                 {
                     continue;
@@ -3622,15 +3656,7 @@ namespace spartan
                 for (uint32_t i = 0; i < lod.vertex_count; i++)
                 {
                     RHI_Vertex_PosTexNorTan& vertex = verts[lod.vertex_offset + i];
-                    const float lx = vertex.pos[0] + offset.x;
-                    const float lz = vertex.pos[2] + offset.z;
-                    if (lx < local_min_x || lx > local_max_x || lz < local_min_z || lz > local_max_z)
-                    {
-                        continue;
-                    }
-
-                    vertex.pos[1] = TerrainSystem::SampleHeight(m_positions, m_dense_width, m_dense_height, lx, lz, mapping) - detail_drop(lx, lz);
-                    vertex.set_normal(TerrainSystem::SampleNormal(m_positions, m_dense_width, m_dense_height, lx, lz, mapping));
+                    if (!edit(vertex)) continue;
                     first = min(first, i);
                     last  = max(last, i + 1);
                 }
@@ -3644,7 +3670,7 @@ namespace spartan
 
             if (tile_changed)
             {
-                m_mesh->RefreshLodBounds(tile_index);
+                m_mesh->RefreshGeometryBounds(tile_index);
                 touched.insert(tile_index);
             }
         }
@@ -3898,8 +3924,6 @@ namespace spartan
 
         // lod 0 of a tile sub mesh is the tile's own triangles, tile local like the generate time
         // data, and PatchTilesInRegion has already written the new heights into it
-        const vector<RHI_Vertex_PosTexNorTan>& vertices = m_mesh->GetVertices();
-        const vector<uint32_t>& indices                 = m_mesh->GetIndices();
 
         for (uint32_t tile_index : tile_indices)
         {
@@ -3909,12 +3933,12 @@ namespace spartan
             }
 
             const SubMesh& sub = m_mesh->GetSubMesh(tile_index);
-            if (sub.lods.empty())
+            if (sub.root.index_count == 0)
             {
                 continue;
             }
 
-            const MeshLod& lod = sub.lods[0];
+            const GeometryRange& lod = sub.root;
             if (lod.index_count < 3 || lod.vertex_count == 0)
             {
                 continue;
@@ -3922,14 +3946,7 @@ namespace spartan
 
             vector<vector<RHI_Vertex_PosTexNorTan>> tile_vertices(1);
             vector<vector<uint32_t>> tile_indices(1);
-            tile_vertices[0].assign(
-                vertices.begin() + lod.vertex_offset,
-                vertices.begin() + lod.vertex_offset + lod.vertex_count
-            );
-            tile_indices[0].assign(
-                indices.begin() + lod.index_offset,
-                indices.begin() + lod.index_offset + lod.index_count
-            );
+            if (!m_mesh->ReadGeometry(tile_index, &tile_indices[0], &tile_vertices[0])) continue;
 
             unordered_map<uint64_t, vector<TriangleData>> refreshed;
             placement::compute_triangle_data(tile_vertices, tile_indices, 0, refreshed);
@@ -4236,7 +4253,7 @@ namespace spartan
         if (mapping.z <= 0.0f || mapping.w <= 0.0f) return;
         const Stopwatch timer;
         generated_cache::Hash hash;
-        hash.Add(uint32_t(1)); hash.Add(grid_size); hash.Add(mapping);
+        hash.Add(uint32_t(2)); hash.Add(grid_size); hash.Add(mapping);
         vector<Entity*> roads;
         for (Entity* entity : World::GetEntities())
         {
@@ -4249,12 +4266,14 @@ namespace spartan
                 Mesh* mesh = render ? render->GetMesh() : nullptr;
                 if (!mesh || render->GetSubMeshIndex() >= mesh->GetSubMeshCount()) continue;
                 const SubMesh& sub = mesh->GetSubMesh(render->GetSubMeshIndex());
-                if (sub.lods.empty()) continue;
-                const MeshLod& lod = sub.lods[0];
+                if (sub.root.index_count == 0) continue;
+                const GeometryRange& root = sub.root;
                 hash.Add(part->GetMatrix());
-                hash.Add(lod.vertex_count); hash.Add(lod.index_count);
-                hash.Bytes(mesh->GetVertices().data() + lod.vertex_offset, size_t(lod.vertex_count) * sizeof(RHI_Vertex_PosTexNorTan));
-                hash.Bytes(mesh->GetIndices().data() + lod.index_offset, size_t(lod.index_count) * sizeof(uint32_t));
+                hash.Add(root.vertex_count); hash.Add(root.index_count);
+                hash.Bytes(mesh->GetVertices().data() + root.vertex_offset, size_t(root.vertex_count) * sizeof(RHI_Vertex_PosTexNorTan));
+                hash.Bytes(mesh->GetIndices().data() + root.index_offset, size_t(root.index_count) * sizeof(uint32_t));
+                for (const auto& cluster : sub.clusters)
+                    if (!cluster.refinements.empty()) hash.Add(cluster.refinements.front().page->checksum);
                 roads.push_back(part);
             }
         }
@@ -4284,16 +4303,16 @@ namespace spartan
                 Mesh* mesh = render ? render->GetMesh() : nullptr;
                 if (!mesh || render->GetSubMeshIndex() >= mesh->GetSubMeshCount()) return;
                 const SubMesh& sub = mesh->GetSubMesh(render->GetSubMeshIndex());
-                if (sub.lods.empty()) return;
-                const MeshLod& lod = sub.lods[0];
-                const auto& vertices = mesh->GetVertices();
-                const auto& indices = mesh->GetIndices();
+                if (sub.root.index_count == 0) return;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                vector<uint32_t> indices;
+                if (!mesh->ReadGeometry(render->GetSubMeshIndex(), &indices, &vertices)) return;
                 const Matrix& world = entity->GetMatrix();
-                for (uint32_t i = 0; i + 2 < lod.index_count; i += 3)
+                for (size_t i = 0; i + 2 < indices.size(); i += 3)
                 {
-                    const Vector3 a = world * vertices[lod.vertex_offset + indices[lod.index_offset + i]].get_position();
-                    const Vector3 b = world * vertices[lod.vertex_offset + indices[lod.index_offset + i + 1]].get_position();
-                    const Vector3 c = world * vertices[lod.vertex_offset + indices[lod.index_offset + i + 2]].get_position();
+                    const Vector3 a = world * vertices[indices[i]].get_position();
+                    const Vector3 b = world * vertices[indices[i + 1]].get_position();
+                    const Vector3 c = world * vertices[indices[i + 2]].get_position();
                     const float area = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
                     if (fabsf(area) < 1e-6f) continue; // vertical curb faces have no footprint
                     const int x0 = cell_x(min(a.x, min(b.x, c.x))), x1 = cell_x(max(a.x, max(b.x, c.x)));
@@ -4460,8 +4479,8 @@ namespace spartan
         {
             Render* render;
             Matrix world;
-            const vector<Matrix>* seed;
-            vector<Matrix> kept;
+            const vector<Instance>* seed;
+            vector<Instance> kept;
         };
         vector<PropFilter> filters;
         function<void(Entity*, bool)> visit = [&](Entity* entity, bool inside_prop)
@@ -4526,16 +4545,22 @@ namespace spartan
             {
                 PropFilter& filter = filters[i];
                 filter.kept.reserve(filter.seed->size());
-                for (const Matrix& local : *filter.seed)
+                for (const Instance& local : *filter.seed)
                 {
-                    const Vector3 position = (local * filter.world).GetTranslation();
+                    const Vector3 position = filter.world * Vector3(local.position_x, local.position_y, local.position_z);
                     if (!on_road(position.x, position.z) && !on_pad(position.x, position.z))
                         filter.kept.push_back(local);
                 }
             }
         }, static_cast<uint32_t>(filters.size()));
         const float filter_ms = filter_timer.GetElapsedTimeMs();
-        for (PropFilter& filter : filters) filter.render->SetInstances(filter.kept);
+        for (PropFilter& filter : filters)
+        {
+            const auto& current = filter.render->GetSceneData().instances;
+            if (current.size() != filter.kept.size() ||
+                (!current.empty() && memcmp(current.data(), filter.kept.data(), current.size() * sizeof(Instance)) != 0))
+                filter.render->SetInstances(filter.kept);
+        }
         SP_LOG_INFO("Vegetation road filtering: %.2f ms, publish %.2f ms", filter_ms, filter_timer.GetElapsedTimeMs() - filter_ms);
 
         // the seed holds the props at their original ground, a pad ring lowered or raised that ground
@@ -4710,13 +4735,47 @@ namespace spartan
         }
 
         vector<TerrainFlowPath> paths;
-        TerrainSystem::TraceFlowPaths(
-            paths,
-            m_positions,
-            m_dense_width,
-            m_dense_height,
-            ResolveSeaLevelLocal()
-        );
+        const float sea_level = ResolveSeaLevelLocal();
+        constexpr uint32_t max_paths = 16;
+        generated_cache::Hash recipe;
+        recipe.Add(uint32_t(1)); // flow tracing policy
+        recipe.Add(max_paths);
+        recipe.Add(m_dense_width);
+        recipe.Add(m_dense_height);
+        recipe.Add(sea_level);
+        recipe.Add(generated_cache::HashBytes(m_positions.data(), m_positions.size() * sizeof(Vector3)));
+        const auto bake = generated_cache::Path(World::GetResourceDirectory(), "river_paths", recipe.value);
+        struct River { uint32_t count; float width_start, width_end; };
+        vector<River> rivers;
+        vector<Vector3> points;
+        bool hit = generated_cache::Load(bake, recipe.value, rivers, points) && rivers.size() <= max_paths;
+        size_t offset = 0;
+        if (hit)
+        {
+            for (const River& river : rivers)
+            {
+                if (river.count < 3 || river.count > points.size() - offset)
+                {
+                    hit = false;
+                    break;
+                }
+                paths.push_back({{points.begin() + offset, points.begin() + offset + river.count}, river.width_start, river.width_end});
+                offset += river.count;
+            }
+            hit = hit && offset == points.size();
+        }
+        if (!hit)
+        {
+            TerrainSystem::TraceFlowPaths(paths, m_positions, m_dense_width, m_dense_height, sea_level, max_paths);
+            rivers.clear();
+            points.clear();
+            for (const TerrainFlowPath& path : paths)
+            {
+                rivers.push_back({static_cast<uint32_t>(path.points.size()), path.width_start, path.width_end});
+                points.insert(points.end(), path.points.begin(), path.points.end());
+            }
+            generated_cache::Save(bake, recipe.value, rivers, points);
+        }
 
         if (paths.empty())
         {

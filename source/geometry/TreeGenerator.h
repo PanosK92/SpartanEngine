@@ -74,8 +74,8 @@ namespace spartan::trees
         std::vector<leaf_card> cards;
         std::vector<frond> fronds;
 
-        std::vector<geometry> bark_lods; // lod 0 first, each level drops branch orders before it is simplified
-        geometry foliage;                // lod 0, the mesh thins the cards for its distance levels
+        geometry bark;
+        geometry foliage;
 
         float height              = 0.0f;
         float trunk_radius        = 0.0f;
@@ -90,7 +90,6 @@ namespace spartan::trees
 
     result generate(const species& s, const controls& c);
 
-    // bark is sub mesh 0 with its branch order lods, foliage is sub mesh 1 with thinned card lods and,
-    // when asked, the hemi-octahedral impostor as the last level
-    std::shared_ptr<Mesh> build_mesh(result& tree, const std::string& name, bool impostor);
+    // Bark and foliage are separate virtual submeshes so each can bind its material.
+    std::shared_ptr<Mesh> build_mesh(result& tree, const std::string& name, bool cache_mesh);
 }

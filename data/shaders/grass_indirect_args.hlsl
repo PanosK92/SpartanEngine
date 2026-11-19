@@ -7,7 +7,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =========
 #include "common.hlsl"
-#include "grass_lod_allocation.hlsl"
 #include "grass_mesh_layout.hlsl"
 //====================
 
@@ -56,15 +55,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // clamp the atomic counter so the raster never tries to draw more instances than the range can hold
     uint entry          = slot_base + lod;
-    // Total allocation is capped before either dense draw list is allocated.
-    // The two lists grow from opposite ends of the original instance range.
-    uint2 counts = grass_detail_counts(entry, max_instances_per_lod);
-
-    // only the instance_count is dynamic, the rest of the args stay frozen at the values the cpu wrote
-    grass_indirect_args[entry].instance_count = counts.x;
-    grass_indirect_args[entry + grass_ring_count].instance_count = counts.y;
-
-    // the same counts sized for the mesh shader draw, devices without mesh shaders never read them
-    write_mesh_args(entry, counts.x);
-    write_mesh_args(entry + grass_ring_count, counts.y);
+    uint count = min(grass_count[entry], max_instances_per_lod);
+    if (pass_bool(pass_grass_indirect_args::cluster_pass))
+    {
+        uint first = pass_uint(pass_grass_indirect_args::cluster_offsets + lod);
+        uint ranges = pass_uint(pass_grass_indirect_args::cluster_counts + lod);
+        for (uint i = 0; i < ranges; ++i)
+            grass_indirect_args[first + i].instance_count = count;
+        return;
+    }
+    grass_indirect_args[entry].instance_count = count;
+    write_mesh_args(entry, count);
 }

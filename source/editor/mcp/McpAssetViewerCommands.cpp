@@ -360,8 +360,6 @@ namespace editor_mcp
                 boolean(status.show_stats) +
                 ",\"auto_rotate\":" +
                 boolean(status.auto_rotate) +
-                ",\"preview_lod\":" +
-                to_string(status.preview_lod) +
                 ",\"renderer_ready\":" +
                 string(boolean(Renderer::IsSecondaryViewReady())) +
                 ",\"renderer_generation\":" +
@@ -374,10 +372,6 @@ namespace editor_mcp
                 boolean(status.mesh_editable) +
                 ",\"mesh_modified\":" +
                 boolean(status.mesh_modified) +
-                ",\"mesh_lods_built\":" +
-                boolean(status.mesh_lods_built) +
-                ",\"mesh_lods_attempted\":" +
-                boolean(status.mesh_lods_attempted) +
                 ",\"mesh_source_vertex_count\":" +
                 to_string(status.mesh_source_vertices) +
                 ",\"mesh_source_index_count\":" +
@@ -388,10 +382,6 @@ namespace editor_mcp
                 to_string(status.mesh_working_indices) +
                 ",\"mesh_target_ratio\":" +
                 to_string(status.mesh_target_ratio) +
-                ",\"mesh_generate_lods\":" +
-                boolean(status.mesh_generate_lods) +
-                ",\"lod_count\":" +
-                to_string(status.lod_count) +
                 ",\"has_preview_content\":" +
                 boolean(status.has_preview_content) +
                 "}";
@@ -915,24 +905,7 @@ namespace editor_mcp
                 }
                 display.frame = frame.value_or(false);
                 display.reset = reset.value_or(false);
-                if (const string* value = find(request, "preview_lod"))
-                {
-                    const optional<uint64_t> parsed = as_uint(value);
-                    if (
-                        !parsed ||
-                        *parsed >
-                            static_cast<uint64_t>(
-                                numeric_limits<int>::max()
-                            )
-                    )
-                    {
-                        return failure(
-                            "preview_lod must be a non-negative integer"
-                        );
-                    }
-                    display.preview_lod =
-                        static_cast<int>(*parsed);
-                }
+
 
                 if (!viewer->SetDisplay(display, error))
                 {
@@ -1009,10 +982,7 @@ namespace editor_mcp
                 {
                     mesh.action = AssetViewer::MeshAction::Optimize;
                 }
-                else if (normalized == "build_lods")
-                {
-                    mesh.action = AssetViewer::MeshAction::BuildLods;
-                }
+
                 else if (normalized == "revert")
                 {
                     mesh.action = AssetViewer::MeshAction::Revert;
@@ -1024,7 +994,7 @@ namespace editor_mcp
                 else
                 {
                     return failure(
-                        "action must be simplify, optimize, build_lods, revert or set_options"
+                        "action must be simplify, optimize, revert or set_options"
                     );
                 }
 
@@ -1039,40 +1009,6 @@ namespace editor_mcp
                     }
                 }
                 string error;
-                if (
-                    !read_bool_value(
-                        find_any(
-                            request,
-                            {
-                                "generate_lods_on_save",
-                                "generate_lods"
-                            }
-                        ),
-                        "generate_lods_on_save",
-                        mesh.generate_lods,
-                        error
-                    )
-                )
-                {
-                    return failure(error);
-                }
-                if (const string* value = find(request, "preview_lod"))
-                {
-                    const optional<uint64_t> parsed = as_uint(value);
-                    if (
-                        !parsed ||
-                        *parsed >
-                            static_cast<uint64_t>(
-                                numeric_limits<int>::max()
-                            )
-                    )
-                    {
-                        return failure(
-                            "preview_lod must be a non-negative integer"
-                        );
-                    }
-                    mesh.preview_lod = static_cast<int>(*parsed);
-                }
                 optional<bool> confirm;
                 if (
                     !read_bool(

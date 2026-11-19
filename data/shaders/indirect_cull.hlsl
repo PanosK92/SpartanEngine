@@ -73,6 +73,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
     SurvivingInstance si = surviving_instances[surv_index];
     bool split_meshlets = (si.draw_index & survivor_split_draw) != 0u;
+    if (!split_meshlets && group_id.y != 0u)
+        return;
     si.draw_index &= ~survivor_split_draw;
 
     // header load, one thread rebuilds the per-instance state into groupshared, all threads consume after the barrier
@@ -102,12 +104,12 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         gs_two_sided          = (gs_draw.flags & 8u) != 0u;
         gs_is_alpha           = (gs_draw.flags & 16u) != 0u;
         gs_wind               = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
-        gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
-        gs_meshlet_count      = gs_draw.lod_meshlet_count;
+        gs_meshlet_offset     = gs_draw.geometry_meshlet_offset;
+        gs_meshlet_count      = gs_draw.geometry_meshlet_count;
         // keyed by global instance, not survivor order, the late cull reorders survivors after the early depth prepass and
         // both passes must agree on cached vs local evaluation or the equal depth test rejects the whole instance
         uint wind_slot        = gs_draw.instance_offset + si.instance_index;
-        gs_wind_slot          = split_opaque_alpha && gs_wind && (gs_draw.flags & (1u << 14)) == 0u && is_per_instance && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
+        gs_wind_slot          = split_opaque_alpha && gs_wind && is_per_instance && gs_draw.impostor_layout == 0u && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
         if (gs_wind_slot != 0u && group_id.y == 0u)
         {
             float4x4 instance = pull_instance_transform(gs_draw.instance_offset, si.instance_index);
@@ -117,9 +119,6 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         }
     }
     GroupMemoryBarrierWithGroupSync();
-
-    if (!split_meshlets && group_id.y != 0u)
-        return;
 
     uint meshlet_count = gs_meshlet_count;
     uint iterations    = (meshlet_count + 63u) / 64u; // uniform across the workgroup so the wave ops below stay convergent
@@ -137,9 +136,9 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             out_mi.meshlet_index       = global_meshlet;
             out_mi.instance_index      = gs_instance_index;
 
-            if (gs_skinned || (gs_draw.flags & (1u << 14)) != 0u)
+            if (gs_skinned)
             {
-                // Skinned bounds are deformed; impostors are a single rotating card.
+                // Skinned bounds follow the deformed surface.
                 // Phase A already tested the whole instance; retain it exactly once.
                 is_visible = !gs_drawn_early;
             }
@@ -147,8 +146,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             {
                 MeshletBounds mb    = meshlet_bounds[global_meshlet];
                 // dequantize the compressed bounds against the lod aabb the cpu packer used in build_meshlets
-                float3 center_local = meshlet_decode_center(mb, gs_draw.lod_aabb_min, gs_draw.lod_aabb_extent);
-                float  radius_local = meshlet_decode_radius(mb, gs_draw.lod_aabb_diag);
+                float3 center_local = meshlet_decode_center(mb, gs_draw.geometry_bounds_min, gs_draw.geometry_bounds_extent);
+                float  radius_local = meshlet_decode_radius(mb, gs_draw.geometry_bounds_diag);
                 float3 center_world = mul(float4(center_local, 1.0f), gs_world).xyz;
                 float  radius_world = radius_local * gs_scale_max;
                 if (gs_wind)

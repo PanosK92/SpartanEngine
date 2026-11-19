@@ -17,6 +17,11 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     class RHI_Buffer;
+    struct GeometryCluster;
+    struct ResidentGeometryPage
+    {
+        uint32_t vertices, indices, meshlets, remaps, micro, meshlet_count, index_count, vertex_count;
+    };
 
     // one global vertex and index buffer for all world geometry, meshes append during loading and receive base offsets
     class GeometryBuffer
@@ -41,8 +46,6 @@ namespace spartan
         // index 0 is reserved for the identity instance used by non-instanced draws
         static uint32_t AppendInstances(const Instance* data, uint32_t count);
 
-        // append a foliage impostor atlas, returns the base texel word offset
-        static uint32_t AppendImpostorTexels(const uint32_t* data, uint32_t count);
 
         // overwrite instances in-place inside a range a previous append returned, false when the range is invalid
         // the cpu copy is immediate, the gpu copy is queued and coalesced by the next BuildIfDirty
@@ -65,6 +68,15 @@ namespace spartan
 
         // uploads only the new portion when it fits the existing capacity, otherwise recreates with headroom
         static void BuildIfDirty();
+        static uint32_t SelectInstancePages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors);
+        static bool SelectPage(const GeometryCluster& cluster, float pixels_per_unit, ResidentGeometryPage& resident);
+        struct PageStatistics
+        {
+            uint32_t resident = 0, pending = 0, requested = 0;
+            uint64_t uploads = 0, evictions = 0;
+        };
+        static PageStatistics GetPageStatistics();
+        static void UploadReadyPages();
 
         // request capacity floors, the next BuildIfDirty grows the gpu buffers if they are smaller
         // can be called before world load with a budget so we avoid mid-load rebuilds
@@ -90,7 +102,6 @@ namespace spartan
         static RHI_Buffer* GetMeshletVertexBuffer();
         static RHI_Buffer* GetMeshletMicroIndexBuffer();
         static RHI_Buffer* GetInstanceBuffer();
-        static RHI_Buffer* GetImpostorTexelBuffer();
 
         // heap held by the cpu side accumulators
         static uint64_t GetCpuBytes();

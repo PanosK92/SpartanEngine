@@ -163,8 +163,9 @@ void ray_gen()
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
     uint2 launch_id   = DispatchRaysIndex().xy;
-    bool checkerboard = DispatchRaysDimensions().x < resolution.x;
-    uint2 pixel       = checkerboard ? reflections_checkerboard_pixel(launch_id) : launch_id;
+    bool checkerboard = any(DispatchRaysDimensions().xy < resolution);
+    uint2 phase       = uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u);
+    uint2 pixel       = checkerboard ? launch_id * 2u + min(phase, resolution - 1u) : launch_id;
     if (any(pixel >= resolution))
     {
         return;
@@ -199,8 +200,8 @@ void ray_gen()
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.01f + camera_distance * 0.0001f;
 
-    // A fixed antipodal pair on the solar disk keeps canopy transmission stable
-    // as a receiver moves between pixels or the checkerboard changes parity.
+    // Full-rate tracing samples both sides of the solar disk. In checkerboard
+    // mode neighboring traced pixels share the pair and SIGMA filters their signals.
     {
         // slot 0 holds a local light when the world has no sun, and a sun that is off, dark or shadowless is never
         // shadowed by the lighting pass, the denoise makes the same call from the same entry
@@ -221,9 +222,11 @@ void ray_gen()
             float3 transmission = 0.0f;
             float blocker = SHADOW_RAY_MAX_DISTANCE;
             bool blocked = false;
-            [unroll] for (uint i = 0; i < 2; ++i)
+            uint sun_samples = checkerboard ? 1u : 2u;
+            [loop] for (uint i = 0; i < sun_samples; ++i)
             {
-                float2 disk = i == 0 ? float2(0.5f, 0.5f) : float2(-0.5f, -0.5f);
+                uint disk_index = checkerboard ? (((pixel.x >> 1u) ^ pixel.y) & 1u) : i;
+                float2 disk = disk_index == 0 ? float2(0.5f, 0.5f) : float2(-0.5f, -0.5f);
                 float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
                 float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
                 float3 origin = pos_ws + normal_ws * (base_offset * normal_sign);
@@ -237,7 +240,7 @@ void ray_gen()
                     blocked = true;
                 }
             }
-            tex_uav[pixel] = shadow_mask_pack(transmission * 0.5f, blocked ? blocker : 0.0f);
+            tex_uav[pixel] = shadow_mask_pack(transmission / sun_samples, blocked ? blocker : 0.0f);
         }
     }
 

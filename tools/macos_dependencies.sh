@@ -46,12 +46,17 @@ clone_commit()
     fi
 }
 
-cmake_build()
+cmake_configure()
 {
     local src="$1" build="$2"
     shift 2
     cmake -S "$src" -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 -DCMAKE_OSX_ARCHITECTURES=arm64 -Wno-dev "$@"
-    cmake --build "$build" --parallel "$jobs"
+}
+
+cmake_build()
+{
+    cmake_configure "$@"
+    cmake --build "$2" --parallel "$jobs"
 }
 
 collect_static_libraries()
@@ -89,6 +94,7 @@ build_assimp()
 {
     clone https://github.com/assimp/assimp.git "$assimp_tag" "$work/assimp"
     cmake_build "$work/assimp" "$work/assimp/build" \
+        -DASSIMP_NO_EXPORT=ON \
         -DBUILD_SHARED_LIBS=OFF -DASSIMP_BUILD_TESTS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_BUILD_SAMPLES=OFF \
         -DASSIMP_WARNINGS_AS_ERRORS=OFF -DASSIMP_BUILD_ZLIB=OFF -DASSIMP_INSTALL=OFF -DASSIMP_INJECT_DEBUG_POSTFIX=OFF
     collect_static_libraries "$work/assimp/build"
@@ -144,8 +150,9 @@ build_physx()
 build_dxc()
 {
     clone https://github.com/microsoft/DirectXShaderCompiler.git "$dxc_tag" "$work/dxc"
-    cmake_build "$work/dxc" "$work/dxc/build" -C "$work/dxc/cmake/caches/PredefinedParams.cmake" \
+    cmake_configure "$work/dxc" "$work/dxc/build" -C "$work/dxc/cmake/caches/PredefinedParams.cmake" \
         -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF -DHLSL_INCLUDE_TESTS=OFF -DSPIRV_BUILD_TESTS=OFF
+    cmake --build "$work/dxc/build" --target dxcompiler --parallel "$jobs"
     cp "$work/dxc/build/lib/libdxcompiler.dylib" "$out"
 
     # the windows d3d12shader.h in third_party/dxc can't build here, reflection uses the cross platform directx headers dxc ships with

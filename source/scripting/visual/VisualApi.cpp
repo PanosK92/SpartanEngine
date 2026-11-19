@@ -435,8 +435,20 @@ namespace spartan::scripting::visual
             pending_functions.push_back(move(function));
         }
 
-        void add_enum(const string& name, type_index cpp, vector<pair<string, int64_t>>&& values)
+        void add_enum(sol::state_view state, const char* name, type_index cpp, vector<pair<string, int64_t>>&& values)
         {
+            sol::table target = state.create_table(0, static_cast<int>(values.size()));
+            for (const auto& [key, value] : values)
+            {
+                target.set(key, value);
+            }
+            sol::table metatable = state.create_table_with(
+                sol::meta_function::new_index, sol::detail::fail_on_newindex,
+                sol::meta_function::index, target,
+                sol::meta_function::pairs, sol::stack::stack_detail::readonly_pairs
+            );
+            state.create_named_table(name, sol::metatable_key, metatable);
+
             PendingEnum entry;
             entry.name   = name;
             entry.cpp    = cpp;

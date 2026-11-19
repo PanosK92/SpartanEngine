@@ -32,49 +32,16 @@ namespace spartan::road_guardrail
     enum Module { Beam, Post, Splice, Reflector, Terminal, TerminalFace, ModuleCount };
     struct Corner { Vector3 position; Vector2 uv; Vector3 normal, tangent; };
     inline std::array<std::vector<Corner>, ModuleCount> modules;
-    inline std::array<std::vector<std::vector<Corner>>, ModuleCount> module_lods;
     inline std::array<std::shared_ptr<Mesh>, ModuleCount> shared_meshes;
     inline uint64_t asset_hash = 0;
 
-    inline void Clear() { for (auto& m : modules) m.clear(); for (auto& m : module_lods) m.clear(); shared_meshes.fill(nullptr); asset_hash = 0; }
-
-    inline const std::vector<Corner>& ModuleLod(Module module, uint32_t lod)
-    {
-        if (lod == 0) return modules[module]; // Preserve the exact authored corners.
-        auto& levels = module_lods[module];
-        if (levels.empty())
-        {
-            std::vector<RHI_Vertex_PosTexNorTan> vertices;
-            std::vector<uint32_t> indices;
-            for (const Corner& c : modules[module])
-            {
-                indices.push_back(static_cast<uint32_t>(vertices.size()));
-                vertices.emplace_back(c.position, c.uv, c.normal, c.tangent);
-            }
-            Mesh mesh;
-            mesh.SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0));
-            mesh.AddGeometry(vertices, indices, true);
-            for (uint32_t i = 0; i < mesh.GetLodCount(0); ++i)
-            {
-                mesh.GetGeometryLod(0, i, &indices, &vertices);
-                auto& corners = levels.emplace_back();
-                corners.reserve(indices.size());
-                for (uint32_t index : indices)
-                {
-                    const auto& v = vertices[index];
-                    corners.push_back({v.get_position(), v.get_uv(), v.get_normal(), v.get_tangent()});
-                }
-            }
-        }
-        return levels[std::min<size_t>(lod, levels.size() - 1)];
-    }
+    inline void Clear() { for (auto& m : modules) m.clear(); shared_meshes.fill(nullptr); asset_hash = 0; }
 
     struct Geometry
     {
         std::vector<RHI_Vertex_PosTexNorTan> vertices;
         std::vector<uint32_t> indices;
     };
-    using GeometryLods = std::array<Geometry, mesh_lod_count>;
 
     inline bool Load(const std::string& directory)
     {
@@ -124,8 +91,8 @@ namespace spartan::road_guardrail
                 vertices.emplace_back(c.position,c.uv,c.normal,c.tangent);
             }
             auto mesh=std::make_shared<Mesh>(); mesh->SetObjectName(InstanceName(module));
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0));
-            mesh->AddGeometry(vertices,indices,true); mesh->CreateGpuBuffers();
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PreserveSourceGeometry));
+            mesh->AddGeometry(vertices,indices); mesh->CreateGpuBuffers();
             shared_meshes[module]=mesh;
         }
         return shared_meshes[module];
@@ -206,7 +173,7 @@ namespace spartan::road_guardrail
         {
             float side, start, end, distance;
             Vector3 origin;
-            std::array<GeometryLods, 2> geometry;
+            std::array<Geometry, 2> geometry;
             std::array<std::vector<Matrix>, ModuleCount> instances;
         };
         std::vector<Chunk> chunks;
@@ -245,8 +212,6 @@ namespace spartan::road_guardrail
             }
         }
         if (chunks.empty()) return;
-        // Resolve lazy module LODs before sharing their immutable data with workers.
-        for (Module module : {Beam, Terminal, TerminalFace}) ModuleLod(module, 1);
         ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t finish)
         {
             for (uint32_t i = begin; i < finish; ++i)
@@ -270,25 +235,22 @@ namespace spartan::road_guardrail
                 auto append=[&](Module module,float at,float stretch=1.0f,float facing=1.0f)
                 {
                     const size_t finish=module==Reflector || module==TerminalFace ? 1 : 0;
-                    for (uint32_t lod = 0; lod < mesh_lod_count; ++lod)
+                    const auto& corners = modules[module];
+                    auto& v=geometry[finish].vertices; auto& ix=geometry[finish].indices;
+                    const uint32_t base=static_cast<uint32_t>(v.size());
+                    for (const Corner& c:corners)
                     {
-                        const auto& corners = ModuleLod(module, lod);
-                        auto& v=geometry[finish][lod].vertices; auto& ix=geometry[finish][lod].indices;
-                        const uint32_t base=static_cast<uint32_t>(v.size());
-                        for (const Corner& c:corners)
-                        {
-                            const Station s=sample(at+c.position.z*stretch*facing);
-                            const Vector3 x=s.right*side, z=s.forward*facing;
-                            const Vector3 center=s.center+x*(s.half_width+.8f+s.sidewalk);
-                            const Vector3 n=(x*c.normal.x+s.up*c.normal.y+z*(c.normal.z/std::max(.001f,stretch))).Normalized();
-                            Vector3 tangent=(x*c.tangent.x+s.up*c.tangent.y+z*(c.tangent.z*stretch)).Normalized();
-                            tangent=(tangent-n*tangent.Dot(n)).Normalized();
-                            v.emplace_back(center+x*c.position.x+s.up*c.position.y-origin,c.uv,n,tangent);
-                        }
-                        for (uint32_t j=0;j<static_cast<uint32_t>(corners.size());j+=3)
-                        {
-                            ix.push_back(base+j); ix.push_back(base+j+(side*facing>0 ? 1:2)); ix.push_back(base+j+(side*facing>0 ? 2:1));
-                        }
+                        const Station s=sample(at+c.position.z*stretch*facing);
+                        const Vector3 x=s.right*side, z=s.forward*facing;
+                        const Vector3 center=s.center+x*(s.half_width+.8f+s.sidewalk);
+                        const Vector3 n=(x*c.normal.x+s.up*c.normal.y+z*(c.normal.z/std::max(.001f,stretch))).Normalized();
+                        Vector3 tangent=(x*c.tangent.x+s.up*c.tangent.y+z*(c.tangent.z*stretch)).Normalized();
+                        tangent=(tangent-n*tangent.Dot(n)).Normalized();
+                        v.emplace_back(center+x*c.position.x+s.up*c.position.y-origin,c.uv,n,tangent);
+                    }
+                    for (uint32_t j=0;j<static_cast<uint32_t>(corners.size());j+=3)
+                    {
+                        ix.push_back(base+j); ix.push_back(base+j+(side*facing>0 ? 1:2)); ix.push_back(base+j+(side*facing>0 ? 2:1));
                     }
                 };
                 // a 4 m chord departs from the tightest guarded bend by about a centimetre, so one shared
@@ -332,7 +294,7 @@ namespace spartan::road_guardrail
             auto& geometry = output.geometry;
             auto& instances = output.instances;
             for (size_t finish=0;finish<2;++finish)
-                if (!geometry[finish][0].vertices.empty()) create_batch(origin,finish,geometry[finish]);
+                if (!geometry[finish].vertices.empty()) create_batch(origin,finish,geometry[finish]);
             for (Module module:{Beam,Post,Splice,Reflector})
                 if (!instances[module].empty()) create_instances(origin,module,instances[module]);
         }

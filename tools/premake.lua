@@ -143,9 +143,9 @@ function solution_configuration()
             symbols "On"
 
         filter { "configurations:development", "system:windows" }
-            debugformat "c7"
+            -- Use MSVC's default /Zi so type records go into the intermediate PDB once.
             buildoptions { "/Zo", "/Oy-" }
-            linkoptions { "/DEBUG:FULL", "/OPT:NOICF", "/IGNORE:4099" }
+            linkoptions { "/DEBUG:FULL", "/IGNORE:4099" }
 
         filter { "configurations:release" }
             flags { "MultiProcessorCompile" }
@@ -215,6 +215,18 @@ function spartan_project_configuration()
             SOURCE_DIR .. "/**.rc"
         }
         removefiles { SOURCE_DIR .. "/runtime/**" }
+        -- Small, related implementations share a compiler invocation. The batch
+        -- itself lists its members so every generator compiles each file once.
+        for _, batch in ipairs(os.matchfiles(SOURCE_DIR .. "/**.unity.cpp")) do
+            for line in io.lines(batch) do
+                local member = line:match('^#include "([^"]+%.cpp)"')
+                if member then
+                    filter { "files:" .. path.join(path.getdirectory(batch), member) }
+                        flags { "ExcludeFromBuild" }
+                end
+            end
+        end
+        filter {}
         files(lzma_sdk.sources())
         -- Recast bakes tiles, Detour queries them, DetourCrowd handles pedestrian avoidance.
         includedirs {
@@ -268,7 +280,7 @@ function spartan_project_configuration()
         pchsource(SOURCE_DIR .. "/core/pch.cpp")
         -- xcode takes the prefix header as a path, not an include name
         filter { "action:xcode4" }
-            pchheader "source/core/pch.h"
+            pchheader(path.getrelative(PROJECT_DIR, SOURCE_DIR .. "/core/pch.h"))
         filter {}
 
         -- lzma sdk c++ units: compile into spartan, no separate solution project
@@ -407,9 +419,28 @@ function spartan_project_configuration()
 end
 
 if generation_actions[_ACTION] then
-    -- cl.exe /MP dispatches translation units in vcxproj order; schedule the heaviest ones first so slow TUs never straggle at the tail
     if _ACTION == "vs2022" or _ACTION == "vs2026" then
         require("vstudio")
+        -- Premake disables incremental linking for every optimized configuration.
+        -- Development keeps optimized code and a full PDB, but can reuse the previous link.
+        local vc = premake.vstudio.vc2010
+        premake.override(vc, "linkIncremental", function(base, cfg)
+            if cfg.buildcfg == "development" then
+                vc.element("LinkIncremental", nil, "true")
+            else
+                base(cfg)
+            end
+        end)
+        premake.override(vc, "optimizeReferences", function(base, cfg)
+            if cfg.buildcfg == "development" then
+                vc.element("EnableCOMDATFolding", nil, "false")
+                vc.element("OptimizeReferences", nil, "false")
+            else
+                base(cfg)
+            end
+        end)
+
+        -- cl.exe /MP dispatches translation units in vcxproj order; schedule the heaviest ones first so slow TUs never straggle at the tail
         local function compile_priority(relpath)
             local p = relpath:gsub("\\", "/")
             if p:find("/pch%.cpp$") then return 0 end

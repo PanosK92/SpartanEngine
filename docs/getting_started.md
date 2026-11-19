@@ -75,7 +75,7 @@ Executables are written to `binaries/`; intermediates go to `binaries/build/`.
 
 1. Copies `data/` (shaders, fonts, engine textures, prefabs) to `binaries/data/`.
 2. Downloads and verifies (SHA-256) the prebuilt third-party libraries into `third_party/libraries/`.
-3. Fetches the DLSS, XeSS, FidelityFX/FSR and D3D12 Agility SDK runtimes and the Steamworks SDK.
+3. Fetches Steamworks and the runtimes for the selected backend. Vulkan and D3D12 use DLSS, XeSS and their matching FidelityFX/FSR libraries. WebGPU uses Dawn. D3D12 and WebGPU setup also stage the D3D12 Agility SDK.
 4. Stages the runtime DLLs into `binaries/third_party/` and writes `binaries/steam_appid.txt` (Spacewar, app id 480, for local development).
 
 On Linux and macOS the dependency scripts build the libraries and setup copies `data/` and the shader compiler libraries.

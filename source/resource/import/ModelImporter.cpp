@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include <set>
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -20,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../core/ThreadPool.h"
 #include "../../rhi/RHI_Texture.h"
 #include "../../geometry/Mesh.h"
+#include "../../geometry/GeometryProcessing.h"
 #include "../../rendering/Material.h"
 #include "../../animation/Animation.h"
 #include "../../animation/Skeleton.h"
@@ -30,6 +32,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../world/components/Light.h"
 #include "../../resource/ResourceCache.h"
 SP_WARNINGS_OFF
+#include "meshoptimizer/meshoptimizer.h"
 #include "assimp/scene.h"
 #include "assimp/material.h"
 #include "assimp/GltfMaterial.h"
@@ -55,6 +58,7 @@ namespace spartan
         vector<Entity*> entities;
         // deterministic sub-mesh slot, assigned sequentially during ParseNode so the parallel ParseMesh stage cannot race on it
         uint32_t sub_mesh_index = 0;
+        SkeletalMeshSection skin;
     };
 
     struct TextureFileCache
@@ -118,6 +122,59 @@ namespace spartan
             entity->SetPositionLocal(matrix_engine.GetTranslation());
             entity->SetRotationLocal(matrix_engine.GetRotation());
             entity->SetScaleLocal(matrix_engine.GetScale());
+        }
+
+        // Inspect authored nodes before combining meshes erases the child names.
+        // Sum material primitives on the same node, but never charge a parent for its descendants.
+        void warn_dense_nodes(const ImportContext& ctx)
+        {
+            constexpr uint64_t small_part_triangles = 25000;
+            constexpr uint64_t large_part_triangles = 250000;
+            constexpr float small_part_metres = 1.0f;
+            std::set<vector<unsigned int>> warned;
+
+            auto visit = [&](auto&& self, const aiNode* node, const aiMatrix4x4& parent) -> void
+            {
+                const aiMatrix4x4 world = parent * node->mTransformation;
+                uint64_t triangles = 0;
+                for (uint32_t i = 0; i < node->mNumMeshes; ++i)
+                {
+                    const aiMesh* mesh = ctx.scene->mMeshes[node->mMeshes[i]];
+                    if (mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE)
+                        triangles += mesh->mNumFaces; // triangulated and sorted by primitive type
+                }
+                if (triangles >= small_part_triangles)
+                {
+                    vector<unsigned int> parts(node->mMeshes, node->mMeshes + node->mNumMeshes);
+                    sort(parts.begin(), parts.end());
+                    if (!warned.count(parts))
+                    {
+                        BoundingBox bounds;
+                        for (const unsigned int part : parts)
+                        {
+                            const aiMesh* mesh = ctx.scene->mMeshes[part];
+                            if (!(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE)) continue;
+                            for (uint32_t v = 0; v < mesh->mNumVertices; ++v)
+                            {
+                                const Vector3 point = to_vector3(world * mesh->mVertices[v]);
+                                bounds.Merge(BoundingBox(point, point));
+                            }
+                        }
+                        const Vector3 size = bounds.GetSize();
+                        const float span = max({size.x, size.y, size.z});
+                        if (triangles >= large_part_triangles || span <= small_part_metres)
+                        {
+                            const char* name = node->mName.length ? node->mName.C_Str() : ctx.scene->mMeshes[parts.front()]->mName.C_Str();
+                            SP_LOG_WARNING("Dense mesh in '%s': '%s' (mesh %u) has %llu source triangles across %.2f m. Consider simplifying this part.",
+                                ctx.file_path.c_str(), name, parts.front(), static_cast<unsigned long long>(triangles), span);
+                            warned.insert(move(parts));
+                        }
+                    }
+                }
+                for (uint32_t i = 0; i < node->mNumChildren; ++i)
+                    self(self, node->mChildren[i], world);
+            };
+            visit(visit, ctx.scene->mRootNode, aiMatrix4x4());
         }
 
         class AssimpProgress : public ProgressHandler
@@ -1665,17 +1722,9 @@ namespace spartan
             const aiMesh* assimp_mesh,
             const unordered_map<string, uint32_t>& bone_name_to_index,
             const uint32_t sub_mesh_index,
-            const uint32_t vertex_offset,
-            SkeletalMeshBinding& binding)
+            SkeletalMeshSection& section)
         {
-            if (assimp_mesh->mNumBones == 0)
-            {
-                return;
-            }
-
-            SkeletalMeshSection section;
-            section.sub_mesh_index     = sub_mesh_index;
-            section.vertex_input_offset = vertex_offset;
+            section.sub_mesh_index = sub_mesh_index;
             section.vertex_count       = assimp_mesh->mNumVertices;
             section.influences.resize(assimp_mesh->mNumVertices);
 
@@ -1748,7 +1797,7 @@ namespace spartan
                 }
             }
 
-            binding.AddSection(move(section));
+
         }
 
         Vector3 sample_vector_keys(const aiVectorKey* keys, const uint32_t count, const double time_ticks)
@@ -2066,6 +2115,7 @@ namespace spartan
 
         // read the 3d model file from drive
         ctx.scene = importer.ReadFile(file_path, import_flags);
+        if (ctx.scene && ctx.scene->mRootNode) warn_dense_nodes(ctx);
         if (ctx.scene && (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes)))
         {
             bool has_bones = false;
@@ -2090,7 +2140,7 @@ namespace spartan
             if (!ctx.mesh_jobs.empty())
             {
                 const uint32_t mesh_job_count = static_cast<uint32_t>(ctx.mesh_jobs.size());
-                ctx.progress.SetStep("Building meshes and LODs");
+                ctx.progress.SetStep("Building mesh geometry");
                 ctx.mesh->ReserveSubMeshes(mesh_job_count);
                 // Start expensive meshes first and claim work dynamically, avoiding
                 // a long tail when one worker's chunk contains all the large meshes.
@@ -2100,6 +2150,13 @@ namespace spartan
                 {
                     return ctx.mesh_jobs[a].assimp_mesh->mNumFaces > ctx.mesh_jobs[b].assimp_mesh->mNumFaces;
                 });
+                for (const MeshJob& job : ctx.mesh_jobs)
+                {
+                    const uint32_t index = job.assimp_mesh->mMaterialIndex;
+                    if (index >= ctx.scene->mNumMaterials) continue;
+                    auto [it, inserted] = ctx.materials.try_emplace(index);
+                    if (inserted) it->second = load_material(ctx, ctx.scene->mMaterials[index], index);
+                }
                 atomic<uint32_t> next_job{0};
                 atomic<uint32_t> completed_jobs{0};
                 auto process_jobs = [&](uint32_t, uint32_t)
@@ -2120,24 +2177,21 @@ namespace spartan
                 // Finalize shared state after all appends. Read the actual LOD 0
                 // offset; other meshes may have appended their LODs in between.
                 ctx.progress.SetStep("Loading materials and skinning");
-                for (const MeshJob& job : ctx.mesh_jobs)
+                for (MeshJob& job : ctx.mesh_jobs)
                 {
-                    if (job.assimp_mesh->HasBones() && !ctx.bone_name_to_index.empty())
+                    if (job.skin.vertex_count != 0)
                     {
                         if (!ctx.mesh->GetSkeletalMeshBinding())
                             ctx.mesh->SetSkeletalMeshBinding(make_unique<SkeletalMeshBinding>());
-                        extract_bone_weights(job.assimp_mesh, ctx.bone_name_to_index, job.sub_mesh_index,
-                            ctx.mesh->GetSubMesh(job.sub_mesh_index).lods[0].vertex_offset,
-                            *ctx.mesh->GetSkeletalMeshBinding());
+                        job.skin.vertex_input_offset = ctx.mesh->GetSubMesh(job.sub_mesh_index).root.vertex_offset;
+                        ctx.mesh->GetSkeletalMeshBinding()->AddSection(move(job.skin));
                     }
 
                     shared_ptr<Material> material;
                     const uint32_t material_index = job.assimp_mesh->mMaterialIndex;
                     if (material_index < ctx.scene->mNumMaterials)
                     {
-                        auto [it, inserted] = ctx.materials.try_emplace(material_index);
-                        if (inserted) it->second = load_material(ctx, ctx.scene->mMaterials[material_index], material_index);
-                        material = it->second;
+                        material = ctx.materials.at(material_index);
                     }
                     for (Entity* entity : job.entities)
                     {
@@ -2301,25 +2355,50 @@ namespace spartan
         process_vertices_parallel(assimp_mesh, vertices);
         process_indices_parallel(assimp_mesh, indices);
 
-        // AddGeometry locks only the shared appends; optimization and meshlet
-        // construction run independently. Skin weights retain Assimp vertex order.
-        // Until LOD generation remaps influences too, skinned meshes use LOD 0.
-        bool foliage_cards = false;
-        if (assimp_mesh->mMaterialIndex < ctx.scene->mNumMaterials)
+        if (vertices.empty() || indices.empty()) return;
+        if (assimp_mesh->HasBones() && !ctx.bone_name_to_index.empty())
         {
-            // same naming rule load_material uses to mark foliage
-            const string material_name = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex]->GetName().C_Str();
-            foliage_cards = material_name.find("_foliage") != string::npos;
+            auto& skin = ctx.mesh_jobs[sub_mesh_index].skin;
+            extract_bone_weights(assimp_mesh, ctx.bone_name_to_index, sub_mesh_index, skin);
+            // Assimp leaves vertices split by face. Weld the packed attributes and
+            // all four influences together so seams and animated poses stay exact.
+            meshopt_Stream streams[] = {
+                { vertices.data(), sizeof(vertices[0]), sizeof(vertices[0]) },
+                { skin.influences.data(), sizeof(skin.influences[0]), sizeof(skin.influences[0]) }
+            };
+            vector<uint32_t> remap(vertices.size());
+            const size_t count = meshopt_generateVertexRemapMulti(remap.data(), indices.data(), indices.size(),
+                vertices.size(), streams, 2);
+            if (count < vertices.size())
+            {
+                meshopt_remapIndexBuffer(indices.data(), indices.data(), indices.size(), remap.data());
+                meshopt_remapVertexBuffer(vertices.data(), vertices.data(), vertices.size(), sizeof(vertices[0]), remap.data());
+                meshopt_remapVertexBuffer(skin.influences.data(), skin.influences.data(), skin.influences.size(),
+                    sizeof(skin.influences[0]), remap.data());
+                vertices.resize(count);
+                skin.influences.resize(count);
+                skin.vertex_count = static_cast<uint32_t>(count);
+            }
         }
-
-        // the trunk and branches of a plant switch to their own card together with the crown, left as meshes
-        // they stay on their coarsest lod out to the scatter distance and cost more than the whole forest canopy
-        bool plant = foliage_cards;
-        for (uint32_t i = 0; i < ctx.scene->mNumMaterials && !plant; ++i)
+        // Small rigid parts such as tires can arrive with more triangles than
+        // an entire vehicle. Preserve seams and bound the error at the finest
+        // resolution before the same surface feeds streaming and ray tracing.
+        if (!ctx.mesh->GetSkeleton() && !assimp_mesh->mNumAnimMeshes && indices.size() >= 25000u * 3u)
         {
-            plant = string(ctx.scene->mMaterials[i]->GetName().C_Str()).find("_foliage") != string::npos;
+            const BoundingBox local(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            const auto& owners = ctx.mesh_jobs[sub_mesh_index].entities;
+            const bool small = !owners.empty() && all_of(owners.begin(), owners.end(), [&](Entity* owner)
+            {
+                const Vector3 size = (local * owner->GetMatrix()).GetSize();
+                return max({size.x, size.y, size.z}) <= 1.0f;
+            });
+            if (small)
+            {
+                geometry_processing::weld_and_optimize(vertices, indices);
+                geometry_processing::simplify(indices, vertices, 4096u * 3u, true, false, false, 0.00035f);
+            }
         }
-        ctx.mesh->AddGeometry(vertices, indices, !ctx.mesh->GetSkeleton(), sub_mesh_index, true, foliage_cards, plant);
+        ctx.mesh->AddGeometry(vertices, indices, sub_mesh_index);
     }
 
     void ModelImporter::ParseSkeleton(ImportContext& ctx)

@@ -32,14 +32,21 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float roughness = max(material.r, 0.04f);
     float metallic = material.g;
     float3 view = normalize(get_camera_position() - position);
-    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 7);
     uint2 block = pixel / 8u;
     restir_light_tile_index = xxhash32(block.x ^ xxhash32(block.y) ^ buffer_frame.frame) % RESTIR_LIGHT_TILE_COUNT;
     restir_load_primary_material(uv);
     PathSurface surface = restir_camera_primary(position, normal, geometric_normal, view, albedo, roughness, metallic);
-    float3 radiance;
-    uint replay_seed = seed;
-    trace_path_from_primary(surface, view, get_camera_position(), replay_seed, seed, radiance, false, (PathSample)0);
+    // These pixels bypass NRD entirely. Average independent paths to reduce flicker on thin edges.
+    const uint sample_count = 4u;
+    float3 radiance = 0.0f;
+    [loop] for (uint i = 0; i < sample_count; ++i)
+    {
+        uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 7u + i);
+        uint replay_seed = seed;
+        float3 sample_radiance;
+        trace_path_from_primary(surface, view, get_camera_position(), replay_seed, seed, sample_radiance, false, (PathSample)0);
+        radiance += sample_radiance / float(sample_count);
+    }
     // Alpha zero is valid lighting but is not a denoised accumulation history.
     tex_uav[pixel] = float4(all(isfinite(radiance)) ? radiance : 0.0f, 0.0f);
 }

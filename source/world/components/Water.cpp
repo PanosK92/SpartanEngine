@@ -102,7 +102,9 @@ namespace spartan
                 m_horizon_extent
             );
 
-            m_mesh->AddGeometry(vertices, indices, false);
+            // The displacement shader recenters the grid on the camera. Keep its topology resident.
+            m_mesh->SetDynamic(true);
+            m_mesh->AddGeometry(vertices, indices);
             m_mesh->CreateGpuBuffers();
         }
 

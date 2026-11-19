@@ -2708,7 +2708,7 @@ namespace spartan::mcp_mesh
             ),
             false
         );
-        mesh->AddGeometry(vertices, indices, false);
+        mesh->AddGeometry(vertices, indices);
         mesh->SaveToFile(path);
         if (!FileSystem::IsFile(path))
         {

@@ -520,7 +520,12 @@ namespace spartan
                     }
                 }
 
-                for (Matrix& skin : skin_matrices) skin.Transpose();
+                bool affine = true;
+                for (Matrix& skin : skin_matrices)
+                {
+                    skin.Transpose();
+                    affine = affine && skin.m30 == 0.0f && skin.m31 == 0.0f && skin.m32 == 0.0f && skin.m33 == 1.0f;
+                }
 
                 auto skin_vertices =
                     [&](
@@ -549,6 +554,7 @@ namespace spartan
                         Vector3 skinned_nor = Vector3::Zero;
                         Vector3 skinned_tan = Vector3::Zero;
                         float weight_sum = 0.0f;
+                        __m128 c0 = _mm_setzero_ps(), c1 = c0, c2 = c0, c3 = c0;
 
                         for (uint32_t w = 0; w < 4; ++w)
                         {
@@ -579,12 +585,35 @@ namespace spartan
                             }
 
                             const Matrix& skin = skin_matrices[bone_index];
-                            skinned += skin_position(skin, bind_pos) * weight;
-                            skinned_nor +=
-                                skin_direction(skin, bind_nor) * weight;
-                            skinned_tan +=
-                                skin_direction(skin, bind_tan) * weight;
+                            if (affine)
+                            {
+                                // Skin the position, normal and tangent with the same blended matrix.
+                                const __m128 w4 = _mm_set1_ps(weight);
+                                c0 = _mm_fmadd_ps(skin.Column(0), w4, c0);
+                                c1 = _mm_fmadd_ps(skin.Column(1), w4, c1);
+                                c2 = _mm_fmadd_ps(skin.Column(2), w4, c2);
+                                c3 = _mm_fmadd_ps(skin.Column(3), w4, c3);
+                            }
+                            else
+                            {
+                                skinned += skin_position(skin, bind_pos) * weight;
+                                skinned_nor += skin_direction(skin, bind_nor) * weight;
+                                skinned_tan += skin_direction(skin, bind_tan) * weight;
+                            }
                             weight_sum += weight;
+                        }
+
+                        if (affine)
+                        {
+                            const auto transform = [&](const Vector3& v, __m128 translation)
+                            {
+                                __m128 r = _mm_fmadd_ps(c0, _mm_set1_ps(v.x), translation);
+                                r = _mm_fmadd_ps(c1, _mm_set1_ps(v.y), r);
+                                return Vector3(_mm_fmadd_ps(c2, _mm_set1_ps(v.z), r));
+                            };
+                            skinned = transform(bind_pos, c3);
+                            skinned_nor = transform(bind_nor, _mm_setzero_ps());
+                            skinned_tan = transform(bind_tan, _mm_setzero_ps());
                         }
 
                         if (

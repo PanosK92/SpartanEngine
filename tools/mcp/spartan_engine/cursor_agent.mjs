@@ -432,7 +432,6 @@ async function make_game_ready(
     "entity_make_game_ready",
     {
       id: entity_id,
-      generate_lods: true,
       ...(context.asset_revision?.candidate_path
         ? {
             path: `${

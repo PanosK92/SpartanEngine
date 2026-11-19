@@ -566,7 +566,7 @@ namespace spartan
         }
 
         generated_cache::Hash disk_hash;
-        disk_hash.Add(uint32_t(1)); // text raster/extrusion version
+        disk_hash.Add(uint32_t(2)); // coalesce matching face spans across glyph rows
         std::apply([&](const auto&... values) { (disk_hash.Add(values), ...); }, key);
         disk_hash.Add(FileSystem::GetLastWriteTime(m_font_path));
         const auto disk_path = generated_cache::Path(World::GetResourceDirectory(), "text", disk_hash.value);
@@ -875,6 +875,19 @@ namespace spartan
                             x++;
                         }
 
+                        // The front and back UVs are affine across the glyph.
+                        // A vertical run with identical endpoints needs just one quad per face.
+                        auto same_span = [&](int64_t row)
+                        {
+                            if (is_solid(glyph, static_cast<int64_t>(run_start) - 1, row) || is_solid(glyph, x, row))
+                                return false;
+                            for (uint32_t column = run_start; column < x; ++column)
+                                if (!is_solid(glyph, column, row)) return false;
+                            return true;
+                        };
+                        if (same_span(static_cast<int64_t>(y) - 1)) continue;
+                        uint32_t end_row = y + 1;
+                        while (end_row < glyph.height && same_span(end_row)) ++end_row;
                         const float x0 =
                             glyph.x +
                             alignment_offset +
@@ -889,11 +902,11 @@ namespace spartan
                             glyph.y -
                             static_cast<float>(y) *
                             scale;
-                        const float y0 = y1 - scale;
+                        const float y0 = glyph.y - static_cast<float>(end_row) * scale;
                         const Vector2 uv0(
                             static_cast<float>(run_start) /
                             glyph.width,
-                            static_cast<float>(y + 1) /
+                            static_cast<float>(end_row) /
                             glyph.height
                         );
                         const Vector2 uv1(
@@ -1098,7 +1111,7 @@ namespace spartan
             false
         );
         mesh->SetDynamic(true);
-        mesh->AddGeometry(vertices, indices, false);
+        mesh->AddGeometry(vertices, indices);
         mesh->CreateGpuBuffers();
 
         if (!render)

@@ -3343,7 +3343,8 @@ namespace spartan
         cloth_mesh->ReserveSubMeshes(source_sub_mesh_index + 1);
         vector<RHI_Vertex_PosTexNorTan> cloth_mesh_vertices = vertices;
         vector<uint32_t> cloth_mesh_indices = indices;
-        cloth_mesh->AddGeometry(cloth_mesh_vertices, cloth_mesh_indices, false, source_sub_mesh_index);
+        cloth_mesh->SetDynamic(true);
+        cloth_mesh->AddGeometry(cloth_mesh_vertices, cloth_mesh_indices, source_sub_mesh_index);
         cloth_mesh->CreateGpuBuffers();
         render->SetMesh(cloth_mesh.get(), source_sub_mesh_index);
         m_cloth_mesh = move(cloth_mesh);
