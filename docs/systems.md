@@ -64,7 +64,7 @@ The [`Terrain`](../source/world/components/Terrain.h) component builds a heightf
 
 The world's `Environment` holds date, latitude and longitude (which position the sun), time of day, clouds, rain, wind and puddles. Rain wets exposed surfaces, fills puddles, keeps covered areas dry and lowers tire grip. Atmospheric scattering, volumetric clouds and froxel fog render it; `r.atmosphere.mist_*` cvars add mist per world. The FFT ocean is part of the renderer and reacts to wind; boats and cars leave wakes (`ocean.wake*`). Ambient wildlife and atmosphere (birds, insects, dust) are optional world systems.
 
-[`worlds/weather_example.world`](../worlds/weather_example.world) is a small island with a shelter: number keys ease between clear, overcast, rain and storm, the arrows scrub the time of day and the wind, and the floor under the shelter stays dry.
+In [`worlds/weather_example.world`](../worlds/weather_example.world), follow the pier to the coastal observatory. Keys 1–4 ease between clear skies, overcast, rain and storm. Watch the anemometer as you adjust wind speed with Up and Down, or step under the shelter to compare its dry floor with the exposed paving. Left and Right scrub the time of day, and T toggles time lapse.
 
 ## Particles
 

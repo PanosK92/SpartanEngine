@@ -1,27 +1,191 @@
 <?xml version="1.0"?>
-<World name="lighting_example" description="A material ball and a Cornell box, lit by a glowing panel">
+<World name="lighting_example" description="A path-traced gallery of penumbra, diffuse colour transfer and metal roughness">
+ <OwnedResources>
+  <Resource file="materials/gallery_aperture.xml" />
+  <Resource file="materials/gallery_brass.xml" />
+  <Resource file="materials/gallery_brushed.xml" />
+  <Resource file="materials/gallery_chalk.xml" />
+  <Resource file="materials/gallery_floor.xml" />
+  <Resource file="materials/gallery_graphite.xml" />
+  <Resource file="materials/gallery_jade.xml" />
+  <Resource file="materials/gallery_letter.xml" />
+  <Resource file="materials/gallery_oxide.xml" />
+  <Resource file="materials/gallery_polished.xml" />
+  <Resource file="materials/gallery_satin.xml" />
+  <Resource file="materials/gallery_softbox.xml" />
+  <Resource file="materials/gallery_strip.xml" />
+ </OwnedResources>
+ <Environment utc_days="9665.25" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
  <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
   <Variable name="r.grid" value="0.000000" />
   <Variable name="r.restir_pt" value="1.000000" />
+  <Variable name="r.path_tracing" value="0.000000" />
+  <Variable name="r.restir_pt_emissive_pool" value="1.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="1002000000000000001" active="true" position="0 1.2 -8" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
-   <Entity name="component_camera" id="1002000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
-    <camera exposure_mode="1" aperture="2.8" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="17" />
+  <Entity name="physics_body_camera" id="1002000000000000001" active="true" position="-0.188726 2.69402 -10.1991" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="1002000000000000002" active="true" position="0 0.77 0" rotation="0.0593155 0.0104534 -0.000621299 0.998184" scale="1 1 1">
+    <camera flags="17" preset="0" exposure_mode="0" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="4" shutter_speed="0.0166699998" iso="400" fov_horizontal="1.24999988" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
-  <Entity name="light_directional" id="1002000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/scripts/sun.lua" preset="dusk" volumetric="false" override_rotation="true" rot_pitch="-30" rot_yaw="0" rot_roll="0" />
-  </Entity>
-  <Entity name="floor" id="1002000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" body_type="2" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="builder" id="1002000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/lighting_example_resources/scripts/lighting_example.lua" />
+  <Entity name="gallery" id="6202100000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="gallery_floor" id="6202100000000000002" active="true" position="0 -0.13 -1" rotation="0 0 0 1" scale="18 0.26 21">
+    <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_floor" material_path="project/lighting_example_resources/materials/gallery_floor.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rear" id="6202100000000000003" active="true" position="0 2.6 5" rotation="0 0 0 1" scale="18 5.2 0.3">
+    <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="left" id="6202100000000000004" active="true" position="-8.8 2.6 -1" rotation="0 0 0 1" scale="0.3 5.2 12">
+    <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="right" id="6202100000000000005" active="true" position="8.8 2.6 -1" rotation="0 0 0 1" scale="0.3 5.2 12">
+    <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="soffit" id="6202100000000000006" active="true" position="0 5.25 0" rotation="0 0 0 1" scale="18 0.25 10">
+    <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="penumbra" id="6202100000000000007" active="true" position="-4.65 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="display_plinth" id="6202100000000000008" active="true" position="0 0.45 2" rotation="0 0 0 1" scale="4.5 0.9 4">
+     <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="receiver" id="6202100000000000009" active="true" position="0 0.94 2" rotation="0 0 0 1" scale="4.34 0.08 3.9">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="backdrop" id="6202100000000000010" active="true" position="0 2.58 3.99" rotation="0 0 0 1" scale="4.4 3.28 0.14">
+     <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="penumbra_caption" id="6202100000000000011" active="true" position="0 0.53 -0.017" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="gallery_letter" material_path="project/lighting_example_resources/materials/gallery_letter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="Penumbra" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.25" depth="0.00600000005" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="96" alignment="1" />
+    </Entity>
+    <Entity name="caption_rule" id="6202100000000000012" active="true" position="0 0.25 -0.012" rotation="0 0 0 1" scale="3.7 0.014 0.015">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="shadow_fin_0" id="6202100000000000013" active="true" position="-1.15 1.96 2.24" rotation="0 -0.121869 0 0.992546" scale="0.17 1.96 0.53">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="shadow_fin_1" id="6202100000000000014" active="true" position="-0.43 2.025 2.24" rotation="0 -0.121869 0 0.992546" scale="0.17 2.09 0.53">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="shadow_fin_2" id="6202100000000000015" active="true" position="0.29 2.09 2.24" rotation="0 -0.121869 0 0.992546" scale="0.17 2.22 0.53">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="shadow_fin_3" id="6202100000000000016" active="true" position="1.01 2.155 2.24" rotation="0 -0.121869 0 0.992546" scale="0.17 2.35 0.53">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="broad_source" id="6202100000000000017" active="true" position="-0.78 3.8 0.48" rotation="0 0 0 1" scale="1.36 0.025 1.36">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_softbox" material_path="project/lighting_example_resources/materials/gallery_softbox.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="compact_source" id="6202100000000000018" active="false" position="-0.78 3.8 0.48" rotation="0 0 0 1" scale="0.34 0.00625 0.34">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_aperture" material_path="project/lighting_example_resources/materials/gallery_aperture.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="penumbra_picture_hood" id="6202100000000000043" active="true" position="0 0.82 -0.115" rotation="0 0 0 1" scale="3.88 0.065 0.23">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="penumbra_picture_light" id="6202100000000000044" active="true" position="0 0.783 -0.16" rotation="0 0 0 1" scale="3.75 0.012 0.039">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_softbox" material_path="project/lighting_example_resources/materials/gallery_softbox.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="cornell" id="6202100000000000019" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="display_plinth" id="6202100000000000020" active="true" position="0 0.45 2" rotation="0 0 0 1" scale="4.5 0.9 4">
+     <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="receiver" id="6202100000000000021" active="true" position="0 0.94 2" rotation="0 0 0 1" scale="4.34 0.08 3.9">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="backdrop" id="6202100000000000022" active="true" position="0 2.58 3.99" rotation="0 0 0 1" scale="4.4 3.28 0.14">
+     <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="cornell_caption" id="6202100000000000023" active="true" position="0 0.53 -0.017" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="gallery_letter" material_path="project/lighting_example_resources/materials/gallery_letter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="Colour bleed" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.25" depth="0.00600000005" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="96" alignment="1" />
+    </Entity>
+    <Entity name="caption_rule" id="6202100000000000024" active="true" position="0 0.25 -0.012" rotation="0 0 0 1" scale="3.7 0.014 0.015">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="oxide_return" id="6202100000000000025" active="true" position="-2.12 2.46 2.35" rotation="0 0 0 1" scale="0.13 2.95 3.25">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_oxide" material_path="project/lighting_example_resources/materials/gallery_oxide.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="jade_return" id="6202100000000000026" active="true" position="2.12 2.46 2.35" rotation="0 0 0 1" scale="0.13 2.95 3.25">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_jade" material_path="project/lighting_example_resources/materials/gallery_jade.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tall_block" id="6202100000000000027" active="true" position="-0.8 2.01 2.76" rotation="0 0.333807 0 0.942641" scale="1.18 2.06 1.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="short_block" id="6202100000000000028" active="true" position="0.771178 1.48 2.09914" rotation="0 -0.390731 0 0.920505" scale="1.18 1 1.18">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="ceiling_panel" id="6202100000000000029" active="true" position="0 4.12 2.07" rotation="0 0 0 1" scale="1.9 0.028 1.45">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_softbox" material_path="project/lighting_example_resources/materials/gallery_softbox.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="cornell_picture_hood" id="6202100000000000045" active="true" position="0 0.82 -0.115" rotation="0 0 0 1" scale="3.88 0.065 0.23">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="cornell_picture_light" id="6202100000000000046" active="true" position="0 0.783 -0.16" rotation="0 0 0 1" scale="3.75 0.012 0.039">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_softbox" material_path="project/lighting_example_resources/materials/gallery_softbox.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="metal" id="6202100000000000030" active="true" position="4.65 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="display_plinth" id="6202100000000000031" active="true" position="0 0.45 2" rotation="0 0 0 1" scale="4.5 0.9 4">
+     <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="receiver" id="6202100000000000032" active="true" position="0 0.94 2" rotation="0 0 0 1" scale="4.34 0.08 3.9">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="backdrop" id="6202100000000000033" active="true" position="0 2.58 3.99" rotation="0 0 0 1" scale="4.4 3.28 0.14">
+     <physics mass="0.00100000005" friction="1" friction_rolling="0.00200000009" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_chalk" material_path="project/lighting_example_resources/materials/gallery_chalk.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="metal_caption" id="6202100000000000034" active="true" position="0 0.53 -0.017" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="gallery_letter" material_path="project/lighting_example_resources/materials/gallery_letter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="Roughness" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.25" depth="0.00600000005" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="96" alignment="1" />
+    </Entity>
+    <Entity name="caption_rule" id="6202100000000000035" active="true" position="0 0.25 -0.012" rotation="0 0 0 1" scale="3.7 0.014 0.015">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_brass" material_path="project/lighting_example_resources/materials/gallery_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="polished_foot" id="6202100000000000036" active="true" position="-1.32 1.07 2" rotation="0 0 0 1" scale="0.48 0.18 0.48">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="polished_sample" id="6202100000000000037" active="true" position="-1.32 1.72 2" rotation="0 0 0 1" scale="0.56 0.56 0.56">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="gallery_polished" material_path="project/lighting_example_resources/materials/gallery_polished.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="satin_foot" id="6202100000000000038" active="true" position="0 1.07 2" rotation="0 0 0 1" scale="0.48 0.18 0.48">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="satin_sample" id="6202100000000000039" active="true" position="0 1.72 2" rotation="0 0 0 1" scale="0.56 0.56 0.56">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="gallery_satin" material_path="project/lighting_example_resources/materials/gallery_satin.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="brushed_foot" id="6202100000000000040" active="true" position="1.32 1.07 2" rotation="0 0 0 1" scale="0.48 0.18 0.48">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="brushed_sample" id="6202100000000000041" active="true" position="1.32 1.72 2" rotation="0 0 0 1" scale="0.56 0.56 0.56">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="gallery_brushed" material_path="project/lighting_example_resources/materials/gallery_brushed.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="ribbon_source" id="6202100000000000042" active="true" position="0.05 3.62 1.4" rotation="0 0 0 1" scale="3.5 0.055 0.42">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_strip" material_path="project/lighting_example_resources/materials/gallery_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="metal_picture_hood" id="6202100000000000047" active="true" position="0 0.82 -0.115" rotation="0 0 0 1" scale="3.88 0.065 0.23">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_graphite" material_path="project/lighting_example_resources/materials/gallery_graphite.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="metal_picture_light" id="6202100000000000048" active="true" position="0 0.783 -0.16" rotation="0 0 0 1" scale="3.75 0.012 0.039">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gallery_softbox" material_path="project/lighting_example_resources/materials/gallery_softbox.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
   </Entity>
  </Entities>
 </World>

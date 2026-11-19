@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="weather_example" description="An island where you change the weather, the time of day and the wind">
+<World name="weather_example" description="A coastal observation station with a working anemometer, a sheltered rain deck and a harbour light">
  <OwnedResources>
   <Resource file="materials/weather_crate.xml" />
   <Resource file="materials/weather_grass.xml" />
@@ -9,7 +9,7 @@
   <Resource file="materials/weather_stone.xml" />
   <Resource file="materials/weather_wood.xml" />
  </OwnedResources>
- <Environment utc_days="9664.9499999880791" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <Environment utc_days="9665.17" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="1" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.3" />
  <ConsoleVariables>
   <Variable name="r.atmosphere.mist_density" value="1.000000" />
   <Variable name="r.atmosphere.mist_height" value="300.000000" />
@@ -18,14 +18,14 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-2 4.5 -15" rotation="0 0.173648 0 0.984808" scale="1 1 1">
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 4.1 -33" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
    <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
   <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.609797 0.0661207 -0.0511589 0.788136" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="11" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="ocean" id="6454051265333184443" active="true" position="-2 0 -15" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -34,13 +34,13 @@
    </water>
   </Entity>
   <Entity name="island" id="17119043834530513933" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="beach" id="7813844051638572916" active="true" position="0 0.4 0" rotation="0 0 0 1" scale="64 1.6 52">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_sand" material_path="project/weather_example_resources/materials/weather_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="beach" id="7813844051638572916" active="true" position="0 0.12 0" rotation="0 0 0 1" scale="34 2.1 28">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_sand" material_path="project/weather_example_resources/materials/weather_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="meadow" id="7814477609305329134" active="true" position="0 1.6 2" rotation="0 0 0 1" scale="50 2.4 40">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_grass" material_path="project/weather_example_resources/materials/weather_grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="meadow" id="7814477609305329134" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="headland" mesh_path="project/weather_example_resources/sources/headland.obj" sub_mesh_index="0" material_name="weather_grass" material_path="project/weather_example_resources/materials/weather_grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plaza" id="7814841782078140588" active="true" position="0 2.83 -4" rotation="0 0 0 1" scale="16 0.06 12">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
@@ -114,18 +114,6 @@
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="crate_0" id="7805150938845970157" active="true" position="-6 3.45 0" rotation="0 0 0 1" scale="1.2 1.2 1.2">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="crate_1" id="7804502408186606356" active="true" position="-7.4 3.25 1.2" rotation="0 0.21644 0 0.976296" scale="0.8 0.8 0.8">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="crate_2" id="7804592252423864415" active="true" position="-6.1 4.45 0.1" rotation="0 0.130526 0 0.991445" scale="0.8 0.8 0.8">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
    <Entity name="lamp_pole" id="7804527086830867769" active="true" position="2.6 4.65 -12" rotation="0 0 0 1" scale="0.08 3.6 0.08">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -134,43 +122,28 @@
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_lamp" material_path="project/weather_example_resources/materials/weather_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="rock_0" id="7804695223119965935" active="true" position="-25 1 -18" rotation="0 0 0 1" scale="2.4 1.4 2">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_stone" material_path="project/weather_example_resources/materials/weather_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="rock_1" id="7804689951416304473" active="true" position="22 1 -20" rotation="0 0.34202 0 0.939693" scale="1.8 1.2 1.5">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_stone" material_path="project/weather_example_resources/materials/weather_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="rock_2" id="7805692964325135399" active="true" position="29 0.9 10" rotation="0 0 0 1" scale="1.5 1 1.3">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_stone" material_path="project/weather_example_resources/materials/weather_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="tree_trunk_0" id="7805643317414785266" active="true" position="-15 3.6 12" rotation="0 0 0 1" scale="0.25 1.6 0.25">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="plan_aleppo_1147" id="7805643317414785266" active="true" position="-15 2.79 12" rotation="0 0 0 1" scale=".68 .68 .68">
+    <prefab file="project/models/trees/plan_aleppo_1147/plan_aleppo_1147.prefab" />
    </Entity>
-   <Entity name="tree_crown_0" id="7805610040778297970" active="true" position="-15 6.4 12" rotation="0 0 0 1" scale="2.2 4.4 2.2">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="weather_grass" material_path="project/weather_example_resources/materials/weather_grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="plan_olive_3511" id="7805186466560554846" active="true" position="-19 2.79 3" rotation="0 0 0 1" scale=".8 .8 .8">
+    <prefab file="project/models/trees/plan_olive_3511/plan_olive_3511.prefab" />
    </Entity>
-   <Entity name="tree_trunk_1" id="7805186466560554846" active="true" position="-19 3.6 5" rotation="0 0 0 1" scale="0.22 1.6 0.22">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="tree_crown_1" id="7805273820503592755" active="true" position="-19 5.9 5" rotation="0 0 0 1" scale="1.8 3.6 1.8">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="weather_grass" material_path="project/weather_example_resources/materials/weather_grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="tree_trunk_2" id="7805244876248255590" active="true" position="16 3.6 15" rotation="0 0 0 1" scale="0.25 1.6 0.25">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="tree_crown_2" id="7805565578960579317" active="true" position="16 6.6 15" rotation="0 0 0 1" scale="2.4 4.8 2.4">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="weather_grass" material_path="project/weather_example_resources/materials/weather_grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="plan_aleppo_1149" id="7805244876248255590" active="true" position="15 2.79 13" rotation="0 0 0 1" scale=".7 .7 .7">
+    <prefab file="project/models/trees/plan_aleppo_1149/plan_aleppo_1149.prefab" />
    </Entity>
    <Entity name="lamp_light" id="3666716566556158138" active="true" position="2.6 6.3 -12" rotation="0 0 0 1" scale="1 1 1">
-    <light flags="1" light_type="1" color_r="1" color_g="0.819999993" color_b="0.600000024" temperature="3200" intensity="8" intensity_photometric="9000" range="16" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+    <light flags="1" light_type="1" color_r="1" color_g="0.819999993" color_b="0.600000024" temperature="3200" intensity="8" intensity_photometric="650" range="16" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
    </Entity>
    <Entity name="pier_post_8" id="1587715754069659933" active="true" position="-1.4 1.6 -21.5" rotation="0 0 0 1" scale="0.15 2 0.15">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
@@ -179,6 +152,471 @@
    <Entity name="pier_post_9" id="1587810502934309328" active="true" position="1.4 1.6 -21.5" rotation="0 0 0 1" scale="0.15 2 0.15">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="harbour_light" id="6201400000000000001" active="true" position="-8 2.8 3" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="plinth" id="6201400000000000002" active="true" position="0 0.2 0" rotation="0 0 0 1" scale="2.55 0.4 2.55">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_stone" material_path="project/weather_example_resources/materials/weather_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="footing" id="6201400000000000003" active="true" position="0 0.57 0" rotation="0 0 0 1" scale="1.86 0.34 1.86">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_sand" material_path="project/weather_example_resources/materials/weather_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lower_tower" id="6201400000000000004" active="true" position="0 2.12 0" rotation="0 0 0 1" scale="1.62 2.76 1.62">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_sand" material_path="project/weather_example_resources/materials/weather_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="signal_band" id="6201400000000000005" active="true" position="0 4.42 0" rotation="0 0 0 1" scale="1.62 1.84 1.62">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="upper_tower" id="6201400000000000006" active="true" position="0 6.96 0" rotation="0 0 0 1" scale="1.62 3.24 1.62">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_sand" material_path="project/weather_example_resources/materials/weather_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_cornice" id="6201400000000000007" active="true" position="0 8.7 0" rotation="0 0 0 1" scale="1.87 0.24 1.87">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_stone" material_path="project/weather_example_resources/materials/weather_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_deck" id="6201400000000000008" active="true" position="0 8.94 0" rotation="0 0 0 1" scale="2.16 0.24 2.16">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_sill" id="6201400000000000009" active="true" position="0 9.2 0" rotation="0 0 0 1" scale="1.37 0.28 1.37">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_lens" id="6201400000000000010" active="true" position="0 10.08 0" rotation="0 0 0 1" scale="0.59 1.48 0.59">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_lamp" material_path="project/weather_example_resources/materials/weather_lamp.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_eaves" id="6201400000000000011" active="true" position="0 10.98 0" rotation="0 0 0 1" scale="1.62 0.18 1.62">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_cap" id="6201400000000000012" active="true" position="0 11.57 0" rotation="0 0 0 1" scale="1.63 0.5 1.63">
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_0" id="6201400000000000013" active="true" position="0 10.1 1.2" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_0" id="6201400000000000014" active="true" position="0 9.51 2" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_0" id="6201400000000000015" active="true" position="0.707199 9.97 1.707329" rotation="0 0.19509 0 0.980785" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_1" id="6201400000000000016" active="true" position="0.848528 10.1 0.848528" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_1" id="6201400000000000017" active="true" position="1.414214 9.51 1.414214" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_1" id="6201400000000000018" active="true" position="1.707329 9.97 0.707199" rotation="0 0.55557 0 0.83147" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_2" id="6201400000000000019" active="true" position="1.2 10.1 0" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_2" id="6201400000000000020" active="true" position="2 9.51 0" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_2" id="6201400000000000021" active="true" position="1.707329 9.97 -0.707199" rotation="0 0.83147 0 0.55557" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_3" id="6201400000000000022" active="true" position="0.848528 10.1 -0.848528" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_3" id="6201400000000000023" active="true" position="1.414214 9.51 -1.414214" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_3" id="6201400000000000024" active="true" position="0.707199 9.97 -1.707329" rotation="0 0.980785 0 0.19509" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_4" id="6201400000000000025" active="true" position="0 10.1 -1.2" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_4" id="6201400000000000026" active="true" position="0 9.51 -2" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_4" id="6201400000000000027" active="true" position="-0.707199 9.97 -1.707329" rotation="0 0.980785 0 -0.19509" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_5" id="6201400000000000028" active="true" position="-0.848528 10.1 -0.848528" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_5" id="6201400000000000029" active="true" position="-1.414214 9.51 -1.414214" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_5" id="6201400000000000030" active="true" position="-1.707329 9.97 -0.707199" rotation="0 0.83147 0 -0.55557" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_6" id="6201400000000000031" active="true" position="-1.2 10.1 -0" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_6" id="6201400000000000032" active="true" position="-2 9.51 -0" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_6" id="6201400000000000033" active="true" position="-1.707329 9.97 0.707199" rotation="0 0.55557 0 -0.83147" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="lantern_mullion_7" id="6201400000000000034" active="true" position="-0.848528 10.1 0.848528" rotation="0 0 0 1" scale="0.065 1.62 0.065">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_stanchion_7" id="6201400000000000035" active="true" position="-1.414214 9.51 1.414214" rotation="0 0 0 1" scale="0.044 0.92 0.044">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gallery_rail_7" id="6201400000000000036" active="true" position="-0.707199 9.97 1.707329" rotation="0 0.19509 0 -0.980785" scale="1.55 0.075 0.075">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="door_frame" id="6201400000000000037" active="true" position="0 1.48 -1.54" rotation="0 0 0 1" scale="1.28 2.13 0.15">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="door" id="6201400000000000038" active="true" position="0 1.46 -1.64" rotation="0 0 0 1" scale="1.05 1.94 0.15">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tower_window" id="6201400000000000039" active="true" position="0 6.9 -1.6" rotation="0 0 0 1" scale="0.66 1 0.15">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="wind_station" id="6201400000000000040" active="true" position="4.8 2.8 -3" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="anchor" id="6201400000000000041" active="true" position="0 0.16 0" rotation="0 0 0 1" scale="0.65 0.32 0.65">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_stone" material_path="project/weather_example_resources/materials/weather_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="instrument_mast" id="6201400000000000042" active="true" position="0 2.55 0" rotation="0 0 0 1" scale="0.095 4.8 0.095">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="anemometer_rotor" id="6201400000000000043" active="true" position="0 4.97 0" rotation="0 0 0 1" scale="1 1 1">
+     <Entity name="spoke_0" id="6201400000000000044" active="true" position="0 0 0.47" rotation="0 0 0 1" scale="0.055 0.065 0.94">
+      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="wind_cup_0" id="6201400000000000045" active="true" position="0 0 0.94" rotation="0 0 0 1" scale="0.19 0.16 0.23">
+      <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="spoke_1" id="6201400000000000046" active="true" position="0.407032 0 -0.235" rotation="0 0.866025 0 0.5" scale="0.055 0.065 0.94">
+      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="wind_cup_1" id="6201400000000000047" active="true" position="0.814064 0 -0.47" rotation="0 0.866025 0 0.5" scale="0.19 0.16 0.23">
+      <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="spoke_2" id="6201400000000000048" active="true" position="-0.407032 0 -0.235" rotation="0 0.866025 0 -0.5" scale="0.055 0.065 0.94">
+      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_crate" material_path="project/weather_example_resources/materials/weather_crate.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="wind_cup_2" id="6201400000000000049" active="true" position="-0.814064 0 -0.47" rotation="0 0.866025 0 -0.5" scale="0.19 0.16 0.23">
+      <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="weather_roof" material_path="project/weather_example_resources/materials/weather_roof.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+   </Entity>
+   <Entity name="shelter_joinery" id="6201400000000000050" active="true" position="10 2.8 2" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="bench_leg_left" id="6201400000000000051" active="true" position="-1.24 0.28 1.4" rotation="0 0 0 1" scale="0.17 0.44 0.46">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="bench_leg_right" id="6201400000000000052" active="true" position="1.24 0.28 1.4" rotation="0 0 0 1" scale="0.17 0.44 0.46">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="back_screen_slat_0" id="6201400000000000053" active="true" position="0 1.12 2" rotation="0 0 0 1" scale="6 0.14 0.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="back_screen_slat_1" id="6201400000000000054" active="true" position="0 1.39 2" rotation="0 0 0 1" scale="6 0.14 0.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="back_screen_slat_2" id="6201400000000000055" active="true" position="0 1.66 2" rotation="0 0 0 1" scale="6 0.14 0.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="back_screen_slat_3" id="6201400000000000056" active="true" position="0 1.93 2" rotation="0 0 0 1" scale="6 0.14 0.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="back_screen_slat_4" id="6201400000000000057" active="true" position="0 2.2 2" rotation="0 0 0 1" scale="6 0.14 0.1">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof_beam_left" id="6201400000000000058" active="true" position="-3 2.84 0" rotation="0 0 0 1" scale="0.24 0.18 5.28">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roof_beam_right" id="6201400000000000059" active="true" position="3 2.84 0" rotation="0 0 0 1" scale="0.24 0.18 5.28">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="pier_fittings" id="6201400000000000060" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="rail_post_-1_0" id="6201400000000000061" active="true" position="-1.46 3.32 -21.5" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_-1_1" id="6201400000000000062" active="true" position="-1.46 3.32 -27" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_-1_2" id="6201400000000000063" active="true" position="-1.46 3.32 -34" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_-1_3" id="6201400000000000064" active="true" position="-1.46 3.32 -41" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_-1_4" id="6201400000000000065" active="true" position="-1.46 3.32 -45.8" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="handrail_-1" id="6201400000000000066" active="true" position="-1.46 3.94 -33.65" rotation="0 0 0 1" scale="0.14 0.12 24.6">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="knee_rail_-1" id="6201400000000000067" active="true" position="-1.46 3.3 -33.65" rotation="0 0 0 1" scale="0.08 0.1 24.4">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_1_0" id="6201400000000000068" active="true" position="1.46 3.32 -21.5" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_1_1" id="6201400000000000069" active="true" position="1.46 3.32 -27" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_1_2" id="6201400000000000070" active="true" position="1.46 3.32 -34" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_1_3" id="6201400000000000071" active="true" position="1.46 3.32 -41" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rail_post_1_4" id="6201400000000000072" active="true" position="1.46 3.32 -45.8" rotation="0 0 0 1" scale="0.14 1.18 0.14">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="handrail_1" id="6201400000000000073" active="true" position="1.46 3.94 -33.65" rotation="0 0 0 1" scale="0.14 0.12 24.6">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="knee_rail_1" id="6201400000000000074" active="true" position="1.46 3.3 -33.65" rotation="0 0 0 1" scale="0.08 0.1 24.4">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_00" id="6201500000000000000" active="true" position="0 2.81 -45.80" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_01" id="6201500000000000001" active="true" position="0 2.81 -45.40" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_02" id="6201500000000000002" active="true" position="0 2.81 -45.00" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_03" id="6201500000000000003" active="true" position="0 2.81 -44.60" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_04" id="6201500000000000004" active="true" position="0 2.81 -44.20" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_05" id="6201500000000000005" active="true" position="0 2.81 -43.80" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_06" id="6201500000000000006" active="true" position="0 2.81 -43.40" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_07" id="6201500000000000007" active="true" position="0 2.81 -43.00" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_08" id="6201500000000000008" active="true" position="0 2.81 -42.60" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_09" id="6201500000000000009" active="true" position="0 2.81 -42.20" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_10" id="6201500000000000010" active="true" position="0 2.81 -41.80" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_11" id="6201500000000000011" active="true" position="0 2.81 -41.40" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_12" id="6201500000000000012" active="true" position="0 2.81 -41.00" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_13" id="6201500000000000013" active="true" position="0 2.81 -40.60" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_14" id="6201500000000000014" active="true" position="0 2.81 -40.20" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_15" id="6201500000000000015" active="true" position="0 2.81 -39.80" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_16" id="6201500000000000016" active="true" position="0 2.81 -39.40" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_17" id="6201500000000000017" active="true" position="0 2.81 -39.00" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_18" id="6201500000000000018" active="true" position="0 2.81 -38.60" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_19" id="6201500000000000019" active="true" position="0 2.81 -38.20" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_20" id="6201500000000000020" active="true" position="0 2.81 -37.80" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_21" id="6201500000000000021" active="true" position="0 2.81 -37.40" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_22" id="6201500000000000022" active="true" position="0 2.81 -37.00" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_23" id="6201500000000000023" active="true" position="0 2.81 -36.60" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_24" id="6201500000000000024" active="true" position="0 2.81 -36.20" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_25" id="6201500000000000025" active="true" position="0 2.81 -35.80" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_26" id="6201500000000000026" active="true" position="0 2.81 -35.40" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_27" id="6201500000000000027" active="true" position="0 2.81 -35.00" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_28" id="6201500000000000028" active="true" position="0 2.81 -34.60" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_29" id="6201500000000000029" active="true" position="0 2.81 -34.20" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_30" id="6201500000000000030" active="true" position="0 2.81 -33.80" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_31" id="6201500000000000031" active="true" position="0 2.81 -33.40" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_32" id="6201500000000000032" active="true" position="0 2.81 -33.00" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_33" id="6201500000000000033" active="true" position="0 2.81 -32.60" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_34" id="6201500000000000034" active="true" position="0 2.81 -32.20" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_35" id="6201500000000000035" active="true" position="0 2.81 -31.80" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_36" id="6201500000000000036" active="true" position="0 2.81 -31.40" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_37" id="6201500000000000037" active="true" position="0 2.81 -31.00" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_38" id="6201500000000000038" active="true" position="0 2.81 -30.60" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_39" id="6201500000000000039" active="true" position="0 2.81 -30.20" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_40" id="6201500000000000040" active="true" position="0 2.81 -29.80" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_41" id="6201500000000000041" active="true" position="0 2.81 -29.40" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_42" id="6201500000000000042" active="true" position="0 2.81 -29.00" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_43" id="6201500000000000043" active="true" position="0 2.81 -28.60" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_44" id="6201500000000000044" active="true" position="0 2.81 -28.20" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_45" id="6201500000000000045" active="true" position="0 2.81 -27.80" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_46" id="6201500000000000046" active="true" position="0 2.81 -27.40" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_47" id="6201500000000000047" active="true" position="0 2.81 -27.00" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_48" id="6201500000000000048" active="true" position="0 2.81 -26.60" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_49" id="6201500000000000049" active="true" position="0 2.81 -26.20" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_50" id="6201500000000000050" active="true" position="0 2.81 -25.80" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_51" id="6201500000000000051" active="true" position="0 2.81 -25.40" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_52" id="6201500000000000052" active="true" position="0 2.81 -25.00" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_53" id="6201500000000000053" active="true" position="0 2.81 -24.60" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_54" id="6201500000000000054" active="true" position="0 2.81 -24.20" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_55" id="6201500000000000055" active="true" position="0 2.81 -23.80" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_56" id="6201500000000000056" active="true" position="0 2.81 -23.40" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_57" id="6201500000000000057" active="true" position="0 2.81 -23.00" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_58" id="6201500000000000058" active="true" position="0 2.81 -22.60" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_59" id="6201500000000000059" active="true" position="0 2.81 -22.20" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_60" id="6201500000000000060" active="true" position="0 2.81 -21.80" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_61" id="6201500000000000061" active="true" position="0 2.81 -21.40" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_62" id="6201500000000000062" active="true" position="0 2.81 -21.00" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_63" id="6201500000000000063" active="true" position="0 2.81 -20.60" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_64" id="6201500000000000064" active="true" position="0 2.81 -20.20" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_65" id="6201500000000000065" active="true" position="0 2.81 -19.80" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_66" id="6201500000000000066" active="true" position="0 2.81 -19.40" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_67" id="6201500000000000067" active="true" position="0 2.81 -19.00" rotation="0 0 0 1" scale="3.206 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_68" id="6201500000000000068" active="true" position="0 2.81 -18.60" rotation="0 0 0 1" scale="3.222 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="deck_board_69" id="6201500000000000069" active="true" position="0 2.81 -18.20" rotation="0 0 0 1" scale="3.190 0.04 0.39">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="weather_wood" material_path="project/weather_example_resources/materials/weather_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="coastal_outcrop_0" id="6201400000000000075" active="true" position="-28 -0.48 -10" rotation="0 0.156434 0 0.987688" scale="6 2.1 3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_1" id="6201400000000000076" active="true" position="-25 -0.48 -15" rotation="0 -0.258819 0 0.965926" scale="4 1.6 2">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_2" id="6201400000000000077" active="true" position="27 -0.48 5" rotation="0 0.258819 0 0.965926" scale="5 2.2 2.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_3" id="6201400000000000078" active="true" position="25 -0.48 10" rotation="0 -0.130526 0 0.991445" scale="4 1.7 3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_4" id="6201400000000000079" active="true" position="-63 -0.48 85" rotation="0 0.309017 0 0.951057" scale="29 7 15">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_5" id="6201400000000000080" active="true" position="-85 -0.48 94" rotation="0 0.104528 0 0.994522" scale="18 5 13">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_6" id="6201400000000000081" active="true" position="71 -0.48 108" rotation="0 -0.190809 0 0.981627" scale="43 8 17">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coastal_outcrop_7" id="6201400000000000082" active="true" position="108 -0.48 102" rotation="0 -0.069756 0 0.997564" scale="22 4 10">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="rock_2" mesh_path="project/models/rock_2/model.obj" sub_mesh_index="0" material_name="rock_2_0" material_path="project/models/rock_2/rock_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
  </Entities>

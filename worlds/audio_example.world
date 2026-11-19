@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="audio_example" description="A sound garden: a fountain in 3D, a drone flying past and a bell in a reverb hall">
+<World name="audio_example" description="A listening courtyard for spatial sound, Doppler shift and a bell heard in two acoustic spaces">
  <OwnedResources>
   <Resource file="materials/audio_brass.xml" />
   <Resource file="materials/audio_drone.xml" />
@@ -11,7 +11,7 @@
   <Resource file="textures/material_ground_packed_slot0.tex_packed.texture" />
   <Resource file="textures/normal.texture" />
  </OwnedResources>
- <Environment utc_days="9664.9499999880791" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <Environment utc_days="9665.10" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="1" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage=".32" />
  <ConsoleVariables>
   <Variable name="r.atmosphere.mist_density" value="1.000000" />
   <Variable name="r.atmosphere.mist_height" value="300.000000" />
@@ -20,14 +20,14 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2 -14" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 1.65 -17" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
    <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>
   <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.609797 0.0661207 -0.0511589 0.788136" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="11" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
@@ -87,8 +87,11 @@
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bell_outside" id="7870504268701439846" active="true" position="12.7 2.3 4" rotation="0 0 0 1" scale="0.45 0.6 0.45">
-    <audio_source path="project/audio_example_resources/audio/mall_chime.wav" is_3d="true" mute="false" loop="false" play_on_start="false" volume="0.899999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
+    <audio_source path="project/audio_example_resources/audio/courtyard_bell.wav" is_3d="true" mute="false" loop="false" play_on_start="false" volume="0.899999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="bell_lip_outside" id="6202200000000000056" active="true" position="0 -0.94 0" rotation="0 0 0 1" scale="1.02 0.12 1.02">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+    </Entity>
    </Entity>
    <Entity name="bell_inside_post" id="7870500876500695904" active="true" position="0 1.4 24" rotation="0 0 0 1" scale="0.08 2.6 0.08">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
@@ -99,8 +102,11 @@
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="bell_inside" id="7870623293150654281" active="true" position="0.7 2.3 24" rotation="0 0 0 1" scale="0.45 0.6 0.45">
-    <audio_source path="project/audio_example_resources/audio/mall_chime.wav" is_3d="true" mute="false" loop="false" play_on_start="false" volume="0.899999976" pitch="1" reverb_enabled="true" reverb_room_size="0.721599996" reverb_decay="0.78512001" reverb_wet="0.706400037" ambient="false" ambient_profile="0" group="0" />
+    <audio_source path="project/audio_example_resources/audio/courtyard_bell.wav" is_3d="true" mute="false" loop="false" play_on_start="false" volume="0.899999976" pitch="1" reverb_enabled="true" reverb_room_size="0.721599996" reverb_decay="0.78512001" reverb_wet="0.706400037" ambient="false" ambient_profile="0" group="0" />
     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="bell_lip_inside" id="6202200000000000057" active="true" position="0 -0.94 0" rotation="0 0 0 1" scale="1.02 0.12 1.02">
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+    </Entity>
    </Entity>
    <Entity name="hall_reverb" id="4934638061057524560" active="true" position="0 3.1 22" rotation="0 0 0 1" scale="15.2 5.8 11.2">
     <volume bb_min_x="-0.5" bb_min_y="-0.5" bb_min_z="-0.5" bb_max_x="0.5" bb_max_y="0.5" bb_max_z="0.5" reverb_enabled="true" audio_fade_distance="50" audio_boundary_only="false" audio_group="">
@@ -117,12 +123,234 @@
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
+   <Entity name="garden_bed_-1_0" id="6202200000000000001" active="true" position="-15.5 0.3 -7" rotation="0 0 0 1" scale="4 0.38 6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="olive_-1_0" id="6202200000000000002" active="true" position="-15.5 0.49 -7" rotation="0 -0.258819 0 0.965926" scale="0.64 0.64 0.64">
+    <prefab file="project/models/trees/plan_olive_3511/plan_olive_3511.prefab" />
+   </Entity>
+   <Entity name="garden_bed_-1_1" id="6202200000000000003" active="true" position="-15.5 0.3 2" rotation="0 0 0 1" scale="4 0.38 6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="olive_-1_1" id="6202200000000000004" active="true" position="-15.5 0.49 2" rotation="0 0.317305 0 0.948324" scale="0.64 0.64 0.64">
+    <prefab file="project/models/trees/plan_olive_3512/plan_olive_3512.prefab" />
+   </Entity>
+   <Entity name="garden_bed_-1_2" id="6202200000000000005" active="true" position="-15.5 0.3 11" rotation="0 0 0 1" scale="4 0.38 6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="olive_-1_2" id="6202200000000000006" active="true" position="-15.5 0.49 11" rotation="0 0.788011 0 0.615661" scale="0.64 0.64 0.64">
+    <prefab file="project/models/trees/plan_olive_3513/plan_olive_3513.prefab" />
+   </Entity>
+   <Entity name="facade_baffle_-1_0" id="6202200000000000007" active="true" position="-2.5 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_-1_1" id="6202200000000000008" active="true" position="-3.62 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_-1_2" id="6202200000000000009" active="true" position="-4.74 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_-1_3" id="6202200000000000010" active="true" position="-5.86 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_-1_4" id="6202200000000000011" active="true" position="-6.98 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="arcade_beam_-1" id="6202200000000000012" active="true" position="-6 4.12 12.9" rotation="0 0 0 1" scale="4.5 0.25 5.4">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="portico_post_-1_4" id="6202200000000000013" active="true" position="-4 2.08 10.35" rotation="0 0 0 1" scale="0.24 4 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="portico_post_-1_8" id="6202200000000000014" active="true" position="-8 2.08 10.35" rotation="0 0 0 1" scale="0.24 4 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_-1_0" id="6202200000000000015" active="true" position="-9 0.58 -0.5" rotation="0 0 0 1" scale="3.2 0.15 0.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_-1_0_-1" id="6202200000000000016" active="true" position="-10.15 0.32 -0.5" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_-1_0_1" id="6202200000000000017" active="true" position="-7.85 0.32 -0.5" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_-1_1" id="6202200000000000018" active="true" position="-9 0.58 7.8" rotation="0 0 0 1" scale="3.2 0.15 0.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_-1_1_-1" id="6202200000000000019" active="true" position="-10.15 0.32 7.8" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_-1_1_1" id="6202200000000000020" active="true" position="-7.85 0.32 7.8" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="garden_bed_1_0" id="6202200000000000021" active="true" position="15.5 0.3 -7" rotation="0 0 0 1" scale="4 0.38 6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="olive_1_0" id="6202200000000000022" active="true" position="15.5 0.49 -7" rotation="0 0.258819 0 0.965926" scale="0.64 0.64 0.64">
+    <prefab file="project/models/trees/plan_olive_3511/plan_olive_3511.prefab" />
+   </Entity>
+   <Entity name="garden_bed_1_1" id="6202200000000000023" active="true" position="15.5 0.3 2" rotation="0 0 0 1" scale="4 0.38 6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="olive_1_1" id="6202200000000000024" active="true" position="15.5 0.49 2" rotation="0 0.748956 0 0.66262" scale="0.64 0.64 0.64">
+    <prefab file="project/models/trees/plan_olive_3512/plan_olive_3512.prefab" />
+   </Entity>
+   <Entity name="garden_bed_1_2" id="6202200000000000025" active="true" position="15.5 0.3 11" rotation="0 0 0 1" scale="4 0.38 6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="olive_1_2" id="6202200000000000026" active="true" position="15.5 0.49 11" rotation="0 0.990268 0 0.139173" scale="0.64 0.64 0.64">
+    <prefab file="project/models/trees/plan_olive_3513/plan_olive_3513.prefab" />
+   </Entity>
+   <Entity name="facade_baffle_1_0" id="6202200000000000027" active="true" position="2.5 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_1_1" id="6202200000000000028" active="true" position="3.62 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_1_2" id="6202200000000000029" active="true" position="4.74 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_1_3" id="6202200000000000030" active="true" position="5.86 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="facade_baffle_1_4" id="6202200000000000031" active="true" position="6.98 2.65 15.66" rotation="0 0 0 1" scale="0.16 5.1 0.48">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="arcade_beam_1" id="6202200000000000032" active="true" position="6 4.12 12.9" rotation="0 0 0 1" scale="4.5 0.25 5.4">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="portico_post_1_4" id="6202200000000000033" active="true" position="4 2.08 10.35" rotation="0 0 0 1" scale="0.24 4 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="portico_post_1_8" id="6202200000000000034" active="true" position="8 2.08 10.35" rotation="0 0 0 1" scale="0.24 4 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_1_0" id="6202200000000000035" active="true" position="9 0.58 -0.5" rotation="0 0 0 1" scale="3.2 0.15 0.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_1_0_-1" id="6202200000000000036" active="true" position="7.85 0.32 -0.5" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_1_0_1" id="6202200000000000037" active="true" position="10.15 0.32 -0.5" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_1_1" id="6202200000000000038" active="true" position="9 0.58 7.8" rotation="0 0 0 1" scale="3.2 0.15 0.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_1_1_-1" id="6202200000000000039" active="true" position="7.85 0.32 7.8" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="bench_leg_1_1_1" id="6202200000000000040" active="true" position="10.15 0.32 7.8" rotation="0 0 0 1" scale="0.24 0.42 0.51">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_0" id="6202200000000000041" active="true" position="0 0.142 -12" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_1" id="6202200000000000042" active="true" position="0 0.142 -10" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_2" id="6202200000000000043" active="true" position="0 0.142 -8" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_3" id="6202200000000000044" active="true" position="0 0.142 -6" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_4" id="6202200000000000045" active="true" position="0 0.142 -4" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_5" id="6202200000000000046" active="true" position="0 0.142 -2" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_6" id="6202200000000000047" active="true" position="0 0.142 0" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_7" id="6202200000000000048" active="true" position="0 0.142 2" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_8" id="6202200000000000049" active="true" position="0 0.142 4" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_9" id="6202200000000000050" active="true" position="0 0.142 6" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_10" id="6202200000000000051" active="true" position="0 0.142 8" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_11" id="6202200000000000052" active="true" position="0 0.142 10" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_12" id="6202200000000000053" active="true" position="0 0.142 12" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="entry_paver_13" id="6202200000000000054" active="true" position="0 0.142 14" rotation="0 0 0 1" scale="3.6 0.024 1.94">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_plaster" material_path="project/audio_example_resources/materials/audio_plaster.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="hall_sign" id="6202200000000000055" active="true" position="0 5.1 15.78" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+    <text_3d text="Resonance Hall" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.42" depth="0.006" alignment="1" resolution="96" />
+   </Entity>
+   <Entity name="fountain_rill_0" id="17919856091011932534" active="true" position="-12 1.59 4.74" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_1" id="17919856091011932535" active="true" position="-11.476741 1.59 4.523259" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_2" id="17919856091011932536" active="true" position="-11.26 1.59 4" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_3" id="17919856091011932537" active="true" position="-11.476741 1.59 3.476741" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_4" id="17919856091011932538" active="true" position="-12 1.59 3.26" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_5" id="17919856091011932539" active="true" position="-12.523259 1.59 3.476741" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_6" id="17919856091011932540" active="true" position="-12.74 1.59 4" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="fountain_rill_7" id="17919856091011932541" active="true" position="-12.523259 1.59 4.523259" rotation="0 0 0 1" scale="0.022 1.4 0.022">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_water" material_path="project/audio_example_resources/materials/audio_water.xml" material_default="false" flags="1" />
+   </Entity>
   </Entity>
   <Entity name="drone" id="7870198303176841552" active="true" position="40 4 -2" rotation="0 0 0 1" scale="0.45 0.45 0.45">
-   <audio_source path="project/audio_example_resources/audio/fluorescent_hum.wav" is_3d="true" mute="false" loop="true" play_on_start="true" volume="1" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
+   <audio_source path="project/audio_example_resources/audio/survey_rotors.wav" is_3d="true" mute="false" loop="true" play_on_start="true" volume="1" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="audio_drone" material_path="project/audio_example_resources/materials/audio_drone.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <Entity name="drone_light" id="5865446520561378386" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
     <light flags="1" light_type="1" color_r="1" color_g="0.5" color_b="0.150000006" temperature="3200" intensity="8" intensity_photometric="6000" range="8" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+   <Entity name="motor_spar_-1" id="6202200000000000058" active="true" position="0 0.3 -0.9" rotation="0 0 0 1" scale="4.4 0.18 0.18">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="rotor_-1_-1" id="6202200000000000059" active="true" position="-2 0.47 -0.9" rotation="0 0 0 1" scale="0.72 0.065 0.72">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="rotor_-1_1" id="6202200000000000060" active="true" position="2 0.47 -0.9" rotation="0 0 0 1" scale="0.72 0.065 0.72">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="motor_spar_1" id="6202200000000000061" active="true" position="0 0.3 0.9" rotation="0 0 0 1" scale="4.4 0.18 0.18">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="audio_stone" material_path="project/audio_example_resources/materials/audio_stone.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="rotor_1_-1" id="6202200000000000062" active="true" position="-2 0.47 0.9" rotation="0 0 0 1" scale="0.72 0.065 0.72">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="rotor_1_1" id="6202200000000000063" active="true" position="2 0.47 0.9" rotation="0 0 0 1" scale="0.72 0.065 0.72">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="audio_brass" material_path="project/audio_example_resources/materials/audio_brass.xml" material_default="false" flags="1" />
    </Entity>
   </Entity>
  </Entities>

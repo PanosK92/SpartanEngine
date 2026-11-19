@@ -22,25 +22,25 @@ publish the package. Read it before touching assets.
 | `game.world` | Plan, the game: the Zakynthos island with roads, traffic, races, the home garage and tune shop |
 | `empty_example.world` | The smallest complete world, a character camera, a sun and a floor; the template for new worlds |
 | `sponza_example.world` | The Sponza atrium, a rendering reference |
-| `lighting_example.world` | Lighting under ReSTIR path tracing, with a material test sphere |
+| `lighting_example.world` | ReSTIR path-traced exhibits on penumbra, Cornell-box colour bleed and metal roughness. E switches the shadow source size |
 | `pbr_materials_example.world` | Material models side by side; also the WebGPU test world |
 | `human_example.world` | A photoscanned head (Lee Perry-Smith, Infinite Realities, CC BY 3.0) in a dark studio; the skin rendering reference |
 | `ferrari_showroom_example.world` | A studio showroom with a car on a turntable and emissive light tubes |
 | `car_playground_example.world` | A test pad for driving and tuning cars; loads in seconds |
 | `physics_example.world` | One station per physics feature: bodies, joints, cloth, ragdolls, buttons that replay each experiment |
-| `character_animation_example.world` | Animated characters with root speed matched playback |
+| `character_animation_example.world` | A measured movement court for walk/run blending, jump landings and stair foot placement. F toggles the tracking camera |
 | `navigation_example.world` | Navmesh, crowd agents, path queries and doors that trigger a rebuild |
 | `multiplayer_example.world` | A UDP server and client in one script, run two instances |
 | `visual_scripting_example.world` | The visual scripting tutorial, four stations with commented graphs |
 | `liminal_space_example.world` | An infinite procedural floor of buildings streamed in chunks, with a stalker and a soundscape |
 | `dreamcore_example.world` | A procedural walkable tile city over the ocean |
 | `terrain_example.world` | An island sculpted from a flat terrain, with signs that explain the Terrain tool step by step |
-| `weather_example.world` | Time of day, rain, clouds and wind eased between presets |
-| `audio_example.world` | 3D sources, Doppler, a reverb volume and a 2D bed |
+| `weather_example.world` | A coastal observatory with a harbour light, a wind-driven anemometer and four weather presets |
+| `audio_example.world` | A listening courtyard with a stereo panning fountain, a flyby pitch meter and matching bell strikes outdoors and in Resonance Hall |
 | `particles_example.world` | Walk-through particle studies with a layered hearth, sparks, steam, snow and a spillway. Keys 1–9 toggle individual effects, 0 restores them all, and Space fires the burst chamber |
 | `roads_example.world` | Spline roads, a junction, layered asphalt and markings, scripted traffic and a `SplineFollower` bus |
-| `cinematic_example.world` | A five-shot sequencer cutscene played from Lua |
-| `ui_example.world` | HUD health bar, prompts, a menu and `Text3D` labels |
+| `cinematic_example.world` | Meridian Flight, a five-shot sequence with a glider chase, a hilltop armillary and timed title and fade tracks |
+| `ui_example.world` | A training court with a vitals display, recovery and damage pads, live scores and a keyboard menu |
 
 Each one is covered in more depth in the docs: [scripting](../docs/scripting.md#world-companion-scripts), [systems](../docs/systems.md), [terrain](../docs/terrain.md), [physics and vehicles](../docs/physics_and_vehicles.md#example-world) and [networking](../source/network/README.md).
 

@@ -1,38 +1,295 @@
 <?xml version="1.0"?>
-<World name="character_animation_example" description="A third person character: WASD to walk, Shift to run, Space to jump">
+<World name="character_animation_example" description="A movement studio for blended locomotion, jump landings and foot placement on steps">
+ <OwnedResources>
+  <Resource file="materials/stride_track.xml" />
+  <Resource file="materials/stride_mark.xml" />
+  <Resource file="materials/stride_step.xml" />
+  <Resource file="materials/stride_frame.xml" />
+ </OwnedResources>
+ <Environment utc_days="9665.07" time_scale="1" latitude="37.78" longitude="20.9" cloud_coverage=".23" />
  <ConsoleVariables>
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="camera" id="2001000000000000001" active="true" position="4.94095 3.50994 -8.83871" rotation="0.0374038 -0.224786 0.00863576 0.973652" scale="1 1 1">
-   <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="1" />
+  <Entity name="camera" id="2001000000000000001" active="true" position="3.45 2.24 -5.85" rotation="0.08438 -0.249427 0.021822 0.964464" scale="1 1 1">
+   <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.19" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="1" />
   </Entity>
   <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.800000012" />
-   <script file_path="project/scripts/sun.lua" rot_roll="0" Initialize="" rot_pitch="0" rot_yaw="0" volumetric="false" override_rotation="false" preset="dusk" />
+   <light flags="11" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.800000012" />
   </Entity>
   <Entity name="step_1" id="2001000000000000010" active="true" position="3 0.25 2" rotation="0 0 0 1" scale="2 0.3 1.2">
    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="block_left" id="2001000000000000013" active="true" position="-2.5 0.35 1.5" rotation="0 0 0 1" scale="1.4 0.5 1.4">
    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
-  <Entity name="step_2" id="2001000000000000011" active="true" position="3 0.55 3.2" rotation="0 0 0 1" scale="2 0.3 1.2">
+  <Entity name="step_2" id="2001000000000000011" active="true" position="3 0.4 3.2" rotation="0 0 0 1" scale="2 0.6 1.2">
    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
-  <Entity name="step_3" id="2001000000000000012" active="true" position="3 0.85 4.4" rotation="0 0 0 1" scale="2 0.3 1.2">
+  <Entity name="step_3" id="2001000000000000012" active="true" position="3 0.55 4.4" rotation="0 0 0 1" scale="2 0.9 1.2">
    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="character_controller" id="2001000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <script file_path="project/character_animation_example_resources/scripts/character_animation_example.lua" grounded="true" ragdoll="" Stop="" vel_y="0" Tick="" Start="" current_clip="" character="" land_timer="0" height_offset="0" ground_y="0" spawn_pos="" animator="" yaw="0" Initialize="" />
   </Entity>
   <Entity name="floor" id="2001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="movement_court" id="6202500000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="rubber_runway" id="6202500000000000002" active="true" position="0 0.102 6" rotation="0 0 0 1" scale="12 0.012 34">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_track" material_path="project/character_animation_example_resources/materials/stride_track.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="lane_line_-5.83" id="6202500000000000003" active="true" position="-5.83 0.113 6" rotation="0 0 0 1" scale="0.042 0.008 33.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="lane_line_-1.55" id="6202500000000000004" active="true" position="-1.55 0.113 6" rotation="0 0 0 1" scale="0.042 0.008 33.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="lane_line_1.55" id="6202500000000000005" active="true" position="1.55 0.113 6" rotation="0 0 0 1" scale="0.042 0.008 33.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="lane_line_5.83" id="6202500000000000006" active="true" position="5.83 0.113 6" rotation="0 0 0 1" scale="0.042 0.008 33.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_-10" id="6202500000000000007" active="true" position="-1.38 0.121 -10" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_-10" id="6202500000000000008" active="true" position="1.38 0.121 -10" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_-8" id="6202500000000000009" active="true" position="-1.38 0.121 -8" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_-8" id="6202500000000000010" active="true" position="1.38 0.121 -8" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_-6" id="6202500000000000011" active="true" position="-1.38 0.121 -6" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_-6" id="6202500000000000012" active="true" position="1.38 0.121 -6" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_-4" id="6202500000000000013" active="true" position="-1.38 0.121 -4" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_-4" id="6202500000000000014" active="true" position="1.38 0.121 -4" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_-2" id="6202500000000000015" active="true" position="-1.38 0.121 -2" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_-2" id="6202500000000000016" active="true" position="1.38 0.121 -2" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_0" id="6202500000000000017" active="true" position="-1.38 0.121 0" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_0" id="6202500000000000018" active="true" position="1.38 0.121 0" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_2" id="6202500000000000019" active="true" position="-1.38 0.121 2" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_2" id="6202500000000000020" active="true" position="1.38 0.121 2" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_4" id="6202500000000000021" active="true" position="-1.38 0.121 4" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_4" id="6202500000000000022" active="true" position="1.38 0.121 4" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_6" id="6202500000000000023" active="true" position="-1.38 0.121 6" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_6" id="6202500000000000024" active="true" position="1.38 0.121 6" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_8" id="6202500000000000025" active="true" position="-1.38 0.121 8" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_8" id="6202500000000000026" active="true" position="1.38 0.121 8" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_10" id="6202500000000000027" active="true" position="-1.38 0.121 10" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_10" id="6202500000000000028" active="true" position="1.38 0.121 10" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_12" id="6202500000000000029" active="true" position="-1.38 0.121 12" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_12" id="6202500000000000030" active="true" position="1.38 0.121 12" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_14" id="6202500000000000031" active="true" position="-1.38 0.121 14" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_14" id="6202500000000000032" active="true" position="1.38 0.121 14" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_16" id="6202500000000000033" active="true" position="-1.38 0.121 16" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_16" id="6202500000000000034" active="true" position="1.38 0.121 16" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_18" id="6202500000000000035" active="true" position="-1.38 0.121 18" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_18" id="6202500000000000036" active="true" position="1.38 0.121 18" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_20" id="6202500000000000037" active="true" position="-1.38 0.121 20" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_20" id="6202500000000000038" active="true" position="1.38 0.121 20" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_-1_22" id="6202500000000000039" active="true" position="-1.38 0.121 22" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_mark_1_22" id="6202500000000000040" active="true" position="1.38 0.121 22" rotation="0 0 0 1" scale="0.3 0.008 0.045">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="tread_edge_1" id="6202500000000000041" active="true" position="3 0.405 1.46" rotation="0 0 0 1" scale="2 0.012 0.11">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="tread_edge_2" id="6202500000000000042" active="true" position="3 0.705 2.66" rotation="0 0 0 1" scale="2 0.012 0.11">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="tread_edge_3" id="6202500000000000043" active="true" position="3 1.005 3.86" rotation="0 0 0 1" scale="2 0.012 0.11">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_block_0" id="6202500000000000044" active="true" position="-3.4 0.28 5.2" rotation="0 0 0 1" scale="2.3 0.36 1.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_edge_0" id="6202500000000000045" active="true" position="-3.4 0.465 4.41" rotation="0 0 0 1" scale="2.28 0.014 0.11">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_block_1" id="6202500000000000046" active="true" position="-3.4 0.385 7.85" rotation="0 0 0 1" scale="2.3 0.57 1.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_edge_1" id="6202500000000000047" active="true" position="-3.4 0.675 7.06" rotation="0 0 0 1" scale="2.28 0.014 0.11">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_block_2" id="6202500000000000048" active="true" position="-3.4 0.495 10.5" rotation="0 0 0 1" scale="2.3 0.79 1.75">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_edge_2" id="6202500000000000049" active="true" position="-3.4 0.895 9.71" rotation="0 0 0 1" scale="2.28 0.014 0.11">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_-8.8_2" id="6202500000000000050" active="true" position="-8.8 0.6 2" rotation="0 0 0 1" scale="1.05 0.16 4.6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_-8.8_2_-1" id="6202500000000000051" active="true" position="-8.8 0.32 0.22" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_-8.8_2_1" id="6202500000000000052" active="true" position="-8.8 0.32 3.78" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_-8.8_9" id="6202500000000000053" active="true" position="-8.8 0.6 9" rotation="0 0 0 1" scale="1.05 0.16 4.6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_-8.8_9_-1" id="6202500000000000054" active="true" position="-8.8 0.32 7.22" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_-8.8_9_1" id="6202500000000000055" active="true" position="-8.8 0.32 10.78" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_-8.8_16" id="6202500000000000056" active="true" position="-8.8 0.6 16" rotation="0 0 0 1" scale="1.05 0.16 4.6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_-8.8_16_-1" id="6202500000000000057" active="true" position="-8.8 0.32 14.22" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_-8.8_16_1" id="6202500000000000058" active="true" position="-8.8 0.32 17.78" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_8.8_2" id="6202500000000000059" active="true" position="8.8 0.6 2" rotation="0 0 0 1" scale="1.05 0.16 4.6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_8.8_2_-1" id="6202500000000000060" active="true" position="8.8 0.32 0.22" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_8.8_2_1" id="6202500000000000061" active="true" position="8.8 0.32 3.78" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_8.8_9" id="6202500000000000062" active="true" position="8.8 0.6 9" rotation="0 0 0 1" scale="1.05 0.16 4.6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_8.8_9_-1" id="6202500000000000063" active="true" position="8.8 0.32 7.22" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_8.8_9_1" id="6202500000000000064" active="true" position="8.8 0.32 10.78" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_8.8_16" id="6202500000000000065" active="true" position="8.8 0.6 16" rotation="0 0 0 1" scale="1.05 0.16 4.6">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_step" material_path="project/character_animation_example_resources/materials/stride_step.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_8.8_16_-1" id="6202500000000000066" active="true" position="8.8 0.32 14.22" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="seat_foot_8.8_16_1" id="6202500000000000067" active="true" position="8.8 0.32 17.78" rotation="0 0 0 1" scale="0.76 0.44 0.25">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="finish_panel_Landing" id="6202500000000000068" active="true" position="-3.7 1.45 23" rotation="0 0 0 1" scale="3.56 2.7 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="landing_sign" id="6202500000000000069" active="true" position="-3.7 1.55 22.86" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+    <text_3d text="Landing" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.38" depth="0.006" alignment="1" resolution="96" />
+   </Entity>
+   <Entity name="finish_panel_Stride" id="6202500000000000070" active="true" position="0 1.45 23" rotation="0 0 0 1" scale="3.56 2.7 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="stride_sign" id="6202500000000000071" active="true" position="0 1.55 22.86" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+    <text_3d text="Stride" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.38" depth="0.006" alignment="1" resolution="96" />
+   </Entity>
+   <Entity name="finish_panel_Steps" id="6202500000000000072" active="true" position="3.7 1.45 23" rotation="0 0 0 1" scale="3.56 2.7 0.24">
+    <physics is_static="true" body_type="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="stride_frame" material_path="project/character_animation_example_resources/materials/stride_frame.xml" material_default="false" flags="1" />
+   </Entity>
+   <Entity name="steps_sign" id="6202500000000000073" active="true" position="3.7 1.55 22.86" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="stride_mark" material_path="project/character_animation_example_resources/materials/stride_mark.xml" material_default="false" flags="1" />
+    <text_3d text="Steps" font_path="data/fonts/Inter/Inter-SemiBold.ttf" size="0.38" depth="0.006" alignment="1" resolution="96" />
+   </Entity>
+   <Entity name="court_tree_0" id="6202500000000000074" active="true" position="-14 0.1 10" rotation="0 0 0 1" scale="0.75 0.75 0.75">
+    <prefab file="project/models/trees/plan_aleppo_1148/plan_aleppo_1148.prefab" />
+   </Entity>
+   <Entity name="court_tree_1" id="6202500000000000075" active="true" position="-15 0.1 22" rotation="0 0.573576 0 0.819152" scale="0.75 0.75 0.75">
+    <prefab file="project/models/trees/plan_olive_3512/plan_olive_3512.prefab" />
+   </Entity>
+   <Entity name="court_tree_2" id="6202500000000000076" active="true" position="15 0.1 14" rotation="0 0.939693 0 0.34202" scale="0.75 0.75 0.75">
+    <prefab file="project/models/trees/plan_aleppo_1148/plan_aleppo_1148.prefab" />
+   </Entity>
+   <Entity name="court_tree_3" id="6202500000000000077" active="true" position="12 0.1 26" rotation="0 0.965926 0 -0.258819" scale="0.75 0.75 0.75">
+    <prefab file="project/models/trees/plan_olive_3512/plan_olive_3512.prefab" />
+   </Entity>
+   <Entity name="court_tree_4" id="6202500000000000078" active="true" position="4 0.1 30" rotation="0 0.642788 0 -0.766044" scale="0.75 0.75 0.75">
+    <prefab file="project/models/trees/plan_aleppo_1148/plan_aleppo_1148.prefab" />
+   </Entity>
+   <Entity name="court_tree_5" id="6202500000000000079" active="true" position="-8 0.1 31" rotation="0 0.087156 0 -0.996195" scale="0.75 0.75 0.75">
+    <prefab file="project/models/trees/plan_olive_3512/plan_olive_3512.prefab" />
+   </Entity>
   </Entity>
  </Entities>
 </World>
