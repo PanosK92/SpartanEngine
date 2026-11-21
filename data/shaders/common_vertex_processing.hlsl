@@ -1317,6 +1317,16 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         float blade_variation = hash(transform[3].xz + float2(31.7f, 83.1f));
         vertex.uv_misc.w = lerp(hash(grass_cell), blade_variation, 0.35f);
     }
+    else if (surface.is_flower())
+    {
+        // Natural ~5m organic meadow drifts anchored in world XZ so flower species never shift across ring updates.
+        float2 root_xz    = transform[3].xz;
+        float2 warp       = float2(sin(root_xz.y * 0.27f) * 1.8f, cos(root_xz.x * 0.23f) * 1.8f);
+        float2 patch_cell = floor((root_xz + warp) * 0.18f);
+        float patch_hash  = hash(patch_cell + float2(17.3f, 59.1f));
+        float plant_hash  = hash(root_xz * 3.7f + float2(41.2f, 11.9f));
+        vertex.uv_misc.w  = floor(clamp(patch_hash * 5.0f, 0.0f, 4.0f)) + clamp(plant_hash, 0.0f, 0.999f);
+    }
     
     // transform position to world space
     float4 position_local    = float4(input.position, 1.0f);

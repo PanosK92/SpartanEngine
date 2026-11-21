@@ -108,7 +108,7 @@ namespace
         material->SetProperty(MaterialProperty::TerrainCoating, 0.0f);
     }
 
-    shared_ptr<Material> make_bark_material(const trees::species& recipe, const string& albedo, const string& normal, const string& roughness, const string& name)
+    shared_ptr<Material> make_bark_material(const trees::species& recipe, const string& albedo, const string& normal, const string& roughness, const string& occlusion, const string& name)
     {
         shared_ptr<Material> material = make_shared<Material>();
         material->SetObjectName(name);
@@ -116,6 +116,10 @@ namespace
         material->SetTexture(MaterialTextureType::Color, albedo);
         material->SetTexture(MaterialTextureType::Normal, normal);
         material->SetTexture(MaterialTextureType::Roughness, roughness);
+        if (!occlusion.empty())
+        {
+            material->SetTexture(MaterialTextureType::Occlusion, occlusion);
+        }
         material->SetProperty(MaterialProperty::Roughness, 1.0f);
         material->SetProperty(MaterialProperty::Normal, 1.0f);
         material->SetProperty(MaterialProperty::Metalness, 0.0f);
@@ -124,17 +128,30 @@ namespace
     }
 
     // the name carries _foliage too, a material file loaded without its flags still comes back two sided and translucent
-    shared_ptr<Material> make_foliage_material(const trees::species& recipe, const string& albedo, const string& normal, const string& name)
+    shared_ptr<Material> make_foliage_material(const trees::species& recipe, const string& albedo, const string& normal, const string& roughness, const string& occlusion, const string& name)
     {
         shared_ptr<Material> material = make_shared<Material>();
         material->SetObjectName(name);
         opt_out_of_terrain(material.get());
         material->SetTexture(MaterialTextureType::Color, albedo);
         material->SetTexture(MaterialTextureType::Normal, normal);
-        material->SetProperty(MaterialProperty::Roughness, 0.85f);
+        if (!roughness.empty())
+        {
+            material->SetTexture(MaterialTextureType::Roughness, roughness);
+            material->SetProperty(MaterialProperty::Roughness, 1.0f);
+        }
+        else
+        {
+            material->SetProperty(MaterialProperty::Roughness, 0.72f);
+        }
+        if (!occlusion.empty())
+        {
+            material->SetTexture(MaterialTextureType::Occlusion, occlusion);
+        }
+        material->SetProperty(MaterialProperty::Normal, 1.0f);
         material->SetProperty(MaterialProperty::Metalness, 0.0f);
         material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
-        material->SetProperty(MaterialProperty::SubsurfaceScattering, max(recipe.translucency, 0.35f));
+        material->SetProperty(MaterialProperty::SubsurfaceScattering, clamp(recipe.translucency, 0.45f, 0.72f));
         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
         material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
         material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
@@ -386,8 +403,8 @@ void TreeCreator::ApplyJob(job& finished)
         m_tree_key = key;
         if (finished.textures_ok)
         {
-            m_bark_material    = make_bark_material(finished.recipe, finished.textures.bark_albedo, finished.textures.bark_normal, finished.textures.bark_roughness, finished.recipe.id + "_bark");
-            m_foliage_material = make_foliage_material(finished.recipe, finished.textures.leaf_albedo, finished.textures.leaf_normal, finished.recipe.id + "_foliage");
+            m_bark_material    = make_bark_material(finished.recipe, finished.textures.bark_albedo, finished.textures.bark_normal, finished.textures.bark_roughness, finished.textures.bark_occlusion, finished.recipe.id + "_bark");
+            m_foliage_material = make_foliage_material(finished.recipe, finished.textures.leaf_albedo, finished.textures.leaf_normal, finished.textures.leaf_roughness, finished.textures.leaf_occlusion, finished.recipe.id + "_foliage");
         }
         else
         {
@@ -680,16 +697,22 @@ bool TreeCreator::ExportOne(const trees::species& recipe, const trees::controls&
         return false;
     }
     trees::texture_paths textures;
-    textures.bark_albedo = directory + "textures/" + folder + "_bark.png";
-    textures.bark_normal = directory + "textures/" + folder + "_bark_normal.png";
+    textures.bark_albedo    = directory + "textures/" + folder + "_bark.png";
+    textures.bark_normal    = directory + "textures/" + folder + "_bark_normal.png";
     textures.bark_roughness = directory + "textures/" + folder + "_bark_roughness.png";
-    textures.leaf_albedo = directory + "textures/" + folder + "_leaf.png";
-    textures.leaf_normal = directory + "textures/" + folder + "_leaf_normal.png";
+    textures.bark_occlusion = directory + "textures/" + folder + "_bark_occlusion.png";
+    textures.leaf_albedo    = directory + "textures/" + folder + "_leaf.png";
+    textures.leaf_normal    = directory + "textures/" + folder + "_leaf_normal.png";
+    textures.leaf_roughness = directory + "textures/" + folder + "_leaf_roughness.png";
+    textures.leaf_occlusion = directory + "textures/" + folder + "_leaf_occlusion.png";
     if (!FileSystem::CopyFileFromTo(source.bark_albedo, textures.bark_albedo) ||
         !FileSystem::CopyFileFromTo(source.bark_normal, textures.bark_normal) ||
         !FileSystem::CopyFileFromTo(source.bark_roughness, textures.bark_roughness) ||
+        !FileSystem::CopyFileFromTo(source.bark_occlusion, textures.bark_occlusion) ||
         !FileSystem::CopyFileFromTo(source.leaf_albedo, textures.leaf_albedo) ||
-        !FileSystem::CopyFileFromTo(source.leaf_normal, textures.leaf_normal))
+        !FileSystem::CopyFileFromTo(source.leaf_normal, textures.leaf_normal) ||
+        !FileSystem::CopyFileFromTo(source.leaf_roughness, textures.leaf_roughness) ||
+        !FileSystem::CopyFileFromTo(source.leaf_occlusion, textures.leaf_occlusion))
     {
         error = "the textures could not be copied into " + directory;
         return false;
@@ -711,8 +734,8 @@ bool TreeCreator::ExportOne(const trees::species& recipe, const trees::controls&
 
     const string bark_path    = directory + folder + "_bark" + EXTENSION_MATERIAL;
     const string foliage_path = directory + folder + "_foliage" + EXTENSION_MATERIAL;
-    shared_ptr<Material> bark    = make_bark_material(recipe, textures.bark_albedo, textures.bark_normal, textures.bark_roughness, folder + "_bark");
-    shared_ptr<Material> foliage = make_foliage_material(recipe, textures.leaf_albedo, textures.leaf_normal, folder + "_foliage");
+    shared_ptr<Material> bark    = make_bark_material(recipe, textures.bark_albedo, textures.bark_normal, textures.bark_roughness, textures.bark_occlusion, folder + "_bark");
+    shared_ptr<Material> foliage = make_foliage_material(recipe, textures.leaf_albedo, textures.leaf_normal, textures.leaf_roughness, textures.leaf_occlusion, folder + "_foliage");
     bark->SetResourceFilePath(bark_path);
     bark->SaveToFile(bark_path);
     foliage->SetResourceFilePath(foliage_path);

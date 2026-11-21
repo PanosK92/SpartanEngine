@@ -307,6 +307,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             layers           = base * (1.0f - coat_f) + coat_f * coat_tint;
         }
         float3 specular_reflection = reflection * layers;
+        if ((mat.flags & ((1u << 11) | (1u << 12) | (1u << 21))) != 0u)
+        {
+            // Macro foliage cards represent hundreds of scattered needles/leaflets; suppress flat-card grazing sky mirror glare
+            specular_reflection *= 0.28f;
+        }
         tex_uav[thread_id.xy]     += float4(specular_reflection, 0.0f);
         return;
     }
@@ -520,6 +525,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 reflectance = (F0_brdf * brdf.x + brdf.y) * compute_multiscatter_energy_split_sum(F0_brdf, brdf);
     if (surface.is_water()) reflectance = saturate(reflectance);
     float3 specular_reflection = reflection * reflectance;
+    if (surface.is_foliage())
+    {
+        specular_reflection *= 0.28f;
+    }
 
     if (surface.is_alpha_blended())
     {

@@ -311,9 +311,10 @@ namespace spartan::trees
                 {
                     const float angle      = tau * static_cast<float>(j) / static_cast<float>(sides);
                     const Vector3 radial   = normal * cos(angle) + binormal * sin(angle);
-                    // root buttresses, five soft lobes that fade a couple of radii up the trunk
+                    // root buttresses, five soft lobes that fade a couple of radii up the trunk, plus organic spiral fluting on gnarled trunks
                     const float lobes      = flare > 0.0f ? 1.0f + flare * (0.55f + 0.45f * pow(max(0.0f, cos(angle * 5.0f + 0.7f)), 2.0f)) : 1.0f;
-                    const float radius     = s.radii[i] * lobes;
+                    const float fluting    = (trunk && sp.trunk_gnarl > 0.35f) ? 1.0f + (0.045f + 0.055f * sp.trunk_twist) * sin(angle * 4.0f + v * (1.2f + sp.trunk_twist * 1.6f)) : 1.0f;
+                    const float radius     = s.radii[i] * lobes * fluting;
                     const Vector3 position = s.points[i] + radial * radius;
                     const Vector3 surface_tangent = Vector3::Cross(tangent, radial);
                     const float u = static_cast<float>(j) / static_cast<float>(sides) * u_repeat + twist * v * 0.15f;
@@ -401,14 +402,16 @@ namespace spartan::trees
                 tile_rect(card.tile, u0, v0, u1, v1);
                 const float um = (u0 + u1) * 0.5f;
 
-                // folded along the midrib, a v section reads as volume from the side where a flat card vanishes
-                const Vector3 lift = card.normal * (card.side.Length() * card.fold);
-                const Vector3 base = card.base;
-                const Vector3 tip  = card.base + card.direction;
+                // folded along the midrib with a subtle longitudinal arch so cards read as plump 3D sprays from every angle
+                const float card_len = card.direction.Length();
+                const Vector3 lift   = card.normal * (card.side.Length() * card.fold);
+                const Vector3 arch   = card.normal * (card_len * 0.08f);
+                const Vector3 base   = card.base;
+                const Vector3 tip    = card.base + card.direction - arch;
                 const Vector3 positions[6] =
                 {
                     base - card.side, base + lift, base + card.side,
-                    tip - card.side,  tip + lift,  tip + card.side
+                    tip - card.side,  tip + lift + arch * 0.45f, tip + card.side
                 };
                 const Vector2 uvs[6] =
                 {
@@ -420,7 +423,7 @@ namespace spartan::trees
                 const uint32_t first  = static_cast<uint32_t>(output.vertices.size());
                 for (uint32_t i = 0; i < 6; i++)
                 {
-                    output.vertices.emplace_back(positions[i], uvs[i], crown_normal(positions[i], card.normal, tree, 0.55f), tangent);
+                    output.vertices.emplace_back(positions[i], uvs[i], crown_normal(positions[i], card.normal, tree, 0.62f), tangent);
                 }
                 output.indices.insert(output.indices.end(),
                 {

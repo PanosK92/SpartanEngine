@@ -1197,7 +1197,7 @@ namespace spartan
             if (name.find("_foliage") != string::npos)
             {
                 material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.52f);
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 

@@ -67,28 +67,27 @@ float3 subsurface_burley_transmittance(float t, float3 d)
 // redistributes the transmitted light instead of adding to it.
 float foliage_transmission_response(float n_dot_l, float view_dot_minus_light)
 {
-    // the double sided flip and leaf normal maps make the terminator noisy, a small wrap hides it
-    const float wrap  = 0.2f;
+    // A broad wrap smoothly bridges the terminator across double-sided leaf cards and normal maps,
+    // while the diffuse + forward-scattering phase gives shaded crowns warm translucent depth from any angle
+    // and a golden-emerald rim glow when viewed against the sun.
+    const float wrap  = 0.48f;
     float reverse     = max(-n_dot_l + wrap, 0.0f) / ((1.0f + wrap) * (1.0f + wrap) * 3.14159265359f);
 
     const float g     = 0.55f;
     float denominator = 1.0f + g * g - 2.0f * g * saturate(view_dot_minus_light);
     float phase       = (1.0f - g * g) / (denominator * sqrt(denominator));
 
-    return reverse * (0.6f + 0.4f * phase);
+    return reverse * (0.78f + 0.52f * phase);
 }
 
 // Transmitted light crosses the chlorophyll a second time, so red and blue are absorbed again and
-// what makes it through is a deeper, yellower green than what the surface reflects. Returned as a
-// multiplier on albedo because the composition applies albedo once to all diffuse light, so the
-// chroma goes in once here, that product is the second crossing. Squaring it was a third one and
-// turned every back lit crown into a green no leaf transmits, about three times greener than red
-// where a real leaf passes roughly two.
+// what makes it through is a warm, golden-olive green. Returned as a multiplier on albedo because
+// composition applies albedo once to all diffuse light.
 float3 foliage_transmission_tint(float3 albedo)
 {
     float peak    = max(max(albedo.r, albedo.g), albedo.b) + 1e-4f;
     float3 chroma = saturate(albedo / peak);
-    return chroma * float3(0.85f, 1.0f, 0.8f);
+    return chroma * float3(0.96f, 1.0f, 0.62f);
 }
 
 // Screen space occlusion and contact shadows read every blade in front of a pixel as a solid wall.
@@ -98,5 +97,12 @@ float3 foliage_transmission_tint(float3 albedo)
 float grass_canopy_visibility(float visibility)
 {
     return lerp(1.0f, visibility, 0.45f);
+}
+
+// Tree and shrub canopies scatter sky and sun light through multiple translucent leaf layers;
+// relieve screen-space/baked occlusion so shaded interiors keep soft organic volume instead of crushing to black.
+float foliage_canopy_visibility(float visibility, float scattering)
+{
+    return lerp(visibility, lerp(1.0f, visibility, 0.42f), saturate(scattering));
 }
 #endif

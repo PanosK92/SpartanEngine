@@ -230,10 +230,12 @@ void ray_gen()
                 float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
                 float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
                 float3 origin = pos_ws + normal_ws * (base_offset * normal_sign);
-                float2 vis = trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
+                float2 vis = thin_foliage
+                    ? rt_trace_canopy_transmission(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
+                    : trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
                 float4 glass = trace_glass_shadow(vis.x, origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
                 transmission += glass.rgb;
-                float distance = shadow_blocker_distance(vis.x < 1.0f, vis.y, glass.w);
+                float distance = shadow_blocker_distance(vis.x < 0.99f, vis.y, glass.w);
                 if (distance > 0.0f)
                 {
                     blocker = min(blocker, distance);

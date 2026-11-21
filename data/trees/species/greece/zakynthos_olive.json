@@ -6,32 +6,32 @@
   "description": "Compact silver-green olive for Ionian groves, retaining a gnarled closed trunk and a dense rounded crown.",
   "class": "broadleaf",
   "evergreen": true,
-  "budget": 5500,
-  "height": 7.0,
-  "height_var": 0.15,
+  "budget": 6600,
+  "height": 7.2,
+  "height_var": 0.16,
   "trunk": {
-    "radius": 0.065,
+    "radius": 0.068,
     "taper": 0.35,
-    "flare": 0.75,
+    "flare": 0.8,
     "lean": 9,
-    "gnarl": 0.6,
-    "twist": 0.5,
-    "segments": 10,
+    "gnarl": 0.65,
+    "twist": 0.55,
+    "segments": 12,
     "stems": 3,
     "split_height": 0.28,
-    "split_angle": 32
+    "split_angle": 34
   },
   "crown": {
     "shape": "hemispherical",
-    "base": 0.35,
-    "width": 0.65
+    "base": 0.34,
+    "width": 0.68
   },
   "levels": [
     {
-      "count": 9,
-      "start": 0.3,
+      "count": 10,
+      "start": 0.28,
       "end": 1.0,
-      "length": 0.43,
+      "length": 0.44,
       "length_var": 0.25,
       "down_angle": 60,
       "down_angle_tip": 35,
@@ -72,49 +72,49 @@
   ],
   "leaves": {
     "shape": "lanceolate",
-    "size": 0.08,
-    "card_size": 0.55,
-    "density": 2.2,
-    "start": 0.25,
+    "size": 0.085,
+    "card_size": 0.62,
+    "density": 2.6,
+    "start": 0.22,
     "tilt": 0.35,
-    "per_card": 16,
+    "per_card": 18,
     "color": [
-      0.13,
-      0.17,
-      0.08
+      0.056,
+      0.084,
+      0.038
     ],
     "color_back": [
-      0.32,
-      0.35,
-      0.26
+      0.215,
+      0.238,
+      0.175
     ],
     "spring_color": [
-      0.2,
-      0.25,
-      0.12
+      0.11,
+      0.15,
+      0.065
     ],
-    "color_var": 0.08,
+    "color_var": 0.1,
     "flowers": true,
     "flower_color": [
-      0.85,
-      0.85,
-      0.7
+      0.72,
+      0.7,
+      0.56
     ],
-    "translucency": 0.35
+    "translucency": 0.54
   },
   "bark": {
     "style": "twisted",
     "color": [
       0.21,
-      0.19,
-      0.16
+      0.195,
+      0.172
     ],
     "color_dark": [
-      0.05,
-      0.045,
-      0.04
+      0.038,
+      0.034,
+      0.029
     ],
-    "scale": 0.9,
+    "scale": 0.85,
     "roughness": 0.92
   }
 }

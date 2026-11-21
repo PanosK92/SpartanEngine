@@ -2169,36 +2169,31 @@ namespace spartan::geometry_generation
 
     void generate_foliage_flower(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t stem_segment_count, const uint32_t petal_count, const uint32_t petal_segment_count)
     {
-
         using namespace math;
 
-        // constants
-        const float stem_radius                  = 0.032f; // was width/2
-        const float stem_height                  = 0.64f;
-        const float stem_thinning_start          = 0.7f;
-        const float stem_thinning_power          = 1.0f;
-        const uint32_t stem_side_count           = 6; // new: for cylinder
-        const float petal_width                  = 0.13f;
-        const float petal_length                 = 0.26f;
-        const float petal_thinning_power         = 1.5f; // for oval sharpness
-        const float min_petal_tilt               = 20.0f * deg_to_rad; // outer open
-        const float max_petal_tilt               = 70.0f * deg_to_rad; // inner upright
-        const float min_petal_bend               = 0.0f; // inner straight
-        const float max_petal_bend               = 0.3f; // outer droop
-        const float small_petal_scale            = 0.5f; // inner small
-        const float large_petal_scale            = 1.0f; // outer large
-        const float min_petal_curvature          = 0.1f; // new: outer less cupped
-        const float max_petal_curvature          = 0.4f; // inner more cupped
-        const uint32_t petal_width_segment_count = 2; // new: >=1, allows cupping
-        const float spiral_height                = 0.13f;
-        const float spiral_radius                = 0.0f; // new: 0 to attach at center
-        const float golden_angle                 = 137.5f * deg_to_rad;
+        // Botanical wildflower encoded via uv.y:
+        //   [0, 1) -> slender curved stem, stem leaves & calyx cup
+        //   [1, 2) -> rounded cupped overlapping petals (uv.x across width, uv.y - 1 base-to-tip)
+        //   [2, 3) -> domed stamen/pollen center disc (uv.y - 2 center-to-rim)
+        const uint32_t stem_segs         = std::max(stem_segment_count, 3u);
+        const uint32_t stem_sides        = 5;
+        const float stem_radius_base     = 0.011f;
+        const float stem_radius_top      = 0.0065f;
+        const float stem_height          = 0.56f;
+        const float stem_lean_x          = 0.032f;
+        const float stem_lean_z          = 0.014f;
 
-        // clear output
+        const uint32_t petals            = std::clamp(petal_count, 5u, 8u);
+        const uint32_t petal_segs        = std::max(petal_segment_count, 3u);
+        const uint32_t petal_width_segs  = 2;
+        const float petal_width          = 0.145f;
+        const float petal_length         = 0.195f;
+        const float disc_radius          = 0.052f;
+        const float disc_height          = 0.030f;
+
         vertices->clear();
         indices->clear();
 
-        // helper
         auto push_vertex = [&](const Vector3& pos, const Vector2& tex)
         {
             RHI_Vertex_PosTexNorTan v{};
@@ -2207,176 +2202,221 @@ namespace spartan::geometry_generation
             vertices->push_back(v);
         };
 
-        // stem: tapered cylinder
-        auto stem_radius_factor = [=](float t) -> float
+        auto stem_center = [&](const float t) -> Vector3
         {
-            if (t <= stem_thinning_start)
-            {
-                return 1.0f;
-            }
-            float x = (t - stem_thinning_start) / (1.0f - stem_thinning_start);
-            return std::pow(1.0f - std::clamp(x, 0.0f, 1.0f), stem_thinning_power);
+            const float sway = t * t;
+            return Vector3(stem_lean_x * sway, t * stem_height, stem_lean_z * std::sin(t * math::pi));
         };
-        uint32_t offset = 0;
-        for (uint32_t i = 0; i <= stem_segment_count; ++i)
+
+        // 1. Slender organically curved stem
+        const uint32_t stem_offset = static_cast<uint32_t>(vertices->size());
+        for (uint32_t i = 0; i <= stem_segs; ++i)
         {
-            float t  = static_cast<float>(i) / stem_segment_count;
-            float y  = t * stem_height;
-            float rf = stem_radius_factor(t);
-            float r  = stem_radius * rf;
-            for (uint32_t j = 0; j < stem_side_count; ++j)
+            const float t  = static_cast<float>(i) / static_cast<float>(stem_segs);
+            const Vector3 c = stem_center(t);
+            const float r  = stem_radius_base + (stem_radius_top - stem_radius_base) * t;
+            for (uint32_t j = 0; j < stem_sides; ++j)
             {
-                float a = static_cast<float>(j) / stem_side_count * math::pi_2;
-                float x = std::cos(a) * r;
-                float z = std::sin(a) * r;
-                push_vertex(Vector3(x, y, z), Vector2(static_cast<float>(j) / stem_side_count, t));
+                const float a = static_cast<float>(j) / static_cast<float>(stem_sides) * math::pi_2;
+                push_vertex(Vector3(c.x + std::cos(a) * r, c.y, c.z + std::sin(a) * r), Vector2(static_cast<float>(j) / static_cast<float>(stem_sides), t * 0.85f));
             }
         }
-        for (uint32_t i = 0; i < stem_segment_count; ++i)
+        for (uint32_t i = 0; i < stem_segs; ++i)
         {
-            for (uint32_t j = 0; j < stem_side_count; ++j)
+            for (uint32_t j = 0; j < stem_sides; ++j)
             {
-                uint32_t a = offset + i * stem_side_count + j;
-                uint32_t b = offset + i * stem_side_count + (j + 1) % stem_side_count;
-                uint32_t c = a + stem_side_count;
-                uint32_t d = b + stem_side_count;
+                const uint32_t a = stem_offset + i * stem_sides + j;
+                const uint32_t b = stem_offset + i * stem_sides + (j + 1) % stem_sides;
+                const uint32_t c = a + stem_sides;
+                const uint32_t d = b + stem_sides;
                 indices->push_back(a); indices->push_back(c); indices->push_back(b);
                 indices->push_back(b); indices->push_back(c); indices->push_back(d);
             }
         }
-        uint32_t current_offset = (stem_segment_count + 1) * stem_side_count;
 
-        // petals: spiral with oval taper, cup curvature
-        auto petal_width_factor = [=](float t) -> float
+        // 2. Two graceful arched stem leaves sprouting off mid-lower stem
+        for (uint32_t l = 0; l < 2; ++l)
         {
-            float s = std::sin(t * math::pi);
-            return std::pow(s, petal_thinning_power);
-        };
-        for (uint32_t p = 0; p < petal_count; ++p)
-        {
-            float frac           = petal_count > 1 ? static_cast<float>(p) / (petal_count - 1) : 0.0f;
-            float this_tilt      = min_petal_tilt + frac * (max_petal_tilt - min_petal_tilt);
-            float this_bend      = max_petal_bend - frac * (max_petal_bend - min_petal_bend);
-            float this_scale     = large_petal_scale - frac * (large_petal_scale - small_petal_scale);
-            float this_curvature = min_petal_curvature + frac * (max_petal_curvature - min_petal_curvature);
-            float this_height    = stem_height + frac * spiral_height;
-            float this_radius    = spiral_radius;
-            float angle          = static_cast<float>(p) * golden_angle;
-            float ca             = std::cos(angle);
-            float sa             = std::sin(angle);
-            float cos_t          = std::cos(this_tilt);
-            float sin_t          = std::sin(this_tilt);
-            uint32_t petal_start = static_cast<uint32_t>(vertices->size());
-            for (uint32_t i = 0; i <= petal_segment_count; ++i)
+            const float st_t   = l == 0 ? 0.28f : 0.48f;
+            const Vector3 base = stem_center(st_t);
+            const float yaw    = l == 0 ? 0.55f : 3.55f;
+            const float ca     = std::cos(yaw);
+            const float sa     = std::sin(yaw);
+            const float len    = l == 0 ? 0.165f : 0.135f;
+            const float wid    = l == 0 ? 0.044f : 0.036f;
+            const uint32_t l_off = static_cast<uint32_t>(vertices->size());
+            const uint32_t l_segs = 3;
+            for (uint32_t i = 0; i < l_segs; ++i)
             {
-                float t = static_cast<float>(i) / petal_segment_count;
-                float wf = petal_width_factor(t);
-                Vector3 local_pos;
-                Vector2 tex;
-                if (i < petal_segment_count)
+                const float t  = static_cast<float>(i) / static_cast<float>(l_segs);
+                const float wf = std::pow(std::sin(t * math::pi), 0.75f);
+                const float reach = t * len;
+                const float rise  = (0.48f * t - 0.36f * t * t) * len;
+                for (uint32_t j = 0; j < 2; ++j)
                 {
-                    for (uint32_t j = 0; j <= petal_width_segment_count; ++j)
-                    {
-                        float frac_j   = static_cast<float>(j) / petal_width_segment_count;
-                        float local_x  = (frac_j - 0.5f) * petal_width * wf * this_scale;
-                        local_pos      = Vector3(local_x, 0.0f, t * petal_length * this_scale);
-                        tex            = Vector2(frac_j, t);
-                        local_pos.y   -= this_bend * t * t;
-
-                        // curvature: concave cup, stronger at base
-                        float norm_x  = 2.0f * (frac_j - 0.5f); // -1 to 1
-                        local_pos.y  += this_curvature * (norm_x * norm_x - 1.0f) * (1.0f - t);
-
-                        // tilt
-                        float new_y = cos_t * local_pos.y + sin_t * local_pos.z;
-                        float new_z = -sin_t * local_pos.y + cos_t * local_pos.z;
-                        local_pos.y = new_y;
-                        local_pos.z = new_z;
-
-                        // rotate
-                        float new_x = ca * local_pos.x - sa * local_pos.z;
-                        new_z       = sa * local_pos.x + ca * local_pos.z;
-                        local_pos.x = new_x;
-                        local_pos.z = new_z;
-
-                        // offset (minimal)
-                        local_pos.x += ca * this_radius;
-                        local_pos.z += sa * this_radius;
-                        local_pos.y += this_height;
-                        push_vertex(local_pos, tex);
-                    }
-                }
-                else
-                {
-                    // tip
-                    local_pos    = Vector3(0.0f, 0.0f, t * petal_length * this_scale);
-                    tex          = Vector2(0.5f, t);
-                    local_pos.y -= this_bend * t * t;
-                    local_pos.y += this_curvature * (0.0f - 1.0f) * (1.0f - t); // center adjust
-                    float new_y  = cos_t * local_pos.y + sin_t * local_pos.z;
-                    float new_z  = -sin_t * local_pos.y + cos_t * local_pos.z;
-                    local_pos.y  = new_y;
-                    local_pos.z  = new_z;
-                    float new_x  = ca * local_pos.x - sa * local_pos.z;
-                    new_z        = sa * local_pos.x + ca * local_pos.z;
-                    local_pos.x  = new_x;
-                    local_pos.z  = new_z;
-                    local_pos.x += ca * this_radius;
-                    local_pos.z += sa * this_radius;
-                    local_pos.y += this_height;
-                    push_vertex(local_pos, tex);
+                    const float side = (j == 0 ? -0.5f : 0.5f) * wid * wf;
+                    const float lx   = ca * reach - sa * side;
+                    const float lz   = sa * reach + ca * side;
+                    push_vertex(Vector3(base.x + lx, base.y + rise, base.z + lz), Vector2(static_cast<float>(j), 0.2f + 0.65f * t));
                 }
             }
-            // petal indices (grid + fan to tip)
-            uint32_t row_size = petal_width_segment_count + 1;
-            for (uint32_t i = 0; i < petal_segment_count - 1; ++i)
+            // tip vertex
+            push_vertex(Vector3(base.x + ca * len, base.y + 0.12f * len, base.z + sa * len), Vector2(0.5f, 0.85f));
+            for (uint32_t i = 0; i + 1 < l_segs; ++i)
             {
-                for (uint32_t j = 0; j < petal_width_segment_count; ++j)
+                const uint32_t a = l_off + i * 2;
+                const uint32_t b = a + 1;
+                const uint32_t c = a + 2;
+                const uint32_t d = a + 3;
+                indices->push_back(a); indices->push_back(c); indices->push_back(b);
+                indices->push_back(b); indices->push_back(c); indices->push_back(d);
+            }
+            const uint32_t tip = l_off + l_segs * 2;
+            const uint32_t last = l_off + (l_segs - 1) * 2;
+            indices->push_back(last); indices->push_back(tip); indices->push_back(last + 1);
+        }
+
+        // 3. Flower head basis at stem tip (gently tilted toward the sun)
+        const Vector3 head_center = stem_center(1.0f);
+        const float head_tilt     = 0.18f;
+        const float ht_c          = std::cos(head_tilt);
+        const float ht_s          = std::sin(head_tilt);
+        auto to_head = [&](const Vector3& local) -> Vector3
+        {
+            return Vector3(
+                head_center.x + local.x * ht_c + local.y * ht_s,
+                head_center.y - local.x * ht_s + local.y * ht_c,
+                head_center.z + local.z
+            );
+        };
+
+        // Small green calyx cup directly beneath the corolla
+        {
+            const uint32_t calyx_off = static_cast<uint32_t>(vertices->size());
+            push_vertex(to_head(Vector3(0.0f, -0.022f, 0.0f)), Vector2(0.5f, 0.90f));
+            for (uint32_t j = 0; j < stem_sides; ++j)
+            {
+                const float a = static_cast<float>(j) / static_cast<float>(stem_sides) * math::pi_2;
+                push_vertex(to_head(Vector3(std::cos(a) * 0.042f, -0.004f, std::sin(a) * 0.042f)), Vector2(static_cast<float>(j) / static_cast<float>(stem_sides), 0.96f));
+            }
+            for (uint32_t j = 0; j < stem_sides; ++j)
+            {
+                const uint32_t a = calyx_off + 1 + j;
+                const uint32_t b = calyx_off + 1 + (j + 1) % stem_sides;
+                indices->push_back(calyx_off); indices->push_back(b); indices->push_back(a);
+            }
+        }
+
+        // 4. Sculpted broad rounded overlapping petals (obovate poppy/daisy/cistus silhouette)
+        const uint32_t row_size = petal_width_segs + 1;
+        for (uint32_t p = 0; p < petals; ++p)
+        {
+            const float angle       = (static_cast<float>(p) + 0.15f * ((p % 2) ? 1.0f : -1.0f)) / static_cast<float>(petals) * math::pi_2;
+            const float ca          = std::cos(angle);
+            const float sa          = std::sin(angle);
+            // Alternate inner/outer overlap slightly so neighbouring petals never z-fight
+            const float tier        = (p % 2 == 0) ? 0.0f : 1.0f;
+            const float tilt        = (24.0f + tier * 9.0f) * deg_to_rad;
+            const float cos_t       = std::cos(tilt);
+            const float sin_t       = std::sin(tilt);
+            const float scale       = 0.95f + 0.09f * (1.0f - tier);
+            const float y_lift      = tier * 0.005f;
+            const float base_r      = disc_radius * 0.55f;
+            const uint32_t p_offset = static_cast<uint32_t>(vertices->size());
+
+            for (uint32_t i = 0; i <= petal_segs; ++i)
+            {
+                const float t = static_cast<float>(i) / static_cast<float>(petal_segs);
+                // Broad obovate outline: narrow claw at base, wide rounded shoulder around t=0.65, softly rounded apex
+                const float wf = (i == 0) ? 0.24f : (i == petal_segs ? 0.36f : std::pow(std::sin(std::clamp(t * 0.92f + 0.06f, 0.0f, 1.0f) * math::pi), 0.52f) * (0.68f + 0.52f * t));
+                for (uint32_t j = 0; j <= petal_width_segs; ++j)
                 {
-                    uint32_t a = current_offset + i * row_size + j;
-                    uint32_t b = a + 1;
-                    uint32_t c = a + row_size;
-                    uint32_t d = c + 1;
+                    const float fj   = static_cast<float>(j) / static_cast<float>(petal_width_segs);
+                    const float nx   = 2.0f * (fj - 0.5f); // -1..1
+                    const float px   = (fj - 0.5f) * petal_width * wf * scale;
+                    const float pz   = base_r + t * petal_length * scale;
+                    // Gentle upward cup across width + natural arching droop toward outer rim
+                    float py         = 0.022f * nx * nx * (0.35f + 0.65f * t) + 0.036f * std::sin(t * math::pi) - 0.028f * t * t;
+                    // Tilt upward around petal base
+                    const float ty   = cos_t * py + sin_t * (pz - base_r);
+                    const float tz   = base_r + (-sin_t * py + cos_t * (pz - base_r));
+                    // Rotate around flower head axis
+                    const Vector3 lp(ca * px - sa * tz, ty + y_lift, sa * px + ca * tz);
+                    push_vertex(to_head(lp), Vector2(fj, 1.0f + std::clamp(t, 0.0f, 0.99f)));
+                }
+            }
+            for (uint32_t i = 0; i < petal_segs; ++i)
+            {
+                for (uint32_t j = 0; j < petal_width_segs; ++j)
+                {
+                    const uint32_t a = p_offset + i * row_size + j;
+                    const uint32_t b = a + 1;
+                    const uint32_t c = a + row_size;
+                    const uint32_t d = c + 1;
                     indices->push_back(a); indices->push_back(c); indices->push_back(b);
                     indices->push_back(b); indices->push_back(c); indices->push_back(d);
                 }
             }
-            // last row to tip
-            uint32_t last_row_start = current_offset + (petal_segment_count - 1) * row_size;
-            uint32_t tip_index = current_offset + petal_segment_count * row_size;
-            for (uint32_t j = 0; j < petal_width_segment_count; ++j)
-            {
-                uint32_t a = last_row_start + j;
-                uint32_t b = a + 1;
-                indices->push_back(a); indices->push_back(tip_index); indices->push_back(b);
-            }
-            current_offset += petal_segment_count * row_size + 1;
         }
 
-        // compute normals and tangents in float buffers, then pack at the end
+        // 5. Domed pollen / stamen center disc
+        {
+            const uint32_t disc_sides = 6;
+            const uint32_t disc_off   = static_cast<uint32_t>(vertices->size());
+            push_vertex(to_head(Vector3(0.0f, disc_height, 0.0f)), Vector2(0.5f, 2.05f));
+            for (uint32_t j = 0; j < disc_sides; ++j)
+            {
+                const float a = static_cast<float>(j) / static_cast<float>(disc_sides) * math::pi_2;
+                push_vertex(to_head(Vector3(std::cos(a) * disc_radius * 0.65f, disc_height * 0.72f, std::sin(a) * disc_radius * 0.65f)), Vector2(static_cast<float>(j) / static_cast<float>(disc_sides), 2.45f));
+            }
+            for (uint32_t j = 0; j < disc_sides; ++j)
+            {
+                const float a = static_cast<float>(j) / static_cast<float>(disc_sides) * math::pi_2;
+                push_vertex(to_head(Vector3(std::cos(a) * disc_radius, 0.004f, std::sin(a) * disc_radius)), Vector2(static_cast<float>(j) / static_cast<float>(disc_sides), 2.95f));
+            }
+            for (uint32_t j = 0; j < disc_sides; ++j)
+            {
+                const uint32_t r1a = disc_off + 1 + j;
+                const uint32_t r1b = disc_off + 1 + (j + 1) % disc_sides;
+                const uint32_t r2a = disc_off + 1 + disc_sides + j;
+                const uint32_t r2b = disc_off + 1 + disc_sides + (j + 1) % disc_sides;
+                indices->push_back(disc_off); indices->push_back(r1a); indices->push_back(r1b);
+                indices->push_back(r1a); indices->push_back(r2a); indices->push_back(r1b);
+                indices->push_back(r1b); indices->push_back(r2a); indices->push_back(r2b);
+            }
+        }
+
+        // Compute smooth vertex normals and tangents
         std::vector<Vector3> tmp_normals(vertices->size(), Vector3::Zero);
         std::vector<Vector3> tmp_tangents(vertices->size(), Vector3::Zero);
         for (size_t i = 0; i < indices->size(); i += 3)
         {
-            uint32_t i0 = (*indices)[i];
-            uint32_t i1 = (*indices)[i + 1];
-            uint32_t i2 = (*indices)[i + 2];
-            Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
-            Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
-            Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
-            Vector3 edge1 = p1 - p0;
-            Vector3 edge2 = p2 - p0;
-            Vector3 face_normal = Vector3::Normalize(Vector3::Cross(edge1, edge2));
-            tmp_normals[i0] += face_normal; tmp_normals[i1] += face_normal; tmp_normals[i2] += face_normal;
-            Vector3 tangent = Vector3::Normalize(Vector3(edge1.x, 0.0f, edge1.z));
+            const uint32_t i0 = (*indices)[i];
+            const uint32_t i1 = (*indices)[i + 1];
+            const uint32_t i2 = (*indices)[i + 2];
+            const Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
+            const Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
+            const Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
+            const Vector3 edge1 = p1 - p0;
+            const Vector3 edge2 = p2 - p0;
+            const Vector3 cross = Vector3::Cross(edge1, edge2);
+            const float len_sq  = cross.LengthSquared();
+            if (len_sq > 1e-12f)
+            {
+                const Vector3 face_normal = cross / std::sqrt(len_sq);
+                tmp_normals[i0] += face_normal; tmp_normals[i1] += face_normal; tmp_normals[i2] += face_normal;
+            }
+            const Vector3 t_raw(edge1.x, 0.0f, edge1.z);
+            const Vector3 tangent = t_raw.LengthSquared() > 1e-10f ? Vector3::Normalize(t_raw) : Vector3::Right;
             tmp_tangents[i0] += tangent; tmp_tangents[i1] += tangent; tmp_tangents[i2] += tangent;
         }
         for (size_t i = 0; i < vertices->size(); ++i)
         {
-            (*vertices)[i].set_normal(Vector3::Normalize(tmp_normals[i]));
-            (*vertices)[i].set_tangent(Vector3::Normalize(tmp_tangents[i]));
+            const Vector3 n = tmp_normals[i].LengthSquared() > 1e-10f ? Vector3::Normalize(tmp_normals[i]) : Vector3::Up;
+            const Vector3 t = tmp_tangents[i].LengthSquared() > 1e-10f ? Vector3::Normalize(tmp_tangents[i]) : Vector3::Right;
+            (*vertices)[i].set_normal(n);
+            (*vertices)[i].set_tangent(t);
         }
-    
     }
 
 }

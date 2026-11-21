@@ -29,16 +29,14 @@ struct gbuffer
 // the light (the foliage patch of a colour chart is 0.095, 0.150, 0.056) and its green is only 1.2 to 1.5 times
 // its red, lime tips with twice as much green as red are what reads as nuclear once the blade is lit properly.
 // The root is thatch, the colour of the ground the blade grows out of.
-static const float3 grass_base          = float3(0.050f, 0.056f, 0.020f);
-static const float3 grass_mature         = float3(0.064f, 0.092f, 0.024f);
-static const float3 grass_fresh          = float3(0.078f, 0.118f, 0.029f);
-static const float3 grass_olive          = float3(0.098f, 0.112f, 0.036f);
-static const float3 grass_straw          = float3(0.200f, 0.165f, 0.075f);
+static const float3 grass_base          = float3(0.038f, 0.042f, 0.016f);
+static const float3 grass_mature         = float3(0.052f, 0.080f, 0.021f);
+static const float3 grass_fresh          = float3(0.074f, 0.106f, 0.026f);
+static const float3 grass_olive          = float3(0.092f, 0.102f, 0.031f);
+static const float3 grass_straw          = float3(0.215f, 0.168f, 0.062f);
 static const float  grass_normal_lean    = 0.4f;
-static const float3 flower_base         = float3(0.05f, 0.07f, 0.03f);
-static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
-static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
-static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
+static const float3 flower_stem_base    = float3(0.036f, 0.056f, 0.018f);
+static const float3 flower_stem_tip     = float3(0.068f, 0.108f, 0.032f);
 // contact refinement parallax mapping, a coarse march finds the slice the ray enters the relief in and a second
 // march walks that one slice in finer steps, so the surface is resolved at coarse times refine slices for the
 // price of coarse plus refine fetches
@@ -457,18 +455,89 @@ float3 grass_far_color(float3 position_world)
     return leaf * buffer_frame.grass_far_tint.rgb * lerp(0.85f, 1.15f, drift) * grass_far_brightness;
 }
 
-// compute flower color with cluster-based hue
-float3 compute_flower_color(float height_percent, uint instance_id)
+// Physically calibrated Greek Mediterranean wildflower shading using uv.y part encoding:
+// [0, 1) stem/leaves/calyx, [1, 2) cupped petals, [2, 3) domed pollen/stamen disc.
+float3 compute_flower_color(float2 uv, float packed_variant)
 {
-    uint cluster_id         = instance_id / 5000u;
-    float cluster_variation = hash(cluster_id);
-    
-    // branchless hue selection
-    float3 tip = lerp(flower_blue, flower_red, step(0.33f, cluster_variation));
-    tip        = lerp(tip, flower_yellow, step(0.66f, cluster_variation));
-    tip       *= 0.9f + 0.1f * hash(instance_id * 13u);
-    
-    return lerp(flower_base, tip, smoothstep(0.2f, 1.0f, height_percent));
+    int species    = clamp((int)floor(packed_variant), 0, 4);
+    float plant    = frac(packed_variant);
+    float tone     = lerp(0.86f, 1.14f, plant);
+
+    if (uv.y < 1.0f)
+    {
+        float stem_t = saturate(uv.y);
+        float3 green = lerp(flower_stem_base, flower_stem_tip, smoothstep(0.05f, 0.92f, stem_t));
+        // Subtle darker base and slightly warmer olive tint per plant
+        float3 tint  = lerp(float3(0.92f, 1.0f, 0.88f), float3(1.08f, 0.98f, 0.86f), plant);
+        return green * tint * lerp(0.80f, 1.05f, stem_t);
+    }
+
+    float3 petal_main   = float3(0.56f, 0.54f, 0.46f);
+    float3 petal_base   = float3(0.32f, 0.28f, 0.14f);
+    float3 petal_tip    = float3(0.64f, 0.62f, 0.56f);
+    float3 disc_center  = float3(0.46f, 0.30f, 0.03f);
+    float3 disc_rim     = float3(0.28f, 0.16f, 0.02f);
+
+    if (species == 0)
+    {
+        // Greek Field Poppy (Papaver rhoeas): scarlet-crimson with dramatic dark basal heart
+        petal_main  = float3(0.42f, 0.032f, 0.020f);
+        petal_base  = float3(0.016f, 0.010f, 0.014f);
+        petal_tip   = float3(0.52f, 0.055f, 0.026f);
+        disc_center = float3(0.045f, 0.055f, 0.022f);
+        disc_rim    = float3(0.014f, 0.012f, 0.016f);
+    }
+    else if (species == 1)
+    {
+        // Wild Chamomile / Daisy (Anthemis): warm creamy white petals + rich golden pollen dome
+        petal_main  = float3(0.58f, 0.56f, 0.49f);
+        petal_base  = float3(0.44f, 0.41f, 0.28f);
+        petal_tip   = float3(0.66f, 0.65f, 0.60f);
+        disc_center = float3(0.50f, 0.34f, 0.035f);
+        disc_rim    = float3(0.34f, 0.21f, 0.022f);
+    }
+    else if (species == 2)
+    {
+        // Mediterranean Lavender / Wild Sage: soft periwinkle-violet
+        petal_main  = float3(0.18f, 0.135f, 0.36f);
+        petal_base  = float3(0.09f, 0.065f, 0.22f);
+        petal_tip   = float3(0.28f, 0.22f, 0.46f);
+        disc_center = float3(0.42f, 0.36f, 0.16f);
+        disc_rim    = float3(0.14f, 0.10f, 0.26f);
+    }
+    else if (species == 3)
+    {
+        // Crown Daisy (Glebionis coronaria): sunlit Mediterranean gold
+        petal_main  = float3(0.56f, 0.42f, 0.035f);
+        petal_base  = float3(0.46f, 0.26f, 0.018f);
+        petal_tip   = float3(0.64f, 0.54f, 0.09f);
+        disc_center = float3(0.32f, 0.18f, 0.020f);
+        disc_rim    = float3(0.20f, 0.10f, 0.014f);
+    }
+    else
+    {
+        // Ionian Pink Rockrose (Cistus creticus): papery dusty rose with bright golden stamen crown
+        petal_main  = float3(0.38f, 0.115f, 0.195f);
+        petal_base  = float3(0.34f, 0.24f, 0.08f);
+        petal_tip   = float3(0.48f, 0.19f, 0.28f);
+        disc_center = float3(0.54f, 0.38f, 0.045f);
+        disc_rim    = float3(0.40f, 0.24f, 0.028f);
+    }
+
+    if (uv.y >= 2.0f)
+    {
+        float r = saturate(uv.y - 2.0f);
+        float grain = 0.88f + 0.24f * sin(uv.x * 37.699f) * sin(r * 18.85f);
+        return lerp(disc_center, disc_rim, smoothstep(0.15f, 0.95f, r)) * grain * tone;
+    }
+
+    float t       = saturate(uv.y - 1.0f);
+    float edge    = abs(uv.x * 2.0f - 1.0f);
+    float vein    = 0.94f + 0.09f * cos((uv.x - 0.5f) * 28.0f) * (1.0f - 0.5f * t);
+    float3 col    = lerp(petal_base, petal_main, smoothstep(0.04f, species == 0 ? 0.34f : 0.24f, t));
+    col           = lerp(col, petal_tip, smoothstep(0.55f, 1.0f, t));
+    col          *= vein * lerp(1.0f, 0.92f, edge * edge) * tone;
+    return col;
 }
 
 #ifdef INDIRECT_DRAW
@@ -845,9 +914,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     else if (surface.is_flower())
     {
-        uint instance_id     = vertex.uv_misc.w;
-        float height_percent = vertex.uv_misc.z;
-        albedo.rgb           = compute_flower_color(height_percent, instance_id);
+        albedo.rgb = compute_flower_color(vertex.uv_misc.xy, vertex.uv_misc.w);
     }
     else if (surface.color_variation_from_instance() && !impostor_is_bark)
     {
@@ -900,7 +967,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
 
     // foliage curved normals
-    if (surface.is_grass_blade() || surface.is_flower())
+    if (surface.is_grass_blade())
     {
         float curve_angle = clamp((vertex.width_percent - 0.5f) * 120.0f * DEG_TO_RAD, -PI * 0.5f, PI * 0.5f);
         
@@ -919,9 +986,22 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // and a canopy returns light the way the ground under it does, leaning the shading normal up carries
         // that, the blade keeps enough of its own facing for the roll across its width and for a low sun to
         // still light it through its back
-        if (surface.is_grass_blade())
+        normal = normalize(lerp(normal, float3(0.0f, 1.0f, 0.0f), grass_normal_lean));
+    }
+    else if (surface.is_flower())
+    {
+        // Preserve sculpted stem/petal/disc normals; only flip back-faces for double-sided petals & stem leaves
+        float face_sign  = is_front_face * 2.0f - 1.0f;
+        normal          *= face_sign;
+        vertex.tangent  *= face_sign;
+    }
+    else if (surface.is_foliage() && !is_impostor)
+    {
+        // Double-sided foliage cards can face away from the viewer even with crown-blended normals;
+        // align the shading normal to the viewer hemisphere so direct lighting, backlit SSS, and IBL stay coherent.
+        if (dot(normal, -camera_to_pixel) < 0.0f)
         {
-            normal = normalize(lerp(normal, float3(0.0f, 1.0f, 0.0f), grass_normal_lean));
+            normal = -normal;
         }
     }
     
@@ -1072,6 +1152,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         pass_is_opaque()          &&
         !surface.is_grass_blade() &&
         !surface.is_flower()      &&
+        !surface.is_foliage()     &&
         !surface.is_water();
 
     if (terrain_blendable)

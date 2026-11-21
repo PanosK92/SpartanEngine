@@ -90,20 +90,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 sky_sh[9];
     sh_load_l2(tex5, sky_sh);
     const float ibl_visibility_floor = 0.1f;
-    float  ibl_visibility = max(surface.is_grass_blade() ? grass_canopy_visibility(surface.occlusion) : surface.occlusion, ibl_visibility_floor);
+    float  raw_visibility = surface.is_grass_blade()
+        ? grass_canopy_visibility(surface.occlusion)
+        : (surface.is_foliage() ? foliage_canopy_visibility(surface.occlusion, surface.subsurface_scattering) : surface.occlusion);
+    float  ibl_visibility = max(raw_visibility, ibl_visibility_floor);
     float3 diffuse_skysphere = sh_irradiance_l2(
         surface.bent_normal,
         sky_sh,
         ibl_visibility
     );
     // Thin leaves also receive sky through their reverse side, with the same deeper green the
-    // sun picks up on the way through. A single screen-space visibility estimate cannot resolve
-    // both sides, the occlusion is kept for transmission too so interiors of a crown stay dark.
+    // sun picks up on the way through, lifting shaded undersides out of harsh black silhouettes.
     float3 transmitted_sky = 0.0f;
     if (surface.is_foliage() && !surface.is_transparent())
     {
-        transmitted_sky = sh_irradiance_l2(-surface.normal, sky_sh, ibl_visibility) *
-                          saturate(surface.subsurface_scattering) *
+        float transmit_vis = lerp(ibl_visibility, 1.0f, 0.35f);
+        transmitted_sky = sh_irradiance_l2(-surface.normal, sky_sh, transmit_vis) *
+                          saturate(surface.subsurface_scattering) * 1.35f *
                           foliage_transmission_tint(surface.albedo.rgb);
     }
     float3 multi_bounce = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
@@ -112,6 +115,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_ibl          = diffuse_skysphere * INV_PI * bounce_boost * diffuse_energy * surface.albedo.rgb;
     float3 diffuse_ibl_transmit = transmitted_sky * INV_PI * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl = specular_skysphere * specular_energy * specular_occlusion;
+    if (surface.is_foliage())
+    {
+        // Macro foliage cards represent hundreds of scattered needles/leaflets; suppress flat-card grazing sky mirror glare
+        specular_ibl *= 0.28f;
+    }
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky
     // lambert layer on top reads as an opaque milky sheet, the specular sky reflection stays

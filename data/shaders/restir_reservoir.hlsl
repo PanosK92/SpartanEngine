@@ -2212,7 +2212,7 @@ float3 trace_shift_transmittance(PathSample src, float3 dst_pos, float3 dst_norm
     // Only direct-light connections can pass through glass. A BSDF reconnection
     // still has to reproduce the intervening scattering vertices explicitly.
     bool lighting = is_nee_sample(src);
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, lighting ? 0x05 : 0xFF, ray);
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, lighting ? 0x05 : 0xFF, ray);
     while (query.Proceed())
     {
         if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&

@@ -70,7 +70,7 @@ float rt_trace_occluder(float3 origin, float3 direction, float t_min, float t_ma
 
     // opaque instances only, glass is 0x02, grass is 0x04 and casts through screen space depth only
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
     while (query.Proceed())
     {
         if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
@@ -102,8 +102,10 @@ float rt_trace_foliage_shadow(float3 origin, float3 direction, float t_max)
     ray.TMin = 0.001f;
     ray.TMax = max(t_max, ray.TMin);
     // Do not accept/abort at the first hit: traversal order is not distance order.
+    // Cull back-facing triangles on terrain (the only instances without CULL_DISABLE) so coarse
+    // terrain BLAS proxies floating above refined VG terrain cannot self-shadow from underneath.
     RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
     while (query.Proceed())
     {
         if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE)
@@ -118,6 +120,68 @@ float rt_trace_foliage_shadow(float3 origin, float3 direction, float t_max)
         query.CommitNonOpaqueTriangleHit();
     }
     return query.CommittedStatus() == COMMITTED_NOTHING ? -1.0f : query.CommittedRayT();
+}
+
+// Deterministic Beer-Lambert sunlight penetration through a tree/shrub canopy for foliage receivers.
+// Solid occluders (terrain, mountains, buildings, tree trunks, non-foliage cutouts) still block 100%,
+// while intervening translucent leaf cards attenuate light smoothly instead of turning shaded crowns pitch black.
+// Returns float2(transmission, blocker_distance).
+float2 rt_trace_canopy_transmission(float3 origin, float3 direction, float t_max)
+{
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.002f;
+    ray.TMax      = max(t_max, ray.TMin);
+
+    float optical_depth     = 0.0f;
+    float nearest_foliage_t = t_max;
+    bool  hit_foliage       = false;
+
+    RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
+    while (query.Proceed())
+    {
+        if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE)
+        {
+            continue;
+        }
+        uint instance = query.CandidateInstanceIndex();
+        uint primitive = query.CandidatePrimitiveIndex();
+        float distance = query.CandidateTriangleRayT();
+        float3 position = origin + direction * distance;
+        MaterialParameters material = material_parameters[geometry_infos[instance].material_index];
+        if (material.is_alpha_tested() && !rt_candidate_opaque(instance, primitive, query.CandidateTriangleBarycentrics(), position))
+        {
+            continue;
+        }
+        const bool hit_is_foliage = (material.flags & ((1u << 11) | (1u << 12) | (1u << 21))) != 0u;
+        if (hit_is_foliage && material.subsurface_scattering > 0.0f)
+        {
+            // Attenuate deterministically per translucent leaf sheet (zero per-frame flicker for SIGMA)
+            if (optical_depth < 2.4f)
+            {
+                optical_depth += lerp(0.55f, 0.28f, saturate(material.subsurface_scattering));
+            }
+            nearest_foliage_t = min(nearest_foliage_t, distance);
+            hit_foliage       = true;
+            continue;
+        }
+        query.CommitNonOpaqueTriangleHit();
+    }
+
+    // Any solid occluder (terrain, mountain, building, trunk, fence) blocks direct sun completely
+    if (query.CommittedStatus() != COMMITTED_NOTHING)
+    {
+        return float2(0.0f, query.CommittedRayT());
+    }
+    if (!hit_foliage)
+    {
+        return float2(1.0f, 0.0f);
+    }
+    // Deep sunlit canopies retain warm multi-scattered glow rather than crushing to black
+    float transmission = max(exp(-optical_depth), 0.20f);
+    return float2(transmission, nearest_foliage_t);
 }
 
 // todo: the 50 is repeated in path_tracing.hlsl, restir_path.hlsl, reflections_apply.hlsl and ModelImporter.cpp, move it to one

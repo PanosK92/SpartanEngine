@@ -1154,7 +1154,7 @@ namespace spartan
             {
                 m_properties[static_cast<uint32_t>(MaterialProperty::IsFoliage)] = 1.0f;
                 m_properties[static_cast<uint32_t>(MaterialProperty::SubsurfaceScattering)] =
-                    max(GetProperty(MaterialProperty::SubsurfaceScattering), 0.35f);
+                    max(GetProperty(MaterialProperty::SubsurfaceScattering), 0.52f);
                 m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(RHI_CullMode::None);
             }
         }

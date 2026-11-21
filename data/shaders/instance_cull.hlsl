@@ -187,7 +187,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     }
 
     // impostor survivors bypass phase-b meshlet expansion and compact straight into impostor_instances
-    bool impostor_survives = survives && is_impostor_batch;
+    bool impostor_survives = survives && (is_impostor_batch || (crossfade_impostor && !(late && drawn_early)));
     uint imp_count         = WaveActiveCountBits(impostor_survives);
     uint imp_off           = WavePrefixCountBits(impostor_survives);
     uint imp_base          = 0u;
@@ -208,7 +208,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         if (imp_slot < max_impostors)
         {
             SurvivingInstance isi;
-            isi.draw_index              = task.draw_index;
+            isi.draw_index              = crossfade_impostor ? crossfade_proxy_index : task.draw_index;
             isi.instance_index          = task.instance_index;
             impostor_instances[imp_slot] = isi;
         }

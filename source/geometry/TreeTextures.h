@@ -22,12 +22,15 @@ namespace spartan::trees
     struct texture_set
     {
         uint32_t bark_size = 1024;
-        uint32_t leaf_size = 1024;
-        std::vector<uint8_t> bark_albedo; // srgb rgba8
-        std::vector<uint8_t> bark_normal; // tangent space rgba8
+        uint32_t leaf_size = 2048;
+        std::vector<uint8_t> bark_albedo;    // srgb rgba8
+        std::vector<uint8_t> bark_normal;    // tangent space rgba8
         std::vector<uint8_t> bark_roughness; // linear rgba8
-        std::vector<uint8_t> leaf_albedo; // srgb rgba8, alpha is the cutout
-        std::vector<uint8_t> leaf_normal;
+        std::vector<uint8_t> bark_occlusion; // linear rgba8
+        std::vector<uint8_t> leaf_albedo;    // srgb rgba8, alpha is the cutout
+        std::vector<uint8_t> leaf_normal;    // tangent space rgba8
+        std::vector<uint8_t> leaf_roughness; // linear rgba8
+        std::vector<uint8_t> leaf_occlusion; // linear rgba8
     };
 
     struct texture_paths
@@ -35,8 +38,11 @@ namespace spartan::trees
         std::string bark_albedo;
         std::string bark_normal;
         std::string bark_roughness;
+        std::string bark_occlusion;
         std::string leaf_albedo;
         std::string leaf_normal;
+        std::string leaf_roughness;
+        std::string leaf_occlusion;
     };
 
     void generate_textures(const species& s, season time, texture_set& output);

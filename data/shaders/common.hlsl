@@ -487,14 +487,18 @@ float hash(float p)
 // Adding a constant colour lifts dark foliage and washes out the texture.
 // Photographed crowns sit at 1.1 to 1.25 times as much green as red, leaf atlases are usually painted greener,
 // so the spread leans olive and yellow instead of adding more green.
-static const float3 vegetation_greener  = float3(0.98f, 1.00f, 0.90f);
-static const float3 vegetation_yellower = float3(1.10f, 0.98f, 0.80f);
-static const float3 vegetation_browner  = float3(1.00f, 0.88f, 0.74f);
+static const float3 vegetation_cool     = float3(0.84f, 0.96f, 0.94f);
+static const float3 vegetation_greener  = float3(0.96f, 1.00f, 0.88f);
+static const float3 vegetation_yellower = float3(1.16f, 1.01f, 0.72f);
+static const float3 vegetation_browner  = float3(1.10f, 0.87f, 0.62f);
 float3 vegetation_instance_tint(uint instance)
 {
     float variation = hash(instance);
-    float3 tint = lerp(vegetation_greener, vegetation_yellower, smoothstep(0.0f, 0.6f, variation));
-    return lerp(tint, vegetation_browner, smoothstep(0.6f, 1.0f, variation));
+    float brightness = lerp(0.84f, 1.12f, hash(instance * 2654435761u + 17u));
+    float3 tint = lerp(vegetation_cool, vegetation_greener, smoothstep(0.0f, 0.35f, variation));
+    tint        = lerp(tint, vegetation_yellower, smoothstep(0.35f, 0.78f, variation));
+    tint        = lerp(tint, vegetation_browner, smoothstep(0.78f, 1.0f, variation));
+    return tint * brightness;
 }
 
 // fast 2d hash

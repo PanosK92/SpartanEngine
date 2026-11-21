@@ -351,7 +351,14 @@ void evaluate_light(
         // opaque. Retain contact detail without erasing the thin-sheet paths
         // resolved by the primary shadow ray. Solid occluders still fully block.
         if (surface.is_foliage())
-            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.70f);
+        {
+            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.78f);
+            if (!is_ray_traced_shadows_enabled())
+            {
+                // Shadow maps only store the outermost crown surface; soften canopy self-shadowing so SSS still reads
+                L_shadow_primary = lerp(L_shadow_primary, max(L_shadow_primary, 0.28f), scattering_fraction * 0.65f);
+            }
+        }
         if (surface.is_grass_blade())
             L_shadow_contact = grass_canopy_visibility(L_shadow_contact);
         L_shadow = min(L_shadow_primary, L_shadow_contact);
@@ -381,7 +388,10 @@ void evaluate_light(
         // chan 2018 microshadowing, ao driven terminator darkening, occlusion 1 means no effect
         // the aperture is centred on the bent normal, so light from the open side of a crevice is kept
         float bent_n_dot_l = saturate(dot(surface.bent_normal, -light.to_pixel));
-        micro_shadow       = microw_shadowing_cod(bent_n_dot_l, surface.is_grass_blade() ? grass_canopy_visibility(surface.occlusion) : surface.occlusion);
+        float micro_occ    = surface.is_grass_blade()
+            ? grass_canopy_visibility(surface.occlusion)
+            : (surface.is_foliage() ? foliage_canopy_visibility(surface.occlusion, surface.subsurface_scattering) : surface.occlusion);
+        micro_shadow       = microw_shadowing_cod(bent_n_dot_l, micro_occ);
 
         // area lights widen specular roughness so the highlight matches the light's angular extent
         float original_roughness       = surface.roughness;
@@ -419,6 +429,12 @@ void evaluate_light(
             if (surface.sheen > 0.0f)
             {
                 L_specular_lobes += BRDF_Specular_Sheen(surface, angular_info);
+            }
+
+            if (surface.is_foliage())
+            {
+                // Fine needles and leaflets scatter direct specular across micro-facets rather than acting like a flat dielectric sheet
+                L_specular_lobes *= 0.35f;
             }
         }
 

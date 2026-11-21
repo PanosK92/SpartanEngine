@@ -5380,6 +5380,21 @@ namespace spartan
         return material->IsTransparent() ? 0x02 : 0x01;
     }
 
+    static uint32_t tlas_instance_flags(Material* material)
+    {
+        constexpr uint32_t rhi_geometry_instance_triangle_facing_cull_disable_bit = 0x00000001; // VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
+        constexpr uint32_t rhi_geometry_instance_force_opaque_bit                 = 0x00000004; // VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR
+        constexpr uint32_t rhi_geometry_instance_force_no_opaque_bit              = 0x00000008; // VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR
+
+        // Keep backface culling enabled only on terrain tiles so shadow/visibility rays using
+        // RAY_FLAG_CULL_BACK_FACING_TRIANGLES skip underside hits against coarse terrain BLAS proxies
+        // while all other meshes remain double-sided for thin roofs, walls, foliage and SSS exit rays.
+        const bool is_terrain = material->GetProperty(MaterialProperty::IsTerrain) != 0.0f;
+        uint32_t flags        = is_terrain ? 0u : rhi_geometry_instance_triangle_facing_cull_disable_bit;
+        flags |= material->IsAlphaTested() ? rhi_geometry_instance_force_no_opaque_bit : rhi_geometry_instance_force_opaque_bit;
+        return flags;
+    }
+
     static void build_tlas_instance(
         Render* render,
         Material* material,
@@ -5389,18 +5404,8 @@ namespace spartan
         Sb_GeometryInfo& geometry_info
     )
     {
-        constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
-        constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT                 = 0x00000004; // VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR
-        constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT              = 0x00000008; // VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR
-
-        const RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-
         const uint32_t instance_mask = tlas_instance_mask(render, material);
-
-        // Mesh BLAS geometry is opaque by default. Cutouts must explicitly
-        // override it, otherwise inline queries never get to test their alpha.
-        uint32_t flags = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
-        flags |= material->IsAlphaTested() ? RHI_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT : RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
+        const uint32_t flags         = tlas_instance_flags(material);
 
         instance                                             = {};
         instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
@@ -5889,7 +5894,7 @@ namespace spartan
                     if (transform_changed ||
                         cache.instance.device_address != device_address ||
                         cache.instance.instance_custom_index != material->GetIndex() ||
-                        cache.instance.flags != ((static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) == RHI_CullMode::None ? 2u : 0u) | (material->IsAlphaTested() ? 8u : 4u)) ||
+                        cache.instance.flags != tlas_instance_flags(material) ||
                         cache.instance.mask != tlas_instance_mask(render, material) ||
                         cache.geometry.vertex_offset != range.vertex_offset ||
                         cache.geometry.index_offset != range.index_offset)

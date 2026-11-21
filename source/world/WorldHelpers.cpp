@@ -362,7 +362,7 @@ namespace spartan
                 material->SetProperty(MaterialProperty::Roughness, 0.85f);
                 material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
                 material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.55f);
                 material->SetObjectName("grass_blade");
                 material->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
                 material = ResourceCache::Cache(material);
@@ -385,10 +385,9 @@ namespace spartan
             {
                 material->SetProperty(MaterialProperty::IsFlower, 1.0f);
                 material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
-                material->SetProperty(MaterialProperty::Roughness, 1.0f);
-                material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                material->SetProperty(MaterialProperty::Roughness, 0.72f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.65f);
                 material->SetObjectName("flower");
                 material->SetResourceName("flower" + string(EXTENSION_MATERIAL));
             }
@@ -753,7 +752,7 @@ namespace spartan
                         {
                             material->SetPropertyRuntime(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                             material->SetPropertyRuntime(MaterialProperty::IsFoliage, 1.0f);
-                            material->SetPropertyRuntime(MaterialProperty::SubsurfaceScattering, layer.foliage_scattering);
+                            material->SetPropertyRuntime(MaterialProperty::SubsurfaceScattering, max(material->GetProperty(MaterialProperty::SubsurfaceScattering), max(layer.foliage_scattering, 0.52f)));
                             if (layer.foliage_tint[0] >= 0.0f && layer.foliage_tint[1] >= 0.0f && layer.foliage_tint[2] >= 0.0f)
                             {
                                 material->SetPropertyRuntime(MaterialProperty::ColorR, layer.foliage_tint[0]);
