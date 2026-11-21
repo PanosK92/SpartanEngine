@@ -82,11 +82,11 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
   </tr>
   <tr>
     <td width="50%"><img src=".github/images/showcase_human.jpg" alt="Human: a photoscanned head in a dark studio, lit by soft area lights"/></td>
-    <td width="50%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a turntable, lit by three emissive tubes through volumetric fog"/></td>
+    <td width="50%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a mirror-black turntable inside the Maranello Atelier showroom, with ray-traced reflections and custom architectural lighting"/></td>
   </tr>
   <tr>
     <td align="center"><sub><b>HUMAN</b> &nbsp;·&nbsp; a photoscanned head in a dark studio, lit by soft area lights</sub></td>
-    <td align="center"><sub><b>SHOWROOM</b> &nbsp;·&nbsp; LaFerrari lit by three emissive tubes through volumetric fog</sub></td>
+    <td align="center"><sub><b>SHOWROOM</b> &nbsp;·&nbsp; LaFerrari on a mirror-black turntable inside a dark architectural atelier</sub></td>
   </tr>
   <tr>
     <td><img src=".github/images/showcase_sponza.jpg" alt="Sponza: ReSTIR path tracing, no light probes, no bake"/></td>
@@ -128,7 +128,7 @@ Choose among three lighting modes in **Render Options → Lighting**. Both path 
 
 - **Hybrid** uses rasterized deferred lighting with optional ray-traced reflections and shadows.
 - **ReSTIR PT** uses path tracing with spatiotemporal reservoir resampling for real-time multi-bounce global illumination.
-- **Reference path tracer** traces independent camera paths and progressively averages samples while the scene is still, giving you a lighting reference for the other two modes. An optional NRD preview filters each completed sample. Switch it off to inspect the raw accumulation.
+- **Reference path tracer** traces independent camera paths and progressively averages samples while the scene is still, giving you a lighting reference for the other two modes. An optional NRD preview smooths diffuse lighting while preserving traced reflections and transmission. Switch it off to inspect the raw accumulation.
 
 **Lighting features**
 

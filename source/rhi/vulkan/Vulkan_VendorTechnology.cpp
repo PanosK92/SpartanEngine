@@ -1310,10 +1310,10 @@ namespace spartan
             return;
         }
 
-        tex_reactive->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->PrepareForExternalRead(tex_reactive);
+        cmd_list->PrepareForExternalRead(tex_color);
+        cmd_list->PrepareForExternalRead(tex_velocity);
+        cmd_list->PrepareForExternalRead(tex_depth);
         cmd_list->PrepareForExternalWrite(tex_output);
         RHI_CommandList::RenderPassEnd();
         cmd_list->FlushBarriers();
@@ -1432,12 +1432,12 @@ namespace spartan
             return;
         }
 
-        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->PrepareForExternalRead(tex_color);
+        cmd_list->PrepareForExternalRead(tex_velocity);
+        cmd_list->PrepareForExternalRead(tex_depth);
         if (tex_bias)
         {
-            tex_bias->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->PrepareForExternalRead(tex_bias);
         }
         cmd_list->PrepareForExternalWrite(tex_output);
         RHI_CommandList::RenderPassEnd();

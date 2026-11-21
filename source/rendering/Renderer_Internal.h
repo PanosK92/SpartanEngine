@@ -84,6 +84,7 @@ namespace spartan
             std::shared_ptr<RHI_Buffer> triangle_dispatch_args;
             std::shared_ptr<RHI_Buffer> cull_tasks;
             std::shared_ptr<RHI_Buffer> surviving_instances;
+            std::shared_ptr<RHI_Buffer> impostor_instances;
             std::shared_ptr<RHI_Buffer> tree_wind_cache;
             std::shared_ptr<RHI_Buffer> instance_dispatch_args;
             RHI_SyncPrimitive* completion_timeline = nullptr;
@@ -181,7 +182,7 @@ namespace spartan
                 std::shared_ptr<RHI_Texture> accumulation;
                 struct Denoiser
                 {
-                    std::shared_ptr<RHI_Texture> motion, normal, depth, factor, input, output, preview;
+                    std::shared_ptr<RHI_Texture> motion, normal, depth, diffuse, input, output, preview;
                     bool complete_guides = false;
                     bool preview_valid = false;
                 } denoiser;

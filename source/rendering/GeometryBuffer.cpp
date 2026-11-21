@@ -543,8 +543,8 @@ namespace spartan
             bool failed = false;
         };
         // One pool shared by all cameras. Only the render thread mutates the slots.
-        TConsoleVar<float> page_budget("r.geometry_page_budget", 256.0f, "Maximum active streamed geometry pages; pool storage is reclaimed on world unload");
-        constexpr size_t geometry_reads_in_flight = 8;
+        TConsoleVar<float> page_budget("r.geometry_page_budget", 4096.0f, "Maximum active streamed geometry pages; pool storage is reclaimed on world unload");
+        constexpr size_t geometry_reads_in_flight = 32;
         vector<GeometryPageSlot> page_slots;
         unordered_map<const GeometryPageSource*, size_t> page_lookup;
         struct PageRequest
@@ -611,7 +611,7 @@ namespace spartan
         // Only transfer ownership at the frame boundary, before any camera records
         // its draws. The graphics queue orders old vertex reads before the copies.
         const uint64_t frame = Renderer::GetFrameNumber();
-        const size_t budget = static_cast<size_t>(clamp(page_budget.GetValue(), 1.0f, 4096.0f));
+        const size_t budget = static_cast<size_t>(clamp(page_budget.GetValue(), 1.0f, 8192.0f));
         page_statistics.requested = static_cast<uint32_t>(page_requests.size());
         auto& wanted = page_requests;
         auto higher_priority = [](const PageRequest& a, const PageRequest& b)

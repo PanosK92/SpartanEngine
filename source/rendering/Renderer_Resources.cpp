@@ -172,10 +172,10 @@ namespace spartan
         );
 
         // slot 0 for vs triangle cull, slots 0 and 1 for mesh path (opaque, alpha), slots 2 and 3 their late ranges,
-        // slots 4 to 7 the grids mesh draws read, see MESH_GRID_ARGS_SLOT
+        // slots 4 to 7 the grids mesh draws read, slots 8 to 11 the batched impostor counts and grids
         fr.triangle_dispatch_args = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
-            MESH_GRID_ARGS_SLOT + 4, nullptr, true,
+            TRIANGLE_DISPATCH_ARGS_COUNT, nullptr, true,
             (string("triangle_dispatch_args_") + to_string(i)).c_str()
         );
 
@@ -190,6 +190,13 @@ namespace spartan
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
             survivor_capacity, nullptr, false,
             (string("surviving_instances_") + to_string(i)).c_str()
+        );
+
+        // phase a impostor survivors, gpu-only (instance cull writes, batched 16-quad mesh shader reads)
+        fr.impostor_instances = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
+            survivor_capacity, nullptr, false,
+            (string("impostor_instances_") + to_string(i)).c_str()
         );
 
         fr.tree_wind_cache = make_shared<RHI_Buffer>(
@@ -223,6 +230,7 @@ namespace spartan
         };
         grow(frame.indirect_draw_data, draws, "indirect_draw_data", true);
         grow(frame.surviving_instances, static_cast<uint32_t>(min<uint64_t>(instances, max_instances)), "surviving_instances");
+        grow(frame.impostor_instances, static_cast<uint32_t>(min<uint64_t>(instances, max_instances)), "impostor_instances");
         // Either opaque or alpha geometry can fill its region. Preserve the original per-region ceilings.
         grow(frame.meshlet_instances, 2u * static_cast<uint32_t>(min<uint64_t>(meshlets, max_meshlets)), "meshlet_instances");
         grow(frame.tree_wind_cache, static_cast<uint32_t>(min<uint64_t>(instances, TREE_WIND_CACHE_CAPACITY)), "tree_wind_cache");
@@ -1551,6 +1559,9 @@ namespace spartan
             { Renderer_Shader::meshlet_mesh_depth_alpha_m,            RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_late_m,             RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_LATE", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_alpha_late_m,       RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, "DEPTH_LATE", true },
+            { Renderer_Shader::impostor_mesh_m,                       RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
+            { Renderer_Shader::impostor_mesh_depth_m,                 RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, "DEPTH_ONLY", true, false, nullptr, true },
+            { Renderer_Shader::impostor_mesh_depth_late_m,            RHI_Shader_Type::MeshShader,    "impostor_mesh.hlsl",                         RHI_Vertex_Type::Max, "DEPTH_ONLY", true, false, "DEPTH_LATE", true },
             { Renderer_Shader::meshlet_visualize_m,                   RHI_Shader_Type::MeshShader, "meshlet_mesh.hlsl", RHI_Vertex_Type::Max, "MESHLET_VISUALIZE", true, false, nullptr, true },
             { Renderer_Shader::meshlet_visualize_alpha_m,             RHI_Shader_Type::MeshShader, "meshlet_mesh.hlsl", RHI_Vertex_Type::Max, "MESHLET_VISUALIZE", true, false, "GBUFFER_ALPHA", true },
             { Renderer_Shader::meshlet_visualize_v,                   RHI_Shader_Type::Vertex,  "meshlet_visualize.hlsl"                                                     },
@@ -1579,6 +1590,7 @@ namespace spartan
             { Renderer_Shader::nrd_unpack_shadows_c,                  RHI_Shader_Type::Compute,       "nrd_unpack_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::path_tracing_sky_c,                  RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_SKY_ONLY",       true,  true },
             { Renderer_Shader::path_tracing_c,                      RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::path_tracing_diffuse_c,                   RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_DIFFUSE",         true,  true },
             { Renderer_Shader::path_tracing_guided_c,                   RHI_Shader_Type::Compute,       "path_tracing.hlsl",                    RHI_Vertex_Type::Max, "PATH_TRACING_GUIDES",         true,  true },
             { Renderer_Shader::path_tracing_nrd_resolve_c,              RHI_Shader_Type::Compute,       "path_tracing_nrd_resolve.hlsl",        RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_ray_generation_r,            RHI_Shader_Type::RayGeneration, "restir_pt.hlsl",                       RHI_Vertex_Type::Max, nullptr,                       true,  true },
@@ -2230,6 +2242,7 @@ namespace spartan
         buffers[static_cast<uint8_t>(Renderer_Buffer::TriangleDispatchArgs)] = fr.triangle_dispatch_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CullTasks)]            = fr.cull_tasks;
         buffers[static_cast<uint8_t>(Renderer_Buffer::SurvivingInstances)]   = fr.surviving_instances;
+        buffers[static_cast<uint8_t>(Renderer_Buffer::ImpostorInstances)]    = fr.impostor_instances;
         buffers[static_cast<uint8_t>(Renderer_Buffer::TreeWindCache)]        = fr.tree_wind_cache;
         buffers[static_cast<uint8_t>(Renderer_Buffer::InstanceDispatchArgs)] = fr.instance_dispatch_args;
     }

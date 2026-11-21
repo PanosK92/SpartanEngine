@@ -636,16 +636,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     face_normal = face_normal_length_sq > 0.0f ? face_normal * rsqrt(face_normal_length_sq) : normalize(vertex.normal);
     face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
 
-    // impostor texels name the source uv and carry the crown normal, the prepass already cut the silhouette with the same pick
-    float impostor_mip = 0.0f;
+    // impostor texels carry either pre-baked srgb rgba (zero texture fetches) or source uv + crown normal,
+    // the prepass already cut the silhouette with the same pick
+    float4 impostor_albedo = 1.0f;
+    bool   impostor_is_bark = false;
     if (is_impostor)
     {
-        float2 impostor_uv;
         float3 normal_frame;
-        impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), get_alpha_threshold(position_world, material.alpha_cutoff), impostor_uv, normal_frame, impostor_mip);
+        impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), get_alpha_threshold(position_world, material.alpha_cutoff), impostor_albedo, normal_frame, impostor_is_bark);
         float3 bitangent  = cross(vertex.normal, vertex.tangent);
         normal            = normalize(normal_frame.x * vertex.tangent + normal_frame.y * bitangent + normal_frame.z * vertex.normal);
-        vertex.uv_misc.xy = impostor_uv;
         surface.flags    &= ~((1u << 0) | (1u << 1));
     }
 
@@ -796,16 +796,30 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     // albedo sampling
     float4 albedo_sample = 1.0f;
-    if (!terrain_shaded && surface.has_texture_albedo())
+    if (is_impostor)
     {
-        albedo_sample = is_impostor
-            ? GET_TEXTURE(material_texture_index_albedo).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy, impostor_mip)
-            : sample_texture(vertex, material_texture_index_albedo);
+        albedo_sample = impostor_albedo;
         if (material.is_albedo_srgb())
         {
             albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
         }
-        albedo           *= albedo_sample;
+        albedo *= albedo_sample;
+    }
+    else if (!terrain_shaded && surface.has_texture_albedo())
+    {
+        albedo_sample = sample_texture(vertex, material_texture_index_albedo);
+#ifndef INDIRECT_DRAW
+        // non-indirect opaque draws (including gpu-scattered understory foliage) own their depth write with no prepass
+        if (pass_is_opaque() && material.is_alpha_tested() && albedo_sample.a <= get_alpha_threshold(position_world, material.alpha_cutoff))
+        {
+            discard;
+        }
+#endif
+        if (material.is_albedo_srgb())
+        {
+            albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
+        }
+        albedo *= albedo_sample;
     }
 
     // vegetation coloring
@@ -835,7 +849,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float height_percent = vertex.uv_misc.z;
         albedo.rgb           = compute_flower_color(height_percent, instance_id);
     }
-    else if (surface.color_variation_from_instance())
+    else if (surface.color_variation_from_instance() && !impostor_is_bark)
     {
         albedo.rgb *= vegetation_instance_tint((uint)vertex.uv_misc.w);
     }
@@ -915,6 +929,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float height_map = 0.6f;
     if (
         !terrain_shaded &&
+        !is_impostor &&
         (
             material.has_texture_occlusion() ||
             material.has_texture_roughness() ||
@@ -933,7 +948,14 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // without it the ambient term lights the whole card and distant forest turns pale teal
     if (is_impostor && surface.is_foliage())
     {
-        occlusion *= 0.4f;
+        if (impostor_is_bark)
+        {
+            roughness = 0.92f;
+        }
+        else
+        {
+            occlusion *= 0.4f;
+        }
     }
 
     // fft ocean shading, normal from the displaced surface so lighting follows the swell

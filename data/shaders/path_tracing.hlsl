@@ -13,9 +13,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "restir_reservoir.hlsl"
 #include "rt_visibility.hlsl"
 
-#ifdef PATH_TRACING_GUIDES
+#if defined(PATH_TRACING_GUIDES) || defined(PATH_TRACING_DIFFUSE)
+#define PT_SPLIT_DIFFUSE
 #include "nrd/NRD.hlsli"
-[[vk::image_format("unknown")]] RWTexture2D<float4> pt_material_factor : register(u68);
+[[vk::image_format("rgba32f")]] RWTexture2D<float4> pt_diffuse_history : register(u68);
 #endif
 
 // This pass always binds an RGBA32F history, including for typed UAV loads.
@@ -83,24 +84,6 @@ float3 pt_medium_transmittance(RestirMediumState medium, float distance, float c
     return restir_medium_transmittance(medium, distance);
 }
 
-// A frosted sheet scatters about the forward direction. Folding its GGX reflection
-// lobe across the tangent plane preserves solid angle and avoids entering a fictitious volume.
-float3 pt_sheet_evaluate(RaySurface surface, MaterialParameters mat, float3 v, float3 l)
-{
-    float alpha = restir_dielectric_alpha(surface.roughness);
-    bool transmitted = dot(surface.geometric_normal, l) < 0.0f;
-    if (transmitted) l = reflect(l, surface.normal);
-    float nv = dot(surface.normal, v);
-    float nl = dot(surface.normal, l);
-    if (alpha == 0.0f || min(nv, nl) <= 0.0f) return 0.0f;
-    float3 h = normalize(v + l);
-    float a2 = alpha * alpha;
-    float d = restir_dielectric_ndf(world_to_local(h, surface.normal), alpha);
-    float f = pt_sheet_reflectance(saturate(dot(v, h)), max(mat.ior, 1.0f));
-    float3 factor = transmitted ? (1.0f - f) * pt_transmittance(surface.albedo, mat.absorption, mat.thickness) : f;
-    return factor * d * restir_v_smithggx_cos(nv, nl, a2);
-}
-
 PathSurface pt_bsdf_surface(RaySurface hit, MaterialParameters mat)
 {
     PathSurface surface = (PathSurface)0;
@@ -113,6 +96,9 @@ PathSurface pt_bsdf_surface(RaySurface hit, MaterialParameters mat)
     surface.layered = restir_layered(mat);
     surface.front_facing = hit.front_face;
     surface.ior = max(mat.ior, 1.0f);
+    surface.thin_walled = mat.is_thin_walled();
+    surface.absorption = mat.absorption;
+    surface.thickness = mat.thickness;
     return surface;
 }
 
@@ -159,8 +145,9 @@ float3 pt_visibility(float3 origin, float3 direction, float distance)
     return 0.0f;
 }
 
-float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout uint seed, bool dielectric, float eta, RestirMediumState medium)
+float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout uint seed, bool dielectric, float eta, RestirMediumState medium, bool split_diffuse, out float3 diffuse_light)
 {
+    diffuse_light = 0.0f;
     float3 shading_pos = surface.position;
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
     if (light_count == 0)
@@ -252,8 +239,7 @@ float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout ui
     float pdf;
     MaterialParameters mat = material_parameters[bsdf.material_index];
     bool sheet = dielectric && mat.is_thin_walled();
-    float3 brdf = sheet ? pt_sheet_evaluate(surface, mat, view_dir, light_dir) :
-        restir_surface_evaluate(bsdf, view_dir, light_dir, pdf, 1.0f, dielectric, eta);
+    float3 brdf = restir_surface_evaluate(bsdf, view_dir, light_dir, pdf, 1.0f, dielectric, eta, restir_surface_transmission_tint(bsdf));
     float3 incoming = light_color * light.intensity * attenuation * (float(light_count) / light_pdf);
     float3 scattered = 0.0f;
     if (!dielectric && is_subsurface_diffusion_enabled() && mat.has_subsurface_profile())
@@ -267,6 +253,7 @@ float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout ui
                 (0.96f * INV_PI * entry * saturate(mat.subsurface_scattering));
         }
     }
+    diffuse_light = scattered;
     if (!any(brdf > 0.0f)) return scattered;
     bool transmission = dot(surface.geometric_normal, light_dir) < 0.0f;
     if (dielectric && !sheet && transmission)
@@ -274,7 +261,22 @@ float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout ui
     float side = transmission ? -1.0f : 1.0f;
     float3 origin = shading_pos + side * surface.geometric_normal * compute_ray_offset(shading_pos);
     float3 visibility = pt_visibility(origin, light_dir, light_dist) * pt_medium_transmittance(medium, light_dist, dot(surface.geometric_normal, light_dir));
+#ifdef PT_SPLIT_DIFFUSE
+    if (split_diffuse)
+        diffuse_light += restir_surface_evaluate(bsdf, view_dir, light_dir, pdf, 1.0f, false, 1.0f, 1.0f, 1u) * visibility * incoming;
+#endif
     return scattered + brdf * visibility * incoming;
+}
+
+RayDesc pt_camera_ray(float2 uv)
+{
+    RayDesc ray;
+    // Reverse-Z near/far points also generate parallel rays for orthographic cameras.
+    ray.Origin = get_position(1.0f, uv);
+    ray.Direction = normalize(get_position(0.0001f, uv) - ray.Origin);
+    ray.TMin = 0.001f;
+    ray.TMax = 1e15f;
+    return ray;
 }
 
 [numthreads(8, 8, 1)]
@@ -290,23 +292,31 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     uint samples = pass_uint(pass_path_tracing::samples);
     uint seed = create_seed_for_pass(pixel, samples, 0u);
     float2 uv = (float2(pixel) + random_float2(seed)) / float2(size);
-    RayDesc ray;
-    // Reverse-Z near/far points also generate parallel rays for orthographic cameras.
-    ray.Origin = get_position(1.0f, uv);
-    ray.Direction = normalize(get_position(0.0001f, uv) - ray.Origin);
-    ray.TMin = 0.001f;
-    ray.TMax = 1e15f;
+    RayDesc ray = pt_camera_ray(uv);
     float2 cone = float2(0.0f, 2.0f * tan(buffer_frame.camera_fov * 0.5f) / size.y);
     float3 radiance = 0.0f;
     float3 throughput = 1.0f;
     uint max_bounces = pass_uint(pass_path_tracing::bounces);
     RestirMediumState medium = (RestirMediumState)0;
 #ifdef PATH_TRACING_GUIDES
-    float view_z = max(buffer_frame.camera_far, 1.0f) * 2.0f;
-    float4 normal_roughness = NRD_FrontEnd_PackNormalAndRoughness(float3(0, 0, 1), 1.0f, 0.0f);
-    float3 material_factor = 1.0f;
-    float secondary_distance = 1e15f;
+    // A spatial filter needs a repeatable surface even at silhouettes and through alpha blending.
+    if (pass_bool(pass_path_tracing::write_guides))
+    {
+        RaySurface guide = pt_trace(pt_camera_ray((float2(pixel) + 0.5f) / float2(size)), cone);
+        bool diffuse_surface = false;
+        if (guide.hit)
+            diffuse_surface = !pt_is_dielectric(material_parameters[guide.material_index]) && guide.metallic < 1.0f;
+        float depth = diffuse_surface ? abs(mul(float4(guide.position, 1.0f), buffer_frame.view).z)
+                                : max(buffer_frame.camera_far, 1.0f) * 2.0f;
+        float3 normal = guide.hit ? guide.normal : float3(0, 0, 1);
+        float roughness = guide.hit ? sqrt(ggx_alpha_from_roughness(max(guide.roughness, 0.04f))) : 1.0f;
+        tex_uav2[pixel] = NRD_FrontEnd_PackNormalAndRoughness(normal, roughness, 0.0f);
+        tex_uav3[pixel] = float4(depth, 0, 0, 0);
+    }
 #endif
+    float3 primary_diffuse = 0.0f;
+    float3 primary_radiance = 0.0f;
+    float3 diffuse_share = 0.0f;
     uint bounce = 0;
     uint transparent_hits = 0;
     while (bounce <= max_bounces)
@@ -331,70 +341,52 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
             ray.Origin = surface.position - surface.geometric_normal * compute_ray_offset(surface.position);
             continue;
         }
-#ifdef PATH_TRACING_GUIDES
-        if (bounce == 0)
-        {
-            view_z = abs(mul(float4(surface.position, 1.0f), buffer_frame.view).z);
-            normal_roughness = NRD_FrontEnd_PackNormalAndRoughness(surface.normal,
-                sqrt(ggx_alpha_from_roughness(max(surface.roughness, 0.04f))), 0.0f);
-            // Preserve diffuse texture detail. Glass, emission and metal carry radiance independent of diffuse albedo.
-            if (!is_dielectric && !any(surface.emission > 0.0f))
-                material_factor = lerp(max(surface.albedo, 0.04f), 1.0f, surface.metallic);
-        }
-        if (bounce == 1)
-            secondary_distance = surface.hit_distance;
-#endif
         radiance += throughput * surface.emission;
         PathSurface bsdf = pt_bsdf_surface(surface, mat);
         float3 direction;
-        if (is_dielectric && mat.is_thin_walled())
-        {
-            float alpha = restir_dielectric_alpha(surface.roughness);
-            if (alpha > 0.0f)
-                radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, true, 1.0f, medium);
-            if (bounce == max_bounces) break;
-            float3 wi = world_to_local(-ray.Direction, surface.normal);
-            if (wi.z <= 0.0f) break;
-            float3 h = alpha > 0.0f ? sample_ggx_vndf(wi, random_float2(seed), alpha) : float3(0, 0, 1);
-            float3 wo = reflect(-wi, h);
-            if (wo.z <= 0.0f) break;
-            if (alpha > 0.0f)
-            {
-                float a2 = alpha * alpha;
-                float gi = sqrt(a2 + (1.0f - a2) * wi.z * wi.z);
-                float go = sqrt(a2 + (1.0f - a2) * wo.z * wo.z);
-                throughput *= wo.z * (wi.z + gi) / (wo.z * gi + wi.z * go);
-            }
-            bool transmit = random_float(seed) >= pt_sheet_reflectance(saturate(dot(wi, h)), bsdf.ior);
-            if (transmit)
-            {
-                wo.z = -wo.z;
-                throughput *= pt_transmittance(surface.albedo, mat.absorption, mat.thickness);
-            }
-            direction = local_to_world(wo, surface.normal);
-            if ((dot(direction, surface.geometric_normal) < 0.0f) != transmit) break;
-        }
-        else if (is_dielectric)
+        float3 diffuse_light;
+        float3 exit_offset = 0.0f;
+        if (is_dielectric)
         {
             float eta = restir_surface_eta(bsdf, medium);
-            radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, true, eta, medium);
+            radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, true, eta, medium, false, diffuse_light);
             if (bounce == max_bounces) break;
-            RestirSurfaceSample scatter = restir_surface_sample(bsdf, -ray.Direction, random_float3(seed), 1.0f, true, eta);
+            RestirSurfaceSample scatter = restir_surface_sample(bsdf, -ray.Direction, random_float3(seed), 1.0f, true, eta, restir_surface_transmission_tint(bsdf));
             if (!scatter.valid) break;
             direction = scatter.direction;
             throughput *= scatter.weight;
+            if (scatter.transmission && bsdf.thin_walled)
+            {
+                float3 inside = refract(ray.Direction, surface.normal, eta);
+                exit_offset = inside * (bsdf.thickness / max(abs(dot(inside, surface.normal)), 0.001f));
+            }
             restir_surface_cross_medium(medium, bsdf, scatter);
         }
         else
         {
-            radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, false, 1.0f, medium);
+            radiance += throughput * pt_direct(surface, bsdf, -ray.Direction, seed, false, 1.0f, medium, bounce == 0, diffuse_light);
+#ifdef PT_SPLIT_DIFFUSE
+            if (bounce == 0)
+            {
+                primary_diffuse = throughput * diffuse_light;
+                primary_radiance = radiance;
+            }
+#endif
             if (bounce == max_bounces) break;
             float pdf;
             direction = sample_reflection_brdf(surface.albedo, surface.roughness, surface.metallic,
                 surface.normal, surface.geometric_normal, -ray.Direction, random_float2(seed), pdf, 1.0f);
             if (!(pdf > 0.0f)) break;
             float eval_pdf;
-            throughput *= restir_surface_evaluate(bsdf, -ray.Direction, direction, eval_pdf, 1.0f) / pdf;
+            float3 total = restir_surface_evaluate(bsdf, -ray.Direction, direction, eval_pdf, 1.0f);
+#ifdef PT_SPLIT_DIFFUSE
+            if (bounce == 0)
+            {
+                float3 diffuse = restir_surface_evaluate(bsdf, -ray.Direction, direction, eval_pdf, 1.0f, false, 1.0f, 1.0f, 1u);
+                diffuse_share = saturate(diffuse / max(total, 1e-20f));
+            }
+#endif
+            throughput *= total / pdf;
         }
         if (any(isnan(throughput)) || any(isinf(throughput))) break;
         if (bounce >= 3)
@@ -406,11 +398,29 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         cone = ray_cone_propagate(cone, surface.hit_distance);
         cone.y = max(cone.y, surface.roughness * 0.1f);
         float side = dot(direction, surface.geometric_normal) >= 0.0f ? 1.0f : -1.0f;
-        ray.Origin = surface.position + side * surface.geometric_normal * compute_ray_offset(surface.position);
+        ray.Origin = surface.position + exit_offset + side * surface.geometric_normal * compute_ray_offset(surface.position);
         ray.Direction = direction;
         ++bounce;
     }
     if (any(isnan(radiance)) || any(isinf(radiance))) radiance = 0.0f;
+#ifdef PT_SPLIT_DIFFUSE
+    // Partition this very same camera sample by its first scattering event. Glossy,
+    // clearcoat, emission and transmission stay in the unfiltered remainder.
+    float3 diffuse = clamp(primary_diffuse + diffuse_share * (radiance - primary_radiance), 0.0f, radiance);
+    float variance = 0.0f;
+    if (samples > 0)
+    {
+        float4 previous = pt_diffuse_history[pixel];
+        float weight = rcp(float(samples) + 1.0f);
+        float3 delta = diffuse - previous.rgb;
+        diffuse = lerp(previous.rgb, diffuse, weight);
+        variance = (1.0f - weight) * (previous.a + weight * dot(delta, delta));
+    }
+    pt_diffuse_history[pixel] = float4(diffuse, variance);
+#ifdef PATH_TRACING_GUIDES
+    tex_uav4[pixel] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(diffuse, 1.0f, true);
+#endif
+#endif
     if (samples == 0 && phase == 0)
     {
         // Navigation preview. Each following phase overwrites its own pixel before any averaging.
@@ -424,12 +434,4 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
             radiance = lerp(pt_history[pixel].rgb, radiance, 1.0f / (float(samples) + 1.0f));
         pt_history[pixel] = float4(radiance, 1.0f);
     }
-#ifdef PATH_TRACING_GUIDES
-    // These guides describe the sampled camera path. NRD consumes them only after a complete pixel sweep.
-    tex_uav2[pixel] = normal_roughness;
-    tex_uav3[pixel] = float4(view_z, 0, 0, 0);
-    float hit_dist = REBLUR_FrontEnd_GetNormHitDist(secondary_distance, view_z, float3(3.0f, 0.1f, 20.0f), 1.0f);
-    tex_uav4[pixel] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(radiance / material_factor, hit_dist, true);
-    pt_material_factor[pixel] = float4(material_factor, 1.0f);
-#endif
 }

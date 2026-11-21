@@ -35,6 +35,32 @@ namespace spartan::geometry_processing
     // word 0 is the source uv as unorm16 inside [uv_min, uv_min + uv_scale], word 1 is the frame space
     // normal as oct unorm8, the depth toward the viewer as unorm15 over [-radius, radius] and a coverage bit
     // texel (px, py) of layer l in frame (fx, fy) starts at ((((fy * frames + fx) * res + py) * res + px) * layers + l) * 2
+    struct ImpostorTextureInput
+    {
+        const uint8_t* rgba   = nullptr;
+        uint32_t width        = 0;
+        uint32_t height       = 0;
+        math::Vector3 tint    = math::Vector3(1.0f, 1.0f, 1.0f);
+        float alpha_cutoff    = 0.5f;
+    };
+
+    // orthographic views of a whole tree (bark + canopy) pre-baked directly into srgb rgba8 + oct normal + flags:
+    // word 0 is packed srgb rgba8, word 1 is frame space oct normal (bits 0..15), depth unorm14 (bits 16..29),
+    // is_bark flag (bit 30), and occupied bit (bit 31). one layer per texel, zero runtime texture fetches
+    void bake_tree_impostor_rgba(
+        const std::vector<RHI_Vertex_PosTexNorTan>& bark_vertices,
+        const std::vector<uint32_t>& bark_indices,
+        const ImpostorTextureInput& bark_texture,
+        const std::vector<RHI_Vertex_PosTexNorTan>& canopy_vertices,
+        const std::vector<uint32_t>& canopy_indices,
+        const ImpostorTextureInput& canopy_texture,
+        uint32_t frames,
+        uint32_t resolution,
+        const math::Vector3& center,
+        float radius,
+        std::vector<uint32_t>& texels_out
+    );
+
     void bake_impostor(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         const std::vector<uint32_t>& indices,

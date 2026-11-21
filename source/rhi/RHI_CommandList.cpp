@@ -970,17 +970,12 @@ namespace spartan
                 const bool scope_change = previous.scope != current.scope && previous.scope != RHI_Barrier_Scope::None && current.scope != RHI_Barrier_Scope::None;
                 const bool attachment_release = previous.usage == RHI_Resource_Usage::Attachment && current.usage != RHI_Resource_Usage::Attachment;
                 const bool vulkan = RHI_Device::GetApiType() == RHI_Api_Type::Vulkan;
-                const bool sampled_after_write = previous.unsynced &&
-                    resource_tracker::writes(previous.access) &&
-                    current.access == RHI_Resource_Access::Read;
                 const bool needs_barrier = hazard && !layout_transition && !same_rp_attachment &&
                     (
                         cross_queue_mip ||
                         scope_change ||
                         attachment_release ||
-                        sampled_after_write ||
-                        (mip_chain && previous.unsynced) ||
-                        (!vulkan && previous.unsynced)
+                        previous.unsynced
                     );
                 const bool extends_range = barrier_start != rhi_all_mips && needs_barrier && previous.access == barrier_previous.access && previous.usage == barrier_previous.usage && previous.scope == barrier_previous.scope && previous.queue == barrier_previous.queue && current.access == barrier_current.access && current.usage == barrier_current.usage && current.scope == barrier_current.scope && current.queue == barrier_current.queue;
 
@@ -989,7 +984,7 @@ namespace spartan
                     m_force_memory_sync = true;
                     if (
                         mip_chain ||
-                        (sampled_after_write && !m_pass_boundary) ||
+                        (previous.unsynced && !m_pass_boundary) ||
                         cross_queue_mip ||
                         scope_change ||
                         attachment_release

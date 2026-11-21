@@ -165,7 +165,9 @@ namespace spartan
             settings.timeDeltaBetweenFrames     = cb_frame->delta_time * 1000.0f;
             settings.denoisingRange             = (std::max)(cb_frame->camera_far * 0.99f, 1.0f);
             settings.disocclusionThreshold      = preset == Nrd_Preset::Shadows ? 0.02f : 0.01f;
-            settings.frameIndex                 = cb_frame->frame;
+            // Each reference sweep starts a spatial-only dispatch. Keep its sampling pattern
+            // fixed so identical accumulated inputs produce the same preview.
+            settings.frameIndex                 = preset == Nrd_Preset::Reference ? 0 : cb_frame->frame;
             settings.accumulationMode           = reset_history ? nrd::AccumulationMode::CLEAR_AND_RESTART : nrd::AccumulationMode::CONTINUE;
             settings.isMotionVectorInWorldSpace = false;
         }
@@ -226,8 +228,8 @@ namespace spartan
             settings.maxFastAccumulatedFrameNum = 1;
             settings.historyFixFrameNum = 0;
             settings.maxStabilizedFrameNum = 0;
-            settings.maxBlurRadius = 12.0f;
-            settings.diffusePrepassBlurRadius = 8.0f;
+            settings.maxBlurRadius = 5.0f;
+            settings.diffusePrepassBlurRadius = 3.0f;
             return settings;
         }
 

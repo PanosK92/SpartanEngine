@@ -38,5 +38,7 @@ namespace spartan
         static void SaveSdr(const std::string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data);
         // writes 8 bit rgba straight to png, SaveSdr above expects half float data
         static void SaveSdrRgba8(const std::string& file_path, const uint32_t width, const uint32_t height, const void* data);
+        // loads an sdr image into 8 bit rgba pixels with top-left origin matching gpu uvs
+        static bool LoadSdrRgba8(const std::string& file_path, uint32_t& width, uint32_t& height, std::vector<uint8_t>& rgba_out);
     };
 }

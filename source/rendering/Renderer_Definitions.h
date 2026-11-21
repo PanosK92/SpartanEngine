@@ -97,9 +97,8 @@ namespace spartan
     const uint32_t renderer_visible_triangles_half = renderer_max_visible_triangles / 2;
 
     // gpu scatter, the camera relative ring populate that owns no entities, slot 0 is grass and the
-    // rest are micro detail, pebbles and chips, the stuff that stops close ground reading as flat
-    // vertices
-    const uint32_t renderer_max_gpu_scatter_slots = 3;
+    // rest are understory foliage, wildflowers and micro detail
+    const uint32_t renderer_max_gpu_scatter_slots = 4;
     const uint32_t renderer_max_gpu_scatter_lods  = 3;
 
     // The populate shader distributes each ring's budget over its area; cell size only partitions
@@ -108,9 +107,10 @@ namespace spartan
     constexpr std::array<std::array<uint32_t, renderer_max_gpu_scatter_lods>, renderer_max_gpu_scatter_slots>
     renderer_max_gpu_scatter_per_lod =
     {{
-        {{ 4608u * 1024u, 3072u * 1024u, 1536u * 1024u }}, // grass, 8x/4x/2x the previous budgets, 144 MiB total
-        {{   6u * 1024u,  16u * 1024u,  24u * 1024u }}, // micro detail, ~5, ~2.6 and ~1.1 chips per square metre
-        {{   6u * 1024u,  16u * 1024u,  24u * 1024u }}
+        {{ 4608u * 1024u, 3072u * 1024u, 1536u * 1024u }}, // grass, 144 MiB total
+        {{   32u * 1024u,   48u * 1024u,   48u * 1024u }}, // detail slot 1 (woodland understory / ferns)
+        {{   24u * 1024u,   32u * 1024u,   32u * 1024u }}, // detail slot 2 (wildflowers / ground herbs)
+        {{    8u * 1024u,   16u * 1024u,   24u * 1024u }}  // detail slot 3 (pebbles / micro detail)
     }};
 
     constexpr uint32_t renderer_gpu_scatter_cap(uint32_t slot, uint32_t lod)
@@ -483,6 +483,7 @@ namespace spartan
         nrd_unpack_shadows_c,
         path_tracing_c,
         path_tracing_sky_c,
+        path_tracing_diffuse_c,
         path_tracing_guided_c,
         path_tracing_nrd_resolve_c,
 
@@ -527,6 +528,9 @@ namespace spartan
         meshlet_mesh_depth_alpha_m,
         meshlet_mesh_depth_late_m,
         meshlet_mesh_depth_alpha_late_m,
+        impostor_mesh_m,
+        impostor_mesh_depth_m,
+        impostor_mesh_depth_late_m,
         meshlet_visualize_m,
         meshlet_visualize_alpha_m,
         meshlet_visualize_v,
@@ -764,6 +768,7 @@ namespace spartan
         CullTasks,                 // per (render, instance) cull tasks consumed by the instance cull compute shader (phase a)
         TreeWindCache,            // optional per-visible-instance root wind
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
+        ImpostorInstances,         // phase a impostor survivor list, batched 16 quads per mesh workgroup
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
         Decals,
         RainOcclusion,             // topmost static surface height per cell around the camera, ring-buffered per frame

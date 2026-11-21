@@ -658,10 +658,18 @@ namespace
                 }
                 row_end();
             }
+            ImGui::EndDisabled();
+
+            ImGui::BeginDisabled(mode != 0);
+            cvar_toggle("Ambient occlusion", "r.ssao", "Darkens creases and contact areas in Hybrid lighting using screen-space ambient occlusion.");
+            ImGui::EndDisabled();
+
             if (mode == 0)
             {
+                ImGui::BeginDisabled(!rt_supported);
                 cvar_toggle("Ray traced reflections", "r.ray_traced_reflections", "Accurate reflections of off-screen geometry, blended with screen space and image based lighting by roughness.");
                 cvar_toggle("Ray traced shadows", "r.ray_traced_shadows", "Contact-hardening shadows for all lights, traced instead of shadow maps.");
+                ImGui::EndDisabled();
             }
             else if (mode == 1)
             {
@@ -670,23 +678,18 @@ namespace
             else
             {
 #ifdef _WIN32
-                cvar_toggle("NRD denoised preview", "r.path_tracing_denoise", "Filter each completed sample using ray-traced surface guides. Toggle off to see the raw accumulation.");
+                cvar_toggle("NRD denoised preview", "r.path_tracing_denoise", "Filter diffuse lighting after each completed sample and reduce fine grain on glossy surfaces. Switch off to inspect the raw image.");
 #endif
                 cvar_slider("Max bounces", "r.path_tracing_bounces", "Maximum scattering events per camera path. Changing this restarts accumulation.", 1.0f, 32.0f, "%.0f");
                 if (section_unfiltered() && ensure_rows())
                 {
                     char progress[80];
-                    snprintf(progress, sizeof(progress), "%u completed samples per pixel", Renderer::GetPathTracingSampleCount());
+                    const char* preview = cvar_path_tracing_denoise.GetValueAs<bool>()
+                        ? (Renderer::IsPathTracingDenoised() ? " | NRD active" : " | Waiting for NRD") : "";
+                    snprintf(progress, sizeof(progress), "%u completed samples per pixel%s", Renderer::GetPathTracingSampleCount(), preview);
                     row_note(progress, style::color_text_faint);
                 }
             }
-            ImGui::EndDisabled();
-
-            const bool path_tracing_enabled = rt_supported &&
-                (cvar_restir_pt.GetValueAs<bool>() || cvar_path_tracing.GetValueAs<bool>());
-            ImGui::BeginDisabled(path_tracing_enabled);
-            cvar_toggle("Ambient occlusion", "r.ssao", "Screen space ambient occlusion, darkens creases and contact areas. Unavailable while path tracing is enabled.");
-            ImGui::EndDisabled();
         }
         section_end();
     }

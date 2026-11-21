@@ -109,13 +109,15 @@ namespace spartan
         float radius = 0.0f;
         float error = 0.0f;
         bool uses_root_vertices = false;
+        bool baked_rgba = false;
         std::vector<uint32_t> skin_indices;
         std::shared_ptr<GeometryParentPage> coarser;
         uint32_t vertex_count = 0, index_count = 0, meshlet_count = 0;
         math::BoundingBox bounds;
         math::Vector2 uv_min, uv_scale;
         uint32_t atlas = 0, vertices = 0, indices = 0, meshlet = 0, remaps = 0, micro = 0;
-        static constexpr uint32_t frames = 8, resolution = 64, layers = 2;
+        uint32_t impostor_resolution = resolution, impostor_layers = layers;
+        static constexpr uint32_t frames = 8, resolution = 64, baked_resolution = 96, layers = 2;
     };
 
     struct SubMesh

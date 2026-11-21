@@ -384,7 +384,18 @@ namespace spartan
         // share of its cap the lost ground held and stays exactly as thick as authored
         uint32_t gpu_scatter_slot_cap(const Renderer::PassState::GpuScatterSlot& state, const uint32_t slot, const uint32_t lod)
         {
-            const uint32_t cap    = gpu_scatter_lod_cap(slot, lod, state.params.density);
+            uint32_t cap = gpu_scatter_lod_cap(slot, lod, state.params.density);
+
+            // Triangle budget guard for non-grass detail meshes (e.g. multi-frond glTF ferns):
+            // keeps g_buffer_grass bounded even when a high-poly foliage asset is placed on GPU scatter.
+            const uint32_t tri_count = state.indirect_args_static[lod].index_count / 3u;
+            if (slot > 0 && tri_count > 64u)
+            {
+                constexpr uint32_t max_detail_tris_per_ring = 1500000u;
+                const uint32_t tri_cap = max(128u, max_detail_tris_per_ring / tri_count);
+                cap = min(cap, tri_cap);
+            }
+
             const float authored  = state.params.ring_radii_m[lod];
             const float radius    = gpu_scatter_ring_radius(state, lod);
             if (lod == 0 || authored <= 0.0f || radius >= authored)
@@ -1482,6 +1493,8 @@ namespace spartan
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::cull_tasks, GetBuffer(Renderer_Buffer::CullTasks));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::surviving_instances, GetBuffer(Renderer_Buffer::SurvivingInstances));
             RHI_CommandList::SetBuffer(Renderer_BindingsUav::instance_dispatch_args, GetBuffer(Renderer_Buffer::InstanceDispatchArgs));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
+            RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
 
             // survivors past max_instances are dropped
             m_pcb_pass_cpu.set(pass_instance_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
@@ -1490,6 +1503,7 @@ namespace spartan
             m_pcb_pass_cpu.set(pass_instance_cull::max_instances, GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount());
             m_pcb_pass_cpu.set(pass_instance_cull::late, late);
             m_pcb_pass_cpu.set(pass_instance_cull::history_hiz, history_hiz);
+            m_pcb_pass_cpu.set(pass_instance_cull::max_impostors, use_mesh_shaders() ? GetBuffer(Renderer_Buffer::ImpostorInstances)->GetElementCount() : 0u);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
             const uint32_t groups_x = min(m_cull_task_count, INSTANCE_CULL_DISPATCH_WIDTH);
@@ -1763,6 +1777,16 @@ namespace spartan
                         push_mesh_draw_constants(m_pcb_pass_cpu);
                         // Alpha work is compacted separately, with the original capacity for each category.
                         RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + slot_alpha) * dispatch_stride);
+
+                        // Batched impostor quads: 16 quads per 64-thread workgroup, written directly by Phase A
+                        pso.name                                 = "depth_prepass_impostor_mesh";
+                        pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(late ? Renderer_Shader::impostor_mesh_depth_late_m : Renderer_Shader::impostor_mesh_depth_m);
+                        RHI_CommandList::SetPipelineState(pso);
+                        RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                        bind_mesh_shader_geometry();
+                        RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
+                        push_mesh_draw_constants(m_pcb_pass_cpu);
+                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (IMPOSTOR_GRID_ARGS_SLOT + (late ? 1u : 0u)) * dispatch_stride);
                     }
                     else
                     {
@@ -1971,6 +1995,16 @@ namespace spartan
                 bind_mesh_shader_geometry();
                 push_mesh_draw_constants(m_pcb_pass_cpu);
                 RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
+
+                // Batched impostor quads: 16 quads per 64-thread workgroup, ReadEqual matches depth_prepass_impostor_mesh
+                pso.name                                 = "g_buffer_impostor_mesh";
+                pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(Renderer_Shader::impostor_mesh_m);
+                RHI_CommandList::SetPipelineState(pso);
+                RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                bind_mesh_shader_geometry();
+                RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
+                push_mesh_draw_constants(m_pcb_pass_cpu);
+                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), IMPOSTOR_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
             }
             else
             {
@@ -2302,9 +2336,17 @@ namespace spartan
         if (!road_terrain) return;
         RHI_Buffer* road_exclusions = road_terrain->GetRoadExclusionBuffer();
 
-        static_assert(renderer_max_gpu_scatter_args == 9 && renderer_max_gpu_scatter_slots == 3);
-        // per slot lod parameters, the protected vehicle region, the cell window of every ring, then the block window of every card band
+        static_assert(renderer_max_gpu_scatter_args == 12 && renderer_max_gpu_scatter_slots == 4);
+        // per slot lod parameters (z = habitat id, w = sea level), the protected vehicle region, then the cell window of every ring
         std::array<Vector4, renderer_gpu_scatter_parameter_count> detail_parameters{};
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+        {
+            const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+            if (gpu_scatter_ready(state))
+            {
+                detail_parameters[slot] = Vector4(0.0f, 0.0f, static_cast<float>(state.params.habitat), state.params.sea_level);
+            }
+        }
         const auto& detail = GetSurfaceInteraction();
         if (detail.id)
             detail_parameters[renderer_max_gpu_scatter_slots] = Vector4(detail.center, 32.0f);

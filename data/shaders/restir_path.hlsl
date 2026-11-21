@@ -25,6 +25,12 @@ float3 restir_surface_transmission_tint(PathSurface surface)
 
 float restir_surface_eta(PathSurface surface, RestirMediumState medium)
 {
+    if (surface.thin_walled)
+    {
+        uint surrounding = restir_medium_material(medium.slots.x);
+        float incident = surrounding == RESTIR_NO_MEDIUM ? 1.0f : material_parameters[surrounding].ior;
+        return incident / surface.ior;
+    }
     uint outside = restir_medium_outside_material(medium, surface.material_index, surface.front_facing);
     float outside_ior = outside == RESTIR_NO_MEDIUM ? 1.0f : material_parameters[outside].ior;
     return surface.front_facing ? outside_ior / surface.ior : surface.ior / outside_ior;
@@ -105,9 +111,9 @@ uint3 restir_trace_hit(RayDesc ray, out float hit_distance, bool opaque_primary 
     while (query.Proceed())
     {
         if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE) continue;
+        MaterialParameters material = material_parameters[geometry_infos[query.CandidateInstanceIndex()].material_index];
         if (opaque_primary)
         {
-            MaterialParameters material = material_parameters[geometry_infos[query.CandidateInstanceIndex()].material_index];
             if (material.color.a < 1.0f) continue; // Match Material::IsTransparent().
             if (!material.is_alpha_tested())
             {
@@ -115,7 +121,7 @@ uint3 restir_trace_hit(RayDesc ray, out float hit_distance, bool opaque_primary 
                 continue;
             }
         }
-        if (rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
+        if (!material.is_alpha_tested() || rt_candidate_opaque(query.CandidateInstanceIndex(), query.CandidatePrimitiveIndex(),
                 query.CandidateTriangleBarycentrics(), ray.Origin + ray.Direction * query.CandidateTriangleRayT()))
             query.CommitNonOpaqueTriangleHit();
     }
@@ -417,7 +423,7 @@ PathSample trace_path_from_primary(PathSurface camera_hit, float3 view, float3 c
         {
             // Section 6.2.3: force connection to the sampled NEE endpoint.
             leaf = restir_light_endpoint_descriptor(light, restir_light_sample_origin(light, current.hit_position, current.geometric_normal), depth, replay_seed);
-            leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light_mis : 0.0f;
+            leaf.F = light.endpoint_valid ? throughput * light_f * light.endpoint_radiance * light.transmittance * light_mis : 0.0f;
             inverse_density = restir_pdf_valid(light.endpoint_pdf) ? 1.0f / light.endpoint_pdf : 0.0f;
         }
         leaf.endpoint_pooled = light.light_index == RESTIR_ENDPOINT_EMTRI;
@@ -671,7 +677,8 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
         return result;
     PathSample connection = src;
     connection.rc_length = 2u; // test the actual connecting edge, not primary-to-RC
-    if (!trace_shift_visibility(connection, previous.hit_position, previous.geometric_normal))
+    float3 edge_visibility = k > 2u ? trace_shift_transmittance(connection, previous.hit_position, previous.geometric_normal) : 1.0f;
+    if (!any(edge_visibility > 0.0f))
         return result;
     float mis = 1.0f;
     if (k == src.path_length)
@@ -691,7 +698,7 @@ ShiftResult restir_shift_prefix(PathSample src, float3 pos, float3 normal, float
     }
     // The reference applies medium absorption at traced surface hits, not to NEE visibility segments.
     float3 connection_transmittance = is_sky_sample(src) || is_nee_sample(src) ? 1.0f : restir_medium_transmittance(medium, length(delta));
-    result.f_dst = prefix * connect_f * radiance * mis * connection_transmittance;
+    result.f_dst = prefix * connect_f * radiance * mis * connection_transmittance * edge_visibility;
     result.jacobian = geometry / src.rc_pdf;
     result.sample.rc_pdf = geometry;
     result.sample.F = result.f_dst;

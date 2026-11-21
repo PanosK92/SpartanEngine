@@ -193,6 +193,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_factor, specular_factor;
     restir_nrd_material_factors(albedo, metallic, roughness * roughness,
         saturate(dot(normal, view_dir)), diffuse_factor, specular_factor);
+    if (restir_nrd_glass(uv))
+    {
+        diffuse_factor = 0.0f;
+        specular_factor = 1.0f;
+    }
     float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
     // NRD already accumulates reprojected radiance. Averaging its output again
     // retains NRD's transient history after lighting changes, even when the

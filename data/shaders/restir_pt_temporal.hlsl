@@ -317,13 +317,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
                 if (temporal.W > 0.0f && shift_t_to_c.ok)
                 {
-                    bool visible = trace_shift_visibility(shift_t_to_c.sample, pos_ws, geometric_normal_ws);
-                    if (visible)
+                    shift_t_to_c.f_dst *= trace_shift_transmittance(shift_t_to_c.sample, pos_ws, geometric_normal_ws);
+                    if (any(shift_t_to_c.f_dst > 0.0f))
                     {
                         target_temp   = target_scalar(shift_t_to_c.f_dst);
                         jacobian_temp = shift_t_to_c.jacobian;
                         f_temp        = shift_t_to_c.f_dst;
                         temporal_shifted_sample = shift_t_to_c.sample;
+                        temporal_shifted_sample.F = f_temp;
                     }
                 }
 
@@ -342,9 +343,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     src_geometric_normal_ws,
                     true
                 );
-                if (current.W > 0.0f && shift_c_to_t.ok &&
-                    trace_shift_visibility(shift_c_to_t.sample, src_primary_pos, src_geometric_normal_ws))
+                if (current.W > 0.0f && shift_c_to_t.ok)
                 {
+                    shift_c_to_t.f_dst *= trace_shift_transmittance(shift_c_to_t.sample, src_primary_pos, src_geometric_normal_ws);
                     target_cur_at_temp   = target_scalar(shift_c_to_t.f_dst);
                     jacobian_cur_at_temp = shift_c_to_t.jacobian;
                 }

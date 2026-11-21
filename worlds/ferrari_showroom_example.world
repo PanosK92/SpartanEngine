@@ -1,103 +1,92 @@
 <?xml version="1.0"?>
 <World name="ferrari_showroom_example" description="A LaFerrari turning on a lit showroom turntable">
  <OwnedResources>
-  <Resource file="textures/albedo.texture" />
   <Resource file="materials/apex_game_caliper.xml" />
-  <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="materials/apex_game_caliper_3.xml" />
   <Resource file="materials/apex_game_rim.xml" />
-  <Resource file="textures/apex_game_rim_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/apex_game_rim_packed_slot0.tex_packed_2_2.texture" />
-  <Resource file="materials/apex_game_rotor.xml" />
-  <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="materials/apex_game_rim_3.xml" />
   <Resource file="materials/apex_game_rubber.xml" />
-  <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed_2_2.texture" />
-  <Resource file="meshes/apex_r1_wheel.mesh" />
-  <Resource file="materials/black_2.xml" />
-  <Resource file="materials/body.xml" />
-  <Resource file="materials/break_lights_001_2.xml" />
-  <Resource file="materials/break_lights_glasses_2.xml" />
-  <Resource file="materials/breake_lights_chrom_2.xml" />
-  <Resource file="materials/carbon_fiber_2.xml" />
-  <Resource file="textures/carbon_fiber_base_color.texture" />
-  <Resource file="materials/chrome_2.xml" />
-  <Resource file="textures/chrome_base_color.texture" />
-  <Resource file="materials/disc_003_2.xml" />
-  <Resource file="materials/disc_004_2.xml" />
-  <Resource file="materials/disc_006_2.xml" />
-  <Resource file="materials/disk_2.xml" />
-  <Resource file="materials/engine_glass_2.xml" />
+  <Resource file="materials/apex_game_rubber_3.xml" />
   <Resource file="materials/ferrari_laferrari_29.xml" />
-  <Resource file="materials/front_headlights_001_2.xml" />
-  <Resource file="textures/game_caliper_color.texture" />
-  <Resource file="textures/game_caliper_normal.texture" />
-  <Resource file="textures/game_rim_color.texture" />
-  <Resource file="textures/game_rim_normal.texture" />
-  <Resource file="textures/game_rotor_color.texture" />
-  <Resource file="textures/game_rotor_normal.texture" />
-  <Resource file="textures/game_rubber_color.texture" />
-  <Resource file="textures/game_rubber_normal.texture" />
-  <Resource file="materials/glasses_2.xml" />
-  <Resource file="materials/head_lights_glasses_002_2.xml" />
-  <Resource file="textures/horizon_line_cool_packed_slot0.tex_packed.texture" />
+  <Resource file="materials/ferrari_laferrari_29_3.xml" />
   <Resource file="materials/inside_stickers_2.xml" />
-  <Resource file="textures/inside_stickers_base_color.texture" />
-  <Resource file="materials/int_mirror_2.xml" />
-  <Resource file="materials/interior_2_001_2.xml" />
-  <Resource file="materials/led_ring_ferrari_red.xml" />
-  <Resource file="textures/led_ring_ferrari_red_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/led_ring_ferrari_red_packed_slot0.tex_packed_2.texture" />
-  <Resource file="meshes/led_ring_r380.mesh" />
-  <Resource file="textures/logo.texture" />
+  <Resource file="materials/inside_stickers_4.xml" />
   <Resource file="materials/logos_2.xml" />
-  <Resource file="textures/logos_base_color.texture" />
-  <Resource file="materials/material_009_2.xml" />
+  <Resource file="materials/logos_4.xml" />
   <Resource file="materials/material_019_2.xml" />
-  <Resource file="materials/material_113_2.xml" />
-  <Resource file="materials/material_116_2.xml" />
+  <Resource file="materials/material_019_4.xml" />
   <Resource file="materials/material_144_2.xml" />
+  <Resource file="materials/material_144_4.xml" />
   <Resource file="materials/material_146_2.xml" />
+  <Resource file="materials/material_146_4.xml" />
   <Resource file="materials/material_147_2.xml" />
-  <Resource file="textures/normal.texture" />
-  <Resource file="textures/paint_normal.texture" />
+  <Resource file="materials/material_147_4.xml" />
   <Resource file="materials/rear_headlights_2.xml" />
+  <Resource file="materials/rear_headlights_4.xml" />
   <Resource file="materials/rear_logo_2.xml" />
+  <Resource file="materials/rear_logo_4.xml" />
   <Resource file="materials/rear_something_2.xml" />
-  <Resource file="materials/red_light_2.xml" />
-  <Resource file="materials/rim_001_2.xml" />
-  <Resource file="materials/rim_002_2.xml" />
-  <Resource file="materials/run_lights_2.xml" />
-  <Resource file="meshes/scene_2.mesh" />
-  <Resource file="materials/seats_nuts_2.xml" />
+  <Resource file="materials/rear_something_4.xml" />
   <Resource file="materials/seets_logo_2.xml" />
-  <Resource file="materials/showroom_floor_epoxy.xml" />
-  <Resource file="textures/showroom_floor_epoxy_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/showroom_floor_epoxy_packed_slot0.tex_packed_2.texture" />
-  <Resource file="materials/side_mirrors_2.xml" />
-  <Resource file="materials/softbox_emissive_white.xml" />
-  <Resource file="textures/softbox_emissive_white_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/softbox_emissive_white_packed_slot0.tex_packed_2.texture" />
-  <Resource file="materials/studio_void_black.xml" />
-  <Resource file="textures/studio_void_black_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/studio_void_black_packed_slot0.tex_packed_2.texture" />
-  <Resource file="materials/tail_lights_2.xml" />
-  <Resource file="materials/tile_black.xml" />
-  <Resource file="textures/tile_black_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/tile_black_packed_slot0.tex_packed_3.texture" />
-  <Resource file="materials/tread_001_2.xml" />
-  <Resource file="materials/tread_002_2.xml" />
-  <Resource file="materials/tread_003_2.xml" />
-  <Resource file="materials/tread_004_2.xml" />
-  <Resource file="materials/tube_front_warm_emitter.xml" />
-  <Resource file="materials/tube_left_cyan_emitter.xml" />
-  <Resource file="materials/tube_right_red_emitter.xml" />
-  <Resource file="materials/turntable_gloss_black.xml" />
-  <Resource file="textures/turntable_gloss_black_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/turntable_gloss_black_packed_slot0.tex_packed_2.texture" />
-  <Resource file="materials/viper_2.xml" />
+  <Resource file="materials/seets_logo_4.xml" />
   <Resource file="materials/wireframe_color_0xe0c657_2.xml" />
+  <Resource file="materials/wireframe_color_0xe0c657_4.xml" />
+  <Resource file="meshes/apex_r1_wheel.mesh" />
+  <Resource file="meshes/apex_r1_wheel_3.mesh" />
+  <Resource file="meshes/scene_2.mesh" />
+  <Resource file="meshes/scene_4.mesh" />
+  <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed_2_3.texture" />
+  <Resource file="textures/apex_game_rim_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="textures/apex_game_rim_packed_slot0.tex_packed_2_3.texture" />
+  <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed_2_3.texture" />
+  <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed_2_2.texture" />
+  <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed_2_3.texture" />
+  <Resource file="textures/atelier_accent_amber_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_accent_amber_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/atelier_accent_crimson_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_accent_crimson_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/atelier_basalt_wall_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_basalt_wall_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/atelier_fluted_walnut_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_fluted_walnut_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/atelier_rim_strip_cool_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_rim_strip_cool_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/atelier_rim_strip_warm_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_rim_strip_warm_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/atelier_softbox_strip_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_softbox_strip_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/carbon_fiber_base_color.texture" />
+  <Resource file="textures/carbon_fiber_base_color_3.texture" />
+  <Resource file="textures/chrome_base_color.texture" />
+  <Resource file="textures/chrome_base_color_3.texture" />
+  <Resource file="textures/game_caliper_color.texture" />
+  <Resource file="textures/game_caliper_color_3.texture" />
+  <Resource file="textures/game_caliper_normal.texture" />
+  <Resource file="textures/game_caliper_normal_3.texture" />
+  <Resource file="textures/game_rim_color.texture" />
+  <Resource file="textures/game_rim_color_3.texture" />
+  <Resource file="textures/game_rim_normal.texture" />
+  <Resource file="textures/game_rim_normal_3.texture" />
+  <Resource file="textures/game_rotor_color.texture" />
+  <Resource file="textures/game_rotor_color_3.texture" />
+  <Resource file="textures/game_rotor_normal.texture" />
+  <Resource file="textures/game_rotor_normal_3.texture" />
+  <Resource file="textures/game_rubber_color.texture" />
+  <Resource file="textures/game_rubber_color_3.texture" />
+  <Resource file="textures/game_rubber_normal.texture" />
+  <Resource file="textures/game_rubber_normal_3.texture" />
+  <Resource file="textures/inside_stickers_base_color.texture" />
+  <Resource file="textures/inside_stickers_base_color_3.texture" />
+  <Resource file="textures/led_ring_ferrari_red_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/logo.texture" />
+  <Resource file="textures/logo_3.texture" />
+  <Resource file="textures/logos_base_color.texture" />
+  <Resource file="textures/logos_base_color_3.texture" />
+  <Resource file="textures/paint_normal.texture" />
+  <Resource file="textures/paint_normal_3.texture" />
+  <Resource file="textures/turntable_gloss_black_packed_slot0.tex_packed_2.texture" />
  </OwnedResources>
  <Environment utc_days="9665.25" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
  <ConsoleVariables>
@@ -115,33 +104,10 @@
    <audio_source path="project/audio/soundtrack/gran_turismo_4.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="showroom_floor_epoxy" material_path="project/ferrari_showroom_example_resources/studio/showroom_floor_epoxy.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="atelier_floor_obsidian" material_path="project/mcp/blockout/materials/atelier_floor_obsidian.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
-  <Entity name="tube_front_warm" id="12638874799870260079" active="true" position="-2.23517e-08 1.15 -5.04129" rotation="0 0 0 1" scale="0.02 2.3 0.02">
-   <light flags="5" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.3499999" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_front_warm_emitter" material_path="project/ferrari_showroom_example_resources/materials/tube_front_warm_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-  </Entity>
-  <Entity name="walls" id="6007008001612798289" active="true" position="0 -4.4 0" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="Cube_1_1" id="2124977161275690050" active="true" position="10.0771 1.13078 1.95973" rotation="0 0 0 1" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showroom_example_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="Cube_1" id="10406687217253271126" active="true" position="-10.1229 1.13078 1.2597" rotation="0 0 0 1" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showroom_example_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="Cube_2" id="7640846457856079411" active="true" position="0.377128 1.13078 -8.5403" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showroom_example_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="Cube" id="5196688867028285157" active="true" position="0.377128 1.13078 11.4597" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showroom_example_resources/materials/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-  </Entity>
-  <Entity name="Directional" id="11601109533259598530" active="true" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
+  <Entity name="Directional" id="11601109533259598530" active="false" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
    <light flags="3" light_type="0" color_r="1" color_g="0.816754639" color_b="0.669110954" temperature="4100" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="3" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="light_directional" id="9100000000000000004" active="false" position="0 5 0" rotation="-0.26101 0 0 0.965336" scale="1 1 1">
@@ -150,58 +116,357 @@
   <Entity name="turntable" id="9100000000000000006" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="0.75 0.75 0.75">
    <script file_path="project/scripts/turntable.lua" Tick="" />
    <Entity name="disc" id="9100000000000000007" active="true" position="0 0.15 0" rotation="0 0 0 1" scale="5 0.3 5">
-    <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0" is_static="false" is_kinematic="true" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="true" distance_streaming="false" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0" is_static="false" is_kinematic="true" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="true" distance_streaming="false" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="turntable_gloss_black" material_path="project/ferrari_showroom_example_resources/studio/turntable_gloss_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
-  <Entity name="player_car" id="2411005043703651744" active="true" position="0 1 0" rotation="0 0 0 1" scale="1 1 1" tags="focal_point,player_car,current_car">
+  <Entity name="player_car" id="2411005043703651744" active="true" position="0 0.8 0" rotation="0 0 0 1" scale="1 1 1" tags="focal_point,player_car,current_car">
    <prefab file="project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.prefab" telemetry="true" camera_follows="false" paint_picker="true" />
    <car_reset spawn_point_entity_id="2411005043703651745" />
    <Entity name="player_car_spawn" id="2411005043703651745" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
     <spawn_point />
    </Entity>
   </Entity>
-  <Entity name="tube_right_red" id="12638874799870260081" active="true" position="5.025 1.15 0.0250001" rotation="0 -0.706985 0 0.707228" scale="0.02 2.3 0.02">
-   <light flags="5" light_type="3" color_r="1" color_g="0.25" color_b="0.349999994" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.109999999" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_right_red_emitter" material_path="project/ferrari_showroom_example_resources/materials/tube_right_red_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-  </Entity>
-  <Entity name="tube_left_cyan" id="12638874799870260080" active="true" position="-4.95 1.15 0.05" rotation="0 0.707229 0 0.706984" scale="0.02 2.3 0.02">
-   <light flags="5" light_type="3" color_r="0.300000012" color_g="0.75" color_b="1" temperature="6500" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_left_cyan_emitter" material_path="project/ferrari_showroom_example_resources/materials/tube_left_cyan_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-  </Entity>
-  <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-4.63033 1.32895 3.96425" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="9100000000000000003" active="true" position="10.1303 0.87105 1.53575" rotation="0.0316507 -0.920714 0.0764115 0.381372" scale="1 1 1">
-    <camera flags="49" preset="6" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="2.79999995" shutter_speed="0.020833334" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+  <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-3.80491 0.851003 7.61015" rotation="0 0.951862 0 0.306526" scale="1 1 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="9100000000000000003" active="true" position="0 0.77 0" rotation="0.033835 0.104468 -0.0035562 0.993946" scale="1 1 1">
+    <camera flags="49" preset="6" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="2.79999995" shutter_speed="0.020833334" iso="400" fov_horizontal="1.08210397" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
-  </Entity>
-  <Entity name="studio_dome" id="7711851863863613765" active="true" position="0 0 0" rotation="0 0 0 1" scale="20 20 20">
-   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="studio_void_black" material_path="project/ferrari_showroom_example_resources/studio/studio_void_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="turntable_led_ring" id="5628212500599411116" active="true" position="0 0.02 0" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="led_ring_r380" mesh_path="project/ferrari_showroom_example_resources/studio/led_ring_r380.mesh" sub_mesh_index="0" material_name="led_ring_ferrari_red" material_path="project/ferrari_showroom_example_resources/studio/led_ring_ferrari_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
-  <Entity name="softbox_rig" id="4419162497369731583" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="softbox_strip_left" id="4430169054899749101" active="true" position="-1.25 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/ferrari_showroom_example_resources/studio/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  <Entity name="atelier_hero_wall" id="8070161690777544092" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="back_fluted_fins" id="10006181916770625565" active="true" position="-10.125 3.2 -10.22" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_0_back_fluted_fins_a1ddf623" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_0_back_fluted_fins_a1ddf623.mesh" sub_mesh_index="0" material_name="atelier_fluted_walnut" material_path="project/mcp/blockout/materials/atelier_fluted_walnut.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="softbox_strip_center" id="14185483153044346854" active="true" position="0 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/ferrari_showroom_example_resources/studio/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="hero_marble_monolith" id="10129498941744535181" active="true" position="0 3.15 -9.85" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_hero_wall_1_hero_marble_monolith_3f077bac" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_1_hero_marble_monolith_3f077bac.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/mcp/blockout/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="softbox_strip_right" id="14165080421823028558" active="true" position="1.25 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/ferrari_showroom_example_resources/studio/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="monolith_frame_top" id="11056243820089042281" active="true" position="0 5.93 -9.82" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_2_monolith_frame_top_530b161b" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_2_monolith_frame_top_530b161b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="softbox_light_left" id="13774891375695565306" active="true" position="-1.25 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+   <Entity name="monolith_frame_bottom" id="11443494324614337820" active="true" position="0 0.37 -9.82" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_3_monolith_frame_bottom_530b161b" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_3_monolith_frame_bottom_530b161b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="softbox_light_center" id="13775155454183560148" active="true" position="0 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+   <Entity name="monolith_frame_left" id="11310399482176481797" active="true" position="-3.83 3.15 -9.82" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_4_monolith_frame_left_4aaf0dbe" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_4_monolith_frame_left_4aaf0dbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="softbox_light_right" id="13775296915644614764" active="true" position="1.25 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+   <Entity name="monolith_frame_right" id="11811618593646157533" active="true" position="3.83 3.15 -9.82" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_5_monolith_frame_right_4aaf0dbe" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_5_monolith_frame_right_4aaf0dbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
+   <Entity name="monolith_glow_left" id="12204464481856013984" active="true" position="-3.9 3.15 -10.04" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_6_monolith_glow_left_90306d56" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_6_monolith_glow_left_90306d56.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="monolith_glow_right" id="12530376329786531425" active="true" position="3.9 3.15 -10.04" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_7_monolith_glow_right_90306d56" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_7_monolith_glow_right_90306d56.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="monolith_glow_top" id="12856475280167535699" active="true" position="0 5.98 -10.04" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_8_monolith_glow_top_21867fd1" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_8_monolith_glow_top_21867fd1.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="monolith_signature_blade" id="12746063801966818746" active="true" position="0 2.52 -9.66" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_9_monolith_signature_blade_ce496279" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_9_monolith_signature_blade_ce496279.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hero_pier_left" id="13007984557529207455" active="true" position="-7.6 3.2 -9.7" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_hero_wall_10_hero_pier_left_53aa1ece" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_10_hero_pier_left_53aa1ece.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hero_pier_right" id="6668549930271243806" active="true" position="7.6 3.2 -9.7" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_hero_wall_11_hero_pier_right_53aa1ece" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_11_hero_pier_right_53aa1ece.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hero_pier_trim_left" id="7442332975960224829" active="true" position="-7.6 3.2 -9.35" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_12_hero_pier_trim_left_921d2a11" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_12_hero_pier_trim_left_921d2a11.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hero_pier_trim_right" id="7391363227529269610" active="true" position="7.6 3.2 -9.35" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_13_hero_pier_trim_right_921d2a11" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_13_hero_pier_trim_right_921d2a11.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="back_cove_strip_left" id="7903921080868550552" active="true" position="-5.75 0.22 -10.08" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_14_back_cove_strip_left_481b70b3" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_14_back_cove_strip_left_481b70b3.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="back_cove_strip_right" id="8204530119149532546" active="true" position="5.75 0.22 -10.08" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_hero_wall_15_back_cove_strip_right_481b70b3" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_15_back_cove_strip_right_481b70b3.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="atelier_title_ferrari" id="16146881108738163237" active="true" position="0 3.38 -9.6" rotation="0 1 -0 -6.22985e-08" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="atelier_signage_gold" material_path="project/mcp/blockout/materials/atelier_signage_gold.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="FERRARI" font_path="data/fonts/OpenSans/OpenSans-Bold.ttf" size="0.879999995" depth="0.0450000018" weight="0" letter_spacing="0.180000007" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+   <Entity name="atelier_subtitle_atelier" id="6528748605787575433" active="true" position="0 2.12 -9.6" rotation="0 1 -0 -6.22985e-08" scale="1 1 1">
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="atelier_signage_gold" material_path="project/mcp/blockout/materials/atelier_signage_gold.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <text_3d text="LAFERRARI  ·  MARANELLO ATELIER" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.219999999" depth="0.0149999997" weight="0" letter_spacing="0.0549999997" line_spacing="1.20000005" resolution="128" alignment="1" />
+   </Entity>
+  </Entity>
+  <Entity name="atelier_ceiling_canopy" id="8086007998709491734" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="ceiling_baffle_beams" id="9976635847855734619" active="true" position="0 6.22 -9.35" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_housing_outer" id="10278270785243351241" active="true" position="0 4.88 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_trim_n" id="10614830372006996117" active="true" position="0 4.74 -3.14" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_trim_s" id="10977327398797744900" active="true" position="0 4.74 3.14" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_trim_w" id="11208782981203467030" active="true" position="-3.54 4.74 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_trim_e" id="11899602951938603936" active="true" position="3.54 4.74 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_diffuser_rib_1" id="12605801756123103118" active="true" position="-1.65 4.715 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_diffuser_rib_2" id="12392670759649716264" active="true" position="0 4.715 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_diffuser_rib_3" id="12636558636371553264" active="true" position="1.65 4.715 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_upper_halo_n" id="13299112061879748382" active="true" position="0 5.03 -3.18" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_upper_halo_s" id="6713040216610540208" active="true" position="0 5.03 3.18" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_upper_halo_w" id="6648464845432092695" active="true" position="-3.58 5.03 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_upper_halo_e" id="6996037222013092491" active="true" position="3.58 5.03 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_rod_nw" id="7299738910279666708" active="true" position="-3.2 5.68 -2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_rod_ne" id="7822171834643484407" active="true" position="3.2 5.68 -2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_rod_sw" id="7760542402612927917" active="true" position="-3.2 5.68 2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="canopy_rod_se" id="8227012642445175707" active="true" position="3.2 5.68 2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="atelier_canopy_blades" id="1208257405395915174" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="canopy_blade_1" id="1054163073760917337" active="true" position="-2.35 4.73 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="atelier_canopy_blades_0_canopy_blade_1_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_0_canopy_blade_1_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="canopy_blade_2" id="1305668316004639568" active="true" position="-0.78 4.73 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="atelier_canopy_blades_1_canopy_blade_2_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_1_canopy_blade_2_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="canopy_blade_3" id="1373327557997831375" active="true" position="0.78 4.73 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="atelier_canopy_blades_2_canopy_blade_3_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_2_canopy_blade_3_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="canopy_blade_4" id="1896283265450415409" active="true" position="2.35 4.73 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="atelier_canopy_blades_3_canopy_blade_4_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_3_canopy_blade_4_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="canopy_center_pinstripe" id="2242749285380156976" active="true" position="0 4.71 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="atelier_shell" id="13450230561728914850" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="wall_back" id="13176278302632187897" active="true" position="0 3.2 -10.7" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_shell_0_wall_back_7757a676" mesh_path="project/mcp/blockout/meshes/atelier_shell_0_wall_back_7757a676.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_front" id="13819043608027969549" active="true" position="0 3.2 11.7" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_shell_1_wall_front_7757a676" mesh_path="project/mcp/blockout/meshes/atelier_shell_1_wall_front_7757a676.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_left" id="13662383713260800513" active="true" position="-11.2 3.2 0.5" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_shell_2_wall_left_43a1497c" mesh_path="project/mcp/blockout/meshes/atelier_shell_2_wall_left_43a1497c.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_right" id="2791680726887662143" active="true" position="11.2 3.2 0.5" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_shell_3_wall_right_43a1497c" mesh_path="project/mcp/blockout/meshes/atelier_shell_3_wall_right_43a1497c.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ceiling_slab" id="2604352136692120352" active="true" position="0 6.55 0.5" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_shell_4_ceiling_slab_592ec28a" mesh_path="project/mcp/blockout/meshes/atelier_shell_4_ceiling_slab_592ec28a.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="baseboard_back" id="3142016444270563443" active="true" position="0 0.09 -10.42" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_5_baseboard_back_2350a767" mesh_path="project/mcp/blockout/meshes/atelier_shell_5_baseboard_back_2350a767.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="baseboard_front" id="3001737700114448500" active="true" position="0 0.09 11.42" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_6_baseboard_front_2350a767" mesh_path="project/mcp/blockout/meshes/atelier_shell_6_baseboard_front_2350a767.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="baseboard_left" id="3413558073727629515" active="true" position="-10.92 0.09 0.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_7_baseboard_left_4ae3e89f" mesh_path="project/mcp/blockout/meshes/atelier_shell_7_baseboard_left_4ae3e89f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="baseboard_right" id="3475587218455402030" active="true" position="10.92 0.09 0.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_8_baseboard_right_4ae3e89f" mesh_path="project/mcp/blockout/meshes/atelier_shell_8_baseboard_right_4ae3e89f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="podium_outer_collar" id="3335294407179637444" active="true" position="0 0.032 0" rotation="0 0 0 1" scale="1 0.064 1">
+    <render mesh_name="atelier_shell_9_podium_outer_collar_e46fd65f" mesh_path="project/mcp/blockout/meshes/atelier_shell_9_podium_outer_collar_e46fd65f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="podium_bronze_bezel" id="3750233682017254462" active="true" position="0 0.036 0" rotation="0 0 0 1" scale="1 0.072 1">
+    <render mesh_name="atelier_shell_10_podium_bronze_bezel_8ea466ef" mesh_path="project/mcp/blockout/meshes/atelier_shell_10_podium_bronze_bezel_8ea466ef.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="floor_inlay_ring_outer" id="3614713805315522507" active="true" position="0 0.004 0" rotation="0 0 0 1" scale="1 0.008 1">
+    <render mesh_name="atelier_shell_11_floor_inlay_ring_outer_53272f7b" mesh_path="project/mcp/blockout/meshes/atelier_shell_11_floor_inlay_ring_outer_53272f7b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="floor_inlay_strip_n" id="3670092453193652037" active="true" position="0 0.004 -7.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_12_floor_inlay_strip_n_b19620e1" mesh_path="project/mcp/blockout/meshes/atelier_shell_12_floor_inlay_strip_n_b19620e1.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="floor_inlay_strip_s" id="4266586130911826865" active="true" position="0 0.004 8.2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_13_floor_inlay_strip_s_f0d0ff6e" mesh_path="project/mcp/blockout/meshes/atelier_shell_13_floor_inlay_strip_s_f0d0ff6e.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="floor_inlay_strip_w" id="3945643228496922985" active="true" position="-7.9 0.004 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_14_floor_inlay_strip_w_d6262789" mesh_path="project/mcp/blockout/meshes/atelier_shell_14_floor_inlay_strip_w_d6262789.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="floor_inlay_strip_e" id="4008911892867772602" active="true" position="7.9 0.004 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_shell_15_floor_inlay_strip_e_d6262789" mesh_path="project/mcp/blockout/meshes/atelier_shell_15_floor_inlay_strip_e_d6262789.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="atelier_side_wings" id="10887063047520142766" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="left_rim_housing" id="11316260879058882815" active="true" position="-10.72 1.45 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_0_left_rim_housing_1f28c166" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_0_left_rim_housing_1f28c166.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="left_rim_diffuser" id="11388985949836036732" active="true" position="-10.56 1.45 0" rotation="0 0 0 1" scale="1 0.45 1">
+    <render mesh_name="atelier_side_wings_1_left_rim_diffuser_a8aa1294" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_1_left_rim_diffuser_a8aa1294.mesh" sub_mesh_index="0" material_name="atelier_rim_strip_cool" material_path="project/mcp/blockout/materials/atelier_rim_strip_cool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="left_rim_trim_top" id="11716776014426723106" active="true" position="-10.57 1.8 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_2_left_rim_trim_top_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_2_left_rim_trim_top_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="left_rim_trim_bot" id="11651707253708155605" active="true" position="-10.57 1.1 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_3_left_rim_trim_bot_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_3_left_rim_trim_bot_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="right_rim_housing" id="11534157175158827855" active="true" position="10.72 1.45 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_4_right_rim_housing_1f28c166" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_4_right_rim_housing_1f28c166.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="right_rim_diffuser" id="11572757877429130399" active="true" position="10.56 1.45 0" rotation="0 0 0 1" scale="1 0.45 1">
+    <render mesh_name="atelier_side_wings_5_right_rim_diffuser_a8aa1294" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_5_right_rim_diffuser_a8aa1294.mesh" sub_mesh_index="0" material_name="atelier_rim_strip_warm" material_path="project/mcp/blockout/materials/atelier_rim_strip_warm.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="right_rim_trim_top" id="11909355744979238055" active="true" position="10.57 1.8 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_6_right_rim_trim_top_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_6_right_rim_trim_top_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="right_rim_trim_bot" id="12364266456980848201" active="true" position="10.57 1.1 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_7_right_rim_trim_bot_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_7_right_rim_trim_bot_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="left_columns" id="12284939175313882402" active="true" position="-10.55 3.2 -7.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_8_left_columns_9438e079" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_8_left_columns_9438e079.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="right_columns" id="9882054202280457925" active="true" position="10.55 3.2 -7.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_9_right_columns_9438e079" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_9_right_columns_9438e079.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth_rosso_body" id="10279456445869967750" active="true" position="-8.6 0.56 -3.2" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_side_wings_10_plinth_rosso_body_6a3806fd" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_10_plinth_rosso_body_6a3806fd.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/mcp/blockout/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth_rosso_top" id="10567002257635125815" active="true" position="-8.6 1.09 -3.2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_11_plinth_rosso_top_03cb8a1c" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_11_plinth_rosso_top_03cb8a1c.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth_rosso_glow" id="11198550137710904868" active="true" position="-8.6 0.04 -3.2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_12_plinth_rosso_glow_469bce6f" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_12_plinth_rosso_glow_469bce6f.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="speedform_rosso_sculpture" id="11475110544005354953" active="true" position="-8.6 1.21 -3.2" rotation="0 0.121869 0 0.992546" scale="0.44 0.22 1.06">
+    <render mesh_name="atelier_side_wings_13_speedform_rosso_sculpture_91807864" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_13_speedform_rosso_sculpture_91807864.mesh" sub_mesh_index="0" material_name="atelier_paint_rosso" material_path="project/mcp/blockout/materials/atelier_paint_rosso.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth_carbon_body" id="11892068697631808650" active="true" position="-8.6 0.56 2.8" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_side_wings_14_plinth_carbon_body_6a3806fd" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_14_plinth_carbon_body_6a3806fd.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/mcp/blockout/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth_carbon_top" id="12234497198536477431" active="true" position="-8.6 1.09 2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_15_plinth_carbon_top_03cb8a1c" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_15_plinth_carbon_top_03cb8a1c.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="plinth_carbon_glow" id="12161227703301546913" active="true" position="-8.6 0.04 2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_16_plinth_carbon_glow_469bce6f" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_16_plinth_carbon_glow_469bce6f.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sculpture_carbon_wheel_ring" id="12425298504830935620" active="true" position="-8.6 1.48 2.8" rotation="0.509854 0.474954 -0.412871 0.58652" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/mcp/blockout/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sculpture_wheel_stand" id="12881094291664674280" active="true" position="-8.6 1.16 2.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_side_wings_18_sculpture_wheel_stand_15c663eb" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_18_sculpture_wheel_stand_15c663eb.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="atelier_vip_lounge" id="12007442164734884305" active="true" position="7.6 0 -1.4" rotation="0 -0.121869 0 0.992546" scale="1 1 1">
+   <Entity name="lounge_platform" id="12002175870755890858" active="true" position="0 0.04 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_vip_lounge_0_lounge_platform_eb4fce5c" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_0_lounge_platform_eb4fce5c.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/mcp/blockout/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lounge_platform_glow" id="12328667380833379637" active="true" position="-1.56 0.025 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_1_lounge_platform_glow_15e8a254" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_1_lounge_platform_glow_15e8a254.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sofa_base_frame" id="9913452367386694034" active="true" position="0.62 0.18 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_2_sofa_base_frame_a74e0e29" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_2_sofa_base_frame_a74e0e29.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sofa_seat_cushion" id="10292220731414752559" active="true" position="0.58 0.36 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sofa_backrest" id="10596879374594514808" active="true" position="0.96 0.64 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_vip_lounge_4_sofa_backrest_3a7159cd" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_4_sofa_backrest_3a7159cd.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sofa_arm_left" id="10936146417747196910" active="true" position="0.6 0.52 -1.52" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_5_sofa_arm_left_1e8431ff" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_5_sofa_arm_left_1e8431ff.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sofa_arm_right" id="11557146808334093514" active="true" position="0.6 0.52 1.52" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_6_sofa_arm_right_1e8431ff" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_6_sofa_arm_right_1e8431ff.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coffee_table_top" id="11810564831065454020" active="true" position="-0.62 0.38 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="atelier_vip_lounge_7_coffee_table_top_73ff9b5c" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_7_coffee_table_top_73ff9b5c.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/mcp/blockout/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="coffee_table_frame" id="12311933043774585652" active="true" position="-0.62 0.22 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_8_coffee_table_frame_2aa9df88" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_8_coffee_table_frame_2aa9df88.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lounge_lamp_base" id="12589223682571998579" active="true" position="0.75 0.14 -1.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lounge_lamp_stem" id="12520977028664215912" active="true" position="0.75 1.08 -1.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_10_lounge_lamp_stem_32c1a153" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_10_lounge_lamp_stem_32c1a153.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lounge_lamp_diffuser" id="12973513031009115965" active="true" position="0.75 1.98 -1.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lounge_lamp_cap" id="12809948319871115237" active="true" position="0.75 2.2 -1.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="atelier_key_overhead" id="15609196131800108777" active="true" position="0 4.66 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1" color_g="0.970000029" color_b="0.930000007" temperature="5800" intensity="8" intensity_photometric="42000" range="26" angle="0.52359879" preset="5" area_width="6.19999981" area_height="5.4000001" draw_distance="80" distance_shadows="32" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_rim_left_cool" id="15609609603194487436" active="true" position="-10.2 1.45 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="0.839999974" color_g="0.930000007" color_b="1" temperature="7200" intensity="8" intensity_photometric="26000" range="24" angle="0.52359879" preset="5" area_width="8.39999962" area_height="0.449999988" draw_distance="80" distance_shadows="28" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_rim_right_warm" id="15610254231243628846" active="true" position="10.2 1.45 0" rotation="0 -0.707107 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1" color_g="0.839999974" color_b="0.660000026" temperature="3400" intensity="8" intensity_photometric="26000" range="24" angle="0.52359879" preset="5" area_width="8.39999962" area_height="0.449999988" draw_distance="80" distance_shadows="28" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_wall_crimson_left" id="15610384753261266205" active="true" position="-4.25 3.15 -9.85" rotation="0 -0.461749 0 0.887011" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1" color_g="0.0799999982" color_b="0.0500000007" temperature="2200" intensity="8" intensity_photometric="11000" range="12" angle="0.52359879" preset="5" area_width="0.300000012" area_height="5" draw_distance="60" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_wall_crimson_right" id="15610528775230713142" active="true" position="4.25 3.15 -9.85" rotation="0 0.461749 0 0.887011" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1" color_g="0.0799999982" color_b="0.0500000007" temperature="2200" intensity="8" intensity_photometric="11000" range="12" angle="0.52359879" preset="5" area_width="0.300000012" area_height="5" draw_distance="60" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_monolith_graze_spot" id="15608345577862124554" active="true" position="0 5.75 -8.1" rotation="0.515038 0 0 0.857167" scale="1 1 1">
+   <light flags="1" light_type="2" color_r="1" color_g="0.920000017" color_b="0.800000012" temperature="4200" intensity="8" intensity_photometric="18000" range="14" angle="0.907571197" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="20" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_car_rim_front_left" id="15607866440858930776" active="true" position="-4.2 4.35 3.8" rotation="0.125689 0.868833 -0.282301 0.386829" scale="1 1 1">
+   <light flags="1" light_type="2" color_r="1" color_g="0.970000029" color_b="0.939999998" temperature="5600" intensity="8" intensity_photometric="8500" range="18" angle="0.767944872" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="24" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_car_rim_rear_right" id="15608616399048738849" active="true" position="4.2 4.35 -3.8" rotation="0.282301 -0.38683 0.125689 0.868833" scale="1 1 1">
+   <light flags="1" light_type="2" color_r="1" color_g="0.920000017" color_b="0.839999974" temperature="4600" intensity="8" intensity_photometric="18000" range="18" angle="0.767944872" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="24" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_plinth_spot_rosso" id="15608633204968509409" active="true" position="-8.1 4.6 -3.2" rotation="0.463904 -0.53366 0.463904 0.53366" scale="1 1 1">
+   <light flags="0" light_type="2" color_r="1" color_g="0.860000014" color_b="0.680000007" temperature="3400" intensity="8" intensity_photometric="8500" range="10" angle="0.69813168" preset="5" area_width="1" area_height="1" draw_distance="50" distance_shadows="50" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_plinth_spot_carbon" id="15606196006784632581" active="true" position="-8.1 4.6 2.8" rotation="0.463904 -0.53366 0.463904 0.53366" scale="1 1 1">
+   <light flags="0" light_type="2" color_r="1" color_g="0.860000014" color_b="0.680000007" temperature="3400" intensity="8" intensity_photometric="8500" range="10" angle="0.69813168" preset="5" area_width="1" area_height="1" draw_distance="50" distance_shadows="50" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_lounge_lamp_light" id="15614928050162563007" active="true" position="7.9 2.05 -3.5" rotation="0 0 0 1" scale="1 1 1">
+   <light flags="0" light_type="1" color_r="1" color_g="0.720000029" color_b="0.379999995" temperature="2700" intensity="8" intensity_photometric="4200" range="10" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="50" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="atelier_canopy_halo_glow" id="15615572338502965697" active="true" position="0 5.35 0" rotation="0 0 0 1" scale="1 1 1">
+   <light flags="0" light_type="1" color_r="1" color_g="0.0599999987" color_b="0.0399999991" temperature="2200" intensity="8" intensity_photometric="4500" range="12" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="50" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="Entity" id="15463302623799684356" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+  <Entity name="atelier_studio_motes" id="7532992424847279647" active="true" position="0 2.3 0" rotation="0 0 0 1" scale="1 1 1">
+   <particle_system preset="0" max_particles="1200" emission_rate="26" lifetime="7" start_speed="0.0599999987" start_size="0.0160000008" end_size="0.00800000038" start_color_r="1" start_color_g="0.920000017" start_color_b="0.800000012" start_color_a="0.419999987" end_color_r="1" end_color_g="0.879999995" end_color_b="0.720000029" end_color_a="0" gravity_modifier="-0.00400000019" emission_radius="3.79999995" emission_direction_x="0" emission_direction_y="1" emission_direction_z="0" emission_cone_angle="0.899999976" directional_blend="0.200000003" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="2.20000005" soft_depth_scale="20" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="1.79999995" turbulence_strength="0.219999999" wind_influence="0" velocity_inheritance="0" velocity_stretch="0.200000003" vortex_strength="0" vortex_radius="0" thermal_strength="0" thermal_decay="2.5" rollup_strength="0" wake_strength="0" churn_strength="0" collision_clearance="0" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="" texture_path="project/particles_example_resources/textures/bokeh_orb.png" />
   </Entity>
  </Entities>
 </World>

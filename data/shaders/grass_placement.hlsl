@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_culling.hlsl"
 #include "grass_distribution.hlsl"
 #include "grass_patch.hlsl"
+#include "terrain_habitat.h"
 //============================
 
 // gpu scatter placement, every test that decides whether a (cell, blade) candidate becomes an instance,
@@ -429,8 +430,8 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     // a cell keeps the leading share of its candidates and the same blades stay as the camera backs away. the
     // nearest point of the cell bounds the share of every candidate in it, which rejects most of a far cell's
     // threads before they hash anything
-    float thin_start    = grass_lod_parameters[4u + count_index].z;
-    float thin_exponent = grass_lod_parameters[4u + count_index].w;
+    float thin_start    = grass_lod_parameters[5u + count_index].z;
+    float thin_exponent = grass_lod_parameters[5u + count_index].w;
     if (thin_start > 0.0f)
     {
         float2 cell_min     = float2(world_cell_x, world_cell_z) * cell_size;
@@ -665,6 +666,29 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     if (surface_normal.y < max_slope_cos || below_slope_floor)
     {
         return false;
+    }
+
+    // habitat gate (woodland/grove/scrub), lets gpu-scattered understory follow the exact same forest footprint as trees
+    uint habitat = (uint)(grass_lod_parameters[slot_index].z + 0.5f);
+    if (habitat >= 1u && habitat <= 3u)
+    {
+        float above_sea = world_y - grass_lod_parameters[slot_index].w;
+        float slope_deg = acos(saturate(surface_normal.y)) * 57.2957795f;
+        float woodland  = habitat_woodland(world_xz.x, world_xz.y, above_sea, slope_deg, 0.5f, 0.5f);
+        float h_weight  = woodland;
+        if (habitat == 2u)
+        {
+            h_weight = habitat_grove(world_xz.x, world_xz.y, above_sea, slope_deg, woodland);
+        }
+        else if (habitat == 3u)
+        {
+            h_weight = (0.30f + 0.70f * (1.0f - woodland)) * habitat_smooth((habitat_noise(world_xz.x / 70.0f, world_xz.y / 70.0f, 521u) - 0.25f) / 0.40f);
+        }
+        float habitat_roll = hash_unit(hash_mix(h0 ^ 0x517cc1b7u));
+        if (habitat_roll > h_weight)
+        {
+            return false;
+        }
     }
 
     // height fade and slope bias scale the keep probability rather than gating it, matching the cpu

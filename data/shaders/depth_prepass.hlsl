@@ -45,6 +45,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     vertex.material_index          = _draw.material_index;
 
 #ifdef INDIRECT_DRAW
+    vertex.uv_misc.w = 2.0f;
     if ((_draw.flags & draw_flag_impostor) != 0u)
     {
         vertex.uv_misc.z = -1.0f - (float)meshlet_instance_draw_index(mi);
@@ -69,6 +70,14 @@ void main_ps(gbuffer_vertex vertex)
     if (!material.is_alpha_tested() && !is_impostor)
         return;
 
+    // complementary screen-door dither across the 3D-tree <-> impostor transition band
+    if (vertex.uv_misc.w < 1.5f)
+    {
+        float d = frac(52.9829189f * frac(dot(floor(vertex.position.xy), float2(0.06711056f, 0.00583715f))));
+        if (is_impostor ? (d < vertex.uv_misc.w) : (d >= vertex.uv_misc.w))
+            discard;
+    }
+
     const float2 screen_uv      = vertex.position.xy / get_render_resolution_active();
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
     const float alpha_threshold = get_alpha_threshold(position_world, material.alpha_cutoff);
@@ -78,10 +87,7 @@ void main_ps(gbuffer_vertex vertex)
     if (is_impostor)
     {
         _draw = indirect_draw_data[(uint)round(-vertex.uv_misc.z) - 1u];
-        float2 impostor_uv;
-        float3 normal_frame;
-        float mip;
-        if (!impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), alpha_threshold, impostor_uv, normal_frame, mip))
+        if (!impostor_alpha_test(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), alpha_threshold))
             discard;
         return;
     }

@@ -216,6 +216,8 @@ namespace spartan
             // take the complement of the field, for a slot that belongs on the ground the pockets
             // left bare. it only lines up if both slots use the same patch_size_m
             bool patch_invert        = false;
+            uint32_t habitat         = 0;     // 0 everywhere, 1 woodland, 2 grove, 3 scrub (matches TerrainScatterLayer::habitat)
+            float sea_level          = 0.0f;  // world-space sea level for habitat altitude gating
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);
             math::Vector4 terrain_world_mapping = math::Vector4::Zero; // xy min xz, zw 1/size
         };
@@ -455,6 +457,7 @@ namespace spartan
         // passes - core
         bool IsPathTracingActive();
         uint32_t GetPathTracingSampleCount();
+        bool IsPathTracingDenoised();
         void ResetPathTracing();
         void Pass_PathTracing(bool sky_changed);
         void ProduceFrame();

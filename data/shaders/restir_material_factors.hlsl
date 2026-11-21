@@ -38,6 +38,14 @@ void restir_nrd_material_factors(float3 albedo, float metallic, float alpha, flo
     specular = max(0.01f, restir_integrated_specular(lerp(0.04f, albedo, metallic), alpha, no_v));
 }
 
+// The color on a glass interface describes absorption. Its camera signal consists
+// of reflection and transmission, so sending any of it to diffuse REBLUR erases lens detail.
+bool restir_nrd_glass(float2 uv)
+{
+    MaterialParameters mat = material_parameters[get_material_index(uv)];
+    return mat.color.a < 1.0f && mat.alpha_blend <= 0.5f && !mat.is_alpha_tested();
+}
+
 float3 restir_primary_specular_fraction(float3 normal, float3 view, float3 albedo, float roughness, float metallic)
 {
     float3 diffuse, specular;

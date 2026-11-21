@@ -45,13 +45,14 @@ float restir_dielectric_fresnel(float eta, float cos_i, out float cos_t)
 // Non-delta BSDF*cos and its Fresnel-mixture solid-angle PDF. Null samples
 // retain zero density; rejecting them must not resample the visible normal.
 float3 restir_dielectric_evaluate(float3 wi, float3 wo, float alpha, float eta,
-    float3 transmission_tint, out float pdf)
+    float3 transmission_tint, out float pdf, bool sheet = false)
 {
     pdf = 0.0f;
     if (wi.z <= 0.0f || wo.z == 0.0f || alpha <= 0.0f || eta <= 0.0f || eta == 1.0f)
         return 0.0f;
     bool reflection = wo.z > 0.0f;
-    float3 h = wo + wi * (reflection ? 1.0f : eta);
+    if (sheet && !reflection) wo.z = -wo.z;
+    float3 h = wo + wi * (reflection || sheet ? 1.0f : eta);
     float h_sq = dot(h, h);
     if (!(h_sq > 0.0f))
         return 0.0f;
@@ -59,7 +60,7 @@ float3 restir_dielectric_evaluate(float3 wi, float3 wo, float alpha, float eta,
     if (h.z < 0.0f) h = -h;
     float wi_h = dot(wi, h);
     float wo_h = dot(wo, h);
-    if (wi_h <= 0.0f || (reflection ? wo_h <= 0.0f : wo_h >= 0.0f))
+    if (wi_h <= 0.0f || (reflection || sheet ? wo_h <= 0.0f : wo_h >= 0.0f))
         return 0.0f;
 
     float a2 = alpha * alpha;
@@ -71,6 +72,15 @@ float3 restir_dielectric_evaluate(float3 wi, float3 wo, float alpha, float eta,
     float visible_pdf = d * 2.0f * wi_h / (wi.z + root_i);
     float cos_t;
     float fresnel = restir_dielectric_fresnel(eta, wi_h, cos_t);
+    if (sheet)
+    {
+        // Sum the two interfaces of a parallel pane. Folding the reflection lobe
+        // across the tangent plane preserves solid angle for rough transmission.
+        fresnel = 2.0f * fresnel / (1.0f + fresnel);
+        float probability = reflection ? fresnel : 1.0f - fresnel;
+        pdf = probability * d / (2.0f * (wi.z + root_i));
+        return (reflection ? 1.0f : transmission_tint) * (probability * d * g / (4.0f * wi.z));
+    }
     if (reflection)
     {
         // For reflection wi.h == wo.h. Cancel this factor analytically;
@@ -98,7 +108,7 @@ struct RestirDielectricSample
 };
 
 RestirDielectricSample restir_dielectric_sample(float3 wi, float alpha, float eta,
-    float3 transmission_tint, float3 xi)
+    float3 transmission_tint, float3 xi, bool sheet = false)
 {
     RestirDielectricSample result = (RestirDielectricSample)0;
     if (wi.z <= 0.0f || eta <= 0.0f || alpha < 0.0f)
@@ -108,13 +118,15 @@ RestirDielectricSample restir_dielectric_sample(float3 wi, float alpha, float et
     float wi_h = dot(wi, h);
     float cos_t;
     float fresnel = restir_dielectric_fresnel(eta, wi_h, cos_t);
+    if (sheet) fresnel = 2.0f * fresnel / (1.0f + fresnel);
     result.transmission = xi.z >= fresnel;
-    result.direction = result.transmission ? (eta * wi_h - cos_t) * h - eta * wi : 2.0f * wi_h * h - wi;
+    result.direction = result.transmission && !sheet ? (eta * wi_h - cos_t) * h - eta * wi : 2.0f * wi_h * h - wi;
+    if (sheet && result.transmission) result.direction.z = -result.direction.z;
     if (result.direction.z == 0.0f || ((result.direction.z < 0.0f) != result.transmission))
         return result;
     if (result.delta)
     {
-        result.weight = result.transmission ? transmission_tint * eta * eta : 1.0f;
+        result.weight = result.transmission ? transmission_tint * (sheet ? 1.0f : eta * eta) : 1.0f;
     }
     else
     {
@@ -126,7 +138,12 @@ RestirDielectricSample restir_dielectric_sample(float3 wi, float alpha, float et
         float root_o = sqrt(a2 + (1.0f - a2) * cos_o * cos_o);
         float g_over_g1 = cos_o * (wi.z + root_i) / (cos_o * root_i + wi.z * root_o);
         float d = restir_dielectric_ndf(h, alpha);
-        if (result.transmission)
+        if (sheet)
+        {
+            result.pdf = (result.transmission ? 1.0f - fresnel : fresnel) * d / (2.0f * (wi.z + root_i));
+            result.weight = (result.transmission ? transmission_tint : 1.0f) * g_over_g1;
+        }
+        else if (result.transmission)
         {
             float wo_h = dot(result.direction, h);
             float denominator = wo_h + eta * wi_h;

@@ -386,8 +386,8 @@ namespace spartan
             // A detailed raster receiver inside its coarse ray proxy shadows itself.
             Material* material = render->GetMaterial();
             return reference || (cvar_restir_pt.GetValueAs<bool>() && material &&
-                material->GetProperty(MaterialProperty::SubsurfaceRadius) > 0.0f &&
-                material->GetProperty(MaterialProperty::SubsurfaceScattering) > 0.0f);
+                (material->IsTransparent() || (material->GetProperty(MaterialProperty::SubsurfaceRadius) > 0.0f &&
+                material->GetProperty(MaterialProperty::SubsurfaceScattering) > 0.0f)));
         }
 
         void prepare_ray_tracing_renders()
@@ -1934,8 +1934,9 @@ namespace spartan
         args_buffer->Update(&draw_args[0], sizeof(draw_args));
 
         // indirect dispatch args, slot 0 opaque (or full list for vs path), slot 1 alpha for mesh path, slots 2 and 3 their late ranges
-        // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1, slots 4 to 7 are the mesh grids cull_phase writes
-        Sb_IndirectDispatchArgs dispatch_args[MESH_GRID_ARGS_SLOT + 4] = {};
+        // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1, slots 4 to 7 are the mesh grids cull_phase writes,
+        // slots 8 to 11 are the batched impostor counts and 16-quad-per-group mesh grids
+        Sb_IndirectDispatchArgs dispatch_args[TRIANGLE_DISPATCH_ARGS_COUNT] = {};
         RHI_Buffer* dispatch_args_buffer         = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
         dispatch_args_buffer->ResetOffset();
         dispatch_args_buffer->Update(&dispatch_args[0], sizeof(dispatch_args));
@@ -7351,6 +7352,11 @@ namespace spartan
         return m_pass_state.path_tracing.samples;
     }
 
+    bool Renderer::IsPathTracingDenoised()
+    {
+        return m_pass_state.path_tracing.denoiser.preview_valid;
+    }
+
     void Renderer::ResetPathTracing()
     {
         m_pass_state.path_tracing.samples = 0;
@@ -7397,24 +7403,34 @@ namespace spartan
         auto& denoiser = history.denoiser;
         RHI_Shader* guided_shader = GetShader(Renderer_Shader::path_tracing_guided_c);
         RHI_Shader* resolve_shader = GetShader(Renderer_Shader::path_tracing_nrd_resolve_c);
-        bool guided = false;
+        RHI_Shader* diffuse_shader = GetShader(Renderer_Shader::path_tracing_diffuse_c);
+        bool track_diffuse = false;
 #ifdef _WIN32
-        guided = has_scene && cvar_path_tracing_denoise.GetValueAs<bool>() && guided_shader && guided_shader->IsCompiled() &&
-            resolve_shader && resolve_shader->IsCompiled();
+        track_diffuse = has_scene && diffuse_shader && diffuse_shader->IsCompiled();
 #endif
+        const bool guided = track_diffuse && cvar_path_tracing_denoise.GetValueAs<bool>() &&
+            guided_shader && guided_shader->IsCompiled() && resolve_shader && resolve_shader->IsCompiled();
+        auto texture = [&](RHI_Format format, const char* name, uint32_t flags = 0)
+        {
+            return make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, output->GetWidth(), output->GetHeight(),
+                1, 1, format, RHI_Texture_Srv | RHI_Texture_Uav | flags, name);
+        };
+        // Retain the diffuse share of all camera samples so switching NRD on late filters the accumulated image.
+        if (track_diffuse && !denoiser.diffuse)
+        {
+            denoiser.diffuse = texture(RHI_Format::R32G32B32A32_Float, "reference_diffuse_history", RHI_Texture_ClearBlit);
+            RHI_CommandList::ClearTexture(denoiser.diffuse.get(), Color(0, 0, 0, 0));
+        }
         if (!guided)
-            denoiser = {};
+        {
+            denoiser.preview_valid = false;
+            denoiser.complete_guides = false;
+        }
         else if (!denoiser.preview)
         {
-            auto texture = [&](RHI_Format format, const char* name, uint32_t flags = 0)
-            {
-                return make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, output->GetWidth(), output->GetHeight(),
-                    1, 1, format, RHI_Texture_Srv | RHI_Texture_Uav | flags, name);
-            };
             denoiser.motion  = texture(RHI_Format::R16G16_Float, "reference_nrd_motion", RHI_Texture_ClearBlit);
             denoiser.normal  = texture(RHI_Format::R10G10B10A2_Unorm, "reference_nrd_normal");
             denoiser.depth   = texture(RHI_Format::R32_Float, "reference_nrd_viewz");
-            denoiser.factor  = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_factor");
             denoiser.input   = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_input");
             denoiser.output  = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_output");
             denoiser.preview = texture(RHI_Format::R16G16B16A16_Float, "reference_nrd_preview");
@@ -7432,15 +7448,17 @@ namespace spartan
                 ++stride;
 
             RHI_CommandList::BeginPass("path_tracing");
-            RHI_CommandList::SetShader(guided ? guided_shader : shader);
+            RHI_CommandList::SetShader(guided ? guided_shader : track_diffuse ? diffuse_shader : shader);
+            if (track_diffuse)
+                RHI_CommandList::SetTexture("pt_diffuse_history", denoiser.diffuse.get());
             if (guided)
             {
+                m_pcb_pass_cpu.set(pass_path_tracing::write_guides, !denoiser.preview_valid);
                 if (history.phase == 0)
                     denoiser.complete_guides = true;
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, denoiser.normal.get());
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, denoiser.depth.get());
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, denoiser.input.get());
-                RHI_CommandList::SetTexture("pt_material_factor", denoiser.factor.get());
             }
             if (has_scene)
             {
@@ -7477,7 +7495,7 @@ namespace spartan
                         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, target);
                         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, denoiser.depth.get());
                         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, denoiser.output.get());
-                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, denoiser.factor.get());
+                        RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, denoiser.diffuse.get());
                         RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, denoiser.preview.get());
                         m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
                         RHI_CommandList::Dispatch(denoiser.preview.get());

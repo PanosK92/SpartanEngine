@@ -12,7 +12,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 // one bit per task lane, the early cull writes whether it drew the instance and the late cull reads it back
 // a stored bit, not a replayed test, because the early cull rewrites the lod bounds the test would read
-RWStructuredBuffer<uint>     instance_visibility   : register(u89);
+RWStructuredBuffer<uint>              instance_visibility : register(u89);
+// direct phase-a impostor survivors bypass phase-b meshlet expansion and batch 16 quads per mesh shader group
+RWStructuredBuffer<SurvivingInstance> impostor_instances  : register(u95);
 
 groupshared uint gs_visibility[INSTANCE_CULL_BATCH_SIZE / 32u];
 
@@ -37,12 +39,16 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     bool  late          = pass_bool(pass_instance_cull::late);
     bool  history_hiz   = pass_bool(pass_instance_cull::history_hiz);
     float depth_bias    = pass_float(pass_instance_cull::hiz_depth_bias);
+    uint  max_impostors = pass_uint(pass_instance_cull::max_impostors);
     float4 plane_l, plane_r, plane_b, plane_t;
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
 
-    bool     survives     = false;
-    bool     drawn_early  = false;
-    CullTask task         = (CullTask)0;
+    bool     survives              = false;
+    bool     drawn_early           = false;
+    bool     is_impostor_batch     = false;
+    bool     crossfade_impostor    = false;
+    uint     crossfade_proxy_index = 0u;
+    CullTask task                  = (CullTask)0;
     uint     visible_word = task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + (thread_id.x >> 5u);
     uint     visible_bit  = 1u << (thread_id.x & 31u);
 
@@ -83,6 +89,14 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
                 draw = proxy;
                 task.draw_index = proxy_index;
                 task.refinement_draw = 0u;
+            }
+            else if (nearest > 0.0f && (task.canopy_draw & 0x80000000u) == 0u &&
+                     (proxy.flags & draw_flag_impostor) != 0u &&
+                     diameter < proxy.cluster_error * TREE_IMPOSTOR_FADE_BAND * nearest)
+            {
+                // Crossfade band: keep the 3D canopy active and also emit its impostor for screen-door blending
+                crossfade_impostor    = (max_impostors > 0u);
+                crossfade_proxy_index = proxy_index;
             }
         }
 
@@ -143,6 +157,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         }
 
         uint meshlet_count = indirect_draw_data[task.draw_index].geometry_meshlet_count;
+        is_impostor_batch  = (max_impostors > 0u) && ((draw.flags & draw_flag_impostor) != 0u);
 
         if (task_count <= 128u && (draw.flags & 2u) == 0u && meshlet_count >= 256u)
             meshlet_rows = min((meshlet_count + 63u) / 64u, meshlet_cull_rows);
@@ -150,9 +165,9 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         {
             if (late)
             {
-                // the early cull keeps every meshlet of hi-z exempt and skinned instances, it left nothing behind for these
+                // the early cull keeps every meshlet of hi-z exempt, skinned, and 1-meshlet impostor instances, leaving nothing behind for these
                 drawn_early = (instance_visibility[visible_word] & visible_bit) != 0u;
-                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned));
+                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned || is_impostor_batch));
             }
             else
             {
@@ -171,9 +186,38 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             instance_visibility[task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + thread_id.x] = gs_visibility[thread_id.x];
     }
 
+    // impostor survivors bypass phase-b meshlet expansion and compact straight into impostor_instances
+    bool impostor_survives = survives && is_impostor_batch;
+    uint imp_count         = WaveActiveCountBits(impostor_survives);
+    uint imp_off           = WavePrefixCountBits(impostor_survives);
+    uint imp_base          = 0u;
+    uint imp_overflow      = 0u;
+    if (WaveIsFirstLane() && imp_count > 0u)
+    {
+        InterlockedAdd(triangle_dispatch_args[IMPOSTOR_ARGS_SLOT].group_count_x, imp_count, imp_base);
+        imp_overflow = (imp_base + imp_count) > max_impostors ? 1u : 0u;
+    }
+    imp_base     = WaveReadLaneFirst(imp_base);
+    imp_overflow = WaveReadLaneFirst(imp_overflow);
+    if (imp_overflow != 0u && WaveIsFirstLane())
+        InterlockedMin(triangle_dispatch_args[IMPOSTOR_ARGS_SLOT].group_count_x, max_impostors);
+
+    if (impostor_survives)
+    {
+        uint imp_slot = imp_base + imp_off;
+        if (imp_slot < max_impostors)
+        {
+            SurvivingInstance isi;
+            isi.draw_index              = task.draw_index;
+            isi.instance_index          = task.instance_index;
+            impostor_instances[imp_slot] = isi;
+        }
+    }
+
     // wave-aggregated compaction, the first lane reserves a contiguous range so dense visibility doesn't hammer one address
-    uint wave_count = WaveActiveCountBits(survives);
-    uint lane_off   = WavePrefixCountBits(survives);
+    bool regular_survives = survives && !is_impostor_batch;
+    uint wave_count = WaveActiveCountBits(regular_survives);
+    uint lane_off   = WavePrefixCountBits(regular_survives);
     uint wave_base  = 0u;
     uint overflow_u = 0u;
     if (WaveIsFirstLane() && wave_count > 0u)
@@ -188,7 +232,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     if (overflow_u != 0u && WaveIsFirstLane())
         InterlockedMin(instance_dispatch_args[0].group_count_x, max_instances);
 
-    if (!survives)
+    if (!regular_survives)
         return;
 
     uint slot = wave_base + lane_off;

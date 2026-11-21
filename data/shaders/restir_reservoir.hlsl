@@ -1691,7 +1691,7 @@ ShiftResult try_reconnection_shift(
     bool is_identity = all(dst_pos == src_primary_pos) && all(dst_view_dir == src_view_dir);
     // A stationary primary does not imply a stationary/unchanged light.
     // Analytic endpoints must resolve and re-evaluate current light parameters.
-    if (is_identity && !is_dirac_light_sample(src) && !is_area_light_sample(src) && !is_triangle_reconnection(src))
+    if (is_identity && !is_nee_sample(src) && !is_dirac_light_sample(src) && !is_area_light_sample(src) && !is_triangle_reconnection(src))
     {
         // Primary normals and roughness retain their original G-buffer bits.
         // Compare the actual source BSDF, without a second quantization step.
@@ -1820,7 +1820,7 @@ ShiftResult try_reconnection_shift(
 }
 
 // forward declarations, the helpers are defined later in this header
-bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal);
+float3 trace_shift_transmittance(PathSample src, float3 dst_pos, float3 dst_normal);
 
 // shared path tracing parameters used by the initial trace suffix, a constant continuation
 // probability keeps the roulette decision dependent only on the seed draw
@@ -1943,6 +1943,7 @@ float compute_total_light_weight()
 struct RestirLightSample
 {
     float3 radiance_sum;
+    float3 transmittance;
     float3 direction;
     float3 incident;
     float weight_sum;
@@ -2168,20 +2169,21 @@ RestirLightSample sample_direct_lighting_at_vertex(
     // reconnection. An occluded winner remains a zero draw, never a replacement.
     shading_pos = restir_light_sample_origin(result, surface_pos, geometric_normal);
     PathSample endpoint = restir_light_endpoint_descriptor(result, shading_pos, 1u, seed);
-    if (!trace_shift_visibility(endpoint, surface_pos, geometric_normal)) return (RestirLightSample)0;
+    result.transmittance = trace_shift_transmittance(endpoint, surface_pos, geometric_normal);
+    if (!any(result.transmittance > 0.0f)) return (RestirLightSample)0;
     float inverse_density = result.weight_sum / (float(candidate_count) * result.selected_target);
-    result.radiance_sum *= inverse_density;
-    result.incident = result.endpoint_radiance / result.endpoint_pdf;
+    result.radiance_sum *= result.transmittance * inverse_density;
+    result.incident = result.endpoint_radiance * result.transmittance / result.endpoint_pdf;
     result.initial_weight = inverse_density * result.endpoint_pdf;
     return result;
 }
 
 // visibility ray from dst primary to rc, sky samples test reachability to the sky
-bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
+float3 trace_shift_transmittance(PathSample src, float3 dst_pos, float3 dst_normal)
 {
     // Prefix replay already traced the actual last-prefix-to-RC segment.
     if ((has_reconnection(src) && src.rc_length > 2u) || (src.rc_length == 0u && src.path_length > 0u))
-        return true;
+        return 1.0f;
     RayDesc ray;
     ray.Origin = restir_reconnection_ray_origin(src, dst_pos, dst_normal);
     // Reference evalSegmentVisibility: the surface origin is already offset.
@@ -2199,7 +2201,7 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
         float3 to_rc = src.rc_pos - ray.Origin;
         float distance = length(to_rc);
         if (!(distance > 0.0f) || !isfinite(distance))
-            return false;
+            return 0.0f;
         ray.Direction = to_rc / distance;
         // Reference kShadowRayTMaxRatio. A camera-dependent endpoint gap can
         // skip nearby occluders and change visibility when only the camera moves.
@@ -2207,7 +2209,10 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
     }
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    // Only direct-light connections can pass through glass. A BSDF reconnection
+    // still has to reproduce the intervening scattering vertices explicitly.
+    bool lighting = is_nee_sample(src);
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, lighting ? 0x05 : 0xFF, ray);
     while (query.Proceed())
     {
         if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE &&
@@ -2216,7 +2221,9 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
             query.CommitNonOpaqueTriangleHit();
     }
 
-    return query.CommittedStatus() == COMMITTED_NOTHING;
+    if (query.CommittedStatus() != COMMITTED_NOTHING) return 0.0f;
+    if (lighting) return rt_trace_transmittance(ray.Origin, ray.Direction, ray.TMax).color;
+    return 1.0f;
 }
 
 // identity shift, jacobian is 1, no rc flag or footprint gate since this is the source pixel

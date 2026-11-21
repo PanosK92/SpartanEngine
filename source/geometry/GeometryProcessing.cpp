@@ -825,4 +825,314 @@ namespace spartan::geometry_processing
             }
         }
     }
+
+    void bake_tree_impostor_rgba(
+        const std::vector<RHI_Vertex_PosTexNorTan>& bark_vertices,
+        const std::vector<uint32_t>& bark_indices,
+        const ImpostorTextureInput& bark_texture,
+        const std::vector<RHI_Vertex_PosTexNorTan>& canopy_vertices,
+        const std::vector<uint32_t>& canopy_indices,
+        const ImpostorTextureInput& canopy_texture,
+        uint32_t frames,
+        uint32_t resolution,
+        const math::Vector3& center,
+        float radius,
+        std::vector<uint32_t>& texels_out
+    )
+    {
+        const size_t frame_texels = static_cast<size_t>(resolution) * resolution;
+        const size_t frame_words  = frame_texels * 2;
+        texels_out.assign(frame_words * frames * frames, 0u);
+        if (canopy_vertices.empty() || canopy_indices.size() < 3 || radius <= 0.0f)
+        {
+            return;
+        }
+
+        // build a coarse mip matching the impostor texel footprint with alpha-weighted rgb so thin leaves
+        // retain their silhouette without dark transparent fringes bleeding in
+        struct MipImage
+        {
+            std::vector<uint8_t> rgba;
+            uint32_t width  = 0;
+            uint32_t height = 0;
+
+            void build(const ImpostorTextureInput& input, uint32_t target_res, bool alpha_weighted)
+            {
+                if (!input.rgba || input.width == 0 || input.height == 0)
+                {
+                    return;
+                }
+
+                width  = input.width;
+                height = input.height;
+                rgba.assign(input.rgba, input.rgba + static_cast<size_t>(width) * height * 4);
+
+                const uint32_t target = std::max(target_res * 2u, 64u);
+                while (std::max(width, height) > target && width > 1 && height > 1)
+                {
+                    const uint32_t nw = std::max(width / 2u, 1u);
+                    const uint32_t nh = std::max(height / 2u, 1u);
+                    std::vector<uint8_t> next(static_cast<size_t>(nw) * nh * 4);
+                    for (uint32_t y = 0; y < nh; y++)
+                    {
+                        for (uint32_t x = 0; x < nw; x++)
+                        {
+                            float r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f, w_sum = 0.0f;
+                            for (uint32_t dy = 0; dy < 2; dy++)
+                            {
+                                const uint32_t sy = std::min(y * 2 + dy, height - 1);
+                                for (uint32_t dx = 0; dx < 2; dx++)
+                                {
+                                    const uint32_t sx = std::min(x * 2 + dx, width - 1);
+                                    const size_t idx  = (static_cast<size_t>(sy) * width + sx) * 4;
+                                    const float sa    = rgba[idx + 3] * (1.0f / 255.0f);
+                                    const float w     = alpha_weighted ? sa : 1.0f;
+                                    r     += rgba[idx + 0] * w;
+                                    g     += rgba[idx + 1] * w;
+                                    b     += rgba[idx + 2] * w;
+                                    a     += sa;
+                                    w_sum += w;
+                                }
+                            }
+                            const size_t dst = (static_cast<size_t>(y) * nw + x) * 4;
+                            const float inv_w = w_sum > 1e-4f ? (1.0f / w_sum) : 0.0f;
+                            next[dst + 0] = static_cast<uint8_t>(std::clamp(r * inv_w + 0.5f, 0.0f, 255.0f));
+                            next[dst + 1] = static_cast<uint8_t>(std::clamp(g * inv_w + 0.5f, 0.0f, 255.0f));
+                            next[dst + 2] = static_cast<uint8_t>(std::clamp(b * inv_w + 0.5f, 0.0f, 255.0f));
+                            next[dst + 3] = static_cast<uint8_t>(std::clamp((a * 0.25f) * 255.0f + 0.5f, 0.0f, 255.0f));
+                        }
+                    }
+                    rgba   = std::move(next);
+                    width  = nw;
+                    height = nh;
+                }
+            }
+
+            void sample(const math::Vector2& uv, const math::Vector3& tint, uint8_t& r_out, uint8_t& g_out, uint8_t& b_out, float& a_out) const
+            {
+                if (rgba.empty() || width == 0 || height == 0)
+                {
+                    r_out = static_cast<uint8_t>(std::clamp(tint.x * 255.0f, 0.0f, 255.0f));
+                    g_out = static_cast<uint8_t>(std::clamp(tint.y * 255.0f, 0.0f, 255.0f));
+                    b_out = static_cast<uint8_t>(std::clamp(tint.z * 255.0f, 0.0f, 255.0f));
+                    a_out = 1.0f;
+                    return;
+                }
+
+                float u = uv.x - floorf(uv.x);
+                float v = uv.y - floorf(uv.y);
+                const float fx = u * static_cast<float>(width) - 0.5f;
+                const float fy = v * static_cast<float>(height) - 0.5f;
+                const int32_t x0 = static_cast<int32_t>(floorf(fx));
+                const int32_t y0 = static_cast<int32_t>(floorf(fy));
+                const float tx = fx - static_cast<float>(x0);
+                const float ty = fy - static_cast<float>(y0);
+                const uint32_t ux0 = static_cast<uint32_t>((x0 % static_cast<int32_t>(width) + static_cast<int32_t>(width)) % static_cast<int32_t>(width));
+                const uint32_t uy0 = static_cast<uint32_t>((y0 % static_cast<int32_t>(height) + static_cast<int32_t>(height)) % static_cast<int32_t>(height));
+                const uint32_t ux1 = (ux0 + 1u) % width;
+                const uint32_t uy1 = (uy0 + 1u) % height;
+
+                const uint8_t* p00 = &rgba[(static_cast<size_t>(uy0) * width + ux0) * 4];
+                const uint8_t* p10 = &rgba[(static_cast<size_t>(uy0) * width + ux1) * 4];
+                const uint8_t* p01 = &rgba[(static_cast<size_t>(uy1) * width + ux0) * 4];
+                const uint8_t* p11 = &rgba[(static_cast<size_t>(uy1) * width + ux1) * 4];
+
+                const float w00 = (1.0f - tx) * (1.0f - ty);
+                const float w10 = tx * (1.0f - ty);
+                const float w01 = (1.0f - tx) * ty;
+                const float w11 = tx * ty;
+
+                const float r = (p00[0] * w00 + p10[0] * w10 + p01[0] * w01 + p11[0] * w11) * tint.x;
+                const float g = (p00[1] * w00 + p10[1] * w10 + p01[1] * w01 + p11[1] * w11) * tint.y;
+                const float b = (p00[2] * w00 + p10[2] * w10 + p01[2] * w01 + p11[2] * w11) * tint.z;
+                a_out = (p00[3] * w00 + p10[3] * w10 + p01[3] * w01 + p11[3] * w11) * (1.0f / 255.0f);
+
+                r_out = static_cast<uint8_t>(std::clamp(r + 0.5f, 0.0f, 255.0f));
+                g_out = static_cast<uint8_t>(std::clamp(g + 0.5f, 0.0f, 255.0f));
+                b_out = static_cast<uint8_t>(std::clamp(b + 0.5f, 0.0f, 255.0f));
+            }
+        };
+
+        MipImage bark_mip;
+        bark_mip.build(bark_texture, resolution, false);
+        MipImage canopy_mip;
+        canopy_mip.build(canopy_texture, resolution, true);
+
+        struct MeshCache
+        {
+            std::vector<math::Vector3> positions;
+            std::vector<math::Vector3> normals;
+            std::vector<math::Vector2> uvs;
+
+            void fill(const std::vector<RHI_Vertex_PosTexNorTan>& verts, const math::Vector3& center)
+            {
+                positions.resize(verts.size());
+                normals.resize(verts.size());
+                uvs.resize(verts.size());
+                for (size_t i = 0; i < verts.size(); i++)
+                {
+                    positions[i] = verts[i].get_position() - center;
+                    normals[i]   = verts[i].get_normal();
+                    uvs[i]       = verts[i].get_uv();
+                }
+            }
+        };
+
+        MeshCache bark_cache;
+        bark_cache.fill(bark_vertices, center);
+        MeshCache canopy_cache;
+        canopy_cache.fill(canopy_vertices, center);
+
+        const float inv_radius   = 1.0f / radius;
+        const float resolution_f = static_cast<float>(resolution);
+        const float leaf_cutoff  = std::clamp(canopy_texture.alpha_cutoff * 0.72f, 0.1f, 0.9f);
+
+        struct Projected
+        {
+            float x;
+            float y;
+            float z;
+        };
+
+        auto bake_frame = [&](uint32_t frame_start, uint32_t frame_end)
+        {
+            std::vector<Projected> projected;
+            std::vector<float> depth(frame_texels);
+
+            for (uint32_t f = frame_start; f < frame_end; f++)
+            {
+                const uint32_t fx = f % frames;
+                const uint32_t fy = f / frames;
+
+                const math::Vector3 direction = impostor_frame_direction(fx, fy, frames);
+                math::Vector3 right;
+                math::Vector3 up;
+                impostor_frame_basis(direction, right, up);
+
+                std::fill(depth.begin(), depth.end(), -FLT_MAX);
+                uint32_t* frame = texels_out.data() + static_cast<size_t>(f) * frame_words;
+
+                auto rasterize_submesh = [&](const MeshCache& cache, const std::vector<uint32_t>& indices, const MipImage& mip, const math::Vector3& tint, bool is_bark, float alpha_threshold)
+                {
+                    if (cache.positions.empty() || indices.size() < 3)
+                    {
+                        return;
+                    }
+
+                    projected.resize(cache.positions.size());
+                    for (size_t i = 0; i < cache.positions.size(); i++)
+                    {
+                        const math::Vector3& p = cache.positions[i];
+                        projected[i].x = (math::Vector3::Dot(p, right) * inv_radius * 0.5f + 0.5f) * resolution_f;
+                        projected[i].y = (math::Vector3::Dot(p, up) * inv_radius * 0.5f + 0.5f) * resolution_f;
+                        projected[i].z = math::Vector3::Dot(p, direction);
+                    }
+
+                    auto write = [&](uint32_t px, uint32_t py, float z, const math::Vector2& uv, const math::Vector3& normal)
+                    {
+                        const size_t texel = static_cast<size_t>(py) * resolution + px;
+                        if (z <= depth[texel])
+                        {
+                            return;
+                        }
+
+                        uint8_t r = 0, g = 0, b = 0;
+                        float a = 1.0f;
+                        mip.sample(uv, tint, r, g, b, a);
+                        if (!is_bark && a <= alpha_threshold)
+                        {
+                            return;
+                        }
+
+                        float nx = math::Vector3::Dot(normal, right);
+                        float ny = math::Vector3::Dot(normal, up);
+                        float nz = math::Vector3::Dot(normal, direction);
+                        if (nz < 0.0f)
+                        {
+                            nx = -nx;
+                            ny = -ny;
+                            nz = -nz;
+                        }
+                        const float n_sum = std::max(fabsf(nx) + fabsf(ny) + nz, 1e-6f);
+                        const uint32_t ox = static_cast<uint32_t>(std::clamp((nx / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
+                        const uint32_t oy = static_cast<uint32_t>(std::clamp((ny / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
+                        const uint32_t dz = static_cast<uint32_t>(std::clamp(z * inv_radius * 0.5f + 0.5f, 0.0f, 1.0f) * 16383.0f + 0.5f);
+
+                        depth[texel]        = z;
+                        frame[texel * 2]    = static_cast<uint32_t>(r) | (static_cast<uint32_t>(g) << 8) | (static_cast<uint32_t>(b) << 16) | (255u << 24);
+                        frame[texel * 2 + 1] = ox | (oy << 8) | (dz << 16) | (is_bark ? (1u << 30) : 0u) | (1u << 31);
+                    };
+
+                    for (size_t t = 0; t + 2 < indices.size(); t += 3)
+                    {
+                        const uint32_t i0 = indices[t];
+                        const uint32_t i1 = indices[t + 1];
+                        const uint32_t i2 = indices[t + 2];
+                        const Projected& a = projected[i0];
+                        const Projected& b = projected[i1];
+                        const Projected& c = projected[i2];
+
+                        const float area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+                        const int32_t x0 = std::max(static_cast<int32_t>(floorf(std::min({a.x, b.x, c.x}))), 0);
+                        const int32_t y0 = std::max(static_cast<int32_t>(floorf(std::min({a.y, b.y, c.y}))), 0);
+                        const int32_t x1 = std::min(static_cast<int32_t>(floorf(std::max({a.x, b.x, c.x}))), static_cast<int32_t>(resolution) - 1);
+                        const int32_t y1 = std::min(static_cast<int32_t>(floorf(std::max({a.y, b.y, c.y}))), static_cast<int32_t>(resolution) - 1);
+                        if (x0 > x1 || y0 > y1)
+                        {
+                            continue;
+                        }
+
+                        bool covered = false;
+                        if (fabsf(area) > 1e-12f)
+                        {
+                            const float inv_area = 1.0f / area;
+                            for (int32_t py = y0; py <= y1; py++)
+                            {
+                                for (int32_t px = x0; px <= x1; px++)
+                                {
+                                    const float sx = static_cast<float>(px) + 0.5f;
+                                    const float sy = static_cast<float>(py) + 0.5f;
+                                    const float w0 = ((b.x - sx) * (c.y - sy) - (b.y - sy) * (c.x - sx)) * inv_area;
+                                    const float w1 = ((c.x - sx) * (a.y - sy) - (c.y - sy) * (a.x - sx)) * inv_area;
+                                    const float w2 = 1.0f - w0 - w1;
+                                    if (w0 < 0.0f || w1 < 0.0f || w2 < 0.0f)
+                                    {
+                                        continue;
+                                    }
+
+                                    covered = true;
+                                    write(
+                                        static_cast<uint32_t>(px),
+                                        static_cast<uint32_t>(py),
+                                        a.z * w0 + b.z * w1 + c.z * w2,
+                                        cache.uvs[i0] * w0 + cache.uvs[i1] * w1 + cache.uvs[i2] * w2,
+                                        (cache.normals[i0] * w0 + cache.normals[i1] * w1 + cache.normals[i2] * w2).Normalized()
+                                    );
+                                }
+                            }
+                        }
+
+                        if (!covered)
+                        {
+                            const float third = 1.0f / 3.0f;
+                            const uint32_t px = static_cast<uint32_t>(std::clamp((a.x + b.x + c.x) * third, 0.0f, resolution_f - 1.0f));
+                            const uint32_t py = static_cast<uint32_t>(std::clamp((a.y + b.y + c.y) * third, 0.0f, resolution_f - 1.0f));
+                            write(
+                                px,
+                                py,
+                                (a.z + b.z + c.z) * third,
+                                (cache.uvs[i0] + cache.uvs[i1] + cache.uvs[i2]) * third,
+                                (cache.normals[i0] + cache.normals[i1] + cache.normals[i2]).Normalized()
+                            );
+                        }
+                    }
+                };
+
+                rasterize_submesh(bark_cache, bark_indices, bark_mip, bark_texture.tint, true, 0.0f);
+                rasterize_submesh(canopy_cache, canopy_indices, canopy_mip, canopy_texture.tint, false, leaf_cutoff);
+            }
+        };
+
+        ThreadPool::ParallelLoop(bake_frame, frames * frames);
+    }
 }

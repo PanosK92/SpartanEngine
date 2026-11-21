@@ -700,7 +700,7 @@ namespace spartan
         filesystem::path cache_path;
         if (World::IsLoadingFromFile())
         {
-            key.Add(uint32_t{1}); // BakePropMaskCells and terrain habitat algorithm version
+            key.Add(uint32_t{2}); // BakePropMaskCells and terrain habitat algorithm version
             key.Add(m_map_width); key.Add(m_map_height);
             key.Add(m_dense_width); key.Add(m_dense_height);
             key.Add(m_density); key.Add(m_scale); key.Add(m_layer_quality);
@@ -1111,29 +1111,30 @@ namespace spartan
                     const float altitude = saturate(
                         (y_c - sea_local) / max(snow_local - sea_local, 1.0f)
                     );
-                    const float alpine    = saturate((altitude - 0.55f) / 0.45f);
-                    const float tree_line = m_snow_amount > 0.0f ? saturate(1.0f - alpine * 1.35f) : 1.0f;
-                    const float slope_soft = saturate(1.0f - slope_deg / 32.0f);
+                    const float alpine          = saturate((altitude - 0.55f) / 0.45f);
+                    const float tree_line       = m_snow_amount > 0.0f ? saturate(1.0f - alpine * 1.35f) : 1.0f;
+                    const float grass_slope     = saturate(1.0f - slope_deg / 38.0f);
+                    const float tree_slope_soft = saturate(1.0f - max(slope_deg - 15.0f, 0.0f) / 37.0f);
 
                     // grass only where living ground beats rock, dirt, sand and snow
                     float grass_raw = living - mineral * 1.2f - barren * 1.5f;
-                    grass_raw *= slope_soft;
+                    grass_raw *= grass_slope;
                     if (above_sea < 1.0f || (m_snow_amount > 0.0f && below_snow < 2.0f))
                     {
                         grass_raw = 0.0f;
                     }
                     grass_raw = saturate(grass_raw);
                     // lift the floor so mixed seams stay empty and meadow cores stay full
-                    grass = saturate((grass_raw - 0.18f) / 0.82f);
+                    grass = saturate((grass_raw - 0.14f) / 0.86f);
                     grass = grass * grass * (3.0f - 2.0f * grass);
 
-                    // trees fill living ground, forest is dense, meadows get groves
+                    // trees fill living ground, forest is dense, meadows get groves, and mountain pines cling to steeper slopes
                     float tree_raw = forest_w
-                        + grass_w * lerp(0.5f, 0.95f, saturate(shade * 1.15f + deposition * 0.35f))
-                        + moss_w * 0.25f;
-                    tree_raw *= slope_soft;
+                        + grass_w * lerp(0.55f, 0.98f, saturate(shade * 1.15f + deposition * 0.35f))
+                        + moss_w * 0.35f;
+                    tree_raw *= tree_slope_soft;
                     tree_raw *= tree_line;
-                    tree_raw *= saturate(1.0f - mineral * 1.35f);
+                    tree_raw *= saturate(1.0f - mineral * 1.05f);
                     tree_raw *= saturate(1.0f - barren * 2.0f);
                     if (above_sea < 2.0f || (m_snow_amount > 0.0f && below_snow < 6.0f))
                     {

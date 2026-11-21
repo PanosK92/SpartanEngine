@@ -26,7 +26,7 @@ static const uint particle_lighting_unlit      = 1u;
 static const uint particle_lighting_emissive   = 2u;
 // how much of the skylight a billboard collects, kept in step with volume_sky_fill so the billboard
 // and volumetric paths do not disagree on smoke color when an emitter switches between them
-static const float particle_sky_fill           = 0.14f;
+static const float particle_sky_fill           = 0.48f;
 static const float leaf_sky_fill               = 0.6f;
 static const float leaf_translucency           = 0.5f;
 // how fast the texture churn boils, and how many cycles of it fit across one puff
@@ -1538,16 +1538,17 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
         flow_velocity          = p.velocity - camera_velocity;
     }
     float  velocity_len  = length(flow_velocity);
-    float3 flow_axis     = safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction);
+    float3 velocity_dir  = velocity_len > 0.05 ? flow_velocity / velocity_len : emitter.emission_direction;
+    float3 flow_axis     = flame ? safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction) : velocity_dir;
     float3 velocity_axis = flow_axis - buffer_frame.camera_forward * dot(flow_axis, buffer_frame.camera_forward);
     float projected_flow_length = length(velocity_axis);
     velocity_axis = safe_normalize(velocity_axis, right);
-    float stretch = saturate(velocity_len * 0.08) * emitter.velocity_stretch;
+    float stretch = saturate(velocity_len * (spark ? 0.16 : 0.08)) * emitter.velocity_stretch;
     float alignment = (flame || spark) ? 1.0 : saturate(stretch);
     right = safe_normalize(lerp(right, velocity_axis, alignment), right);
     up    = safe_normalize(cross(buffer_frame.camera_forward, right), up);
-    float half_size_x = p.size * (0.5 + stretch * 1.5);
-    float half_size_y = p.size * (0.5 - saturate(stretch) * 0.2);
+    float half_size_x = p.size * (spark ? (0.5 + stretch * 3.8) : (0.5 + stretch * 1.5));
+    float half_size_y = p.size * (spark ? 0.34 : (0.5 - saturate(stretch) * 0.2));
     // A flame starts at its nozzle and extends downstream. Centred, fully
     // stretched quads put half the jet back over the bumper in a chase view.
     // Preserve foreshortening when looking along the exhaust direction.
@@ -1604,8 +1605,11 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float ang      = base_ang + spin * age_t;
     // The texture's flame tip points along the jet; random full rotations read as
     // disconnected fire stickers. A little angular variation keeps the edge alive.
+    bool animated_directional_flipbook = (emitter.flipbook_rows * emitter.flipbook_columns) > 1u && emitter.flipbook_fps >= 0.05 && emitter.directional_blend > 0.7;
     if (flame)
         ang = -1.57079633 + spin * 0.16;
+    else if (animated_directional_flipbook)
+        ang = (alignment > 0.5 ? -1.57079633 : 3.14159265) + spin * 0.18;
 
     float3 previous_right = normalize(float3(buffer_frame.view_previous[0][0], buffer_frame.view_previous[1][0], buffer_frame.view_previous[2][0]));
     float3 previous_up = normalize(float3(buffer_frame.view_previous[0][1], buffer_frame.view_previous[1][1], buffer_frame.view_previous[2][1]));
@@ -1615,8 +1619,10 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     previous_right = safe_normalize(lerp(previous_right, previous_axis, alignment), previous_right);
     previous_up = safe_normalize(cross(previous_forward, previous_right), previous_up);
     float previous_length_scale = flame ? max(length(previous_projected_flow), 0.2) : 1.0;
-    float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * (0.5 + stretch * 1.5) * previous_length_scale
-        + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
+    float prev_scale_x = spark ? (0.5 + stretch * 3.8) : (0.5 + stretch * 1.5);
+    float prev_scale_y = spark ? 0.34 : (0.5 - saturate(stretch) * 0.2);
+    float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * prev_scale_x * previous_length_scale
+        + previous_up * c.y * p.previous_size * prev_scale_y;
     if (leaf) previous_world = p.previous_position + leaf_offset;
     if (emitter.rain_occluded != 0u) previous_world = world + p.previous_position - p.position;
     o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
@@ -1629,7 +1635,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     {
         // Airborne details dissolve near the lens, keeping cockpit/road views clear.
         float camera_distance = distance(p.position, get_camera_position());
-        if (!leaf) o.alpha *= smoothstep(1.5, 5.0, camera_distance);
+        if (!leaf) o.alpha *= smoothstep(0.45, 1.4, camera_distance);
         if (!leaf) o.alpha *= 1.0 - smoothstep(0.85, 1.0, age_t);
         if (leaf)
         {
@@ -1965,14 +1971,24 @@ particle_output main_ps(ps_input input)
         }
         else if (nature == 4u)
         {
-            float pulse = pow(0.5 + 0.5 * sin(seconds * 2.6 + phase), 3.0);
-            alpha_mask = exp(-dot(q, q) * 18.0) * (0.12 + 0.88 * pulse);
+            float freq  = 1.7 + 1.5 * input.flipbook.w;
+            float pulse = pow(0.5 + 0.5 * sin(seconds * freq + phase), 3.5);
+            float r2    = dot(q, q);
+            float core  = exp(-r2 * 42.0);
+            float halo  = exp(-r2 * 6.5) * 0.30;
+            alpha_mask  = saturate((core + halo) * (0.14 + 0.86 * pulse));
+            base_color  = lerp(base_color, float3(1.0, 1.0, 0.82), saturate(core * 0.75));
         }
     }
     if (input.emissive_shape.y > 0.5)
     {
-        // A hot grain has a narrow incandescent core, not a miniature smoke sprite.
-        alpha_mask = exp(-input.local.y * input.local.y * 45.0) * saturate(1.0 - input.local.x * input.local.x);
+        // Molten metal grain with a bright leading head and a tapering incandescent streak behind it.
+        float along = input.local.x * 0.5 + 0.5;
+        float tail  = smoothstep(0.0, 0.72, along) * (1.0 - smoothstep(0.72, 1.0, along));
+        float core  = exp(-input.local.y * input.local.y * 55.0) * tail;
+        float head  = exp(-((input.local.x - 0.45) * (input.local.x - 0.45) * 18.0 + input.local.y * input.local.y * 24.0));
+        alpha_mask  = saturate(core + head * 0.85);
+        base_color  = lerp(base_color, float3(1.0, 0.98, 0.90), saturate(head * 0.75));
     }
     if (textured)
     {
@@ -1999,16 +2015,40 @@ particle_output main_ps(ps_input input)
         float rows    = max(input.flipbook.x, 1.0);
         float columns = max(input.flipbook.y, 1.0);
         float frames  = rows * columns;
+        float4 sample;
         if (frames > 1.0)
         {
-            float frame_progress = input.flipbook.z > 0.0 ? input.age_t * input.flipbook.z : input.age_t * frames;
-            float frame_index    = fmod(floor(frame_progress + input.flipbook.w * frames), frames);
-            float column_index   = fmod(frame_index, columns);
-            float row_index      = floor(frame_index / columns);
-            tex_uv = (tex_uv + float2(column_index, row_index)) / float2(columns, rows);
+            // Inset inside each tile so bilinear filtering never bleeds neighboring atlas cells.
+            float2 cell_uv = lerp(0.015, 0.985, saturate(tex_uv));
+            if (input.flipbook.z > 0.0 && input.flipbook.z < 0.05)
+            {
+                // Static random tile variant per particle (e.g., snowflake or spray droplet atlas).
+                float frame_index  = floor(frac(input.flipbook.w * 0.9999) * frames);
+                float column_index = fmod(frame_index, columns);
+                float row_index    = floor(frame_index / columns);
+                float2 uv0         = (cell_uv + float2(column_index, row_index)) / float2(columns, rows);
+                sample             = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv0, 0);
+            }
+            else
+            {
+                // Smoothly blended flipbook playback: looping at fps when >= 0.05, or once over life when 0.
+                float seconds        = max(input.nature_shape.y, 0.0);
+                bool  looping        = input.flipbook.z >= 0.05;
+                float frame_pos      = looping ? fmod(seconds * input.flipbook.z + input.flipbook.w * frames, frames) : saturate(input.age_t) * (frames - 1.0);
+                float frame0         = floor(frame_pos);
+                float frame1         = looping ? fmod(frame0 + 1.0, frames) : min(frame0 + 1.0, frames - 1.0);
+                float blend          = frac(frame_pos);
+                float2 uv0           = (cell_uv + float2(fmod(frame0, columns), floor(frame0 / columns))) / float2(columns, rows);
+                float2 uv1           = (cell_uv + float2(fmod(frame1, columns), floor(frame1 / columns))) / float2(columns, rows);
+                float4 s0            = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv0, 0);
+                float4 s1            = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv1, 0);
+                sample               = lerp(s0, s1, blend);
+            }
         }
-
-        float4 sample = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), tex_uv, 0);
+        else
+        {
+            sample = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), tex_uv, 0);
+        }
         // Keep the authored hot-core colour at birth; the orange texture should
         // contribute its detail without filtering all the blue out of a fresh jet.
         float brightness = dot(sample.rgb, float3(0.2126, 0.7152, 0.0722));

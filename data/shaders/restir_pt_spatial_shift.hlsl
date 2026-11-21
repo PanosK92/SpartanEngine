@@ -48,7 +48,8 @@ float4 evaluate_pair_shift(uint2 pixel, uint table, Reservoir center, float2 res
         max(material.r, 0.04f), material.g, normalize(get_camera_position() - position), geometric_normal);
     if (!shift.ok || shift.jacobian <= 0.0f)
         return 0.0f;
-    if (!trace_shift_visibility(shift.sample, partner_position, geometric_normal))
+    shift.f_dst *= trace_shift_transmittance(shift.sample, partner_position, geometric_normal);
+    if (!any(shift.f_dst > 0.0f))
         return 0.0f;
     return float4(shift.f_dst, shift.jacobian);
 }

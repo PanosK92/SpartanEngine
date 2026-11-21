@@ -109,17 +109,30 @@ float3 get_sky_fill_radiance()
 {
     float3 transmittance = get_sun_color();
     float  peak          = max(max(transmittance.r, transmittance.g), transmittance.b);
-    if (peak <= 0.0f)
+    float3 sky_fill      = float3(0.0f, 0.0f, 0.0f);
+
+    if (peak > 0.0f)
     {
-        // below the horizon there is no beam left to scatter
-        return 0.0f;
+        // the spectral complement on its own is far too saturated, real skylight is a soft blue grey
+        // because most of what reaches a surface has scattered many times and washed out, and a plume in
+        // shadow has nothing but this fill left so an aggressive tint here turns the whole thing cyan
+        float3 scattered = saturate(1.0f - transmittance / peak);
+        sky_fill = get_sun_intensity() * peak * (0.85f + scattered * 0.30f);
     }
 
-    // the spectral complement on its own is far too saturated, real skylight is a soft blue grey
-    // because most of what reaches a surface has scattered many times and washed out, and a plume in
-    // shadow has nothing but this fill left so an aggressive tint here turns the whole thing cyan
-    float3 scattered = saturate(1.0f - transmittance / peak);
-    return get_sun_intensity() * peak * (0.85f + scattered * 0.30f);
+    // twilight sky fill: when the sun sits near or just below the horizon, direct ground transmittance
+    // drops to zero while the upper atmosphere still scatters bright sunset/twilight across the sky dome;
+    // without this floor, lit particles and volumetric smoke/steam turn pitch black against a glowing dusk sky
+    if (buffer_frame.cluster_light_count > 0u)
+    {
+        float sun_y    = normalize(-light_parameters[0].direction).y;
+        float twilight = smoothstep(-0.18f, 0.04f, sun_y) * (1.0f - smoothstep(0.02f, 0.16f, sun_y));
+        float warm     = smoothstep(-0.10f, 0.03f, sun_y);
+        float3 tint    = lerp(float3(0.45f, 0.52f, 0.85f), float3(1.05f, 0.76f, 0.66f), warm);
+        sky_fill      += get_sun_intensity() * 0.032f * twilight * tint;
+    }
+
+    return sky_fill;
 }
 
 // shared night radiometric levels, skysphere ambient and cloud night lighting both use these

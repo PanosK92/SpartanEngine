@@ -338,6 +338,12 @@ namespace spartan
             const std::string context = get_material_context(entity, render);
             const std::string part = to_lower_copy(entity->GetObjectName());
 
+            // The scanned lamp buckets have unrelated exporter names on the two sides.
+            // Both sit behind the clear covers, with separate meshes for the LEDs.
+            if (contains(context, "laferrari") && (contains(context, "laferrari_black.005_") ||
+                contains(context, "laferrari_wireframe_color_0x1c59b13_")))
+                return CarMaterialSlot::EngineMetal;
+
             if (contains(context, "car_paint") || contains(context, "body"))
             {
                 return CarMaterialSlot::BodyPaint;
@@ -2415,7 +2421,9 @@ namespace spartan
         }
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-        // Retain authored LOD 0, but let distant traffic use generated LODs.
+        // Keep the lamp inserts and their covers on the same authored surface in raster and ray tracing.
+        if (m_is_drivable)
+            mesh_flags |= static_cast<uint32_t>(MeshFlags::PreserveSourceGeometry);
 
         std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>(m_definition->body_model, mesh_flags);
         if (!mesh_car)

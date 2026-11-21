@@ -46,8 +46,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     uint count_index  = slot_index * 3u + lod_index;
 
     // the cpu dispatches only the window of cells the view pyramid reaches, its origin follows the
-    // slot lod entries, so a cell keeps the same index and hash as on the full grid
-    uint2 cell_id = dispatch_thread_id.xy + (uint2)grass_lod_parameters[4u + count_index].xy;
+    // slot lod entries (4 slots + 1 vehicle entry = base 5), so a cell keeps the same index and hash as on the full grid
+    uint2 cell_id = dispatch_thread_id.xy + (uint2)grass_lod_parameters[5u + count_index].xy;
     [loop]
     for (uint i = 0; i < grass_blades_per_thread; i++)
     {

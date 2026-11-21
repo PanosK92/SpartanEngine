@@ -1101,24 +1101,49 @@ uint2 impostor_nearest_frame(float3 view_local, uint frames)
     return (uint2)clamp(round(f), 0.0f, (float)(frames - 1));
 }
 
-// uv holds frame + position inside the frame, returns the first layer whose source texel survives the cutout
-bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float alpha_threshold, out float2 uv, out float3 normal_frame, out float mip)
+// fast silhouette test for depth prepass: baked rgba impostors need zero texture fetches (one uint load)
+static const float TREE_IMPOSTOR_FADE_BAND = 1.35f;
+
+// Returns t in [0, 1]: 0 = 100% impostor, 1 = 100% 3D geometry, (0, 1) = dithered crossfade band.
+float compute_tree_impostor_fade(float3 center_local, float radius_local, float diameter_pixels, float4x4 world_xform)
+{
+    if (diameter_pixels <= 0.0f)
+        return 1.0f;
+    float3 center  = mul(float4(center_local, 1.0f), world_xform).xyz;
+    float3 basis_x = world_xform[0].xyz;
+    float3 basis_y = world_xform[1].xyz;
+    float3 basis_z = world_xform[2].xyz;
+    float  scale   = sqrt(max(dot(basis_x, basis_x), max(dot(basis_y, basis_y), dot(basis_z, basis_z))));
+    float  radius  = radius_local * scale;
+    float  w       = mul(float4(center, 1.0f), buffer_frame.view_projection).w;
+    float  nearest = w - radius * abs(buffer_frame.projection[2][3]);
+    if (nearest <= 0.0f)
+        return 1.0f;
+    float diameter_px = (radius * abs(buffer_frame.projection[1][1]) * get_render_resolution_active().y) / nearest;
+    float fade_high   = diameter_pixels * TREE_IMPOSTOR_FADE_BAND;
+    return saturate((diameter_px - diameter_pixels) / max(fade_high - diameter_pixels, 1e-4f));
+}
+
+bool impostor_alpha_test(float2 uv_frames, MaterialTexture2D albedo_texture, float alpha_threshold)
 {
     uint frames      = _draw.impostor_layout & 0xFFu;
     uint resolution  = (_draw.impostor_layout >> 8) & 0xFFFFu;
-    uint layers      = _draw.impostor_layout >> 24;
+    uint layers      = (_draw.impostor_layout >> 24) & 0x7Fu;
+    bool baked_rgba  = (_draw.impostor_layout & 0x80000000u) != 0u;
     uint2 frame      = min((uint2)floor(uv_frames), frames - 1u);
     uint2 texel      = min((uint2)(frac(uv_frames) * (float)resolution), resolution - 1u);
     uint frame_words = resolution * resolution * layers * 2u;
     uint base        = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words + (texel.y * resolution + texel.x) * layers * 2u;
 
-    // one impostor texel covers many source texels, a coarse mip keeps the cutout from sparkling
+    if (baked_rgba)
+    {
+        return (meshlet_vertices[base + 1u] & (1u << 31)) != 0u;
+    }
+
     uint width, height, mip_count;
     albedo_texture.GetDimensions(0, width, height, mip_count);
-    mip = max(log2((float)max(width, 1u)) - log2((float)max(resolution, 1u)) - 1.0f, 0.0f);
+    float mip = max(log2((float)max(width, 1u)) - log2((float)max(resolution, 1u)) - 1.0f, 0.0f);
 
-    uv           = 0.0f;
-    normal_frame = float3(0.0f, 0.0f, 1.0f);
     for (uint layer = 0; layer < layers; layer++)
     {
         uint geometry = meshlet_vertices[base + layer * 2u + 1u];
@@ -1127,15 +1152,78 @@ bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float 
             break;
         }
 
-        uint packed_uv = meshlet_vertices[base + layer * 2u];
-        float2 source  = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
+        uint packed_uv  = meshlet_vertices[base + layer * 2u];
+        float2 source   = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
         float2 layer_uv = _draw.impostor_uv_min + source * _draw.impostor_uv_scale;
-        float a         = albedo_texture.SampleLevel(samplers[sampler_anisotropic_wrap], layer_uv, mip).a;
+        float a         = albedo_texture.SampleLevel(samplers[sampler_bilinear_wrap], layer_uv, mip).a;
         if (a > alpha_threshold)
         {
-            float2 o     = float2(geometry & 0xFFu, (geometry >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
-            normal_frame = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
-            uv           = layer_uv;
+            return true;
+        }
+    }
+    return false;
+}
+
+// uv holds frame + position inside the frame, returns albedo directly (zero texture fetches when baked_rgba is set,
+// single bilinear fetch on the fallback uv atlas) alongside the frame-space normal and bark flag
+bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float alpha_threshold, out float4 albedo_sample, out float3 normal_frame, out bool is_bark)
+{
+    uint frames      = _draw.impostor_layout & 0xFFu;
+    uint resolution  = (_draw.impostor_layout >> 8) & 0xFFFFu;
+    uint layers      = (_draw.impostor_layout >> 24) & 0x7Fu;
+    bool baked_rgba  = (_draw.impostor_layout & 0x80000000u) != 0u;
+    uint2 frame      = min((uint2)floor(uv_frames), frames - 1u);
+    uint2 texel      = min((uint2)(frac(uv_frames) * (float)resolution), resolution - 1u);
+    uint frame_words = resolution * resolution * layers * 2u;
+    uint base        = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words + (texel.y * resolution + texel.x) * layers * 2u;
+
+    albedo_sample = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    normal_frame  = float3(0.0f, 0.0f, 1.0f);
+    is_bark       = false;
+
+    if (baked_rgba)
+    {
+        uint geometry = meshlet_vertices[base + 1u];
+        if ((geometry & (1u << 31)) == 0u)
+        {
+            return false;
+        }
+
+        uint packed_rgba = meshlet_vertices[base];
+        albedo_sample = float4(
+            (packed_rgba & 0xFFu) * (1.0f / 255.0f),
+            ((packed_rgba >> 8) & 0xFFu) * (1.0f / 255.0f),
+            ((packed_rgba >> 16) & 0xFFu) * (1.0f / 255.0f),
+            1.0f
+        );
+        float2 o     = float2(geometry & 0xFFu, (geometry >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+        normal_frame = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
+        is_bark      = (geometry & (1u << 30)) != 0u;
+        return true;
+    }
+
+    // one impostor texel covers many source texels, a coarse mip keeps the cutout from sparkling
+    uint width, height, mip_count;
+    albedo_texture.GetDimensions(0, width, height, mip_count);
+    float mip = max(log2((float)max(width, 1u)) - log2((float)max(resolution, 1u)) - 1.0f, 0.0f);
+
+    for (uint layer = 0; layer < layers; layer++)
+    {
+        uint geometry = meshlet_vertices[base + layer * 2u + 1u];
+        if ((geometry & (1u << 31)) == 0u)
+        {
+            break;
+        }
+
+        uint packed_uv  = meshlet_vertices[base + layer * 2u];
+        float2 source   = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
+        float2 layer_uv = _draw.impostor_uv_min + source * _draw.impostor_uv_scale;
+        float4 texel_rgba = albedo_texture.SampleLevel(samplers[sampler_bilinear_wrap], layer_uv, mip);
+        if (texel_rgba.a > alpha_threshold)
+        {
+            float2 o      = float2(geometry & 0xFFu, (geometry >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+            normal_frame  = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
+            albedo_sample = texel_rgba;
             return true;
         }
     }

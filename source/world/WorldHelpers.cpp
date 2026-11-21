@@ -892,6 +892,34 @@ namespace spartan
             {
                 material = resolve_folder_material(layer.material_folder);
             }
+            if (!material && mesh)
+            {
+                // inherit the imported gltf/prefab material when no folder override is given so ferns,
+                // herbs and ground foliage keep their leaf textures and alpha-test settings on gpu scatter
+                if (Entity* prototype = mesh->GetRootEntity())
+                {
+                    prototype->SetTransient(true);
+                    vector<Entity*> parts;
+                    parts.push_back(prototype);
+                    prototype->GetDescendants(&parts);
+                    for (Entity* part : parts)
+                    {
+                        if (Render* render = part->GetComponent<Render>())
+                        {
+                            if (Material* mat = render->GetMaterial())
+                            {
+                                material = resolve_layer_material(mat, layer.name, true);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            const bool builtin = layer.mesh_path.rfind("builtin/", 0) == 0;
+            if (!material && builtin && layer.mesh_path != "builtin/pebble")
+            {
+                material = resolve_builtin_material(layer.mesh_path);
+            }
             if (!material && layer.kind == TerrainScatterKind::Detail)
             {
                 // a chip only needs stone, so any of the ground materials will do, this is what keeps
@@ -909,7 +937,6 @@ namespace spartan
             {
                 // a generated mesh carries no imported material, the flags that make a blade bend or a
                 // chip read as stone live in the builtin set
-                const bool builtin   = layer.mesh_path.rfind("builtin/", 0) == 0;
                 const char* fallback = layer.kind == TerrainScatterKind::Detail ? "builtin/pebble" : "builtin/grass_blade";
                 material             = resolve_builtin_material(builtin ? layer.mesh_path : string(fallback));
             }
@@ -960,11 +987,19 @@ namespace spartan
             params.size_min = layer.mesh_scale * min(layer.size_min, layer.size_max);
             params.size_max = layer.mesh_scale * max(layer.size_min, layer.size_max);
             // a generated chip has a planar uv over the whole texture, so without this every chip in the
-            // field is stamped with the same image of a whole gravel bed and the field reads as plastic
+            // field is stamped with the same image of a whole gravel bed and the field reads as plastic;
+            // foliage/flower meshes keep their authored leaf atlas uvs intact and use gentle lean
             const bool textured = material->HasTextureOfType(MaterialTextureType::Color);
-            params.uv_patch     = (layer.kind == TerrainScatterKind::Detail && textured) ? 0.22f : 0.0f;
-            params.tilt_deg     = layer.kind == TerrainScatterKind::Detail ? 18.0f : 0.0f;
+            const bool foliage  = is_foliage_material(material.get()) || material->GetProperty(MaterialProperty::IsFlower) != 0.0f;
+            if (foliage)
+            {
+                material->SetPropertyRuntime(MaterialProperty::ColorVariationFromInstance, 1.0f);
+            }
+            params.uv_patch     = (layer.kind == TerrainScatterKind::Detail && textured && !foliage) ? 0.22f : 0.0f;
+            params.tilt_deg     = layer.kind == TerrainScatterKind::Detail ? (foliage ? 6.0f : 18.0f) : 0.0f;
             params.surface_offset = layer.surface_offset;
+            params.habitat      = layer.habitat;
+            params.sea_level    = terrain->ResolveSeaLevelWorld();
             params.terrain_world_mapping = terrain->GetWorldMapping();
 
             // the gpu kinds reuse the clump fields as a procedural patch field. patch size alone says

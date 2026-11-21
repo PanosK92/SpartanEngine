@@ -698,11 +698,12 @@ float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance
     // fine the noise got, step long through empty space and short once inside the medium instead
     const uint  max_steps     = 112u;
     const float enter_density = 0.002f;
-    float coarse_step = max(scene_distance / 40.0f, 0.20f);
+    float coarse_step = clamp(scene_distance / 64.0f, 0.12f, 0.30f);
 
     float t = jitter * coarse_step;
     float3 lighting = 0.0f;
     uint light_phase = 0u;
+    bool in_medium = false;
 
     [loop]
     for (uint i = 0u; i < max_steps; i++)
@@ -718,7 +719,23 @@ float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance
         {
             t += coarse_step;
             light_phase = 0u;
+            in_medium = false;
             continue;
+        }
+
+        // refine entry boundary on first hit so coarse jitter does not produce 2x2 block halftoning
+        if (!in_medium)
+        {
+            in_medium = true;
+            float back_t = max(t - 0.5f * coarse_step, 0.0f);
+            float3 back_pos = get_camera_position() + ray_direction * back_t;
+            float4 back_sample = volume_medium(float3(uv, volume_distance_to_slice(back_t)), back_pos);
+            if (back_sample.a > enter_density)
+            {
+                t = back_t;
+                sample_pos = back_pos;
+                sample = back_sample;
+            }
         }
 
         // Resolve dense billows at half a slice, but spend fewer samples in the thin

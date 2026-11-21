@@ -121,7 +121,7 @@ float3 restir_surface_evaluate(PathSurface surface, float3 view, float3 directio
     float3 wi = float3(dot(view, tangent), dot(view, bitangent), dot(view, surface.hit_normal));
     float3 wo = float3(dot(direction, tangent), dot(direction, bitangent), dot(direction, surface.hit_normal));
     // Volume absorption is applied along segments, not as an extra interface tint.
-    float3 f = restir_dielectric_evaluate(wi, wo, restir_dielectric_alpha(surface.roughness), eta, transmission_tint, pdf);
+    float3 f = restir_dielectric_evaluate(wi, wo, restir_dielectric_alpha(surface.roughness), eta, transmission_tint, pdf, surface.thin_walled);
     // The dielectric adapter has no diffuse component. Keep the marginal PDF
     // for MIS, but never turn a retained diffuse lobe into a specular interface.
     return component == 1u ? 0.0f : f;
@@ -152,7 +152,7 @@ RestirSurfaceSample restir_surface_sample(PathSurface surface, float3 view, floa
         float3 tangent, bitangent;
         build_orthonormal_basis_fast(surface.hit_normal, tangent, bitangent);
         float3 wi = float3(dot(view, tangent), dot(view, bitangent), dot(view, surface.hit_normal));
-        RestirDielectricSample local = restir_dielectric_sample(wi, restir_dielectric_alpha(surface.roughness), eta, transmission_tint, xi);
+        RestirDielectricSample local = restir_dielectric_sample(wi, restir_dielectric_alpha(surface.roughness), eta, transmission_tint, xi, surface.thin_walled);
         if (!local.valid) return result;
         result.direction = tangent * local.direction.x + bitangent * local.direction.y + surface.hit_normal * local.direction.z;
         result.weight = local.weight;

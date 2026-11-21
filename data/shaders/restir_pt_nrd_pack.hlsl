@@ -113,6 +113,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_factor, specular_factor;
     restir_nrd_material_factors(albedo, metallic, roughness * roughness,
         saturate(dot(normal_ws, view_dir)), diffuse_factor, specular_factor);
+    if (restir_nrd_glass(uv))
+    {
+        diffuse_factor = 0.0f;
+        specular_factor = 1.0f;
+    }
     // Split and demodulate algebraically, avoiding cancellation when the diffuse
     // share is tiny. Both channels carry the same illumination where supported.
     float3 spec_radiance = total_radiance / (diffuse_factor + specular_factor);
@@ -124,7 +129,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float norm_hit_dist = REBLUR_FrontEnd_GetNormHitDist(hit_dist, view_z, hit_dist_params, 1.0f);
 
     tex_uav[thread_id.xy]  = float4(mv, depth_motion, 0.0f);
-    tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, roughness, 0.0f);
+    tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, roughness, restir_nrd_glass(uv) ? 1.0f : 0.0f);
     tex_uav3[thread_id.xy] = float4(view_z, 0.0f, 0.0f, 0.0f);
     tex_uav4[thread_id.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(diff_radiance, norm_hit_dist, true);
     float spec_hit_dist = REBLUR_FrontEnd_GetNormHitDist(max(tex2[thread_id.xy].a, 0.0f), view_z, hit_dist_params, roughness);

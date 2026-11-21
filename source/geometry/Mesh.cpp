@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/Entity.h"
 #include "../core/ThreadPool.h"
 #include "../resource/import/ModelImporter.h"
+#include "../resource/import/ImageImporter.h"
 #include "../rendering/GeometryBuffer.h"
 #include "../rendering/Renderer.h"
 #include "../animation/AnimationEvaluate.h"
@@ -2264,40 +2265,168 @@ namespace spartan
         vector<RHI_Vertex_PosTexNorTan> vertices;
         if (!ReadGeometry(1, &indices, &vertices) || indices.size() < 12) return;
 
+        // read optional sidecar material xmls (<stem>_foliage.xml and <stem>_bark.xml) so trees can pre-bake
+        // a whole-tree (bark + canopy) direct-rgba impostor that needs zero runtime texture fetches and lets
+        // distant trunks cull out completely in phase a
+        auto load_material_image = [](const filesystem::path& xml_path, vector<uint8_t>& rgba, uint32_t& w, uint32_t& h, Vector3& tint, float& cutoff) -> bool
+        {
+            if (!filesystem::exists(xml_path))
+            {
+                return false;
+            }
+
+            pugi::xml_document doc;
+            if (!doc.load_file(xml_path.c_str()))
+            {
+                return false;
+            }
+
+            const pugi::xml_node root = doc.child("Material");
+            if (!root)
+            {
+                return false;
+            }
+
+            tint = Vector3(
+                root.child("color_r").text().as_float(1.0f),
+                root.child("color_g").text().as_float(1.0f),
+                root.child("color_b").text().as_float(1.0f)
+            );
+            cutoff = root.child("alpha_cutoff").text().as_float(0.5f);
+
+            string texture_path;
+            for (const pugi::xml_node tex : root.child("textures").children())
+            {
+                if (tex.attribute("texture_type").as_uint(999u) == 0u && tex.attribute("texture_slot").as_uint(999u) == 0u)
+                {
+                    texture_path = tex.attribute("texture_path").as_string("");
+                    break;
+                }
+            }
+            if (texture_path.empty())
+            {
+                return false;
+            }
+
+            return ImageImporter::LoadSdrRgba8(texture_path, w, h, rgba);
+        };
+
         auto proxy = make_shared<GeometryParentPage>();
-        proxy->center = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size())).GetCenter();
-        Vector2 lo(FLT_MAX, FLT_MAX), hi(-FLT_MAX, -FLT_MAX);
-        for (const auto& vertex : vertices)
+        vector<uint8_t> leaf_rgba, bark_rgba;
+        uint32_t leaf_w = 0, leaf_h = 0, bark_w = 0, bark_h = 0;
+        Vector3 leaf_tint(1.0f, 1.0f, 1.0f), bark_tint(0.35f, 0.28f, 0.22f);
+        float leaf_cutoff = 0.5f, bark_cutoff = 0.5f;
+        bool has_baked_rgba = false;
+        if (!GetResourceFilePath().empty())
         {
-            const Vector2 uv = vertex.get_uv();
-            lo = Vector2(min(lo.x, uv.x), min(lo.y, uv.y));
-            hi = Vector2(max(hi.x, uv.x), max(hi.y, uv.y));
-            proxy->radius = max(proxy->radius, (vertex.get_position() - proxy->center).Length());
+            const filesystem::path mesh_path(GetResourceFilePath());
+            const filesystem::path base = mesh_path.parent_path() / mesh_path.stem();
+            has_baked_rgba = load_material_image(base.string() + "_foliage.xml", leaf_rgba, leaf_w, leaf_h, leaf_tint, leaf_cutoff);
+            if (has_baked_rgba)
+            {
+                load_material_image(base.string() + "_bark.xml", bark_rgba, bark_w, bark_h, bark_tint, bark_cutoff);
+            }
         }
-        if (proxy->radius <= 0) return;
-        proxy->uv_min = lo;
-        proxy->uv_scale = Vector2(max(hi.x - lo.x, 1e-6f), max(hi.y - lo.y, 1e-6f));
-        generated_cache::Hash hash;
-        hash.Add(uint32_t{1});
-        hash.Add(GeometryParentPage::frames);
-        hash.Add(GeometryParentPage::resolution);
-        hash.Add(GeometryParentPage::layers);
-        hash.Add(vertices);
-        hash.Add(indices);
-        const auto path = generated_cache::Path(World::GetResourceDirectory(), "canopy", hash.value);
-        vector<uint32_t> atlas;
-        constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames * GeometryParentPage::resolution *
-            GeometryParentPage::resolution * GeometryParentPage::layers * 2;
-        const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
-        if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
+
+        if (has_baked_rgba)
         {
-            geometry_processing::bake_impostor(vertices, indices, GeometryParentPage::frames, GeometryParentPage::resolution,
-                GeometryParentPage::layers, proxy->center, proxy->radius, proxy->uv_min, proxy->uv_scale, atlas);
-            if (cache) generated_cache::Save(path, hash.value, atlas);
+            if (bark.empty() || bark_indices.empty())
+            {
+                ReadGeometry(0, &bark_indices, &bark);
+            }
+
+            BoundingBox whole_bounds(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            if (!bark.empty())
+            {
+                whole_bounds.Merge(BoundingBox(bark.data(), static_cast<uint32_t>(bark.size())));
+            }
+            proxy->center = whole_bounds.GetCenter();
+            for (const auto& vertex : vertices)
+            {
+                proxy->radius = max(proxy->radius, (vertex.get_position() - proxy->center).Length());
+            }
+            for (const auto& vertex : bark)
+            {
+                proxy->radius = max(proxy->radius, (vertex.get_position() - proxy->center).Length());
+            }
+            if (proxy->radius <= 0.0f) return;
+
+            constexpr uint32_t baked_res = GeometryParentPage::baked_resolution;
+            generated_cache::Hash hash;
+            hash.Add(uint32_t{2});
+            hash.Add(GeometryParentPage::frames);
+            hash.Add(baked_res);
+            hash.Add(leaf_w);
+            hash.Add(leaf_h);
+            hash.Add(bark_w);
+            hash.Add(bark_h);
+            hash.Add(leaf_cutoff);
+            hash.Add(leaf_tint);
+            hash.Add(bark_tint);
+            hash.Add(vertices);
+            hash.Add(indices);
+            hash.Add(bark);
+            hash.Add(bark_indices);
+            const auto path = generated_cache::Path(World::GetResourceDirectory(), "canopy", hash.value);
+            vector<uint32_t> atlas;
+            constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames * baked_res * baked_res * 2;
+            const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
+            if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
+            {
+                geometry_processing::ImpostorTextureInput bark_tex{ bark_rgba.empty() ? nullptr : bark_rgba.data(), bark_w, bark_h, bark_tint, bark_cutoff };
+                geometry_processing::ImpostorTextureInput leaf_tex{ leaf_rgba.data(), leaf_w, leaf_h, leaf_tint, leaf_cutoff };
+                geometry_processing::bake_tree_impostor_rgba(
+                    bark, bark_indices, bark_tex,
+                    vertices, indices, leaf_tex,
+                    GeometryParentPage::frames, baked_res,
+                    proxy->center, proxy->radius, atlas
+                );
+                if (cache) generated_cache::Save(path, hash.value, atlas);
+            }
+            proxy->atlas               = GeometryBuffer::AppendMeshletVertices(atlas.data(), static_cast<uint32_t>(atlas.size()));
+            proxy->baked_rgba          = true;
+            proxy->impostor_resolution = baked_res;
+            proxy->impostor_layers     = 1;
         }
-        // Atlas words share the geometry's read-only uint arena. Each species
-        // uploads once and all its instances reference the same block.
-        proxy->atlas = GeometryBuffer::AppendMeshletVertices(atlas.data(), static_cast<uint32_t>(atlas.size()));
+        else
+        {
+            proxy->center = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size())).GetCenter();
+            Vector2 lo(FLT_MAX, FLT_MAX), hi(-FLT_MAX, -FLT_MAX);
+            for (const auto& vertex : vertices)
+            {
+                const Vector2 uv = vertex.get_uv();
+                lo = Vector2(min(lo.x, uv.x), min(lo.y, uv.y));
+                hi = Vector2(max(hi.x, uv.x), max(hi.y, uv.y));
+                proxy->radius = max(proxy->radius, (vertex.get_position() - proxy->center).Length());
+            }
+            if (proxy->radius <= 0) return;
+            proxy->uv_min = lo;
+            proxy->uv_scale = Vector2(max(hi.x - lo.x, 1e-6f), max(hi.y - lo.y, 1e-6f));
+            generated_cache::Hash hash;
+            hash.Add(uint32_t{1});
+            hash.Add(GeometryParentPage::frames);
+            hash.Add(GeometryParentPage::resolution);
+            hash.Add(GeometryParentPage::layers);
+            hash.Add(vertices);
+            hash.Add(indices);
+            const auto path = generated_cache::Path(World::GetResourceDirectory(), "canopy", hash.value);
+            vector<uint32_t> atlas;
+            constexpr size_t words = GeometryParentPage::frames * GeometryParentPage::frames * GeometryParentPage::resolution *
+                GeometryParentPage::resolution * GeometryParentPage::layers * 2;
+            const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
+            if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
+            {
+                geometry_processing::bake_impostor(vertices, indices, GeometryParentPage::frames, GeometryParentPage::resolution,
+                    GeometryParentPage::layers, proxy->center, proxy->radius, proxy->uv_min, proxy->uv_scale, atlas);
+                if (cache) generated_cache::Save(path, hash.value, atlas);
+            }
+            // Atlas words share the geometry's read-only uint arena. Each species
+            // uploads once and all its instances reference the same block.
+            proxy->atlas               = GeometryBuffer::AppendMeshletVertices(atlas.data(), static_cast<uint32_t>(atlas.size()));
+            proxy->baked_rgba          = false;
+            proxy->impostor_resolution = GeometryParentPage::resolution;
+            proxy->impostor_layers     = GeometryParentPage::layers;
+        }
         const float r = proxy->radius;
         const Vector3 c = proxy->center;
         vector<RHI_Vertex_PosTexNorTan> quad = {

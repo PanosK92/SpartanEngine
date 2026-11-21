@@ -437,6 +437,7 @@ namespace pass_instance_cull
     static const SHARED_UINT max_instances  = 3; // uint
     static const SHARED_UINT late           = 4; // bool
     static const SHARED_UINT history_hiz    = 5; // bool
+    static const SHARED_UINT max_impostors  = 6; // uint, 0 disables direct impostor batching
 }
 
 namespace pass_indirect_cull
@@ -524,6 +525,7 @@ namespace pass_path_tracing
     static const SHARED_UINT bounces = 1;
     static const SHARED_UINT stride = 2;
     static const SHARED_UINT phase = 3;
+    static const SHARED_UINT write_guides = 4;
 }
 
 namespace pass_restir_temporal
@@ -1133,15 +1135,22 @@ struct SurvivingInstance
 #define CULL_PHASE_TRIANGLE_BASE_OPAQUE 2u
 #define CULL_PHASE_TRIANGLE_BASE_ALPHA  3u
 #define CULL_PHASE_MESHLET_COUNT        4u // 4 entries, the meshlets in triangle_dispatch_args slots 0 to 3, the mesh grids round them up
-#define CULL_PHASE_COUNT                8u
+#define CULL_PHASE_IMPOSTOR_BASE        8u // where early impostor survivors end in impostor_instances
+#define CULL_PHASE_IMPOSTOR_COUNT       9u // 2 entries: total/early impostor count (slot 0) and late appended count (slot 1)
+#define CULL_PHASE_COUNT                11u
 #define CULL_PHASE_MODE_SNAPSHOT        0u
 #define CULL_PHASE_MODE_LATE_MESHLETS   1u
 #define CULL_PHASE_MODE_LATE_TRIANGLES  2u
 
 // a dispatch dimension is capped at 65535 groups, so mesh draws lay their meshlets out in rows of this many groups
 // triangle_dispatch_args slots 4 to 7 hold the grids of slots 0 to 3, a power of two keeps every grid within 2^22 groups
+// slots 8 and 9 hold early/total and late impostor counts, slots 10 and 11 hold their 16-quad-per-group mesh grids
 #define MESH_GRID_WIDTH                 256u
 #define MESH_GRID_ARGS_SLOT             4u
+#define IMPOSTOR_BATCH_SIZE             16u
+#define IMPOSTOR_ARGS_SLOT              8u
+#define IMPOSTOR_GRID_ARGS_SLOT         10u
+#define TRIANGLE_DISPATCH_ARGS_COUNT    12u
 
 // gpu-driven shadow maps, one record per shadow casting draw, culled per (atlas slice, instance) by shadow_cull.hlsl
 // the lod geometry is stored twice because directional cascades bias the lod one step coarser than local lights

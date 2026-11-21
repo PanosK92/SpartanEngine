@@ -45,6 +45,7 @@ groupshared uint            gs_first_vertex;
 groupshared uint            gs_first_micro;
 groupshared bool            gs_skip_backface;
 groupshared bool            gs_emit;
+groupshared float           gs_lod_fade;
 groupshared float3          gs_world[MESHLET_MAX_VERTICES];
 
 [outputtopology("triangle")]
@@ -80,6 +81,7 @@ void main_ms(
         gs_first_vertex   = 0u;
         gs_first_micro    = 0u;
         gs_skip_backface  = false;
+        gs_lod_fade       = 2.0f;
 
         if (mesh_group < mesh_count)
         {
@@ -98,6 +100,13 @@ void main_ms(
                 gs_first_micro    = gs_draw.meshlet_micro_base + gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
                 cache_mesh_instance(gs_draw, gs_mi.instance_index, meshlet_instance_wind_slot(gs_mi, gs_draw.instance_offset));
+#ifdef DEPTH_ALPHA
+                if ((gs_draw.flags & draw_flag_impostor) == 0u && gs_draw.impostor_uv_scale.x > 0.0f)
+                {
+                    float f = compute_tree_impostor_fade(gs_draw.impostor_center, gs_draw.impostor_radius, gs_draw.impostor_uv_scale.x, mesh_transform);
+                    gs_lod_fade = (f > 0.0f && f < 1.0f) ? f : 2.0f;
+                }
+#endif
             }
         }
     }
@@ -138,6 +147,7 @@ void main_ms(
         depth_mesh_vertex out_v;
         out_v.position       = clipped.position;
         out_v.uv_misc        = clipped.uv_misc;
+        out_v.uv_misc.w      = gs_lod_fade;
         if ((gs_draw.flags & draw_flag_impostor) != 0u)
         {
             out_v.uv_misc.z = -1.0f - (float)meshlet_instance_draw_index(gs_mi);

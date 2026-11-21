@@ -1240,6 +1240,71 @@ namespace spartan
         }
     }
 
+    bool ImageImporter::LoadSdrRgba8(const string& file_path, uint32_t& width, uint32_t& height, vector<uint8_t>& rgba_out)
+    {
+        width  = 0;
+        height = 0;
+        rgba_out.clear();
+
+        if (!FileSystem::Exists(file_path))
+        {
+            return false;
+        }
+
+        FREE_IMAGE_FORMAT format = FreeImage_GetFileType(file_path.c_str(), 0);
+        if (format == FIF_UNKNOWN)
+        {
+            format = FreeImage_GetFIFFromFilename(file_path.c_str());
+        }
+        if (format == FIF_UNKNOWN || !FreeImage_FIFSupportsReading(format))
+        {
+            return false;
+        }
+
+        FIBITMAP* bitmap = FreeImage_Load(format, file_path.c_str());
+        if (!bitmap)
+        {
+            return false;
+        }
+
+        bitmap = apply_bitmap_corrections(bitmap);
+        if (!bitmap)
+        {
+            return false;
+        }
+
+        if (FreeImage_GetBPP(bitmap) != 32)
+        {
+            bitmap = convert_to_32bits(bitmap);
+            if (!bitmap)
+            {
+                return false;
+            }
+            if (FreeImage_GetRedMask(bitmap) == 0xff0000)
+            {
+                swap_red_blue(bitmap);
+            }
+        }
+
+        width  = FreeImage_GetWidth(bitmap);
+        height = FreeImage_GetHeight(bitmap);
+        if (width == 0 || height == 0)
+        {
+            FreeImage_Unload(bitmap);
+            return false;
+        }
+
+        rgba_out.resize(static_cast<size_t>(width) * height * 4);
+        const uint32_t row_bytes = width * 4;
+        for (uint32_t y = 0; y < height; y++)
+        {
+            memcpy(rgba_out.data() + static_cast<size_t>(y) * row_bytes, FreeImage_GetScanLine(bitmap, y), row_bytes);
+        }
+
+        FreeImage_Unload(bitmap);
+        return true;
+    }
+
     void ImageImporter::SaveSdr(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
         if (width == 0 || height == 0 || !data)

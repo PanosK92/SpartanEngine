@@ -18,12 +18,12 @@ namespace spartan::Renderer
     inline TConsoleVar<float> geometry_error_pixels("r.geometry_error_pixels", 1.0f, "Maximum projected geometric error in render pixels");
 
     // Coverage proxies approximate a group of textured leaves. Request their
-    // finer pages when the group covers a visible patch of canopy.
+    // finer pages early enough that card swaps stay nearly invisible along roads.
     inline float GeometryErrorPixels(Render* render)
     {
         const float pixels = std::max(0.1f, geometry_error_pixels.GetValue());
         return (render->GetMesh()->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) &&
-            render->GetSubMeshIndex() == 1 ? 12.0f * pixels : pixels;
+            render->GetSubMeshIndex() == 1 ? 2.5f * pixels : pixels;
     }
 
     inline bool SelectObjectParent(Render* render, Sb_DrawData& draw, Camera* camera,
@@ -223,20 +223,26 @@ namespace spartan::Renderer
     inline void AttachTreeProxyDraw(Render* render, uint32_t first_draw, uint32_t first_task, uint32_t instances,
         uint32_t first_extra, uint32_t capacity)
     {
-        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 96.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
-        const auto& proxy = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex()).parent_page;
+        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 72.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
+        Mesh* mesh = render->GetMesh();
+        const bool tree = (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
+        const bool canopy = tree && render->GetSubMeshIndex() == 1;
+        const bool bark_covered_by_impostor = tree && render->GetSubMeshIndex() == 0 &&
+            mesh->GetSubMeshCount() > 1 && mesh->GetSubMesh(1).parent_page && mesh->GetSubMesh(1).parent_page->baked_rgba;
+        const auto& proxy = bark_covered_by_impostor ? mesh->GetSubMesh(1).parent_page : mesh->GetSubMesh(render->GetSubMeshIndex()).parent_page;
         if (!proxy || !render->HasInstancing() || m_indirect_draw_count >= capacity) return;
         const uint32_t vertices = proxy->uses_root_vertices ? render->GetVertexOffset() : proxy->vertices;
-        if (!GeometryBuffer::IsResident(vertices + proxy->vertex_count, proxy->indices + proxy->index_count)) return;
+        if (!bark_covered_by_impostor && !GeometryBuffer::IsResident(vertices + proxy->vertex_count, proxy->indices + proxy->index_count)) return;
         const uint32_t index = m_indirect_draw_count++;
         auto& draw = m_indirect_draw_data[index];
         draw = m_indirect_draw_data[first_draw];
-        const bool tree = (render->GetMesh()->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
-        const bool canopy = tree && render->GetSubMeshIndex() == 1;
         if (canopy)
         {
             draw.flags |= (1u << 14) | 8u | 16u;
-            draw.impostor_layout = GeometryParentPage::frames | (GeometryParentPage::resolution << 8) | (GeometryParentPage::layers << 24);
+            draw.impostor_layout = GeometryParentPage::frames |
+                (proxy->impostor_resolution << 8) |
+                (proxy->impostor_layers << 24) |
+                (proxy->baked_rgba ? 0x80000000u : 0u);
             draw.impostor_center = proxy->center;
             draw.impostor_radius = proxy->radius;
             draw.impostor_uv_min = proxy->uv_min;
@@ -246,8 +252,8 @@ namespace spartan::Renderer
         draw.cluster_center = proxy->center;
         draw.cluster_radius = proxy->radius;
         const float diameter_pixels = canopy_pixels.GetValue();
-        // The trunk parent must also fit its measured shape error into two pixels.
-        draw.cluster_error = canopy ? diameter_pixels :
+        // When the whole-tree impostor already bakes the trunk, cull the bark submesh at the exact same pixel threshold.
+        draw.cluster_error = (canopy || bark_covered_by_impostor) ? diameter_pixels :
             (tree ? std::min(diameter_pixels, 4.0f * proxy->radius / std::max(proxy->error, 1e-5f))
                   : 2.0f * GeometryErrorPixels(render) * proxy->radius / std::max(proxy->error, 1e-5f));
         draw.geometry_bounds_min = proxy->bounds.GetMin();
@@ -262,7 +268,39 @@ namespace spartan::Renderer
         draw.previous_vertex_offset = 0;
         m_indirect_renders[index] = render;
         const uint32_t batches = (instances + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
-        for (uint32_t i = first_task; i < first_task + batches; ++i) m_cull_tasks[i].canopy_draw = index + 1;
+        if (canopy)
+        {
+            // Tag all 3D canopy draws (and their refinement levels) with the impostor proxy bounds and
+            // diameter threshold so depth_prepass can run a complementary screen-door crossfade.
+            auto mark_crossfade = [&](uint32_t d_idx)
+            {
+                auto& target = m_indirect_draw_data[d_idx];
+                target.impostor_center     = proxy->center;
+                target.impostor_radius     = proxy->radius;
+                target.impostor_uv_scale.x = diameter_pixels;
+            };
+            auto mark_task = [&](const Sb_CullTask& t)
+            {
+                mark_crossfade(t.draw_index);
+                if ((t.refinement_draw & 0xc0000000u) == CULL_TASK_CLUSTER_REFINEMENT)
+                {
+                    const uint32_t rf_first = t.refinement_draw & CULL_TASK_LEVEL_MASK;
+                    const uint32_t rf_count = 1u + ((t.refinement_draw >> CULL_TASK_LEVEL_SHIFT) & 15u);
+                    for (uint32_t r = 0; r < rf_count; ++r)
+                    {
+                        mark_crossfade(rf_first + r);
+                    }
+                }
+            };
+            mark_task(m_cull_tasks[first_task]);
+            for (uint32_t i = first_extra; i < m_cull_task_count; i += batches)
+            {
+                mark_task(m_cull_tasks[i]);
+            }
+        }
+        // Setting bit 31 tells instance_cull to drop the instance completely once it passes the proxy threshold.
+        const uint32_t base_canopy_draw = bark_covered_by_impostor ? ((index + 1) | 0x80000000u) : (index + 1);
+        for (uint32_t i = first_task; i < first_task + batches; ++i) m_cull_tasks[i].canopy_draw = base_canopy_draw;
         for (uint32_t i = first_extra; i < m_cull_task_count; ++i) m_cull_tasks[i].canopy_draw = (index + 1) | 0x80000000u;
     }
 }

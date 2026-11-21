@@ -150,8 +150,10 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
 {
     GlassRefraction result = (GlassRefraction)0;
     result.throughput      = 1.0f;
-    float3 direction       = surface.thickness < 0.05f ? view_dir : refracted_dir;
-    float3 origin          = surface.position + direction * max(surface.thickness, 0.01f);
+    float3 direction       = surface.thin_walled ? view_dir : refracted_dir;
+    float3 origin          = surface.position;
+    if (surface.thin_walled)
+        origin += refracted_dir * (surface.thickness / max(abs(dot(refracted_dir, surface.normal)), 0.001f));
     float  mip_count       = pass_float(pass_reflections_apply::mip_count);
     float  pixel_angle     = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
     float2 cone            = float2(surface.camera_to_pixel_length * pixel_angle, pixel_angle + surface.roughness_alpha);
@@ -179,7 +181,7 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
             float cosine       = max(abs(dot(hit.normal, direction)), 0.15f);
             float path         = max(mat.thickness, 0.001f) / cosine;
             result.throughput *= (1.0f - F_Schlick(0.04f, 1.0f, cosine)) * pow(max(hit.albedo, 0.02f), max(mat.absorption, 0.0f) * path * glass_absorption_scale);
-            origin             = hit.position + direction * max(mat.thickness, 0.01f);
+            origin             = hit.position;
             continue;
         }
 
@@ -417,12 +419,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 float3 traced_radiance   = 0.0f;
                 float3 traced_throughput = 1.0f;
                 float  traced_distance   = 0.0f;
-                if (surface.thin_walled)
-                {
-                    refracted_uv = thin_pane_uv(surface, view_dir_normalized, refracted_dir, uv);
-                }
 #ifdef RAY_TRACING_ENABLED
-                else if (pass_bool(pass_reflections_apply::ray_traced_refraction))
+                if (pass_bool(pass_reflections_apply::ray_traced_refraction))
                 {
                     GlassRefraction traced = trace_glass_refraction(surface, view_dir_normalized, refracted_dir, thread_id.xy);
                     traced_throughput      = traced.throughput;
@@ -437,7 +435,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                         traced_distance = traced.distance;
                     }
                 }
+                else
 #endif
+                if (surface.thin_walled)
+                {
+                    refracted_uv = thin_pane_uv(surface, view_dir_normalized, refracted_dir, uv);
+                }
                 else
                 {
                     float optical_path = shell_thickness / max(n_dot_v, 0.15f);
@@ -531,10 +534,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float  shell_thickness   = max(surface.thickness, 0.001f);
         float  optical_path      = max(shell_thickness / max(n_dot_v, 0.15f), shell_thickness);
         float3 transmission_tint = pow(max(surface.albedo, 0.02f), max(surface.absorption, 0.0f) * optical_path * glass_absorption_scale);
-        float  coverage          = saturate(1.0f - surface.alpha * 0.25f);
-        float3 reflection_total  = tex_uav[thread_id.xy].rgb + specular_reflection;
+        if (surface.thin_walled)
+            F_glass = 2.0f * F_glass / (1.0f + F_glass);
+        float3 reflection_total  = tex_uav[thread_id.xy].rgb + reflection * F_glass;
         float3 kT                = float3(1.0f, 1.0f, 1.0f) - F_glass;
-        float3 transmission      = refraction * kT * transmission_tint * coverage;
+        float3 transmission      = refraction * kT * transmission_tint;
         tex_uav[thread_id.xy]    = validate_output(float4(reflection_total + transmission, 1.0f));
     }
     else if (surface.is_water())
