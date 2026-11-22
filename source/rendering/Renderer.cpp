@@ -2668,7 +2668,7 @@ namespace spartan
         Renderer::view().frame.cluster_z_scale        = z_scale;
         Renderer::view().frame.cluster_z_bias         = z_bias;
         Renderer::view().frame.volumetric_light_count = m_volumetric_light_count;
-        Renderer::view().frame.cluster_padding1       = 0.0f;
+        Renderer::view().frame.geometry_error_pixels  = max(0.1f, geometry_error_pixels.GetValue());
     }
 
     void Renderer::UpdateFrameCb_FeatureBits()

@@ -188,7 +188,7 @@ struct FrameBufferData
     SHARED_FLOAT  cluster_z_scale;
     SHARED_FLOAT  cluster_z_bias;
     SHARED_UINT   volumetric_light_count;
-    SHARED_FLOAT  cluster_padding1;
+    SHARED_FLOAT  geometry_error_pixels; // r.geometry_error_pixels, the most a drawn lod may differ from the finest geometry
 
     // fft ocean, filled each frame from the active Water component while it is enabled
     SHARED_FLOAT4 ocean_cascade_length;       // patch length (meters) per cascade

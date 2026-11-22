@@ -22,8 +22,9 @@ float trace_local_light_visibility(Surface surface, Light light)
 {
     if (light.is_directional())
     {
-        float offset = 0.01f + surface.camera_to_pixel_length * 0.0001f;
-        return rt_trace_visibility(surface.position + surface.normal * offset, normalize(-light.forward), 1000.0f);
+        float3 direction = normalize(-light.forward);
+        float offset     = max(0.01f + surface.camera_to_pixel_length * 0.0001f, rt_lod_shadow_offset(surface.camera_to_pixel_length));
+        return rt_trace_visibility(surface.position + surface.normal * offset, direction, 1000.0f);
     }
 
     float3 target = light.is_area()
@@ -41,7 +42,7 @@ float trace_local_light_visibility(Surface surface, Light light)
     }
 
     float3 direction = to_light / distance;
-    float offset     = 0.001f + min(surface.camera_to_pixel_length * 0.00001f, 0.002f);
+    float offset     = max(0.001f + min(surface.camera_to_pixel_length * 0.00001f, 0.002f), rt_lod_shadow_offset(surface.camera_to_pixel_length));
     float3 origin    = surface.position + surface.normal * offset;
     return rt_trace_visibility(origin, direction, distance - emitter_safety);
 }
