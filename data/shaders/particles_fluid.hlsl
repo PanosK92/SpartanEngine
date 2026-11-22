@@ -178,23 +178,25 @@ float3 fluid_previous_uvw(float3 position)
 float3 fluid_previous_velocity(float3 position, float3 ambient)
 {
     float3 uvw = fluid_previous_uvw(position);
-    if (any(uvw < 0.0f) || any(uvw > 1.0f))
+    if (!all(isfinite(uvw)) || any(uvw < 0.0f) || any(uvw > 1.0f))
     {
         return ambient;
     }
 
-    return tex_fluid_velocity.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0.0f).xyz;
+    float3 velocity = tex_fluid_velocity.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0.0f).xyz;
+    return all(isfinite(velocity)) ? velocity : ambient;
 }
 
 float4 fluid_previous_scalar(float3 position)
 {
     float3 uvw = fluid_previous_uvw(position);
-    if (any(uvw < 0.0f) || any(uvw > 1.0f))
+    if (!all(isfinite(uvw)) || any(uvw < 0.0f) || any(uvw > 1.0f))
     {
         return 0.0f;
     }
 
-    return tex_fluid_scalar.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0.0f);
+    float4 scalar = tex_fluid_scalar.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0.0f);
+    return all(isfinite(scalar)) ? scalar : 0.0f;
 }
 
 [numthreads(8, 8, 4)]
@@ -305,9 +307,18 @@ void main_cs(uint3 id : SV_DispatchThreadID)
         velocity *= fluid_speed_max / speed;
     }
 
-    if (scalar.r < 0.0005f)
+    if (!all(isfinite(velocity)))
+    {
+        velocity = ambient;
+    }
+
+    if (!all(isfinite(scalar)) || scalar.r < 0.0005f)
     {
         scalar.rba = 0.0f;
+        if (!isfinite(scalar.g))
+        {
+            scalar.g = 0.0f;
+        }
     }
 
     tex_fluid_velocity_uav[id] = float4(velocity, 0.0f);

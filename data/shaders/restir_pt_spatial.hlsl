@@ -66,6 +66,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float  roughness   = max(material.r, 0.04f);
     float  metallic    = material.g;
 
+    if (restir_is_smooth_dielectric_primary(restir_camera_primary(pos_ws, normal_ws, geometric_normal_ws, view_dir, albedo, roughness, metallic)))
+    {
+        float4 e0, e1, e2, e3;
+        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3);
+        tex_reservoir0[pixel] = e0;
+        tex_reservoir1[pixel] = e1;
+        tex_reservoir2[pixel] = e2;
+        tex_reservoir3[pixel] = e3;
+        return;
+    }
+
     Reservoir center = unpack_reservoir(
         tex_reservoir_prev0[pixel],
         tex_reservoir_prev1[pixel],
@@ -240,24 +251,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise
     // that a luminance only target cannot importance sample
-    float3 gi = float3(0, 0, 0);
     ShiftResult center_self = self_shift_evaluate(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    gi = canonical_share * center_self.f_dst * max(center.W, 0.0f);
+    float3 center_contrib = canonical_share * center_self.f_dst * max(center.W, 0.0f);
+    float3 gi = center_contrib;
+    float3 specular = center_contrib * restir_sample_specular_fraction(center.sample, pos_ws, normal_ws,
+        geometric_normal_ws, view_dir, albedo, roughness, metallic);
 
     for (uint v = 0; v < valid_neighbors; v++)
     {
         float3 contribution = stream_share[v] * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
         gi += contribution;
+        specular += contribution * restir_sample_specular_fraction(stream_samples[v], pos_ws, normal_ws,
+            geometric_normal_ws, view_dir, albedo, roughness, metallic);
     }
-
-    float3 specular = gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic);
 
     // Demodulate once; composition restores the primary albedo.
     gi = gi / restir_gi_demodulator(albedo);
+    specular = specular / restir_gi_demodulator(albedo);
 
     if (any(isnan(gi)) || any(isinf(gi)))
     {
         gi = float3(0, 0, 0);
+        specular = float3(0, 0, 0);
+    }
+    if (any(isnan(specular)) || any(isinf(specular)))
+    {
+        specular = float3(0, 0, 0);
     }
 
     float hit_dist = restir_denoiser_hit_distance(combined, pos_ws, normal_ws, geometric_normal_ws,
@@ -267,10 +286,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // the matching comment in restir_pt_temporal, a value keyed fallback lifts every dark pixel
     // and flips estimators frame to frame
     float4 temporal_stage = tex_uav[pixel];
+    float4 temporal_spec  = restir_specular_output[pixel];
     if (combined.M <= 0.0f)
     {
         gi = temporal_stage.rgb;
-        hit_dist = restir_specular_output[pixel].a;
+        specular = temporal_spec.rgb;
+        hit_dist = temporal_spec.a;
     }
 
     // emissive nee and indirect lighting are already carried by the reservoir

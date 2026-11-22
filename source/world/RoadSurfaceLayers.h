@@ -51,13 +51,24 @@ namespace spartan::layered_road_surface
         texture(MaterialTextureType::Normal,"nor_gl");
         texture(MaterialTextureType::Roughness,"rough");
         texture(MaterialTextureType::Occlusion,"ao");
-        if (layer!=2) texture(MaterialTextureType::Height,"height");
+        if (layer!=2)
+        {
+            texture(MaterialTextureType::Height,"height");
+            const std::filesystem::path detail_dir = config.layered_roads_material_dir;
+            if (std::filesystem::is_regular_file(detail_dir / "asphalt_track_diff_4k.jpg"))
+            {
+                material->SetTexture(MaterialTextureType::Color,     (detail_dir / "asphalt_track_diff_4k.jpg").generic_string(),   1);
+                material->SetTexture(MaterialTextureType::Normal,    (detail_dir / "asphalt_track_nor_gl_4k.jpg").generic_string(), 1);
+                material->SetTexture(MaterialTextureType::Roughness, (detail_dir / "asphalt_track_rough_4k.jpg").generic_string(),  1);
+                material->SetTexture(MaterialTextureType::Occlusion, (detail_dir / "asphalt_track_ao_4k.jpg").generic_string(),     1);
+                material->SetTexture(MaterialTextureType::Height,    (detail_dir / "asphalt_track_height_4k.png").generic_string(), 1);
+            }
+        }
         material->SetColor(layer==2 ? Color(.66f,.63f,.58f,1) : Color(1,1,1,1));
         material->SetProperty(MaterialProperty::Metalness,0);
         material->SetProperty(MaterialProperty::Roughness,1.0f);
         material->SetProperty(MaterialProperty::Normal,layer==2 ? .55f : 1.0f);
-        // The maps encode the static surface. Height remains available for water pooling.
-        if (layer!=2) material->SetProperty(MaterialProperty::Height,0.0f);
+        if (layer!=2) material->SetProperty(MaterialProperty::Height,0.5f);
         material->SetProperty(MaterialProperty::TerrainBlend,layer==2 ? .8f : 0);
         material->SetProperty(MaterialProperty::TerrainCoating,layer==2 ? 1.0f : 0);
         material->SetProperty(MaterialProperty::IsRoadSurface,layer==0 ? 1.0f : 0.0f);

@@ -309,7 +309,7 @@ void splat_voxel(uint3 voxel, Particle particle, EmitterParams emitter, float fa
 {
     uint index = volume_index(voxel);
     float density = saturate(particle.color.a) * max(emitter.volume_density, 0.0f) * falloff;
-    if (density <= 0.0001f)
+    if (!isfinite(density) || !(density > 0.0001f))
     {
         return;
     }
@@ -322,6 +322,14 @@ void splat_voxel(uint3 voxel, Particle particle, EmitterParams emitter, float fa
     // neutral grey to within a couple of percent, so the two channels that buys are better spent on the
     // parcel age the march reads to give each parcel a noise phase of its own
     float shade = saturate(dot(particle.color.rgb, float3(0.2126f, 0.7152f, 0.0722f)));
+    if (!isfinite(shade))
+    {
+        shade = 0.0f;
+    }
+    if (!isfinite(age))
+    {
+        age = 0.0f;
+    }
 
     uint density_u = (uint)min(density * volume_density_scale, 65535.0f);
     uint shade_u   = (uint)min(shade * density * volume_color_scale, 65535.0f);
@@ -343,7 +351,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     }
 
     Particle particle = particle_buffer_a[index];
-    if (particle.lifetime <= 0.0f || particle.max_lifetime <= 0.0f || particle.color.a <= 0.0f)
+    if (!all(isfinite(particle.position)) || !isfinite(particle.size) || !all(isfinite(particle.color)) ||
+        !isfinite(particle.lifetime) || !isfinite(particle.max_lifetime) ||
+        !(particle.lifetime > 0.0f) || !(particle.max_lifetime > 0.0f) || !(particle.color.a > 0.0f))
     {
         return;
     }
@@ -371,14 +381,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     }
 
     float4 clip = mul(float4(particle.position, 1.0f), buffer_frame.view_projection);
-    if (clip.w <= 0.0f)
+    if (!all(isfinite(clip)) || !(clip.w > 0.0f))
     {
         return;
     }
 
     float3 ndc = clip.xyz / clip.w;
     float distance_camera = distance(particle.position, get_camera_position());
-    if (distance_camera <= 0.01f || distance_camera >= volume_max_distance)
+    if (!isfinite(distance_camera) || !(distance_camera > 0.01f && distance_camera < volume_max_distance))
     {
         return;
     }
@@ -407,6 +417,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float radius_x = clamp(want_x, 0.5f, 10.0f);
     float radius_y = clamp(want_y, 0.5f, 10.0f);
     float radius_d = clamp(want_d, 0.35f, 6.0f);
+    if (!all(isfinite(center)) || !isfinite(radius_x) || !isfinite(radius_y) || !isfinite(radius_d))
+    {
+        return;
+    }
     // Cull the footprint, not its centre, so smoke rolls through the screen edge
     // without losing an entire puff while some of it is still visible.
     if (center.x + radius_x < 0.0f || center.x - radius_x >= volume_width ||
@@ -421,6 +435,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // single voxel from coming back as a bright dot
     float mass_scale = (want_x * want_y * want_d) / max(radius_x * radius_y * radius_d, 0.0001f);
     mass_scale = min(mass_scale, 3.0f);
+    if (!isfinite(mass_scale) || !(mass_scale > 0.0f))
+    {
+        return;
+    }
 
     // smoke that also lives in the fluid grid is already there as density, inside the grid its particles
     // are only tracers waiting to carry the trail on past the faces, so they come in as the grid goes out
@@ -456,7 +474,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                                       (voxel_center.y - center.y) / max(radius_y, 0.001f),
                                       (voxel_center.z - center.z) / max(radius_d, 0.001f));
                 float dist_sq = dot(delta, delta);
-                if (dist_sq >= 1.0f)
+                if (!(dist_sq < 1.0f))
                 {
                     continue;
                 }
@@ -521,15 +539,20 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             if (is_valid_uv(prev_uv) && prev_w > 0.0f && prev_w < 1.0f)
             {
                 float4 history = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), float3(prev_uv, prev_w), 0.0f);
+                if (all(isfinite(history)))
+                {
+                    history.rg = saturate(history.rg);
+                    history.a  = max(history.a, 0.0f);
 
-                // smoke is a medium that moves on its own, so history lags it and holding too much of it
-                // drags a ghost behind the plume, and a voxel the camera swept across has history that
-                // belongs to a different part of the world entirely, so both cut the weight
-                float2 uv_delta = prev_uv - float2((float2(dispatch_thread_id.xy) + 0.5f) / float2((float)volume_width, (float)volume_height));
-                float voxel_motion = length(uv_delta * float2((float)volume_width, (float)volume_height));
-                float keep = lerp(volume_history_keep, volume_history_keep_moving, saturate(voxel_motion * 0.5f));
+                    // smoke is a medium that moves on its own, so history lags it and holding too much of it
+                    // drags a ghost behind the plume, and a voxel the camera swept across has history that
+                    // belongs to a different part of the world entirely, so both cut the weight
+                    float2 uv_delta = prev_uv - float2((float2(dispatch_thread_id.xy) + 0.5f) / float2((float)volume_width, (float)volume_height));
+                    float voxel_motion = length(uv_delta * float2((float)volume_width, (float)volume_height));
+                    float keep = lerp(volume_history_keep, volume_history_keep_moving, saturate(voxel_motion * 0.5f));
 
-                result = lerp(current, history, keep);
+                    result = lerp(current, history, keep);
+                }
             }
         }
     }
@@ -559,6 +582,15 @@ float3 volume_uv_from_world(float3 world_position)
 float4 volume_medium(float3 uvw, float3 world_position)
 {
     float4 medium = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uvw, 0);
+    if (!all(isfinite(medium)))
+    {
+        medium = 0.0f;
+    }
+    else
+    {
+        medium.rg = saturate(medium.rg);
+        medium.a  = max(medium.a, 0.0f);
+    }
     float4 fluid  = fluid_sample_medium(world_position);
     if (fluid.a > 0.0f)
     {

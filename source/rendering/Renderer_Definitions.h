@@ -74,8 +74,8 @@ namespace spartan
     // the full default cap, emission is re-read on every reuse so only bounced light lags
     // a cap of one read as a reset, every flickering fixture or easing brake lamp left the whole
     // screen at two samples per pixel, and worlds where that happens most frames never converged
-    const uint32_t restir_history_fade_frames      = 4;
-    const float    restir_history_fade_m_cap       = 8.0f;
+    const uint32_t restir_history_fade_frames      = 2;
+    const float    restir_history_fade_m_cap       = 14.0f;
     // paired spatial reuse tables, lin 2026 3, sizes and order must match RESTIR_PAIRING_SIZES
     // in restir_reservoir.hlsl, near coprime so tiling periods never align within a screen
     const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };

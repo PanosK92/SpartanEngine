@@ -80,14 +80,12 @@ float2 reproject_to_previous_frame(float2 current_uv, bool reverse_motion = fals
 {
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
     float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
-    // The reservoir and G-buffer histories live on jittered pixel grids, while
-    // velocity deliberately excludes jitter. Put history UVs on the prior grid.
-    float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
-    // Motion is in screen UV. History occupies the previous render rectangle,
-    // which can differ even for a stationary camera under dynamic resolution.
+    // ReSTIR temporal reuse performs nearest-texel lookup on the reservoir grid.
+    // Adding sub-pixel TAA jitter deltas makes stationary pixels hop across
+    // neighboring texels at full resolution; use unjittered motion directly.
     float2 previous_scale = get_render_uv_scale_previous();
     return current_uv * (previous_scale / get_render_uv_scale()) +
-        (jitter_delta + (reverse_motion ? velocity_uv : -velocity_uv)) * previous_scale;
+        (reverse_motion ? velocity_uv : -velocity_uv) * previous_scale;
 }
 
 // Zeng et al. (2021), Eq. 6, used by Lin 2026 section 6.4:
@@ -175,6 +173,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float  metallic  = material.g;
 
     restir_load_primary_material(uv);
+    if (restir_is_smooth_dielectric_primary(restir_camera_primary(pos_ws, normal_ws, geometric_normal_ws, view_dir, albedo, roughness, metallic)))
+    {
+        float4 e0, e1, e2, e3;
+        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3);
+        tex_reservoir0[pixel] = e0;
+        tex_reservoir1[pixel] = e1;
+        tex_reservoir2[pixel] = e2;
+        tex_reservoir3[pixel] = e3;
+        return;
+    }
+
     Reservoir current = unpack_reservoir(
         tex_reservoir0[pixel],
         tex_reservoir1[pixel],
@@ -457,24 +466,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise
     // that a luminance only target cannot importance sample, both integrands are already evaluated
-    float3 gi = float3(0, 0, 0);
     ShiftResult canonical = self_shift_evaluate(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    gi = m_cur * canonical.f_dst * max(current.W, 0.0f);
+    float3 cur_contrib = m_cur * canonical.f_dst * max(current.W, 0.0f);
+    float3 gi = cur_contrib;
+    float3 specular = cur_contrib * restir_sample_specular_fraction(current.sample, pos_ws, normal_ws,
+        geometric_normal_ws, view_dir, albedo, roughness, metallic);
 
     if (have_temporal)
     {
         float3 contribution = m_temp * f_temp * max(temporal.W, 0.0f) * jacobian_temp;
         gi += contribution;
+        specular += contribution * restir_sample_specular_fraction(temporal_shifted_sample, pos_ws, normal_ws,
+            geometric_normal_ws, view_dir, albedo, roughness, metallic);
     }
-
-    float3 specular = gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic);
 
     // Demodulate once; composition restores the primary albedo.
     gi = gi / restir_gi_demodulator(albedo);
+    specular = specular / restir_gi_demodulator(albedo);
 
     if (any(isnan(gi)) || any(isinf(gi)))
     {
         gi = float3(0, 0, 0);
+        specular = float3(0, 0, 0);
+    }
+    if (any(isnan(specular)) || any(isinf(specular)))
+    {
+        specular = float3(0, 0, 0);
     }
 
     float hit_dist = restir_denoiser_hit_distance(combined, pos_ws, normal_ws, geometric_normal_ws,
@@ -485,10 +502,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // where the resampled one came out dark, which is a one sided lift of every shadowed pixel
     // and reads as boiling because the switch flips frame to frame
     float4 trace_stage = tex_uav[pixel];
+    float4 trace_spec  = restir_specular_output[pixel];
     if (combined.M <= 0.0f)
     {
         gi = trace_stage.rgb;
-        hit_dist = restir_specular_output[pixel].a;
+        specular = trace_spec.rgb;
+        hit_dist = trace_spec.a;
     }
 
     tex_uav[pixel] = float4(gi, trace_stage.a);

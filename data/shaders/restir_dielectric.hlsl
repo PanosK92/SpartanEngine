@@ -108,7 +108,7 @@ struct RestirDielectricSample
 };
 
 RestirDielectricSample restir_dielectric_sample(float3 wi, float alpha, float eta,
-    float3 transmission_tint, float3 xi, bool sheet = false)
+    float3 transmission_tint, float3 xi, bool sheet = false, int forced_branch = -1)
 {
     RestirDielectricSample result = (RestirDielectricSample)0;
     if (wi.z <= 0.0f || eta <= 0.0f || alpha < 0.0f)
@@ -119,6 +119,30 @@ RestirDielectricSample restir_dielectric_sample(float3 wi, float alpha, float et
     float cos_t;
     float fresnel = restir_dielectric_fresnel(eta, wi_h, cos_t);
     if (sheet) fresnel = 2.0f * fresnel / (1.0f + fresnel);
+    if (forced_branch >= 0 && result.delta)
+    {
+        result.transmission = forced_branch != 0;
+        if (result.transmission && fresnel >= 1.0f)
+        {
+            return result;
+        }
+        if (!result.transmission && fresnel <= 0.0f)
+        {
+            return result;
+        }
+        result.direction = result.transmission && !sheet ? (eta * wi_h - cos_t) * h - eta * wi : 2.0f * wi_h * h - wi;
+        if (sheet && result.transmission)
+        {
+            result.direction.z = -result.direction.z;
+        }
+        if (result.direction.z == 0.0f || ((result.direction.z < 0.0f) != result.transmission))
+        {
+            return result;
+        }
+        result.weight = result.transmission ? (1.0f - fresnel) * transmission_tint * (sheet ? 1.0f : eta * eta) : fresnel;
+        result.valid = all(isfinite(result.direction)) && all(isfinite(result.weight));
+        return result;
+    }
     result.transmission = xi.z >= fresnel;
     result.direction = result.transmission && !sheet ? (eta * wi_h - cos_t) * h - eta * wi : 2.0f * wi_h * h - wi;
     if (sheet && result.transmission) result.direction.z = -result.direction.z;

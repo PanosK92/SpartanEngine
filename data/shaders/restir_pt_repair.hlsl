@@ -39,13 +39,18 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // These pixels bypass NRD entirely. Average independent paths to reduce flicker on thin edges.
     const uint sample_count = 4u;
     float3 radiance = 0.0f;
+    bool smooth_dielectric = restir_is_smooth_dielectric_primary(surface);
+    uint branch_count = smooth_dielectric ? 2u : 1u;
     [loop] for (uint i = 0; i < sample_count; ++i)
     {
-        uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 7u + i);
-        uint replay_seed = seed;
-        float3 sample_radiance;
-        trace_path_from_primary(surface, view, get_camera_position(), replay_seed, seed, sample_radiance, false, (PathSample)0);
-        radiance += sample_radiance / float(sample_count);
+        [loop] for (uint branch = 0u; branch < branch_count; ++branch)
+        {
+            uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 7u + i * branch_count + branch);
+            uint replay_seed = seed;
+            float3 sample_radiance;
+            trace_path_from_primary(surface, view, get_camera_position(), replay_seed, seed, sample_radiance, false, (PathSample)0, smooth_dielectric ? int(branch) : -1);
+            radiance += max(sample_radiance, 0.0f) / float(sample_count);
+        }
     }
     // Alpha zero is valid lighting but is not a denoised accumulation history.
     tex_uav[pixel] = float4(all(isfinite(radiance)) ? radiance : 0.0f, 0.0f);

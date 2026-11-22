@@ -1095,8 +1095,12 @@ namespace spartan
                         state.scalar[i]   = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R16G16B16A16_Float, flags, i == 0 ? "particle_fluid_scalar_a" : "particle_fluid_scalar_b");
                         // the pressure gradient is a difference of large neighbouring values, half floats would turn it into noise
                         state.pressure[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R32_Float, flags, i == 0 ? "particle_fluid_pressure_a" : "particle_fluid_pressure_b");
+                        RHI_CommandList::ClearTexture(state.velocity[i].get(), Color(0.0f, 0.0f, 0.0f, 0.0f));
+                        RHI_CommandList::ClearTexture(state.scalar[i].get(), Color(0.0f, 0.0f, 0.0f, 0.0f));
+                        RHI_CommandList::ClearTexture(state.pressure[i].get(), Color(0.0f, 0.0f, 0.0f, 0.0f));
                     }
                     state.aux   = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, width, height, depth, 1, RHI_Format::R16G16B16A16_Float, flags, "particle_fluid_aux");
+                    RHI_CommandList::ClearTexture(state.aux.get(), Color(0.0f, 0.0f, 0.0f, 0.0f));
                     state.valid = false;
                 }
                 if (!state.scene)
@@ -1196,6 +1200,8 @@ namespace spartan
                 m_pcb_pass_cpu.set(pass_particles_fluid::wheel_count, scene.wheel_count);
                 m_pcb_pass_cpu.set(pass_particles_fluid::source_count, source_count);
 
+                bool all_ready = true;
+
                 RHI_CommandList::BeginPass("particle_fluid_advect");
                 {
                     RHI_CommandList::UpdateBuffer(state.scene.get(), 0, sizeof(Sb_ParticleFluidRecord) * particle_fluid_record_count, records.data(), false);
@@ -1207,6 +1213,7 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fluid_scalar_uav", state.scalar[write].get());
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                    all_ready = all_ready && RHI_CommandList::IsPipelineReady();
                 }
                 RHI_CommandList::EndPass();
 
@@ -1217,6 +1224,7 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fluid_aux_uav", state.aux.get());
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                    all_ready = all_ready && RHI_CommandList::IsPipelineReady();
                 }
                 RHI_CommandList::EndPass();
 
@@ -1228,6 +1236,7 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fluid_velocity_uav", state.velocity[read].get());
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                    all_ready = all_ready && RHI_CommandList::IsPipelineReady();
                 }
                 RHI_CommandList::EndPass();
 
@@ -1240,6 +1249,7 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fluid_pressure_uav", state.pressure[1].get());
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                    all_ready = all_ready && RHI_CommandList::IsPipelineReady();
                 }
                 RHI_CommandList::EndPass();
 
@@ -1252,6 +1262,7 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fluid_pressure_uav", state.pressure[i & 1].get());
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                    all_ready = all_ready && RHI_CommandList::IsPipelineReady();
                 }
                 RHI_CommandList::EndPass();
 
@@ -1264,8 +1275,17 @@ namespace spartan
                     RHI_CommandList::SetTexture("tex_fluid_velocity_uav", state.velocity[write].get());
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+                    all_ready = all_ready && RHI_CommandList::IsPipelineReady();
                 }
                 RHI_CommandList::EndPass();
+
+                if (!all_ready)
+                {
+                    // one or more solver pipelines are still compiling asynchronously, do not publish unwritten targets or mark history valid
+                    state.valid     = false;
+                    state.cell_size = 0.0f;
+                    return false;
+                }
 
                 state.current   = write;
                 state.origin    = origin;
@@ -1285,6 +1305,7 @@ namespace spartan
                     if (!state.idle)
                     {
                         state.idle = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 1, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "particle_fluid_idle");
+                        RHI_CommandList::ClearTexture(state.idle.get(), Color(0.0f, 0.0f, 0.0f, 0.0f));
                     }
                     RHI_CommandList::SetTexture("tex_fluid_velocity", state.idle.get());
                     RHI_CommandList::SetTexture("tex_fluid_scalar", state.idle.get());
@@ -1792,15 +1813,18 @@ namespace spartan
             RHI_Texture* tex_volume_write = m_pass_state.particle_volume_history.SelectWrite(tex_volume, tex_volume_history);
             RHI_Texture* tex_volume_read  = m_pass_state.particle_volume_history.SelectRead(tex_volume, tex_volume_history);
 
+            bool clear_ran = false;
             RHI_CommandList::BeginPass("particle_volume_clear");
             {
                 RHI_CommandList::SetShader(shader_volume_clear, "particle_volume_clear");
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
                 RHI_CommandList::Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
+                clear_ran = RHI_CommandList::IsPipelineReady();
             }
             RHI_CommandList::EndPass();
 
+            bool splat_ran = false;
             RHI_CommandList::BeginPass("particle_volume_splat");
             {
                 RHI_CommandList::SetShader(shader_volume_splat, "particle_volume_splat");
@@ -1810,51 +1834,64 @@ namespace spartan
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
+                splat_ran = RHI_CommandList::IsPipelineReady();
             }
             RHI_CommandList::EndPass();
 
-            RHI_CommandList::BeginPass("particle_volume_resolve");
+            bool resolve_ran = false;
+            if (clear_ran && splat_ran)
             {
-                RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_volume_write);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_read);
-                m_pcb_pass_cpu.set(pass_particles_volumetric::reset_history, !use_history);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
-            }
-            RHI_CommandList::EndPass();
-
-            RHI_CommandList::BeginPass("particle_volume_composite");
-            {
-                RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
-                RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
-                RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
-                RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
-                RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
-                RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_render);
-                if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
+                RHI_CommandList::BeginPass("particle_volume_resolve");
                 {
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reactivity);
+                    RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_volume_write);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_read);
+                    m_pcb_pass_cpu.set(pass_particles_volumetric::reset_history, !use_history);
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
+                    resolve_ran = RHI_CommandList::IsPipelineReady();
                 }
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_write);
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-                bind_particle_fluid();
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                const uint32_t width = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
-                const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());
-                RHI_CommandList::Dispatch((width + 15u) / 16u, (height + 15u) / 16u);
+                RHI_CommandList::EndPass();
             }
-            RHI_CommandList::EndPass();
 
-            if (!IsSecondaryViewActive())
+            if (resolve_ran)
             {
-                m_pass_state.particle_volume_history.Advance();
+                RHI_CommandList::BeginPass("particle_volume_composite");
+                {
+                    RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
+                    RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+                    RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+                    RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+                    RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+                    RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_render);
+                    if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
+                    {
+                        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reactivity);
+                    }
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_write);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                    bind_particle_fluid();
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    const uint32_t width = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
+                    const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());
+                    RHI_CommandList::Dispatch((width + 15u) / 16u, (height + 15u) / 16u);
+                }
+                RHI_CommandList::EndPass();
+
+                if (!IsSecondaryViewActive())
+                {
+                    m_pass_state.particle_volume_history.Advance();
+                }
+            }
+            else if (!IsSecondaryViewActive())
+            {
+                m_pass_state.particle_volume_history.Reset();
             }
         }
 

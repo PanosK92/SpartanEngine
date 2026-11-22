@@ -678,7 +678,7 @@ namespace spartan
 
             nrd::DenoiserDesc denoisers[5];
             uint32_t denoiser_count = 1;
-            denoisers[0]            = { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR };
+            denoisers[0]            = { nrd_common::id_gi, nrd::Denoiser::RELAX_DIFFUSE_SPECULAR };
             const char* pool_name   = "NRD_GI";
             if (preset == Nrd_Preset::Reflections)
             {
@@ -1521,9 +1521,9 @@ namespace spartan
         if (preset == Nrd_Preset::Gi)
         {
             denoiser_id = nrd_common::id_gi;
-            nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_gi(reblur, common::cb_frame->delta_time_real);
-            if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
+            nrd::RelaxSettings relax = {};
+            nrd_common::fill_preset_gi(relax, common::cb_frame->delta_time_real);
+            if (pool.integration.SetDenoiserSettings(denoiser_id, &relax) != nrd::Result::SUCCESS)
             {
                 return false;
             }

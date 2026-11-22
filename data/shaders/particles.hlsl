@@ -1418,6 +1418,12 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.position = new_pos;
     p.velocity -= wake_velocity;
 
+    if (!all(isfinite(p.position)) || !all(isfinite(p.velocity)) || !isfinite(p.size))
+    {
+        write_dead(p, index);
+        return;
+    }
+
     // age the particle
     p.lifetime -= dt;
     if (p.lifetime <= 0.0)

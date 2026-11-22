@@ -652,6 +652,19 @@ float vegetation_flex(float3 rest_offset, float3 up)
     return smoothstep(0.08f, 0.7f, radius) * smoothstep(0.0f, 0.3f, height) * (1.0f - smoothstep(2.4f, 3.6f, height));
 }
 
+// smooth world-space value noise for coherent botanical tint, arch, and wildflower species drifts
+float foliage_value_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0f - 2.0f * f);
+    float a = hash(i);
+    float b = hash(i + float2(1.0f, 0.0f));
+    float c = hash(i + float2(0.0f, 1.0f));
+    float d = hash(i + float2(1.0f, 1.0f));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
 // the part of the grass and flower bend that every vertex of a blade shares, it depends on the root, the time and
 // the wind there, never on the vertex, so the vertex shader evaluates it per vertex and the mesh shader once per blade
 struct grass_bend
@@ -664,7 +677,7 @@ struct grass_bend
     float  rest_scale;        // how far the breeze deepens or relaxes the arch
 };
 
-grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 instance_up, float time_offset, uint instance_id)
+grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 instance_up, float instance_scale, float time_offset, uint instance_id)
 {
     float time = (float)buffer_frame.time + time_offset;
 
@@ -729,10 +742,12 @@ grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 i
     if (is_grass_blade)
     {
         // Gravity gives every blade a gentle resting arch, even with no wind.
-        // Hash the root, not the transient instance slot, so neither repopulation
-        // nor camera motion changes its shape. Keep the lower stem relatively stiff.
-        float rest_heading = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
-        bend.rest_angle    = lerp(10.0f, 22.0f, hash(instance_pos.zx + float2(73.1f, 5.9f))) * DEG_TO_RAD;
+        // Taller mature blades arch more gracefully than short stiff shoots, breaking up the vertical picket look.
+        float rest_heading  = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
+        float height_factor = saturate((instance_scale - 0.35f) / 1.0f);
+        float base_arch     = lerp(7.0f, 18.0f, hash(instance_pos.zx + float2(73.1f, 5.9f)));
+        float tall_droop    = height_factor * lerp(6.0f, 18.0f, hash(instance_pos.xz * 1.7f + float2(11.3f, 37.9f)));
+        bend.rest_angle     = (base_arch + tall_droop) * DEG_TO_RAD;
         // Let the resting arch deepen and relax in the breeze. Keep its direction
         // stable, and retain the exact resting pose at zero wind. Shared gusts drive
         // the strength while each blade's phase/frequency keeps the flex from marching
@@ -740,6 +755,18 @@ grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 i
         float rest_flex = sin(time * (1.3f + nat_freq * 0.2f) + instance_phase) * 0.65f +
                           sin(time * 0.93f + instance_phase * 1.7f) * 0.35f;
         bend.rest_scale = 1.0f + rest_flex * wind_response * (0.10f + 0.14f * ws.gust);
+        float3 rest_direction = float3(cos(rest_heading), 0.0f, sin(rest_heading));
+        float3 rest_axis = cross(instance_up, rest_direction);
+        bend.rest_axis = rest_axis * rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
+    }
+    else
+    {
+        // Wildflower stems nod organically in varied directions instead of standing vertically upright like pins.
+        float rest_heading = hash(instance_pos.xz + float2(43.1f, 19.7f)) * PI2;
+        bend.rest_angle    = lerp(4.0f, 14.0f, hash(instance_pos.zx + float2(29.3f, 61.7f))) * DEG_TO_RAD;
+        float rest_flex    = sin(time * (1.1f + nat_freq * 0.18f) + instance_phase) * 0.65f +
+                             sin(time * 0.78f + instance_phase * 1.5f) * 0.35f;
+        bend.rest_scale    = 1.0f + rest_flex * wind_response * (0.08f + 0.12f * ws.gust);
         float3 rest_direction = float3(cos(rest_heading), 0.0f, sin(rest_heading));
         float3 rest_axis = cross(instance_up, rest_direction);
         bend.rest_axis = rest_axis * rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
@@ -929,7 +956,7 @@ struct vertex_processing
 #if defined(GRASS_BEND_PRECOMPUTED)
             grass_bend bend = grass_bend_precomputed[time_offset < 0.0f ? 1 : 0];
 #else
-            grass_bend bend = grass_bend_compute(surface.is_grass_blade(), instance_pos, instance_up, time_offset, instance_id);
+            grass_bend bend = grass_bend_compute(surface.is_grass_blade(), instance_pos, instance_up, length(transform[1].xyz), time_offset, instance_id);
 #endif
 
             // height fraction along the blade, base = 0, tip = 1
@@ -941,9 +968,10 @@ struct vertex_processing
             angle       = sign(angle) * min(abs(angle), bend.max_allowed_angle);
             float3 axis = bend.wind_axis;
 
-            if (surface.is_grass_blade())
+            if (surface.is_grass_blade() || surface.is_flower())
             {
-                float rest_angle = bend.rest_angle * h_cantilever;
+                float rest_profile = surface.is_grass_blade() ? h_cantilever : h;
+                float rest_angle = bend.rest_angle * rest_profile;
                 rest_angle *= bend.rest_scale;
                 float3 rotation_vector = axis * angle + bend.rest_axis * rest_angle;
                 float rotation_length = length(rotation_vector);
@@ -1309,31 +1337,85 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     matrix transform_previous = mul(instance, pass_get_transform_previous());
 #endif
 
+    float3 local_scale = float3(1.0f, 1.0f, 1.0f);
     if (surface.is_grass_blade())
     {
-        // Related colours in small tufts, with enough per-blade variation to avoid
-        // identical coloured blocks. Root-based hashes remain stable across frames/LODs.
-        float2 grass_cell = floor(transform[3].xz * 2.0f);
-        float blade_variation = hash(transform[3].xz + float2(31.7f, 83.1f));
-        vertex.uv_misc.w = lerp(hash(grass_cell), blade_variation, 0.35f);
+        float2 root_xz = transform[3].xz;
+        float  blade_scale = max(length(transform[1].xyz), 0.1f);
+        // Smooth multi-scale meadow colour variation (broad moisture swales + local tufts + per-blade life),
+        // gently coupled to height so short dry pockets lean warmer olive/straw while taller tufts read lusher green.
+        float meadow_macro = foliage_value_noise(root_xz * 0.08f + float2(7.1f, 19.3f));
+        float meadow_tuft  = foliage_value_noise(root_xz * 0.38f + float2(43.7f, 11.9f));
+        float blade_var    = hash(root_xz + float2(31.7f, 83.1f));
+        float height_bias  = lerp(0.14f, -0.10f, saturate((blade_scale - 0.35f) / 1.0f));
+        vertex.uv_misc.w   = saturate(meadow_macro * 0.35f + meadow_tuft * 0.35f + blade_var * 0.30f + height_bias);
+
+        // Botanical blade aspect: slender photographic meadow blades, keeping tall emergent blades fine instead of wide ribbons.
+        float width_comp = clamp(pow(blade_scale, -0.35f), 0.68f, 1.24f);
+        float width_var  = lerp(0.76f, 1.10f, hash(root_xz * 1.9f + float2(13.7f, 47.3f)));
+        local_scale.x    = width_comp * width_var * 0.88f;
     }
     else if (surface.is_flower())
     {
-        // Natural ~5m organic meadow drifts anchored in world XZ so flower species never shift across ring updates.
+        // Smooth domain-warped meadow drifts with natural companion-species intermixing so flowers never form hard stripes.
         float2 root_xz    = transform[3].xz;
-        float2 warp       = float2(sin(root_xz.y * 0.27f) * 1.8f, cos(root_xz.x * 0.23f) * 1.8f);
-        float2 patch_cell = floor((root_xz + warp) * 0.18f);
-        float patch_hash  = hash(patch_cell + float2(17.3f, 59.1f));
+        float2 drift_warp = float2(
+            foliage_value_noise(root_xz * 0.09f + float2(3.1f, 17.7f)) - 0.5f,
+            foliage_value_noise(root_xz * 0.09f + float2(29.3f, 7.9f)) - 0.5f
+        ) * 6.5f;
+        float drift_a     = foliage_value_noise((root_xz + drift_warp) * 0.12f + float2(11.3f, 5.7f));
+        float drift_b     = foliage_value_noise((root_xz - drift_warp * 0.6f) * 0.24f + float2(47.1f, 23.9f));
         float plant_hash  = hash(root_xz * 3.7f + float2(41.2f, 11.9f));
-        vertex.uv_misc.w  = floor(clamp(patch_hash * 5.0f, 0.0f, 4.0f)) + clamp(plant_hash, 0.0f, 0.999f);
+        float mix_hash    = hash(root_xz * 5.3f + float2(89.1f, 31.4f));
+        float species_mix = saturate(drift_a * 0.68f + drift_b * 0.32f + (mix_hash - 0.5f) * 0.30f);
+        float species_f   = floor(clamp(species_mix * 5.0f, 0.0f, 4.0f));
+        // Natural companion species: occasional scarlet poppies and golden daisies dot neighbouring drifts.
+        if (mix_hash > 0.78f)
+        {
+            species_f = floor(clamp(hash(root_xz * 7.1f + float2(19.7f, 67.3f)) * 5.0f, 0.0f, 4.0f));
+        }
+        int species      = (int)species_f;
+        vertex.uv_misc.w = species_f + clamp(plant_hash, 0.0f, 0.999f);
+
+        // Species-specific botanical proportions: smaller delicate chamomile cushions vs taller, airier poppies and daisies.
+        float stem_mult = 1.0f;
+        float head_mult = 0.82f;
+        if (species == 0)
+        {
+            stem_mult = 1.08f;
+            head_mult = 0.86f; // Field Poppy: slender proud stem
+        }
+        else if (species == 1)
+        {
+            stem_mult = 0.76f;
+            head_mult = 0.66f; // Wild Chamomile: low delicate cushion
+        }
+        else if (species == 2)
+        {
+            stem_mult = 0.96f;
+            head_mult = 0.74f; // Lavender / Wild Sage
+        }
+        else if (species == 3)
+        {
+            stem_mult = 1.02f;
+            head_mult = 0.78f; // Crown Daisy
+        }
+        else
+        {
+            stem_mult = 0.84f;
+            head_mult = 0.82f; // Pink Rockrose
+        }
+        float stem_jitter = lerp(0.86f, 1.12f, hash(root_xz * 4.1f + float2(61.3f, 27.9f)));
+        local_scale       = float3(head_mult, stem_mult * stem_jitter, head_mult);
     }
-    
+
     // transform position to world space
-    float4 position_local    = float4(input.position, 1.0f);
+    float4 position_local    = float4(input.position * local_scale, 1.0f);
     float3 position          = mul(position_local, transform).xyz;
     float3 position_local_previous = input.position;
     if (_draw.previous_vertex_offset != 0)
         position_local_previous = load_pulled_vertex(input.vertex_id + _draw.previous_vertex_offset).position;
+    position_local_previous *= local_scale;
     float3 position_previous = mul(float4(position_local_previous, 1.0f), transform_previous).xyz;
 
     // the same vertex relative to the camera, subtracting two nearby floats is exact so the translation

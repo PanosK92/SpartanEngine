@@ -84,13 +84,76 @@ void ray_gen()
     restir_load_primary_material(uv);
     PathSurface surface = restir_camera_primary(pos_ws, normal_ws, geometric_normal_ws, view_dir, albedo, roughness, metallic);
 
+    // Smooth glass and water are deterministic delta reflection + refraction interfaces.
+    // Split both Fresnel branches deterministically instead of flipping a stochastic coin
+    // per pixel, using a single trace_path_from_primary call site to keep shader compile fast.
+    bool smooth_dielectric = restir_is_smooth_dielectric_primary(surface);
+    uint branch_count = smooth_dielectric ? 2u : 1u;
+    float3 canonical_gi = 0.0f;
+    float3 refl_gi = 0.0f;
+    float3 trans_gi = 0.0f;
+    float refl_hit_dist = 0.1f;
+    float trans_hit_dist = 0.1f;
+    Reservoir reservoir = create_empty_reservoir();
+    [loop] for (uint branch = 0u; branch < branch_count; ++branch)
+    {
+        uint branch_seed = branch == 0u ? seed : create_seed_for_pass(launch_id, buffer_frame.frame, 9u);
+        uint replay_seed = branch_seed;
+        float3 branch_gi;
+        PathSample branch_sample = trace_path_from_primary(surface, view_dir, get_camera_position(), replay_seed, branch_seed,
+            branch_gi, false, (PathSample)0, smooth_dielectric ? int(branch) : -1);
+        if (smooth_dielectric)
+        {
+            float3 safe_gi = max(branch_gi, 0.0f);
+            if (branch == 0u)
+            {
+                refl_gi = safe_gi;
+                refl_hit_dist = max(branch_sample.first_hit_distance, 0.1f);
+            }
+            else
+            {
+                trans_gi = safe_gi;
+                trans_hit_dist = max(branch_sample.first_hit_distance, 0.1f);
+            }
+        }
+        else
+        {
+            canonical_gi = branch_gi;
+            reservoir.sample = branch_sample;
+        }
+    }
+
+    if (smooth_dielectric)
+    {
+        // Route smooth dielectric reflection through NRD specular (tight mirror lobe) and
+        // transmission through NRD diffuse (smoothly denoises rough interiors and underwater seabed).
+        float3 inv_demod = 1.0f / restir_gi_demodulator(albedo);
+        float3 refl_out = refl_gi * inv_demod;
+        float3 trans_out = trans_gi * inv_demod;
+        if (any(isnan(refl_out)) || any(isinf(refl_out)))
+        {
+            refl_out = 0.0f;
+        }
+        if (any(isnan(trans_out)) || any(isinf(trans_out)))
+        {
+            trans_out = 0.0f;
+        }
+        float3 total_gi = refl_out + trans_out;
+
+        float4 t0, t1, t2, t3;
+        pack_reservoir(reservoir, t0, t1, t2, t3);
+        tex_reservoir0[launch_id] = t0;
+        tex_reservoir1[launch_id] = t1;
+        tex_reservoir2[launch_id] = t2;
+        tex_reservoir3[launch_id] = t3;
+
+        tex_uav[launch_id] = float4(total_gi, trans_hit_dist);
+        restir_specular_output[launch_id] = float4(refl_out, refl_hit_dist);
+        return;
+    }
+
     // One path tree per pixel (section 6.1). The walk streams BSDF-hit
     // emitters and the selected NEE leaf at every vertex into one reservoir.
-    float3 canonical_gi;
-    uint replay_seed = seed;
-    Reservoir reservoir = create_empty_reservoir();
-    reservoir.sample = trace_path_from_primary(surface, view_dir, get_camera_position(), replay_seed, seed,
-        canonical_gi, false, (PathSample)0);
     reservoir.target_pdf = target_scalar(reservoir.sample.F);
     reservoir.W = reservoir.target_pdf > 0.0f ? reservoir.sample.initial_weight : 0.0f;
 
@@ -127,6 +190,8 @@ void ray_gen()
         view_dir, albedo, roughness, metallic);
 
     // Diffuse filtering needs the primary scatter distance even on rough surfaces.
+    float3 spec_frac = restir_sample_specular_fraction(reservoir.sample, pos_ws, normal_ws, geometric_normal_ws,
+        view_dir, albedo, roughness, metallic);
     tex_uav[launch_id] = float4(canonical_gi, reservoir.sample.first_hit_distance);
-    restir_specular_output[launch_id] = float4(canonical_gi * restir_primary_specular_fraction(normal_ws, view_dir, albedo, roughness, metallic), hit_dist);
+    restir_specular_output[launch_id] = float4(clamp(canonical_gi * spec_frac, 0.0f, canonical_gi), hit_dist);
 }

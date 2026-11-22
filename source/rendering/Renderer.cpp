@@ -381,13 +381,12 @@ namespace spartan
         bool ray_tracing_pending_blas = false;
         bool ray_tracing_membership_dirty = false;
 
-        bool needs_finest_blas(Render* render, bool reference)
+        bool needs_finest_blas(bool reference)
         {
             // A detailed raster receiver inside its coarse ray proxy shadows itself.
-            Material* material = render->GetMaterial();
-            return reference || (cvar_restir_pt.GetValueAs<bool>() && material &&
-                (material->IsTransparent() || (material->GetProperty(MaterialProperty::SubsurfaceRadius) > 0.0f &&
-                material->GetProperty(MaterialProperty::SubsurfaceScattering) > 0.0f)));
+            // ReSTIR PT traces bounces and visibility from the detailed raster G-buffer,
+            // so clustered opaque meshes (e.g. concave arches/vaults) need their finest BLAS too.
+            return reference || cvar_restir_pt.GetValueAs<bool>();
         }
 
         void prepare_ray_tracing_renders()
@@ -430,7 +429,7 @@ namespace spartan
                     // Prepare resident geometry independently of TLAS visibility. Otherwise
                     // travelling across a culling boundary starts another BLAS burst and
                     // temporarily disables ray-traced lighting for the whole frame.
-                    const bool missing = !render->HasAccelerationStructure(needs_finest_blas(render, reference));
+                    const bool missing = !render->HasAccelerationStructure(needs_finest_blas(reference));
                     batch.missing |= missing;
                     if (missing) batch.builds.push_back(render);
                     // Keep the same off-screen shadow/reflection visibility budget.
@@ -3167,6 +3166,29 @@ namespace spartan
         }
         mix(emitter_signature, pool_representable ? 1u : 0u);
 
+        // Quantize camera position to a coarse cell so emissive triangle importance
+        // sampling prioritizes emitters near the viewer without rebuilding on small motion.
+        // GPU BSDF-hit MIS evaluates the identical anchor weight so the pool stays unbiased.
+        constexpr float anchor_cell          = 16.0f;
+        constexpr float anchor_inv_radius_sq = 0.02f;
+        Vector3 cam_pos = Vector3::Zero;
+        if (Camera* camera = GetViewCamera())
+        {
+            if (Entity* cam_entity = camera->GetEntity())
+            {
+                cam_pos = cam_entity->GetPosition();
+            }
+        }
+        const Vector3 emissive_anchor(
+            floorf(cam_pos.x / anchor_cell) * anchor_cell + anchor_cell * 0.5f,
+            floorf(cam_pos.y / anchor_cell) * anchor_cell + anchor_cell * 0.5f,
+            floorf(cam_pos.z / anchor_cell) * anchor_cell + anchor_cell * 0.5f
+        );
+        Renderer::view().frame.restir_emissive_anchor = Vector4(emissive_anchor.x, emissive_anchor.y, emissive_anchor.z, anchor_inv_radius_sq);
+        mix_float(emitter_signature, emissive_anchor.x);
+        mix_float(emitter_signature, emissive_anchor.y);
+        mix_float(emitter_signature, emissive_anchor.z);
+
         // a change in the set of renderables keeps the reservoirs at full confidence, worlds that stream
         // geometry around the camera change the set on most frames while walking, reuse re-traces
         // visibility, the tlas update drops the samples whose reconnection instance is gone and new
@@ -3307,6 +3329,10 @@ namespace spartan
                 float   area   = nx_len * 0.5f;
                 Vector3 normal = cross / nx_len;
 
+                const Vector3 tri_center = (p0 + p1 + p2) * (1.0f / 3.0f);
+                const Vector3 d_anchor   = tri_center - emissive_anchor;
+                const float   proximity  = 1.0f / (1.0f + d_anchor.LengthSquared() * anchor_inv_radius_sq);
+
                 Sb_EmissiveTriangle tri = {};
                 tri.v0       = p0;
                 tri.v1       = p1;
@@ -3314,7 +3340,7 @@ namespace spartan
                 tri.normal   = normal;
                 tri.area     = area;
                 tri.emission = emission;
-                tri.weight   = area * emission_lum;
+                tri.weight   = area * emission_lum * proximity;
                 tri.cdf      = 0.0f;
                 tris.push_back(tri);
             }
@@ -5629,7 +5655,7 @@ namespace spartan
             const uint32_t blas_total = static_cast<uint32_t>(ray_tracing_renders.size());
             for (Render* render : ray_tracing_build_work)
             {
-                const bool finest = needs_finest_blas(render, reference);
+                const bool finest = needs_finest_blas(reference);
                 if (!render->HasAccelerationStructure(finest))
                 {
                     const uint32_t triangles = finest && render->GetMesh() && render->GetIndexCount() ?

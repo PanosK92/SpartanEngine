@@ -75,11 +75,22 @@ namespace spartan::road_details
                 materials[finish]->SetTexture(MaterialTextureType::Roughness,assets+"zinc_roughness.png");
                 materials[finish]->SetTexture(MaterialTextureType::Metalness,assets+"zinc_metalness.png");
                 materials[finish]->SetTexture(MaterialTextureType::Normal,assets+"zinc_normal.png");
+                materials[finish]->SetTexture(MaterialTextureType::Occlusion,assets+"zinc_ao.png");
+                materials[finish]->SetProperty(MaterialProperty::Roughness,1.0f);
+                materials[finish]->SetProperty(MaterialProperty::Metalness,1.0f);
+                materials[finish]->SetProperty(MaterialProperty::Normal,1.0f);
             }
             else if (finish==ReflectiveAmber)
             {
                 materials[finish]->SetTexture(MaterialTextureType::Color,assets+"reflector_color.png");
-                materials[finish]->SetProperty(MaterialProperty::Roughness,.22f);
+                materials[finish]->SetTexture(MaterialTextureType::Normal,assets+"reflector_normal.png");
+                materials[finish]->SetTexture(MaterialTextureType::Roughness,assets+"reflector_roughness.png");
+                materials[finish]->SetProperty(MaterialProperty::Roughness,1.0f);
+                materials[finish]->SetProperty(MaterialProperty::Normal,1.0f);
+                materials[finish]->SetProperty(MaterialProperty::Clearcoat,1.0f);
+                materials[finish]->SetProperty(MaterialProperty::Clearcoat_Roughness,.06f);
+                materials[finish]->SetProperty(MaterialProperty::EmissiveFromAlbedo,1.0f);
+                materials[finish]->SetProperty(MaterialProperty::EmissiveIntensity,.04f);
             }
         }
         Entity* part = World::CreateEntity();

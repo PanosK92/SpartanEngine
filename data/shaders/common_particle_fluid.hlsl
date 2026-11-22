@@ -80,12 +80,14 @@ float fluid_weight(float3 position)
 // the speed of its surface rather than of any air
 float4 fluid_sample_air(float3 position)
 {
-    return tex_fluid_velocity.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), fluid_uvw(position), 0.0f);
+    float4 air = tex_fluid_velocity.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), fluid_uvw(position), 0.0f);
+    return all(isfinite(air)) ? air : 0.0f;
 }
 
 float4 fluid_sample_scalar(float3 position)
 {
-    return tex_fluid_scalar.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), fluid_uvw(position), 0.0f);
+    float4 scalar = tex_fluid_scalar.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), fluid_uvw(position), 0.0f);
+    return all(isfinite(scalar)) ? scalar : 0.0f;
 }
 
 // the smoke standing at a point in the units the volumetric march works in

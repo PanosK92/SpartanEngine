@@ -194,31 +194,28 @@ namespace spartan
             return reset;
         }
 
-        // Unified ReSTIR diffuse/specular, temporal heavy with lobe-aware prefiltering
-        inline void fill_preset_gi(nrd::ReblurSettings& settings, float delta_time)
+        // Unified ReSTIR diffuse/specular, variance-guided luminance-edge-stopping RELAX
+        inline void fill_preset_gi(nrd::RelaxSettings& settings, float delta_time)
         {
-            settings                                   = {};
-            // must match the curve restir_pt_nrd_pack encodes, the defaults saturate every hit
-            // past a few meters to 1 so reblur loses all contact information and blurs the whole
-            // frame at max radius, which reads as colored blobs and kills occlusion darkening
-            settings.hitDistanceParameters.A           = restir_hit_distance_a;
-            settings.hitDistanceParameters.B           = restir_hit_distance_b;
-            settings.hitDistanceParameters.C           = restir_hit_distance_c;
-            // Use REBLUR's default diffuse prepass and maximum blur radii for one-sample lighting.
-            // Keep the specular prepass for virtual motion estimation only so sparse bright
-            // highlights do not smear into blobs before temporal accumulation.
-            settings.specularPrepassBlurRadius                 = 30.0f;
-            settings.usePrepassOnlyForSpecularMotionEstimation = true;
-            settings.minBlurRadius                             = 1.0f;
-            // Quarter-resolution indirect light needs a longer history than reflections.
-            // ReBLUR antilag and disocclusion still discard stale lighting and moving surfaces.
-            settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(2.0f, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
-            settings.maxFastAccumulatedFrameNum        = (std::min)(settings.maxAccumulatedFrameNum, (std::max)(4u, get_accumulated_frame_num(0.25f, settings.maxAccumulatedFrameNum, delta_time)));
-            // History reconstruction requires fewer frames than fast history, including at low FPS.
-            settings.historyFixFrameNum                = (std::min)(3u, settings.maxFastAccumulatedFrameNum - 1u);
-            settings.minHitDistanceWeight              = 0.08f;
-            settings.fireflySuppressorMinRelativeScale = 2.5f;
-            settings.enableAntiFirefly                 = true;
+            settings                                    = {};
+            settings.diffusePrepassBlurRadius           = 30.0f;
+            settings.specularPrepassBlurRadius          = 2.0f;
+            settings.diffuseMaxAccumulatedFrameNum      = get_accumulated_frame_num(1.0f, nrd::RELAX_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.diffuseMaxFastAccumulatedFrameNum  = (std::min)(settings.diffuseMaxAccumulatedFrameNum, (std::max)(4u, get_accumulated_frame_num(0.2f, settings.diffuseMaxAccumulatedFrameNum, delta_time)));
+            settings.specularMaxAccumulatedFrameNum     = get_accumulated_frame_num(nrd::RELAX_DEFAULT_ACCUMULATION_TIME, nrd::RELAX_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.specularMaxFastAccumulatedFrameNum = (std::min)(settings.specularMaxAccumulatedFrameNum, (std::max)(4u, get_accumulated_frame_num(nrd::RELAX_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.specularMaxAccumulatedFrameNum, delta_time)));
+            const uint32_t min_fast                     = (std::min)(settings.diffuseMaxFastAccumulatedFrameNum, settings.specularMaxFastAccumulatedFrameNum);
+            settings.historyFixFrameNum                 = (std::min)(3u, min_fast > 0u ? min_fast - 1u : 0u);
+            settings.diffusePhiLuminance                = 2.0f;
+            settings.specularPhiLuminance               = 1.8f;
+            settings.minHitDistanceWeight               = 0.02f;
+            settings.atrousIterationNum                 = 4u;
+            settings.lobeAngleFraction                  = 0.4f;
+            settings.specularLobeAngleSlack             = 0.08f;
+            settings.roughnessFraction                  = 0.15f;
+            settings.hitDistanceReconstructionMode      = nrd::HitDistanceReconstructionMode::AREA_3X3;
+            settings.enableAntiFirefly                  = true;
+            settings.enableRoughnessEdgeStopping        = true;
         }
 
         inline nrd::ReblurSettings reference_settings()

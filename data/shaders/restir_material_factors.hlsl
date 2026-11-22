@@ -46,6 +46,51 @@ bool restir_nrd_glass(float2 uv)
     return mat.color.a < 1.0f && mat.alpha_blend <= 0.5f && !mat.is_alpha_tested();
 }
 
+void restir_nrd_material_factors_full(float2 uv, float3 albedo, float metallic, float raw_roughness, float no_v,
+    out float3 diffuse, out float3 specular, out float nrd_roughness)
+{
+    float clamped_roughness = max(raw_roughness, 0.04f);
+    float alpha = ggx_alpha_from_roughness(clamped_roughness);
+    nrd_roughness = sqrt(alpha);
+    if (restir_nrd_glass(uv))
+    {
+        // Route glass/water transmission through NRD diffuse (smoothly denoises rough interiors and
+        // underwater seabed) while keeping mirror reflection in NRD specular at a tight lobe.
+        diffuse = 1.0f;
+        specular = 1.0f;
+        float dielectric_alpha = clamped_roughness * clamped_roughness;
+        nrd_roughness = dielectric_alpha < 0.0064f ? 0.04f : sqrt(dielectric_alpha);
+        return;
+    }
+
+    diffuse = albedo * (1.0f - metallic);
+    float3 base_specular = restir_integrated_specular(lerp(0.04f, albedo, metallic), alpha, no_v);
+    MaterialParameters mat = material_parameters[get_material_index(uv)];
+    float clearcoat = saturate(mat.clearcoat);
+    if (clearcoat > 0.0f)
+    {
+        float coat_alpha = max(mat.clearcoat_roughness, 0.004f);
+        float3 coat_specular = restir_integrated_specular(0.04f, coat_alpha, no_v) * clearcoat;
+        float coat_f = saturate(coat_specular.x);
+        diffuse *= (1.0f - coat_f);
+        float3 total_specular = base_specular * (1.0f - coat_f) + coat_specular;
+        // White clearcoat over deeply saturated metal (e.g. red car paint) carries achromatic
+        // reflections on top of low green/blue base albedo. Floor the demodulator per-channel so
+        // dividing white clearcoat radiance does not explode into extreme cyan fireflies in NRD.
+        float max_spec = max(total_specular.r, max(total_specular.g, total_specular.b));
+        total_specular = max(total_specular, max_spec * (0.5f * clearcoat));
+        float coat_weight = get_rt_reflection_coat(clearcoat, metallic);
+        // Match hybrid reflection NRD sharpness on smooth clearcoat surfaces.
+        float coat_nrd_r = min(sqrt(coat_alpha), sqrt(ggx_alpha_from_roughness(mat.clearcoat_roughness)));
+        nrd_roughness = lerp(nrd_roughness, coat_nrd_r, coat_weight);
+        specular = max(0.01f, total_specular);
+    }
+    else
+    {
+        specular = max(0.01f, base_specular);
+    }
+}
+
 float3 restir_primary_specular_fraction(float3 normal, float3 view, float3 albedo, float roughness, float metallic)
 {
     float3 diffuse, specular;

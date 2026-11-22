@@ -69,8 +69,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 receiver = get_position(depth, render_uv_to_screen_uv(uv));
     float view_z = linearize_depth(depth);
     float4 material = get_material(uv);
-    float roughness = sqrt(ggx_alpha_from_roughness(max(material.r, 0.04f)));
+    float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
+    float metallic = material.g;
     float3 view_dir = normalize(get_camera_position() - receiver);
+    float3 diffuse_factor, specular_factor;
+    float roughness;
+    restir_nrd_material_factors_full(uv, albedo, metallic, material.r,
+        saturate(dot(normal, view_dir)), diffuse_factor, specular_factor, roughness);
+    uint center_material_index = get_material_index(uv);
+    bool is_water = (material_parameters[center_material_index].flags & (1u << 13u)) != 0u;
+    float normal_dot_min = is_water ? 0.55f : 0.9f;
+    float plane_tolerance = max(view_z * (is_water ? 0.08f : 0.03f), 0.005f);
     float3 reflection_dir = reflect(-view_dir, normal);
     float3 diffuse = 0.0f;
     float3 specular = 0.0f;
@@ -101,7 +110,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Match the actual G-buffer sample behind this low-resolution lighting tap.
         float2 sample_uv = (float2(restir_guide_pixel(uint2(pixel), lighting_size, resolution)) + 0.5f) / float2(resolution);
         float sample_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r;
-        if (get_material_index(sample_uv) != get_material_index(uv))
+        if (get_material_index(sample_uv) != center_material_index)
             continue;
         if (sample_depth <= 0.0f || linearize_depth(sample_depth) >= denoising_range)
             continue;
@@ -114,10 +123,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Soft weights alone cannot reject a footprint containing only other
         // surfaces: normalization (or the fallback) restores their full energy.
         // Match the spatial-reuse surface tolerances before interpolating.
-        if (plane_distance > max(view_z * 0.03f, 0.005f) || dot(normal, sample_normal) < 0.9f)
+        if (plane_distance > plane_tolerance || dot(normal, sample_normal) < normal_dot_min)
             continue;
-        float similarity = exp(-plane_distance / max(view_z * 0.01f, 0.001f)) *
-            pow(saturate(dot(normal, sample_normal)), 16.0f);
+        float similarity = exp(-plane_distance / max(view_z * (is_water ? 0.06f : 0.04f), 0.004f)) *
+            pow(saturate(dot(normal, sample_normal)), is_water ? 2.0f : 4.0f);
         float2 axis_weight = lerp(1.0f - fraction, fraction, float2(offset));
         // Ring taps use positive distance weights, never extrapolated bilinear
         // weights. Keep the same surface rejection and per-lobe weights below.
@@ -128,22 +137,27 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Demodulation removes material amplitude, not reflection lobe width.
         // Coplanar glossy/rough surfaces must not share specular interpolation
         // weights. Use NRD's roughness convention and its default 15% fraction.
-        float sample_roughness = sqrt(ggx_alpha_from_roughness(max(get_material(sample_uv).r, 0.04f)));
+        float3 sample_view = normalize(get_camera_position() - sample_position);
+        float4 sample_material = get_material(sample_uv);
+        float3 sample_albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).rgb);
+        float3 unused_diff, unused_spec;
+        float sample_roughness;
+        restir_nrd_material_factors_full(sample_uv, sample_albedo, sample_material.g, sample_material.r,
+            saturate(dot(sample_normal, sample_view)), unused_diff, unused_spec, sample_roughness);
         float roughness_weight = exp(-abs(sample_roughness - roughness) / max(0.15f * roughness, 0.01f));
         // A broad diffuse normal gate cannot resolve a narrow reflection lobe.
-        // Use a GGX-shaped angular weight, normalized to one at zero separation.
-        // Reflection rotates twice as fast as its microfacet normal, hence the
-        // half-angle cosine squared. Include view changes across grazing planes.
-        float3 sample_view = normalize(get_camera_position() - sample_position);
+        // Floor the upsample roughness so mirror glass, water and curved clearcoat
+        // still bilinearly reconstruct instead of collapsing to blocky nearest-neighbor taps.
         float3 sample_reflection = reflect(-sample_view, sample_normal);
         float half_cos_sq = saturate(0.5f + 0.5f * dot(reflection_dir, sample_reflection));
-        float alpha_sq = roughness * roughness * roughness * roughness;
+        float upsample_r = max(roughness, 0.45f);
+        float alpha_sq = upsample_r * upsample_r * upsample_r * upsample_r;
         float lobe_ratio = alpha_sq / max(1.0f - half_cos_sq + alpha_sq * half_cos_sq, 1e-8f);
         float lobe_weight = lobe_ratio * lobe_ratio;
         float specular_similarity = similarity * roughness_weight * lobe_weight;
         float specular_weight = weight * roughness_weight * lobe_weight;
-        float3 d = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex.Load(int3(pixel, 0))).xyz, 0.0f);
-        float3 s = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex4.Load(int3(pixel, 0))).xyz, 0.0f);
+        float3 d = max(RELAX_BackEnd_UnpackRadiance(tex.Load(int3(pixel, 0))).xyz, 0.0f);
+        float3 s = max(RELAX_BackEnd_UnpackRadiance(tex4.Load(int3(pixel, 0))).xyz, 0.0f);
         // Normalize relative weights, not their absolute magnitude. Narrow
         // reflection lobes can make every weight tiny without making their
         // ratios meaningless. Keep each running sum scaled by its largest tap
@@ -186,18 +200,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     diffuse = weight_sum > 0.0f ? diffuse / weight_sum : best_diffuse;
     specular = specular_weight_sum > 0.0f ? specular / specular_weight_sum : best_specular;
-    float3 albedo = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
-    float metallic = material.g;
-    // Match packing's GGX-to-NRD conversion using the original material guide,
-    // not NRD's filtered roughness. Restore shading detail at render resolution.
-    float3 diffuse_factor, specular_factor;
-    restir_nrd_material_factors(albedo, metallic, roughness * roughness,
-        saturate(dot(normal, view_dir)), diffuse_factor, specular_factor);
-    if (restir_nrd_glass(uv))
-    {
-        diffuse_factor = 0.0f;
-        specular_factor = 1.0f;
-    }
     float3 radiance = diffuse * diffuse_factor + specular * specular_factor;
     // NRD already accumulates reprojected radiance. Averaging its output again
     // retains NRD's transient history after lighting changes, even when the

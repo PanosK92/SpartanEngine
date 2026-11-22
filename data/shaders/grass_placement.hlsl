@@ -722,9 +722,37 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
         if (biome_roll > biome_ground * slope_fit) return false;
     }
 
-    // one roll inside the authored size range, the ends arrive already packed the way the raster
-    // unpacks them so no size ever leaves the range the layer asked for
-    float scale_01 = lerp(scale_01_min, scale_01_max, sc);
+    // coherent multi-scale world-space growth field so meadows, flower beds, and understory colonies
+    // undulate naturally in tufts and waves instead of hitting one flat mown ceiling across the terrain.
+    // keyed strictly on world_xz and slot_index so lod rings stay seamless with zero popping
+    uint   growth_seed  = 0x4b1d7u + slot_index * 919u;
+    float  wave_macro   = grass_value_noise(world_xz * 0.075f, growth_seed) * 0.5f + 0.5f;
+    float2 growth_warp  = float2(
+        grass_value_noise(world_xz * 0.14f, growth_seed + 11u),
+        grass_value_noise(world_xz * 0.14f, growth_seed + 29u)
+    ) * 1.15f;
+    float  wave_tuft    = grass_value_noise((world_xz + growth_warp) * 0.36f, growth_seed + 53u) * 0.5f + 0.5f;
+    float  wave_micro   = grass_value_noise(world_xz * 1.18f, growth_seed + 97u) * 0.5f + 0.5f;
+    float  growth_field = smoothstep(0.14f, 0.88f, 0.40f * wave_macro + 0.42f * wave_tuft + 0.18f * wave_micro);
+
+    // break up regular cell spacing on detail foliage (flowers, ferns, herbs) into organic clumps
+    if (slot_index > 0u)
+    {
+        float colony_keep = lerp(0.60f, 1.0f, smoothstep(0.15f, 0.72f, wave_tuft * 0.72f + wave_micro * 0.28f));
+        float colony_roll = hash_unit(hash_mix(h0 ^ 0x6f2a9c13u));
+        if (colony_roll > colony_keep)
+        {
+            return false;
+        }
+    }
+
+    // blend coherent tuft height with per-instance diversity and a small share of proud emergent stems/blades,
+    // staying strictly inside the authored [scale_01_min, scale_01_max] bounds so nothing grows out of scale
+    float tuft_curve  = pow(growth_field, 1.18f);
+    float jitter_mix  = slot_index == 0u ? 0.25f : 0.36f;
+    float emergent    = pow(sc, 3.6f) * (slot_index == 0u ? 0.28f : 0.24f) * (0.25f + 0.75f * tuft_curve);
+    float sc_shaped   = saturate(lerp(tuft_curve, sc, jitter_mix) + emergent);
+    float scale_01    = lerp(scale_01_min, scale_01_max, sc_shaped);
 
     // a pocket that keeps full height right up to its edge reads as mown, so the fringe tapers back
     // toward the small end of the range. the packed scale is logarithmic, so this interpolates the

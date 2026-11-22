@@ -298,6 +298,9 @@ struct FrameBufferData
     SHARED_FLOAT4 lens_force;
     SHARED_FLOAT4 lens_spawn;
 
+    // quantized camera anchor for proximity-weighted emissive triangle importance sampling (xyz = anchor, w = inv_radius_sq)
+    SHARED_FLOAT4 restir_emissive_anchor;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {

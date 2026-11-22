@@ -70,7 +70,8 @@ void main_ms(
             (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
 
         float3 root = transform[3].xyz;
-        float3 up   = normalize(transform[1].xyz);
+        float  blade_scale = length(transform[1].xyz);
+        float3 up   = transform[1].xyz / max(blade_scale, 1e-6f);
         Surface surface;
         surface.flags = 1u << 11; // grass blade
         [unroll]
@@ -82,8 +83,8 @@ void main_ms(
             blade_roots[frame][blade] = float4(pressure, grass_camera_bias(root, up, transform[2].xyz, pressure.z, time_offset));
         }
         blade_transforms[blade]     = transform;
-        blade_bends_current[blade]  = grass_bend_compute(true, root, up, 0.0f, instance_id);
-        blade_bends_previous[blade] = grass_bend_compute(true, root, up, -buffer_frame.delta_time, instance_id);
+        blade_bends_current[blade]  = grass_bend_compute(true, root, up, blade_scale, 0.0f, instance_id);
+        blade_bends_previous[blade] = grass_bend_compute(true, root, up, blade_scale, -buffer_frame.delta_time, instance_id);
     }
     GroupMemoryBarrierWithGroupSync();
 

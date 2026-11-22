@@ -455,28 +455,66 @@ float3 grass_far_color(float3 position_world)
     return leaf * buffer_frame.grass_far_tint.rgb * lerp(0.85f, 1.15f, drift) * grass_far_brightness;
 }
 
+// Gaussian color variation around a species' ideal linear RGB color:
+// rotates hue around the achromatic axis, varies saturation (rich vs soft pastel),
+// and modulates lightness via zero-mean N(0, 1) draws so most blooms stay close to their ideal color.
+float3 apply_gaussian_flower_variation(float3 col, float g_hue, float g_sat, float g_val, float hue_sigma, float sat_sigma, float val_sigma)
+{
+    float angle    = g_hue * hue_sigma;
+    float c        = cos(angle);
+    float s        = sin(angle);
+    const float3 k = float3(0.57735027f, 0.57735027f, 0.57735027f);
+    col            = col * c + cross(k, col) * s + k * dot(k, col) * (1.0f - c);
+    col            = max(col, 0.0f);
+
+    float luma = luminance(col);
+    col        = max(lerp(luma.xxx, col, 1.0f + g_sat * sat_sigma), 0.0f);
+    col       *= 1.0f + g_val * val_sigma;
+    return saturate(col);
+}
+
 // Physically calibrated Greek Mediterranean wildflower shading using uv.y part encoding:
 // [0, 1) stem/leaves/calyx, [1, 2) cupped petals, [2, 3) domed pollen/stamen disc.
 float3 compute_flower_color(float2 uv, float packed_variant)
 {
-    int species    = clamp((int)floor(packed_variant), 0, 4);
-    float plant    = frac(packed_variant);
-    float tone     = lerp(0.86f, 1.14f, plant);
+    int   species = clamp((int)floor(packed_variant), 0, 4);
+    float plant   = frac(packed_variant);
+
+    // Quantize per-plant seed to a 10-bit integer id so barycentric interpolation stays identical across every pixel of a bloom.
+    uint plant_id = (uint)round(saturate(plant) * 1023.0f);
+    uint h0       = hash_mix(plant_id * 747796405u + (uint)species * 2891336453u + 0x9e3779b9u);
+    uint h1       = hash_mix(h0 ^ 0x85ebca6bu);
+    uint h2       = hash_mix(h1 ^ 0xc2b2ae35u);
+    uint h3       = hash_mix(h2 ^ 0x27d4eb2du);
+
+    // Box-Muller transform -> 3 independent zero-mean Gaussian N(0, 1) draws, clamped at +/-2.5 sigma so species stay unmistakable.
+    float u0    = max(hash_unit(h0), 1e-4f);
+    float u1    = hash_unit(h1);
+    float u2    = max(hash_unit(h2), 1e-4f);
+    float u3    = hash_unit(h3);
+    float r0    = sqrt(-2.0f * log(u0));
+    float r1    = sqrt(-2.0f * log(u2));
+    float g_hue = clamp(r0 * cos(PI2 * u1), -2.5f, 2.5f);
+    float g_sat = clamp(r0 * sin(PI2 * u1), -2.5f, 2.5f);
+    float g_val = clamp(r1 * cos(PI2 * u3), -2.5f, 2.5f);
 
     if (uv.y < 1.0f)
     {
         float stem_t = saturate(uv.y);
         float3 green = lerp(flower_stem_base, flower_stem_tip, smoothstep(0.05f, 0.92f, stem_t));
-        // Subtle darker base and slightly warmer olive tint per plant
-        float3 tint  = lerp(float3(0.92f, 1.0f, 0.88f), float3(1.08f, 0.98f, 0.86f), plant);
-        return green * tint * lerp(0.80f, 1.05f, stem_t);
+        // Gentle Gaussian olive/fresh variation along the stem
+        green        = apply_gaussian_flower_variation(green, g_hue, g_sat, g_val, 0.05f, 0.10f, 0.08f);
+        return green * lerp(0.80f, 1.05f, stem_t);
     }
 
-    float3 petal_main   = float3(0.56f, 0.54f, 0.46f);
-    float3 petal_base   = float3(0.32f, 0.28f, 0.14f);
-    float3 petal_tip    = float3(0.64f, 0.62f, 0.56f);
-    float3 disc_center  = float3(0.46f, 0.30f, 0.03f);
-    float3 disc_rim     = float3(0.28f, 0.16f, 0.02f);
+    float3 petal_main  = float3(0.56f, 0.54f, 0.46f);
+    float3 petal_base  = float3(0.32f, 0.28f, 0.14f);
+    float3 petal_tip   = float3(0.64f, 0.62f, 0.56f);
+    float3 disc_center = float3(0.46f, 0.30f, 0.03f);
+    float3 disc_rim    = float3(0.28f, 0.16f, 0.02f);
+    float  hue_sigma   = 0.09f;
+    float  sat_sigma   = 0.18f;
+    float  val_sigma   = 0.12f;
 
     if (species == 0)
     {
@@ -486,57 +524,74 @@ float3 compute_flower_color(float2 uv, float packed_variant)
         petal_tip   = float3(0.52f, 0.055f, 0.026f);
         disc_center = float3(0.045f, 0.055f, 0.022f);
         disc_rim    = float3(0.014f, 0.012f, 0.016f);
+        hue_sigma   = 0.075f;
+        sat_sigma   = 0.16f;
+        val_sigma   = 0.13f;
     }
     else if (species == 1)
     {
         // Wild Chamomile / Daisy (Anthemis): warm creamy white petals + rich golden pollen dome
-        petal_main  = float3(0.58f, 0.56f, 0.49f);
-        petal_base  = float3(0.44f, 0.41f, 0.28f);
-        petal_tip   = float3(0.66f, 0.65f, 0.60f);
-        disc_center = float3(0.50f, 0.34f, 0.035f);
-        disc_rim    = float3(0.34f, 0.21f, 0.022f);
+        petal_main  = float3(0.49f, 0.47f, 0.41f);
+        petal_base  = float3(0.36f, 0.34f, 0.23f);
+        petal_tip   = float3(0.57f, 0.56f, 0.50f);
+        disc_center = float3(0.48f, 0.32f, 0.032f);
+        disc_rim    = float3(0.30f, 0.19f, 0.020f);
+        hue_sigma   = 0.06f;
+        sat_sigma   = 0.24f;
+        val_sigma   = 0.10f;
     }
     else if (species == 2)
     {
-        // Mediterranean Lavender / Wild Sage: soft periwinkle-violet
+        // Mediterranean Lavender / Wild Sage: soft periwinkle-violet (drifts gently from deeper cornflower blue to lighter sky-lilac)
         petal_main  = float3(0.18f, 0.135f, 0.36f);
         petal_base  = float3(0.09f, 0.065f, 0.22f);
         petal_tip   = float3(0.28f, 0.22f, 0.46f);
         disc_center = float3(0.42f, 0.36f, 0.16f);
         disc_rim    = float3(0.14f, 0.10f, 0.26f);
+        hue_sigma   = 0.13f;
+        sat_sigma   = 0.22f;
+        val_sigma   = 0.14f;
     }
     else if (species == 3)
     {
-        // Crown Daisy (Glebionis coronaria): sunlit Mediterranean gold
+        // Crown Daisy (Glebionis coronaria): sunlit Mediterranean gold (lemon-gold to rich marigold)
         petal_main  = float3(0.56f, 0.42f, 0.035f);
         petal_base  = float3(0.46f, 0.26f, 0.018f);
         petal_tip   = float3(0.64f, 0.54f, 0.09f);
         disc_center = float3(0.32f, 0.18f, 0.020f);
         disc_rim    = float3(0.20f, 0.10f, 0.014f);
+        hue_sigma   = 0.09f;
+        sat_sigma   = 0.18f;
+        val_sigma   = 0.12f;
     }
     else
     {
-        // Ionian Pink Rockrose (Cistus creticus): papery dusty rose with bright golden stamen crown
+        // Ionian Pink Rockrose (Cistus creticus): papery dusty rose (pale blush-pink to deeper berry-rose)
         petal_main  = float3(0.38f, 0.115f, 0.195f);
         petal_base  = float3(0.34f, 0.24f, 0.08f);
         petal_tip   = float3(0.48f, 0.19f, 0.28f);
         disc_center = float3(0.54f, 0.38f, 0.045f);
         disc_rim    = float3(0.40f, 0.24f, 0.028f);
+        hue_sigma   = 0.11f;
+        sat_sigma   = 0.22f;
+        val_sigma   = 0.13f;
     }
 
     if (uv.y >= 2.0f)
     {
-        float r = saturate(uv.y - 2.0f);
-        float grain = 0.88f + 0.24f * sin(uv.x * 37.699f) * sin(r * 18.85f);
-        return lerp(disc_center, disc_rim, smoothstep(0.15f, 0.95f, r)) * grain * tone;
+        float  r     = saturate(uv.y - 2.0f);
+        float  grain = 0.88f + 0.24f * sin(uv.x * 37.699f) * sin(r * 18.85f);
+        float3 disc  = lerp(disc_center, disc_rim, smoothstep(0.15f, 0.95f, r)) * grain;
+        return apply_gaussian_flower_variation(disc, g_hue, g_sat, g_val, hue_sigma * 0.5f, sat_sigma * 0.5f, val_sigma * 0.75f);
     }
 
-    float t       = saturate(uv.y - 1.0f);
-    float edge    = abs(uv.x * 2.0f - 1.0f);
-    float vein    = 0.94f + 0.09f * cos((uv.x - 0.5f) * 28.0f) * (1.0f - 0.5f * t);
-    float3 col    = lerp(petal_base, petal_main, smoothstep(0.04f, species == 0 ? 0.34f : 0.24f, t));
-    col           = lerp(col, petal_tip, smoothstep(0.55f, 1.0f, t));
-    col          *= vein * lerp(1.0f, 0.92f, edge * edge) * tone;
+    float  t    = saturate(uv.y - 1.0f);
+    float  edge = abs(uv.x * 2.0f - 1.0f);
+    float  vein = 0.94f + 0.09f * cos((uv.x - 0.5f) * 28.0f) * (1.0f - 0.5f * t);
+    float3 col  = lerp(petal_base, petal_main, smoothstep(0.04f, species == 0 ? 0.34f : 0.24f, t));
+    col         = lerp(col, petal_tip, smoothstep(0.55f, 1.0f, t));
+    col         = apply_gaussian_flower_variation(col, g_hue, g_sat, g_val, hue_sigma, sat_sigma, val_sigma);
+    col        *= vein * lerp(1.0f, 0.92f, edge * edge);
     return col;
 }
 
@@ -837,7 +892,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         puddle_relief = analysis.curvature * 0.06f + (analysis.flow - 0.35f) * 0.06f + (0.5f - terrain.height) * 0.05f - 0.035f;
     }
 
-    if (surface.has_texture_height() && material.height != 0.0f && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
+    bool is_road_material = (material.flags & ((1u << 22) | (1u << 23))) != 0;
+    if (surface.has_texture_height() && material.height != 0.0f && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water() && !is_road_material)
     {
         float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
         float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
@@ -896,10 +952,21 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         float height_percent = vertex.uv_misc.z;
         float variation      = vertex.uv_misc.w;
-        albedo.rgb           *= compute_grass_color(
+        float3 blade_albedo  = compute_grass_color(
             height_percent,
             variation
         );
+
+        // sun-warmed chlorophyll tips: upper 30% of mature blades catches warm golden translucency
+        float tip_warmth = smoothstep(0.62f, 1.0f, height_percent) * (0.14f + 0.16f * variation);
+        blade_albedo     = lerp(blade_albedo, blade_albedo * float3(1.16f, 1.12f, 0.84f), tip_warmth);
+        albedo.rgb      *= blade_albedo;
+
+        // rich root-to-tip self-occlusion anchors the meadow into the thatch and makes crushed car trails pop
+        occlusion *= lerp(0.28f, 1.0f, smoothstep(0.0f, 0.78f, height_percent));
+
+        // matte-velvet botanical roughness: fresh chlorophyll ~0.78, drier straw ~0.94 (no plastic sun glare)
+        roughness = lerp(0.78f, 0.94f, smoothstep(0.35f, 0.95f, variation));
 
         // wind sheen: blades laid over by a gust turn their pale, glossy flank to the light,
         // so fronts read as bright waves rolling across the field, strongest at the tips
@@ -915,6 +982,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     else if (surface.is_flower())
     {
         albedo.rgb = compute_flower_color(vertex.uv_misc.xy, vertex.uv_misc.w);
+        // ground wildflower stems and calyxes in the surrounding grass canopy shadow
+        float stem_ao = lerp(0.38f, 1.0f, smoothstep(0.0f, 0.95f, saturate(vertex.uv_misc.y)));
+        occlusion    *= stem_ao;
     }
     else if (surface.color_variation_from_instance() && !impostor_is_bark)
     {
@@ -1022,6 +1092,57 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
         height_map    = surface.has_texture_height() ? packed.a : height_map;
+    }
+
+    // aaa road surface: contact-refinement parallax occlusion mapping, 4k scanned micro-aggregate,
+    // world-space thermal/fatigue cracks, tar-snake sealants, repair patches, divots & chipped paint
+    if (is_road_material && !terrain_shaded && !is_impostor)
+    {
+        float3 road_geom_n     = normalize(vertex.normal);
+        float3 road_view_dir   = -camera_to_pixel / max(distance, 1e-4f);
+        float3 road_light_dir  = normalize(-light_parameters[0].direction);
+        float  road_n_dot_v    = saturate(dot(road_geom_n, road_view_dir));
+        float  road_n_dot_l    = dot(road_geom_n, road_light_dir);
+        float3 road_view_ray   = float3((road_view_dir - road_geom_n * road_n_dot_v).xz, road_n_dot_v);
+        float3 road_light_ray  = float3((road_light_dir - road_geom_n * road_n_dot_l).xz, road_n_dot_l);
+        float  road_pom_fade   = saturate((ROAD_POM_FADE_END - distance) / (ROAD_POM_FADE_END - ROAD_POM_FADE_START)) * saturate((road_n_dot_v - 0.04f) / 0.14f);
+        float  road_footprint  = max(length(dpdx_world), length(dpdy_world));
+        uint   road_mat_index  = pass_get_material_index();
+        uint   road_det_packed = get_material_texture_index(road_mat_index, material_texture_index_packed + 1);
+        float  road_hit_height = height_map;
+        float  road_rel_shadow = 0.0f;
+        float2 road_xz         = road_parallax_march(
+            road_det_packed,
+            position_world.xz,
+            dpdx_world.xz,
+            dpdy_world.xz,
+            road_view_ray,
+            road_light_ray,
+            ROAD_POM_RELIEF_METRES * road_pom_fade,
+            road_footprint,
+            vertex.position.xy,
+            road_hit_height,
+            road_rel_shadow
+        );
+        road_apply_aaa_detail(
+            road_mat_index,
+            (material.flags & (1u << 23)) != 0,
+            road_xz,
+            dpdx_world.xz,
+            dpdy_world.xz,
+            road_geom_n,
+            road_view_dir,
+            road_light_dir,
+            distance,
+            road_footprint,
+            road_hit_height,
+            road_rel_shadow * road_pom_fade,
+            albedo.rgb,
+            normal,
+            roughness,
+            occlusion,
+            height_map
+        );
     }
 
     // the card only keeps the outermost leaves, the crown depth that shades a mesh tree's interior is gone,
