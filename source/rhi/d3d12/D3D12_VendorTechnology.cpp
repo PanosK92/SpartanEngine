@@ -682,7 +682,7 @@ namespace spartan
             const char* pool_name   = "NRD_GI";
             if (preset == Nrd_Preset::Reflections)
             {
-                denoisers[0] = { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR };
+                denoisers[0] = { nrd_common::id_reflections, nrd::Denoiser::RELAX_SPECULAR };
                 pool_name    = "NRD_Reflections";
             }
             else if (preset == Nrd_Preset::Reference)
@@ -1543,9 +1543,9 @@ namespace spartan
         else if (preset == Nrd_Preset::Reflections)
         {
             denoiser_id = nrd_common::id_reflections;
-            nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_reflections(reblur, common::cb_frame->delta_time_real, checkerboard);
-            if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
+            nrd::RelaxSettings relax = {};
+            nrd_common::fill_preset_reflections(relax, common::cb_frame->delta_time_real, checkerboard);
+            if (pool.integration.SetDenoiserSettings(denoiser_id, &relax) != nrd::Result::SUCCESS)
             {
                 return false;
             }

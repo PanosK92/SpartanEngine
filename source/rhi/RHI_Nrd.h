@@ -130,9 +130,9 @@ namespace spartan
 
             settings.motionVectorScale[0] = 1.0f;
             settings.motionVectorScale[1] = 1.0f;
-            // ReSTIR supplies previous-minus-current view depth as well as UV
-            // motion. Other presets still rely on NRD's camera-only Z fallback.
-            settings.motionVectorScale[2] = preset == Nrd_Preset::Gi ? 1.0f : 0.0f;
+            // ReSTIR GI and RT reflections both supply previous-minus-current view depth as well as UV motion.
+            // Shadows still rely on NRD's camera-only Z fallback.
+            settings.motionVectorScale[2] = (preset == Nrd_Preset::Gi || preset == Nrd_Preset::Reflections) ? 1.0f : 0.0f;
 
             // NRD wants the sample offset in pixels, opposite to the projected geometry displacement.
             // Convert NDC to the denoising grid, including reduced-resolution denoisers.
@@ -205,10 +205,11 @@ namespace spartan
             settings.hitDistanceParameters.B           = restir_hit_distance_b;
             settings.hitDistanceParameters.C           = restir_hit_distance_c;
             // Use REBLUR's default diffuse prepass and maximum blur radii for one-sample lighting.
-            // The unified reservoir supplies a stochastic glossy signal too.
-            // Filter it before temporal accumulation, as in the reflection preset.
-            settings.specularPrepassBlurRadius         = 30.0f;
-            settings.minBlurRadius                     = 1.0f;
+            // Keep the specular prepass for virtual motion estimation only so sparse bright
+            // highlights do not smear into blobs before temporal accumulation.
+            settings.specularPrepassBlurRadius                 = 30.0f;
+            settings.usePrepassOnlyForSpecularMotionEstimation = true;
+            settings.minBlurRadius                             = 1.0f;
             // Quarter-resolution indirect light needs a longer history than reflections.
             // ReBLUR antilag and disocclusion still discard stale lighting and moving surfaces.
             settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(2.0f, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
@@ -233,25 +234,22 @@ namespace spartan
             return settings;
         }
 
-        // rt reflections, roughness guided specular reblur
-        inline void fill_preset_reflections(nrd::ReblurSettings& settings, float delta_time, bool checkerboard)
+        // rt reflections, variance-guided luminance-edge-stopping specular relax
+        inline void fill_preset_reflections(nrd::RelaxSettings& settings, float delta_time, bool checkerboard)
         {
-            settings                                   = {};
+            settings                                    = {};
             // the shaders trace the pixel where (x ^ y ^ frame) is even, nrd's black cells, frameIndex is the engine frame
-            settings.checkerboardMode                  = checkerboard ? nrd::CheckerboardMode::BLACK : nrd::CheckerboardMode::OFF;
-            settings.diffusePrepassBlurRadius          = 0.0f;
-            settings.specularPrepassBlurRadius         = 30.0f;
-            settings.maxBlurRadius                     = 30.0f;
-            settings.minBlurRadius                     = 1.0f;
-            settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
-            settings.maxFastAccumulatedFrameNum        = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.maxAccumulatedFrameNum, delta_time);
-            settings.minHitDistanceWeight              = 0.1f;
-            settings.lobeAngleFraction                 = 0.15f;
-            settings.fireflySuppressorMinRelativeScale = 2.0f;
-            settings.enableAntiFirefly                 = true;
-            // Stabilize radiance before composition: the upscaler cannot reliably
-            // distinguish noisy bright reflections from changing scene detail.
-            settings.maxStabilizedFrameNum             = settings.maxAccumulatedFrameNum;
+            settings.checkerboardMode                   = checkerboard ? nrd::CheckerboardMode::BLACK : nrd::CheckerboardMode::OFF;
+            settings.specularPrepassBlurRadius          = 15.0f;
+            settings.specularMaxAccumulatedFrameNum     = get_accumulated_frame_num(nrd::RELAX_DEFAULT_ACCUMULATION_TIME, nrd::RELAX_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.specularMaxFastAccumulatedFrameNum = (std::min)(settings.specularMaxAccumulatedFrameNum, (std::max)(4u, get_accumulated_frame_num(nrd::RELAX_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.specularMaxAccumulatedFrameNum, delta_time)));
+            settings.historyFixFrameNum                 = (std::min)(3u, settings.specularMaxFastAccumulatedFrameNum > 0u ? settings.specularMaxFastAccumulatedFrameNum - 1u : 0u);
+            settings.specularPhiLuminance               = 1.0f;
+            settings.atrousIterationNum                 = 4u;
+            settings.lobeAngleFraction                  = 0.5f;
+            settings.roughnessFraction                  = 0.15f;
+            settings.enableAntiFirefly                  = true;
+            settings.enableRoughnessEdgeStopping        = true;
         }
 
         // directional rt shadows, sigma penumbra reconstruction
