@@ -197,8 +197,21 @@ void ray_gen()
     bool has_scattering = material.subsurface_scattering > 0.0f;
     bool thin_foliage = has_scattering && receiver.is_foliage();
 
-    float camera_distance = length(get_camera_position() - pos_ws);
+    float3 to_camera      = get_camera_position() - pos_ws;
+    float camera_distance = length(to_camera);
+
     float base_offset     = 0.01f + camera_distance * 0.0001f;
+
+    // the lod error is along the drawn surface, so the offset follows its geometric normal, the visible side faces the camera
+    float3 offset_normal = get_geometric_normal(uv);
+    if (dot(offset_normal, offset_normal) == 0.0f)
+    {
+        offset_normal = normal_ws;
+    }
+    if (dot(offset_normal, to_camera) < 0.0f)
+    {
+        offset_normal = -offset_normal;
+    }
 
     // Full-rate tracing samples both sides of the solar disk. In checkerboard
     // mode neighboring traced pixels share the pair and SIGMA filters their signals.
@@ -228,8 +241,9 @@ void ray_gen()
                 uint disk_index = checkerboard ? (((pixel.x >> 1u) ^ pixel.y) & 1u) : i;
                 float2 disk = disk_index == 0 ? float2(0.5f, 0.5f) : float2(-0.5f, -0.5f);
                 float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
-                float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
-                float3 origin = pos_ws + normal_ws * (base_offset * normal_sign);
+                float normal_sign = thin_foliage && dot(offset_normal, sample_dir) < 0.0f ? -1.0f : 1.0f;
+                float sample_offset = max(base_offset, rt_lod_shadow_offset(camera_distance));
+                float3 origin = pos_ws + offset_normal * (sample_offset * normal_sign);
                 float2 vis = thin_foliage
                     ? rt_trace_canopy_transmission(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
                     : trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
@@ -275,9 +289,10 @@ void ray_gen()
         reach.Build(light_i, receiver);
         if (!reach.can_contribute())
             continue;
-        float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
-        float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
-        trace_local_light_shadow(pixel, slot, light, pos_ws + normal_ws * (local_offset * normal_sign), checkerboard);
+        float3 to_light    = normalize(light.position - pos_ws);
+        float local_offset = max(0.001f + min(camera_distance * 0.00001f, 0.002f), rt_lod_shadow_offset(camera_distance));
+        float normal_sign  = thin_foliage && dot(offset_normal, to_light) < 0.0f ? -1.0f : 1.0f;
+        trace_local_light_shadow(pixel, slot, light, pos_ws + offset_normal * (local_offset * normal_sign), checkerboard);
     }
 }
 

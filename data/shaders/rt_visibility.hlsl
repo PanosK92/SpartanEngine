@@ -59,6 +59,16 @@ bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 baryc
     return alpha > get_alpha_threshold(hit_position, mat.alpha_cutoff);
 }
 
+// the blas is built once from the full detail mesh, but the g-buffer draws whichever lod the distance selects,
+// a coarse lod's flat triangles sit slightly inside the curved full detail surface, so a ray starting there hits it.
+// a lod is only drawn when it is within r.geometry_error_pixels of the full detail mesh on screen, so moving the
+// origin out by that distance puts it outside the blas surface
+float rt_lod_shadow_offset(float camera_distance)
+{
+    float pixel_size = 2.0f * camera_distance / (abs(buffer_frame.projection[1][1]) * get_render_resolution_active().y);
+    return buffer_frame.geometry_error_pixels * pixel_size;
+}
+
 // distance to the first alpha tested opaque blocker, negative when the ray is clear
 float rt_trace_occluder(float3 origin, float3 direction, float t_min, float t_max)
 {
