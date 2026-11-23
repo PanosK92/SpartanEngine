@@ -117,7 +117,7 @@ namespace spartan
         math::Vector2 uv_min, uv_scale;
         uint32_t atlas = 0, vertices = 0, indices = 0, meshlet = 0, remaps = 0, micro = 0;
         uint32_t impostor_resolution = resolution, impostor_layers = layers;
-        static constexpr uint32_t frames = 8, resolution = 64, baked_resolution = 96, layers = 2;
+        static constexpr uint32_t frames = 8, resolution = 64, baked_resolution = 128, layers = 2;
     };
 
     struct SubMesh

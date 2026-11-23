@@ -151,7 +151,7 @@ namespace
         material->SetProperty(MaterialProperty::Normal, 1.0f);
         material->SetProperty(MaterialProperty::Metalness, 0.0f);
         material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
-        material->SetProperty(MaterialProperty::SubsurfaceScattering, clamp(recipe.translucency, 0.45f, 0.72f));
+        material->SetProperty(MaterialProperty::SubsurfaceScattering, clamp(recipe.translucency, 0.25f, 0.65f));
         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
         material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
         material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);

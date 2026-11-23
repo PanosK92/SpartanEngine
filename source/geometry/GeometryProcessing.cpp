@@ -856,16 +856,16 @@ namespace spartan::geometry_processing
             uint32_t width  = 0;
             uint32_t height = 0;
 
-            void build(const ImpostorTextureInput& input, uint32_t target_res, bool alpha_weighted)
+            void build_raw(const uint8_t* src, uint32_t src_w, uint32_t src_h, uint32_t target_res, bool alpha_weighted)
             {
-                if (!input.rgba || input.width == 0 || input.height == 0)
+                if (!src || src_w == 0 || src_h == 0)
                 {
                     return;
                 }
 
-                width  = input.width;
-                height = input.height;
-                rgba.assign(input.rgba, input.rgba + static_cast<size_t>(width) * height * 4);
+                width  = src_w;
+                height = src_h;
+                rgba.assign(src, src + static_cast<size_t>(width) * height * 4);
 
                 const uint32_t target = std::max(target_res * 2u, 64u);
                 while (std::max(width, height) > target && width > 1 && height > 1)
@@ -951,28 +951,67 @@ namespace spartan::geometry_processing
                 g_out = static_cast<uint8_t>(std::clamp(g + 0.5f, 0.0f, 255.0f));
                 b_out = static_cast<uint8_t>(std::clamp(b + 0.5f, 0.0f, 255.0f));
             }
+
+            math::Vector3 sample_normal_ts(const math::Vector2& uv) const
+            {
+                if (rgba.empty() || width == 0 || height == 0)
+                {
+                    return math::Vector3(0.0f, 0.0f, 1.0f);
+                }
+
+                uint8_t r = 128, g = 128, b = 255;
+                float a = 1.0f;
+                sample(uv, math::Vector3(1.0f, 1.0f, 1.0f), r, g, b, a);
+                const float nx = (static_cast<float>(r) * (1.0f / 255.0f)) * 2.0f - 1.0f;
+                const float ny = (static_cast<float>(g) * (1.0f / 255.0f)) * 2.0f - 1.0f;
+                const float nz = std::max(0.05f, (static_cast<float>(b) * (1.0f / 255.0f)) * 2.0f - 1.0f);
+                return math::Vector3(nx, ny, nz).Normalized();
+            }
+
+            float sample_scalar(const math::Vector2& uv, float fallback) const
+            {
+                if (rgba.empty() || width == 0 || height == 0)
+                {
+                    return fallback;
+                }
+
+                uint8_t r = 255, g = 255, b = 255;
+                float a = 1.0f;
+                sample(uv, math::Vector3(1.0f, 1.0f, 1.0f), r, g, b, a);
+                return static_cast<float>(r) * (1.0f / 255.0f);
+            }
         };
 
         MipImage bark_mip;
-        bark_mip.build(bark_texture, resolution, false);
+        bark_mip.build_raw(bark_texture.rgba, bark_texture.width, bark_texture.height, resolution, false);
+        MipImage bark_occ_mip;
+        bark_occ_mip.build_raw(bark_texture.occlusion_rgba, bark_texture.occlusion_width, bark_texture.occlusion_height, resolution, false);
+
         MipImage canopy_mip;
-        canopy_mip.build(canopy_texture, resolution, true);
+        canopy_mip.build_raw(canopy_texture.rgba, canopy_texture.width, canopy_texture.height, resolution, true);
+        MipImage canopy_normal_mip;
+        canopy_normal_mip.build_raw(canopy_texture.normal_rgba, canopy_texture.normal_width, canopy_texture.normal_height, resolution, false);
+        MipImage canopy_occ_mip;
+        canopy_occ_mip.build_raw(canopy_texture.occlusion_rgba, canopy_texture.occlusion_width, canopy_texture.occlusion_height, resolution, false);
 
         struct MeshCache
         {
             std::vector<math::Vector3> positions;
             std::vector<math::Vector3> normals;
+            std::vector<math::Vector3> tangents;
             std::vector<math::Vector2> uvs;
 
             void fill(const std::vector<RHI_Vertex_PosTexNorTan>& verts, const math::Vector3& center)
             {
                 positions.resize(verts.size());
                 normals.resize(verts.size());
+                tangents.resize(verts.size());
                 uvs.resize(verts.size());
                 for (size_t i = 0; i < verts.size(); i++)
                 {
                     positions[i] = verts[i].get_position() - center;
                     normals[i]   = verts[i].get_normal();
+                    tangents[i]  = verts[i].get_tangent();
                     uvs[i]       = verts[i].get_uv();
                 }
             }
@@ -983,9 +1022,21 @@ namespace spartan::geometry_processing
         MeshCache canopy_cache;
         canopy_cache.fill(canopy_vertices, center);
 
-        const float inv_radius   = 1.0f / radius;
-        const float resolution_f = static_cast<float>(resolution);
-        const float leaf_cutoff  = std::clamp(canopy_texture.alpha_cutoff * 0.72f, 0.1f, 0.9f);
+        // canopy ellipsoid bounds in center-relative local space for volumetric radial & vertical cavity occlusion
+        math::Vector3 crown_min(FLT_MAX, FLT_MAX, FLT_MAX);
+        math::Vector3 crown_max(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        for (const math::Vector3& p : canopy_cache.positions)
+        {
+            crown_min = math::Vector3::Min(crown_min, p);
+            crown_max = math::Vector3::Max(crown_max, p);
+        }
+        const math::Vector3 crown_center = (crown_min + crown_max) * 0.5f;
+        const math::Vector3 crown_radii  = math::Vector3::Max((crown_max - crown_min) * 0.5f, math::Vector3(0.35f, 0.35f, 0.35f));
+
+        const float inv_radius       = 1.0f / radius;
+        const float resolution_f     = static_cast<float>(resolution);
+        const float texel_world_size = (2.0f * radius) / resolution_f;
+        const float leaf_cutoff      = std::clamp(canopy_texture.alpha_cutoff * 0.72f, 0.1f, 0.9f);
 
         struct Projected
         {
@@ -994,10 +1045,28 @@ namespace spartan::geometry_processing
             float z;
         };
 
+        static const float horizon_dirs[8][2] =
+        {
+            {  1.0f,  0.0f }, { -1.0f,  0.0f }, {  0.0f,  1.0f }, {  0.0f, -1.0f },
+            {  0.70710678f,  0.70710678f }, { -0.70710678f,  0.70710678f },
+            {  0.70710678f, -0.70710678f }, { -0.70710678f, -0.70710678f }
+        };
+        static const float horizon_radii[4] = { 1.25f, 2.75f, 5.0f, 8.5f };
+
+        auto smoothstep_f = [](float edge0, float edge1, float x) -> float
+        {
+            const float t = std::clamp((x - edge0) / std::max(edge1 - edge0, 1e-6f), 0.0f, 1.0f);
+            return t * t * (3.0f - 2.0f * t);
+        };
+
         auto bake_frame = [&](uint32_t frame_start, uint32_t frame_end)
         {
             std::vector<Projected> projected;
             std::vector<float> depth(frame_texels);
+            std::vector<uint8_t> rgb(frame_texels * 3);
+            std::vector<float> normal_frame(frame_texels * 3);
+            std::vector<float> tex_ao(frame_texels);
+            std::vector<uint8_t> flags(frame_texels); // bit 0: valid, bit 1: is_bark
 
             for (uint32_t f = frame_start; f < frame_end; f++)
             {
@@ -1010,9 +1079,11 @@ namespace spartan::geometry_processing
                 impostor_frame_basis(direction, right, up);
 
                 std::fill(depth.begin(), depth.end(), -FLT_MAX);
+                std::fill(flags.begin(), flags.end(), 0u);
+                std::fill(tex_ao.begin(), tex_ao.end(), 1.0f);
                 uint32_t* frame = texels_out.data() + static_cast<size_t>(f) * frame_words;
 
-                auto rasterize_submesh = [&](const MeshCache& cache, const std::vector<uint32_t>& indices, const MipImage& mip, const math::Vector3& tint, bool is_bark, float alpha_threshold)
+                auto rasterize_submesh = [&](const MeshCache& cache, const std::vector<uint32_t>& indices, const MipImage& albedo_mip, const MipImage& normal_mip, const MipImage& occ_mip, const math::Vector3& tint, bool is_bark, float alpha_threshold)
                 {
                     if (cache.positions.empty() || indices.size() < 3)
                     {
@@ -1028,7 +1099,9 @@ namespace spartan::geometry_processing
                         projected[i].z = math::Vector3::Dot(p, direction);
                     }
 
-                    auto write = [&](uint32_t px, uint32_t py, float z, const math::Vector2& uv, const math::Vector3& normal)
+                    const bool has_normal_map = !normal_mip.rgba.empty();
+
+                    auto write = [&](uint32_t px, uint32_t py, float z, const math::Vector2& uv, const math::Vector3& interp_normal, const math::Vector3& interp_tangent)
                     {
                         const size_t texel = static_cast<size_t>(py) * resolution + px;
                         if (z <= depth[texel])
@@ -1038,29 +1111,46 @@ namespace spartan::geometry_processing
 
                         uint8_t r = 0, g = 0, b = 0;
                         float a = 1.0f;
-                        mip.sample(uv, tint, r, g, b, a);
+                        albedo_mip.sample(uv, tint, r, g, b, a);
                         if (!is_bark && a <= alpha_threshold)
                         {
                             return;
                         }
 
-                        float nx = math::Vector3::Dot(normal, right);
-                        float ny = math::Vector3::Dot(normal, up);
-                        float nz = math::Vector3::Dot(normal, direction);
+                        math::Vector3 shaded_n = interp_normal;
+                        if (!is_bark && has_normal_map)
+                        {
+                            const math::Vector3 n_ts = normal_mip.sample_normal_ts(uv);
+                            math::Vector3 t_ortho = interp_tangent - shaded_n * math::Vector3::Dot(interp_tangent, shaded_n);
+                            if (t_ortho.LengthSquared() > 1e-6f)
+                            {
+                                t_ortho.Normalize();
+                                const math::Vector3 b_ortho = math::Vector3::Cross(shaded_n, t_ortho);
+                                // perturb vertex normal by high-frequency leaf sprite normal
+                                const float strength = 0.85f;
+                                shaded_n = (shaded_n * n_ts.z + t_ortho * (n_ts.x * strength) + b_ortho * (n_ts.y * strength)).Normalized();
+                            }
+                        }
+
+                        float nx = math::Vector3::Dot(shaded_n, right);
+                        float ny = math::Vector3::Dot(shaded_n, up);
+                        float nz = math::Vector3::Dot(shaded_n, direction);
                         if (nz < 0.0f)
                         {
                             nx = -nx;
                             ny = -ny;
                             nz = -nz;
                         }
-                        const float n_sum = std::max(fabsf(nx) + fabsf(ny) + nz, 1e-6f);
-                        const uint32_t ox = static_cast<uint32_t>(std::clamp((nx / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
-                        const uint32_t oy = static_cast<uint32_t>(std::clamp((ny / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
-                        const uint32_t dz = static_cast<uint32_t>(std::clamp(z * inv_radius * 0.5f + 0.5f, 0.0f, 1.0f) * 16383.0f + 0.5f);
 
-                        depth[texel]        = z;
-                        frame[texel * 2]    = static_cast<uint32_t>(r) | (static_cast<uint32_t>(g) << 8) | (static_cast<uint32_t>(b) << 16) | (255u << 24);
-                        frame[texel * 2 + 1] = ox | (oy << 8) | (dz << 16) | (is_bark ? (1u << 30) : 0u) | (1u << 31);
+                        depth[texel]                = z;
+                        rgb[texel * 3 + 0]          = r;
+                        rgb[texel * 3 + 1]          = g;
+                        rgb[texel * 3 + 2]          = b;
+                        normal_frame[texel * 3 + 0] = nx;
+                        normal_frame[texel * 3 + 1] = ny;
+                        normal_frame[texel * 3 + 2] = nz;
+                        tex_ao[texel]               = occ_mip.sample_scalar(uv, 1.0f);
+                        flags[texel]                = static_cast<uint8_t>(1u | (is_bark ? 2u : 0u));
                     };
 
                     for (size_t t = 0; t + 2 < indices.size(); t += 3)
@@ -1106,7 +1196,8 @@ namespace spartan::geometry_processing
                                         static_cast<uint32_t>(py),
                                         a.z * w0 + b.z * w1 + c.z * w2,
                                         cache.uvs[i0] * w0 + cache.uvs[i1] * w1 + cache.uvs[i2] * w2,
-                                        (cache.normals[i0] * w0 + cache.normals[i1] * w1 + cache.normals[i2] * w2).Normalized()
+                                        (cache.normals[i0] * w0 + cache.normals[i1] * w1 + cache.normals[i2] * w2).Normalized(),
+                                        (cache.tangents[i0] * w0 + cache.tangents[i1] * w1 + cache.tangents[i2] * w2).Normalized()
                                     );
                                 }
                             }
@@ -1122,14 +1213,122 @@ namespace spartan::geometry_processing
                                 py,
                                 (a.z + b.z + c.z) * third,
                                 (cache.uvs[i0] + cache.uvs[i1] + cache.uvs[i2]) * third,
-                                (cache.normals[i0] + cache.normals[i1] + cache.normals[i2]).Normalized()
+                                (cache.normals[i0] + cache.normals[i1] + cache.normals[i2]).Normalized(),
+                                (cache.tangents[i0] + cache.tangents[i1] + cache.tangents[i2]).Normalized()
                             );
                         }
                     }
                 };
 
-                rasterize_submesh(bark_cache, bark_indices, bark_mip, bark_texture.tint, true, 0.0f);
-                rasterize_submesh(canopy_cache, canopy_indices, canopy_mip, canopy_texture.tint, false, leaf_cutoff);
+                MipImage empty_mip;
+                rasterize_submesh(bark_cache, bark_indices, bark_mip, empty_mip, bark_occ_mip, bark_texture.tint, true, 0.0f);
+                rasterize_submesh(canopy_cache, canopy_indices, canopy_mip, canopy_normal_mip, canopy_occ_mip, canopy_texture.tint, false, leaf_cutoff);
+
+                // post-process: bake volumetric crown cavity AO (radial + vertical + 8-dir depth-horizon) into word 0 alpha,
+                // and blend high-frequency depth-gradient cluster relief into canopy frame-space normals
+                const float max_horizon_dz = radius * 0.55f;
+                for (uint32_t py = 0; py < resolution; py++)
+                {
+                    const float fy_norm = ((static_cast<float>(py) + 0.5f) / resolution_f) * 2.0f - 1.0f;
+                    for (uint32_t px = 0; px < resolution; px++)
+                    {
+                        const size_t texel = static_cast<size_t>(py) * resolution + px;
+                        if ((flags[texel] & 1u) == 0u)
+                        {
+                            continue;
+                        }
+
+                        const bool is_bark  = (flags[texel] & 2u) != 0u;
+                        const float z0      = depth[texel];
+                        const float fx_norm = ((static_cast<float>(px) + 0.5f) / resolution_f) * 2.0f - 1.0f;
+                        const math::Vector3 local_p = right * (fx_norm * radius) + up * (fy_norm * radius) + direction * z0;
+
+                        // radial & vertical volumetric crown occlusion
+                        const math::Vector3 rel = local_p - crown_center;
+                        const float radial_dist = sqrtf(
+                            (rel.x * rel.x) / (crown_radii.x * crown_radii.x) +
+                            (rel.y * rel.y) / (crown_radii.y * crown_radii.y) +
+                            (rel.z * rel.z) / (crown_radii.z * crown_radii.z)
+                        );
+                        const float radial_ao   = 0.24f + 0.76f * smoothstep_f(0.28f, 0.94f, radial_dist);
+                        const float vert_t      = std::clamp((local_p.y - crown_min.y) / std::max(crown_max.y - crown_min.y, 0.5f), 0.0f, 1.0f);
+                        const float vertical_ao = 0.42f + 0.58f * powf(vert_t, 0.65f);
+
+                        // 8-direction local depth-horizon occlusion captures crisp crevices between leaf clusters
+                        float horizon_occ_sum = 0.0f;
+                        for (uint32_t d = 0; d < 8u; d++)
+                        {
+                            float max_sin = 0.0f;
+                            for (uint32_t r_idx = 0; r_idx < 4u; r_idx++)
+                            {
+                                const float step_px = horizon_radii[r_idx];
+                                const int32_t sx    = static_cast<int32_t>(lroundf(static_cast<float>(px) + horizon_dirs[d][0] * step_px));
+                                const int32_t sy    = static_cast<int32_t>(lroundf(static_cast<float>(py) + horizon_dirs[d][1] * step_px));
+                                if (sx < 0 || sy < 0 || sx >= static_cast<int32_t>(resolution) || sy >= static_cast<int32_t>(resolution))
+                                {
+                                    continue;
+                                }
+                                const size_t s_texel = static_cast<size_t>(sy) * resolution + static_cast<size_t>(sx);
+                                if ((flags[s_texel] & 1u) == 0u)
+                                {
+                                    continue;
+                                }
+                                const float dz = depth[s_texel] - z0;
+                                if (dz > 0.0f && dz < max_horizon_dz)
+                                {
+                                    const float dist_w = step_px * texel_world_size;
+                                    const float s_ang  = dz / sqrtf(dz * dz + dist_w * dist_w);
+                                    const float falloff = 1.0f - (dz / max_horizon_dz) * 0.45f;
+                                    max_sin = std::max(max_sin, s_ang * falloff);
+                                }
+                            }
+                            horizon_occ_sum += max_sin;
+                        }
+                        const float horizon_ao = 1.0f - (horizon_occ_sum * (1.0f / 8.0f)) * 0.82f;
+
+                        float cavity_ao = is_bark
+                            ? tex_ao[texel] * vertical_ao * (0.35f + 0.65f * horizon_ao)
+                            : tex_ao[texel] * radial_ao * vertical_ao * (0.28f + 0.72f * horizon_ao);
+                        cavity_ao = std::clamp(cavity_ao, 0.08f, 1.0f);
+
+                        // blend local depth-buffer cluster slope into canopy normal for crisp sunlit/shaded bough relief
+                        float nx = normal_frame[texel * 3 + 0];
+                        float ny = normal_frame[texel * 3 + 1];
+                        float nz = normal_frame[texel * 3 + 2];
+                        if (!is_bark)
+                        {
+                            auto sample_z_clamped = [&](int32_t ox, int32_t oy) -> float
+                            {
+                                const int32_t cx = std::clamp(static_cast<int32_t>(px) + ox, 0, static_cast<int32_t>(resolution) - 1);
+                                const int32_t cy = std::clamp(static_cast<int32_t>(py) + oy, 0, static_cast<int32_t>(resolution) - 1);
+                                const size_t st  = static_cast<size_t>(cy) * resolution + static_cast<size_t>(cx);
+                                if ((flags[st] & 1u) == 0u)
+                                {
+                                    return z0 - texel_world_size * 0.85f;
+                                }
+                                const float dz = depth[st] - z0;
+                                return z0 + std::clamp(dz, -texel_world_size * 1.8f, texel_world_size * 1.8f);
+                            };
+
+                            const float dz_dx = (sample_z_clamped(1, 0) - sample_z_clamped(-1, 0)) / (2.0f * texel_world_size);
+                            const float dz_dy = (sample_z_clamped(0, 1) - sample_z_clamped(0, -1)) / (2.0f * texel_world_size);
+                            const math::Vector3 depth_n = math::Vector3(-dz_dx * 0.65f, -dz_dy * 0.65f, 1.0f).Normalized();
+                            const math::Vector3 combined = (math::Vector3(nx, ny, nz) * 0.62f + depth_n * 0.38f).Normalized();
+                            nx = combined.x;
+                            ny = combined.y;
+                            nz = std::max(combined.z, 0.05f);
+                        }
+
+                        const float n_sum    = std::max(fabsf(nx) + fabsf(ny) + nz, 1e-6f);
+                        const uint32_t ox    = static_cast<uint32_t>(std::clamp((nx / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
+                        const uint32_t oy    = static_cast<uint32_t>(std::clamp((ny / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
+                        const uint32_t dz14  = static_cast<uint32_t>(std::clamp(z0 * inv_radius * 0.5f + 0.5f, 0.0f, 1.0f) * 16383.0f + 0.5f);
+                        const uint32_t ao8   = static_cast<uint32_t>(std::clamp(cavity_ao * 255.0f + 0.5f, 0.0f, 255.0f));
+
+                        frame[texel * 2]     = static_cast<uint32_t>(rgb[texel * 3 + 0]) | (static_cast<uint32_t>(rgb[texel * 3 + 1]) << 8) | (static_cast<uint32_t>(rgb[texel * 3 + 2]) << 16) | (ao8 << 24);
+                        frame[texel * 2 + 1] = ox | (oy << 8) | (dz14 << 16) | (is_bark ? (1u << 30) : 0u) | (1u << 31);
+                    }
+                }
             }
         };
 

@@ -37,15 +37,22 @@ namespace spartan::geometry_processing
     // texel (px, py) of layer l in frame (fx, fy) starts at ((((fy * frames + fx) * res + py) * res + px) * layers + l) * 2
     struct ImpostorTextureInput
     {
-        const uint8_t* rgba   = nullptr;
-        uint32_t width        = 0;
-        uint32_t height       = 0;
-        math::Vector3 tint    = math::Vector3(1.0f, 1.0f, 1.0f);
-        float alpha_cutoff    = 0.5f;
+        const uint8_t* rgba           = nullptr;
+        uint32_t width                = 0;
+        uint32_t height               = 0;
+        const uint8_t* normal_rgba    = nullptr;
+        uint32_t normal_width         = 0;
+        uint32_t normal_height        = 0;
+        const uint8_t* occlusion_rgba = nullptr;
+        uint32_t occlusion_width      = 0;
+        uint32_t occlusion_height     = 0;
+        math::Vector3 tint            = math::Vector3(1.0f, 1.0f, 1.0f);
+        float alpha_cutoff            = 0.5f;
     };
 
-    // orthographic views of a whole tree (bark + canopy) pre-baked directly into srgb rgba8 + oct normal + flags:
-    // word 0 is packed srgb rgba8, word 1 is frame space oct normal (bits 0..15), depth unorm14 (bits 16..29),
+    // orthographic views of a whole tree (bark + canopy) pre-baked directly into srgb rgb8 + volumetric cavity ao8 + micro oct normal + depth:
+    // word 0 is packed srgb rgb8 (bits 0..23) and volumetric crown cavity ao8 (bits 24..31),
+    // word 1 is frame space oct normal (bits 0..15), depth unorm14 (bits 16..29),
     // is_bark flag (bit 30), and occupied bit (bit 31). one layer per texel, zero runtime texture fetches
     void bake_tree_impostor_rgba(
         const std::vector<RHI_Vertex_PosTexNorTan>& bark_vertices,

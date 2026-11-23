@@ -1718,7 +1718,7 @@ static const float3 hemisphere_samples[64] =
 
 float get_alpha_threshold(float3 position_world, float cutoff)
 {
-    static const float ALPHA_MAX_DISTANCE      = 700.0f;
+    static const float ALPHA_MAX_DISTANCE      = 4000.0f;
     static const float ALPHA_MAX_DISTANCE_SQ = ALPHA_MAX_DISTANCE * ALPHA_MAX_DISTANCE;
 
     // beyond max distance, no alpha testing (threshold = 0)

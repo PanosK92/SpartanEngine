@@ -45,6 +45,7 @@ struct Surface
     float  thickness;
     bool   thin_walled;
     float  occlusion;
+    float  foliage_sun_shadow;
     float3 emissive;
     float3 F0;
     uint2  pos;
@@ -114,7 +115,8 @@ struct Surface
         metallic               = alpha_transparent ? 0.0f : metallic;
         // the lit passes demodulate albedo out of diffuse only, a metal's reflectance is its albedo
         F0                     = lerp(is_water() ? 0.02037f : 0.04f, sample_albedo.rgb, metallic);
-        float decal_coverage   = gbuffer_decal_coverage(sample_material.b, material);
+        foliage_sun_shadow     = is_foliage() ? sample_material.b : 0.0f;
+        float decal_coverage   = is_foliage() ? 0.0f : gbuffer_decal_coverage(sample_material.b, material);
         anisotropic           = material.anisotropic;
         anisotropic_rotation  = material.anisotropic_rotation;
         clearcoat             = material.clearcoat * (1.0f - decal_coverage);

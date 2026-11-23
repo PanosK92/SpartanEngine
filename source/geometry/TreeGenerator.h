@@ -28,8 +28,8 @@ namespace spartan
 // which is how a tree keeps a dense crown at a few thousand triangles
 namespace spartan::trees
 {
-    // the leaf atlas is a 2x2 grid of twig variants, a palm uses the same grid for frond variants
-    constexpr uint32_t atlas_tiles = 2;
+    // the leaf atlas is a 4x4 grid of 16 botanical twig variants, a palm uses the same grid for frond variants
+    constexpr uint32_t atlas_tiles = 4;
 
     struct stem
     {

@@ -34,6 +34,7 @@
   <Resource file="materials/exo_wood.xml" />
   <Resource file="materials/fern_fern_foliage.xml" />
   <Resource file="materials/fern_fern_foliage_2.xml" />
+  <Resource file="materials/fern_fern_foliage_3.xml" />
   <Resource file="materials/fern_foliage.xml" />
   <Resource file="materials/ferrari_laferrari_29.xml" />
   <Resource file="materials/gs_asphalt.xml" />
@@ -52,6 +53,7 @@
   <Resource file="materials/herb_card_foliage.xml" />
   <Resource file="materials/herb_herb_card_foliage.xml" />
   <Resource file="materials/herb_herb_card_foliage_2.xml" />
+  <Resource file="materials/herb_herb_card_foliage_3.xml" />
   <Resource file="materials/home_amber.xml" />
   <Resource file="materials/home_blossom_2.xml" />
   <Resource file="materials/home_brass.xml" />
@@ -682,9 +684,11 @@
   <Resource file="meshes/fern_c.mesh" />
   <Resource file="meshes/fern_c_3.mesh" />
   <Resource file="meshes/fern_c_4.mesh" />
+  <Resource file="meshes/fern_c_5.mesh" />
   <Resource file="meshes/fern_d.mesh" />
   <Resource file="meshes/fern_d_3.mesh" />
   <Resource file="meshes/fern_d_4.mesh" />
+  <Resource file="meshes/fern_d_5.mesh" />
   <Resource file="meshes/fuel_canopy_frame_frame_column_c76569e798db.mesh" />
   <Resource file="meshes/fuel_canopy_frame_frame_cross_beam_16eeab528a4b.mesh" />
   <Resource file="meshes/fuel_canopy_frame_frame_long_beam_5c58c648cd9d.mesh" />
@@ -748,15 +752,19 @@
   <Resource file="meshes/herb_a.mesh" />
   <Resource file="meshes/herb_a_3.mesh" />
   <Resource file="meshes/herb_a_4.mesh" />
+  <Resource file="meshes/herb_a_5.mesh" />
   <Resource file="meshes/herb_b.mesh" />
   <Resource file="meshes/herb_b_3.mesh" />
   <Resource file="meshes/herb_b_4.mesh" />
+  <Resource file="meshes/herb_b_5.mesh" />
   <Resource file="meshes/herb_c.mesh" />
   <Resource file="meshes/herb_c_3.mesh" />
   <Resource file="meshes/herb_c_4.mesh" />
+  <Resource file="meshes/herb_c_5.mesh" />
   <Resource file="meshes/herb_d.mesh" />
   <Resource file="meshes/herb_d_3.mesh" />
   <Resource file="meshes/herb_d_4.mesh" />
+  <Resource file="meshes/herb_d_5.mesh" />
   <Resource file="meshes/home_architectural_details_chrome_dd0dd6ab02.mesh" />
   <Resource file="meshes/home_architectural_details_cork_70e2e2efbb.mesh" />
   <Resource file="meshes/home_architectural_details_cream_72f0a31d7b.mesh" />
@@ -1492,10 +1500,13 @@
   <Resource file="textures/fern_02_color_2k.texture" />
   <Resource file="textures/fern_02_color_2k_3.texture" />
   <Resource file="textures/fern_02_color_2k_4.texture" />
+  <Resource file="textures/fern_02_color_2k_5.texture" />
   <Resource file="textures/fern_02_nor_gl_2k.texture" />
   <Resource file="textures/fern_02_nor_gl_2k_3.texture" />
   <Resource file="textures/fern_02_nor_gl_2k_4.texture" />
+  <Resource file="textures/fern_02_nor_gl_2k_5.texture" />
   <Resource file="textures/fern_fern_foliage_2_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/fern_fern_foliage_3_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_fern_foliage_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_foliage_packed_slot0.tex_packed.texture" />
   <Resource file="textures/grille_mesh_packed_slot0.tex_packed.texture" />
@@ -1519,9 +1530,11 @@
   <Resource file="textures/herb_cards_color.texture" />
   <Resource file="textures/herb_cards_color_2.texture" />
   <Resource file="textures/herb_cards_color_3.texture" />
+  <Resource file="textures/herb_cards_color_4.texture" />
   <Resource file="textures/herb_cards_normal.texture" />
   <Resource file="textures/herb_cards_normal_2.texture" />
   <Resource file="textures/herb_cards_normal_3.texture" />
+  <Resource file="textures/herb_cards_normal_4.texture" />
   <Resource file="textures/hide_cognac_packed_slot0.tex_packed.texture" />
   <Resource file="textures/hide_cognac_rib_packed_slot0.tex_packed.texture" />
   <Resource file="textures/hide_crimson_packed_slot0.tex_packed.texture" />
@@ -1564,11 +1577,17 @@
   <Resource file="textures/painted_plaster_wall_nor_gl_2.texture" />
   <Resource file="textures/painted_plaster_wall_nor_gl_4.texture" />
   <Resource file="textures/plan_olive_3511_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3511_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3511_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3511_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3512_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3512_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3512_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3512_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3513_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3513_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3513_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3513_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plastered_stone_wall_diff.texture" />
   <Resource file="textures/plastered_stone_wall_diff_2.texture" />
   <Resource file="textures/plastered_stone_wall_diff_4.texture" />
@@ -1623,11 +1642,11 @@
  </OwnedResources>
  <Environment utc_days="9664.9166670143604" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="0" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="2" wind_y="0" wind_z="1" puddliness="0" rain="0" cloud_coverage="0.280000001" />
  <ConsoleVariables>
-  <Variable name="r.atmosphere.mist_density" value="0.000000" />
-  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.mist_density" value="0.280000" />
+  <Variable name="r.atmosphere.mist_height" value="360.000000" />
   <Variable name="r.atmosphere.ground_mist" value="1.000000" />
   <Variable name="r.atmosphere.mist_variation" value="0.650000" />
-  <Variable name="r.bloom" value="0.250000" />
+  <Variable name="r.bloom" value="0.100000" />
   <Variable name="r.ray_traced_reflections" value="1.000000" />
   <Variable name="r.ray_traced_shadows" value="1.000000" />
   <Variable name="r.restir_pt" value="0.000000" />
@@ -1657,7 +1676,7 @@
       <layer name="pine_woodland" mesh_path="project/game_resources/trees/plan_aleppo_1147/plan_aleppo_1147.prefab" mesh_variants="project/game_resources/trees/plan_aleppo_1148/plan_aleppo_1148.prefab;project/game_resources/trees/plan_aleppo_1149/plan_aleppo_1149.prefab;project/game_resources/trees/plan_cypress_421/plan_cypress_421.prefab;project/game_resources/trees/plan_cypress_422/plan_cypress_422.prefab;project/game_resources/trees/plan_carob_6173/plan_carob_6173.prefab;project/game_resources/trees/plan_carob_6174/plan_carob_6174.prefab" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="2400" max_per_tile="55000" seed="1147" slope_min="0" slope_max="52" slope_bias="0" height_min="4" height_max="700" height_fade="12" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="40" clump_count="48" clump_raggedness="0.699999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.779999971" size_max="1.27999997" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0.0599999987" giant_size="1.39999998" align_to_normal="0" surface_offset="-0.0799999982" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="100" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="111" />
       <layer name="limestone_outcrops" mesh_path="project/models/island_biomes/limestone_slab/limestone_slab.gltf" mesh_variants="project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="true" formation_spacing="130" formation_length="60" formation_width="30" formation_height="16" formation_jitter="12" embed_fraction="0.479999989" coating="0.400000006" coating_scale="3" density="12" max_per_tile="700" seed="631" slope_min="14" slope_max="75" slope_bias="0" height_min="12" height_max="100000" height_fade="10" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="0" clump_count="10" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="8" size_min="0.300000012" size_max="0.899999976" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.5" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="260" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="12" />
       <layer name="loose_stones" mesh_path="project/models/island_biomes/weathered_stone/weathered_stone.gltf" mesh_variants="project/models/island_biomes/angular_stone/angular_stone.gltf;project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="110" max_per_tile="2400" seed="2591" slope_min="0" slope_max="70" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0.349999994" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="14" clump_count="4" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.300000012" size_max="2.0999999" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.75" surface_offset="-0.0399999991" sink="0.0599999987" blend_height="1" blend_sharpness="0.5" render_distance="250" shadow_distance="110" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
-      <layer name="flowers" mesh_path="builtin/flower" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.620000005" max_per_tile="0" seed="0" slope_min="0" slope_max="32" slope_bias="0" height_min="3" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.449999988" clump_radius="12" clump_count="24" clump_raggedness="1" clump_coverage="0.519999981" clump_invert="false" mesh_scale="0.560000002" size_min="0.25999999" size_max="1.32000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.0199999996" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="180" shadow_distance="45" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="18" grass_ring_1="45" grass_ring_2="95" grass_cell_0="1.79999995" grass_cell_1="3.20000005" grass_cell_2="5.5" flags="32" />
+      <layer name="flowers" mesh_path="builtin/flower" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.239999995" max_per_tile="0" seed="0" slope_min="0" slope_max="32" slope_bias="0" height_min="3" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.449999988" clump_radius="8" clump_count="24" clump_raggedness="1" clump_coverage="0.219999999" clump_invert="false" mesh_scale="0.379999995" size_min="0.419999987" size_max="0.949999988" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.0199999996" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="180" shadow_distance="45" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="18" grass_ring_1="45" grass_ring_2="95" grass_cell_0="1.79999995" grass_cell_1="3.20000005" grass_cell_2="5.5" flags="32" />
       <layer name="grass" mesh_path="builtin/grass_blade" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="1" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.800000012" max_per_tile="0" seed="0" slope_min="0" slope_max="38" slope_bias="0" height_min="1" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="65" mask_channel="0" mask_min="0.200000003" clump_radius="18" clump_count="1" clump_raggedness="0.850000024" clump_coverage="0.800000012" clump_invert="false" mesh_scale="1" size_min="0.25" size_max="1.48000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="225" shadow_distance="150" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.449999988" grass_ring_0="42" grass_ring_1="105" grass_ring_2="225" grass_cell_0="0.319999993" grass_cell_1="0.75" grass_cell_2="1.95000005" flags="0" />
       <layer name="pebbles" mesh_path="builtin/pebble" mesh_variants="" habitat="0" material_folder="project/materials/gravel" enabled="false" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1" max_per_tile="0" seed="0" slope_min="0" slope_max="45" slope_bias="0" height_min="0.5" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="18" clump_count="1" clump_raggedness="0.699999988" clump_coverage="0.319999993" clump_invert="true" mesh_scale="0.109999999" size_min="0.153222814" size_max="1.70018411" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.0500000007" sink="0" blend_height="2.29999995" blend_sharpness="0.159999996" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="7" grass_ring_1="28" grass_ring_2="64" grass_cell_0="0.230000004" grass_cell_1="0.620000005" grass_cell_2="0.949999988" flags="0" />
       <layer name="olive_groves" mesh_path="project/game_resources/trees/plan_olive_3511/plan_olive_3511.prefab" mesh_variants="project/game_resources/trees/plan_olive_3512/plan_olive_3512.prefab;project/game_resources/trees/plan_olive_3513/plan_olive_3513.prefab" habitat="2" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="420" max_per_tile="10000" seed="3511" slope_min="0" slope_max="30" slope_bias="0" height_min="3" height_max="280" height_fade="5" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="22" clump_count="12" clump_raggedness="0.649999976" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.35000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0" surface_offset="-0.119999997" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="85" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="111" />
@@ -1735,7 +1754,7 @@
      </platforms>
     </terrain>
    </Entity>
-   <Entity name="ocean" id="9001000000000000006" active="true" position="6192.5 0 -2852" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="ocean" id="9001000000000000006" active="true" position="6176 0 -2896" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <water>
      <water biome="1" species_mask="31" population="0.649999976" wave_size="1" surf_size="0.899999976" clarity="0.75" sea_level="0" />
@@ -67957,9 +67976,9 @@
      <spawn_point />
     </Entity>
    </Entity>
-   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="6192.71 18.0796 -2851.92" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="6306.06 9.95566 -2878.07" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.0174029 -0.977536 0.0895308 -0.190013" scale="1 1 1">
+    <Entity name="component_camera" id="17524583551347340245" active="true" position="-130.064 7.54434 -17.929" rotation="-0.00720603 -0.281728 -0.00211591 0.959465" scale="1 1 1">
      <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="0.699999988" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="100000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
     </Entity>
    </Entity>
@@ -75001,7 +75020,7 @@
     </Entity>
    </Entity>
    <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="1847.36 795.925 -28332.9" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-    <script file_path="project/game_resources/scripts/ufo_hover.lua" watched_distance="2800" minimum_distance="1100" Initialize="" watch_time="0" Start="" Tick="" hover_speed="0" hover_height="2" side="1" follow_altitude="650" elapsed_time="0" rotation_speed="0" zap_duration="0" altitude_clearance="350" follow_distance="1700" />
+    <script file_path="project/game_resources/scripts/ufo_hover.lua" angle_change="1.26578114017635" rotation_speed="0" follow_distance="1700" Start="" by="0.626092910766602" center_z="-2138.4228515625" bw="0.779748439788818" start_y="660.289978027344" start_radius="1712.5382340333" end_y="661.978393554688" center_x="5591.56982421875" watch_time="0" minimum_distance="1100" anchor_x="4556.978515625" anchor_z="-2589.517578125" elapsed_time="2.6302998" arc_clearance="661.978393554688" end_radius="1666.31487326099" Tick="" Initialize="" hover_time="10.0681474365685" hover_speed="0" bx="0" anchor_y="663.311584472656" zap_duration="0" altitude_clearance="350" bz="0" start_angle="-2.4831937442077" side="1" hover_height="2" follow_altitude="650" watched_distance="2800" />
     <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
      <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
      <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/game_resources/meshes/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/game_resources/materials/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -76990,6 +77009,24 @@
   </Entity>
   <Entity name="herb_d" id="11965388537655773063" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.64034 1.64034 1.64034">
    <render mesh_name="herb_d_4" mesh_path="./project/game_resources/meshes/herb_d_4.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_2" material_path="./project/game_resources/materials/herb_herb_card_foliage_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="fern_d" id="8670523588814781039" active="true" position="0 0 0" rotation="0 0 0 1" scale="3.2726 3.2726 3.2726">
+   <render mesh_name="fern_d_5" mesh_path="./project/game_resources/meshes/fern_d_5.mesh" sub_mesh_index="0" material_name="fern_fern_foliage_3" material_path="./project/game_resources/materials/fern_fern_foliage_3.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="fern_c" id="8793843751597784036" active="true" position="0 0 0" rotation="0 0 0 1" scale="2.12446 2.12446 2.12446">
+   <render mesh_name="fern_c_5" mesh_path="./project/game_resources/meshes/fern_c_5.mesh" sub_mesh_index="0" material_name="fern_fern_foliage_3" material_path="./project/game_resources/materials/fern_fern_foliage_3.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_c" id="8449614418943572610" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.26021 1.26021 1.26021">
+   <render mesh_name="herb_c_5" mesh_path="./project/game_resources/meshes/herb_c_5.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_3" material_path="./project/game_resources/materials/herb_herb_card_foliage_3.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_a" id="8473536577613857587" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.28648 1.28648 1.28648">
+   <render mesh_name="herb_a_5" mesh_path="./project/game_resources/meshes/herb_a_5.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_3" material_path="./project/game_resources/materials/herb_herb_card_foliage_3.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_d" id="8328166008342353369" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.64034 1.64034 1.64034">
+   <render mesh_name="herb_d_5" mesh_path="./project/game_resources/meshes/herb_d_5.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_3" material_path="./project/game_resources/materials/herb_herb_card_foliage_3.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_b" id="8462035263864528095" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.51671 1.51671 1.51671">
+   <render mesh_name="herb_b_5" mesh_path="./project/game_resources/meshes/herb_b_5.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_3" material_path="./project/game_resources/materials/herb_herb_card_foliage_3.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
  </Entities>
 </World>

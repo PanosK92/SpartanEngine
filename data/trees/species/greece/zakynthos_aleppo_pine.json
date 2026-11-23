@@ -6,7 +6,7 @@
   "description": "Dense coastal Aleppo pine for the Zakynthos woodland, with an irregular spreading crown and economical branch geometry.",
   "class": "conifer",
   "evergreen": true,
-  "budget": 7200,
+  "budget": 38000,
   "height": 15.0,
   "height_var": 0.2,
   "trunk": {
@@ -69,23 +69,23 @@
   "leaves": {
     "shape": "needle",
     "size": 0.125,
-    "card_size": 0.92,
-    "density": 4.0,
+    "card_size": 0.56,
+    "density": 7.5,
     "start": 0.18,
     "tilt": 0.35,
     "per_card": 10,
     "color": [
-      0.062,
-      0.112,
-      0.032
+      0.044,
+      0.088,
+      0.024
     ],
     "color_back": [
-      0.118,
-      0.168,
-      0.046
+      0.095,
+      0.142,
+      0.038
     ],
-    "color_var": 0.12,
-    "translucency": 0.58
+    "color_var": 0.14,
+    "translucency": 0.42
   },
   "bark": {
     "style": "plated",

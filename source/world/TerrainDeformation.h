@@ -88,8 +88,8 @@ namespace spartan
         static void SetSand(const TerrainDeformationSand& sand);
 
         // strides a walker along and presses a footprint into sand at every step, feet is the ground point
-        // under the body, call once per frame
-        static void Walk(uint64_t id, const math::Vector3& feet, const math::Vector3& velocity, bool grounded, float mass);
+        // under the body, call once per frame, returns true on the frame a step lands
+        static bool Walk(uint64_t id, const math::Vector3& feet, const math::Vector3& velocity, bool grounded, float mass, TerrainDeformationFoot* stepped = nullptr);
         static float StampFoot(const TerrainDeformationFoot& foot);
 
         // relaxes ruts and prints back to flat where the swash runs over them, depth returns the water sheet

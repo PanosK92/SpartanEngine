@@ -423,7 +423,7 @@ namespace spartan::trees
                 const uint32_t first  = static_cast<uint32_t>(output.vertices.size());
                 for (uint32_t i = 0; i < 6; i++)
                 {
-                    output.vertices.emplace_back(positions[i], uvs[i], crown_normal(positions[i], card.normal, tree, 0.62f), tangent);
+                    output.vertices.emplace_back(positions[i], uvs[i], crown_normal(positions[i], card.normal, tree, 0.36f), tangent);
                 }
                 output.indices.insert(output.indices.end(),
                 {
@@ -759,11 +759,11 @@ namespace spartan::trees
         }
 
         // leaf cards along the terminal branches
-        // a tall crown seen from tens of meters needs bigger sprays, fixed size cards spread too thin over it
+        // keep card sizes modest so crowns read as dense 3D leaf clusters rather than oversized flat sheets
         const bool needles     = is_needle_like(s);
-        const float card_scale = clamp(tree.height / 12.0f, 1.0f, 1.6f);
+        const float card_scale = clamp(tree.height / 14.0f, 1.0f, 1.25f);
         const float card_size  = s.card_size * card_scale;
-        const float spacing    = card_size * 0.38f / max(s.card_density * leaf_mult, 0.05f);
+        const float spacing    = card_size * 0.34f / max(s.card_density * leaf_mult, 0.05f);
         if (s.fronds == 0)
         {
             for (const stem& st : tree.stems)
@@ -818,14 +818,36 @@ namespace spartan::trees
                         normal = normal * -1.0f;
                     }
 
-                    const float width_ratio = s.leaf == leaf_shape::needle ? 0.55f : (s.leaf == leaf_shape::scale ? 0.7f : 0.85f);
+                    const float width_ratio = s.leaf == leaf_shape::needle ? 0.58f : (s.leaf == leaf_shape::scale ? 0.7f : 0.85f);
                     card.base      = position - direction * length * 0.06f;
                     card.direction = direction * length;
                     card.side      = side * (length * width_ratio * 0.5f);
                     card.normal    = normal;
                     card.tile      = rng.next_uint() % (atlas_tiles * atlas_tiles);
-                    card.fold      = needles ? 0.55f : 0.3f;
+                    card.fold      = needles ? 0.58f : 0.34f;
                     tree.cards.push_back(card);
+
+                    // emit an intersecting crossed 3D companion sprig along the same shoot so needle tufts and dense
+                    // broadleaf sprays retain true 3D volume from every viewing angle (including edge-on and below)
+                    if (needles || rng.unit() < 0.38f)
+                    {
+                        const float cross_roll = (rng.unit() < 0.5f ? 1.0f : -1.0f) * rng.range(1.05f, 1.35f);
+                        Vector3 cross_side     = rotate(side, direction, cross_roll);
+                        Vector3 cross_normal   = Vector3::Cross(cross_side, direction).Normalized();
+                        if (cross_normal.y < 0.0f)
+                        {
+                            cross_side   = cross_side * -1.0f;
+                            cross_normal = cross_normal * -1.0f;
+                        }
+                        leaf_card crossed;
+                        crossed.base      = card.base + direction * (length * 0.05f);
+                        crossed.direction = direction * (length * rng.range(0.86f, 1.02f));
+                        crossed.side      = cross_side * (length * width_ratio * 0.46f);
+                        crossed.normal    = cross_normal;
+                        crossed.tile      = (card.tile + 1u + (rng.next_uint() % (atlas_tiles * atlas_tiles - 1u))) % (atlas_tiles * atlas_tiles);
+                        crossed.fold      = needles ? 0.42f : 0.28f;
+                        tree.cards.push_back(crossed);
+                    }
                 }
             }
         }
@@ -914,9 +936,9 @@ namespace spartan::trees
         const uint32_t card_cap     = max(16u, foliage_cap / 4);
         if (tree.cards.size() > card_cap)
         {
-            // keep an even subset and grow the survivors so the crown keeps its cover
+            // keep an even subset without bloating surviving cards into flat sheets
             const float keep = static_cast<float>(card_cap) / static_cast<float>(tree.cards.size());
-            const float grow_factor = min(1.6f, 1.0f / sqrt(keep));
+            const float grow_factor = min(1.18f, 1.0f / sqrt(keep));
             vector<leaf_card> kept;
             kept.reserve(card_cap);
             float accumulator = rng.unit();

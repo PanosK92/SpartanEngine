@@ -223,7 +223,7 @@ namespace spartan::Renderer
     inline void AttachTreeProxyDraw(Render* render, uint32_t first_draw, uint32_t first_task, uint32_t instances,
         uint32_t first_extra, uint32_t capacity)
     {
-        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 72.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
+        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 128.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
         Mesh* mesh = render->GetMesh();
         const bool tree = (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
         const bool canopy = tree && render->GetSubMeshIndex() == 1;

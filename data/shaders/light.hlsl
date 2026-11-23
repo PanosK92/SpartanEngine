@@ -348,20 +348,21 @@ void evaluate_light(
             }
         }
 
-        // Screen-space depth has no leaf thickness and treats every card as
-        // opaque. Retain contact detail without erasing the thin-sheet paths
-        // resolved by the primary shadow ray. Solid occluders still fully block.
+        // Screen-space depth has no leaf thickness; preserve most contact shadow contrast while keeping thin outer edges from crushing
         if (surface.is_foliage())
         {
-            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.78f);
+            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.28f);
             if (!is_ray_traced_shadows_enabled())
             {
-                // Shadow maps only store the outermost crown surface; soften canopy self-shadowing so SSS still reads
-                L_shadow_primary = lerp(L_shadow_primary, max(L_shadow_primary, 0.28f), scattering_fraction * 0.65f);
+                L_shadow_primary = lerp(L_shadow_primary, max(L_shadow_primary, 0.06f), scattering_fraction * 0.40f);
             }
         }
         if (surface.is_grass_blade())
             L_shadow_contact = grass_canopy_visibility(L_shadow_contact);
+        if (light.is_directional() && surface.is_foliage() && surface.foliage_sun_shadow > 0.0f)
+        {
+            L_shadow_primary *= 1.0f - surface.foliage_sun_shadow;
+        }
         L_shadow = min(L_shadow_primary, L_shadow_contact);
         if (!has_transmission && !any(L_shadow > 0.0f))
             return;
@@ -434,8 +435,8 @@ void evaluate_light(
 
             if (surface.is_foliage())
             {
-                // Fine needles and leaflets scatter direct specular across micro-facets rather than acting like a flat dielectric sheet
-                L_specular_lobes *= 0.35f;
+                // Waxy leaf cuticles catch subtle crisp sun glints while needles scatter slightly more across micro-facets
+                L_specular_lobes *= 0.65f;
             }
         }
 

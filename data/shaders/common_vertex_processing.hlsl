@@ -377,6 +377,19 @@ float tree_wind_response()
     return 1.0f - exp(-length(buffer_frame.wind.xz) * 0.35f);
 }
 
+// smooth world-space value noise for coherent botanical tint, arch, micro-gust eddies, and wildflower species drifts
+float foliage_value_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0f - 2.0f * f);
+    float a = hash(i);
+    float b = hash(i + float2(1.0f, 0.0f));
+    float c = hash(i + float2(0.0f, 1.0f));
+    float d = hash(i + float2(1.0f, 1.0f));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
 // shaped gust pressure at a world position, 0..1, the same value drives bending and the wind sheen
 // two front trains travel with the pressure patches, the flow channel bends the front lines so they
 // curve and break up, and calm stretches between patches keep the fronts readable
@@ -392,12 +405,14 @@ float wind_gust(float2 world_xz, float time)
     float4 field  = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float2(travel / wind_gust_length, side / wind_gust_width), 0);
 
     // near ground turbulence intensity is about 0.2 to 0.3, gusts modulate the breeze instead of
-    // switching it on and off, and the warp is strong enough that no two fronts share a straight line
+    // switching it on and off, and multi-scale micro eddies break up coherent long-wave stripes
     float front_a  = wind_front(travel / wind_front_spacing + field.r * 1.1f + field.g * 0.6f);
     float front_b  = wind_front(travel / (wind_front_spacing * 1.63f) + side / (wind_front_spacing * 7.0f) + field.g * 1.1f + 0.37f);
-    float front    = 0.6f * front_a + 0.4f * front_b;
+    float eddy     = foliage_value_noise(world_xz * 0.075f - along * time * 1.35f + float2(field.r, field.g) * 1.8f);
+    float micro_ed = foliage_value_noise(world_xz * 0.21f - along * time * 2.1f + float2(11.7f, 29.3f));
+    float front    = 0.44f * front_a + 0.31f * front_b + 0.25f * eddy;
     float strength = smoothstep(0.1f, 0.9f, field.b);
-    return saturate(0.25f + 0.75f * strength * (0.45f + 0.55f * front));
+    return saturate(0.22f + 0.78f * strength * (0.40f + 0.48f * front + 0.12f * micro_ed));
 }
 
 // shared wind sample for grass, flowers, and trees
@@ -652,19 +667,6 @@ float vegetation_flex(float3 rest_offset, float3 up)
     return smoothstep(0.08f, 0.7f, radius) * smoothstep(0.0f, 0.3f, height) * (1.0f - smoothstep(2.4f, 3.6f, height));
 }
 
-// smooth world-space value noise for coherent botanical tint, arch, and wildflower species drifts
-float foliage_value_noise(float2 p)
-{
-    float2 i = floor(p);
-    float2 f = frac(p);
-    f = f * f * (3.0f - 2.0f * f);
-    float a = hash(i);
-    float b = hash(i + float2(1.0f, 0.0f));
-    float c = hash(i + float2(0.0f, 1.0f));
-    float d = hash(i + float2(1.0f, 1.0f));
-    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
-}
-
 // the part of the grass and flower bend that every vertex of a blade shares, it depends on the root, the time and
 // the wind there, never on the vertex, so the vertex shader evaluates it per vertex and the mesh shader once per blade
 struct grass_bend
@@ -784,7 +786,7 @@ float3 grass_root_pressure(Surface surface, float3 instance_pos, float time_offs
 {
     float3 grass_press = 0.0f;
 #ifdef GRASS_INSTANCED
-    if (surface.is_grass_blade())
+    if (surface.is_grass_blade() || surface.is_flower())
     {
         float4 mapping = time_offset < 0.0f ? pass_float4(pass_grass_draw::tracks_previous) : pass_float4(pass_grass_draw::tracks);
         float2 uv = (instance_pos.xz - mapping.xy) * mapping.z;
@@ -1192,45 +1194,134 @@ bool impostor_alpha_test(float2 uv_frames, MaterialTexture2D albedo_texture, flo
     return false;
 }
 
-// uv holds frame + position inside the frame, returns albedo directly (zero texture fetches when baked_rgba is set,
-// single bilinear fetch on the fallback uv atlas) alongside the frame-space normal and bark flag
-bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float alpha_threshold, out float4 albedo_sample, out float3 normal_frame, out bool is_bark)
+// uv holds frame + position inside the frame; performs depth-guided view parallax and validity-aware
+// 2x2 bilinear filtering on baked_rgba impostors, unpacking rgb, volumetric cavity ao, micro-normal, and depth_z
+bool impostor_resolve(
+    float2 uv_frames,
+    float3 view_dir_frame,
+    MaterialTexture2D albedo_texture,
+    float alpha_threshold,
+    out float4 albedo_sample,
+    out float3 normal_frame,
+    out bool is_bark,
+    out float cavity_ao,
+    out float depth_z,
+    out float2 resolved_uv_frames
+)
 {
-    uint frames      = _draw.impostor_layout & 0xFFu;
-    uint resolution  = (_draw.impostor_layout >> 8) & 0xFFFFu;
-    uint layers      = (_draw.impostor_layout >> 24) & 0x7Fu;
-    bool baked_rgba  = (_draw.impostor_layout & 0x80000000u) != 0u;
-    uint2 frame      = min((uint2)floor(uv_frames), frames - 1u);
-    uint2 texel      = min((uint2)(frac(uv_frames) * (float)resolution), resolution - 1u);
-    uint frame_words = resolution * resolution * layers * 2u;
-    uint base        = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words + (texel.y * resolution + texel.x) * layers * 2u;
+    uint frames        = _draw.impostor_layout & 0xFFu;
+    uint resolution    = (_draw.impostor_layout >> 8) & 0xFFFFu;
+    uint layers        = (_draw.impostor_layout >> 24) & 0x7Fu;
+    bool baked_rgba    = (_draw.impostor_layout & 0x80000000u) != 0u;
+    uint2 frame        = min((uint2)floor(uv_frames), frames - 1u);
+    float2 uv_in_frame = frac(uv_frames);
+    uint frame_words   = resolution * resolution * layers * 2u;
+    uint frame_base    = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words;
 
-    albedo_sample = float4(1.0f, 1.0f, 1.0f, 1.0f);
-    normal_frame  = float3(0.0f, 0.0f, 1.0f);
-    is_bark       = false;
+    albedo_sample      = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    normal_frame       = float3(0.0f, 0.0f, 1.0f);
+    is_bark            = false;
+    cavity_ao          = 1.0f;
+    depth_z            = 0.0f;
+    resolved_uv_frames = uv_frames;
 
     if (baked_rgba)
     {
-        uint geometry = meshlet_vertices[base + 1u];
-        if ((geometry & (1u << 31)) == 0u)
+        uint2 center_texel = min((uint2)(uv_in_frame * (float)resolution), resolution - 1u);
+        uint center_addr   = frame_base + (center_texel.y * resolution + center_texel.x) * 2u;
+        uint center_geom   = meshlet_vertices[center_addr + 1u];
+        if ((center_geom & (1u << 31)) == 0u)
         {
             return false;
         }
 
-        uint packed_rgba = meshlet_vertices[base];
+        // depth-guided view parallax shifts protruding leaf clusters relative to inner boughs as the camera moves
+        float center_z     = (float)((center_geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
+        float2 parallax_uv = saturate(uv_in_frame - view_dir_frame.xy * (center_z * 0.35f));
+        uint2 p_texel      = min((uint2)(parallax_uv * (float)resolution), resolution - 1u);
+        uint p_geom        = meshlet_vertices[frame_base + (p_texel.y * resolution + p_texel.x) * 2u + 1u];
+        if ((p_geom & (1u << 31)) != 0u)
+        {
+            uv_in_frame        = parallax_uv;
+            resolved_uv_frames = float2(frame) + uv_in_frame;
+        }
+
+        // validity-aware 2x2 bilinear filter eliminates blocky 128px texel stepping without bleeding empty borders
+        float2 fpos = uv_in_frame * (float)resolution - 0.5f;
+        int2   t0   = (int2)floor(fpos);
+        float2 frac_t = frac(fpos);
+
+        float3 rgb_sum    = 0.0f;
+        float3 norm_sum   = 0.0f;
+        float  ao_sum     = 0.0f;
+        float  z_sum      = 0.0f;
+        float  bark_sum   = 0.0f;
+        float  weight_sum = 0.0f;
+
+        [unroll]
+        for (int dy = 0; dy <= 1; dy++)
+        {
+            [unroll]
+            for (int dx = 0; dx <= 1; dx++)
+            {
+                int2 coord = clamp(t0 + int2(dx, dy), int2(0, 0), int2((int)resolution - 1, (int)resolution - 1));
+                uint addr  = frame_base + ((uint)coord.y * resolution + (uint)coord.x) * 2u;
+                uint geom  = meshlet_vertices[addr + 1u];
+                if ((geom & (1u << 31)) == 0u)
+                {
+                    continue;
+                }
+
+                float w = (dx == 0 ? (1.0f - frac_t.x) : frac_t.x) * (dy == 0 ? (1.0f - frac_t.y) : frac_t.y);
+                uint packed0 = meshlet_vertices[addr];
+                float3 sample_rgb = float3(
+                    (packed0 & 0xFFu) * (1.0f / 255.0f),
+                    ((packed0 >> 8) & 0xFFu) * (1.0f / 255.0f),
+                    ((packed0 >> 16) & 0xFFu) * (1.0f / 255.0f)
+                );
+                float sample_ao = ((packed0 >> 24) & 0xFFu) * (1.0f / 255.0f);
+                float2 o        = float2(geom & 0xFFu, (geom >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+                float3 sample_n = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
+                float  sample_z = (float)((geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
+
+                rgb_sum    += sample_rgb * w;
+                norm_sum   += sample_n * w;
+                ao_sum     += sample_ao * w;
+                z_sum      += sample_z * w;
+                bark_sum   += ((geom & (1u << 30)) != 0u ? 1.0f : 0.0f) * w;
+                weight_sum += w;
+            }
+        }
+
+        if (weight_sum > 1e-5f)
+        {
+            float inv_w   = 1.0f / weight_sum;
+            albedo_sample = float4(rgb_sum * inv_w, 1.0f);
+            normal_frame  = normalize(norm_sum);
+            cavity_ao     = ao_sum * inv_w;
+            depth_z       = z_sum * inv_w;
+            is_bark       = (bark_sum * inv_w) > 0.5f;
+            return true;
+        }
+
+        uint packed_rgba = meshlet_vertices[center_addr];
         albedo_sample = float4(
             (packed_rgba & 0xFFu) * (1.0f / 255.0f),
             ((packed_rgba >> 8) & 0xFFu) * (1.0f / 255.0f),
             ((packed_rgba >> 16) & 0xFFu) * (1.0f / 255.0f),
             1.0f
         );
-        float2 o     = float2(geometry & 0xFFu, (geometry >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+        cavity_ao    = ((packed_rgba >> 24) & 0xFFu) * (1.0f / 255.0f);
+        float2 o     = float2(center_geom & 0xFFu, (center_geom >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
         normal_frame = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
-        is_bark      = (geometry & (1u << 30)) != 0u;
+        depth_z      = center_z;
+        is_bark      = (center_geom & (1u << 30)) != 0u;
         return true;
     }
 
     // one impostor texel covers many source texels, a coarse mip keeps the cutout from sparkling
+    uint2 texel = min((uint2)(uv_in_frame * (float)resolution), resolution - 1u);
+    uint base   = frame_base + (texel.y * resolution + texel.x) * layers * 2u;
     uint width, height, mip_count;
     albedo_texture.GetDimensions(0, width, height, mip_count);
     float mip = max(log2((float)max(width, 1u)) - log2((float)max(resolution, 1u)) - 1.0f, 0.0f);
@@ -1243,19 +1334,79 @@ bool impostor_resolve(float2 uv_frames, MaterialTexture2D albedo_texture, float 
             break;
         }
 
-        uint packed_uv  = meshlet_vertices[base + layer * 2u];
-        float2 source   = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
-        float2 layer_uv = _draw.impostor_uv_min + source * _draw.impostor_uv_scale;
+        uint packed_uv    = meshlet_vertices[base + layer * 2u];
+        float2 source     = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
+        float2 layer_uv   = _draw.impostor_uv_min + source * _draw.impostor_uv_scale;
         float4 texel_rgba = albedo_texture.SampleLevel(samplers[sampler_bilinear_wrap], layer_uv, mip);
         if (texel_rgba.a > alpha_threshold)
         {
             float2 o      = float2(geometry & 0xFFu, (geometry >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
             normal_frame  = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
+            depth_z       = (float)((geometry >> 16) & 0x7FFFu) * (2.0f / 32767.0f) - 1.0f;
             albedo_sample = texel_rgba;
+            cavity_ao     = 0.55f;
             return true;
         }
     }
     return false;
+}
+
+// dynamic high-frequency self-shadowing across the impostor's baked depth height-field along the sun ray:
+// returns shadow factor in [0, 0.94] where 0 = sunlit outer cluster, 0.94 = deeply self-shadowed pocket
+float impostor_raymarch_sun_shadow(float2 uv_frames, float depth_z, float3 light_dir_frame, float dither)
+{
+    uint frames        = _draw.impostor_layout & 0xFFu;
+    uint resolution    = (_draw.impostor_layout >> 8) & 0xFFFFu;
+    uint layers        = (_draw.impostor_layout >> 24) & 0x7Fu;
+    bool baked_rgba    = (_draw.impostor_layout & 0x80000000u) != 0u;
+    if (!baked_rgba || resolution == 0u)
+    {
+        return 0.0f;
+    }
+
+    uint2 frame        = min((uint2)floor(uv_frames), frames - 1u);
+    float2 uv_in_frame = frac(uv_frames);
+    uint frame_words   = resolution * resolution * layers * 2u;
+    uint frame_base    = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words;
+
+    static const float step_t[6] = { 0.032f, 0.072f, 0.125f, 0.195f, 0.285f, 0.400f };
+    const float jitter           = lerp(0.78f, 1.22f, dither);
+    const float depth_bias       = 0.028f;
+    const float max_thickness    = 0.72f;
+
+    float optical_depth = 0.0f;
+    [unroll]
+    for (uint s = 0u; s < 6u; s++)
+    {
+        float t          = step_t[s] * jitter;
+        float2 sample_uv = uv_in_frame + light_dir_frame.xy * (0.5f * t);
+        if (any(sample_uv < 0.0f) || any(sample_uv >= 1.0f))
+        {
+            break;
+        }
+
+        uint2 coord = min((uint2)(sample_uv * (float)resolution), resolution - 1u);
+        uint geom   = meshlet_vertices[frame_base + (coord.y * resolution + coord.x) * 2u + 1u];
+        if ((geom & (1u << 31)) == 0u)
+        {
+            continue;
+        }
+
+        float sample_z = (float)((geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
+        float ray_z    = depth_z + light_dir_frame.z * t;
+        float dz       = sample_z - ray_z;
+        if (dz > depth_bias && dz < max_thickness)
+        {
+            // heavier attenuation when ray passes through solid foreground clusters or bark
+            float hit_weight = (geom & (1u << 30)) != 0u ? 1.15f : 0.78f;
+            float thickness  = smoothstep(depth_bias, depth_bias + 0.11f, dz);
+            optical_depth   += hit_weight * thickness;
+        }
+    }
+
+    // exponential Beer-Lambert attenuation gives crisp cluster shadows while preserving slight thin-rim glow
+    float transmission = exp(-optical_depth * 1.15f);
+    return saturate((1.0f - transmission) * 0.94f);
 }
 
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous, inout float3 position_relative, inout float3 position_relative_previous)
@@ -1317,11 +1468,33 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     vertex.uv_misc.xy  = uv;
     
-    // compute width and height percent for grass blade positioning
+    // compute width and height percent for grass blade positioning, or analytic volumetric crown cavity AO for 3D tree foliage
     float width_percent  = saturate((input.position.x + material.local_width * 0.5f) / material.local_width);
     float height_percent = saturate(input.position.y / max(material.local_height, 1e-4f));
     vertex.uv_misc.z     = surface.is_skid_mark() ? saturate(unpack_vertex_uv(input.tangent_packed).x) : height_percent;
-    vertex.width_percent = width_percent;
+    if (surface.is_foliage() && !surface.is_grass_blade() && !surface.is_flower())
+    {
+        if (_draw.geometry_bounds_diag > 0.25f)
+        {
+            float3 b_ext    = max(_draw.geometry_bounds_extent, float3(0.25f, 0.25f, 0.25f));
+            float3 b_center = _draw.geometry_bounds_min + b_ext * float3(0.5f, 0.56f, 0.5f);
+            float3 b_half   = max(b_ext * 0.5f, float3(0.25f, 0.25f, 0.25f));
+            float3 norm_p   = (input.position.xyz - b_center) / b_half;
+            float  r_ellip  = length(norm_p);
+            float  h_frac   = saturate((input.position.y - _draw.geometry_bounds_min.y) / b_ext.y);
+            float  radial_ao = smoothstep(0.16f, 1.02f, r_ellip);
+            float  height_ao = lerp(0.58f, 1.0f, smoothstep(0.08f, 0.88f, h_frac));
+            vertex.width_percent = clamp(lerp(0.32f, 1.0f, radial_ao) * height_ao, 0.28f, 1.0f);
+        }
+        else
+        {
+            vertex.width_percent = 1.0f;
+        }
+    }
+    else
+    {
+        vertex.width_percent = width_percent;
+    }
     
     // compose instance transform and apply to base transform
 #ifdef CACHE_MESH_TREE_WIND
@@ -1342,18 +1515,21 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     {
         float2 root_xz = transform[3].xz;
         float  blade_scale = max(length(transform[1].xyz), 0.1f);
-        // Smooth multi-scale meadow colour variation (broad moisture swales + local tufts + per-blade life),
-        // gently coupled to height so short dry pockets lean warmer olive/straw while taller tufts read lusher green.
-        float meadow_macro = foliage_value_noise(root_xz * 0.08f + float2(7.1f, 19.3f));
-        float meadow_tuft  = foliage_value_noise(root_xz * 0.38f + float2(43.7f, 11.9f));
+        // Smooth multi-scale meadow colour & height structure: dense short base tufts + mid blades + sparse tall Mediterranean dry oat stalks
+        float meadow_macro = foliage_value_noise(root_xz * 0.065f + float2(7.1f, 19.3f));
+        float meadow_tuft  = foliage_value_noise(root_xz * 0.34f + float2(43.7f, 11.9f));
         float blade_var    = hash(root_xz + float2(31.7f, 83.1f));
-        float height_bias  = lerp(0.14f, -0.10f, saturate((blade_scale - 0.35f) / 1.0f));
-        vertex.uv_misc.w   = saturate(meadow_macro * 0.35f + meadow_tuft * 0.35f + blade_var * 0.30f + height_bias);
+        float stalk_roll   = hash(root_xz * 2.7f + float2(61.3f, 23.9f));
+        float is_tall_oat  = smoothstep(0.86f, 0.96f, stalk_roll);
+        float tuft_height  = lerp(0.76f, 1.18f, meadow_tuft) * lerp(1.0f, 1.42f, is_tall_oat);
+        float height_bias  = lerp(0.14f, -0.08f, saturate((blade_scale - 0.35f) / 1.0f)) + is_tall_oat * 0.28f;
+        vertex.uv_misc.w   = saturate(meadow_macro * 0.36f + meadow_tuft * 0.34f + blade_var * 0.30f + height_bias);
 
-        // Botanical blade aspect: slender photographic meadow blades, keeping tall emergent blades fine instead of wide ribbons.
-        float width_comp = clamp(pow(blade_scale, -0.35f), 0.68f, 1.24f);
-        float width_var  = lerp(0.76f, 1.10f, hash(root_xz * 1.9f + float2(13.7f, 47.3f)));
-        local_scale.x    = width_comp * width_var * 0.88f;
+        // Botanical blade aspect: slender photographic meadow blades, with extra-fine tall emergent dry stalks
+        float width_comp = clamp(pow(blade_scale, -0.35f), 0.65f, 1.22f);
+        float width_var  = lerp(0.72f, 1.08f, hash(root_xz * 1.9f + float2(13.7f, 47.3f)));
+        local_scale.x    = width_comp * width_var * lerp(0.84f, 0.58f, is_tall_oat);
+        local_scale.y    = tuft_height;
     }
     else if (surface.is_flower())
     {

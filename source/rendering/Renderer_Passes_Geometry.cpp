@@ -157,8 +157,8 @@ namespace spartan
             "distance in metres past which a grass blade ring thins out towards the density of the ring after it, every blade nearer than that is kept; 0 keeps every blade");
         TConsoleVar<float> cvar_scatter_blend_distance("r.scatter_blend_distance", 8.0f,
             "distance in metres past which scattered detail such as pebbles sinks to its dirt line instead of blending with the ground, handed over chip by chip up to twice as far; 0 blends every chip");
-        // 12.5 cm cells retain tire detail across a much larger history field (32 MiB total).
-        constexpr uint32_t grass_interaction_resolution = 1024;
+        // 6.25 cm cells (matching TerrainDeformation) resolve both distant tire tracks and discrete footprints (64 MiB total).
+        constexpr uint32_t grass_interaction_resolution = 2048;
         constexpr float grass_interaction_size = 128.0f;
         TConsoleVar<float> cvar_grass_track_radius("r.grass_track_radius", 48.0f,
             "distance from the car in metres within which pressed grass stays down (1 to 52)");
@@ -2796,10 +2796,12 @@ namespace spartan
         if (!history.fields[0])
         {
             for (uint32_t i = 0; i < 2; ++i)
+            {
                 history.fields[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
                     grass_interaction_resolution, grass_interaction_resolution, 1, 1,
-                    RHI_Format::R32G32B32A32_Float, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
+                    RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
                     i == 0 ? "grass_tracks_a" : "grass_tracks_b");
+            }
             history.contacts = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,
                 sizeof(GrassWheelContact), surface_contact_max, nullptr, false, "grass_wheel_contacts");
         }
@@ -2835,23 +2837,30 @@ namespace spartan
             const Vector3 normal = sample.normal;
             const Vector3 velocity = sample.velocity;
             const Vector3 direction = sample.direction;
-            Vector3 start = history.wheel_positions[i];
-            const float distance = Vector3::Distance(start, position);
-            if (!history.valid || !history.wheel_valid[i] || frame_dt > 0.25f ||
-                distance > min(12.0f, max(1.0f, velocity.Length() * dt * 2.0f + 0.5f)) ||
-                abs(Vector3::Dot(position - start, normal)) > 0.5f)
-                start = position;
+            Vector3 start = sample.is_foot ? position : history.wheel_positions[i];
+            if (!sample.is_foot)
+            {
+                const float distance = Vector3::Distance(start, position);
+                if (!history.valid || !history.wheel_valid[i] || frame_dt > 0.25f ||
+                    distance > min(12.0f, max(1.0f, velocity.Length() * dt * 2.0f + 0.5f)) ||
+                    abs(Vector3::Dot(position - start, normal)) > 0.5f)
+                {
+                    start = position;
+                }
+            }
 
             const float width = sample.width;
             if (!isfinite(width) || width <= 0.0f)
+            {
                 continue;
+            }
             auto& contact = contacts[count++];
-            contact.start_width = Vector4(start.x, start.y, start.z, width * 0.5f);
-            contact.end_length = Vector4(position.x, position.y, position.z, 0.22f);
-            contact.direction_pressure = Vector4(direction.x, direction.z, sample.pressure, 0.0f);
-            contact.normal = Vector4(normal.x, normal.y, normal.z, 0.0f);
+            contact.start_width        = Vector4(start.x, start.y, start.z, width * 0.5f);
+            contact.end_length         = Vector4(position.x, position.y, position.z, 0.22f);
+            contact.direction_pressure = Vector4(direction.x, direction.z, sample.pressure, sample.is_foot ? sample.side : 0.0f);
+            contact.normal             = Vector4(normal.x, normal.y, normal.z, sample.is_foot ? sample.push : 0.0f);
             history.wheel_positions[i] = position;
-            history.wheel_valid[i] = true;
+            history.wheel_valid[i]     = !sample.is_foot;
         }
 
         const uint32_t previous = history.current;

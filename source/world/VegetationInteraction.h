@@ -189,23 +189,24 @@ namespace spartan::vegetation_interaction
             body.shape.velocity = paused ? Vector3::Zero : observe_velocity(body.shape.id, body.shape.center, dt);
             bodies.push_back(body);
 
-            // footsteps tread the grass down where the character walks
+            // footsteps tread the grass down in discrete alternating left/right sole prints, synchronized with sand footprints
             Vector3 horizontal(body.shape.velocity.x, 0.0f, body.shape.velocity.z);
             Physics* physics = player->GetComponent<Physics>();
-            if (!paused)
-            {
-                TerrainDeformation::Walk(body.shape.id, body.shape.center - Vector3(0.0f, player_half_height, 0.0f), horizontal, physics && physics->IsGrounded(), player_mass);
-            }
-            if (!paused && physics && physics->IsGrounded() && horizontal.LengthSquared() > 0.09f)
+            TerrainDeformationFoot stepped;
+            const bool grounded = physics && physics->IsGrounded();
+            if (!paused && TerrainDeformation::Walk(body.shape.id, body.shape.center - Vector3(0.0f, player_half_height, 0.0f), horizontal, grounded, player_mass, &stepped))
             {
                 SurfaceContact& foot = result.contacts[4];
-                foot.position  = body.shape.center - Vector3(0.0f, player_half_height, 0.0f);
+                foot.position  = stepped.position;
                 foot.normal    = Vector3::Up;
                 foot.velocity  = horizontal;
-                foot.direction = horizontal.Normalized();
-                foot.width     = 0.32f;
-                foot.pressure  = 0.45f;
+                foot.direction = stepped.forward;
+                foot.width     = 0.13f;
+                foot.pressure  = 0.94f;
                 foot.valid     = true;
+                foot.is_foot   = true;
+                foot.side      = stepped.side;
+                foot.push      = stepped.push;
             }
         }
 

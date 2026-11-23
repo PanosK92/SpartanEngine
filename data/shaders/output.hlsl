@@ -335,6 +335,68 @@ float3 agx(float3 color)
     return saturate(gt7_to_rec709(color));
 }
 
+// Reference Blender / Troy Sobotka AgX without the 1.35x saturation / 1.10x contrast override:
+// clean photographic filmic highlight roll-off with preserved natural chlorophyll greens.
+float3 agx_neutral(float3 color)
+{
+    static const float3x3 agx_mat_inset =
+    {
+        { 0.856627153315983, 0.0951212405381588, 0.0482516061458583 },
+        { 0.137318972929847, 0.761241990602591, 0.101439036467562 },
+        { 0.111898212999950, 0.0767994186031903, 0.811302368396859 }
+    };
+
+    static const float3x3 agx_mat_outset =
+    {
+        { 1.1271005818144368, -0.11060664309660323, -0.016493938717834573 },
+        { -0.1413297634984383, 1.157823702216272, -0.016493938717834257 },
+        { -0.14132976349843826, -0.11060664309660294, 1.2519364065950405 }
+    };
+
+    const float min_ev = -12.47393f;
+    const float max_ev = 4.026069f;
+
+    color = mul(agx_mat_inset, gt7_to_rec2020(color));
+    color = max(color, 1e-10f);
+    color = log2(color);
+    color = saturate((color - min_ev) / (max_ev - min_ev));
+
+    float3 x  = color;
+    float3 x2 = x * x;
+    float3 x4 = x2 * x2;
+    color = 15.5f * x4 * x2 - 40.14f * x4 * x + 31.96f * x4 - 6.868f * x2 * x + 0.4298f * x2 + 0.1191f * x - 0.00232f;
+    color = saturate(color);
+
+    color = mul(agx_mat_outset, color);
+    color = pow(max(color, 0.0f), 2.2f);
+    return saturate(gt7_to_rec709(color));
+}
+
+// Khronos PBR Neutral tone mapper (exact specification):
+// preserves linear Rec.709 hue & chroma faithfully up to the compression knee, ideal for photographic PBR calibration.
+float3 khronos_pbr_neutral(float3 color)
+{
+    const float start_compression = 0.8f - 0.04f;
+    const float desaturation      = 0.15f;
+
+    float x      = min(color.r, min(color.g, color.b));
+    float offset = x < 0.08f ? x - 6.25f * x * x : 0.04f;
+    color       -= offset;
+
+    float peak = max(color.r, max(color.g, color.b));
+    if (peak < start_compression)
+    {
+        return saturate(color);
+    }
+
+    const float d        = 1.0f - start_compression;
+    float       new_peak = 1.0f - d * d / (peak + d - start_compression);
+    color               *= new_peak / peak;
+
+    float g = 1.0f - 1.0f / (desaturation * (peak - new_peak) + 1.0f);
+    return saturate(lerp(color, new_peak.xxx, g));
+}
+
 float3 reinhard(float3 hdr, float k = 1.0f)
 {
     return hdr / (hdr + k);
@@ -418,6 +480,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             // Exposure produces relative RGB where 1 is paper white. GT7's
             // reference framebuffer instead uses 1 = 100 nits and white = 250.
             color.rgb = gran_turismo_7(color.rgb * gt7_nits_to_fb(gt7_sdr_paper_white), max_nits, is_hdr);
+            break;
+        case 5: // reference agx neutral
+            color.rgb = agx_neutral(color.rgb);
+            break;
+        case 6: // khronos pbr neutral
+            color.rgb = khronos_pbr_neutral(color.rgb);
             break;
         default: // no tone mapping
             if (!is_hdr)

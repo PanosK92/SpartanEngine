@@ -67,17 +67,16 @@ float3 subsurface_burley_transmittance(float t, float3 d)
 // redistributes the transmitted light instead of adding to it.
 float foliage_transmission_response(float n_dot_l, float view_dot_minus_light)
 {
-    // A broad wrap smoothly bridges the terminator across double-sided leaf cards and normal maps,
-    // while the diffuse + forward-scattering phase gives shaded crowns warm translucent depth from any angle
-    // and a golden-emerald rim glow when viewed against the sun.
-    const float wrap  = 0.48f;
+    // Tight terminator wrap + strong Henyey-Greenstein forward-scattering lobe so backlit thin leaves
+    // glow warm yellow-green toward the sun while shaded crown sides stay deeply contrasted.
+    const float wrap  = 0.26f;
     float reverse     = max(-n_dot_l + wrap, 0.0f) / ((1.0f + wrap) * (1.0f + wrap) * 3.14159265359f);
 
-    const float g     = 0.55f;
+    const float g     = 0.65f;
     float denominator = 1.0f + g * g - 2.0f * g * saturate(view_dot_minus_light);
     float phase       = (1.0f - g * g) / (denominator * sqrt(denominator));
 
-    return reverse * (0.78f + 0.52f * phase);
+    return reverse * (0.52f + 0.72f * phase);
 }
 
 // Transmitted light crosses the chlorophyll a second time, so red and blue are absorbed again and
@@ -87,22 +86,18 @@ float3 foliage_transmission_tint(float3 albedo)
 {
     float peak    = max(max(albedo.r, albedo.g), albedo.b) + 1e-4f;
     float3 chroma = saturate(albedo / peak);
-    return chroma * float3(0.96f, 1.0f, 0.62f);
+    return chroma * float3(1.04f, 1.0f, 0.48f);
 }
 
-// Screen space occlusion and contact shadows read every blade in front of a pixel as a solid wall.
-// A blade passes on about as much light as it reflects and its neighbours scatter that again, so
-// the inside of a tuft is far brighter than the depth buffer suggests, without this a meadow in
-// full sun renders as a black hole next to the ground it grows on.
+// Preserve 80% of GTAO/contact shadows in grass thatch so roots stay grounded and contrasty.
 float grass_canopy_visibility(float visibility)
 {
-    return lerp(1.0f, visibility, 0.45f);
+    return lerp(1.0f, visibility, 0.80f);
 }
 
-// Tree and shrub canopies scatter sky and sun light through multiple translucent leaf layers;
-// relieve screen-space/baked occlusion so shaded interiors keep soft organic volume instead of crushing to black.
+// Preserve 68-100% of crown cavity & GTAO occlusion so tree interiors keep deep dark volume without soot crush.
 float foliage_canopy_visibility(float visibility, float scattering)
 {
-    return lerp(visibility, lerp(1.0f, visibility, 0.42f), saturate(scattering));
+    return lerp(visibility, lerp(1.0f, visibility, 0.68f), saturate(scattering));
 }
 #endif

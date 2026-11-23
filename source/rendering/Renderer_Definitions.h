@@ -186,6 +186,8 @@ namespace spartan
         Reinhard,
         AcesNautilus,
         GranTurismo7,
+        AgXNeutral,
+        KhronosPbrNeutral,
         Max,
     };
 

@@ -2025,10 +2025,10 @@ namespace spartan::geometry_generation
         using namespace math;
 
         // constants
-        const float grass_width    = 0.03f;
-        const float grass_height   = 0.35f;
-        const float thinning_start = 0.35f;
-        const float thinning_power = 0.85f;
+        const float grass_width    = 0.024f;
+        const float grass_height   = 0.36f;
+        const float thinning_start = 0.22f;
+        const float thinning_power = 1.08f;
 
         // clear output vectors
         vertices->clear();
@@ -2074,12 +2074,12 @@ namespace spartan::geometry_generation
             }
         }
 
-        // bend towards downwards (emulate gravity pulling the blade down)
-        const float bend_amount = 0.12f;
+        // bend organically downward along a quadratic cantilever curve (graceful tip droop, firm root)
+        const float bend_amount = 0.20f;
         for (RHI_Vertex_PosTexNorTan& v : *vertices)
         {
             float uv_misc_z     = v.get_uv().y;
-            float gravity_angle = bend_amount * uv_misc_z;
+            float gravity_angle = bend_amount * uv_misc_z * uv_misc_z;
             float c             = std::cos(gravity_angle);
             float s             = std::sin(gravity_angle);
             float y             = v.pos[1];
@@ -2177,19 +2177,19 @@ namespace spartan::geometry_generation
         //   [2, 3) -> domed stamen/pollen center disc (uv.y - 2 center-to-rim)
         const uint32_t stem_segs         = std::max(stem_segment_count, 3u);
         const uint32_t stem_sides        = 5;
-        const float stem_radius_base     = 0.011f;
-        const float stem_radius_top      = 0.0065f;
-        const float stem_height          = 0.56f;
-        const float stem_lean_x          = 0.032f;
-        const float stem_lean_z          = 0.014f;
+        const float stem_radius_base     = 0.007f;
+        const float stem_radius_top      = 0.004f;
+        const float stem_height          = 0.38f;
+        const float stem_lean_x          = 0.028f;
+        const float stem_lean_z          = 0.012f;
 
         const uint32_t petals            = std::clamp(petal_count, 5u, 8u);
         const uint32_t petal_segs        = std::max(petal_segment_count, 3u);
         const uint32_t petal_width_segs  = 2;
-        const float petal_width          = 0.145f;
-        const float petal_length         = 0.195f;
-        const float disc_radius          = 0.052f;
-        const float disc_height          = 0.030f;
+        const float petal_width          = 0.064f;
+        const float petal_length         = 0.084f;
+        const float disc_radius          = 0.025f;
+        const float disc_height          = 0.014f;
 
         vertices->clear();
         indices->clear();

@@ -169,9 +169,9 @@ float2 rt_trace_canopy_transmission(float3 origin, float3 direction, float t_max
         if (hit_is_foliage && material.subsurface_scattering > 0.0f)
         {
             // Attenuate deterministically per translucent leaf sheet (zero per-frame flicker for SIGMA)
-            if (optical_depth < 2.4f)
+            if (optical_depth < 4.8f)
             {
-                optical_depth += lerp(0.55f, 0.28f, saturate(material.subsurface_scattering));
+                optical_depth += lerp(0.95f, 0.52f, saturate(material.subsurface_scattering));
             }
             nearest_foliage_t = min(nearest_foliage_t, distance);
             hit_foliage       = true;
@@ -189,8 +189,8 @@ float2 rt_trace_canopy_transmission(float3 origin, float3 direction, float t_max
     {
         return float2(1.0f, 0.0f);
     }
-    // Deep sunlit canopies retain warm multi-scattered glow rather than crushing to black
-    float transmission = max(exp(-optical_depth), 0.20f);
+    // Single outer leaf layers stay translucent while deep multi-layered crowns cast rich, grounded shadows
+    float transmission = max(exp(-optical_depth), 0.03f);
     return float2(transmission, nearest_foliage_t);
 }
 

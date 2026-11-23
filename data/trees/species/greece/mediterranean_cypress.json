@@ -6,7 +6,7 @@
   "description": "The dark green flame beside every chapel and cemetery. Upright branches hug a straight trunk, the scale leaves form a tight column that tapers to a point.",
   "class": "conifer",
   "evergreen": true,
-  "budget": 6800,
+  "budget": 28000,
   "height": 18.0,
   "height_var": 0.15,
   "trunk": {
@@ -54,23 +54,23 @@
   "leaves": {
     "shape": "scale",
     "size": 0.12,
-    "card_size": 0.64,
-    "density": 2.4,
+    "card_size": 0.44,
+    "density": 5.2,
     "start": 0.12,
     "tilt": 0.1,
     "per_card": 10,
     "color": [
-      0.032,
-      0.072,
-      0.030
+      0.026,
+      0.060,
+      0.024
     ],
     "color_back": [
-      0.065,
-      0.112,
-      0.044
+      0.056,
+      0.096,
+      0.038
     ],
-    "color_var": 0.09,
-    "translucency": 0.48
+    "color_var": 0.11,
+    "translucency": 0.32
   },
   "bark": {
     "style": "fibrous",

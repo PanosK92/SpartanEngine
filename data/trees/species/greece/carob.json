@@ -6,7 +6,7 @@
   "description": "The shade tree of Crete and the Dodecanese, whose seeds gave the carat. A thick, low forking trunk under a wide, dense dome of glossy, rounded leaflets.",
   "class": "broadleaf",
   "evergreen": true,
-  "budget": 7600,
+  "budget": 34000,
   "height": 9.2,
   "height_var": 0.15,
   "trunk": {
@@ -72,23 +72,23 @@
   "leaves": {
     "shape": "pinnate",
     "size": 0.18,
-    "card_size": 0.68,
-    "density": 1.9,
+    "card_size": 0.48,
+    "density": 4.6,
     "start": 0.18,
     "tilt": 0.5,
     "per_card": 8,
     "color": [
-      0.044,
-      0.098,
-      0.032
+      0.036,
+      0.082,
+      0.025
     ],
     "color_back": [
-      0.128,
-      0.182,
-      0.062
+      0.108,
+      0.156,
+      0.050
     ],
-    "color_var": 0.1,
-    "translucency": 0.56
+    "color_var": 0.12,
+    "translucency": 0.38
   },
   "bark": {
     "style": "furrowed",

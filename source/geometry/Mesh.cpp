@@ -2268,7 +2268,19 @@ namespace spartan
         // read optional sidecar material xmls (<stem>_foliage.xml and <stem>_bark.xml) so trees can pre-bake
         // a whole-tree (bark + canopy) direct-rgba impostor that needs zero runtime texture fetches and lets
         // distant trunks cull out completely in phase a
-        auto load_material_image = [](const filesystem::path& xml_path, vector<uint8_t>& rgba, uint32_t& w, uint32_t& h, Vector3& tint, float& cutoff) -> bool
+        struct MaterialImpostorMaps
+        {
+            vector<uint8_t> rgba;
+            uint32_t w = 0, h = 0;
+            vector<uint8_t> normal_rgba;
+            uint32_t nw = 0, nh = 0;
+            vector<uint8_t> occlusion_rgba;
+            uint32_t ow = 0, oh = 0;
+            Vector3 tint = Vector3(1.0f, 1.0f, 1.0f);
+            float cutoff = 0.5f;
+        };
+
+        auto load_material_maps = [](const filesystem::path& xml_path, MaterialImpostorMaps& out) -> bool
         {
             if (!filesystem::exists(xml_path))
             {
@@ -2287,44 +2299,75 @@ namespace spartan
                 return false;
             }
 
-            tint = Vector3(
+            out.tint = Vector3(
                 root.child("color_r").text().as_float(1.0f),
                 root.child("color_g").text().as_float(1.0f),
                 root.child("color_b").text().as_float(1.0f)
             );
-            cutoff = root.child("alpha_cutoff").text().as_float(0.5f);
+            out.cutoff = root.child("alpha_cutoff").text().as_float(0.5f);
 
-            string texture_path;
+            string albedo_path;
+            string normal_path;
+            string occlusion_path;
             for (const pugi::xml_node tex : root.child("textures").children())
             {
-                if (tex.attribute("texture_type").as_uint(999u) == 0u && tex.attribute("texture_slot").as_uint(999u) == 0u)
+                const uint32_t type = tex.attribute("texture_type").as_uint(999u);
+                const uint32_t slot = tex.attribute("texture_slot").as_uint(999u);
+                if (slot != 0u)
                 {
-                    texture_path = tex.attribute("texture_path").as_string("");
-                    break;
+                    continue;
+                }
+                const string path = tex.attribute("texture_path").as_string("");
+                if (path.empty())
+                {
+                    continue;
+                }
+                if (type == 0u)
+                {
+                    albedo_path = path;
+                }
+                else if (type == 3u)
+                {
+                    normal_path = path;
+                }
+                else if (type == 4u)
+                {
+                    occlusion_path = path;
                 }
             }
-            if (texture_path.empty())
+            if (albedo_path.empty())
             {
                 return false;
             }
 
-            return ImageImporter::LoadSdrRgba8(texture_path, w, h, rgba);
+            if (!ImageImporter::LoadSdrRgba8(albedo_path, out.w, out.h, out.rgba))
+            {
+                return false;
+            }
+            if (!normal_path.empty())
+            {
+                ImageImporter::LoadSdrRgba8(normal_path, out.nw, out.nh, out.normal_rgba);
+            }
+            if (!occlusion_path.empty())
+            {
+                ImageImporter::LoadSdrRgba8(occlusion_path, out.ow, out.oh, out.occlusion_rgba);
+            }
+            return true;
         };
 
         auto proxy = make_shared<GeometryParentPage>();
-        vector<uint8_t> leaf_rgba, bark_rgba;
-        uint32_t leaf_w = 0, leaf_h = 0, bark_w = 0, bark_h = 0;
-        Vector3 leaf_tint(1.0f, 1.0f, 1.0f), bark_tint(0.35f, 0.28f, 0.22f);
-        float leaf_cutoff = 0.5f, bark_cutoff = 0.5f;
+        MaterialImpostorMaps leaf_maps;
+        MaterialImpostorMaps bark_maps;
+        bark_maps.tint = Vector3(0.35f, 0.28f, 0.22f);
         bool has_baked_rgba = false;
         if (!GetResourceFilePath().empty())
         {
             const filesystem::path mesh_path(GetResourceFilePath());
             const filesystem::path base = mesh_path.parent_path() / mesh_path.stem();
-            has_baked_rgba = load_material_image(base.string() + "_foliage.xml", leaf_rgba, leaf_w, leaf_h, leaf_tint, leaf_cutoff);
+            has_baked_rgba = load_material_maps(base.string() + "_foliage.xml", leaf_maps);
             if (has_baked_rgba)
             {
-                load_material_image(base.string() + "_bark.xml", bark_rgba, bark_w, bark_h, bark_tint, bark_cutoff);
+                load_material_maps(base.string() + "_bark.xml", bark_maps);
             }
         }
 
@@ -2353,16 +2396,20 @@ namespace spartan
 
             constexpr uint32_t baked_res = GeometryParentPage::baked_resolution;
             generated_cache::Hash hash;
-            hash.Add(uint32_t{2});
+            hash.Add(uint32_t{3});
             hash.Add(GeometryParentPage::frames);
             hash.Add(baked_res);
-            hash.Add(leaf_w);
-            hash.Add(leaf_h);
-            hash.Add(bark_w);
-            hash.Add(bark_h);
-            hash.Add(leaf_cutoff);
-            hash.Add(leaf_tint);
-            hash.Add(bark_tint);
+            hash.Add(leaf_maps.w);
+            hash.Add(leaf_maps.h);
+            hash.Add(leaf_maps.nw);
+            hash.Add(leaf_maps.nh);
+            hash.Add(leaf_maps.ow);
+            hash.Add(leaf_maps.oh);
+            hash.Add(bark_maps.w);
+            hash.Add(bark_maps.h);
+            hash.Add(leaf_maps.cutoff);
+            hash.Add(leaf_maps.tint);
+            hash.Add(bark_maps.tint);
             hash.Add(vertices);
             hash.Add(indices);
             hash.Add(bark);
@@ -2373,8 +2420,20 @@ namespace spartan
             const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
             if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
             {
-                geometry_processing::ImpostorTextureInput bark_tex{ bark_rgba.empty() ? nullptr : bark_rgba.data(), bark_w, bark_h, bark_tint, bark_cutoff };
-                geometry_processing::ImpostorTextureInput leaf_tex{ leaf_rgba.data(), leaf_w, leaf_h, leaf_tint, leaf_cutoff };
+                geometry_processing::ImpostorTextureInput bark_tex
+                {
+                    bark_maps.rgba.empty() ? nullptr : bark_maps.rgba.data(), bark_maps.w, bark_maps.h,
+                    bark_maps.normal_rgba.empty() ? nullptr : bark_maps.normal_rgba.data(), bark_maps.nw, bark_maps.nh,
+                    bark_maps.occlusion_rgba.empty() ? nullptr : bark_maps.occlusion_rgba.data(), bark_maps.ow, bark_maps.oh,
+                    bark_maps.tint, bark_maps.cutoff
+                };
+                geometry_processing::ImpostorTextureInput leaf_tex
+                {
+                    leaf_maps.rgba.data(), leaf_maps.w, leaf_maps.h,
+                    leaf_maps.normal_rgba.empty() ? nullptr : leaf_maps.normal_rgba.data(), leaf_maps.nw, leaf_maps.nh,
+                    leaf_maps.occlusion_rgba.empty() ? nullptr : leaf_maps.occlusion_rgba.data(), leaf_maps.ow, leaf_maps.oh,
+                    leaf_maps.tint, leaf_maps.cutoff
+                };
                 geometry_processing::bake_tree_impostor_rgba(
                     bark, bark_indices, bark_tex,
                     vertices, indices, leaf_tex,

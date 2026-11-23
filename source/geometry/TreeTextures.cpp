@@ -26,7 +26,7 @@ namespace spartan::trees
     namespace
     {
         constexpr float pi = 3.14159265358979f;
-        constexpr const char* texture_version_tag = "v3";
+        constexpr const char* texture_version_tag = "v4";
 
         // integer hash noise, periodic so every map tiles
         uint32_t hash3(int32_t x, int32_t y, uint32_t seed)
@@ -995,7 +995,7 @@ namespace spartan::trees
                                     const float spread = static_cast<float>(side) * (0.42f + 0.48f * rng.unit()) + (pair == 0 ? -0.10f : 0.10f);
                                     const float n_len  = leaf_len * (0.76f + 0.36f * rng.unit()) * (0.85f + 0.22f * t);
                                     const float arch   = n_len * 0.11f * static_cast<float>(side) * (0.5f + 0.8f * rng.unit());
-                                    const bool is_dry  = include_dry && t < 0.45f && rng.unit() < 0.075f;
+                                    const bool is_dry  = include_dry && t < 0.55f && rng.unit() < 0.11f;
                                     Vector3 c_base     = is_dry ? dry_needle * 0.72f : leaf_color_for(s, time, rng) * layer_bright * (0.76f + 0.26f * t);
                                     Vector3 c_tip      = is_dry ? dry_needle * 1.08f : mix(c_base, s.leaf_color_back * layer_bright, 0.45f);
                                     draw_curved_needle(a, frame, p, base_angle + spread, n_len, arch, needle_r0, needle_r1, c_base, c_tip, is_dry ? 0.78f : layer_rough, layer_ao);
@@ -1022,14 +1022,14 @@ namespace spartan::trees
                     }
                 };
 
-                // 3-layer back-to-front depth composition: deep shadowed back -> woody skeleton -> mid lush body -> sunlit front tips + terminal buds
-                paint_needle_layer(0.58f, 0.44f, 0.88f, 0.90f, true);
+                // 3-layer back-to-front depth composition: deep shadowed back -> woody skeleton -> mid lush body -> waxy sunlit front tips
+                paint_needle_layer(0.42f, 0.24f, 0.78f, 1.05f, true);
                 for (const shoot& sh : shoots)
                 {
-                    draw_stick(a, frame, sh.from, sh.to, sh.r0, sh.r1, pine_wood, 0.92f, 0.62f);
+                    draw_stick(a, frame, sh.from, sh.to, sh.r0, sh.r1, pine_wood, 0.90f, 0.48f);
                 }
-                paint_needle_layer(0.88f, 0.78f, 0.84f, 0.95f, false);
-                paint_needle_layer(1.12f, 0.98f, 0.78f, 0.55f, false);
+                paint_needle_layer(0.84f, 0.68f, 0.60f, 1.05f, false);
+                paint_needle_layer(1.12f, 0.98f, 0.48f, 0.62f, false);
 
                 // Delicate scaly reddish-brown terminal candle buds
                 for (const shoot& sh : shoots)
@@ -1068,15 +1068,15 @@ namespace spartan::trees
                     draw_scale_spray(a, frame, path.back(), pi * 0.5f + 0.12f * rng.signed_unit(), h * 0.17f * scale_mult, 1, t_dark, t_light, rough, clamp(ao + 0.06f, 0.0f, 1.0f), rng);
                 };
 
-                paint_cypress_layer(0.62f, 0.44f, 0.88f, 1.02f, 7u);
+                paint_cypress_layer(0.42f, 0.24f, 0.76f, 1.04f, 8u);
                 for (uint32_t i = 0; i + 1 < path.size(); i++)
                 {
                     const float t0 = static_cast<float>(i) / static_cast<float>(path.size() - 1);
                     const float t1 = static_cast<float>(i + 1) / static_cast<float>(path.size() - 1);
-                    draw_stick(a, frame, path[i], path[i + 1], twig_radius * (1.05f - 0.58f * t0), twig_radius * (1.05f - 0.58f * t1), cypress_wood, 0.92f, 0.58f);
+                    draw_stick(a, frame, path[i], path[i + 1], twig_radius * (1.05f - 0.58f * t0), twig_radius * (1.05f - 0.58f * t1), cypress_wood, 0.90f, 0.48f);
                 }
-                paint_cypress_layer(0.92f, 0.78f, 0.84f, 0.94f, 6u);
-                paint_cypress_layer(1.16f, 0.98f, 0.78f, 0.80f, 4u);
+                paint_cypress_layer(0.88f, 0.70f, 0.62f, 0.95f, 7u);
+                paint_cypress_layer(1.14f, 0.98f, 0.50f, 0.82f, 5u);
 
                 // Occasional small dusty grey-brown spherical cypress cone (galbulus)
                 if (variant % 2u == 0u)
@@ -1194,23 +1194,29 @@ namespace spartan::trees
                                 const float angle   = tip_leaf ? (twig_angle + 0.15f * rng.signed_unit()) : (twig_angle + static_cast<float>(side) * (0.52f + 0.58f * rng.unit()));
                                 const float l_len   = leaf_len * (0.78f + 0.38f * rng.unit()) * (0.85f + 0.22f * sin(pi * min(t, 0.95f)));
                                 const float w_scale = 0.68f + 0.38f * rng.unit();
-                                // Authentic olive shimmer: ~46% silvery-sage velvety undersides vs ~54% deep waxy dark-olive upper faces
-                                const bool underside = rng.unit() < 0.46f;
+                                // Authentic olive shimmer: ~42% velvety silver-sage undersides vs ~58% waxy dark-olive upper faces + subtle stressed olive leaves
+                                const bool underside = rng.unit() < 0.42f;
+                                const bool stressed  = !underside && rng.unit() < 0.10f;
                                 leaf_paint paint;
                                 if (underside)
                                 {
                                     paint.color     = mix(s.leaf_color_back, leaf_color_for(s, time, rng), 0.18f) * bright * (0.90f + 0.20f * rng.unit());
                                     paint.vein      = paint.color * 1.12f;
-                                    paint.roughness = 0.92f;
+                                    paint.roughness = 0.84f;
                                 }
                                 else
                                 {
-                                    paint.color     = leaf_color_for(s, time, rng) * bright;
-                                    paint.vein      = mix(paint.color, s.leaf_color_back, 0.62f);
-                                    paint.roughness = 0.74f;
+                                    Vector3 base_col = leaf_color_for(s, time, rng);
+                                    if (stressed)
+                                    {
+                                        base_col = mix(base_col, Vector3(0.145f, 0.118f, 0.048f), 0.48f);
+                                    }
+                                    paint.color     = base_col * bright;
+                                    paint.vein      = mix(paint.color, s.leaf_color_back, 0.58f);
+                                    paint.roughness = stressed ? 0.72f : 0.44f;
                                 }
-                                paint.curl      = 0.15f;
-                                paint.arch      = 0.08f * rng.signed_unit();
+                                paint.curl      = 0.22f;
+                                paint.arch      = 0.10f * rng.signed_unit();
                                 paint.occlusion = ao;
                                 paint.seed      = rng.state;
                                 const Vector2 pet(position.x + cos(angle) * l_len * 0.06f, position.y + sin(angle) * l_len * 0.06f);
@@ -1220,10 +1226,10 @@ namespace spartan::trees
                     }
                 };
 
-                paint_olive_pass(0.66f, 0.46f, 0.85f);
+                paint_olive_pass(0.44f, 0.26f, 0.95f);
                 draw_woody_skeleton();
-                paint_olive_pass(0.94f, 0.78f, 0.90f);
-                paint_olive_pass(1.12f, 0.98f, 0.48f);
+                paint_olive_pass(0.88f, 0.70f, 0.95f);
+                paint_olive_pass(1.12f, 0.98f, 0.55f);
                 return;
             }
 
@@ -1278,21 +1284,27 @@ namespace spartan::trees
                                 for (int32_t sd = -1; sd <= 1; sd += 2)
                                 {
                                     const bool underside = rng.unit() < 0.22f;
+                                    const bool stressed  = !underside && rng.unit() < 0.09f;
                                     leaf_paint paint;
                                     if (underside)
                                     {
                                         paint.color     = mix(s.leaf_color_back, leaf_color_for(s, time, rng), 0.25f) * bright;
                                         paint.vein      = paint.color * 1.15f;
-                                        paint.roughness = 0.88f;
+                                        paint.roughness = 0.78f;
                                     }
                                     else
                                     {
-                                        paint.color     = leaf_color_for(s, time, rng) * bright;
+                                        Vector3 base_col = leaf_color_for(s, time, rng);
+                                        if (stressed)
+                                        {
+                                            base_col = mix(base_col, Vector3(0.135f, 0.095f, 0.032f), 0.45f);
+                                        }
+                                        paint.color     = base_col * bright;
                                         paint.vein      = mix(paint.color, s.leaf_color_back * 1.25f, 0.58f);
-                                        paint.roughness = 0.68f;
+                                        paint.roughness = stressed ? 0.68f : 0.38f;
                                     }
-                                    paint.curl      = 0.14f;
-                                    paint.arch      = 0.05f * rng.signed_unit();
+                                    paint.curl      = 0.20f;
+                                    paint.arch      = 0.08f * rng.signed_unit();
                                     paint.occlusion = ao;
                                     paint.seed      = rng.state;
                                     const float l_ang = angle + static_cast<float>(sd) * (0.82f + 0.28f * rng.unit());
@@ -1303,9 +1315,9 @@ namespace spartan::trees
                     }
                 };
 
-                paint_pinnate_pass(0.64f, 0.44f, 3u);
+                paint_pinnate_pass(0.42f, 0.24f, 4u);
                 draw_woody_skeleton();
-                paint_pinnate_pass(0.94f, 0.78f, 3u);
+                paint_pinnate_pass(0.88f, 0.70f, 3u);
                 paint_pinnate_pass(1.14f, 0.98f, 2u);
                 return;
             }
@@ -1391,12 +1403,18 @@ namespace spartan::trees
                 }
 
                 const bool underside = rng.unit() < 0.26f;
+                const bool stressed  = !underside && rng.unit() < 0.09f;
                 leaf_paint paint;
-                paint.color     = (underside ? mix(leaf_color_for(s, time, rng), s.leaf_color_back, 0.55f) : leaf_color_for(s, time, rng)) * layer_br;
+                Vector3 base_col = underside ? mix(leaf_color_for(s, time, rng), s.leaf_color_back, 0.55f) : leaf_color_for(s, time, rng);
+                if (stressed)
+                {
+                    base_col = mix(base_col, Vector3(0.14f, 0.105f, 0.036f), 0.46f);
+                }
+                paint.color     = base_col * layer_br;
                 paint.vein      = mix(paint.color, s.leaf_color_back * 1.2f * layer_br, 0.5f);
-                paint.curl      = s.leaf == leaf_shape::palmate ? 0.12f : 0.16f;
-                paint.arch      = 0.05f * rng.signed_unit();
-                paint.roughness = underside ? 0.88f : 0.72f;
+                paint.curl      = s.leaf == leaf_shape::palmate ? 0.16f : 0.22f;
+                paint.arch      = 0.07f * rng.signed_unit();
+                paint.roughness = underside ? 0.82f : (stressed ? 0.70f : 0.46f);
                 paint.occlusion = layer_ao;
                 paint.seed      = rng.state;
 
@@ -1534,10 +1552,12 @@ namespace spartan::trees
                 }
             }, total_tiles);
 
-            // Blend a subtle macro spray-dome normal across each tile so whole sprays shade volumetrically
+            // Bake subtle sub-leaf overlap drop shadows into occlusion and blend macro spray-dome relief across each tile
+            const vector<float> occ_copy = a.occlusion;
             ThreadPool::ParallelLoop([&](const uint32_t tile_begin, const uint32_t tile_end)
             {
                 const float ts = static_cast<float>(a.tile_size);
+                const int32_t shadow_r = max(2, static_cast<int32_t>(a.tile_size / 96u));
                 for (uint32_t tile = tile_begin; tile < tile_end; tile++)
                 {
                     const uint32_t ox = (tile % atlas_tiles) * a.tile_size;
@@ -1552,9 +1572,24 @@ namespace spartan::trees
                             {
                                 continue;
                             }
+                            const float self_occ = occ_copy[idx];
+                            float caster = 0.0f;
+                            const int32_t offsets[4][2] = { { shadow_r, -shadow_r }, { -shadow_r, -shadow_r }, { 0, -shadow_r * 2 }, { shadow_r, 0 } };
+                            for (int32_t k = 0; k < 4; k++)
+                            {
+                                const int32_t sx = clamp(static_cast<int32_t>(x) + offsets[k][0], 0, static_cast<int32_t>(a.tile_size) - 1);
+                                const int32_t sy = clamp(static_cast<int32_t>(y) + offsets[k][1], 0, static_cast<int32_t>(a.tile_size) - 1);
+                                const size_t s_idx = static_cast<size_t>(oy + sy) * a.size + (ox + sx);
+                                if (a.alpha[s_idx] > 0.35f && occ_copy[s_idx] > self_occ + 0.08f)
+                                {
+                                    caster += 0.25f;
+                                }
+                            }
+                            a.occlusion[idx] = clamp(self_occ * (1.0f - caster * 0.42f), 0.12f, 1.0f);
+
                             const float dx = ((static_cast<float>(x) + 0.5f) / ts - 0.5f) * 2.0f;
-                            a.normal[idx * 2 + 0] = a.normal[idx * 2 + 0] * 0.72f + clamp(dx * 0.55f, -0.55f, 0.55f) * 0.28f;
-                            a.normal[idx * 2 + 1] = a.normal[idx * 2 + 1] * 0.72f + clamp(-dy * 0.45f, -0.45f, 0.45f) * 0.28f;
+                            a.normal[idx * 2 + 0] = a.normal[idx * 2 + 0] * 0.78f + clamp(dx * 0.65f, -0.65f, 0.65f) * 0.22f;
+                            a.normal[idx * 2 + 1] = a.normal[idx * 2 + 1] * 0.78f + clamp(-dy * 0.55f, -0.55f, 0.55f) * 0.22f;
                         }
                     }
                 }
@@ -1606,8 +1641,8 @@ namespace spartan::trees
                         albedo[i * 4 + 2] = to_srgb8(color.z);
                         albedo[i * 4 + 3] = to_unorm8(alpha);
 
-                        const float nx  = clamp(a.normal[i * 2 + 0], -0.48f, 0.48f);
-                        const float ny  = clamp(a.normal[i * 2 + 1], -0.48f, 0.48f);
+                        const float nx  = clamp(a.normal[i * 2 + 0], -0.82f, 0.82f);
+                        const float ny  = clamp(a.normal[i * 2 + 1], -0.82f, 0.82f);
                         const Vector3 n = Vector3(nx, ny, 1.0f).Normalized();
                         normal[i * 4 + 0] = to_unorm8(n.x * 0.5f + 0.5f);
                         normal[i * 4 + 1] = to_unorm8(-n.y * 0.5f + 0.5f);

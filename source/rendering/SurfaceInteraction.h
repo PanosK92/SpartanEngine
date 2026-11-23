@@ -22,9 +22,13 @@ namespace spartan
     struct SurfaceContact
     {
         math::Vector3 position, normal, velocity, direction;
-        float width = 0.0f;
+        float width    = 0.0f;
         float pressure = 0.0f;
-        bool valid = false;
+        bool valid     = false;
+        // discrete footfall stamped in the shape of a sole rather than swept as a continuous tire track
+        bool is_foot   = false;
+        float side     = 0.0f; // 1 right foot, -1 left foot
+        float push     = 0.0f; // 0 heel-strike walk, 1 forefoot push-off run
     };
     // Any shape that pushes vegetation aside: a car body, a person, a ball. A rounded oriented box,
     // a capsule is a box with zero horizontal extent and a radius.

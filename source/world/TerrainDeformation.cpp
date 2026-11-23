@@ -699,15 +699,15 @@ namespace spartan
         return depth;
     }
 
-    void TerrainDeformation::Walk(uint64_t id, const Vector3& feet, const Vector3& velocity, bool grounded, float mass)
+    bool TerrainDeformation::Walk(uint64_t id, const Vector3& feet, const Vector3& velocity, bool grounded, float mass, TerrainDeformationFoot* stepped)
     {
         TerrainDeformationFoot foot;
         {
             lock_guard<mutex> guard(walkers_lock);
-            if (!grounded || !IsEnabled() || !feet.IsFinite())
+            if (!grounded || !feet.IsFinite())
             {
                 walkers.erase(id);
-                return;
+                return false;
             }
 
             auto [entry, inserted] = walkers.try_emplace(id);
@@ -717,14 +717,16 @@ namespace spartan
             walker.last    = feet;
             if (inserted)
             {
-                return;
+                // start mid-stride so the first footstep lands promptly as the walker moves off
+                walker.travelled = 0.35f;
+                return false;
             }
 
             const float step = sqrtf(dx * dx + dz * dz);
             if (!isfinite(step) || step > 3.0f)
             {
                 walker.travelled = 0.0f;
-                return;
+                return false;
             }
 
             // one step is about 0.7 m at a 1.4 m/s walk and 1.2 m running at 4 m/s
@@ -733,13 +735,13 @@ namespace spartan
             walker.travelled  += step;
             if (walker.travelled < stride || speed < 0.3f)
             {
-                return;
+                return false;
             }
             walker.travelled = min(walker.travelled - stride, stride);
 
             const Vector3 forward(velocity.x / speed, 0.0f, velocity.z / speed);
             const Vector3 right(forward.z, 0.0f, -forward.x);
-            foot.position = feet + right * (0.1f * walker.side);
+            foot.position = feet + right * (0.125f * walker.side);
             foot.forward  = forward;
             foot.side     = walker.side;
             foot.push     = smoothstep(2.0f, 5.0f, speed);
@@ -747,7 +749,12 @@ namespace spartan
             foot.load     = mass * 9.81f * lerp_f(1.2f, 2.5f, foot.push);
             walker.side   = -walker.side;
         }
+        if (stepped)
+        {
+            *stepped = foot;
+        }
         StampFoot(foot);
+        return true;
     }
 
     void TerrainDeformation::Wash(float dt, float (*swash_depth)(float world_x, float world_z))

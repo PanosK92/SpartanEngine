@@ -6,7 +6,7 @@
   "description": "Compact silver-green olive for Ionian groves, retaining a gnarled closed trunk and a dense rounded crown.",
   "class": "broadleaf",
   "evergreen": true,
-  "budget": 6600,
+  "budget": 32000,
   "height": 7.2,
   "height_var": 0.16,
   "trunk": {
@@ -73,34 +73,34 @@
   "leaves": {
     "shape": "lanceolate",
     "size": 0.085,
-    "card_size": 0.62,
-    "density": 2.6,
+    "card_size": 0.44,
+    "density": 5.5,
     "start": 0.22,
     "tilt": 0.35,
     "per_card": 18,
     "color": [
-      0.056,
-      0.084,
-      0.038
+      0.046,
+      0.074,
+      0.032
     ],
     "color_back": [
-      0.215,
-      0.238,
-      0.175
+      0.185,
+      0.205,
+      0.148
     ],
     "spring_color": [
-      0.11,
-      0.15,
-      0.065
+      0.095,
+      0.132,
+      0.056
     ],
-    "color_var": 0.1,
+    "color_var": 0.12,
     "flowers": true,
     "flower_color": [
-      0.72,
-      0.7,
-      0.56
+      0.66,
+      0.64,
+      0.52
     ],
-    "translucency": 0.54
+    "translucency": 0.36
   },
   "bark": {
     "style": "twisted",

@@ -696,7 +696,7 @@ namespace
 
     void section_post_processing()
     {
-        static const vector<string> tonemappers = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Gran Turismo 7", "Off" };
+        static const vector<string> tonemappers = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Gran Turismo 7", "AgX Neutral", "Khronos PBR Neutral", "Off" };
         const uint32_t tonemapper = cvar_tonemapping.GetValueAs<uint32_t>();
         const string summary      = tonemapper < tonemappers.size() ? tonemappers[tonemapper] : "";
 
