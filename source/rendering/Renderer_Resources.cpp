@@ -523,6 +523,8 @@ namespace spartan
         at(blend_states, Renderer_BlendState::Multiply)      = make_shared<RHI_BlendState>(true, RHI_Blend::Dest_Color, RHI_Blend::Zero,         RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
         // surface overlays blend coverage into albedo while preserving the receiver's opaque alpha
         at(blend_states, Renderer_BlendState::SurfaceAlpha)  = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        // dual-source rgb transmittance for forward transparency: dst = src0 + src1 * dst
+        at(blend_states, Renderer_BlendState::DualSourceTransmittance) = make_shared<RHI_BlendState>(true, RHI_Blend::One, RHI_Blend::Src1_Color, RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
     }
 
     void Renderer::CreateSamplers()
@@ -1453,6 +1455,7 @@ namespace spartan
             { Renderer_Shader::gbuffer_v,                             RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan  },
             { Renderer_Shader::gbuffer_p,                             RHI_Shader_Type::Pixel,   "g_buffer.hlsl"                                                              },
             { Renderer_Shader::skid_marks_p,                          RHI_Shader_Type::Pixel,   "skid_marks.hlsl"                                                            },
+            { Renderer_Shader::transparent_p,                         RHI_Shader_Type::Pixel,   "transparent.hlsl"                                                           },
 
             // tessellation
             { Renderer_Shader::tessellation_h,                        RHI_Shader_Type::Hull,    "common_tessellation.hlsl"                                                   },
@@ -1679,7 +1682,8 @@ namespace spartan
                 e.id == Renderer_Shader::particle_volume_composite_c ||
                 e.id == Renderer_Shader::fog_sky_visibility_c ||
                 e.id == Renderer_Shader::fog_inject_c ||
-                e.id == Renderer_Shader::reflections_apply_c;
+                e.id == Renderer_Shader::reflections_apply_c ||
+                e.id == Renderer_Shader::transparent_p;
             const char* define_ext = (rt && needs_ray_tracing_define) ? "RAY_TRACING_ENABLED" : nullptr;
             compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext, e.define2);
         }

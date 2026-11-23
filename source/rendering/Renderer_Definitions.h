@@ -373,6 +373,7 @@ namespace spartan
         gbuffer_v,
         gbuffer_p,
         skid_marks_p,
+        transparent_p,
         depth_prepass_v,
         depth_prepass_indirect_alpha_test_p,
         depth_light_v,
@@ -888,6 +889,7 @@ namespace spartan
         Additive,
         Multiply,
         SurfaceAlpha,
+        DualSourceTransmittance,
         Max
     };
 

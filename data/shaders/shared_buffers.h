@@ -507,6 +507,15 @@ namespace pass_reflections_apply
     static const SHARED_UINT light_count           = 2; // uint
 }
 
+namespace pass_transparent
+{
+    static const SHARED_UINT mip_count              = 0; // float, skysphere mips
+    static const SHARED_UINT light_count            = 1; // uint
+    static const SHARED_UINT ray_traced_reflections = 2; // bool
+    static const SHARED_UINT has_refraction_source  = 3; // bool
+    static const SHARED_UINT apply_fog              = 4; // bool
+}
+
 namespace pass_ray_traced_shadows
 {
     static const SHARED_UINT light_culling       = 0; // bool

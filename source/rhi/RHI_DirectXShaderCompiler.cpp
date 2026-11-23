@@ -21,9 +21,13 @@ namespace spartan
 {
     namespace
     {
-        // dxc compiler instances are not thread safe, each shader compiler worker creates its own on first compile
+        // dxcompiler.dll has global mutable state across concurrent in-process spir-v compiles and
+        // spirv-tools redundancy elimination multiplies memory across parallel g_buffer compiles.
+        // keep per-thread interfaces (dxc requires thread affinity) while serializing dxcompiler calls;
+        // include preprocessing, cache hashing/io, module creation and reflection stay parallel.
         thread_local IDxcUtils* dxc_utils    = nullptr;
         thread_local IDxcCompiler3* compiler = nullptr;
+        mutex dxc_mutex;
         once_flag version_initialization;
         string compiler_version;
 
@@ -71,44 +75,47 @@ namespace spartan
 
     IDxcBlob* DirectXShaderCompiler::Compile(const string& source, vector<string>& arguments, const string& name)
     {
-        if (!compiler || !dxc_utils)
         {
-            if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler))) ||
-                FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxc_utils))))
+            lock_guard<mutex> lock(dxc_mutex);
+            if (!compiler && FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler))))
             {
-                SP_LOG_ERROR("Failed to create DirectXShaderCompiler interfaces");
+                SP_LOG_ERROR("Failed to create DirectXShaderCompiler interface");
                 return nullptr;
             }
-        }
+            if (!dxc_utils && FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxc_utils))))
+            {
+                SP_LOG_ERROR("Failed to create DirectXShaderCompiler utils interface");
+                return nullptr;
+            }
 
-        // the version is part of every cache key, so all workers must agree on it before their first lookup
-        call_once(version_initialization, []
-        {
-            IDxcVersionInfo2* version = nullptr;
-            if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&version))))
+            // the version is part of every cache key, so all workers must agree on it before their first lookup
+            call_once(version_initialization, []
             {
-                UINT32 major = 0, minor = 0, flags = 0, commits = 0;
-                char* commit = nullptr;
-                if (SUCCEEDED(version->GetVersion(&major, &minor)) &&
-                    SUCCEEDED(version->GetFlags(&flags)) &&
-                    SUCCEEDED(version->GetCommitInfo(&commits, &commit)) && commit && *commit)
+                IDxcVersionInfo2* version = nullptr;
+                if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&version))))
                 {
-                    compiler_version = to_string(major) + ":" + to_string(minor) + ":" +
-                        to_string(flags) + ":" + to_string(commits) + ":" + commit;
+                    UINT32 major = 0, minor = 0, flags = 0, commits = 0;
+                    char* commit = nullptr;
+                    if (SUCCEEDED(version->GetVersion(&major, &minor)) && SUCCEEDED(version->GetFlags(&flags)) && SUCCEEDED(version->GetCommitInfo(&commits, &commit)) && commit && *commit)
+                    {
+                        compiler_version = to_string(major) + ":" + to_string(minor) + ":" + to_string(flags) + ":" + to_string(commits) + ":" + commit;
+                    }
+                    CoTaskMemFree(commit);
+                    version->Release();
                 }
-                CoTaskMemFree(commit);
-                version->Release();
-            }
-            IDxcVersionInfo3* custom_version = nullptr;
-            if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&custom_version))))
-            {
-                char* custom = nullptr;
-                if (SUCCEEDED(custom_version->GetCustomVersionString(&custom)) && custom && !compiler_version.empty())
-                    compiler_version += string(":") + custom;
-                CoTaskMemFree(custom);
-                custom_version->Release();
-            }
-        });
+                IDxcVersionInfo3* custom_version = nullptr;
+                if (SUCCEEDED(compiler->QueryInterface(IID_PPV_ARGS(&custom_version))))
+                {
+                    char* custom = nullptr;
+                    if (SUCCEEDED(custom_version->GetCustomVersionString(&custom)) && custom && !compiler_version.empty())
+                    {
+                        compiler_version += string(":") + custom;
+                    }
+                    CoTaskMemFree(custom);
+                    custom_version->Release();
+                }
+            });
+        }
 
         // Source already contains every include. Arguments include backend, stage,
         // entry point, defines and optimization flags, so edits cannot reuse stale code.
@@ -122,27 +129,17 @@ namespace spartan
         hash.Add(compiler_version);
         hash.Add(source);
         for (const string& argument : arguments) hash.Add(argument);
-        const auto cache_path = compiler_version.empty() ? filesystem::path{} :
-            generated_cache::Path(FileSystem::GetExecutableDirectory() + "/cache", "shaders", hash.value);
+        const auto cache_path = compiler_version.empty() ? filesystem::path{} : generated_cache::Path(FileSystem::GetExecutableDirectory() + "/cache", "shaders", hash.value);
         vector<uint8_t> bytecode;
         if (generated_cache::Load(cache_path, hash.value, bytecode) && !bytecode.empty())
         {
             IDxcBlobEncoding* cached = nullptr;
+            lock_guard<mutex> lock(dxc_mutex);
             if (SUCCEEDED(dxc_utils->CreateBlob(bytecode.data(), static_cast<uint32_t>(bytecode.size()), DXC_CP_ACP, &cached)))
+            {
                 return cached;
+            }
         }
-
-        IDxcBlobEncoding* blob_encoding = nullptr;
-        if (FAILED(dxc_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
-        {
-            SP_LOG_ERROR("Failed to create shader blob from source.");
-            return nullptr;
-        }
-
-        DxcBuffer dxc_buffer = {};
-        dxc_buffer.Ptr       = blob_encoding->GetBufferPointer();
-        dxc_buffer.Size      = blob_encoding->GetBufferSize();
-        dxc_buffer.Encoding  = DXC_CP_UTF8;
 
         // dxc takes wide strings, the arguments are built as utf8 everywhere else
         vector<wstring> arguments_wide(arguments.size());
@@ -157,38 +154,69 @@ namespace spartan
         for (size_t i = 0; i + 1 < arguments.size(); ++i)
         {
             if (arguments[i] == "-T" || arguments[i] == "-E" || arguments[i] == "-D")
-                variant += (variant.empty() ? "" : ", ") + arguments[i + 1];
-        }
-        const Stopwatch compile_timer;
-        IDxcResult* dxc_result = nullptr;
-        HRESULT hr             = compiler->Compile(
-            &dxc_buffer,
-            arguments_pointers.data(),
-            static_cast<uint32_t>(arguments_pointers.size()),
-            nullptr, // optionally pass a real include handler
-            IID_PPV_ARGS(&dxc_result)
-        );
-
-        blob_encoding->Release();
-
-        if (FAILED(hr) || !dxc_result || !log_diagnostics(dxc_result))
-        {
-            SP_LOG_ERROR("Shader '%s' (%s) compilation failed after %.2f ms", name.c_str(), variant.c_str(), compile_timer.GetElapsedTimeMs());
-            if (dxc_result)
             {
-                dxc_result->Release();
-                dxc_result = nullptr;
+                variant += (variant.empty() ? "" : ", ") + arguments[i + 1];
             }
         }
 
-        if (!dxc_result) return nullptr;
-        IDxcBlob* shader = nullptr;
-        dxc_result->GetResult(&shader);
-        dxc_result->Release();
+        IDxcBlob* shader      = nullptr;
+        float compile_time_ms = 0.0f;
+        {
+            lock_guard<mutex> lock(dxc_mutex);
+
+            IDxcBlobEncoding* blob_encoding = nullptr;
+            if (FAILED(dxc_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
+            {
+                SP_LOG_ERROR("Failed to create shader blob from source.");
+                return nullptr;
+            }
+
+            DxcBuffer dxc_buffer = {};
+            dxc_buffer.Ptr       = blob_encoding->GetBufferPointer();
+            dxc_buffer.Size      = blob_encoding->GetBufferSize();
+            dxc_buffer.Encoding  = DXC_CP_UTF8;
+
+            const Stopwatch compile_timer;
+            IDxcResult* dxc_result = nullptr;
+            HRESULT hr             = compiler->Compile(
+                &dxc_buffer,
+                arguments_pointers.data(),
+                static_cast<uint32_t>(arguments_pointers.size()),
+                nullptr, // optionally pass a real include handler
+                IID_PPV_ARGS(&dxc_result)
+            );
+            compile_time_ms = compile_timer.GetElapsedTimeMs();
+
+            blob_encoding->Release();
+
+            if (FAILED(hr) || !dxc_result || !log_diagnostics(dxc_result))
+            {
+                SP_LOG_ERROR("Shader '%s' (%s) compilation failed after %.2f ms", name.c_str(), variant.c_str(), compile_time_ms);
+                if (dxc_result)
+                {
+                    dxc_result->Release();
+                    dxc_result = nullptr;
+                }
+            }
+
+            if (dxc_result)
+            {
+                dxc_result->GetResult(&shader);
+                dxc_result->Release();
+            }
+        }
+
+        if (!shader)
+        {
+            return nullptr;
+        }
+
         // progress is on screen, only the outliers worth optimizing are logged
-        if (shader && compile_timer.GetElapsedTimeMs() >= 1000.0f)
-            SP_LOG_INFO("Compiled shader '%s' (%s) in %.2f ms", name.c_str(), variant.c_str(), compile_timer.GetElapsedTimeMs());
-        if (shader && !cache_path.empty())
+        if (compile_time_ms >= 1000.0f)
+        {
+            SP_LOG_INFO("Compiled shader '%s' (%s) in %.2f ms", name.c_str(), variant.c_str(), compile_time_ms);
+        }
+        if (!cache_path.empty())
         {
             const auto* bytes = static_cast<const uint8_t*>(shader->GetBufferPointer());
             bytecode.assign(bytes, bytes + shader->GetBufferSize());

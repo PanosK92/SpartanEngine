@@ -4831,8 +4831,10 @@ namespace spartan
         m_draw_data_gpu_synced      = false;
         m_indirect_draw_count       = 0;
         m_indirect_render_count     = 0;
-        m_cull_task_count           = 0;
-        m_transparents_present      = false;
+        m_cull_task_count               = 0;
+        m_transparents_present          = false;
+        m_water_present                 = false;
+        m_forward_transparents_present  = false;
         m_tessellated_draws.clear();
         m_tessellated_gpu_culled    = false;
     }
@@ -4869,12 +4871,20 @@ namespace spartan
             Render* render = nullptr;
             uint8_t flags  = 0;
         };
-        struct Candidates { vector<Candidate> renders; bool transparent = false; };
+        struct Candidates
+        {
+            vector<Candidate> renders;
+            bool transparent         = false;
+            bool water               = false;
+            bool forward_transparent = false;
+        };
         static array<Candidates, 32> batches;
         for (auto& batch : batches)
         {
             batch.renders.clear();
-            batch.transparent = false;
+            batch.transparent         = false;
+            batch.water               = false;
+            batch.forward_transparent = false;
         }
         const auto& entries = render_scene_data();
         SP_PROFILE_CPU_START("draw_collect");
@@ -4909,7 +4919,13 @@ namespace spartan
                     flags |= candidate_grouped;
                 }
                 // off screen glass would push the reflection trace behind lighting for nothing
-                batch.transparent |= render->IsVisible() && material->IsTransparent();
+                if (render->IsVisible() && material->IsTransparent() && material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
+                {
+                    const bool is_water = material->GetProperty(MaterialProperty::IsWater) != 0.0f;
+                    batch.transparent         = true;
+                    batch.water              |= is_water;
+                    batch.forward_transparent |= !is_water;
+                }
                 batch.renders.push_back({ render, flags });
             }
         };
@@ -4933,7 +4949,9 @@ namespace spartan
         accepted_motion.clear();
         for (const auto& batch : batches)
         {
-            m_transparents_present |= batch.transparent;
+            m_transparents_present         |= batch.transparent;
+            m_water_present                |= batch.water;
+            m_forward_transparents_present |= batch.forward_transparent;
             for (const Candidate& candidate : batch.renders)
             {
                 Render* render = candidate.render;
@@ -4979,13 +4997,17 @@ namespace spartan
             }
         }
 
-        // opaque before transparent, then by material, then by distance (front to back, transparent back to front)
+        // opaque before transparent; opaque groups by material then front to back, transparent sorts strictly back to front
         auto draw_sort_key = [](bool transparent, uint32_t material_index, float distance_squared)
         {
             uint32_t distance_bits = 0;
             memcpy(&distance_bits, &distance_squared, sizeof(distance_bits));
-            distance_bits = transparent ? ~distance_bits : distance_bits;
-            return (static_cast<uint64_t>(transparent) << 63) | (static_cast<uint64_t>(material_index & 0x7fffffffu) << 32) | distance_bits;
+            if (transparent)
+            {
+                const uint32_t inv_distance = (~distance_bits) & 0x7fffffffu;
+                return (1ull << 63) | (static_cast<uint64_t>(inv_distance) << 32) | static_cast<uint64_t>(material_index);
+            }
+            return (static_cast<uint64_t>(material_index & 0x7fffffffu) << 32) | distance_bits;
         };
         static vector<pair<uint64_t, uint32_t>> sort_keys;
 
@@ -5526,7 +5548,8 @@ namespace spartan
     {
         constexpr float hysteresis = instanced_tlas_hysteresis;
         constexpr float radius_max = 500.0f;
-        const float radius = (Renderer::IsPathTracingActive() || Renderer::IsRestirActive()) ? 1e15f : min(render->GetMaxShadowDistance(), radius_max);
+        const float distance       = (Renderer::IsPathTracingActive() || Renderer::IsRestirActive()) ? max(render->GetMaxRenderDistance(), render->GetMaxShadowDistance()) : render->GetMaxShadowDistance();
+        const float radius         = max(0.0f, min(distance, radius_max));
 
         Entity* entity               = render->GetEntity();
         const uint64_t blas_address  = render->GetAccelerationStructureDeviceAddress();
@@ -5741,6 +5764,9 @@ namespace spartan
         const bool blas_compacted = RHI_AccelerationStructure::CompactBottomLevels();
         RHI_CommandList::EndMarker();
 
+        RHI_Buffer* geometry_info_buffer = GetBuffer(Renderer_Buffer::GeometryInfo);
+        const size_t geometry_capacity   = geometry_info_buffer ? (geometry_info_buffer->GetObjectSize() / sizeof(Sb_GeometryInfo)) : 0;
+
         // static scenes keep a valid tlas, only rebuild when transforms, materials, or blas move
         {
             const bool structural_tlas_rebuild =
@@ -5764,6 +5790,7 @@ namespace spartan
                 needs_tlas_rebuild |= instanced_tlas_caches.size() != ray_tracing_instanced_renders.size();
                 instanced_tlas_caches.resize(ray_tracing_instanced_renders.size());
                 static vector<InstancedTlasGroupWork> group_work;
+                static vector<pair<float, const Render::InstanceBoundsGroup*>> candidate_groups;
                 uint32_t group_work_count = 0;
                 const float cull_margin   = instanced_tlas_hysteresis;
                 for (size_t i = 0; i < ray_tracing_instanced_renders.size(); ++i)
@@ -5786,11 +5813,34 @@ namespace spartan
 
                     const float cull_radius    = cache.cull_radius + cull_margin;
                     const float cull_radius_sq = cull_radius * cull_radius;
+                    candidate_groups.clear();
+                    size_t candidate_instance_count = 0;
                     for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
                     {
-                        if (Vector3::DistanceSquared(camera_position, group.bounds.GetClosestPoint(camera_position)) > cull_radius_sq)
+                        const float dist_sq = Vector3::DistanceSquared(camera_position, group.bounds.GetClosestPoint(camera_position));
+                        if (dist_sq > cull_radius_sq)
                         {
                             continue;
+                        }
+                        candidate_groups.emplace_back(dist_sq, &group);
+                        candidate_instance_count += group.count;
+                    }
+
+                    // bound per-render collection to the tlas geometry table capacity, keeping the nearest groups first
+                    if (geometry_capacity > 0 && candidate_instance_count > geometry_capacity)
+                    {
+                        sort(candidate_groups.begin(), candidate_groups.end(), [](const auto& a, const auto& b)
+                        {
+                            return a.first < b.first;
+                        });
+                    }
+
+                    size_t queued_instances = 0;
+                    for (const auto& [dist_sq, group] : candidate_groups)
+                    {
+                        if (geometry_capacity > 0 && queued_instances >= geometry_capacity)
+                        {
+                            break;
                         }
                         if (group_work.size() <= group_work_count)
                         {
@@ -5800,7 +5850,8 @@ namespace spartan
                         work.cache_index = static_cast<uint32_t>(i);
                         work.render      = render;
                         work.material    = material;
-                        work.group       = &group;
+                        work.group       = group;
+                        queued_instances += group->count;
                     }
                 }
 
@@ -5827,9 +5878,14 @@ namespace spartan
                     {
                         InstancedTlasGroupWork& work = group_work[w];
                         InstancedTlasCache& cache    = instanced_tlas_caches[work.cache_index];
-                        cache.instances.insert(cache.instances.end(), work.instances.begin(), work.instances.end());
-                        cache.geometry_infos.insert(cache.geometry_infos.end(), work.geometry_infos.begin(), work.geometry_infos.end());
-                        cache.source_indices.insert(cache.source_indices.end(), work.source_indices.begin(), work.source_indices.end());
+                        const size_t remaining       = geometry_capacity > cache.instances.size() ? geometry_capacity - cache.instances.size() : 0;
+                        const size_t take            = min(work.instances.size(), remaining);
+                        if (take > 0)
+                        {
+                            cache.instances.insert(cache.instances.end(), work.instances.begin(), work.instances.begin() + take);
+                            cache.geometry_infos.insert(cache.geometry_infos.end(), work.geometry_infos.begin(), work.geometry_infos.begin() + take);
+                            cache.source_indices.insert(cache.source_indices.end(), work.source_indices.begin(), work.source_indices.begin() + take);
+                        }
                     }
                 }
                 SP_PROFILE_CPU_END();
@@ -5949,10 +6005,13 @@ namespace spartan
 
             // each render's output slot comes from a prefix sum, then the copies run in parallel
             static vector<uint32_t> output_offsets;
+            static vector<uint32_t> output_counts;
             static vector<uint32_t> instanced_slots;
-            output_offsets.resize(render_count);
+            output_offsets.assign(render_count, 0);
+            output_counts.assign(render_count, 0);
             instanced_slots.resize(render_count);
             uint32_t output_count    = 0;
+            size_t total_geometries  = 0;
             uint32_t instanced_index = 0;
             // primary hit history and reconnection vertices both cache tlas slots, one identity per slot lets
             // the temporal pass follow an instance to its new slot when streaming or culling compacts the list
@@ -5967,30 +6026,54 @@ namespace spartan
                 key = (key ^ geometry) * 1099511628211ull;
                 return key;
             };
+            // assign non-instanced renders first so dense scatter cannot evict unique world geometry,
+            // and clamp to geometry_capacity before allocating output buffers
             for (uint32_t i = 0; i < render_count; ++i)
             {
                 const SingleTlasCache& cache = single_tlas_caches[i];
-                output_offsets[i] = output_count;
                 if (cache.instanced)
                 {
-                    instanced_slots[i] = instanced_index;
-                    const InstancedTlasCache& instances_cache = instanced_tlas_caches[instanced_index++];
-                    for (uint32_t source_index : instances_cache.source_indices)
-                    {
-                        slot_keys.push_back(slot_key(instances_cache.render_id, instances_cache.blas_address, (1ull << 63) | source_index));
-                    }
-                    output_count += static_cast<uint32_t>(instances_cache.instances.size());
+                    continue;
                 }
-                else if (cache.valid)
+                if (cache.valid)
                 {
-                    slot_keys.push_back(slot_key(cache.entity_id, cache.instance.device_address, (static_cast<uint64_t>(cache.geometry.vertex_offset) << 31) ^ cache.geometry.index_offset));
-                    output_count++;
+                    ++total_geometries;
+                    if (output_count < geometry_capacity)
+                    {
+                        output_offsets[i] = output_count++;
+                        output_counts[i]  = 1;
+                        slot_keys.push_back(slot_key(cache.entity_id, cache.instance.device_address, (static_cast<uint64_t>(cache.geometry.vertex_offset) << 31) ^ cache.geometry.index_offset));
+                    }
                 }
                 else if (cache.invalid_transform)
                 {
                     ++invalid_transforms;
-                    if (!first_invalid_name) first_invalid_name = ray_tracing_renders[i]->GetEntity()->GetObjectName().c_str();
+                    if (!first_invalid_name)
+                    {
+                        first_invalid_name = ray_tracing_renders[i]->GetEntity()->GetObjectName().c_str();
+                    }
                 }
+            }
+            for (uint32_t i = 0; i < render_count; ++i)
+            {
+                const SingleTlasCache& cache = single_tlas_caches[i];
+                if (!cache.instanced)
+                {
+                    continue;
+                }
+                instanced_slots[i] = instanced_index;
+                const InstancedTlasCache& instances_cache = instanced_tlas_caches[instanced_index++];
+                const size_t cache_size = instances_cache.instances.size();
+                total_geometries += cache_size;
+                const uint32_t remaining = geometry_capacity > output_count ? static_cast<uint32_t>(geometry_capacity - output_count) : 0;
+                const uint32_t take      = min(static_cast<uint32_t>(cache_size), remaining);
+                output_offsets[i] = output_count;
+                output_counts[i]  = take;
+                for (uint32_t k = 0; k < take; ++k)
+                {
+                    slot_keys.push_back(slot_key(instances_cache.render_id, instances_cache.blas_address, (1ull << 63) | instances_cache.source_indices[k]));
+                }
+                output_count += take;
             }
             instances.resize(output_count);
             geometry_infos.resize(output_count);
@@ -5998,13 +6081,18 @@ namespace spartan
             {
                 for (uint32_t i = first; i < last; ++i)
                 {
+                    const uint32_t count = output_counts[i];
+                    if (count == 0)
+                    {
+                        continue;
+                    }
                     const SingleTlasCache& cache = single_tlas_caches[i];
                     const uint32_t offset        = output_offsets[i];
                     if (cache.instanced)
                     {
                         const InstancedTlasCache& instanced = instanced_tlas_caches[instanced_slots[i]];
-                        copy(instanced.instances.begin(), instanced.instances.end(), instances.begin() + offset);
-                        copy(instanced.geometry_infos.begin(), instanced.geometry_infos.end(), geometry_infos.begin() + offset);
+                        copy_n(instanced.instances.begin(), count, instances.begin() + offset);
+                        copy_n(instanced.geometry_infos.begin(), count, geometry_infos.begin() + offset);
                     }
                     else if (cache.valid)
                     {
@@ -6041,22 +6129,14 @@ namespace spartan
 
             // the table is written and read in lockstep with the instances, so a scene that outgrows the
             // buffer drops the tail of both rather than writing past the end of the allocation
-            RHI_Buffer* geometry_info_buffer =
-                GetBuffer(Renderer_Buffer::GeometryInfo);
-            const size_t geometry_capacity =
-                geometry_info_buffer->GetObjectSize() /
-                sizeof(Sb_GeometryInfo);
-            if (geometry_infos.size() > geometry_capacity)
+            if (total_geometries > geometry_capacity)
             {
                 SP_LOG_WARNING(
                     "Ray tracing: %zu geometries exceed the geometry info buffer's %zu, dropping the rest",
-                    geometry_infos.size(),
+                    total_geometries,
                     geometry_capacity
                 );
-                geometry_infos.resize(geometry_capacity);
-                instances.resize(geometry_capacity);
             }
-            slot_keys.resize(instances.size());
 
             // clearing the reservoirs whenever the instance list changed left restir without temporal reuse
             // in every world that streams or culls geometry around the camera, the list changes on most frames
@@ -7304,35 +7384,34 @@ namespace spartan
             Pass_Light(false, eye_layer);
             Pass_Light_Subsurface(eye_layer);
             Pass_Light_Composition(false, eye_layer);
-            // the refraction background is copied below, so opaque ambient has to be in it already,
-            // otherwise anything behind glass that is not in direct light reads as black
+            // opaque ambient must be in the frame before water copies its underwater refraction background
             Pass_Light_Ibl(false, eye_layer);
-
-            RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
-            if (clouds_prepared)
-            {
-                Pass_Clouds_Composite(eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
-            }
 
             if (eye == 0)
             {
                 Pass_LightClusterVisualize();
             }
 
-            if (m_transparents_present)
+            if (m_water_present)
             {
+                RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+                if (clouds_prepared)
+                {
+                    Pass_Clouds_Composite(eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
+                }
+
                 Pass_GBuffer(true);
                 Pass_Light(true, eye_layer);
                 Pass_Light_Composition(true, eye_layer);
             }
 
-            // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
-            if (!early_work_recorded || m_transparents_present)
+            // trace after water gbuffer so water pixels own their reflection rays instead of the seabed behind them
+            if (!early_work_recorded || m_water_present)
             {
                 Pass_Reflections_Trace(eye_layer);
             }
 
-            if (m_transparents_present)
+            if (m_water_present)
             {
                 Pass_Light_Ibl(true, eye_layer);
             }
@@ -7350,6 +7429,12 @@ namespace spartan
 
         // Compose camera transport once, including sky, clouds, IBL and reflections.
         Pass_Fog_Composite(eye_layer);
+
+        // forward glass and alpha-blended meshes composite over the finished opaque + water + clouds + fog frame
+        if (!IsRestirActive() && m_forward_transparents_present)
+        {
+            Pass_Transparent(eye, eye_layer);
+        }
 
         // particles remain foreground content and composite after world space clouds
         Pass_Upscaler_Reactivity(eye_layer);
@@ -7876,7 +7961,7 @@ namespace spartan
             }
 
             // the trace misses into the sky, so it is the first graphics work that has to wait for it
-            if (!IsRestirActive() && early_work_recorded && !m_transparents_present)
+            if (!IsRestirActive() && early_work_recorded && !m_water_present)
             {
                 Pass_Reflections_Trace(rhi_all_mips);
             }

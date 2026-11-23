@@ -232,11 +232,34 @@ namespace spartan
                 rt_blend.RenderTargetWriteMask = write_mask;
             }
 
-            // per-target blend state requires IndependentBlendEnable, the desc is identical for every target so it is harmless
-            desc_blend_state.IndependentBlendEnable = TRUE;
-            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            auto is_dual_source = [](D3D12_BLEND factor)
             {
-                desc_blend_state.RenderTarget[i] = rt_blend;
+                return
+                    factor == D3D12_BLEND_SRC1_COLOR     ||
+                    factor == D3D12_BLEND_INV_SRC1_COLOR ||
+                    factor == D3D12_BLEND_SRC1_ALPHA     ||
+                    factor == D3D12_BLEND_INV_SRC1_ALPHA;
+            };
+            const bool dual_source = rt_blend.BlendEnable && (
+                is_dual_source(rt_blend.SrcBlend)      ||
+                is_dual_source(rt_blend.DestBlend)     ||
+                is_dual_source(rt_blend.SrcBlendAlpha) ||
+                is_dual_source(rt_blend.DestBlendAlpha));
+
+            // d3d12 forbids dual-source blend factors on render targets other than slot 0
+            if (dual_source)
+            {
+                desc_blend_state.IndependentBlendEnable = FALSE;
+                desc_blend_state.RenderTarget[0]        = rt_blend;
+            }
+            else
+            {
+                // per-target blend state requires IndependentBlendEnable, the desc is identical for every target so it is harmless
+                desc_blend_state.IndependentBlendEnable = TRUE;
+                for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+                {
+                    desc_blend_state.RenderTarget[i] = rt_blend;
+                }
             }
         }
 

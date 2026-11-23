@@ -187,7 +187,7 @@ namespace spartan
 
     // debug visualization
     TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,   "draw axis-aligned bounding boxes");
-    TConsoleVar<float> cvar_volumes                        ("r.volumes",                        1.0f,   "draw volume components (audio and reverb regions)");
+    TConsoleVar<float> cvar_volumes                        ("r.volumes",                        0.0f,   "draw volume components (audio and reverb regions)");
     TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,   "draw picking ray");
     TConsoleVar<float> cvar_grid                           ("r.grid",                           0.0f,   "draw editor grid");
     TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,   "draw transform handles");

@@ -1046,13 +1046,28 @@ namespace spartan
         {
             SP_ASSERT(resource != nullptr);
             lock_guard<mutex> lock(mutex_allocator);
-            allocations.emplace(resource, allocation);
+            auto [it, inserted] = allocations.emplace(resource, allocation);
+            SP_ASSERT_MSG(inserted, "Vulkan resource handle is already tracked in allocator map");
         }
 
-        void destroy_allocation(void* resource)
+        // remove before vmaDestroyBuffer/vmaDestroyImage so a recycled handle from another thread cannot collide
+        VmaAllocation take_allocation(void* resource)
         {
+            if (!resource)
+            {
+                return nullptr;
+            }
+
             lock_guard<mutex> lock(mutex_allocator);
-            allocations.erase(resource);
+            auto it = allocations.find(resource);
+            if (it == allocations.end())
+            {
+                return nullptr;
+            }
+
+            VmaAllocation allocation = it->second;
+            allocations.erase(it);
+            return allocation;
         }
 
         VmaAllocation get_allocation_from_resource(void* resource)
@@ -1967,6 +1982,10 @@ namespace spartan
                     features.features.vertexPipelineStoresAndAtomics = VK_TRUE;
                     SP_ASSERT(support.features.fragmentStoresAndAtomics == VK_TRUE);
                     features.features.fragmentStoresAndAtomics = VK_TRUE;
+
+                    // dual-source blending for per-channel transmittance in the forward transparent pass
+                    SP_ASSERT(support.features.dualSrcBlend == VK_TRUE);
+                    features.features.dualSrcBlend = VK_TRUE;
                 }
 
                 // quality of life improvements
@@ -3190,12 +3209,11 @@ namespace spartan
 
     void RHI_Device::MemoryBufferDestroy(void*& resource)
     {
-        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        VmaAllocation allocation = vulkan_memory_allocator::take_allocation(resource);
         if (allocation)
         {
             GpuMemory::Unregister(resource);
             vmaDestroyBuffer(vulkan_memory_allocator::allocator, static_cast<VkBuffer>(resource), allocation);
-            vulkan_memory_allocator::destroy_allocation(resource);
             resource = nullptr;
         }
     }
@@ -3326,12 +3344,11 @@ namespace spartan
 
     void RHI_Device::MemoryTextureDestroy(void*& resource)
     {
-        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        VmaAllocation allocation = vulkan_memory_allocator::take_allocation(resource);
         if (allocation)
         {
             GpuMemory::Unregister(resource);
             vmaDestroyImage(vulkan_memory_allocator::allocator, static_cast<VkImage>(resource), allocation);
-            vulkan_memory_allocator::destroy_allocation(resource);
             resource = nullptr;
         }
     }

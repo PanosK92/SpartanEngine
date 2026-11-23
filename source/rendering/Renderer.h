@@ -486,6 +486,7 @@ namespace spartan
         void Pass_SkidMarks();
         void Pass_GBuffer_Indirect(const bool clear_targets = true);
         void Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass);
+        void Pass_Transparent(uint32_t eye, uint32_t eye_layer = rhi_all_mips);
         void Pass_MeshletVisualize();
         void Pass_ScreenSpaceAmbientOcclusion();
         void Pass_Reflections_Trace(uint32_t eye_layer = rhi_all_mips);

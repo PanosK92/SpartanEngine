@@ -2086,6 +2086,12 @@ namespace spartan
                 {
                     continue;
                 }
+                // in the default pipeline, glass and alpha-blended meshes run in the forward transparent pass;
+                // only water stays in the deferred transparent g-buffer pass
+                if (!IsRestirActive() && material->GetProperty(MaterialProperty::IsWater) == 0.0f)
+                {
+                    continue;
+                }
             }
             else
             {
@@ -2147,6 +2153,190 @@ namespace spartan
             pso.clear_depth = rhi_depth_load;
         }
 
+        RHI_CommandList::EndPass();
+    }
+
+    void Renderer::Pass_Transparent(uint32_t eye, uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        if (!m_forward_transparents_present)
+        {
+            return;
+        }
+
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::gbuffer_v);
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::transparent_p);
+        if (!shader_v || !shader_p || !shader_v->IsCompiled() || !shader_p->IsCompiled())
+        {
+            return;
+        }
+
+        RHI_Texture* tex_frame = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        if (!tex_frame || !tex_depth)
+        {
+            return;
+        }
+
+        // snapshot the finished post-fog frame when any visible transparent needs frosted, thick-walled, or rain-droplet refraction
+        bool needs_refraction_source = Renderer::view().frame.rain_vehicle.x > 0.0f || Renderer::view().frame.rain_car_atlas.x > 0.0f;
+        for (uint32_t i = 0; i < m_draw_call_count && !needs_refraction_source; i++)
+        {
+            const Renderer_DrawCall& draw_call = m_draw_calls[i];
+            if (!draw_call.is_transparent || !draw_call.camera_visible)
+            {
+                continue;
+            }
+            Material* material = draw_call.render->GetMaterial();
+            if (!material || material->GetProperty(MaterialProperty::IsWater) != 0.0f || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
+            {
+                continue;
+            }
+            if (material->GetProperty(MaterialProperty::AlphaBlend) <= 0.0f &&
+                (material->GetProperty(MaterialProperty::ThinWalled) == 0.0f || material->GetProperty(MaterialProperty::Roughness) > 0.06f))
+            {
+                needs_refraction_source = true;
+                break;
+            }
+        }
+
+        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
+        if (needs_refraction_source && tex_refraction)
+        {
+            RHI_CommandList::Blit(tex_frame, tex_refraction, false);
+        }
+
+        RHI_CommandList::BeginPass("transparent_forward");
+        {
+            RHI_PipelineState pso;
+            pso.name                            = "transparent_forward";
+            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+            pso.blend_state                     = GetBlendState(Renderer_BlendState::DualSourceTransmittance);
+            pso.rasterizer_state                = IsViewWireframe() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.primitive_topology              = GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList;
+            pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+            pso.resolution_scale                = true;
+            pso.render_target_color_textures[0] = tex_frame;
+            pso.render_target_depth_texture     = tex_depth;
+            pso.render_target_array_index       = eye_layer == rhi_all_mips ? 0 : eye_layer;
+            pso.is_multiview                    = false;
+            pso.clear_color[0]                  = rhi_color_load;
+            pso.clear_depth                     = rhi_depth_load;
+
+            RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+            RHI_Texture* tex_sky_sh    = GetRenderTarget(Renderer_RenderTarget::sky_sh);
+            RHI_Texture* tex_black     = GetStandardTexture(Renderer_StandardTexture::Black);
+
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex,  (needs_refraction_source && tex_refraction) ? tex_refraction : tex_black);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            RHI_CommandList::SetTexture("tex_transparent_sky_sh", tex_sky_sh ? tex_sky_sh : tex_black);
+            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+            RHI_CommandList::SetTexture("tex_car_rain_surface", GetRenderTarget(Renderer_RenderTarget::car_rain_surface));
+            RHI_CommandList::SetTexture("tex_car_rain_micro", GetRenderTarget(Renderer_RenderTarget::car_rain_micro));
+            RHI_CommandList::SetTexture("tex_car_rain_ids", GetRenderTarget(Renderer_RenderTarget::car_rain_ids));
+            RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+
+            bool use_rt_reflections = false;
+            if (RHI_Device::IsSupportedRayTracing())
+            {
+                RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
+                if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
+                {
+                    if (tlas->GetRhiResource())
+                    {
+                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                        use_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && !IsSecondaryViewActive() && !m_pass_state.skip_rt_trace;
+                    }
+                }
+            }
+
+            m_pcb_pass_cpu.eye_index      = IsStereoView() ? eye : 0;
+            m_pcb_pass_cpu.is_transparent = 1;
+            m_pcb_pass_cpu.set(pass_transparent::mip_count, tex_skysphere ? static_cast<float>(tex_skysphere->GetMipCount()) : 1.0f);
+            m_pcb_pass_cpu.set(pass_transparent::light_count, m_count_active_lights);
+            m_pcb_pass_cpu.set(pass_transparent::ray_traced_reflections, use_rt_reflections);
+            m_pcb_pass_cpu.set(pass_transparent::has_refraction_source, needs_refraction_source && tex_refraction != nullptr);
+            m_pcb_pass_cpu.set(pass_transparent::apply_fog, !IsSecondaryViewActive());
+
+            bool pipeline_set = false;
+            vector<ClusterDrawRange> cluster_ranges;
+            RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+
+            auto issue_draw = [&](Render* render, const Renderer_DrawCall& draw_call)
+            {
+                if (draw_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
+                {
+                    return;
+                }
+                RHI_CommandList::DrawIndexed(
+                    render->GetIndexCount(),
+                    render->GetIndexOffset(),
+                    render->GetVertexOffset(),
+                    render->GetGlobalInstanceOffset() + draw_call.instance_index,
+                    draw_call.instance_count
+                );
+            };
+
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                if (!draw_call.is_transparent || !draw_call.camera_visible)
+                {
+                    continue;
+                }
+
+                Render* render     = draw_call.render;
+                Material* material = render->GetMaterial();
+                if (!material || material->GetProperty(MaterialProperty::IsWater) != 0.0f || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
+                {
+                    continue;
+                }
+
+                const bool is_tessellated = material->IsTessellated();
+                RHI_Shader* hull          = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                RHI_Shader* domain        = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+                if (!pipeline_set || pso.shaders[RHI_Shader_Type::Hull] != hull || pso.shaders[RHI_Shader_Type::Domain] != domain)
+                {
+                    pso.shaders[RHI_Shader_Type::Hull]   = hull;
+                    pso.shaders[RHI_Shader_Type::Domain] = domain;
+                    RHI_CommandList::SetPipelineState(pso);
+                    pipeline_set = true;
+                }
+
+                m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
+                m_pcb_pass_cpu.material_index = material->GetIndex();
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+
+                RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
+                RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
+
+                const RHI_CullMode cull_mode = IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                if (cull_mode == RHI_CullMode::None && !IsViewWireframe())
+                {
+                    // draw backfaces before frontfaces so curved/enclosed glass shells layer far walls behind near walls
+                    RHI_CommandList::SetCullMode(RHI_CullMode::Front);
+                    issue_draw(render, draw_call);
+                    RHI_CommandList::SetCullMode(RHI_CullMode::Back);
+                    issue_draw(render, draw_call);
+                }
+                else
+                {
+                    RHI_CommandList::SetCullMode(cull_mode);
+                    issue_draw(render, draw_call);
+                }
+            }
+        }
         RHI_CommandList::EndPass();
     }
 
