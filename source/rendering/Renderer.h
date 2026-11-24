@@ -66,6 +66,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_transform_snap_scale;
     extern TConsoleVar<float> cvar_selection_outline;
     extern TConsoleVar<float> cvar_entity_icons;
+    extern TConsoleVar<float> cvar_text_3d;
     extern TConsoleVar<float> cvar_performance_metrics;
     extern TConsoleVar<float> cvar_screenshot_ui;
     extern TConsoleVar<float> cvar_screenshot_exr;

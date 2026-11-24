@@ -113,19 +113,26 @@ namespace spartan::trees
             float gravity      = 0.0f;
             float gnarl        = 0.0f;
             bool flare         = false;
+            bool split_base    = false;
+            bool fork_collar   = false;
+            Vector3 start_dir  = Vector3::Zero; // optional initial tangent that blends smoothly into direction over the first two segments
         };
 
         stem grow(const Vector3& origin, Vector3 direction, const grow_settings& settings, tree_random& rng)
         {
             stem result;
-            result.length = settings.length;
-            result.flare  = settings.flare;
+            result.length      = settings.length;
+            result.flare       = settings.flare;
+            result.split_base  = settings.split_base;
+            result.fork_collar = settings.fork_collar;
             result.points.push_back(origin);
             result.radii.push_back(settings.radius_base);
 
             const uint32_t segments = max(2u, settings.segments);
             const float curve_step  = settings.curve * deg_to_rad / static_cast<float>(segments);
             const float var_step    = settings.curve_var * deg_to_rad / sqrt(static_cast<float>(segments));
+            const bool has_start    = settings.start_dir.LengthSquared() > 1e-6f;
+            const Vector3 start_dir = has_start ? settings.start_dir.Normalized() : direction;
 
             // a random plane for the variation, the curve itself always bends toward the sky (or away from it)
             Vector3 position  = origin;
@@ -134,7 +141,7 @@ namespace spartan::trees
             {
                 // a trunk packs its rings near the ground, that is where the flare changes the radius
                 const float linear = static_cast<float>(i) / static_cast<float>(segments);
-                const float t      = settings.flare ? pow(linear, 1.35f) : linear;
+                const float t      = settings.flare ? pow(linear, 1.25f) : linear;
                 const float step   = (t - t_previous) * settings.length;
                 t_previous         = t;
 
@@ -151,7 +158,7 @@ namespace spartan::trees
                     const Vector3 axis = Vector3::Cross(direction, rng.direction());
                     if (axis.LengthSquared() > 1e-6f)
                     {
-                        direction = rotate(direction, axis.Normalized(), settings.gnarl * 0.35f * rng.signed_unit());
+                        direction = rotate(direction, axis.Normalized(), settings.gnarl * 0.30f * rng.signed_unit());
                     }
                 }
 
@@ -164,9 +171,19 @@ namespace spartan::trees
                     }
                 }
 
-                position += direction * step;
+                // smoothly steer forked stems out of the vertical crotch instead of snapping at a sharp V corner
+                Vector3 step_dir = direction;
+                if (has_start && linear < 0.38f)
+                {
+                    const float blend = clamp(linear / 0.38f, 0.0f, 1.0f);
+                    const float smooth_blend = blend * blend * (3.0f - 2.0f * blend);
+                    step_dir = Vector3::Lerp(start_dir, direction, smooth_blend).Normalized();
+                }
+
+                position += step_dir * step;
                 result.points.push_back(position);
-                result.radii.push_back(settings.radius_base + (settings.radius_tip - settings.radius_base) * pow(t, 0.85f));
+                const float r = settings.radius_base + (settings.radius_tip - settings.radius_base) * pow(t, 0.85f);
+                result.radii.push_back(r);
             }
             return result;
         }
@@ -246,21 +263,25 @@ namespace spartan::trees
                 return;
             }
 
-            // keep the rings where the stem turns or thins, a straight run needs only its ends
+            // keep the rings where the stem turns, thins, flares or spans a visible trunk section
             vector<size_t> kept = { 0 };
             Vector3 last_direction = (s.points[1] - s.points[0]).Normalized();
             float last_radius      = s.radii[0];
+            float span_since_kept  = 0.0f;
             for (size_t i = 1; i + 1 < count; i++)
             {
+                span_since_kept        += (s.points[i] - s.points[i - 1]).Length();
                 const Vector3 direction = (s.points[i + 1] - s.points[i]).Normalized();
                 const float turn        = acos(clamp(Vector3::Dot(direction, last_direction), -1.0f, 1.0f));
-                const float thinning    = 1.0f - s.radii[i] / max(last_radius, 1e-5f);
-                const bool flare_ring   = s.flare && i <= 2;
-                if (turn >= detail.angle || thinning > 0.3f || flare_ring)
+                const float thinning    = abs(1.0f - s.radii[i] / max(last_radius, 1e-5f));
+                const bool flare_ring   = (s.flare && i <= 6) || (s.split_base && i + 3 >= count) || (s.fork_collar && i <= 3);
+                const bool trunk_step   = s.level == 0 && span_since_kept >= 0.45f;
+                if (turn >= detail.angle || thinning > 0.12f || flare_ring || trunk_step)
                 {
                     kept.push_back(i);
-                    last_direction = direction;
-                    last_radius    = s.radii[i];
+                    last_direction  = direction;
+                    last_radius     = s.radii[i];
+                    span_since_kept = 0.0f;
                 }
             }
             kept.push_back(count - 1);
@@ -305,19 +326,20 @@ namespace spartan::trees
                 const Vector3 binormal = Vector3::Cross(tangent, normal);
 
                 const float height = s.points[i].y;
-                const float flare  = s.flare ? sp.trunk_flare * exp(-max(height, 0.0f) / max(base_r * 2.2f, 0.02f)) : 0.0f;
+                // subtle, natural root flare decaying smoothly over ~1.8 trunk radii (never a steep cone skirt)
+                const float flare  = s.flare ? min(sp.trunk_flare, 0.45f) * exp(-max(height, 0.0f) / max(base_r * 1.85f, 0.02f)) : 0.0f;
                 const float v      = v_length / max(tile_width, 0.01f);
                 for (uint32_t j = 0; j <= sides; j++)
                 {
                     const float angle      = tau * static_cast<float>(j) / static_cast<float>(sides);
                     const Vector3 radial   = normal * cos(angle) + binormal * sin(angle);
-                    // root buttresses, five soft lobes that fade a couple of radii up the trunk, plus organic spiral fluting on gnarled trunks
-                    const float lobes      = flare > 0.0f ? 1.0f + flare * (0.55f + 0.45f * pow(max(0.0f, cos(angle * 5.0f + 0.7f)), 2.0f)) : 1.0f;
-                    const float fluting    = (trunk && sp.trunk_gnarl > 0.35f) ? 1.0f + (0.045f + 0.055f * sp.trunk_twist) * sin(angle * 4.0f + v * (1.2f + sp.trunk_twist * 1.6f)) : 1.0f;
+                    // root buttresses: five organic lobes that merge smoothly into the ground without a conical skirt
+                    const float lobes      = flare > 0.0f ? 1.0f + flare * (0.42f + 0.58f * pow(max(0.0f, cos(angle * 5.0f + 0.7f)), 2.2f)) : 1.0f;
+                    const float fluting    = (trunk && sp.trunk_gnarl > 0.35f) ? 1.0f + (0.032f + 0.038f * sp.trunk_twist) * sin(angle * 5.0f + v * (0.9f + sp.trunk_twist * 1.1f)) : 1.0f;
                     const float radius     = s.radii[i] * lobes * fluting;
                     const Vector3 position = s.points[i] + radial * radius;
                     const Vector3 surface_tangent = Vector3::Cross(tangent, radial);
-                    const float u = static_cast<float>(j) / static_cast<float>(sides) * u_repeat + twist * v * 0.15f;
+                    const float u = static_cast<float>(j) / static_cast<float>(sides) * u_repeat + twist * v * 0.055f;
                     output.vertices.emplace_back(position, Vector2(u, -v), radial, surface_tangent);
                 }
             }
@@ -335,12 +357,13 @@ namespace spartan::trees
                 }
             }
 
-            // a cone closes the end, an open tube shows its hollow from below
+            // close the end: split crotch bases get a low rounded dome tucked inside the fork instead of a protruding spike
             const size_t last          = kept.back();
             const Vector3 tip_tangent  = (s.points[last] - s.points[kept[kept.size() - 2]]).Normalized();
-            const float tip_v          = (v_length + s.radii[last]) / max(tile_width, 0.01f);
+            const float cap_lift       = s.split_base ? 0.18f : 1.15f;
+            const float tip_v          = (v_length + s.radii[last] * cap_lift) / max(tile_width, 0.01f);
             const uint32_t tip         = static_cast<uint32_t>(output.vertices.size());
-            output.vertices.emplace_back(s.points[last] + tip_tangent * s.radii[last] * 1.5f, Vector2(0.5f * u_repeat, -tip_v), tip_tangent, normal);
+            output.vertices.emplace_back(s.points[last] + tip_tangent * (s.radii[last] * cap_lift), Vector2(0.5f * u_repeat, -tip_v), tip_tangent, normal);
             const uint32_t last_ring = first_vertex + static_cast<uint32_t>(kept.size() - 1) * ring;
             for (uint32_t j = 0; j < sides; j++)
             {
@@ -383,15 +406,23 @@ namespace spartan::trees
             v1 = (ty + 1) * size - inset;
         }
 
-        // pushes the normal toward the outside of the crown, a crown of flat cards lit by their own normals reads as
-        // a pile of paper, an ellipsoid normal makes it shade like one mass of leaves while the texture keeps the detail
-        Vector3 crown_normal(const Vector3& position, const Vector3& own, const result& tree, const float blend)
+        // Hierarchical 3-way botanical shading normal:
+        // blends macro-crown ellipsoid normal + local bough-pillow outward normal + curved sprig normal.
+        // Pure ellipsoid normals make a tree read as a single smooth egg; blending local bough-lobe
+        // normals gives every individual bough cloud crisp sunlit crests and deep sculptural shadow pockets.
+        Vector3 crown_lobe_normal(const Vector3& position, const Vector3& own, const Vector3& lobe_center, const float lobe_radius, const result& tree)
         {
             const Vector3 offset = position - tree.crown_center;
             const Vector3 radii  = Vector3::Max(tree.crown_radii, Vector3(0.3f, 0.3f, 0.3f));
             Vector3 radial       = Vector3(offset.x / (radii.x * radii.x), offset.y / (radii.y * radii.y), offset.z / (radii.z * radii.z));
             radial               = radial.LengthSquared() > 1e-8f ? radial.Normalized() : Vector3::Up;
-            return (own * (1.0f - blend) + radial * blend).Normalized();
+
+            const Vector3 lobe_off = (position - lobe_center) / max(lobe_radius, 0.15f);
+            Vector3 lobe_n         = lobe_off.LengthSquared() > 1e-6f ? lobe_off.Normalized() : radial;
+            // Bias bough pillows gently skyward so sunlit upper crests read cleanly
+            lobe_n                 = (lobe_n + Vector3::Up * 0.22f).Normalized();
+
+            return (own * 0.28f + lobe_n * 0.34f + radial * 0.38f).Normalized();
         }
 
         void mesh_cards(const result& tree, geometry& output)
@@ -400,30 +431,58 @@ namespace spartan::trees
             {
                 float u0, v0, u1, v1;
                 tile_rect(card.tile, u0, v0, u1, v1);
+                if (card.mirror_u)
+                {
+                    swap(u0, u1);
+                }
                 const float um = (u0 + u1) * 0.5f;
 
-                // folded along the midrib with a subtle longitudinal arch so cards read as plump 3D sprays from every angle
-                const float card_len = card.direction.Length();
-                const Vector3 lift   = card.normal * (card.side.Length() * card.fold);
-                const Vector3 arch   = card.normal * (card_len * 0.08f);
-                const Vector3 base   = card.base;
-                const Vector3 tip    = card.base + card.direction - arch;
+                // 3D cupped + longitudinally arched botanical sprig (6 verts / 4 tris, preserves virtual-geometry FoliageCardClusters)
+                const float card_len   = card.direction.Length();
+                const float half_w     = card.side.Length();
+                const Vector3 side_dir = card.side / max(half_w, 1e-5f);
+                const Vector3 fwd_dir  = card.direction / max(card_len, 1e-5f);
+                const Vector3 lift     = card.normal * (half_w * card.fold);
+                const Vector3 droop_v  = card.normal * (card_len * card.droop);
+                const Vector3 base     = card.base;
+                const Vector3 tip      = card.base + card.direction;
+
+                // Edges curl gently down around the arched midrib so every sprig reads as a plump 3D cushion from all angles
                 const Vector3 positions[6] =
                 {
-                    base - card.side, base + lift, base + card.side,
-                    tip - card.side,  tip + lift + arch * 0.45f, tip + card.side
+                    base - card.side - lift * 0.25f,
+                    base + lift * 0.75f,
+                    base + card.side - lift * 0.25f,
+                    tip - card.side * 0.94f - droop_v * 1.15f,
+                    tip + lift * 0.65f - droop_v * 0.35f,
+                    tip + card.side * 0.94f - droop_v * 1.15f
                 };
                 const Vector2 uvs[6] =
                 {
                     Vector2(u0, v1), Vector2(um, v1), Vector2(u1, v1),
                     Vector2(u0, v0), Vector2(um, v0), Vector2(u1, v0)
                 };
+                // Per-vertex curved dome normals so specular & diffuse wrap organically across each sprig
+                const Vector3 own_normals[6] =
+                {
+                    (card.normal - side_dir * 0.42f - fwd_dir * 0.14f).Normalized(),
+                    (card.normal - fwd_dir * 0.08f).Normalized(),
+                    (card.normal + side_dir * 0.42f - fwd_dir * 0.14f).Normalized(),
+                    (card.normal - side_dir * 0.46f + fwd_dir * 0.26f).Normalized(),
+                    (card.normal + fwd_dir * 0.22f).Normalized(),
+                    (card.normal + side_dir * 0.46f + fwd_dir * 0.26f).Normalized()
+                };
 
-                const Vector3 tangent = card.side.Normalized();
+                const Vector3 tangent = card.mirror_u ? (side_dir * -1.0f) : side_dir;
                 const uint32_t first  = static_cast<uint32_t>(output.vertices.size());
                 for (uint32_t i = 0; i < 6; i++)
                 {
-                    output.vertices.emplace_back(positions[i], uvs[i], crown_normal(positions[i], card.normal, tree, 0.36f), tangent);
+                    output.vertices.emplace_back(
+                        positions[i],
+                        uvs[i],
+                        crown_lobe_normal(positions[i], own_normals[i], card.lobe_center, card.lobe_radius, tree),
+                        tangent
+                    );
                 }
                 output.indices.insert(output.indices.end(),
                 {
@@ -450,7 +509,11 @@ namespace spartan::trees
                     // leaflets rise from the rachis in a shallow v, the way a date palm frond is keeled
                     const Vector3 lift     = up_local * (f.sides[i].Length() * 0.35f);
                     const Vector3 tangent  = f.sides[i].Normalized();
-                    const Vector3 normal   = crown_normal(f.points[i], up_local, tree, 0.3f);
+                    const Vector3 offset   = f.points[i] - tree.crown_center;
+                    const Vector3 radii    = Vector3::Max(tree.crown_radii, Vector3(0.3f, 0.3f, 0.3f));
+                    Vector3 radial         = Vector3(offset.x / (radii.x * radii.x), offset.y / (radii.y * radii.y), offset.z / (radii.z * radii.z));
+                    radial                 = radial.LengthSquared() > 1e-8f ? radial.Normalized() : Vector3::Up;
+                    const Vector3 normal   = (up_local * 0.7f + radial * 0.3f).Normalized();
                     output.vertices.emplace_back(f.points[i] - f.sides[i] + lift, Vector2(u0, v), normal, tangent);
                     output.vertices.emplace_back(f.points[i], Vector2(um, v), normal, tangent);
                     output.vertices.emplace_back(f.points[i] + f.sides[i] + lift, Vector2(u1, v), normal, tangent);
@@ -538,47 +601,77 @@ namespace spartan::trees
         }
         else
         {
-            const bool clump      = s.split_height <= 0.02f;
-            Vector3 split_point   = Vector3::Zero;
-            Vector3 split_dir     = trunk_dir;
-            float split_radius    = base_r;
-            int32_t lower_index   = -1;
-            if (!clump)
+            const bool clump = s.split_height <= 0.02f;
+            if (clump)
             {
-                trunk.length     = height * s.split_height;
-                trunk.radius_tip = base_r * (1.0f - (1.0f - s.trunk_taper) * s.split_height) * 0.92f;
-                trunk.segments   = max(3u, static_cast<uint32_t>(s.trunk_segments * s.split_height) + 2);
-                tree.stems.push_back(grow(Vector3::Zero, trunk_dir, trunk, rng));
-                tree.stems.back().terminal = false;
-                lower_index  = 0;
-                split_point  = tree.stems.back().points.back();
-                split_dir    = (tree.stems.back().points.back() - tree.stems.back().points[tree.stems.back().points.size() - 2]).Normalized();
-                split_radius = trunk.radius_tip;
+                const float azimuth_offset = rng.unit() * tau;
+                for (uint32_t i = 0; i < stems; i++)
+                {
+                    const float azimuth = azimuth_offset + tau * (static_cast<float>(i) + rng.range(-0.18f, 0.18f)) / static_cast<float>(stems);
+                    const Vector3 out   = Vector3(cos(azimuth), 0.0f, sin(azimuth));
+                    Vector3 axis        = Vector3::Cross(trunk_dir, out);
+                    axis                = axis.LengthSquared() > 1e-6f ? axis.Normalized() : any_perpendicular(trunk_dir);
+                    const float angle   = s.split_angle * rng.range(0.35f, 1.12f) * deg_to_rad;
+                    const Vector3 dir   = rotate(trunk_dir, axis, -angle);
+
+                    grow_settings stem_settings = trunk;
+                    stem_settings.split_base    = false;
+                    stem_settings.length        = height * rng.range(0.7f, 1.06f) / max(0.65f, cos(angle));
+                    stem_settings.radius_base   = base_r * rng.range(0.8f, 1.1f);
+                    stem_settings.radius_tip    = stem_settings.radius_base * s.trunk_taper;
+                    stem_settings.segments      = max(7u, s.trunk_segments);
+                    stem_settings.flare         = true;
+                    stem_settings.fork_collar   = false;
+                    stem_settings.start_dir     = Vector3::Zero;
+                    stem_settings.curve         = 0.0f;
+
+                    const Vector3 origin = out * (s.stem_spread * sqrt(rng.unit()));
+                    tree.stems.push_back(grow(origin, dir, stem_settings, rng));
+                }
             }
-
-            const float azimuth_offset = rng.unit() * tau;
-            for (uint32_t i = 0; i < stems; i++)
+            else
             {
-                const float azimuth = azimuth_offset + tau * (static_cast<float>(i) + rng.range(-0.2f, 0.2f)) / static_cast<float>(stems);
-                const Vector3 out   = Vector3(cos(azimuth), 0.0f, sin(azimuth));
-                Vector3 axis        = Vector3::Cross(split_dir, out);
-                axis                = axis.LengthSquared() > 1e-6f ? axis.Normalized() : any_perpendicular(split_dir);
-                const float angle   = s.split_angle * rng.range(clump ? 0.35f : 0.75f, 1.2f) * deg_to_rad;
-                const Vector3 dir   = rotate(split_dir, axis, -angle);
+                // Grow one continuous main leader trunk from ground to crown so there is never a tube break, cuff, notch, or hourglass at split_height.
+                trunk.length     = height;
+                trunk.radius_tip = base_r * s.trunk_taper;
+                trunk.segments   = max(10u, s.trunk_segments);
+                trunk.split_base = false;
+                trunk.curve      = s.split_angle * 0.25f;
+                tree.stems.push_back(grow(Vector3::Zero, trunk_dir, trunk, rng));
 
-                grow_settings stem_settings = trunk;
-                const float remaining       = height * (1.0f - (clump ? 0.0f : s.split_height));
-                stem_settings.length        = remaining * rng.range(clump ? 0.7f : 0.85f, 1.05f) / max(0.6f, cos(angle));
-                stem_settings.radius_base   = clump ? base_r * rng.range(0.8f, 1.1f) : split_radius * 1.15f / sqrt(static_cast<float>(stems));
-                stem_settings.radius_tip    = stem_settings.radius_base * s.trunk_taper;
-                stem_settings.segments      = max(4u, static_cast<uint32_t>(s.trunk_segments * (1.0f - s.split_height)) + 1);
-                stem_settings.flare         = clump;
-                stem_settings.curve         = clump ? 0.0f : angle / deg_to_rad * 0.6f;
+                // Spawn co-dominant primary boughs emerging organically from inside the continuous trunk around split_height.
+                const float azimuth_offset = rng.unit() * tau;
+                for (uint32_t i = 1; i < stems; i++)
+                {
+                    const float t_attach = clamp(s.split_height + static_cast<float>(i - 1) * 0.045f + rng.range(-0.02f, 0.02f), 0.16f, 0.55f);
+                    Vector3 split_point, split_dir;
+                    float split_radius = base_r;
+                    sample(tree.stems[0], t_attach, split_point, split_dir, split_radius);
 
-                const Vector3 origin = clump ? out * (s.stem_spread * sqrt(rng.unit())) : split_point - dir * split_radius * 0.3f;
-                stem grown           = grow(origin, dir, stem_settings, rng);
-                grown.parent         = lower_index;
-                tree.stems.push_back(move(grown));
+                    const float azimuth = azimuth_offset + tau * (static_cast<float>(i) + rng.range(-0.15f, 0.15f)) / static_cast<float>(stems);
+                    const Vector3 out   = Vector3(cos(azimuth), 0.0f, sin(azimuth));
+                    Vector3 axis        = Vector3::Cross(split_dir, out);
+                    axis                = axis.LengthSquared() > 1e-6f ? axis.Normalized() : any_perpendicular(split_dir);
+                    const float angle   = s.split_angle * rng.range(0.95f, 1.38f) * deg_to_rad;
+                    const Vector3 dir   = rotate(split_dir, axis, -angle);
+
+                    grow_settings stem_settings = trunk;
+                    stem_settings.split_base    = false;
+                    const float remaining       = height * (1.0f - t_attach);
+                    stem_settings.length        = remaining * rng.range(0.86f, 1.04f) / max(0.65f, cos(angle));
+                    stem_settings.radius_base   = split_radius * 0.80f;
+                    stem_settings.radius_tip    = stem_settings.radius_base * s.trunk_taper;
+                    stem_settings.segments      = max(7u, static_cast<uint32_t>(s.trunk_segments * (1.0f - t_attach)) + 3);
+                    stem_settings.flare         = false;
+                    stem_settings.fork_collar   = false;
+                    stem_settings.start_dir     = split_dir;
+                    stem_settings.curve         = -angle / deg_to_rad * 0.34f;
+
+                    const Vector3 origin = split_point - split_dir * (split_radius * 0.28f);
+                    stem grown           = grow(origin, dir, stem_settings, rng);
+                    grown.parent         = 0;
+                    tree.stems.push_back(move(grown));
+                }
             }
         }
 
@@ -758,95 +851,145 @@ namespace spartan::trees
             }
         }
 
-        // leaf cards along the terminal branches
-        // keep card sizes modest so crowns read as dense 3D leaf clusters rather than oversized flat sheets
+        // leaf cards along terminal twigs AND outer sections of penultimate boughs so crowns read as
+        // lush, multi-tiered 3D bough-pillow clouds (never sparse bare sticks or giant flat paper sheets)
         const bool needles     = is_needle_like(s);
-        const float card_scale = clamp(tree.height / 14.0f, 1.0f, 1.25f);
+        const float card_scale = clamp(tree.height / 18.0f, 0.80f, 1.04f);
         const float card_size  = s.card_size * card_scale;
-        const float spacing    = card_size * 0.34f / max(s.card_density * leaf_mult, 0.05f);
+        const float spacing    = card_size * 0.28f / max(s.card_density * leaf_mult, 0.05f);
+        const uint32_t tile_count = atlas_tiles * atlas_tiles;
         if (s.fronds == 0)
         {
             for (const stem& st : tree.stems)
             {
-                if (st.pruned || !st.terminal || (st.level == 0 && levels_used > 0))
+                if (st.pruned || (st.level == 0 && levels_used > 0))
+                {
+                    continue;
+                }
+                // Terminal twigs carry the main outer canopy; penultimate boughs (level >= 1) carry softer
+                // interior shade-core foliage along their outer half so crowns have deep continuous volume.
+                const bool interior_bough = !st.terminal;
+                if (interior_bough && (st.level == 0 || levels_used < 2 || st.level + 1 < levels_used - 1))
                 {
                     continue;
                 }
 
-                // rounded stochastically, most terminal twigs are shorter than the spacing and truncation would
-                // give every one of them the same card count whatever the density and leafiness ask for
-                const float run      = st.length * (1.0f - s.leaf_start);
-                const uint32_t count = max(1u, static_cast<uint32_t>(run / spacing + rng.unit()));
+                // Compute local bough-pillow center from this stem's parent bough (or stem tip cluster)
+                // so neighboring sprigs share a sculptural bough-cloud normal rather than one flat egg normal.
+                Vector3 lobe_center = st.points[st.points.size() / 2];
+                float lobe_radius   = max(st.length * 0.65f, card_size * 1.4f);
+                if (st.parent >= 0 && st.parent < static_cast<int32_t>(tree.stems.size()) && st.level >= 2)
+                {
+                    const stem& parent_bough = tree.stems[static_cast<size_t>(st.parent)];
+                    if (parent_bough.level >= 1 && parent_bough.points.size() >= 2)
+                    {
+                        lobe_center = Vector3::Lerp(parent_bough.points[parent_bough.points.size() / 2], parent_bough.points.back(), 0.45f);
+                        lobe_radius = max(parent_bough.length * 0.55f, card_size * 1.8f);
+                    }
+                }
+
+                const float start_t  = interior_bough ? max(s.leaf_start, 0.42f) : s.leaf_start;
+                const float run      = st.length * max(0.0f, 1.0f - start_t);
+                const float sp_local = interior_bough ? spacing * 1.65f : spacing;
+                const uint32_t count = max(1u, static_cast<uint32_t>(run / sp_local + rng.unit()));
+
+                auto emit_card = [&](const Vector3& base_pos, const Vector3& dir_unit, const float length, const float width_ratio, const float roll_rad, const float fold_val, const float droop_val, const uint32_t tile_idx)
+                {
+                    Vector3 side = Vector3::Cross(dir_unit, Vector3::Up);
+                    side         = side.LengthSquared() > 1e-6f ? side.Normalized() : any_perpendicular(dir_unit);
+                    side         = rotate(side, dir_unit, roll_rad);
+                    Vector3 norm = Vector3::Cross(side, dir_unit).Normalized();
+                    if (norm.y < 0.0f)
+                    {
+                        side = side * -1.0f;
+                        norm = norm * -1.0f;
+                    }
+
+                    leaf_card card;
+                    card.base        = base_pos - dir_unit * (length * 0.08f);
+                    card.direction   = dir_unit * length;
+                    card.side        = side * (length * width_ratio * 0.5f);
+                    card.normal      = norm;
+                    card.lobe_center = lobe_center;
+                    card.lobe_radius = lobe_radius;
+                    card.tile        = tile_idx % tile_count;
+                    card.fold        = fold_val;
+                    card.droop       = droop_val;
+                    card.mirror_u    = (rng.next_uint() & 1u) != 0u;
+                    tree.cards.push_back(card);
+                };
+
+                const float width_ratio = s.leaf == leaf_shape::needle ? 0.82f : (s.leaf == leaf_shape::scale ? 0.78f : 0.88f);
+                const float base_fold   = needles ? 0.32f : 0.24f;
+                const float base_droop  = s.leaf == leaf_shape::needle ? 0.14f : (s.leaf == leaf_shape::scale ? 0.08f : 0.16f);
+
                 for (uint32_t i = 0; i <= count; i++)
                 {
-                    const float t = i == count ? 1.0f : s.leaf_start + (1.0f - s.leaf_start) * (static_cast<float>(i) + rng.unit() * 0.6f) / static_cast<float>(count);
+                    const bool is_tip = (!interior_bough && i == count);
+                    const float t     = is_tip ? 1.0f : start_t + (1.0f - start_t) * (static_cast<float>(i) + rng.unit() * 0.6f) / static_cast<float>(count);
                     Vector3 position, tangent;
                     float radius;
                     sample(st, t, position, tangent, radius);
 
-                    Vector3 outward = Vector3(position.x - tree.crown_center.x, 0.0f, position.z - tree.crown_center.z);
+                    Vector3 outward = Vector3(position.x - tree.crown_center.x, (position.y - tree.crown_center.y) * 0.35f, position.z - tree.crown_center.z);
                     outward         = outward.LengthSquared() > 1e-6f ? outward.Normalized() : rng.direction();
+                    const float size_mult = interior_bough ? rng.range(0.74f, 0.96f) : rng.range(0.82f, 1.18f);
+                    const float length    = card_size * size_mult;
 
-                    leaf_card card;
-                    const float length = card_size * rng.range(0.8f, 1.2f);
+                    if (is_tip)
+                    {
+                        // Sculptural 3-sprig domed terminal rosette pillow at each outer shoot tip
+                        const uint32_t rosette_n = s.leaf == leaf_shape::scale ? 2u : 3u;
+                        const float az_base      = rng.unit() * tau;
+                        const Vector3 perp_a     = any_perpendicular(tangent);
+                        const Vector3 perp_b     = Vector3::Cross(tangent, perp_a).Normalized();
+                        for (uint32_t r = 0; r < rosette_n; r++)
+                        {
+                            const float az      = az_base + tau * static_cast<float>(r) / static_cast<float>(rosette_n) + rng.signed_unit() * 0.30f;
+                            const Vector3 splay = perp_a * cos(az) + perp_b * sin(az);
+                            const float tilt    = rng.range(0.32f, 0.68f);
+                            const Vector3 dir   = (tangent * 0.72f + splay * tilt + outward * 0.28f + Vector3::Up * (0.14f + s.leaf_tilt * 0.25f)).Normalized();
+                            const float r_len   = length * rng.range(0.86f, 1.08f);
+                            const float roll    = rng.signed_unit() * (needles ? 0.68f : 0.85f);
+                            emit_card(position, dir, r_len, width_ratio, roll, base_fold, base_droop * rng.range(0.8f, 1.25f), rng.next_uint());
+                        }
+                        continue;
+                    }
+
                     Vector3 direction;
                     if (needles && s.leaf == leaf_shape::needle)
                     {
-                        // sprays follow the branch and splay sideways in its plane, seen from above they read as layers
+                        // Organic Mediterranean pine needle clouds splaying naturally around arching shoots
                         Vector3 side_h = Vector3::Cross(tangent, Vector3::Up);
                         side_h         = side_h.LengthSquared() > 1e-6f ? side_h.Normalized() : any_perpendicular(tangent);
-                        const float splay = (i % 2 == 0 ? 1.0f : -1.0f) * rng.range(0.25f, 0.8f);
-                        direction = (tangent + side_h * splay + Vector3::Up * 0.15f).Normalized();
-                        if (i == count)
-                        {
-                            direction = tangent;
-                        }
+                        const float splay = (i % 2 == 0 ? 1.0f : -1.0f) * rng.range(0.35f, 0.88f);
+                        direction = (tangent * 0.82f + side_h * splay + Vector3::Up * rng.range(0.10f, 0.36f) + rng.direction() * 0.18f).Normalized();
                     }
                     else
                     {
-                        direction = (tangent * 0.75f + rng.direction() * 0.55f + outward * 0.35f + Vector3::Up * (s.leaf_tilt * 0.35f)).Normalized();
+                        direction = (tangent * 0.68f + rng.direction() * 0.52f + outward * 0.38f + Vector3::Up * (s.leaf_tilt * 0.32f)).Normalized();
                     }
 
-                    Vector3 side = Vector3::Cross(direction, Vector3::Up);
-                    side         = side.LengthSquared() > 1e-6f ? side.Normalized() : any_perpendicular(direction);
-                    const float roll_limit = needles && s.leaf == leaf_shape::needle ? 0.75f : (1.0f - s.leaf_tilt) * 1.4f + 0.2f;
-                    side = rotate(side, direction, roll_limit * rng.signed_unit());
-                    Vector3 normal = Vector3::Cross(side, direction).Normalized();
-                    if (normal.y < 0.0f)
-                    {
-                        side   = side * -1.0f;
-                        normal = normal * -1.0f;
-                    }
+                    const float roll_limit = needles && s.leaf == leaf_shape::needle ? 0.82f : (1.0f - s.leaf_tilt) * 1.25f + 0.28f;
+                    const float main_roll  = roll_limit * rng.signed_unit();
+                    const uint32_t tile0   = rng.next_uint();
+                    emit_card(position, direction, length, width_ratio, main_roll, base_fold, base_droop, tile0);
 
-                    const float width_ratio = s.leaf == leaf_shape::needle ? 0.58f : (s.leaf == leaf_shape::scale ? 0.7f : 0.85f);
-                    card.base      = position - direction * length * 0.06f;
-                    card.direction = direction * length;
-                    card.side      = side * (length * width_ratio * 0.5f);
-                    card.normal    = normal;
-                    card.tile      = rng.next_uint() % (atlas_tiles * atlas_tiles);
-                    card.fold      = needles ? 0.58f : 0.34f;
-                    tree.cards.push_back(card);
-
-                    // emit an intersecting crossed 3D companion sprig along the same shoot so needle tufts and dense
-                    // broadleaf sprays retain true 3D volume from every viewing angle (including edge-on and below)
-                    if (needles || rng.unit() < 0.38f)
+                    // Angled 3D companion sprig on a slightly diverged pitch/yaw (breaks any X-card cross seam)
+                    if (!interior_bough && (needles || rng.unit() < 0.55f))
                     {
-                        const float cross_roll = (rng.unit() < 0.5f ? 1.0f : -1.0f) * rng.range(1.05f, 1.35f);
-                        Vector3 cross_side     = rotate(side, direction, cross_roll);
-                        Vector3 cross_normal   = Vector3::Cross(cross_side, direction).Normalized();
-                        if (cross_normal.y < 0.0f)
-                        {
-                            cross_side   = cross_side * -1.0f;
-                            cross_normal = cross_normal * -1.0f;
-                        }
-                        leaf_card crossed;
-                        crossed.base      = card.base + direction * (length * 0.05f);
-                        crossed.direction = direction * (length * rng.range(0.86f, 1.02f));
-                        crossed.side      = cross_side * (length * width_ratio * 0.46f);
-                        crossed.normal    = cross_normal;
-                        crossed.tile      = (card.tile + 1u + (rng.next_uint() % (atlas_tiles * atlas_tiles - 1u))) % (atlas_tiles * atlas_tiles);
-                        crossed.fold      = needles ? 0.42f : 0.28f;
-                        tree.cards.push_back(crossed);
+                        const float cross_roll  = main_roll + (rng.unit() < 0.5f ? 1.0f : -1.0f) * rng.range(0.92f, 1.32f);
+                        const Vector3 cross_dir = (direction + rng.direction() * 0.28f + Vector3::Up * 0.12f).Normalized();
+                        emit_card(
+                            position + direction * (length * 0.06f),
+                            cross_dir,
+                            length * rng.range(0.84f, 1.00f),
+                            width_ratio * 0.94f,
+                            cross_roll,
+                            base_fold * 0.85f,
+                            base_droop * 1.1f,
+                            tile0 + 1u + (rng.next_uint() % max(1u, tile_count - 1u))
+                        );
                     }
                 }
             }
@@ -930,7 +1073,7 @@ namespace spartan::trees
         }
 
         // budget, the foliage gets the larger share since it carries the silhouette
-        const float foliage_share   = s.fronds > 0 ? 0.55f : (needles ? 0.72f : 0.7f);
+        const float foliage_share   = s.fronds > 0 ? 0.55f : (needles ? 0.76f : 0.74f);
         const uint32_t foliage_cap  = static_cast<uint32_t>(tree.budget * foliage_share);
         const uint32_t bark_cap     = tree.budget - foliage_cap;
         const uint32_t card_cap     = max(16u, foliage_cap / 4);
@@ -938,7 +1081,7 @@ namespace spartan::trees
         {
             // keep an even subset without bloating surviving cards into flat sheets
             const float keep = static_cast<float>(card_cap) / static_cast<float>(tree.cards.size());
-            const float grow_factor = min(1.18f, 1.0f / sqrt(keep));
+            const float grow_factor = min(1.12f, 1.0f / sqrt(keep));
             vector<leaf_card> kept;
             kept.reserve(card_cap);
             float accumulator = rng.unit();
@@ -959,9 +1102,9 @@ namespace spartan::trees
 
         // bark detail settles where it fits the remaining budget
         bark_detail detail;
-        detail.sides_scale = c.detail == quality::hero ? 1.35f : (c.detail == quality::mobile ? 0.7f : 1.0f);
-        detail.max_sides   = c.detail == quality::hero ? 16u : (c.detail == quality::mobile ? 8u : 12u);
-        detail.min_radius  = (c.detail == quality::hero ? 0.005f : (c.detail == quality::mobile ? 0.018f : 0.009f)) * (bare ? 0.6f : 1.0f);
+        detail.sides_scale = c.detail == quality::hero ? 1.50f : (c.detail == quality::mobile ? 0.7f : 1.25f);
+        detail.max_sides   = c.detail == quality::hero ? 20u : (c.detail == quality::mobile ? 8u : 16u);
+        detail.min_radius  = (c.detail == quality::hero ? 0.0045f : (c.detail == quality::mobile ? 0.018f : 0.0065f)) * (bare ? 0.6f : 1.0f);
         geometry bark      = mesh_bark(tree, s, detail);
         for (uint32_t attempt = 0; attempt < 10 && bark.triangles() > bark_cap; attempt++)
         {

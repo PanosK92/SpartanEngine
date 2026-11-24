@@ -6,17 +6,17 @@
   "description": "The dark green flame beside every chapel and cemetery. Upright branches hug a straight trunk, the scale leaves form a tight column that tapers to a point.",
   "class": "conifer",
   "evergreen": true,
-  "budget": 28000,
+  "budget": 44000,
   "height": 18.0,
   "height_var": 0.15,
   "trunk": {
     "radius": 0.017,
     "taper": 0.06,
-    "flare": 0.32,
+    "flare": 0.22,
     "lean": 1,
     "gnarl": 0.06,
-    "twist": 0.2,
-    "segments": 12
+    "twist": 0.15,
+    "segments": 16
   },
   "crown": {
     "shape": "flame",
@@ -25,7 +25,7 @@
   },
   "levels": [
     {
-      "count": 64,
+      "count": 68,
       "start": 0.05,
       "end": 0.98,
       "length": 0.22,
@@ -40,7 +40,7 @@
       "segments": 4
     },
     {
-      "count": 8,
+      "count": 9,
       "start": 0.2,
       "end": 1.0,
       "length": 0.45,
@@ -48,43 +48,43 @@
       "down_angle_var": 10,
       "curve_var": 10,
       "radius_ratio": 0.5,
-      "segments": 2
+      "segments": 3
     }
   ],
   "leaves": {
     "shape": "scale",
-    "size": 0.12,
-    "card_size": 0.44,
-    "density": 5.2,
-    "start": 0.12,
+    "size": 0.10,
+    "card_size": 0.30,
+    "density": 8.0,
+    "start": 0.10,
     "tilt": 0.1,
-    "per_card": 10,
+    "per_card": 12,
     "color": [
-      0.026,
-      0.060,
+      0.036,
+      0.092,
       0.024
     ],
     "color_back": [
-      0.056,
-      0.096,
+      0.088,
+      0.156,
       0.038
     ],
-    "color_var": 0.11,
-    "translucency": 0.32
+    "color_var": 0.20,
+    "translucency": 0.48
   },
   "bark": {
     "style": "fibrous",
     "color": [
-      0.155,
-      0.115,
-      0.084
+      0.172,
+      0.145,
+      0.118
     ],
     "color_dark": [
-      0.042,
-      0.029,
-      0.020
+      0.058,
+      0.044,
+      0.034
     ],
-    "scale": 0.7,
-    "roughness": 0.92
+    "scale": 0.46,
+    "roughness": 0.90
   }
 }

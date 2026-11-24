@@ -6,20 +6,20 @@
   "description": "The shade tree of Crete and the Dodecanese, whose seeds gave the carat. A thick, low forking trunk under a wide, dense dome of glossy, rounded leaflets.",
   "class": "broadleaf",
   "evergreen": true,
-  "budget": 34000,
+  "budget": 52000,
   "height": 9.2,
   "height_var": 0.15,
   "trunk": {
-    "radius": 0.052,
-    "taper": 0.3,
-    "flare": 0.58,
-    "lean": 6,
-    "gnarl": 0.48,
-    "twist": 0.22,
-    "segments": 10,
+    "radius": 0.034,
+    "taper": 0.26,
+    "flare": 0.24,
+    "lean": 5,
+    "gnarl": 0.42,
+    "twist": 0.18,
+    "segments": 16,
     "stems": 3,
-    "split_height": 0.22,
-    "split_angle": 38
+    "split_height": 0.24,
+    "split_angle": 26
   },
   "crown": {
     "shape": "hemispherical",
@@ -28,8 +28,8 @@
   },
   "levels": [
     {
-      "count": 10,
-      "start": 0.25,
+      "count": 12,
+      "start": 0.24,
       "end": 1.0,
       "length": 0.55,
       "length_var": 0.2,
@@ -40,10 +40,10 @@
       "curve_var": 30,
       "gravity": 0.2,
       "radius_ratio": 0.6,
-      "segments": 6
+      "segments": 7
     },
     {
-      "count": 9,
+      "count": 10,
       "start": 0.15,
       "end": 1.0,
       "length": 0.5,
@@ -54,10 +54,10 @@
       "curve_var": 25,
       "gravity": 0.25,
       "radius_ratio": 0.55,
-      "segments": 4
+      "segments": 5
     },
     {
-      "count": 6,
+      "count": 7,
       "start": 0.2,
       "end": 1.0,
       "length": 0.42,
@@ -71,38 +71,38 @@
   ],
   "leaves": {
     "shape": "pinnate",
-    "size": 0.18,
-    "card_size": 0.48,
-    "density": 4.6,
-    "start": 0.18,
-    "tilt": 0.5,
-    "per_card": 8,
+    "size": 0.125,
+    "card_size": 0.32,
+    "density": 8.6,
+    "start": 0.14,
+    "tilt": 0.45,
+    "per_card": 14,
     "color": [
-      0.036,
-      0.082,
-      0.025
+      0.046,
+      0.116,
+      0.022
     ],
     "color_back": [
-      0.108,
-      0.156,
-      0.050
+      0.122,
+      0.200,
+      0.036
     ],
-    "color_var": 0.12,
-    "translucency": 0.38
+    "color_var": 0.22,
+    "translucency": 0.54
   },
   "bark": {
     "style": "furrowed",
     "color": [
-      0.155,
-      0.132,
-      0.108
+      0.180,
+      0.152,
+      0.124
     ],
     "color_dark": [
-      0.038,
-      0.030,
-      0.024
+      0.064,
+      0.048,
+      0.036
     ],
-    "scale": 0.8,
-    "roughness": 0.9
+    "scale": 0.46,
+    "roughness": 0.90
   }
 }

@@ -6,32 +6,32 @@
   "description": "Compact silver-green olive for Ionian groves, retaining a gnarled closed trunk and a dense rounded crown.",
   "class": "broadleaf",
   "evergreen": true,
-  "budget": 32000,
+  "budget": 52000,
   "height": 7.2,
   "height_var": 0.16,
   "trunk": {
-    "radius": 0.068,
-    "taper": 0.35,
-    "flare": 0.8,
-    "lean": 9,
-    "gnarl": 0.65,
-    "twist": 0.55,
-    "segments": 12,
+    "radius": 0.036,
+    "taper": 0.28,
+    "flare": 0.24,
+    "lean": 7,
+    "gnarl": 0.55,
+    "twist": 0.35,
+    "segments": 16,
     "stems": 3,
-    "split_height": 0.28,
-    "split_angle": 34
+    "split_height": 0.27,
+    "split_angle": 24
   },
   "crown": {
     "shape": "hemispherical",
-    "base": 0.34,
-    "width": 0.68
+    "base": 0.32,
+    "width": 0.72
   },
   "levels": [
     {
-      "count": 10,
-      "start": 0.28,
+      "count": 13,
+      "start": 0.26,
       "end": 1.0,
-      "length": 0.44,
+      "length": 0.46,
       "length_var": 0.25,
       "down_angle": 60,
       "down_angle_tip": 35,
@@ -40,13 +40,13 @@
       "curve_var": 40,
       "gravity": 0.15,
       "radius_ratio": 0.6,
-      "segments": 6
+      "segments": 7
     },
     {
-      "count": 8,
-      "start": 0.2,
+      "count": 10,
+      "start": 0.18,
       "end": 1.0,
-      "length": 0.45,
+      "length": 0.46,
       "length_var": 0.25,
       "down_angle": 50,
       "down_angle_tip": 35,
@@ -55,11 +55,11 @@
       "curve_var": 30,
       "gravity": 0.25,
       "radius_ratio": 0.55,
-      "segments": 4
+      "segments": 5
     },
     {
-      "count": 6,
-      "start": 0.25,
+      "count": 8,
+      "start": 0.22,
       "end": 1.0,
       "length": 0.45,
       "down_angle": 45,
@@ -72,49 +72,49 @@
   ],
   "leaves": {
     "shape": "lanceolate",
-    "size": 0.085,
-    "card_size": 0.44,
-    "density": 5.5,
-    "start": 0.22,
+    "size": 0.068,
+    "card_size": 0.31,
+    "density": 9.2,
+    "start": 0.15,
     "tilt": 0.35,
-    "per_card": 18,
+    "per_card": 24,
     "color": [
-      0.046,
-      0.074,
-      0.032
+      0.058,
+      0.118,
+      0.034
     ],
     "color_back": [
-      0.185,
-      0.205,
-      0.148
+      0.168,
+      0.216,
+      0.118
     ],
     "spring_color": [
-      0.095,
-      0.132,
-      0.056
+      0.120,
+      0.198,
+      0.048
     ],
-    "color_var": 0.12,
+    "color_var": 0.24,
     "flowers": true,
     "flower_color": [
       0.66,
       0.64,
       0.52
     ],
-    "translucency": 0.36
+    "translucency": 0.54
   },
   "bark": {
     "style": "twisted",
     "color": [
-      0.21,
-      0.195,
-      0.172
+      0.215,
+      0.198,
+      0.175
     ],
     "color_dark": [
-      0.038,
-      0.034,
-      0.029
+      0.072,
+      0.062,
+      0.052
     ],
-    "scale": 0.85,
-    "roughness": 0.92
+    "scale": 0.46,
+    "roughness": 0.90
   }
 }

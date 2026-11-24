@@ -17,13 +17,13 @@ namespace spartan::Renderer
 {
     inline TConsoleVar<float> geometry_error_pixels("r.geometry_error_pixels", 1.5f, "Maximum projected geometric error in render pixels");
 
-    // Coverage proxies approximate a group of textured leaves. Request their
-    // finer pages early enough that card swaps stay nearly invisible along roads.
+    // Coverage proxies approximate a group of textured leaves. Keep fine cards active
+    // across near and mid distances so silhouettes stay crisp before the impostor handoff.
     inline float GeometryErrorPixels(Render* render)
     {
         const float pixels = std::max(0.1f, geometry_error_pixels.GetValue());
         return (render->GetMesh()->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) &&
-            render->GetSubMeshIndex() == 1 ? 2.5f * pixels : pixels;
+            render->GetSubMeshIndex() == 1 ? 1.15f * pixels : pixels;
     }
 
     inline bool SelectObjectParent(Render* render, Sb_DrawData& draw, Camera* camera,

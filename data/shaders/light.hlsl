@@ -348,13 +348,13 @@ void evaluate_light(
             }
         }
 
-        // Screen-space depth has no leaf thickness; preserve most contact shadow contrast while keeping thin outer edges from crushing
+        // Screen-space depth has no leaf thickness; preserve crisp volumetric shadow contrast while keeping foliage from crushing to black
         if (surface.is_foliage())
         {
-            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.28f);
+            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.22f);
             if (!is_ray_traced_shadows_enabled())
             {
-                L_shadow_primary = lerp(L_shadow_primary, max(L_shadow_primary, 0.06f), scattering_fraction * 0.40f);
+                L_shadow_primary = lerp(L_shadow_primary, max(L_shadow_primary, 0.06f), scattering_fraction * 0.30f);
             }
         }
         if (surface.is_grass_blade())
@@ -435,8 +435,8 @@ void evaluate_light(
 
             if (surface.is_foliage())
             {
-                // Waxy leaf cuticles catch subtle crisp sun glints while needles scatter slightly more across micro-facets
-                L_specular_lobes *= 0.65f;
+                // Preserve crisp sunlit leaf cuticle sparkle on waxy upper faces while keeping grass blades soft
+                L_specular_lobes *= surface.is_grass_blade() ? 0.46f : 0.62f;
             }
         }
 

@@ -32,7 +32,8 @@ namespace spartan
         // skips blas builds and tlas registration, a per-blade blas for millions of grass instances buys nothing
         ExcludeFromRayTracing = 1U << 1,
         ExcludeFromTerrainBlend = 1U << 2, // manufactured surfaces stay clean, independent of shared material
-        PreserveCollisionGeometry = 1U << 3 // thin authored surfaces must survive physics cooking intact
+        PreserveCollisionGeometry = 1U << 3, // thin authored surfaces must survive physics cooking intact
+        IsText3D = 1U << 4 // runtime marker for Text3D meshes so r.text_3d can hide them without mutating entity active state
     };
 
     // per-render uv overrides, each field defaults to nan meaning inherit from the material asset at draw time

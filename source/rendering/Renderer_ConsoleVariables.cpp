@@ -197,6 +197,7 @@ namespace spartan
     TConsoleVar<float> cvar_transform_snap_scale           ("r.transform_snap_scale",           0.1f,   "scale snap step");
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,   "draw selection outline");
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,   "draw entity icons and debug visuals");
+    TConsoleVar<float> cvar_text_3d                        ("r.text_3d",                        1.0f,   "draw 3d text meshes in the world");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,   "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
     TConsoleVar<float> cvar_screenshot_ui                  ("r.screenshot_ui",                  0.0f,   "screenshots capture the whole editor window, ui included");
     TConsoleVar<float> cvar_screenshot_exr                 ("r.screenshot_exr",                 0.0f,   "screenshots also save the frame as a linear float exr, a large file for compositing tools, not for viewing");

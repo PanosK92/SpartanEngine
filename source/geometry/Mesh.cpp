@@ -1317,7 +1317,9 @@ namespace spartan
                 const float distance = Vector3::DistanceSquared(c, center);
                 if (distance < nearest) { nearest = distance; best = i; pivot = c; }
             }
-            const float scale = sqrt(static_cast<float>(end - begin) / 12.0f);
+            // Aggregate neighbouring cards conservatively: cap enlargement at 1.65x so coarser LODs never bloat into giant melted sheets.
+            const float card_ratio = static_cast<float>(end - begin) / 12.0f;
+            const float scale = min(1.65f, 1.0f + 0.34f * (sqrt(card_ratio) - 1.0f));
             for (size_t j = best; j < best + 12; ++j)
             {
                 const uint32_t v = page.indices[j];
@@ -1411,7 +1413,7 @@ namespace spartan
                 float error = 0;
                 if (foliage)
                 {
-                    if (step > 16 || page.indices.size() <= 12) break;
+                    if (step > 8 || page.indices.size() <= 12) break;
                     reduce_leaf_cards(page, step, reduced, next_vertices, error);
                 }
                 else

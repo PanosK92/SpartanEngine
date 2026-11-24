@@ -177,8 +177,8 @@ namespace spartan
         save_override("ovr_uv_invert_y",    m_material_override.uv_invert_y);
         save_override("ovr_uv_world_space", m_material_override.uv_world_space);
 
-        // flags
-        node.append_attribute("flags") = m_scene->flags;
+        // flags (mask runtime-only markers so world saves stay clean)
+        node.append_attribute("flags") = m_scene->flags & ~static_cast<uint32_t>(RenderFlags::IsText3D);
 
         // distances
         node.append_attribute("max_render_distance") = m_scene->max_distance_render;

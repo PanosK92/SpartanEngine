@@ -401,6 +401,7 @@ namespace spartan
             ray_tracing_pending_blas = false;
             const bool reference = Renderer::IsPathTracingActive();
             const bool full_transport = reference || (cvar_restir_pt.GetValueAs<bool>() && !Renderer::IsStereoView());
+            const bool show_text_3d = cvar_text_3d.GetValueAs<bool>();
             Camera* camera = Renderer::GetViewCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
@@ -423,6 +424,7 @@ namespace spartan
                     prefetch_scene_data(entries, i + 8, end);
                     const RenderSceneData& data = *entries[i];
                     if (!data.active.load(memory_order_relaxed) || (!full_transport && (data.flags & RenderFlags::ExcludeFromRayTracing))) continue;
+                    if (!show_text_3d && (data.flags & RenderFlags::IsText3D)) continue;
                     Render* render = data.render;
                     // Empty render components have no BLAS to build and cannot invalidate a static reference.
                     if (reference && (!render->GetMaterial() || render->GetIndexCount() == 0)) continue;
@@ -4930,6 +4932,7 @@ namespace spartan
         };
         // the gpu culls tessellated draws itself, so they are kept off screen too
         const bool tessellation_gpu_driven = cvar_tessellation_gpu_driven.GetValueAs<bool>();
+        const bool show_text_3d = cvar_text_3d.GetValueAs<bool>();
         auto is_gpu_culled_tessellated = [tessellation_gpu_driven](const Material* material)
         {
             return tessellation_gpu_driven && !material->IsTransparent() && material->IsTessellated();
@@ -4974,6 +4977,7 @@ namespace spartan
                 prefetch_scene_data(entries, i + 8, end);
                 const RenderSceneData& data = *entries[i];
                 if (!data.active.load(memory_order_relaxed) || !data.mesh || !data.material) continue;
+                if (!show_text_3d && (data.flags & RenderFlags::IsText3D)) continue;
                 // meshes published by a loader thread after this frame's geometry upload are drawn from the next frame
                 if (!data.mesh->IsGpuResident()) continue;
                 Render* render = data.render;

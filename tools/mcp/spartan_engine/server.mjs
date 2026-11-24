@@ -6876,7 +6876,7 @@ register_tool(
   "renderer_debug_set",
   "Set a friendly renderer debug overlay or visualization option.",
   {
-    option: z.enum(["aabb", "volumes", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
+    option: z.enum(["aabb", "volumes", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "text_3d", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
     value: z.union([z.boolean(), z.number(), z.string()]),
   },
   "renderer_debug_set",

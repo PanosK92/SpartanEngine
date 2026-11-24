@@ -1528,9 +1528,9 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
             float3 norm_p   = (input.position.xyz - b_center) / b_half;
             float  r_ellip  = length(norm_p);
             float  h_frac   = saturate((input.position.y - _draw.geometry_bounds_min.y) / b_ext.y);
-            float  radial_ao = smoothstep(0.16f, 1.02f, r_ellip);
-            float  height_ao = lerp(0.58f, 1.0f, smoothstep(0.08f, 0.88f, h_frac));
-            vertex.width_percent = clamp(lerp(0.32f, 1.0f, radial_ao) * height_ao, 0.28f, 1.0f);
+            float  radial_ao = smoothstep(0.18f, 1.04f, r_ellip);
+            float  height_ao = lerp(0.46f, 1.0f, smoothstep(0.06f, 0.88f, h_frac));
+            vertex.width_percent = clamp(lerp(0.18f, 1.0f, radial_ao) * height_ao, 0.16f, 1.0f);
         }
         else
         {

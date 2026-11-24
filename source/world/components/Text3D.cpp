@@ -556,6 +556,7 @@ namespace spartan
                     m_created_render = true;
                 }
                 render->SetMesh(mesh.get());
+                render->SetFlag(RenderFlags::IsText3D, true);
                 m_mesh = move(mesh);
                 m_render_bound = true;
                 m_bound_render_id = render->GetObjectId();
@@ -1086,6 +1087,7 @@ namespace spartan
         )
         {
             render->SetMesh(m_mesh.get());
+            render->SetFlag(RenderFlags::IsText3D, true);
             text_meshes[key] = m_mesh;
             m_dirty = false;
 
@@ -1120,6 +1122,7 @@ namespace spartan
             m_created_render = true;
         }
         render->SetMesh(mesh.get());
+        render->SetFlag(RenderFlags::IsText3D, true);
         m_mesh            = move(mesh);
         text_meshes[key]   = m_mesh;
         m_render_bound    = true;
@@ -1159,6 +1162,7 @@ namespace spartan
                 }
                 else
                 {
+                    render->SetFlag(RenderFlags::IsText3D, false);
                     render->ClearMesh();
                 }
             }

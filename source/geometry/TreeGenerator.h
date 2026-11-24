@@ -28,8 +28,8 @@ namespace spartan
 // which is how a tree keeps a dense crown at a few thousand triangles
 namespace spartan::trees
 {
-    // the leaf atlas is a 4x4 grid of 16 botanical twig variants, a palm uses the same grid for frond variants
-    constexpr uint32_t atlas_tiles = 4;
+    // the leaf atlas is a 2x2 grid of 4 ultra-crisp 1024x1024 botanical twig variants (8 visual variants with U-mirroring)
+    constexpr uint32_t atlas_tiles = 2;
 
     struct stem
     {
@@ -38,19 +38,25 @@ namespace spartan::trees
         uint32_t level  = 0;
         int32_t parent  = -1;
         float length    = 0.0f;
-        bool terminal   = true;
-        bool pruned     = false; // shaded out inside the crown, it neither draws nor carries leaves
-        bool flare      = false; // grows from the ground, the base carries root buttresses
+        bool terminal    = true;
+        bool pruned      = false; // shaded out inside the crown, it neither draws nor carries leaves
+        bool flare       = false; // grows from the ground, the base carries root buttresses
+        bool split_base  = false; // lower trunk ending at a multi-stem crotch, gets a subtle collar swell and flat cap
+        bool fork_collar = false; // upper stem emerging from a multi-stem crotch, flares gently at its base into the fork
     };
 
     struct leaf_card
     {
         math::Vector3 base;
-        math::Vector3 direction; // base to tip, carries the length
-        math::Vector3 side;      // half width
+        math::Vector3 direction;   // base to tip, carries the length
+        math::Vector3 side;        // half width
         math::Vector3 normal;
-        uint32_t tile = 0;
-        float fold    = 0.25f;
+        math::Vector3 lobe_center; // local bough-pillow center for sculptural sub-crown lighting
+        float lobe_radius = 1.0f;
+        uint32_t tile     = 0;
+        float fold        = 0.25f;
+        float droop       = 0.14f;
+        bool mirror_u     = false;
     };
 
     struct frond

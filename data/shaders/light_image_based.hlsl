@@ -99,13 +99,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         sky_sh,
         ibl_visibility
     );
-    // Thin leaves receive subtle sky transmission through their reverse side, weighted by crown cavity visibility
+    // Thin leaves receive luminous sky transmission through their reverse side, weighted by crown cavity visibility
     float3 transmitted_sky = 0.0f;
     if (surface.is_foliage() && !surface.is_transparent())
     {
-        float transmit_vis = lerp(ibl_visibility, 1.0f, 0.24f);
+        float transmit_vis = lerp(ibl_visibility, 1.0f, 0.22f);
         transmitted_sky = sh_irradiance_l2(-surface.normal, sky_sh, transmit_vis) *
-                          saturate(surface.subsurface_scattering) * 0.62f *
+                          saturate(surface.subsurface_scattering) * 0.48f *
                           foliage_transmission_tint(surface.albedo.rgb);
     }
     float3 multi_bounce = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
@@ -116,8 +116,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_ibl = specular_skysphere * specular_energy * specular_occlusion;
     if (surface.is_foliage())
     {
-        // Waxy leaf cuticles retain natural grazing sky reflection without turning macro cards into flat mirrors
-        specular_ibl *= 0.50f;
+        // Subtle sky cuticle sheen on exposed outer leaves while keeping interior crown cavities deep velvety green
+        specular_ibl *= 0.42f * lerp(0.16f, 1.0f, ibl_visibility);
     }
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky

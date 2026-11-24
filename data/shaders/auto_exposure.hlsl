@@ -96,7 +96,7 @@ void main_cs(uint group_index : SV_GroupIndex)
     // daytime key approached 0.7 (near display white after the output transfer),
     // so entering a shaded forest raised its midtones and bleached sunlit leaves.
     // Keep headroom for highlights; artistic bias belongs in compensation.
-    float key = 0.18f;
+    float key = 0.22f;
     // Retain the low-light adaptation curve so night is not lifted to middle grey.
     float dark_t = saturate((log2(avg_nits + 1e-4f) + 2.0f) / 8.0f);
     key = lerp(0.018f, key, dark_t * dark_t);

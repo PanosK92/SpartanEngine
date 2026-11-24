@@ -67,37 +67,37 @@ float3 subsurface_burley_transmittance(float t, float3 d)
 // redistributes the transmitted light instead of adding to it.
 float foliage_transmission_response(float n_dot_l, float view_dot_minus_light)
 {
-    // Tight terminator wrap + strong Henyey-Greenstein forward-scattering lobe so backlit thin leaves
-    // glow warm yellow-green toward the sun while shaded crown sides stay deeply contrasted.
-    const float wrap  = 0.26f;
+    // Warm living chlorophyll wrap + strong Henyey-Greenstein forward-scattering lobe so backlit and
+    // grazing sunlit leaves glow luminous yellow-emerald while shaded crown interiors keep rich green volume.
+    const float wrap  = 0.36f;
     float reverse     = max(-n_dot_l + wrap, 0.0f) / ((1.0f + wrap) * (1.0f + wrap) * 3.14159265359f);
 
-    const float g     = 0.65f;
+    const float g     = 0.62f;
     float denominator = 1.0f + g * g - 2.0f * g * saturate(view_dot_minus_light);
     float phase       = (1.0f - g * g) / (denominator * sqrt(denominator));
 
-    return reverse * (0.52f + 0.72f * phase);
+    return reverse * (0.64f + 0.82f * phase);
 }
 
 // Transmitted light crosses the chlorophyll a second time, so red and blue are absorbed again and
-// what makes it through is a warm, golden-olive green. Returned as a multiplier on albedo because
+// what makes it through is a warm, luminous golden-emerald green. Returned as a multiplier on albedo because
 // composition applies albedo once to all diffuse light.
 float3 foliage_transmission_tint(float3 albedo)
 {
     float peak    = max(max(albedo.r, albedo.g), albedo.b) + 1e-4f;
     float3 chroma = saturate(albedo / peak);
-    return chroma * float3(1.04f, 1.0f, 0.48f);
+    return chroma * float3(1.16f, 1.14f, 0.38f);
 }
 
-// Preserve 80% of GTAO/contact shadows in grass thatch so roots stay grounded and contrasty.
+// Preserve 68% of GTAO/contact shadows in grass thatch so roots stay grounded without turning grey-black.
 float grass_canopy_visibility(float visibility)
 {
-    return lerp(1.0f, visibility, 0.80f);
+    return lerp(1.0f, visibility, 0.68f);
 }
 
-// Preserve 68-100% of crown cavity & GTAO occlusion so tree interiors keep deep dark volume without soot crush.
+// Preserve 78-100% of crown cavity & GTAO occlusion so tree interiors hold deep sculpted volumetric shadow pockets.
 float foliage_canopy_visibility(float visibility, float scattering)
 {
-    return lerp(visibility, lerp(1.0f, visibility, 0.68f), saturate(scattering));
+    return lerp(visibility, lerp(1.0f, visibility, 0.78f), saturate(scattering));
 }
 #endif

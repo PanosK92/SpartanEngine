@@ -1312,8 +1312,8 @@ namespace spartan::geometry_processing
 
                             const float dz_dx = (sample_z_clamped(1, 0) - sample_z_clamped(-1, 0)) / (2.0f * texel_world_size);
                             const float dz_dy = (sample_z_clamped(0, 1) - sample_z_clamped(0, -1)) / (2.0f * texel_world_size);
-                            const math::Vector3 depth_n = math::Vector3(-dz_dx * 0.65f, -dz_dy * 0.65f, 1.0f).Normalized();
-                            const math::Vector3 combined = (math::Vector3(nx, ny, nz) * 0.62f + depth_n * 0.38f).Normalized();
+                            const math::Vector3 depth_n = math::Vector3(-dz_dx * 0.78f, -dz_dy * 0.78f, 1.0f).Normalized();
+                            const math::Vector3 combined = (math::Vector3(nx, ny, nz) * 0.48f + depth_n * 0.52f).Normalized();
                             nx = combined.x;
                             ny = combined.y;
                             nz = std::max(combined.z, 0.05f);

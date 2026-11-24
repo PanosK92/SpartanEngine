@@ -875,6 +875,7 @@ namespace
             cvar_toggle("Grid", "r.grid");
             cvar_toggle("Selection outline", "r.selection_outline");
             cvar_toggle("Entity icons", "r.entity_icons", "Icons for lights, cameras, audio sources and other entities without a mesh.");
+            cvar_toggle("3D text", "r.text_3d", "World-space 3D text meshes (such as floating area labels and markers).");
             cvar_slider("Move snap", "r.transform_snap_translate", "Step of the move gizmo while snapping.", 0.001f, 10.0f, "%.3f m", 1.0f, 100.0f, 0, ImGuiSliderFlags_Logarithmic);
             cvar_slider("Rotate snap", "r.transform_snap_rotate", "Step of the rotate gizmo while snapping.", 0.1f, 90.0f, "%.1f deg", 1.0f, 180.0f);
             cvar_slider("Scale snap", "r.transform_snap_scale", "Step of the scale gizmo while snapping.", 0.001f, 1.0f, "%.3f", 1.0f, 10.0f, 0, ImGuiSliderFlags_Logarithmic);

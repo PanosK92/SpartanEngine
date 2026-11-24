@@ -139,6 +139,10 @@ namespace spartan::mcp_diagnostics
             {
                 return "r.entity_icons";
             }
+            if (name == "text_3d")
+            {
+                return "r.text_3d";
+            }
             if (name == "performance_metrics")
             {
                 return "r.performance_metrics";
@@ -169,7 +173,7 @@ namespace spartan::mcp_diagnostics
 
         std::string renderer_debug_options_json()
         {
-            return "[\"aabb\",\"volumes\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"entity_icons\",\"performance_metrics\",\"physics\",\"ragdoll\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
+            return "[\"aabb\",\"volumes\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"entity_icons\",\"text_3d\",\"performance_metrics\",\"physics\",\"ragdoll\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
         }
 
         const char* queue_type_to_name(RHI_Queue_Type type)
@@ -918,7 +922,7 @@ namespace spartan::mcp_diagnostics
             bool first = true;
             const std::vector<std::string> options =
             {
-                "aabb", "volumes", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "ragdoll", "wireframe", "meshlet_visualize", "cluster_visualize"
+                "aabb", "volumes", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "text_3d", "performance_metrics", "physics", "ragdoll", "wireframe", "meshlet_visualize", "cluster_visualize"
             };
 
             for (const std::string& option : options)

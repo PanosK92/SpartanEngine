@@ -6,100 +6,100 @@
   "description": "Dense coastal Aleppo pine for the Zakynthos woodland, with an irregular spreading crown and economical branch geometry.",
   "class": "conifer",
   "evergreen": true,
-  "budget": 38000,
+  "budget": 58000,
   "height": 15.0,
   "height_var": 0.2,
   "trunk": {
-    "radius": 0.024,
+    "radius": 0.022,
     "taper": 0.12,
-    "flare": 0.42,
-    "lean": 11,
-    "gnarl": 0.5,
-    "twist": 0.12,
-    "segments": 12
+    "flare": 0.28,
+    "lean": 9,
+    "gnarl": 0.44,
+    "twist": 0.10,
+    "segments": 16
   },
   "crown": {
     "shape": "hemispherical",
-    "base": 0.46,
-    "width": 0.4
+    "base": 0.44,
+    "width": 0.42
   },
   "levels": [
     {
-      "count": 28,
-      "start": 0.42,
+      "count": 32,
+      "start": 0.40,
       "end": 0.98,
-      "length": 0.38,
+      "length": 0.39,
       "length_var": 0.3,
-      "down_angle": 82,
-      "down_angle_tip": 60,
-      "down_angle_var": 18,
+      "down_angle": 64,
+      "down_angle_tip": 42,
+      "down_angle_var": 16,
       "whorl": 3,
       "rotate": 110,
-      "curve": 30,
-      "curve_var": 35,
-      "gravity": 0.05,
+      "curve": -22,
+      "curve_var": 28,
+      "gravity": -0.02,
       "radius_ratio": 0.45,
-      "segments": 6
+      "segments": 7
     },
     {
-      "count": 7,
-      "start": 0.3,
+      "count": 9,
+      "start": 0.26,
       "end": 1.0,
-      "length": 0.38,
+      "length": 0.40,
       "length_var": 0.25,
       "down_angle": 45,
       "down_angle_var": 15,
       "curve": 20,
       "curve_var": 25,
       "radius_ratio": 0.55,
-      "segments": 4
+      "segments": 5
     },
     {
-      "count": 4,
-      "start": 0.4,
+      "count": 6,
+      "start": 0.35,
       "end": 1.0,
-      "length": 0.4,
+      "length": 0.40,
       "down_angle": 40,
       "down_angle_var": 15,
       "curve": 15,
       "radius_ratio": 0.6,
-      "segments": 2
+      "segments": 3
     }
   ],
   "leaves": {
     "shape": "needle",
-    "size": 0.125,
-    "card_size": 0.56,
-    "density": 7.5,
-    "start": 0.18,
+    "size": 0.105,
+    "card_size": 0.35,
+    "density": 10.2,
+    "start": 0.14,
     "tilt": 0.35,
-    "per_card": 10,
+    "per_card": 12,
     "color": [
-      0.044,
-      0.088,
+      0.052,
+      0.122,
       0.024
     ],
     "color_back": [
-      0.095,
-      0.142,
+      0.128,
+      0.210,
       0.038
     ],
-    "color_var": 0.14,
-    "translucency": 0.42
+    "color_var": 0.24,
+    "translucency": 0.56
   },
   "bark": {
     "style": "plated",
     "color": [
-      0.185,
-      0.148,
-      0.118
+      0.195,
+      0.158,
+      0.125
     ],
     "color_dark": [
-      0.042,
-      0.026,
-      0.018
+      0.068,
+      0.045,
+      0.030
     ],
-    "scale": 0.78,
-    "roughness": 0.9
+    "scale": 0.48,
+    "roughness": 0.90
   }
 }

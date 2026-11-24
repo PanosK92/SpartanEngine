@@ -174,7 +174,7 @@ namespace spartan
                 { "TEXTURES - streaming",
                   { "r.texture_streaming", "r.texture_streaming_budget_mb", "r.texture_streaming_upload_mb" } },
                 { "EDITOR - viewport helpers and overlays",
-                  { "r.grid", "r.transform_handle", "r.transform_snap", "r.transform_snap_translate", "r.transform_snap_rotate", "r.transform_snap_scale", "r.selection_outline", "r.entity_icons", "r.performance_metrics", "r.screenshot_ui", "r.screenshot_exr" } },
+                  { "r.grid", "r.transform_handle", "r.transform_snap", "r.transform_snap_translate", "r.transform_snap_rotate", "r.transform_snap_scale", "r.selection_outline", "r.entity_icons", "r.text_3d", "r.performance_metrics", "r.screenshot_ui", "r.screenshot_exr" } },
                 { "DEBUG VIEWS - visualisations for inspecting the renderer",
                   { "r.wireframe", "r.aabb", "r.volumes", "r.picking_ray", "r.physics", "r.ragdoll", "r.meshlet_visualize", "r.cluster_visualize", "r.cluster_visualize_cap" } },
                 { "AUDIO",

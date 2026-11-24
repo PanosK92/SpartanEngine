@@ -25,18 +25,17 @@ struct gbuffer
 };
 
 // constants
-// Linear albedo, measured leaf reflectance rather than a painted green: a living blade reflects about a tenth of
-// the light (the foliage patch of a colour chart is 0.095, 0.150, 0.056) and its green is only 1.2 to 1.5 times
-// its red, lime tips with twice as much green as red are what reads as nuclear once the blade is lit properly.
-// The root is thatch, the colour of the ground the blade grows out of.
-static const float3 grass_base          = float3(0.036f, 0.044f, 0.017f);
-static const float3 grass_mature         = float3(0.052f, 0.082f, 0.022f);
-static const float3 grass_fresh          = float3(0.074f, 0.112f, 0.028f);
-static const float3 grass_olive          = float3(0.092f, 0.105f, 0.032f);
-static const float3 grass_straw          = float3(0.195f, 0.152f, 0.058f);
-static const float  grass_normal_lean    = 0.18f;
-static const float3 flower_stem_base    = float3(0.032f, 0.050f, 0.017f);
-static const float3 flower_stem_tip     = float3(0.058f, 0.092f, 0.028f);
+// Linear albedo calibrated to living spring chlorophyll reflectance: fresh emerald-green blades
+// transitioning from deep mossy-emerald roots to sunlit warm yellow-green tips (never muddy khaki
+// in shade and never nuclear neon).
+static const float3 grass_base          = float3(0.040f, 0.084f, 0.014f);
+static const float3 grass_mature         = float3(0.108f, 0.204f, 0.024f);
+static const float3 grass_fresh          = float3(0.168f, 0.268f, 0.032f);
+static const float3 grass_olive          = float3(0.172f, 0.214f, 0.030f);
+static const float3 grass_straw          = float3(0.265f, 0.222f, 0.056f);
+static const float  grass_normal_lean    = 0.42f;
+static const float3 flower_stem_base    = float3(0.046f, 0.096f, 0.018f);
+static const float3 flower_stem_tip     = float3(0.106f, 0.192f, 0.028f);
 // contact refinement parallax mapping, a coarse march finds the slice the ray enters the relief in and a second
 // march walks that one slice in finer steps, so the surface is resolved at coarse times refine slices for the
 // price of coarse plus refine fetches
@@ -471,14 +470,14 @@ float3 grass_far_color(float3 position_world, float n_dot_v, float ring_blend)
     ) * 0.25f;
 
     // Match the warm chlorophyll tip tint applied in GRASS_SPECIALIZED so the handoff has no colour step
-    float tip_warmth = smoothstep(0.58f, 0.95f, height_sample) * 0.17f;
-    leaf             = lerp(leaf, leaf * float3(1.12f, 1.08f, 0.84f), tip_warmth);
+    float tip_warmth = smoothstep(0.54f, 0.95f, height_sample) * 0.24f;
+    leaf             = lerp(leaf, leaf * float3(1.18f, 1.12f, 0.72f), tip_warmth);
 
     // Multi-scale meadow colour rhythm: hillside swales (~34m) + broad sun/moisture drift (~115m)
     float drift_mid   = grass_value_noise(position_world.xz * (1.0f / 29.0f), 0x3c1u) * 0.5f + 0.5f;
     float drift_macro = grass_value_noise(position_world.xz * (1.0f / 112.0f), 0x5a7u) * 0.5f + 0.5f;
-    float3 warm_shift = lerp(float3(0.90f, 0.96f, 0.92f), float3(1.12f, 1.05f, 0.84f), drift_macro);
-    return leaf * buffer_frame.grass_far_tint.rgb * warm_shift * lerp(0.86f, 1.14f, drift_mid) * grass_far_brightness;
+    float3 warm_shift = lerp(float3(0.88f, 0.98f, 0.90f), float3(1.16f, 1.08f, 0.78f), drift_macro);
+    return leaf * buffer_frame.grass_far_tint.rgb * warm_shift * lerp(0.88f, 1.16f, drift_mid) * grass_far_brightness;
 }
 
 // Gaussian color variation around a species' ideal linear RGB color:
@@ -580,15 +579,15 @@ float3 compute_flower_color(float2 uv, float packed_variant)
     }
     else if (species == 3)
     {
-        // Crown Daisy (Glebionis coronaria): restrained sun-warmed ochre-gold
-        petal_main  = float3(0.38f, 0.295f, 0.048f);
-        petal_base  = float3(0.28f, 0.180f, 0.026f);
-        petal_tip   = float3(0.45f, 0.375f, 0.088f);
-        disc_center = float3(0.24f, 0.145f, 0.024f);
-        disc_rim    = float3(0.15f, 0.085f, 0.016f);
-        hue_sigma   = 0.07f;
-        sat_sigma   = 0.14f;
-        val_sigma   = 0.11f;
+        // Crown Daisy / Buttercup (Glebionis coronaria): luminous sunlit meadow buttercup gold
+        petal_main  = float3(0.62f, 0.48f, 0.045f);
+        petal_base  = float3(0.42f, 0.28f, 0.024f);
+        petal_tip   = float3(0.76f, 0.62f, 0.068f);
+        disc_center = float3(0.36f, 0.22f, 0.028f);
+        disc_rim    = float3(0.22f, 0.13f, 0.018f);
+        hue_sigma   = 0.06f;
+        sat_sigma   = 0.12f;
+        val_sigma   = 0.10f;
     }
     else
     {
@@ -795,15 +794,15 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float height_percent = vertex.uv_misc.z;
         float variation      = vertex.uv_misc.w;
         float3 blade_albedo  = compute_grass_color(height_percent, variation);
-        float tip_warmth     = smoothstep(0.64f, 1.0f, height_percent) * (0.10f + 0.14f * variation);
-        blade_albedo         = lerp(blade_albedo, blade_albedo * float3(1.12f, 1.08f, 0.84f), tip_warmth);
+        float tip_warmth     = smoothstep(0.56f, 1.0f, height_percent) * (0.16f + 0.18f * variation);
+        blade_albedo         = lerp(blade_albedo, blade_albedo * float3(1.18f, 1.12f, 0.72f), tip_warmth);
         albedo.rgb           = saturate(albedo.rgb * blade_albedo);
         albedo.a             = 1.0f;
 
-        occlusion            = lerp(0.24f, 1.0f, smoothstep(0.0f, 0.65f, height_percent));
-        float dry_blend      = smoothstep(0.45f, 0.92f, variation);
-        float tip_gloss      = lerp(0.60f, 0.44f, smoothstep(0.15f, 0.85f, height_percent));
-        roughness            = lerp(tip_gloss, 0.86f, dry_blend);
+        occlusion            = lerp(0.34f, 1.0f, smoothstep(0.0f, 0.62f, height_percent));
+        float dry_blend      = smoothstep(0.48f, 0.92f, variation);
+        float tip_gloss      = lerp(0.74f, 0.60f, smoothstep(0.15f, 0.85f, height_percent));
+        roughness            = lerp(tip_gloss, 0.88f, dry_blend);
 
         // Analytic curved V-fold blade normal (direct sin/cos rotation in the normal-tangent plane)
         float centered       = vertex.width_percent - 0.5f;
@@ -888,8 +887,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         if (surface.is_foliage())
         {
             albedo.rgb = saturate(albedo.rgb);
-            occlusion *= impostor_cavity_ao;
-            roughness  = impostor_is_bark ? 0.90f : 0.56f;
+            occlusion *= lerp(1.0f, impostor_cavity_ao, 0.90f);
+            roughness  = impostor_is_bark ? 0.90f : lerp(0.76f, 0.44f, impostor_cavity_ao);
         }
         albedo.a = 1.0f;
 
@@ -961,9 +960,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         if (surface.is_foliage())
         {
-            float crown_ao     = clamp(vertex.width_percent, 0.28f, 1.0f);
+            float crown_ao     = clamp(vertex.width_percent, 0.18f, 1.0f);
             occlusion         *= crown_ao;
-            foliage_sun_shadow = max(foliage_sun_shadow, (1.0f - crown_ao) * 0.26f);
+            roughness          = max(roughness, 0.30f);
+            foliage_sun_shadow = max(foliage_sun_shadow, (1.0f - crown_ao) * 0.48f);
         }
 
         if (rain_weather_wetness() > 0.0f)
@@ -1197,9 +1197,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
             // Base meadow colour + sunlit hummock tips + dark evergreen scrub cushions
             float3 far_col      = grass_far_color(position_world, grass_ndv, grass_ring);
-            far_col            *= lerp(0.84f, 1.15f, far_tuft * 0.55f + far_clump * 0.45f);
-            float3 scrub_col    = float3(0.036f, 0.058f, 0.021f) * lerp(0.85f, 1.18f, scrub_n);
-            far_col             = lerp(far_col, scrub_col, scrub_mask * 0.52f);
+            far_col            *= lerp(0.86f, 1.18f, far_tuft * 0.55f + far_clump * 0.45f);
+            float3 scrub_col    = float3(0.048f, 0.094f, 0.022f) * lerp(0.85f, 1.18f, scrub_n);
+            far_col             = lerp(far_col, scrub_col, scrub_mask * 0.50f);
 
             // Subtle mid-to-far wildflower drift flecks inside lush meadows so blooms hand off softly past the flower rings
             float  flower_band  = smoothstep(30.0f, 100.0f, distance) * (1.0f - smoothstep(260.0f, 650.0f, distance));
@@ -1489,21 +1489,22 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // apply baked volumetric crown cavity ao & realistic leaf/bark roughness to impostors and 3d tree canopies
     if (is_impostor && surface.is_foliage())
     {
-        occlusion *= impostor_cavity_ao;
+        occlusion *= lerp(1.0f, impostor_cavity_ao, 0.90f);
         if (impostor_is_bark)
         {
             roughness = 0.90f;
         }
         else
         {
-            roughness = 0.56f;
+            roughness = lerp(0.76f, 0.44f, impostor_cavity_ao);
         }
     }
     else if (!is_impostor && surface.is_foliage() && !surface.is_grass_blade() && !surface.is_flower())
     {
-        float crown_ao     = clamp(vertex.width_percent, 0.28f, 1.0f);
+        float crown_ao     = clamp(vertex.width_percent, 0.18f, 1.0f);
         occlusion         *= crown_ao;
-        foliage_sun_shadow = max(foliage_sun_shadow, (1.0f - crown_ao) * 0.26f);
+        roughness          = max(roughness, 0.30f);
+        foliage_sun_shadow = max(foliage_sun_shadow, (1.0f - crown_ao) * 0.48f);
     }
 
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
