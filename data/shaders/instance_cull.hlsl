@@ -17,6 +17,7 @@ RWStructuredBuffer<uint>              instance_visibility : register(u89);
 RWStructuredBuffer<SurvivingInstance> impostor_instances  : register(u95);
 
 groupshared uint gs_visibility[INSTANCE_CULL_BATCH_SIZE / 32u];
+groupshared uint gs_in_frustum[INSTANCE_CULL_BATCH_SIZE / 32u];
 
 // phase a of the gpu cull, one thread per renderable instance
 // rebuilds the per-instance world transform, runs distance + side-frustum + hi-z on the instance bounds and
@@ -44,21 +45,58 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
 
     bool     survives              = false;
+    bool     in_frustum            = false;
     bool     drawn_early           = false;
     bool     is_impostor_batch     = false;
     bool     crossfade_impostor    = false;
     uint     crossfade_proxy_index = 0u;
     CullTask task                  = (CullTask)0;
-    uint     visible_word = task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + (thread_id.x >> 5u);
-    uint     visible_bit  = 1u << (thread_id.x & 31u);
+    const uint vis_words_per_task  = INSTANCE_CULL_BATCH_SIZE / 32u;
+    uint     vis_task_base         = task_index * (vis_words_per_task * 2u);
+    uint     visible_word          = vis_task_base + (thread_id.x >> 5u);
+    uint     frustum_word          = vis_task_base + vis_words_per_task + (thread_id.x >> 5u);
+    uint     visible_bit           = 1u << (thread_id.x & 31u);
 
     if (task_index >= task_count) return; // uniform across the whole workgroup
-    if (!late && thread_id.x < INSTANCE_CULL_BATCH_SIZE / 32u)
+    if (late)
+    {
+        // Uniform workgroup-level exit: if zero instances in this 64-instance batch passed
+        // distance/frustum/contribution in the early pass, skip the entire task before any fetches.
+        uint frustum_any = 0u;
+        [unroll]
+        for (uint w = 0u; w < vis_words_per_task; ++w)
+        {
+            frustum_any |= instance_visibility[vis_task_base + vis_words_per_task + w];
+        }
+        if (frustum_any == 0u) return;
+    }
+    if (!late && thread_id.x < vis_words_per_task)
+    {
         gs_visibility[thread_id.x] = 0u;
+        gs_in_frustum[thread_id.x] = 0u;
+    }
     task = cull_tasks[task_index];
     uint meshlet_rows = 1u;
     if (thread_id.x < task.instance_count)
     {
+        // In the late pass, any instance that failed distance/frustum/contribution in the early pass of
+        // this same frame cannot pass in the late pass either: reject in 1 DWORD load before any fetches.
+        bool skip_late = false;
+        if (late)
+        {
+            bool in_frustum_early = (instance_visibility[frustum_word] & visible_bit) != 0u;
+            if (!in_frustum_early)
+            {
+                skip_late = true;
+            }
+            else
+            {
+                drawn_early = (instance_visibility[visible_word] & visible_bit) != 0u;
+            }
+        }
+
+        if (!skip_late)
+        {
         task.instance_index += thread_id.x;
         DrawData draw = indirect_draw_data[task.draw_index];
 
@@ -66,10 +104,18 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         bool is_per_instance = (draw.flags & 2u) != 0u;
         bool skip_hiz        = (draw.flags & 32u) != 0u;
 
+        if (late && drawn_early && (skip_hiz || skinned || (task.canopy_draw == 0u && task.refinement_draw == 0u && draw.geometry_meshlet_count <= 1u)))
+        {
+            skip_late = true;
+        }
+
+        if (!skip_late)
+        {
         // per-instance world transform, non-instanced draws keep draw.transform, instanced rebuild from the packed instance buffer
         float4x4 world_xform = is_per_instance
             ? mul(pull_instance_transform(draw.instance_offset, task.instance_index), draw.transform)
             : draw.transform;
+        float world_scale = max_world_scale(world_xform);
 
         // Choose the parent once for this canopy. All its cluster ranges use
         // the same crown sphere, including ranges outside the camera frustum.
@@ -79,7 +125,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             uint proxy_index = (task.canopy_draw & 0x7fffffffu) - 1u;
             DrawData proxy = indirect_draw_data[proxy_index];
             float3 center = mul(float4(proxy.cluster_center, 1.0f), world_xform).xyz;
-            float radius = proxy.cluster_radius * max_world_scale(world_xform);
+            float radius = proxy.cluster_radius * world_scale;
             float w = mul(float4(center, 1.0f), buffer_frame.view_projection).w;
             float nearest = w - radius * abs(buffer_frame.projection[2][3]);
             float diameter = radius * abs(buffer_frame.projection[1][1]) * get_render_resolution_active().y;
@@ -89,6 +135,11 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
                 draw = proxy;
                 task.draw_index = proxy_index;
                 task.refinement_draw = 0u;
+                // Impostors drawn in the early pass leave zero unrendered meshlets for the late pass.
+                if (late && drawn_early && max_impostors > 0u && ((draw.flags & draw_flag_impostor) != 0u))
+                {
+                    skip_late = true;
+                }
             }
             else if (nearest > 0.0f && (task.canopy_draw & 0x80000000u) == 0u &&
                      (proxy.flags & draw_flag_impostor) != 0u &&
@@ -100,6 +151,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             }
         }
 
+        if (!skip_late)
+        {
         // instance bounding sphere, skinned uses the cpu-updated dynamic world aabb because deformation invalidates the static lod aabb
         float3 center_world;
         float  radius_world;
@@ -113,41 +166,53 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         {
             // The conservative range covers every resident version of these clusters.
             center_world = mul(float4(draw.cluster_center, 1.0f), world_xform).xyz;
-            radius_world = draw.cluster_radius * max_world_scale(world_xform);
+            radius_world = draw.cluster_radius * world_scale;
         }
 
-        bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
-        if (wind_animated)
-            radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
-
-        // closest point on the instance sphere, origin distance was dropping roads and buildings
-        // whose entity pivot sat hundreds of metres away from the mesh in front of the camera
+        // Test render distance before scattered material lookup & wind padding so distant island instances exit early.
         bool passes_distance = true;
         if (draw.max_render_distance_squared > 0.0f)
         {
             float3 to_camera = center_world - buffer_frame.camera_position;
             float dist_center = length(to_camera);
             float max_dist = sqrt(draw.max_render_distance_squared);
-            passes_distance = (dist_center - radius_world) <= max_dist;
+            if ((dist_center - radius_world - 4.0f) > max_dist)
+            {
+                passes_distance = false;
+            }
+            else
+            {
+                bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
+                if (wind_animated)
+                    radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
+                passes_distance = (dist_center - radius_world) <= max_dist;
+            }
+        }
+        else
+        {
+            bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
+            if (wind_animated)
+                radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
         }
 
         // frustum, then contribution, then hi-z, the hi-z test also rejects instances entirely behind the camera (the side planes alone do not)
         // contribution runs before hi-z because it reuses the same projection without sampling the hi-z pyramid
-        survives = !skip_range && passes_distance
+        in_frustum = !skip_range && passes_distance
             && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
             && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX);
+        survives = in_frustum;
 
         // Select an available cluster refinement independently for each instance.
         if (survives && (task.refinement_draw & 0xc0000000u) == CULL_TASK_CLUSTER_REFINEMENT)
         {
             float3 cluster_center = mul(float4(draw.cluster_center, 1.0f), world_xform).xyz;
-            float cluster_radius = draw.cluster_radius * max_world_scale(world_xform);
+            float cluster_radius = draw.cluster_radius * world_scale;
             float clip_w = mul(float4(cluster_center, 1.0f), buffer_frame.view_projection).w;
             float nearest = max(1e-4f, clip_w - cluster_radius * abs(buffer_frame.projection[2][3]));
             float pixels = 0.5f * get_render_resolution_active().y * abs(buffer_frame.projection[1][1]);
             uint first = task.refinement_draw & CULL_TASK_LEVEL_MASK;
             uint count = 1u + ((task.refinement_draw >> CULL_TASK_LEVEL_SHIFT) & 15u);
-            float threshold = nearest / max(1e-8f, max_world_scale(world_xform) * pixels);
+            float threshold = nearest / max(1e-8f, world_scale * pixels);
             float error = draw.cluster_error;
             for (uint j = 0; j < count && error > threshold; ++j)
             {
@@ -165,14 +230,23 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         {
             if (late)
             {
-                // the early cull keeps every meshlet of hi-z exempt, skinned, and 1-meshlet impostor instances, leaving nothing behind for these
-                drawn_early = (instance_visibility[visible_word] & visible_bit) != 0u;
-                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned || is_impostor_batch));
+                // the early cull keeps every meshlet of hi-z exempt, skinned, 1-meshlet, and impostor instances, leaving nothing behind for these
+                if (drawn_early && (skip_hiz || skinned || is_impostor_batch || meshlet_count <= 1u))
+                {
+                    survives = false;
+                }
+                else
+                {
+                    survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias);
+                }
             }
             else
             {
                 survives = skip_hiz || !history_hiz || sphere_hiz_visible_history(tex, center_world, radius_world, max_mip_level, depth_bias);
             }
+        }
+        }
+        }
         }
     }
 
@@ -181,9 +255,14 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         GroupMemoryBarrierWithGroupSync();
         if (survives)
             InterlockedOr(gs_visibility[thread_id.x >> 5u], visible_bit);
+        if (in_frustum)
+            InterlockedOr(gs_in_frustum[thread_id.x >> 5u], visible_bit);
         GroupMemoryBarrierWithGroupSync();
-        if (thread_id.x < INSTANCE_CULL_BATCH_SIZE / 32u)
-            instance_visibility[task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + thread_id.x] = gs_visibility[thread_id.x];
+        if (thread_id.x < vis_words_per_task)
+        {
+            instance_visibility[vis_task_base + thread_id.x]                      = gs_visibility[thread_id.x];
+            instance_visibility[vis_task_base + vis_words_per_task + thread_id.x] = gs_in_frustum[thread_id.x];
+        }
     }
 
     // impostor survivors bypass phase-b meshlet expansion and compact straight into impostor_instances

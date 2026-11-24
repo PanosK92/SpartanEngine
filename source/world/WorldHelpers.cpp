@@ -311,19 +311,26 @@ namespace spartan
             material->SetPersistent(false);
             material->SetTexture(MaterialTextureType::Color, albedo);
 
-            auto set_optional = [&material, &base](MaterialTextureType type, const char* file)
+            auto optional_path = [&base](const char* file) -> string
             {
                 const string path = base + file;
-                if (FileSystem::Exists(path))
-                {
-                    material->SetTexture(type, path);
-                }
+                return FileSystem::Exists(path) ? path : string{};
             };
-            set_optional(MaterialTextureType::Normal,    "normal.png");
-            set_optional(MaterialTextureType::Roughness, "roughness.png");
-            set_optional(MaterialTextureType::Occlusion, "occlusion.png");
-            set_optional(MaterialTextureType::Height,    "height.png");
-            set_optional(MaterialTextureType::AlphaMask, "alpha_mask.png");
+            if (const string normal_path = optional_path("normal.png"); !normal_path.empty())
+            {
+                material->SetTexture(MaterialTextureType::Normal, normal_path);
+            }
+            if (const string alpha_path = optional_path("alpha_mask.png"); !alpha_path.empty())
+            {
+                material->SetTexture(MaterialTextureType::AlphaMask, alpha_path);
+            }
+            material->SetPackedSources(
+                0,
+                optional_path("occlusion.png"),
+                optional_path("roughness.png"),
+                string{},
+                optional_path("height.png")
+            );
 
             string name        = base.substr(0, base.size() - 1);
             const size_t slash = name.find_last_of('/');
@@ -623,7 +630,9 @@ namespace spartan
             const uint32_t order_begin,
             const uint32_t order_end,
             const float terrain_band,
-            vector<Render*>* bounds_pending
+            vector<Render*>* bounds_pending,
+            Terrain* prefilter_terrain = nullptr,
+            const vector<Terrain::PlatformFootprint>* prefilter_pads = nullptr
         )
         {
             const bool defer_bounds = bounds_pending != nullptr;
@@ -651,22 +660,130 @@ namespace spartan
                 numeric_limits<float>::max();
             const bool casts_shadows = (layer.flags & TerrainScatterFlags_CastShadows) != 0;
 
-            // the band is cut for an average instance of this layer, the clamps inside the derivation
-            // take care of the ends of the size roll
-            float scale_sum      = 0.0f;
-            uint32_t scale_count = 0;
-            for (uint32_t order_index = order_begin; order_index < order_end; order_index++)
+            // Pack and filter instances in parallel across the batch tiles before entity creation.
+            const uint32_t span = order_end > order_begin ? (order_end - order_begin) : 0u;
+            vector<Matrix> tile_worlds(span, Matrix::Identity);
+            vector<Matrix> tile_inverses(span, Matrix::Identity);
+            vector<BoundingBox> tile_boxes(span);
+            vector<vector<Instance>> batch_packed(span);
+            vector<vector<Instance>> batch_filtered(span);
+            vector<double> tile_scale_sums(span, 0.0);
+            vector<uint32_t> tile_scale_counts(span, 0);
+            for (uint32_t k = 0; k < span; ++k)
             {
-                for (const Matrix& instance : transforms[tile_order[order_index]])
+                const uint32_t tile_index = tile_order[order_begin + k];
+                if (tiles[tile_index] && !transforms[tile_index].empty())
                 {
-                    scale_sum += instance.GetScale().y;
-                    scale_count++;
+                    tile_worlds[k] = tiles[tile_index]->GetMatrix();
+                    tile_inverses[k] = tile_worlds[k].Inverted();
+                    if (Render* tile_render = tiles[tile_index]->GetComponent<Render>())
+                    {
+                        tile_boxes[k] = tile_render->GetBoundingBox();
+                    }
                 }
             }
-            const float scale_typical = scale_count > 0 ? scale_sum / static_cast<float>(scale_count) : 1.0f;
+            auto pack_and_filter = [&](uint32_t begin, uint32_t end)
+            {
+                vector<const Terrain::PlatformFootprint*> nearby_pads;
+                for (uint32_t k = begin; k < end; ++k)
+                {
+                    const uint32_t tile_index = tile_order[order_begin + k];
+                    if (!tiles[tile_index] || transforms[tile_index].empty()) continue;
+                    const auto& src = transforms[tile_index];
+                    auto& packed = batch_packed[k];
+                    packed.resize(src.size());
+                    double s_sum = 0.0;
+                    for (size_t i = 0; i < src.size(); ++i)
+                    {
+                        packed[i].SetMatrix(src[i]);
+                        s_sum += static_cast<double>(packed[i].scale_y);
+                    }
+                    tile_scale_sums[k]   = s_sum;
+                    tile_scale_counts[k] = static_cast<uint32_t>(src.size());
+                    if (prefilter_terrain)
+                    {
+                        const Matrix& world   = tile_worlds[k];
+                        const Matrix& inverse = tile_inverses[k];
+                        nearby_pads.clear();
+                        if (prefilter_pads && !prefilter_pads->empty())
+                        {
+                            const BoundingBox& box = tile_boxes[k];
+                            const bool has_box = !box.IsInfinite();
+                            for (const Terrain::PlatformFootprint& pad : *prefilter_pads)
+                            {
+                                if (!has_box ||
+                                    (pad.max_x >= box.GetMin().x && pad.min_x <= box.GetMax().x &&
+                                     pad.max_z >= box.GetMin().z && pad.min_z <= box.GetMax().z))
+                                {
+                                    nearby_pads.push_back(&pad);
+                                }
+                            }
+                        }
+                        auto& filtered = batch_filtered[k];
+                        filtered.reserve(packed.size());
+                        for (Instance local : packed)
+                        {
+                            const Vector3 position = world * Vector3(local.position_x, local.position_y, local.position_z);
+                            bool blocked = prefilter_terrain->IsOnRoad(position.x, position.z);
+                            if (!blocked && !nearby_pads.empty())
+                            {
+                                bool in_deform = false;
+                                for (const Terrain::PlatformFootprint* pad : nearby_pads)
+                                {
+                                    if (position.x < pad->min_x || position.x > pad->max_x ||
+                                        position.z < pad->min_z || position.z > pad->max_z)
+                                    {
+                                        continue;
+                                    }
+                                    const float dx = position.x - pad->x;
+                                    const float dz = position.z - pad->z;
+                                    const float lx = dx * pad->cos_yaw + dz * pad->sin_yaw;
+                                    const float lz = -dx * pad->sin_yaw + dz * pad->cos_yaw;
+                                    if (fabsf(lx) <= pad->half_x && fabsf(lz) <= pad->half_z)
+                                    {
+                                        blocked = true;
+                                        break;
+                                    }
+                                    if (fabsf(lx) <= pad->deform_hx && fabsf(lz) <= pad->deform_hz)
+                                    {
+                                        in_deform = true;
+                                    }
+                                }
+                                if (!blocked && in_deform)
+                                {
+                                    float height = position.y;
+                                    if (prefilter_terrain->SampleHeight(position.x, position.z, height))
+                                    {
+                                        const Vector3 local_pos = inverse * Vector3(position.x, height, position.z);
+                                        if (fabsf(local_pos.y - local.position_y) > 1e-3f)
+                                        {
+                                            local.position_x = local_pos.x;
+                                            local.position_y = local_pos.y;
+                                            local.position_z = local_pos.z;
+                                        }
+                                    }
+                                }
+                            }
+                            if (!blocked) filtered.push_back(local);
+                        }
+                    }
+                }
+            };
+            if (span > 1) ThreadPool::ParallelLoop(pack_and_filter, span);
+            else if (span == 1) pack_and_filter(0, 1);
+
+            double scale_sum     = 0.0;
+            uint32_t scale_count = 0;
+            for (uint32_t k = 0; k < span; ++k)
+            {
+                scale_sum   += tile_scale_sums[k];
+                scale_count += tile_scale_counts[k];
+            }
+            const float scale_typical = scale_count > 0 ? static_cast<float>(scale_sum / static_cast<double>(scale_count)) : 1.0f;
 
             for (uint32_t order_index = order_begin; order_index < order_end; order_index++)
             {
+                const uint32_t k          = order_index - order_begin;
                 const uint32_t tile_index = tile_order[order_index];
                 Entity* tile              = tiles[tile_index];
                 if (!tile || transforms[tile_index].empty())
@@ -712,10 +829,8 @@ namespace spartan
                     parts.push_back(entity);
                 }
 
-                // Pack transforms once per plant set; trunk and canopy share them.
-                vector<Instance> packed_instances(transforms[tile_index].size());
-                for (size_t i = 0; i < packed_instances.size(); ++i)
-                    packed_instances[i].SetMatrix(transforms[tile_index][i]);
+                const vector<Instance>& seed_instances = batch_packed[k];
+                const vector<Instance>& live_instances = prefilter_terrain ? batch_filtered[k] : batch_packed[k];
 
                 // One representative canopy per plant, never one per submesh.
                 Entity* acoustic_part = nullptr;
@@ -783,7 +898,11 @@ namespace spartan
                         material->SetPropertyRuntime(MaterialProperty::TerrainCoatingScale, layer.coating_scale);
                     }
 
-                    render->SetInstances(packed_instances, !defer_bounds);
+                    if (prefilter_terrain)
+                    {
+                        prefilter_terrain->RecordPropInstanceSeed(part->GetObjectId(), seed_instances);
+                    }
+                    render->SetInstances(live_instances, !defer_bounds);
                     if (defer_bounds) bounds_pending->push_back(render);
                     if (layer.flags & (TerrainScatterFlags_Canopy | TerrainScatterFlags_Scrub))
                     {
@@ -841,27 +960,45 @@ namespace spartan
             const vector<Mesh*>& palette, const TerrainScatterLayer& layer,
             const vector<Entity*>& tiles, const vector<vector<Matrix>>& transforms,
             const vector<uint32_t>& tile_order, uint32_t order_begin, uint32_t order_end,
-            float terrain_band, vector<Render*>* bounds_pending = nullptr)
+            float terrain_band, vector<Render*>* bounds_pending = nullptr,
+            Terrain* prefilter_terrain = nullptr,
+            const vector<Terrain::PlatformFootprint>* prefilter_pads = nullptr)
         {
             if (palette.size() == 1)
             {
-                attach_scatter_variant(palette.front(), layer, tiles, transforms, tile_order, order_begin, order_end, terrain_band, bounds_pending);
+                attach_scatter_variant(palette.front(), layer, tiles, transforms, tile_order, order_begin, order_end,
+                    terrain_band, bounds_pending, prefilter_terrain, prefilter_pads);
                 return;
             }
             // Place once, then assign each accepted instance to exactly one model.
             // This preserves density and reproduces the same choices on tile refresh.
-            vector<vector<vector<Matrix>>> selected(palette.size(), vector<vector<Matrix>>(transforms.size()));
-            for (uint32_t order = order_begin; order < order_end; ++order)
+            const uint32_t variant_count = static_cast<uint32_t>(palette.size());
+            vector<vector<vector<Matrix>>> selected(variant_count, vector<vector<Matrix>>(transforms.size()));
+            const uint32_t span = order_end > order_begin ? (order_end - order_begin) : 0u;
+            auto split_tiles = [&](uint32_t begin, uint32_t end)
             {
-                const uint32_t tile = tile_order[order];
-                for (uint32_t i = 0; i < transforms[tile].size(); ++i)
+                for (uint32_t k = begin; k < end; ++k)
                 {
-                    const uint32_t variant = terrain_habitat::variant(tile, i, layer.seed, static_cast<uint32_t>(palette.size()));
-                    selected[variant][tile].push_back(transforms[tile][i]);
+                    const uint32_t tile = tile_order[order_begin + k];
+                    const auto& src = transforms[tile];
+                    if (src.empty()) continue;
+                    const size_t approx = (src.size() / variant_count) + 8;
+                    for (uint32_t v = 0; v < variant_count; ++v)
+                    {
+                        selected[v][tile].reserve(approx);
+                    }
+                    for (uint32_t i = 0; i < src.size(); ++i)
+                    {
+                        const uint32_t variant = terrain_habitat::variant(tile, i, layer.seed, variant_count);
+                        selected[variant][tile].push_back(src[i]);
+                    }
                 }
-            }
+            };
+            if (span > 1) ThreadPool::ParallelLoop(split_tiles, span);
+            else if (span == 1) split_tiles(0, 1);
             for (uint32_t variant = 0; variant < palette.size(); ++variant)
-                attach_scatter_variant(palette[variant], layer, tiles, selected[variant], tile_order, order_begin, order_end, terrain_band, bounds_pending);
+                attach_scatter_variant(palette[variant], layer, tiles, selected[variant], tile_order, order_begin, order_end,
+                    terrain_band, bounds_pending, prefilter_terrain, prefilter_pads);
         }
 
         // one gpu scatter slot, there are no entities for this, the populate pass reads the height map
@@ -1207,9 +1344,18 @@ namespace spartan
 
         // Each call resolves one palette or publishes four nearby tiles,
         // then yields to the editor. The terrain owns and cancels this work.
+        const bool prefilter_active = World::IsPreparing();
+        vector<Terrain::PlatformFootprint> prefilter_pads;
+        if (prefilter_active)
+        {
+            terrain->ClearPropSeeds();
+            prefilter_pads = terrain->GetPlatformFootprints();
+        }
+
         return [terrain, tiles = std::move(tiles), tile_ids = std::move(tile_ids), tile_order, tile_count,
                 jobs = std::move(jobs), gpu_slot_pushed = std::array<bool, renderer_max_gpu_scatter_slots>{},
-                detail_slot_next = 1u, next_layer = 0u, order_done = 0u, scatter_ms = 0.0, attach_ms = 0.0]() mutable -> bool
+                detail_slot_next = 1u, next_layer = 0u, order_done = 0u, scatter_ms = 0.0, attach_ms = 0.0,
+                prefilter_active, prefilter_pads = std::move(prefilter_pads)]() mutable -> bool
         {
             if (!terrain->GetSpawnBiomeProps())
             {
@@ -1298,8 +1444,9 @@ namespace spartan
             if (order_done < tile_count && !jobs.empty())
             {
                 const Stopwatch batch_timer;
-                const uint32_t batch_size = min(4u, tile_count - order_done);
-                const uint32_t order_end  = order_done + batch_size;
+                const uint32_t batch_limit = World::IsPreparing() ? 256u : 4u;
+                const uint32_t batch_size  = min(batch_limit, tile_count - order_done);
+                const uint32_t order_end   = order_done + batch_size;
 
                 vector<uint32_t> batch_tiles(tile_order.begin() + order_done, tile_order.begin() + order_end);
                 // An editor deletion can occur between steps. Resolve only this
@@ -1405,7 +1552,9 @@ namespace spartan
                         order_done,
                         order_end,
                         terrain->GetBlendHeight(),
-                        World::IsPreparing() ? &bounds_pending : nullptr
+                        World::IsPreparing() ? &bounds_pending : nullptr,
+                        prefilter_active ? terrain : nullptr,
+                        prefilter_active ? &prefilter_pads : nullptr
                     );
 
                     // the editor reads this while the scatter runs, keeping it live makes the props count
@@ -1454,7 +1603,7 @@ namespace spartan
             }
 
             const Stopwatch finalization;
-            terrain->OnBiomePropsPopulated();
+            terrain->OnBiomePropsPopulated(prefilter_active);
             SP_LOG_INFO("Vegetation preparation: scatter %.2f ms, entities/bounds %.2f ms, finalization %.2f ms",
                 scatter_ms, attach_ms, finalization.GetElapsedTimeMs());
             return true;

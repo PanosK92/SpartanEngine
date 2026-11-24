@@ -744,6 +744,8 @@ namespace pass_particles
 namespace pass_particles_volumetric
 {
     static const SHARED_UINT reset_history = 0; // bool
+    static const SHARED_UINT tile_offset_x = 1; // uint, 16x16 pixel tile offset for tight screen-space composite
+    static const SHARED_UINT tile_offset_y = 2; // uint
 }
 
 // particles_fluid.hlsl, and every particle kernel that samples the fluid grid through common_particle_fluid.hlsl

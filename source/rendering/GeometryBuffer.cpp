@@ -538,23 +538,86 @@ namespace spartan
             future<void> read;
             ResidentGeometryPage address = {};
             uint64_t last_request = 0;
+            uint64_t last_counted_frame = 0;
             bool allocated = false;
             bool uploaded = false;
             bool failed = false;
         };
         // One pool shared by all cameras. Only the render thread mutates the slots.
-        TConsoleVar<float> page_budget("r.geometry_page_budget", 4096.0f, "Maximum active streamed geometry pages; pool storage is reclaimed on world unload");
+        TConsoleVar<float> page_budget("r.geometry_page_budget", 6144.0f, "Maximum active streamed geometry pages; pool storage is reclaimed on world unload");
         constexpr size_t geometry_reads_in_flight = 32;
         vector<GeometryPageSlot> page_slots;
-        unordered_map<const GeometryPageSource*, size_t> page_lookup;
         struct PageRequest
         {
             shared_ptr<const GeometryPageSource> source;
             float error;
         };
         vector<PageRequest> page_requests;
+        vector<uint32_t> pending_read_slots;
         size_t pending_page_reads = 0;
+        uint32_t resident_page_count = 0;
+        uint32_t resident_requests_this_frame = 0;
+        bool page_pool_reserved = false;
         GeometryBuffer::PageStatistics page_statistics;
+
+        uint64_t cached_frame = 0;
+        size_t cached_budget = 6144;
+        uint32_t cached_resident_vertices = 0;
+        uint32_t cached_resident_indices  = 0;
+
+        size_t effective_page_budget()
+        {
+            static uint64_t cached_vram_mb = 0;
+            if (cached_vram_mb == 0)
+            {
+                cached_vram_mb = RHI_Device::MemoryGetTotalMb();
+            }
+            const uint64_t total_vram_mb = cached_vram_mb;
+            const float max_budget = (total_vram_mb > 0 && total_vram_mb < 10000) ? 4096.0f : 8192.0f;
+            float requested = page_budget.GetValue();
+            // Upgrade the legacy 4096 persisted default on high-VRAM GPUs so dense open-world views
+            // and driving around Zakynthos do not thrash evictions every frame.
+            if (requested == 4096.0f)
+            {
+                if (total_vram_mb >= 14000)
+                {
+                    requested = 8192.0f;
+                }
+                else if (total_vram_mb >= 10000)
+                {
+                    requested = 6144.0f;
+                }
+            }
+            return static_cast<size_t>(clamp(requested, 1.0f, max_budget));
+        }
+
+        uint32_t page_pool_reserve_slots(const size_t budget)
+        {
+            const uint64_t total_vram_mb = RHI_Device::MemoryGetTotalMb();
+            if (total_vram_mb >= 10000)
+            {
+                return static_cast<uint32_t>(budget);
+            }
+            if (total_vram_mb >= 6000)
+            {
+                return static_cast<uint32_t>(budget / 2);
+            }
+            return 0u;
+        }
+
+        size_t find_page_slot(const GeometryPageSource* source)
+        {
+            if (!source)
+            {
+                return SIZE_MAX;
+            }
+            const uint32_t idx = source->slot_index;
+            if (idx < page_slots.size() && page_slots[idx].source.get() == source)
+            {
+                return idx;
+            }
+            return SIZE_MAX;
+        }
     }
 
     static uint32_t select_pages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors)
@@ -563,11 +626,44 @@ namespace spartan
         if (cluster.refinements.empty() || projected_error <= 1.0f) return 0;
         size_t choice = 0;
         while (choice + 1 < cluster.refinements.size() && cluster.refinements[choice + 1].error * density <= 1.0f) ++choice;
+        const uint64_t frame = cached_frame;
+        const size_t budget  = cached_budget;
         uint32_t count = 0;
         for (size_t i = choice; i < cluster.refinements.size(); ++i)
         {
             const auto& level = cluster.refinements[i];
-            if (i == choice || errors)
+            const size_t slot_idx = find_page_slot(level.page.get());
+            const bool want_request = (i == choice || errors);
+            if (slot_idx != SIZE_MAX && slot_idx < budget)
+            {
+                auto& slot = page_slots[slot_idx];
+                if (!slot.failed)
+                {
+                    // Stamp resident slots in-place without pushing shared_ptr requests or sorting 4k entries/frame.
+                    if (want_request)
+                    {
+                        slot.last_request = frame;
+                        if (slot.last_counted_frame != frame)
+                        {
+                            slot.last_counted_frame = frame;
+                            ++resident_requests_this_frame;
+                        }
+                    }
+                    if (!slot.uploaded ||
+                        slot.address.vertices + GeometryPage::max_corners > cached_resident_vertices ||
+                        slot.address.indices + GeometryPage::max_corners > cached_resident_indices) continue;
+                    pages[count] = slot.address;
+                    if (!errors) return 1;
+                    errors[count++] = level.error;
+                    continue;
+                }
+                else if (want_request && frame - slot.last_request < 120)
+                {
+                    continue;
+                }
+            }
+
+            if (want_request)
             {
                 const float priority = i + 1 < cluster.refinements.size() ? cluster.refinements[i + 1].error * density : projected_error;
                 const size_t index = level.page->request_index;
@@ -579,14 +675,6 @@ namespace spartan
                     page_requests.push_back({level.page, priority});
                 }
             }
-            const auto found = page_lookup.find(level.page.get());
-            if (found == page_lookup.end()) continue;
-            const auto& slot = page_slots[found->second];
-            if (!slot.uploaded || !GeometryBuffer::IsResident(slot.address.vertices + GeometryPage::max_corners,
-                slot.address.indices + GeometryPage::max_corners)) continue;
-            pages[count] = slot.address;
-            if (!errors) return 1;
-            errors[count++] = level.error;
         }
         return count;
     }
@@ -611,126 +699,253 @@ namespace spartan
         // Only transfer ownership at the frame boundary, before any camera records
         // its draws. The graphics queue orders old vertex reads before the copies.
         const uint64_t frame = Renderer::GetFrameNumber();
-        const size_t budget = static_cast<size_t>(clamp(page_budget.GetValue(), 1.0f, 8192.0f));
-        page_statistics.requested = static_cast<uint32_t>(page_requests.size());
+        const size_t budget = effective_page_budget();
+        cached_frame = frame;
+        cached_budget = budget;
+        cached_resident_vertices = resident_vertices.load(memory_order_acquire);
+        cached_resident_indices  = resident_indices.load(memory_order_acquire);
+        page_statistics.requested = resident_requests_this_frame + static_cast<uint32_t>(page_requests.size());
+        resident_requests_this_frame = 0;
         auto& wanted = page_requests;
-        auto higher_priority = [](const PageRequest& a, const PageRequest& b)
+        if (!pending_read_slots.empty())
         {
-            return a.error == b.error ? less<const GeometryPageSource*>{}(a.source.get(), b.source.get()) : a.error > b.error;
-        };
-        const size_t keep = min(wanted.size(), budget);
-        partial_sort(wanted.begin(), wanted.begin() + keep, wanted.end(), higher_priority);
-        wanted.resize(keep);
-        for (const auto& request : wanted)
-        {
-            auto found = page_lookup.find(request.source.get());
-            if (found != page_lookup.end() && found->second < budget)
+            // Pace uploads during rapid camera motion/driving so a burst of ready pages
+            // never spikes CPU upload/staging time on a single frame. Iterate only the <=32
+            // active in-flight slots rather than scanning the entire 8192-slot pool.
+            constexpr uint32_t max_uploads_per_frame = 2;
+            uint32_t uploads_this_frame = 0;
+            for (size_t k = 0; k < pending_read_slots.size(); )
             {
-                auto& slot = page_slots[found->second];
-                if (!slot.failed) slot.last_request = frame;
+                if (uploads_this_frame >= max_uploads_per_frame)
+                {
+                    break;
+                }
+                const uint32_t slot_index = pending_read_slots[k];
+                if (slot_index >= page_slots.size())
+                {
+                    pending_read_slots[k] = pending_read_slots.back();
+                    pending_read_slots.pop_back();
+                    continue;
+                }
+                auto& slot = page_slots[slot_index];
+                if (!slot.read.valid())
+                {
+                    pending_read_slots[k] = pending_read_slots.back();
+                    pending_read_slots.pop_back();
+                    continue;
+                }
+                if (slot.read.wait_for(chrono::seconds(0)) != future_status::ready)
+                {
+                    ++k;
+                    continue;
+                }
+                pending_read_slots[k] = pending_read_slots.back();
+                pending_read_slots.pop_back();
+                ++uploads_this_frame;
+                try { slot.read.get(); }
+                catch (const exception&) { slot.decoded->meshlets.clear(); }
+                --pending_page_reads;
+                auto data = move(slot.decoded);
+                if (data->meshlets.empty())
+                {
+                    slot.failed = true;
+                    SP_LOG_WARNING("Failed to load virtual geometry page, retaining its coarse surface");
+                    continue;
+                }
+                auto& address = slot.address;
+                address.vertex_count = static_cast<uint32_t>(data->vertices.size());
+                address.meshlet_count = static_cast<uint32_t>(data->meshlets.size());
+                address.index_count = static_cast<uint32_t>(data->indices.size());
+                if (!slot.allocated)
+                {
+                    // Reserve full page-pool headroom once before the first page grows the global buffer,
+                    // preventing repeated multi-hundred-MB GPU buffer reallocations during motion/driving.
+                    if (!page_pool_reserved)
+                    {
+                        page_pool_reserved = true;
+                        const uint32_t reserve_slots = page_pool_reserve_slots(budget);
+                        if (reserve_slots > 0)
+                        {
+                            lock_guard<mutex> lock(buffer_mutex);
+                            const uint32_t pool_corners = reserve_slots * GeometryPage::max_corners;
+                            const uint32_t pool_meshlets = reserve_slots * GeometryPage::max_triangles;
+                            vertex_reserve         = max(vertex_reserve,         vertices.size() + pool_corners);
+                            index_reserve          = max(index_reserve,          indices.size() + pool_corners);
+                            meshlet_bounds_reserve = max(meshlet_bounds_reserve, meshlet_bounds.size() + pool_meshlets);
+                            meshlet_vertex_reserve = max(meshlet_vertex_reserve, meshlet_vertices.size() + pool_corners);
+                            meshlet_micro_reserve  = max(meshlet_micro_reserve,  meshlet_micro_indices.size() + pool_corners);
+                        }
+                    }
+                    data->vertices.resize(GeometryPage::max_corners);
+                    data->indices.resize(GeometryPage::max_corners);
+                    data->meshlets.resize(GeometryPage::max_triangles);
+                    data->remaps.resize(GeometryPage::max_corners);
+                    data->micro.resize(GeometryPage::max_corners);
+                    address.vertices = AppendVertices(data->vertices.data(), GeometryPage::max_corners);
+                    address.indices = AppendIndices(data->indices.data(), GeometryPage::max_corners);
+                    address.meshlets = AppendMeshletBounds(data->meshlets.data(), GeometryPage::max_triangles);
+                    address.remaps = AppendMeshletVertices(data->remaps.data(), GeometryPage::max_corners);
+                    address.micro = AppendMeshletMicroIndices(data->micro.data(), GeometryPage::max_corners);
+                    slot.allocated = true;
+                }
+                else
+                {
+                    UpdateVertices(data->vertices.data(), address.vertices, static_cast<uint32_t>(data->vertices.size()));
+                    UpdateIndices(data->indices.data(), address.indices, static_cast<uint32_t>(data->indices.size()));
+                    UpdateMeshletBounds(data->meshlets.data(), address.meshlets, address.meshlet_count);
+                    UpdateMeshletVertices(data->remaps.data(), address.remaps, static_cast<uint32_t>(data->remaps.size()));
+                    UpdateMeshletMicroIndices(data->micro.data(), address.micro, static_cast<uint32_t>(data->micro.size()));
+                }
+                if (!slot.uploaded)
+                {
+                    slot.uploaded = true;
+                    ++resident_page_count;
+                }
+                ++page_statistics.uploads;
             }
-        }
-        for (auto& slot : page_slots)
-        {
-            if (!slot.read.valid() || slot.read.wait_for(chrono::seconds(0)) != future_status::ready) continue;
-            try { slot.read.get(); }
-            catch (const exception&) { slot.decoded->meshlets.clear(); }
-            --pending_page_reads;
-            auto data = move(slot.decoded);
-            if (data->meshlets.empty())
-            {
-                slot.failed = true;
-                SP_LOG_WARNING("Failed to load virtual geometry page, retaining its coarse surface");
-                continue;
-            }
-            auto& address = slot.address;
-            address.vertex_count = static_cast<uint32_t>(data->vertices.size());
-            address.meshlet_count = static_cast<uint32_t>(data->meshlets.size());
-            address.index_count = static_cast<uint32_t>(data->indices.size());
-            if (!slot.allocated)
-            {
-                data->vertices.resize(GeometryPage::max_corners);
-                data->indices.resize(GeometryPage::max_corners);
-                data->meshlets.resize(GeometryPage::max_triangles);
-                data->remaps.resize(GeometryPage::max_corners);
-                data->micro.resize(GeometryPage::max_corners);
-                address.vertices = AppendVertices(data->vertices.data(), GeometryPage::max_corners);
-                address.indices = AppendIndices(data->indices.data(), GeometryPage::max_corners);
-                address.meshlets = AppendMeshletBounds(data->meshlets.data(), GeometryPage::max_triangles);
-                address.remaps = AppendMeshletVertices(data->remaps.data(), GeometryPage::max_corners);
-                address.micro = AppendMeshletMicroIndices(data->micro.data(), GeometryPage::max_corners);
-                slot.allocated = true;
-            }
-            else
-            {
-                UpdateVertices(data->vertices.data(), address.vertices, static_cast<uint32_t>(data->vertices.size()));
-                UpdateIndices(data->indices.data(), address.indices, static_cast<uint32_t>(data->indices.size()));
-                UpdateMeshletBounds(data->meshlets.data(), address.meshlets, address.meshlet_count);
-                UpdateMeshletVertices(data->remaps.data(), address.remaps, static_cast<uint32_t>(data->remaps.size()));
-                UpdateMeshletMicroIndices(data->micro.data(), address.micro, static_cast<uint32_t>(data->micro.size()));
-            }
-            slot.uploaded = true;
-            ++page_statistics.uploads;
         }
         for (size_t i = budget; i < page_slots.size(); ++i)
         {
             auto& slot = page_slots[i];
             if (!slot.read.valid() && slot.source)
             {
-                page_lookup.erase(slot.source.get());
+                slot.source->slot_index = UINT32_MAX;
                 slot.source.reset();
-                slot.uploaded = false;
+                if (slot.uploaded)
+                {
+                    slot.uploaded = false;
+                    if (resident_page_count > 0) --resident_page_count;
+                }
                 ++page_statistics.evictions;
             }
         }
-        for (const auto& request : wanted)
+        if (!wanted.empty() && pending_page_reads < geometry_reads_in_flight)
         {
-            if (pending_page_reads >= geometry_reads_in_flight) break;
-            const auto found = page_lookup.find(request.source.get());
-            if (found != page_lookup.end())
+            const size_t max_new_reads = geometry_reads_in_flight - pending_page_reads;
+            if (wanted.size() > max_new_reads)
             {
-                auto& slot = page_slots[found->second];
-                if (!slot.failed || frame - slot.last_request < 120) continue;
-                slot.source.reset();
-                page_lookup.erase(found);
-            }
-            size_t index = page_slots.size();
-            if (index < budget) page_slots.emplace_back();
-            else
-            {
-                uint64_t oldest = frame;
-                for (size_t i = 0; i < budget; ++i)
+                auto higher_priority = [](const PageRequest& a, const PageRequest& b)
                 {
-                    const auto& slot = page_slots[i];
-                    if (!slot.source) { index = i; break; }
-                    if (!slot.read.valid() && slot.last_request < oldest)
+                    return a.error == b.error ? less<const GeometryPageSource*>{}(a.source.get(), b.source.get()) : a.error > b.error;
+                };
+                partial_sort(wanted.begin(), wanted.begin() + max_new_reads, wanted.end(), higher_priority);
+            }
+            else if (wanted.size() > 1)
+            {
+                auto higher_priority = [](const PageRequest& a, const PageRequest& b)
+                {
+                    return a.error == b.error ? less<const GeometryPageSource*>{}(a.source.get(), b.source.get()) : a.error > b.error;
+                };
+                sort(wanted.begin(), wanted.end(), higher_priority);
+            }
+
+            // Gather up to max_new_reads oldest evictable slots in ONE linear pass instead of scanning all 6k slots per read.
+            size_t evict_candidates[geometry_reads_in_flight];
+            uint64_t evict_ages[geometry_reads_in_flight];
+            size_t evict_count = 0;
+            size_t evict_cursor = 0;
+            bool evict_scanned = false;
+            auto gather_evict_candidates = [&]()
+            {
+                if (evict_scanned) return;
+                evict_scanned = true;
+                size_t worst_pos = 0;
+                uint64_t worst_age = 0;
+                const size_t limit = min(budget, page_slots.size());
+                for (size_t i = 0; i < limit; ++i)
+                {
+                    const auto& s = page_slots[i];
+                    if (s.read.valid()) continue;
+                    const uint64_t age = s.source ? s.last_request : 0u;
+                    if (s.source && age >= frame) continue;
+                    if (evict_count < max_new_reads)
                     {
-                        oldest = slot.last_request;
-                        index = i;
+                        evict_candidates[evict_count] = i;
+                        evict_ages[evict_count] = age;
+                        if (age >= worst_age)
+                        {
+                            worst_age = age;
+                            worst_pos = evict_count;
+                        }
+                        ++evict_count;
+                        if (evict_count == max_new_reads)
+                        {
+                            worst_pos = 0;
+                            worst_age = evict_ages[0];
+                            for (size_t k = 1; k < evict_count; ++k)
+                            {
+                                if (evict_ages[k] > worst_age)
+                                {
+                                    worst_age = evict_ages[k];
+                                    worst_pos = k;
+                                }
+                            }
+                        }
+                    }
+                    else if (age < worst_age)
+                    {
+                        evict_candidates[worst_pos] = i;
+                        evict_ages[worst_pos] = age;
+                        worst_pos = 0;
+                        worst_age = evict_ages[0];
+                        for (size_t k = 1; k < evict_count; ++k)
+                        {
+                            if (evict_ages[k] > worst_age)
+                            {
+                                worst_age = evict_ages[k];
+                                worst_pos = k;
+                            }
+                        }
                     }
                 }
-                if (index >= budget) continue;
-            }
-            auto& slot = page_slots[index];
-            if (slot.source)
+            };
+
+            for (const auto& request : wanted)
             {
-                page_lookup.erase(slot.source.get());
-                ++page_statistics.evictions;
+                if (pending_page_reads >= geometry_reads_in_flight) break;
+                const size_t found_idx = find_page_slot(request.source.get());
+                if (found_idx != SIZE_MAX)
+                {
+                    auto& slot = page_slots[found_idx];
+                    if (!slot.failed || frame - slot.last_request < 120) continue;
+                    slot.source->slot_index = UINT32_MAX;
+                    slot.source.reset();
+                }
+                size_t index = page_slots.size();
+                if (index < budget) page_slots.emplace_back();
+                else
+                {
+                    gather_evict_candidates();
+                    if (evict_cursor >= evict_count) break;
+                    index = evict_candidates[evict_cursor++];
+                }
+                auto& slot = page_slots[index];
+                if (slot.source)
+                {
+                    slot.source->slot_index = UINT32_MAX;
+                    if (slot.uploaded)
+                    {
+                        slot.uploaded = false;
+                        if (resident_page_count > 0) --resident_page_count;
+                    }
+                    ++page_statistics.evictions;
+                }
+                slot.source = request.source;
+                slot.source->slot_index = static_cast<uint32_t>(index);
+                slot.last_request = frame;
+                slot.last_counted_frame = frame;
+                slot.uploaded = slot.failed = false;
+                slot.decoded = make_shared<GeometryPage>();
+                slot.read = ThreadPool::AddTask([source = slot.source, page = slot.decoded]()
+                {
+                    vector<uint8_t> bytes;
+                    if (!source->Read(bytes) || !page->Decode(bytes)) page->meshlets.clear();
+                });
+                pending_read_slots.push_back(static_cast<uint32_t>(index));
+                ++pending_page_reads;
             }
-            slot.source = request.source;
-            slot.last_request = frame;
-            slot.uploaded = slot.failed = false;
-            slot.decoded = make_shared<GeometryPage>();
-            slot.read = ThreadPool::AddTask([source = slot.source, page = slot.decoded]()
-            {
-                vector<uint8_t> bytes;
-                if (!source->Read(bytes) || !page->Decode(bytes)) page->meshlets.clear();
-            });
-            ++pending_page_reads;
-            page_lookup[slot.source.get()] = index;
         }
-        page_statistics.resident = static_cast<uint32_t>(count_if(page_slots.begin(), page_slots.end(),
-            [](const auto& slot) { return slot.uploaded; }));
+        page_statistics.resident = resident_page_count;
         page_statistics.pending = static_cast<uint32_t>(pending_page_reads);
         page_requests.clear();
     }
@@ -798,7 +1013,7 @@ namespace spartan
                 return static_cast<uint32_t>(default_grown_count);
             };
 
-            constexpr uint64_t max_slack_bytes = 16ull * 1024ull * 1024ull;
+            const uint64_t max_slack_bytes = RHI_Device::MemoryGetTotalMb() >= 10000 ? (64ull * 1024ull * 1024ull) : (16ull * 1024ull * 1024ull);
             uint32_t new_vertex_capacity         = max(add_headroom(max(vertex_count, vertex_reserve), sizeof(RHI_Vertex_PosTexNorTan), max_slack_bytes), vertex_capacity);
             uint32_t new_index_capacity          = max(add_headroom(max(index_count, index_reserve), sizeof(uint32_t), max_slack_bytes), index_capacity);
             uint32_t new_meshlet_bounds_capacity = max(add_headroom(max(meshlet_bounds_count, meshlet_bounds_reserve), sizeof(Sb_MeshletBounds), max_slack_bytes), max(meshlet_bounds_capacity, 1u));
@@ -948,6 +1163,8 @@ namespace spartan
         upload_tail(instances, instance_buffer.get());
         resident_vertices.store(vertices.committed, memory_order_release);
         resident_indices.store(indices.committed, memory_order_release);
+        cached_resident_vertices = vertices.committed;
+        cached_resident_indices  = indices.committed;
 
         dirty = false;
     }
@@ -1011,13 +1228,23 @@ namespace spartan
         vector<uint32_t> counts;
         constexpr uint64_t key = 1;
         if (!generated_cache::Load(generated_cache::Path(resources, "geometry_capacity", key), key, counts) || counts.size() != 6) return;
-        const uint64_t bytes = uint64_t(counts[0]) * sizeof(RHI_Vertex_PosTexNorTan) +
-            uint64_t(counts[1]) * sizeof(uint32_t) + uint64_t(counts[2]) * sizeof(Sb_MeshletBounds) +
-            uint64_t(counts[3]) * sizeof(uint32_t) + uint64_t(counts[4]) * sizeof(uint8_t) + uint64_t(counts[5]) * sizeof(Instance);
+        const size_t budget = effective_page_budget();
+        const uint32_t reserve_slots = page_pool_reserve_slots(budget);
+        const uint32_t pool_corners = reserve_slots * GeometryPage::max_corners;
+        const uint32_t pool_meshlets = reserve_slots * GeometryPage::max_triangles;
+        const uint32_t v_cap = counts[0] + pool_corners;
+        const uint32_t i_cap = counts[1] + pool_corners;
+        const uint32_t mb_cap = counts[2] + pool_meshlets;
+        const uint32_t mv_cap = counts[3] + pool_corners;
+        const uint32_t mm_cap = counts[4] + pool_corners;
+        const uint64_t bytes = uint64_t(v_cap) * sizeof(RHI_Vertex_PosTexNorTan) +
+            uint64_t(i_cap) * sizeof(uint32_t) + uint64_t(mb_cap) * sizeof(Sb_MeshletBounds) +
+            uint64_t(mv_cap) * sizeof(uint32_t) + uint64_t(mm_cap) * sizeof(uint8_t) + uint64_t(counts[5]) * sizeof(Instance);
         // A corrupt/stale hint must not request an unbounded allocation. the floors
         // size the first gpu allocation only; appends still initialize and validate all data.
         if (bytes > 16ull * 1024 * 1024 * 1024) return;
-        Reserve(counts[0], counts[1], counts[2], counts[3], counts[4], counts[5]);
+        page_pool_reserved = reserve_slots > 0;
+        Reserve(v_cap, i_cap, mb_cap, mv_cap, mm_cap, counts[5]);
     }
 
     void GeometryBuffer::SaveWorldLoadCapacity(const string& resources)
@@ -1035,9 +1262,16 @@ namespace spartan
     {
         page_requests.clear();
         page_statistics = {};
-        page_lookup.clear();
+        for (auto& slot : page_slots)
+        {
+            if (slot.source) slot.source->slot_index = UINT32_MAX;
+        }
         page_slots.clear();
+        pending_read_slots.clear();
         pending_page_reads = 0;
+        resident_page_count = 0;
+        resident_requests_this_frame = 0;
+        page_pool_reserved = false;
         vertex_buffer              = nullptr;
         index_buffer               = nullptr;
         meshlet_bounds_buffer      = nullptr;
@@ -1052,6 +1286,8 @@ namespace spartan
         indices.reset();
         resident_vertices.store(0, memory_order_release);
         resident_indices.store(0, memory_order_release);
+        cached_resident_vertices = 0;
+        cached_resident_indices  = 0;
         meshlet_bounds.reset();
         meshlet_vertices.reset();
         meshlet_micro_indices.reset();

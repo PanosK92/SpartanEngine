@@ -169,12 +169,14 @@ float2 rt_trace_canopy_transmission(float3 origin, float3 direction, float t_max
         if (hit_is_foliage && material.subsurface_scattering > 0.0f)
         {
             // Attenuate deterministically per translucent leaf sheet (zero per-frame flicker for SIGMA)
-            if (optical_depth < 4.8f)
-            {
-                optical_depth += lerp(0.95f, 0.52f, saturate(material.subsurface_scattering));
-            }
+            optical_depth    += lerp(0.95f, 0.52f, saturate(material.subsurface_scattering));
             nearest_foliage_t = min(nearest_foliage_t, distance);
             hit_foliage       = true;
+            if (optical_depth >= 2.6f)
+            {
+                query.Abort();
+                break;
+            }
             continue;
         }
         query.CommitNonOpaqueTriangleHit();

@@ -43,25 +43,33 @@ namespace spartan::layered_road_surface
             prefix=layer==0 ? "asphalt_" : "paint_";
             suffix=".jpg";
         }
-        auto texture=[&](MaterialTextureType type,const char* channel)
+        auto path_for = [&](const char* channel)
         {
-            material->SetTexture(type,(directory/(prefix+channel+suffix)).generic_string());
+            return (directory/(prefix+channel+suffix)).generic_string();
         };
-        texture(MaterialTextureType::Color,"diff");
-        texture(MaterialTextureType::Normal,"nor_gl");
-        texture(MaterialTextureType::Roughness,"rough");
-        texture(MaterialTextureType::Occlusion,"ao");
+        material->SetTexture(MaterialTextureType::Color, path_for("diff"));
+        material->SetTexture(MaterialTextureType::Normal, path_for("nor_gl"));
+        material->SetPackedSources(
+            0,
+            path_for("ao"),
+            path_for("rough"),
+            std::string{},
+            layer != 2 ? path_for("height") : std::string{}
+        );
         if (layer!=2)
         {
-            texture(MaterialTextureType::Height,"height");
             const std::filesystem::path detail_dir = config.layered_roads_material_dir;
             if (std::filesystem::is_regular_file(detail_dir / "asphalt_track_diff_4k.jpg"))
             {
-                material->SetTexture(MaterialTextureType::Color,     (detail_dir / "asphalt_track_diff_4k.jpg").generic_string(),   1);
-                material->SetTexture(MaterialTextureType::Normal,    (detail_dir / "asphalt_track_nor_gl_4k.jpg").generic_string(), 1);
-                material->SetTexture(MaterialTextureType::Roughness, (detail_dir / "asphalt_track_rough_4k.jpg").generic_string(),  1);
-                material->SetTexture(MaterialTextureType::Occlusion, (detail_dir / "asphalt_track_ao_4k.jpg").generic_string(),     1);
-                material->SetTexture(MaterialTextureType::Height,    (detail_dir / "asphalt_track_height_4k.png").generic_string(), 1);
+                material->SetTexture(MaterialTextureType::Color,  (detail_dir / "asphalt_track_diff_4k.jpg").generic_string(),   1);
+                material->SetTexture(MaterialTextureType::Normal, (detail_dir / "asphalt_track_nor_gl_4k.jpg").generic_string(), 1);
+                material->SetPackedSources(
+                    1,
+                    (detail_dir / "asphalt_track_ao_4k.jpg").generic_string(),
+                    (detail_dir / "asphalt_track_rough_4k.jpg").generic_string(),
+                    std::string{},
+                    (detail_dir / "asphalt_track_height_4k.png").generic_string()
+                );
             }
         }
         material->SetColor(layer==2 ? Color(.66f,.63f,.58f,1) : Color(1,1,1,1));

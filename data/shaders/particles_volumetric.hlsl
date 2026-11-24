@@ -15,7 +15,7 @@ static const uint particle_render_billboard   = 0u;
 static const uint particle_render_volumetric  = 1u;
 static const uint volume_width                = 160u;
 static const uint volume_height               = 90u;
-static const uint volume_depth                = 128u;
+static const uint volume_depth                = 64u;
 static const uint volume_voxel_count          = volume_width * volume_height * volume_depth;
 // depth is split exponentially the way the fog volume is, a linear split put the slices a metre and a
 // half apart which is wider than an entire plume, so every particle in it landed in one slice and the
@@ -37,7 +37,7 @@ static const float volume_shadow_min_light    = 0.12f;
 static const float volume_sky_fill            = 0.18f;
 // marching toward the light is what puts a lit face and a shaded core on the plume, and that gradient
 // is the main thing the eye reads as volume, a metre and a half covers one billow
-static const uint  volume_shadow_taps         = 4u;
+static const uint  volume_shadow_taps         = 2u;
 static const float volume_shadow_length       = 1.60f;
 // a multiplier on the view ray extinction rather than an absolute density, the old three point two was
 // there to make a field clamped at one cast a visible shadow at all, and with the clamp gone it would
@@ -689,7 +689,7 @@ float3 evaluate_volume_lighting(float3 sample_pos, float3 ray_direction, uint2 p
 
         // this runs once per ray march step per pixel, so an uncapped cluster multiplies the whole
         // composite by the local light count, the nearest few carry the look
-        const uint max_local_lights = 4u;
+        const uint max_local_lights = 2u;
         uint light_count = min(range.y, max_local_lights);
 
         [loop]
@@ -728,11 +728,11 @@ float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance
     // a few metres deep in a shot that is twenty five to the wall behind it, so the samples that actually
     // landed inside the smoke sat half a metre apart and nothing finer than that could resolve however
     // fine the noise got, step long through empty space and short once inside the medium instead
-    const uint  max_steps     = 112u;
+    const uint  max_steps     = 32u;
     const float enter_density = 0.002f;
-    float coarse_step = clamp(scene_distance / 64.0f, 0.12f, 0.30f);
+    float initial_step = max(0.38f, volume_slice_thickness(0.0f) * 3.5f);
 
-    float t = jitter * coarse_step;
+    float t = jitter * initial_step;
     float3 lighting = 0.0f;
     uint light_phase = 0u;
     bool in_medium = false;
@@ -740,16 +740,17 @@ float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance
     [loop]
     for (uint i = 0u; i < max_steps; i++)
     {
-        if (t >= scene_distance || transmittance < 0.01f)
+        if (t >= scene_distance || transmittance < 0.025f)
         {
             break;
         }
 
         float3 sample_pos = get_camera_position() + ray_direction * t;
         float4 sample = volume_medium(float3(uv, volume_distance_to_slice(t)), sample_pos);
+        float empty_step = max(0.38f, volume_slice_thickness(t) * 3.5f);
         if (sample.a <= enter_density)
         {
-            t += coarse_step;
+            t += empty_step;
             light_phase = 0u;
             in_medium = false;
             continue;
@@ -759,7 +760,7 @@ float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance
         if (!in_medium)
         {
             in_medium = true;
-            float back_t = max(t - 0.5f * coarse_step, 0.0f);
+            float back_t = max(t - 0.5f * empty_step, 0.0f);
             float3 back_pos = get_camera_position() + ray_direction * back_t;
             float4 back_sample = volume_medium(float3(uv, volume_distance_to_slice(back_t)), back_pos);
             if (back_sample.a > enter_density)
@@ -770,21 +771,20 @@ float4 march_particle_volume(uint2 pixel, float3 scene_pos, float scene_distance
             }
         }
 
-        // Resolve dense billows at half a slice, but spend fewer samples in the thin
-        // dissipating fringe. Range still controls the step through the grid spacing.
-        float slice_fraction = lerp(1.2f, 0.5f, saturate(sample.a * 2.0f));
-        float fine_step = clamp(volume_slice_thickness(t) * slice_fraction, 0.05f, 0.5f);
+        // Resolve dense billows cleanly while spending fewer samples in thin fringes.
+        float slice_fraction = lerp(1.4f, 0.75f, saturate(sample.a * 2.0f));
+        float fine_step = clamp(volume_slice_thickness(t) * slice_fraction, 0.08f, 0.65f);
         float density = volume_carve_density(sample.a, sample_pos, time, sample.g);
 
         if (density > 0.0001f)
         {
             // the light march is the expensive part and the beam does not change much across a tenth of a
-            // metre, so it is refreshed every third sample and reused in between
+            // metre, so it is refreshed every fourth sample and reused in between
             if (light_phase == 0u)
             {
                 lighting = evaluate_volume_lighting(sample_pos, ray_direction, pixel, uv, time);
             }
-            light_phase = (light_phase + 1u) % 3u;
+            light_phase = (light_phase + 1u) % 4u;
 
             float optical_depth = density * fine_step * volume_extinction_scale;
 
@@ -827,7 +827,8 @@ float3 particle_scene_position(uint2 pixel)
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    uint2 base = thread_id.xy * 2u;
+    uint2 tile_offset = uint2(pass_uint(pass_particles_volumetric::tile_offset_x), pass_uint(pass_particles_volumetric::tile_offset_y));
+    uint2 base = (thread_id.xy + tile_offset * 8u) * 2u;
     uint2 dimensions = uint2(get_render_resolution_active());
     if (any(base >= dimensions)) return;
     uint phase = buffer_frame.frame & 3u;
@@ -835,6 +836,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 scene = particle_scene_position(origin);
     float distance0 = min(length(scene - get_camera_position()), volume_max_distance);
     float4 shared_medium = march_particle_volume(origin, scene, distance0);
+    bool shared_empty = !any(shared_medium.rgb > 0.0f) && shared_medium.a >= 0.999f;
     // The 3D density grid varies slowly over a pixel quad. At silhouettes,
     // integrate to the actual receiver so foreground objects still clip smoke.
     [unroll] for (uint i = 0u; i < 4u; ++i)
@@ -847,7 +849,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float3 other = particle_scene_position(pixel);
             float d = min(length(other - get_camera_position()), volume_max_distance);
             if (abs(d - distance0) > max(0.03f, 0.005f * min(d, distance0)))
-                medium = march_particle_volume(pixel, other, d);
+            {
+                // If the ray up to distance0 contained zero smoke, any strictly closer silhouette
+                // prefix along the same 2x2 pixel quad is also empty; skip redundant raymarching.
+                if (!(shared_empty && d <= distance0))
+                {
+                    medium = march_particle_volume(pixel, other, d);
+                }
+            }
         }
         if (!any(medium.rgb > 0.0f) && medium.a >= 0.999f) continue;
         float4 frame = tex_uav[pixel];

@@ -153,12 +153,12 @@ namespace spartan
             "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
         TConsoleVar<bool> cvar_gbuffer_scatter_first("r.gbuffer_scatter_first", true,
             "rasterize gpu scatter before the opaque g-buffer so the ground it hides is never shaded; disable for comparison");
-        TConsoleVar<float> cvar_grass_thin_distance("r.grass_thin_distance", 10.0f,
+        TConsoleVar<float> cvar_grass_thin_distance("r.grass_thin_distance", 7.0f,
             "distance in metres past which a grass blade ring thins out towards the density of the ring after it, every blade nearer than that is kept; 0 keeps every blade");
         TConsoleVar<float> cvar_scatter_blend_distance("r.scatter_blend_distance", 8.0f,
             "distance in metres past which scattered detail such as pebbles sinks to its dirt line instead of blending with the ground, handed over chip by chip up to twice as far; 0 blends every chip");
         // 6.25 cm cells (matching TerrainDeformation) resolve both distant tire tracks and discrete footprints (64 MiB total).
-        constexpr uint32_t grass_interaction_resolution = 2048;
+        constexpr uint32_t grass_interaction_resolution = 1024;
         constexpr float grass_interaction_size = 128.0f;
         TConsoleVar<float> cvar_grass_track_radius("r.grass_track_radius", 48.0f,
             "distance from the car in metres within which pressed grass stays down (1 to 52)");
@@ -317,14 +317,14 @@ namespace spartan
 
         // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
         const float gpu_scatter_fill_margin = 0.85f;
-        // has to match grass_blades_per_thread in grass_populate.hlsl
+        // has to match grass_blades_per_thread in grass_placement.hlsl
         const uint32_t gpu_scatter_blades_per_thread = 1;
 
         // has to match grass_patch_max_boost in grass_populate.hlsl
         const float gpu_scatter_patch_max_boost = 4.0f;
 
         // has to match grass_max_boost in grass_populate.hlsl, this is what bounds the dispatch
-        const float gpu_scatter_max_boost = 12.0f;
+        const float gpu_scatter_max_boost = 8.0f;
 
         // distance thinning of a blade ring starts no nearer than this many times the height of the camera over the ground
         const float gpu_scatter_thin_clearance_reach = 2.5f;
@@ -1485,7 +1485,7 @@ namespace spartan
         RHI_CommandList::BeginPass(late ? "instance_cull_late" : "instance_cull");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::instance_cull_c));
-            RHI_CommandList::SetBuffer("instance_visibility", EnsureBufferCapacity(Renderer_Buffer::InstanceVisibility, sizeof(uint32_t), m_cull_task_count * (INSTANCE_CULL_BATCH_SIZE / 32u), "instance_visibility"));
+            RHI_CommandList::SetBuffer("instance_visibility", EnsureBufferCapacity(Renderer_Buffer::InstanceVisibility, sizeof(uint32_t), m_cull_task_count * (INSTANCE_CULL_BATCH_SIZE / 16u), "instance_visibility"));
 
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_hiz);
 
@@ -1987,6 +1987,10 @@ namespace spartan
             {
                 // the alpha variant compiles GBUFFER_ALPHA so it keeps the alpha survivors instead of the opaque ones
                 pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(Renderer_Shader::meshlet_mesh_alpha_m);
+                if (RHI_Shader* alpha_ps = GetShader(Renderer_Shader::gbuffer_alpha_p); alpha_ps && alpha_ps->IsCompiled())
+                {
+                    pso.shaders[RHI_Shader_Type::Pixel] = alpha_ps;
+                }
             }
             RHI_CommandList::SetPipelineState(pso);
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
@@ -1999,6 +2003,10 @@ namespace spartan
                 // Batched impostor quads: 16 quads per 64-thread workgroup, ReadEqual matches depth_prepass_impostor_mesh
                 pso.name                                 = "g_buffer_impostor_mesh";
                 pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(Renderer_Shader::impostor_mesh_m);
+                if (RHI_Shader* impostor_ps = GetShader(Renderer_Shader::gbuffer_impostor_p); impostor_ps && impostor_ps->IsCompiled())
+                {
+                    pso.shaders[RHI_Shader_Type::Pixel] = impostor_ps;
+                }
                 RHI_CommandList::SetPipelineState(pso);
                 RHI_CommandList::SetCullMode(RHI_CullMode::None);
                 bind_mesh_shader_geometry();
@@ -2177,9 +2185,11 @@ namespace spartan
             return;
         }
 
-        // snapshot the finished post-fog frame when any visible transparent needs frosted, thick-walled, or rain-droplet refraction
+        // Collect visible transparent draws once (avoids scanning all opaque draws twice) and check refraction demand.
+        static vector<uint32_t> visible_transparent_draws;
+        visible_transparent_draws.clear();
         bool needs_refraction_source = Renderer::view().frame.rain_vehicle.x > 0.0f || Renderer::view().frame.rain_car_atlas.x > 0.0f;
-        for (uint32_t i = 0; i < m_draw_call_count && !needs_refraction_source; i++)
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             if (!draw_call.is_transparent || !draw_call.camera_visible)
@@ -2191,12 +2201,17 @@ namespace spartan
             {
                 continue;
             }
-            if (material->GetProperty(MaterialProperty::AlphaBlend) <= 0.0f &&
+            visible_transparent_draws.push_back(i);
+            if (!needs_refraction_source &&
+                material->GetProperty(MaterialProperty::AlphaBlend) <= 0.0f &&
                 (material->GetProperty(MaterialProperty::ThinWalled) == 0.0f || material->GetProperty(MaterialProperty::Roughness) > 0.06f))
             {
                 needs_refraction_source = true;
-                break;
             }
+        }
+        if (visible_transparent_draws.empty())
+        {
+            return;
         }
 
         RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
@@ -2264,19 +2279,27 @@ namespace spartan
             m_pcb_pass_cpu.eye_index      = IsStereoView() ? eye : 0;
             m_pcb_pass_cpu.is_transparent = 1;
             m_pcb_pass_cpu.set(pass_transparent::mip_count, tex_skysphere ? static_cast<float>(tex_skysphere->GetMipCount()) : 1.0f);
-            m_pcb_pass_cpu.set(pass_transparent::light_count, m_count_active_lights);
+            m_pcb_pass_cpu.set(pass_transparent::light_count, m_count_shading_lights);
             m_pcb_pass_cpu.set(pass_transparent::ray_traced_reflections, use_rt_reflections);
             m_pcb_pass_cpu.set(pass_transparent::has_refraction_source, needs_refraction_source && tex_refraction != nullptr);
             m_pcb_pass_cpu.set(pass_transparent::apply_fog, !IsSecondaryViewActive());
 
             bool pipeline_set = false;
-            vector<ClusterDrawRange> cluster_ranges;
+            static vector<ClusterDrawRange> cluster_ranges;
             RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+            RHI_Buffer* last_vb = nullptr;
+            RHI_Buffer* last_ib = nullptr;
+            RHI_CullMode last_cull_mode = RHI_CullMode::Max;
 
-            auto issue_draw = [&](Render* render, const Renderer_DrawCall& draw_call)
+            auto issue_draw = [&](Render* render, const Renderer_DrawCall& draw_call, bool has_clusters)
             {
-                if (draw_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
+                if (has_clusters)
                 {
+                    const uint32_t instance_offset = render->GetGlobalInstanceOffset() + draw_call.instance_index;
+                    for (const ClusterDrawRange& range : cluster_ranges)
+                    {
+                        RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset, instance_offset, draw_call.instance_count);
+                    }
                     return;
                 }
                 RHI_CommandList::DrawIndexed(
@@ -2288,19 +2311,36 @@ namespace spartan
                 );
             };
 
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            Camera* view_camera      = GetViewCamera();
+            const float render_h     = GetResolutionRender().y;
+            const bool is_persp      = view_camera && view_camera->GetProjectionType() == Projection_Perspective;
+            const float focal        = view_camera ? abs(view_camera->GetProjectionMatrix().m11) * render_h * 0.5f : render_h;
+            const float near_plane   = view_camera ? view_camera->GetNearPlane() : 0.1f;
+            const Vector3 cam_pos    = view_camera ? view_camera->GetEntity()->GetPosition() : Vector3::Zero;
+            const Vector3 cam_fwd    = view_camera ? view_camera->GetEntity()->GetForward() : Vector3::Forward;
+            for (const uint32_t i : visible_transparent_draws)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                if (!draw_call.is_transparent || !draw_call.camera_visible)
-                {
-                    continue;
-                }
-
                 Render* render     = draw_call.render;
                 Material* material = render->GetMaterial();
-                if (!material || material->GetProperty(MaterialProperty::IsWater) != 0.0f || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
+
+                const BoundingBox& box = render->GetBoundingBox();
+                const float dist_sq    = Vector3::DistanceSquared(box.GetCenter(), cam_pos);
+                // Skip distant non-water transparent meshes (far building windows, traffic glass) before binding state.
+                if (is_persp && material->GetProperty(MaterialProperty::IsWater) == 0.0f)
                 {
-                    continue;
+                    if (dist_sq > 250.0f * 250.0f)
+                    {
+                        continue;
+                    }
+                    if (dist_sq > 35.0f * 35.0f)
+                    {
+                        const float radius = box.GetExtents().Length();
+                        if (radius * 2.0f * focal < 5.0f * sqrt(dist_sq))
+                        {
+                            continue;
+                        }
+                    }
                 }
 
                 const bool is_tessellated = material->IsTessellated();
@@ -2311,29 +2351,67 @@ namespace spartan
                     pso.shaders[RHI_Shader_Type::Hull]   = hull;
                     pso.shaders[RHI_Shader_Type::Domain] = domain;
                     RHI_CommandList::SetPipelineState(pso);
-                    pipeline_set = true;
+                    pipeline_set   = true;
+                    last_vb        = nullptr;
+                    last_ib        = nullptr;
+                    last_cull_mode = RHI_CullMode::Max;
                 }
 
                 m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
                 m_pcb_pass_cpu.material_index = material->GetIndex();
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-                RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
-                RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
+                RHI_Buffer* vb = render->GetVertexBuffer();
+                RHI_Buffer* ib = render->GetIndexBuffer();
+                if (vb != last_vb)
+                {
+                    RHI_CommandList::SetBufferVertex(vb, instance_buffer);
+                    last_vb = vb;
+                }
+                if (ib != last_ib)
+                {
+                    RHI_CommandList::SetBufferIndex(ib);
+                    last_ib = ib;
+                }
+
+                // Resolve virtual geometry cluster ranges once per draw (skip past 35 m where root LOD suffices for glass).
+                bool has_clusters = false;
+                if (dist_sq < 35.0f * 35.0f)
+                {
+                    if (Mesh* mesh = render->GetMesh(); mesh && !mesh->GetSubMesh(render->GetSubMeshIndex()).HasResidentRootOnly() && !mesh->GetSubMesh(render->GetSubMeshIndex()).clusters.empty())
+                    {
+                        has_clusters = cluster_draw_ranges(*mesh, render->GetSubMeshIndex(), render->GetEntity()->GetMatrix(),
+                            [&](const BoundingBox& world)
+                            {
+                                const float depth = is_persp
+                                    ? max(near_plane, Vector3::Dot(world.GetCenter() - cam_pos, cam_fwd) - world.GetExtents().Length())
+                                    : 1.0f;
+                                return focal / depth;
+                            }, cluster_ranges);
+                    }
+                }
 
                 const RHI_CullMode cull_mode = IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-                if (cull_mode == RHI_CullMode::None && !IsViewWireframe())
+                if (cull_mode == RHI_CullMode::None && !IsViewWireframe() && dist_sq < 20.0f * 20.0f)
                 {
-                    // draw backfaces before frontfaces so curved/enclosed glass shells layer far walls behind near walls
-                    RHI_CommandList::SetCullMode(RHI_CullMode::Front);
-                    issue_draw(render, draw_call);
+                    // draw backfaces before frontfaces so nearby curved/enclosed glass shells layer far walls behind near walls
+                    if (last_cull_mode != RHI_CullMode::Front)
+                    {
+                        RHI_CommandList::SetCullMode(RHI_CullMode::Front);
+                    }
+                    issue_draw(render, draw_call, has_clusters);
                     RHI_CommandList::SetCullMode(RHI_CullMode::Back);
-                    issue_draw(render, draw_call);
+                    last_cull_mode = RHI_CullMode::Back;
+                    issue_draw(render, draw_call, has_clusters);
                 }
                 else
                 {
-                    RHI_CommandList::SetCullMode(cull_mode);
-                    issue_draw(render, draw_call);
+                    if (last_cull_mode != cull_mode)
+                    {
+                        RHI_CommandList::SetCullMode(cull_mode);
+                        last_cull_mode = cull_mode;
+                    }
+                    issue_draw(render, draw_call, has_clusters);
                 }
             }
         }

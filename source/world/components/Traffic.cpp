@@ -178,7 +178,9 @@ namespace spartan
 
         const float delta_time = std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
         const vector<Car*> cars = Car::GetAll();
-        unordered_set<Car*> car_set(cars.begin(), cars.end());
+        static vector<Car*> sorted_cars;
+        sorted_cars = cars;
+        std::sort(sorted_cars.begin(), sorted_cars.end());
         Camera* camera = World::GetCamera();
         Vector3 player_position;
         Vector3 player_velocity;
@@ -186,7 +188,7 @@ namespace spartan
 
         for (Driver& driver : m_drivers)
         {
-            if (!driver.car || car_set.find(driver.car) == car_set.end())
+            if (!driver.car || !std::binary_search(sorted_cars.begin(), sorted_cars.end(), driver.car))
             {
                 driver.car = nullptr;
                 driver.entity = nullptr;
@@ -217,14 +219,18 @@ namespace spartan
                 driver.road_elapsed += delta_time;
                 // Batch pose updates on distant, offscreen spline cars. Moving one chassis
                 // also updates every mesh in its hierarchy.
-                if (!driver.physics_active && camera && driver.road_elapsed < 0.1f)
+                if (!driver.physics_active && camera && driver.road_elapsed < 0.14f)
                 {
                     const Vector3 center = driver.entity->GetPosition();
-                    const Vector3 extent(10.0f);
-                    if (Vector3::DistanceSquared(center, camera->GetEntity()->GetPosition()) > 150.0f * 150.0f &&
-                        (World::GetWorkCounterTick() + driver.entity->GetObjectId()) % 4 != 0 &&
-                        !camera->IsInViewFrustum(BoundingBox(center - extent, center + extent)))
-                        continue;
+                    const float cam_dist_sq = Vector3::DistanceSquared(center, camera->GetEntity()->GetPosition());
+                    if (cam_dist_sq > 60.0f * 60.0f)
+                    {
+                        const uint64_t interval = cam_dist_sq > 200.0f * 200.0f ? 8ull : 4ull;
+                        const Vector3 extent(10.0f);
+                        if ((World::GetWorkCounterTick() + driver.entity->GetObjectId()) % interval != 0 &&
+                            !camera->IsInViewFrustum(BoundingBox(center - extent, center + extent)))
+                            continue;
+                    }
                 }
                 UpdateRoadDriver(driver, driver.physics_active ? delta_time : driver.road_elapsed, has_player, player_position, player_velocity);
                 driver.road_elapsed = 0.0f;

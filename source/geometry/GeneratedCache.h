@@ -28,11 +28,13 @@ namespace spartan::generated_cache
     inline std::mutex statistics_mutex;
     inline std::map<std::string, Statistics> statistics;
     inline auto session_started = std::filesystem::file_time_type::clock::now();
+    void ClearTouched();
     inline void ResetStatistics()
     {
         std::lock_guard lock(statistics_mutex);
         statistics.clear();
         session_started = std::filesystem::file_time_type::clock::now();
+        ClearTouched();
     }
     inline std::vector<std::string> GetStatistics()
     {
@@ -106,7 +108,7 @@ namespace spartan::generated_cache
     struct MaintenanceResult { uint64_t removed = 0, bytes_removed = 0; };
     // Evict unused history, retaining this session's working set even if it
     // exceeds the soft budget. Otherwise large worlds rebuild on every load.
-    MaintenanceResult Maintain(const std::string& world_resources, uint64_t budget = 2ull * 1024 * 1024 * 1024);
+    MaintenanceResult Maintain(const std::string& world_resources, uint64_t budget = 4ull * 1024 * 1024 * 1024);
 
     template<typename... Vectors> bool Decode(std::span<const uint8_t> bytes, Vectors&... output) try
     {

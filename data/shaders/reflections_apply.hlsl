@@ -261,33 +261,45 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 #ifdef RAY_TRACING_ENABLED
         if (cell_share > 0.0f)
         {
-            // a cache cell is metres wide and blind to the crevice the pixel sits in, the traced share already
-            // stops at real occluders, so only the cell is attenuated by the bent normal visibility cone
-            float3 bent_normal = normal;
-            float  visibility  = sample_material.a;
-            if (is_ssao_enabled() && alpha >= 0.999f)
+            const bool is_matte_foliage = (mat.flags & ((1u << 11) | (1u << 12) | (1u << 21))) != 0u &&
+                                          sample_material.g < 0.05f && mat.clearcoat <= 0.001f;
+            if (is_matte_foliage && cell_share >= 1.0f)
             {
-                float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-                if (!any(isnan(ssao_sample.rgb)) && dot(ssao_sample.rgb, ssao_sample.rgb) > 1e-6f)
-                {
-                    bent_normal = normalize(ssao_sample.rgb);
-                }
-                visibility = min(visibility, ssao_sample.a);
+                // Foliage past the RT cutoff only catches a faint broad sky sheen; sample the prefiltered
+                // sky panorama mip directly instead of doing an incoherent 3D hash-table radiance lookup.
+                float sky_mip = max(pass_float(pass_reflections_apply::mip_count) - 2.0f, 0.0f);
+                reflection    = tex5.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(normal), sky_mip).rgb * sample_material.a;
             }
-            float  roughness          = sample_material.r;
-            float3 dominant_direction = get_dominant_specular_direction(normal, -camera_to_pixel, roughness);
-            float  cell_occlusion     = specular_occlusion_bent(bent_normal, visibility, dominant_direction, n_dot_v, roughness, roughness * roughness);
+            else
+            {
+                // a cache cell is metres wide and blind to the crevice the pixel sits in, the traced share already
+                // stops at real occluders, so only the cell is attenuated by the bent normal visibility cone
+                float3 bent_normal = normal;
+                float  visibility  = sample_material.a;
+                if (is_ssao_enabled() && alpha >= 0.999f)
+                {
+                    float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+                    if (!any(isnan(ssao_sample.rgb)) && dot(ssao_sample.rgb, ssao_sample.rgb) > 1e-6f)
+                    {
+                        bent_normal = normalize(ssao_sample.rgb);
+                    }
+                    visibility = min(visibility, ssao_sample.a);
+                }
+                float  roughness          = sample_material.r;
+                float3 dominant_direction = get_dominant_specular_direction(normal, -camera_to_pixel, roughness);
+                float  cell_occlusion     = specular_occlusion_bent(bent_normal, visibility, dominant_direction, n_dot_v, roughness, roughness * roughness);
 
-            // a lobe past the roughness cut was not traced, it is wide enough to see what the radiance cache cell under
-            // the pixel gathers from its surroundings over the hemisphere, the lights themselves are already in the frame
-            // as analytic highlights, the jitter dithers the cell edges and the temporal resolve smooths what is left
-            float2 dither = float2(thread_id.xy) + frac((float)(buffer_frame.frame & 63u) * 0.6180339f) * 97.0f;
-            float3 jitter = float3(hash(dither), hash(dither + 31.7f), hash(dither + 73.1f)) - 0.5f;
-            float  cell_confidence;
-            float  cell_openness;
-            float3 cell_direct;
-            float3 cell   = radiance_cache_lookup(position, normal, jitter, cell_confidence, cell_openness, cell_direct) * cell_occlusion;
-            reflection    = cell_share >= 1.0f ? cell * cell_confidence : lerp(reflection, cell, cell_share * cell_confidence);
+                // a lobe past the roughness cut was not traced, it is wide enough to see what the radiance cache cell under
+                // the pixel gathers from its surroundings over the hemisphere, the lights themselves are already in the frame
+                // as analytic highlights, the jitter dithers the cell edges and the temporal resolve smooths what is left
+                float2 dither = float2(thread_id.xy) + frac((float)(buffer_frame.frame & 63u) * 0.6180339f) * 97.0f;
+                float3 jitter = float3(hash(dither), hash(dither + 31.7f), hash(dither + 73.1f)) - 0.5f;
+                float  cell_confidence;
+                float  cell_openness;
+                float3 cell_direct;
+                float3 cell   = radiance_cache_lookup(position, normal, jitter, cell_confidence, cell_openness, cell_direct) * cell_occlusion;
+                reflection    = cell_share >= 1.0f ? cell * cell_confidence : lerp(reflection, cell, cell_share * cell_confidence);
+            }
         }
 #endif
         float3 albedo              = sample_albedo.rgb;

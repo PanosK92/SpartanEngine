@@ -499,6 +499,7 @@ namespace spartan
             CrossQueueSync m_cross_queue_sync;
             std::vector<ShadowSlice> m_shadow_slices;
             uint32_t m_count_active_lights;
+            uint32_t m_count_shading_lights;
             uint32_t m_volumetric_light_count;
             std::unique_ptr<RHI_AccelerationStructure> m_tlas;
             math::Vector2                 m_resolution_render;
@@ -553,6 +554,7 @@ namespace spartan
         inline auto& m_cross_queue_sync = state().m_cross_queue_sync;
         inline auto& m_shadow_slices = state().m_shadow_slices;
         inline auto& m_count_active_lights = state().m_count_active_lights;
+        inline auto& m_count_shading_lights = state().m_count_shading_lights;
         inline auto& m_volumetric_light_count = state().m_volumetric_light_count;
         inline auto& m_tlas = state().m_tlas;
         inline auto& m_resolution_render = state().m_resolution_render;

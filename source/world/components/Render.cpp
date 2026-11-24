@@ -755,8 +755,11 @@ namespace spartan
         m_instance_revision++;
         m_instance_bounds_group_of.clear();
         m_instance_scale_bound = 0.0f;
-        for (const Instance& instance : instances)
-            m_instance_scale_bound = max({m_instance_scale_bound, abs(instance.scale_x), abs(instance.scale_y), abs(instance.scale_z)});
+        if (refresh_bounds)
+        {
+            for (const Instance& instance : instances)
+                m_instance_scale_bound = max({m_instance_scale_bound, abs(instance.scale_x), abs(instance.scale_y), abs(instance.scale_z)});
+        }
         // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none
         if (Physics* physics = GetEntity()->GetComponent<Physics>())
         {
@@ -984,46 +987,49 @@ namespace spartan
             }
             else // instanced
             {
-                // Cache initial spatial preparation, not live transform changes.
-                // Packed transforms, mesh bounds and the parent matrix fully define
-                // these bounds, wind envelopes and Morton groups.
-                const bool cache_bounds = m_instance_bounds.empty() && m_scene->instances.size() >= 256;
-                generated_cache::Hash bounds_hash;
-                std::filesystem::path bounds_path;
-                vector<Vector3> cached_box;
-                if (cache_bounds)
-                {
-                    bounds_hash.Add(uint32_t{1}); // bounds/wind/grouping algorithm version
-                    bounds_hash.Add(m_scene->instances);
-                    bounds_hash.Add(m_bounding_box_mesh.GetMin());
-                    bounds_hash.Add(m_bounding_box_mesh.GetMax());
-                    bounds_hash.Add(transform);
-                    bounds_path = generated_cache::Path(World::GetResourceDirectory(), "instance_bounds", bounds_hash.value);
-                }
-                const bool cached = cache_bounds && generated_cache::Load(bounds_path, bounds_hash.value,
-                    cached_box, m_instance_bounds, m_instance_wind_padding, m_instance_bounds_order, m_instance_bounds_groups);
-                if (cached && cached_box.size() == 2 && m_instance_bounds.size() == m_scene->instances.size() &&
-                    m_instance_wind_padding.size() == m_scene->instances.size() && m_instance_bounds_order.size() == m_scene->instances.size() &&
-                    m_instance_bounds_groups.size() == (m_scene->instances.size() + 31) / 32)
-                {
-                    m_scene->bounding_box = BoundingBox(cached_box[0], cached_box[1]);
-                    m_transform_previous = transform;
-                    m_bounding_box_dirty = false;
-                    return;
-                }
                 m_scene->bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
-                m_instance_bounds.resize(m_scene->instances.size());
-                m_instance_wind_padding.resize(m_scene->instances.size());
-                for (size_t i = 0; i < m_scene->instances.size(); ++i)
+                const size_t instance_count = m_scene->instances.size();
+                m_instance_bounds.resize(instance_count);
+                m_instance_wind_padding.resize(instance_count);
+
+                Vector3 total_min = Vector3::Infinity;
+                Vector3 total_max = Vector3::InfinityNeg;
+                float scale_bound = 0.0f;
+                const bool pure_translation =
+                    transform.m00 == 1.0f && transform.m01 == 0.0f && transform.m02 == 0.0f && transform.m03 == 0.0f &&
+                    transform.m10 == 0.0f && transform.m11 == 1.0f && transform.m12 == 0.0f && transform.m13 == 0.0f &&
+                    transform.m20 == 0.0f && transform.m21 == 0.0f && transform.m22 == 1.0f && transform.m23 == 0.0f &&
+                    transform.m33 == 1.0f;
+                const float tx = transform.m30;
+                const float ty = transform.m31;
+                const float tz = transform.m32;
+                for (size_t i = 0; i < instance_count; ++i)
                 {
-                    const Matrix world_instance = m_scene->instances[i].GetMatrix() * transform;
+                    const Instance& inst = m_scene->instances[i];
+                    scale_bound = max({scale_bound, abs(inst.scale_x), abs(inst.scale_y), abs(inst.scale_z)});
+                    Matrix world_instance = inst.GetMatrix();
+                    if (pure_translation)
+                    {
+                        world_instance.m30 += tx;
+                        world_instance.m31 += ty;
+                        world_instance.m32 += tz;
+                    }
+                    else
+                    {
+                        world_instance = world_instance * transform;
+                    }
                     const BoundingBox bounds = m_bounding_box_mesh * world_instance;
                     m_instance_bounds[i] = bounds;
                     // Same conservative envelope as tree_wind_cull_padding in common_culling.hlsl.
                     m_instance_wind_padding[i] = ((bounds.GetCenter() - world_instance.GetTranslation()).Length()
                         + bounds.GetExtents().Length()) * 0.16f + 0.05f;
-                    m_scene->bounding_box.Merge(bounds);
+                    const Vector3& bmin = bounds.GetMin();
+                    const Vector3& bmax = bounds.GetMax();
+                    total_min.x = min(total_min.x, bmin.x); total_min.y = min(total_min.y, bmin.y); total_min.z = min(total_min.z, bmin.z);
+                    total_max.x = max(total_max.x, bmax.x); total_max.y = max(total_max.y, bmax.y); total_max.z = max(total_max.z, bmax.z);
                 }
+                m_instance_scale_bound = scale_bound;
+                m_scene->bounding_box = BoundingBox(total_min, total_max);
 
                 // Spatial groups accelerate shadow queries without reordering the
                 // authored instances, GPU pool or physics instance identifiers.
@@ -1034,42 +1040,72 @@ namespace spartan
                     x = (x | (x << 4)) & 0x030C30C3u;
                     return (x | (x << 2)) & 0x09249249u;
                 };
-                const Vector3 origin = m_scene->bounding_box.GetMin();
-                const Vector3 size = m_scene->bounding_box.GetSize();
-                vector<uint64_t> keys(m_scene->instances.size());
-                for (uint32_t i = 0; i < m_scene->instances.size(); ++i)
+                const Vector3 origin = total_min;
+                const Vector3 size = total_max - total_min;
+                const float inv_x = 1023.0f / max(size.x, 0.001f);
+                const float inv_y = 1023.0f / max(size.y, 0.001f);
+                const float inv_z = 1023.0f / max(size.z, 0.001f);
+                vector<uint64_t> keys(instance_count);
+                for (uint32_t i = 0; i < static_cast<uint32_t>(instance_count); ++i)
                 {
                     const Vector3 p = m_instance_bounds[i].GetCenter() - origin;
-                    const uint32_t x = static_cast<uint32_t>(clamp(p.x / max(size.x, 0.001f), 0.0f, 1.0f) * 1023.0f);
-                    const uint32_t y = static_cast<uint32_t>(clamp(p.y / max(size.y, 0.001f), 0.0f, 1.0f) * 1023.0f);
-                    const uint32_t z = static_cast<uint32_t>(clamp(p.z / max(size.z, 0.001f), 0.0f, 1.0f) * 1023.0f);
+                    const uint32_t x = static_cast<uint32_t>(clamp(p.x * inv_x, 0.0f, 1023.0f));
+                    const uint32_t y = static_cast<uint32_t>(clamp(p.y * inv_y, 0.0f, 1023.0f));
+                    const uint32_t z = static_cast<uint32_t>(clamp(p.z * inv_z, 0.0f, 1023.0f));
                     const uint32_t morton = spread_bits(x) | (spread_bits(y) << 1) | (spread_bits(z) << 2);
                     keys[i] = (static_cast<uint64_t>(morton) << 32) | i;
                 }
-                sort(keys.begin(), keys.end());
+                if (instance_count >= 512)
+                {
+                    // O(N) 3-pass 10-bit stable radix sort on the 30-bit Morton code.
+                    vector<uint64_t> scratch(instance_count);
+                    uint32_t counts[1024];
+                    for (uint32_t shift = 32; shift < 62; shift += 10)
+                    {
+                        memset(counts, 0, sizeof(counts));
+                        for (uint64_t k : keys)
+                        {
+                            counts[(k >> shift) & 1023u]++;
+                        }
+                        uint32_t sum = 0;
+                        for (uint32_t b = 0; b < 1024; ++b)
+                        {
+                            uint32_t c = counts[b];
+                            counts[b]  = sum;
+                            sum       += c;
+                        }
+                        for (uint64_t k : keys)
+                        {
+                            scratch[counts[(k >> shift) & 1023u]++] = k;
+                        }
+                        keys.swap(scratch);
+                    }
+                }
+                else
+                {
+                    sort(keys.begin(), keys.end());
+                }
                 m_instance_bounds_order.resize(keys.size());
                 m_instance_bounds_groups.clear();
                 constexpr uint32_t group_size = 32;
+                m_instance_bounds_groups.reserve((keys.size() + group_size - 1) / group_size);
                 for (uint32_t begin = 0; begin < keys.size(); begin += group_size)
                 {
                     const uint32_t count = min(group_size, static_cast<uint32_t>(keys.size()) - begin);
-                    BoundingBox group_bounds;
+                    Vector3 gmin = Vector3::Infinity;
+                    Vector3 gmax = Vector3::InfinityNeg;
                     for (uint32_t j = begin; j < begin + count; ++j)
                     {
                         const uint32_t i = static_cast<uint32_t>(keys[j]);
                         m_instance_bounds_order[j] = i;
                         const BoundingBox& bounds = m_instance_bounds[i];
                         const float padding = m_instance_wind_padding[i];
-                        const Vector3 pad(padding, padding, padding);
-                        group_bounds.Merge(BoundingBox(bounds.GetMin() - pad, bounds.GetMax() + pad));
+                        const Vector3& bmin = bounds.GetMin();
+                        const Vector3& bmax = bounds.GetMax();
+                        gmin.x = min(gmin.x, bmin.x - padding); gmin.y = min(gmin.y, bmin.y - padding); gmin.z = min(gmin.z, bmin.z - padding);
+                        gmax.x = max(gmax.x, bmax.x + padding); gmax.y = max(gmax.y, bmax.y + padding); gmax.z = max(gmax.z, bmax.z + padding);
                     }
-                    m_instance_bounds_groups.push_back({group_bounds, begin, count});
-                }
-                if (cache_bounds)
-                {
-                    cached_box = {m_scene->bounding_box.GetMin(), m_scene->bounding_box.GetMax()};
-                    generated_cache::Save(bounds_path, bounds_hash.value, cached_box, m_instance_bounds,
-                        m_instance_wind_padding, m_instance_bounds_order, m_instance_bounds_groups);
+                    m_instance_bounds_groups.push_back({BoundingBox(gmin, gmax), begin, count});
                 }
             }
             m_transform_previous = transform;

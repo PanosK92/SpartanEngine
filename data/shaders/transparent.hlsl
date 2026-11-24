@@ -101,13 +101,26 @@ float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, flo
 }
 
 #ifdef RAY_TRACING_ENABLED
-float trace_forward_light_visibility(Surface surface, Light light)
+float trace_forward_light_visibility(Surface surface, Light light, bool is_glass)
 {
     if (light.is_directional())
     {
         float3 direction = normalize(-light.forward);
         float offset     = max(0.01f + surface.camera_to_pixel_length * 0.0001f, rt_lod_shadow_offset(surface.camera_to_pixel_length));
-        return rt_trace_visibility(surface.position + surface.normal * offset, direction, 1000.0f);
+        if (is_glass)
+        {
+            // Hardware-only opaque shadow query keeps specular highlights crisp on car/building glass without software leaf loops.
+            RayDesc ray;
+            ray.Origin    = surface.position + surface.normal * offset;
+            ray.Direction = direction;
+            ray.TMin      = 0.001f;
+            ray.TMax      = 200.0f;
+            RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> q;
+            q.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
+            q.Proceed();
+            return q.CommittedStatus() != COMMITTED_NOTHING ? 0.0f : 1.0f;
+        }
+        return rt_trace_visibility(surface.position + surface.normal * offset, direction, 200.0f);
     }
 
     float3 target        = light.is_area() ? light.compute_closest_point_on_area(surface.position) : light.position;
@@ -129,6 +142,7 @@ void evaluate_forward_light(
     uint light_index,
     Surface surface,
     bool is_glass,
+    bool is_front_face,
     inout float3 out_diffuse,
     inout float3 out_specular
 )
@@ -144,13 +158,15 @@ void evaluate_forward_light(
     float3 L_shadow = 1.0f;
     if (light.has_shadows())
     {
-        if (is_ray_traced_shadows_enabled())
+        const float rt_shadow_max_dist = light.is_directional() ? (is_glass ? 45.0f : 80.0f) : 25.0f;
+        const bool trace_rt_shadow     = is_front_face && (!is_glass || light.is_directional()) && surface.camera_to_pixel_length < rt_shadow_max_dist;
+        if (is_ray_traced_shadows_enabled() && trace_rt_shadow)
         {
 #ifdef RAY_TRACING_ENABLED
-            L_shadow = trace_forward_light_visibility(surface, light);
+            L_shadow = trace_forward_light_visibility(surface, light, is_glass);
 #endif
         }
-        else
+        else if (!is_ray_traced_shadows_enabled())
         {
             L_shadow = compute_shadow(surface, light);
         }
@@ -380,7 +396,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
     uint   total_lights    = buffer_frame.cluster_light_count;
     if (total_lights > 0u)
     {
-        evaluate_forward_light(0u, surface, is_glass, direct_diffuse, direct_specular);
+        evaluate_forward_light(0u, surface, is_glass, is_front_face, direct_diffuse, direct_specular);
     }
     if (total_lights > 1u)
     {
@@ -394,7 +410,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
         for (uint k = 0u; k < range.y; k++)
         {
             uint light_idx = cluster_light_indices[range.x + k];
-            evaluate_forward_light(light_idx, surface, is_glass, direct_diffuse, direct_specular);
+            evaluate_forward_light(light_idx, surface, is_glass, is_front_face, direct_diffuse, direct_specular);
         }
     }
 
@@ -407,7 +423,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
     float3 reflection   = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(reflect_dir), mip_level).rgb * (horizon * horizon);
 
 #ifdef RAY_TRACING_ENABLED
-    if (pass_bool(pass_transparent::ray_traced_reflections) && surface.roughness < 0.45f)
+    if (pass_bool(pass_transparent::ray_traced_reflections) && is_front_face && surface.roughness < 0.30f && distance < 22.0f)
     {
         float3 mirror_dir = reflect(-view_dir, surface.normal);
         if (dot(mirror_dir, face_normal) <= 0.0f)
@@ -425,22 +441,12 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
         refl_ray.Origin    = position_world + face_normal * base_offset + mirror_dir * base_offset * grazing * 2.0f;
         refl_ray.Direction = mirror_dir;
         refl_ray.TMin      = 0.001f;
-        refl_ray.TMax      = 1000.0f;
+        refl_ray.TMax      = 35.0f;
 
-        // trace against opaque + alpha-tested solids only (mask 0x01 skips glass 0x02 and grass 0x04)
-        RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> refl_query;
+        // trace against solids with FORCE_OPAQUE so glass reflections avoid expensive per-leaf cutout loops
+        RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> refl_query;
         refl_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, refl_ray);
-        while (refl_query.Proceed())
-        {
-            if (refl_query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
-            {
-                float3 candidate_pos = refl_ray.Origin + refl_ray.Direction * refl_query.CandidateTriangleRayT();
-                if (rt_candidate_opaque(refl_query.CandidateInstanceIndex(), refl_query.CandidatePrimitiveIndex(), refl_query.CandidateTriangleBarycentrics(), candidate_pos))
-                {
-                    refl_query.CommitNonOpaqueTriangleHit();
-                }
-            }
-        }
+        refl_query.Proceed();
 
         RaySurface hit = (RaySurface)0;
         if (refl_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
@@ -449,11 +455,12 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
             hit = ray_surface_reconstruct(refl_query.CommittedRayT(), refl_query.CommittedInstanceIndex(), refl_query.CommittedPrimitiveIndex(), float3(1.0f - b.x - b.y, b.x, b.y), refl_ray, cone);
         }
 
+        const uint secondary_lights = min(pass_uint(pass_transparent::light_count), 1u);
         float3 traced = hit.hit
-            ? ray_surface_shade_secondary(hit, -mirror_dir, tex5, mip_count, vertex.position.xy, pass_uint(pass_transparent::light_count))
+            ? ray_surface_shade_secondary(hit, -mirror_dir, tex5, mip_count, vertex.position.xy, secondary_lights)
             : tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(mirror_dir), mip_level).rgb;
 
-        float rt_weight = 1.0f - smoothstep(0.25f, 0.45f, surface.roughness);
+        float rt_weight = (1.0f - smoothstep(0.18f, 0.30f, surface.roughness)) * (1.0f - smoothstep(14.0f, 22.0f, distance));
         reflection      = lerp(reflection, traced, rt_weight);
     }
 #endif

@@ -197,6 +197,7 @@ namespace spartan
         const std::vector<SplineCarveSample>& GetCarveSamples() const { return m_carve_samples; }
         // Final rendered deck, including roads that do not carve terrain.
         const std::vector<SplineFrame>& GetRoadFrames() const { return m_generated_road_frames; }
+        uint64_t GetRoadFramesRevision() const { return m_road_frames_revision; }
         std::shared_ptr<RacingLine> GetRacingLine(float edge_margin = 1.7f);
         bool GetShowRacingLine() const { return m_show_racing_line; }
         void SetShowRacingLine(bool show) { m_show_racing_line = show; }
@@ -296,8 +297,21 @@ namespace spartan
         std::vector<SplineFrame> SampleFrames(uint32_t samples_per_span) const;
         std::vector<SplineFrame> SampleAttachedFrames(uint32_t samples_per_span) const;
 
+        struct PreloadedRoadMeshes
+        {
+            std::shared_ptr<Mesh> deck;
+            std::shared_ptr<Mesh> sidewalk;
+            std::shared_ptr<Mesh> shoulder;
+            std::shared_ptr<Mesh> paint;
+            bool valid = false;
+        };
+        uint64_t ComputeFrameCacheHash() const;
+        void GenerateRoadMeshWithFrames(const std::vector<SplineFrame>* preloaded_frames);
+        void ComputeMeshCacheHashes(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile,
+            bool layered_finish, bool embankment, float v_period, uint64_t& geometry_hash, uint64_t& prepared_hash) const;
         // generalized mesh extrusion using a precomputed list of frames
-        void GenerateMesh(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile);
+        void GenerateMesh(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile,
+            const PreloadedRoadMeshes* preloaded = nullptr);
         void ExtrudeRoadGeometry(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile, float v_period, RoadGeometry& geometry) const;
         void AppendJunctionGeometry(RoadGeometry& geometry) const;
         // the entity's world xz offset within one asphalt repeat, aligns junction patch uvs to the world
@@ -432,6 +446,7 @@ namespace spartan
         std::shared_ptr<Mesh> m_mesh;
         std::vector<SplineFrame> m_base_road_frames;
         std::vector<SplineFrame> m_generated_road_frames;
+        uint64_t m_road_frames_revision = 0;
         std::vector<SplineFrame> m_junction_frames;
         // 0 off a junction, else 1 | 2 a road joins on the left | 4 on the right | 8 this road ends here
         std::vector<uint8_t> m_junction_segments;
@@ -496,6 +511,11 @@ namespace spartan
         mutable uint64_t m_control_road_nodes = 0;
         mutable std::vector<math::Vector3> m_control_points_cache;
         uint64_t m_prev_world_revision = uint64_t(-1);
+        uint64_t m_prev_child_data_revision = uint64_t(-1);
+        uint64_t m_prev_source_transform_revision = uint64_t(-1);
+        uint64_t m_prev_source_child_revision = uint64_t(-1);
+        uint64_t m_prev_source_frames_revision = uint64_t(-1);
+        bool m_state_snapshotted = false;
         math::Vector3 m_prev_world_position             = math::Vector3::Zero;
         math::Quaternion m_prev_world_rotation          = math::Quaternion::Identity;
         math::Vector3 m_prev_world_scale                = math::Vector3::One;

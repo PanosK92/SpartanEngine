@@ -10,9 +10,9 @@ Commercial use requires written permission and negotiated payment terms.
 //====================
 
 // tuning parameters
-static const int   SAMPLE_COUNT             = 7;     // samples per direction (total = 2 * count + 1 = 15)
+static const int   SAMPLE_COUNT             = 3;     // samples per direction (total = 2 * count + 1 = 7)
 static const float MAX_BLUR_RADIUS_PIXELS   = 48.0f; // maximum blur extent in pixels
-static const float MIN_BLUR_THRESHOLD       = 0.75f; // minimum velocity in pixels to trigger blur
+static const float MIN_BLUR_THRESHOLD       = 1.0f;  // minimum velocity in pixels to trigger blur
 static const float DEPTH_SCALE              = 50.0f; // depth comparison sensitivity
 static const float CENTER_WEIGHT            = 1.5f;  // weight for center sample (higher = sharper center)
 static const float MAX_SHUTTER_RATIO        = 8.0f;
@@ -24,7 +24,7 @@ static const float SHUTTER_CENTER_SCALE     = 0.5f;
 static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 
 // spinning objects, any whose pose turned this frame (see Renderer::UpdateFrameCb_RadialBlurHubs)
-static const int   SPIN_MAX_TAPS        = 64;        // along the swept arc, close up rims need them all
+static const int   SPIN_MAX_TAPS        = 12;        // along the swept arc, jittered for smooth rims at lower cost
 static const float SPIN_MAX_HALF_ANGLE  = 0.785398f; // past 45 degrees each way a streak reads the same
 static const float SPIN_RIM_FRACTION    = 0.8f;      // of the radius, where open spokes give way to solid tire
 static const float SPIN_TIRE_FADE       = 0.12f;     // width of that transition, fraction of the rim radius
@@ -34,7 +34,7 @@ static const float SPIN_TIRE_TAIL_MIN   = 0.12f;
 static const float SPIN_TIRE_TAIL_POWER = 0.85f;
 // tread blocks stand past the tire outline by this fraction of the radius, searched for in this many steps
 static const float SPIN_LUG_REACH       = 0.08f;
-static const int   SPIN_LUG_STEPS       = 8;
+static const int   SPIN_LUG_STEPS       = 4;
 
 // soft depth comparison, linear depth larger is farther, returns 1 when depth_a is closer or equal
 float soft_depth_compare(float depth_a, float depth_b)
@@ -193,42 +193,37 @@ float2 get_neighborhood_max_velocity(
     float2 best_velocity = float2(0.0f, 0.0f);
     float  best_length   = 0.0f;
 
-    [unroll]
-    for (int y = -1; y <= 1; ++y)
+    // 4 jitter-rotated compass taps with single velocity fetch each (replaces 9x2 = 18 fetches)
+    static const float2 compass[4] =
     {
-        [unroll]
-        for (int x = -1; x <= 1; ++x)
+        float2( 1.0f,  0.0f),
+        float2(-1.0f,  0.0f),
+        float2( 0.0f,  1.0f),
+        float2( 0.0f, -1.0f)
+    };
+    [unroll]
+    for (int i = 0; i < 4; ++i)
+    {
+        float2 offset    = mul(rot, compass[i] * search_step);
+        float2 sample_uv = uv + offset;
+        float2 render_uv = sample_uv * get_render_uv_scale();
+        float4 sample_vel_full = tex_velocity.SampleLevel(samplers[sampler_point_clamp], render_uv, 0);
+        if (sample_vel_full.z != center_mask)
         {
-            float2 offset    = mul(rot, float2(x, y) * search_step);
-            float2 sample_uv = uv + offset;
-            float2 render_uv =
-                sample_uv *
-                get_render_uv_scale();
-            float2 sample_vel = tex_velocity.SampleLevel(
-                samplers[sampler_point_clamp],
-                render_uv,
-                0
-            ).xy;
-            float sample_depth =
-                get_linear_depth_point(render_uv);
-            float depth_similarity =
-                soft_depth_compare(center_depth, sample_depth) *
-                soft_depth_compare(sample_depth, center_depth);
-            float sample_len =
-                length(
-                    velocity_ndc_to_uv(sample_vel) *
-                    resolution
-                );
-
-            if (
-                tex_velocity.SampleLevel(samplers[sampler_point_clamp], render_uv, 0).z == center_mask &&
-                depth_similarity > 0.5f &&
-                sample_len > best_length
-            )
-            {
-                best_velocity = sample_vel;
-                best_length   = sample_len;
-            }
+            continue;
+        }
+        float2 sample_vel = sample_vel_full.xy;
+        float sample_len  = length(velocity_ndc_to_uv(sample_vel) * resolution);
+        if (sample_len <= best_length)
+        {
+            continue;
+        }
+        float sample_depth = get_linear_depth_point(render_uv);
+        float depth_similarity = soft_depth_compare(center_depth, sample_depth) * soft_depth_compare(sample_depth, center_depth);
+        if (depth_similarity > 0.5f)
+        {
+            best_velocity = sample_vel;
+            best_length   = sample_len;
         }
     }
 
@@ -273,6 +268,18 @@ float2 compute_sky_velocity(float2 uv)
 // leaks ground/body colors through an accepted wheel pixel at silhouettes.
 float masked_color(float2 uv, float2 resolution, float mask, out float4 color)
 {
+    // Fast path for non-spinner environment pixels (95%+ of screen): single hardware bilinear fetch
+    // when neither the center pixel nor the target tap belongs to a masked radial-blur spinner.
+    if (mask == 0.0f)
+    {
+        float tap_mask = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv * get_render_uv_scale(), 0).z;
+        if (tap_mask == 0.0f)
+        {
+            color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
+            return 1.0f;
+        }
+    }
+
     float2 pixel = uv * resolution - 0.5f;
     float2 base = floor(pixel);
     float2 f = frac(pixel);
@@ -768,7 +775,6 @@ float4 motion_blur_linear(
 {
     float2 texel_size = 1.0f / resolution;
     float2 render_uv  = uv * get_render_uv_scale();
-    float center_depth = get_linear_depth_point(render_uv);
     float raw_depth = get_depth(render_uv);
     float2 pixel_velocity = velocity_sample.xy;
     if (raw_depth < 0.0001f && dot(pixel_velocity, pixel_velocity) < 1e-12f)
@@ -788,6 +794,8 @@ float4 motion_blur_linear(
     {
         return center_color;
     }
+
+    float center_depth = linearize_depth(raw_depth);
 
     // neighborhood dominant velocity, sampled around the pixel itself rather than
     // snapped to a fixed tile grid, which avoids visible square boundaries

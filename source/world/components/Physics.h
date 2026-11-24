@@ -116,6 +116,8 @@ namespace spartan
         static void TickBuoyancy();
         static void TickKinematics(uint32_t step_index, uint32_t step_count);
         static void ShiftOrigin(const math::Vector3& shift);
+        static void PrefetchTerrainHeightfields(const class Terrain* terrain);
+        static void ClearPrefetchedHeightfields();
 
         // mass
         constexpr static inline float mass_from_volume = FLT_MAX;

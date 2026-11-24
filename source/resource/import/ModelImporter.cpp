@@ -21,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../core/ThreadPool.h"
 #include "../../rhi/RHI_Texture.h"
 #include "../../geometry/Mesh.h"
+#include "../../geometry/GeneratedCache.h"
 #include "../../geometry/GeometryProcessing.h"
 #include "../../rendering/Material.h"
 #include "../../animation/Animation.h"
@@ -2035,6 +2036,241 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        struct CachedImportNode
+        {
+            uint32_t parent         = UINT32_MAX;
+            uint32_t name_offset    = 0;
+            uint32_t name_length    = 0;
+            uint32_t sub_mesh_index = UINT32_MAX;
+            uint32_t mat_offset     = 0;
+            uint32_t mat_length     = 0;
+            Vector3 position        = Vector3::Zero;
+            Quaternion rotation     = Quaternion::Identity;
+            Vector3 scale           = Vector3::One;
+        };
+
+        bool compute_import_cache_key(const string& file_path, const string& model_directory, uint32_t mesh_flags, uint64_t& out_key)
+        {
+            error_code ec;
+            const auto source_size  = filesystem::file_size(file_path, ec);
+            if (ec) return false;
+            const auto source_mtime = filesystem::last_write_time(file_path, ec).time_since_epoch().count();
+            if (ec) return false;
+
+            string rel = FileSystem::GetRelativePath(file_path);
+            for (char& c : rel)
+            {
+                if (c == '\\') c = '/';
+                else if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+            }
+
+            generated_cache::Hash h;
+            h.Add(uint32_t(1)); // imported_models cache format version
+            h.Add(sizeof(CachedImportNode));
+            h.Add(sizeof(RHI_Vertex_PosTexNorTan));
+            h.Add(sizeof(GeometryRange));
+            h.Add(sizeof(Sb_MeshletBounds));
+            h.Add(GeometryPage::max_corners);
+            h.Add(rel);
+            h.Add(mesh_flags);
+            h.Add(static_cast<uint64_t>(source_size));
+            h.Add(static_cast<int64_t>(source_mtime));
+
+            // Include companion binary/material definition files (.bin for .gltf, .mtl for .obj)
+            // so editing external buffers automatically invalidates the cached import.
+            string ext = FileSystem::GetExtensionFromFilePath(file_path);
+            for (char& c : ext) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+            if ((ext == ".gltf" || ext == ".obj") && !model_directory.empty())
+            {
+                const char* companion_ext = (ext == ".gltf") ? ".bin" : ".mtl";
+                vector<string> companions;
+                for (const auto& entry : filesystem::directory_iterator(model_directory, ec))
+                {
+                    if (ec) break;
+                    if (!entry.is_regular_file(ec)) continue;
+                    string entry_ext = entry.path().extension().string();
+                    for (char& c : entry_ext) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+                    if (entry_ext == companion_ext) companions.push_back(entry.path().string());
+                }
+                sort(companions.begin(), companions.end());
+                h.Add(static_cast<uint64_t>(companions.size()));
+                for (const string& comp : companions)
+                {
+                    const auto comp_size  = filesystem::file_size(comp, ec);
+                    const auto comp_mtime = filesystem::last_write_time(comp, ec).time_since_epoch().count();
+                    if (ec) return false;
+                    h.Add(filesystem::path(comp).filename().string());
+                    h.Add(static_cast<uint64_t>(comp_size));
+                    h.Add(static_cast<int64_t>(comp_mtime));
+                }
+            }
+
+            out_key = h.value;
+            return true;
+        }
+
+        bool try_load_cached_import(Mesh* mesh_in, const string& model_name, const string& resources, uint64_t key, World::EntityBatch& entity_batch)
+        {
+            if (resources.empty()) return false;
+            const auto meta_path = generated_cache::Path(resources, "imported_models", key);
+            auto mesh_path = meta_path;
+            mesh_path.replace_extension(".mesh");
+
+            error_code ec;
+            if (!filesystem::is_regular_file(mesh_path, ec) || ec) return false;
+
+            vector<CachedImportNode> nodes;
+            vector<char> strings;
+            if (!generated_cache::Load(meta_path, key, nodes, strings) || nodes.empty()) return false;
+
+            // Validate metadata and pre-load all referenced materials before touching the scene.
+            unordered_map<string, shared_ptr<Material>> loaded_materials;
+            for (size_t i = 0; i < nodes.size(); ++i)
+            {
+                const auto& n = nodes[i];
+                if (i == 0 && n.parent != UINT32_MAX) return false;
+                if (i > 0 && n.parent >= i) return false;
+                if (uint64_t(n.name_offset) + n.name_length > strings.size()) return false;
+                if (uint64_t(n.mat_offset) + n.mat_length > strings.size()) return false;
+                if (n.mat_length > 0)
+                {
+                    string mat_path(strings.data() + n.mat_offset, n.mat_length);
+                    if (loaded_materials.find(mat_path) == loaded_materials.end())
+                    {
+                        if (!FileSystem::IsFile(mat_path)) return false;
+                        shared_ptr<Material> mat = ResourceCache::Load<Material>(mat_path);
+                        if (!mat) return false;
+                        loaded_materials.emplace(move(mat_path), move(mat));
+                    }
+                }
+            }
+
+            uint32_t version = 0;
+            if (!mesh_in->LoadNativeCpu(mesh_path.string(), &version) || version < 8 || mesh_in->GetSubMeshCount() == 0)
+            {
+                return false;
+            }
+
+            const uint32_t submesh_count = mesh_in->GetSubMeshCount();
+            for (const auto& n : nodes)
+            {
+                if (n.sub_mesh_index != UINT32_MAX && n.sub_mesh_index >= submesh_count)
+                {
+                    return false;
+                }
+            }
+
+            mesh_in->SetObjectName(model_name);
+            vector<Entity*> entities(nodes.size(), nullptr);
+            for (size_t i = 0; i < nodes.size(); ++i)
+            {
+                const auto& n = nodes[i];
+                Entity* entity = World::CreateEntity();
+                entities[i] = entity;
+                if (i == 0)
+                {
+                    mesh_in->SetRootEntity(entity);
+                    entity->SetActive(false);
+                }
+                entity->SetObjectName(string(strings.data() + n.name_offset, n.name_length));
+                entity->SetParent(n.parent == UINT32_MAX ? nullptr : entities[n.parent]);
+                entity->SetPositionLocal(n.position);
+                entity->SetRotationLocal(n.rotation);
+                entity->SetScaleLocal(n.scale);
+                if (n.sub_mesh_index != UINT32_MAX)
+                {
+                    Render* render = entity->AddComponent<Render>();
+                    render->SetMesh(mesh_in, n.sub_mesh_index);
+                    if (n.mat_length > 0)
+                    {
+                        string mat_path(strings.data() + n.mat_offset, n.mat_length);
+                        render->SetMaterial(loaded_materials.at(mat_path));
+                    }
+                }
+            }
+
+            mesh_in->CreateGpuBuffers();
+            mesh_in->GetRootEntity()->SetActive(true);
+            entity_batch.Commit();
+            return true;
+        }
+
+        void save_cached_import(Mesh* mesh_in, const string& resources, uint64_t key)
+        {
+            if (resources.empty() || !mesh_in || !mesh_in->GetRootEntity() || mesh_in->GetSubMeshCount() == 0) return;
+            if (mesh_in->GetSkeleton() || !mesh_in->GetAnimationClips().empty()) return;
+
+            vector<CachedImportNode> nodes;
+            vector<char> strings;
+            bool valid = true;
+
+            auto append_str = [&](const string& s, uint32_t& offset, uint32_t& length)
+            {
+                offset = static_cast<uint32_t>(strings.size());
+                length = static_cast<uint32_t>(s.size());
+                strings.insert(strings.end(), s.begin(), s.end());
+            };
+
+            function<void(Entity*, uint32_t)> visit = [&](Entity* entity, uint32_t parent)
+            {
+                if (!valid || !entity) return;
+                if (entity->GetComponent<Light>())
+                {
+                    valid = false;
+                    return;
+                }
+
+                CachedImportNode node;
+                node.parent   = parent;
+                node.position = entity->GetPositionLocal();
+                node.rotation = entity->GetRotationLocal();
+                node.scale    = entity->GetScaleLocal();
+                append_str(entity->GetObjectName(), node.name_offset, node.name_length);
+
+                if (Render* render = entity->GetComponent<Render>())
+                {
+                    node.sub_mesh_index = render->GetSubMeshIndex();
+                    if (Material* mat = render->GetMaterial())
+                    {
+                        const string mat_path = mat->GetResourceFilePath();
+                        if (mat_path.empty() || !FileSystem::IsFile(mat_path))
+                        {
+                            valid = false;
+                            return;
+                        }
+                        append_str(mat_path, node.mat_offset, node.mat_length);
+                    }
+                }
+
+                const uint32_t index = static_cast<uint32_t>(nodes.size());
+                nodes.push_back(node);
+                for (Entity* child : entity->GetChildren())
+                {
+                    visit(child, index);
+                }
+            };
+
+            visit(mesh_in->GetRootEntity(), UINT32_MAX);
+            if (!valid || nodes.empty()) return;
+
+            const auto meta_path = generated_cache::Path(resources, "imported_models", key);
+            auto mesh_path = meta_path;
+            mesh_path.replace_extension(".mesh");
+
+            error_code ec;
+            filesystem::create_directories(meta_path.parent_path(), ec);
+            if (ec) return;
+
+            // Write the native .mesh sidecar before the metadata .bin so any reader
+            // seeing a valid .bin is guaranteed to find a completed .mesh alongside it.
+            mesh_in->SaveToFile(mesh_path.string());
+            if (!filesystem::is_regular_file(mesh_path, ec) || ec) return;
+            generated_cache::Save(meta_path, key, nodes, strings);
+        }
+    }
+
     bool ModelImporter::Load(Mesh* mesh_in, const string& file_path)
     {
         World::EntityBatch entity_batch;
@@ -2056,6 +2292,16 @@ namespace spartan
         );
         ctx.model_directory = FileSystem::GetDirectoryFromFilePath(file_path);
         ctx.mesh            = mesh_in;
+
+        const string world_resources = World::GetResourceDirectory();
+        uint64_t import_cache_key = 0;
+        const bool can_cache_import = !world_resources.empty() &&
+            !(mesh_in->GetFlags() & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache)) &&
+            compute_import_cache_key(file_path, ctx.model_directory, mesh_in->GetFlags(), import_cache_key);
+        if (can_cache_import && try_load_cached_import(mesh_in, ctx.model_name, world_resources, import_cache_key, entity_batch))
+        {
+            return true;
+        }
 
         // set up the importer
         Importer importer;
@@ -2205,6 +2451,11 @@ namespace spartan
             // extract animation clips
             ctx.progress.SetStep("Building animation clips");
             ParseAnimations(ctx);
+
+            if (can_cache_import)
+            {
+                save_cached_import(ctx.mesh, world_resources, import_cache_key);
+            }
 
             // update model geometry
             ctx.progress.SetStep("Uploading geometry to GPU");

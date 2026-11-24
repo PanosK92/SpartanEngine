@@ -15,7 +15,7 @@ Licensed under the Spartan Engine License. See license.md in the repository root
 
 namespace spartan::Renderer
 {
-    inline TConsoleVar<float> geometry_error_pixels("r.geometry_error_pixels", 1.0f, "Maximum projected geometric error in render pixels");
+    inline TConsoleVar<float> geometry_error_pixels("r.geometry_error_pixels", 1.5f, "Maximum projected geometric error in render pixels");
 
     // Coverage proxies approximate a group of textured leaves. Request their
     // finer pages early enough that card swaps stay nearly invisible along roads.
@@ -102,17 +102,42 @@ namespace spartan::Renderer
                     if (depth == camera->GetNearPlane()) break;
                 }
             }
-            densities.push_back(scale_bound / depth);
+            const float inst_density = scale_bound / depth;
+            bool any_needs_refinement = false;
+            for (const auto& cluster : clusters)
+            {
+                if (!cluster.refinements.empty() && cluster.error * inst_density > 1.0f)
+                {
+                    any_needs_refinement = true;
+                    break;
+                }
+            }
+            if (any_needs_refinement)
+            {
+                densities.push_back(inst_density);
+            }
             return;
         }
         densities.resize(clusters.size());
+        bool any_needs_refinement = false;
         for (size_t i = 0; i < clusters.size(); ++i)
         {
             densities[i] = 0.0f;
             if (clusters[i].refinements.empty()) continue;
             const auto world = clusters[i].bounds * base.transform;
             if (camera->IsInViewFrustum(world))
-                densities[i] = pixel_scale / nearest_depth(world);
+            {
+                const float d = pixel_scale / nearest_depth(world);
+                densities[i] = d;
+                if (clusters[i].error * d > 1.0f)
+                {
+                    any_needs_refinement = true;
+                }
+            }
+        }
+        if (!any_needs_refinement)
+        {
+            densities.clear();
         }
     }
 
@@ -133,22 +158,45 @@ namespace spartan::Renderer
             uint32_t page_offset, page_count;
         };
         struct Level { ResidentGeometryPage page; float error; };
-        std::pmr::vector<Range> ranges(FrameAllocator::GetResource());
-        std::pmr::vector<Level> levels(FrameAllocator::GetResource());
+        static std::vector<Range> ranges;
+        static std::vector<Level> levels;
+        ranges.clear();
+        levels.clear();
+        // Native directories validate at most 16 refinements. A generated
+        // page starts with 512 triangles and halves at each level.
+        ResidentGeometryPage pages[16];
+        float errors[16];
         for (size_t i = 0; i < clusters.size(); ++i)
         {
             const auto& cluster = clusters[i];
-            // Native directories validate at most 16 refinements. A generated
-            // page starts with 512 triangles and halves at each level.
-            ResidentGeometryPage pages[16];
-            float errors[16];
+            const float density = instanced ? densities.front() : densities[i];
             uint32_t count = 0;
-            if (instanced)
-                count = GeometryBuffer::SelectInstancePages(cluster, densities.front(), pages, errors);
-            else if (GeometryBuffer::SelectPage(cluster, densities[i], pages[0]))
+            if (!cluster.refinements.empty() && cluster.error * density > 1.0f)
             {
-                count = 1;
-                errors[0] = 0;
+                if (instanced)
+                    count = GeometryBuffer::SelectInstancePages(cluster, density, pages, errors);
+                else if (GeometryBuffer::SelectPage(cluster, density, pages[0]))
+                {
+                    count = 1;
+                    errors[0] = 0;
+                }
+            }
+            if (levels.empty() && count == 0)
+            {
+                // Defer building the initial unrefined range until a resident refinement actually hits.
+                continue;
+            }
+            if (levels.empty() && i > 0)
+            {
+                // Materialize the skipped coarse prefix [0, i) once on the first resident refinement.
+                math::BoundingBox prefix_bounds = clusters[0].bounds;
+                uint32_t prefix_meshlets = clusters[0].meshlet_count;
+                for (size_t k = 1; k < i; ++k)
+                {
+                    prefix_meshlets += clusters[k].meshlet_count;
+                    prefix_bounds.Merge(clusters[k].bounds);
+                }
+                ranges.push_back({&clusters[0], prefix_bounds, prefix_meshlets, 0u, 0u});
             }
             if (!count && !ranges.empty() && !ranges.back().page_count)
             {
@@ -166,21 +214,24 @@ namespace spartan::Renderer
         if (extra_tasks + m_cull_task_count > renderer_max_cull_tasks) return;
         if (m_cull_tasks.size() < m_cull_task_count + extra_tasks)
             m_cull_tasks.resize(static_cast<size_t>(m_cull_task_count + extra_tasks));
+        const float error_pixels = GeometryErrorPixels(render);
         for (size_t c = 0; c < ranges.size(); ++c)
         {
             const Range& range = ranges[c];
             const GeometryCluster& cluster = *range.first;
-            const float error_pixels = GeometryErrorPixels(render);
             const uint32_t draw = c == 0 ? first_draw : m_indirect_draw_count++;
             auto& coarse = m_indirect_draw_data[draw];
-            coarse = base;
+            if (c != 0)
+            {
+                coarse = base;
+                m_indirect_renders[draw] = render;
+            }
             coarse.geometry_meshlet_offset += cluster.first_meshlet;
             coarse.geometry_meshlet_count = range.meshlet_count;
             coarse.cluster_center = range.bounds.GetCenter();
             coarse.cluster_radius = range.bounds.GetExtents().Length();
             coarse.cluster_error = cluster.error / error_pixels;
             coarse.previous_vertex_offset = 0;
-            m_indirect_renders[draw] = render;
 
             const uint32_t first_level = m_indirect_draw_count;
             uint32_t max_meshlets = range.meshlet_count;
@@ -190,7 +241,10 @@ namespace spartan::Renderer
                 const auto& fine = level.page;
                 const uint32_t selected_draw = instanced ? m_indirect_draw_count++ : draw;
                 auto& selected = m_indirect_draw_data[selected_draw];
-                selected = coarse;
+                if (instanced)
+                {
+                    selected = coarse;
+                }
                 selected.cluster_error = level.error / error_pixels;
                 max_meshlets = std::max(max_meshlets, fine.meshlet_count);
                 selected.geometry_bounds_min = cluster.bounds.GetMin();
@@ -223,7 +277,7 @@ namespace spartan::Renderer
     inline void AttachTreeProxyDraw(Render* render, uint32_t first_draw, uint32_t first_task, uint32_t instances,
         uint32_t first_extra, uint32_t capacity)
     {
-        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 128.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
+        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 272.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
         Mesh* mesh = render->GetMesh();
         const bool tree = (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
         const bool canopy = tree && render->GetSubMeshIndex() == 1;

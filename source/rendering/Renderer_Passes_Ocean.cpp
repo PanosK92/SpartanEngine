@@ -19,6 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Water.h"
+#include "../world/components/Render.h"
 #include "../world/components/Terrain.h"
 #include "../world/components/Camera.h"
 #include "../world/OceanWake.h"
@@ -768,6 +769,20 @@ namespace spartan
         {
             m_pass_state.ocean_spectrum_dirty = true;
             m_pass_state.ocean_wind           = wind;
+        }
+
+        // Once the initial displacement map is ready and wind parameters are unchanged, pace the
+        // 512x512 multi-cascade FFT update (30 Hz when the ocean mesh is visible, 15 Hz when offscreen/inland).
+        // History is left untouched on skipped frames so displacement/normal maps stay stable with zero flicker.
+        if (!m_pass_state.ocean_spectrum_dirty && m_pass_state.ocean_displacement_produced)
+        {
+            Render* water_render           = water->GetEntity() ? water->GetEntity()->GetComponent<Render>() : nullptr;
+            const bool water_visible       = !water_render || water_render->IsVisible();
+            const uint32_t ocean_step_mask = water_visible ? 1u : 3u;
+            if ((m_frame_num & ocean_step_mask) != 0u)
+            {
+                return;
+            }
         }
 
         const bool reset_history =

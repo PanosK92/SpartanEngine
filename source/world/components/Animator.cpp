@@ -1621,17 +1621,26 @@ namespace spartan
         uint32_t interval = 1;
         if (!visible)
         {
+            // Skip CPU skinning completely for offscreen characters past 10 m once their initial pose is published.
+            if (distance_squared > 10.0f * 10.0f)
+            {
+                return false;
+            }
+            interval = 16;
+        }
+        else if (distance_squared > 90.0f * 90.0f)
+        {
             interval = 8;
         }
-        else if (distance_squared > 60.0f * 60.0f)
+        else if (distance_squared > 35.0f * 35.0f)
         {
             interval = 4;
         }
-        else if (distance_squared > 25.0f * 25.0f)
+        else if (distance_squared > 12.0f * 12.0f)
         {
             interval = 2;
         }
-        const uint32_t phase = static_cast<uint32_t>(GetEntity()->GetObjectId() % 8);
+        const uint32_t phase = static_cast<uint32_t>(GetEntity()->GetObjectId() % 16);
         return (skinning_frame + phase) % interval == 0;
     }
 

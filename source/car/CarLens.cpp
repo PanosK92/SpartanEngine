@@ -32,6 +32,7 @@ namespace spartan
         float humidity      = humidity_dry;
         float clock         = 0.0f;
         float elapsed       = 0.0f; // since the gpu last stepped
+        float dry_seconds   = 999.0f;
         float rain_impacts_due  = 0.0f;
         float spray_impacts_due = 0.0f;
         bool running        = false;
@@ -58,11 +59,33 @@ namespace spartan
 
         latest       = conditions;
         aspect_ratio = aspect > 0.1f ? aspect : aspect_ratio;
-        running      = true;
         if (delta_time <= 0.0f)
+        {
             return;
+        }
 
         const bool raining = (conditions.rain > 0.0f && conditions.exposure > 0.0f) || spray > 0.0f;
+        if (raining || rain_impacts_due > 0.0f || spray_impacts_due > 0.0f)
+        {
+            dry_seconds = 0.0f;
+            running     = true;
+        }
+        else if (running)
+        {
+            dry_seconds += delta_time;
+            if (dry_seconds > 12.0f)
+            {
+                running = false;
+                wipe    = true;
+                elapsed = 0.0f;
+                return;
+            }
+        }
+        else
+        {
+            return;
+        }
+
         humidity           = humidity_step(humidity, raining, delta_time);
         clock             += delta_time * (max(0.0f, 1.0f - humidity) / (1.0f - humidity_rain));
         elapsed           += delta_time;
@@ -87,6 +110,7 @@ namespace spartan
         wipe              = true;
         humidity          = humidity_dry;
         elapsed           = 0.0f;
+        dry_seconds       = 999.0f;
         rain_impacts_due  = 0.0f;
         spray_impacts_due = 0.0f;
     }

@@ -986,6 +986,14 @@ namespace spartan
                         continue;
                     }
 
+                    if (m_layer_materials[i] &&
+                        m_layer_materials[i]->GetObjectName() == "terrain_layer_" + rule.name &&
+                        m_layer_materials[i]->GetResourceState() == ResourceState::PreparedForGpu)
+                    {
+                        BindLayerPaint(i);
+                        continue;
+                    }
+
                     if (!m_layer_materials[i])
                     {
                         m_layer_materials[i] = make_shared<Material>();
@@ -1004,19 +1012,23 @@ namespace spartan
 
                     layer->SetTexture(MaterialTextureType::Color, albedo, 0);
 
-                    auto set_optional = [&layer, &folder](MaterialTextureType type, const char* file)
+                    auto optional_path = [&folder](const char* file) -> string
                     {
                         const string path = folder + file;
-                        if (FileSystem::Exists(path))
-                        {
-                            layer->SetTexture(type, path, 0);
-                        }
+                        return FileSystem::Exists(path) ? path : string{};
                     };
 
-                    set_optional(MaterialTextureType::Normal,    "normal.png");
-                    set_optional(MaterialTextureType::Roughness, "roughness.png");
-                    set_optional(MaterialTextureType::Occlusion, "occlusion.png");
-                    set_optional(MaterialTextureType::Height,    "height.png");
+                    if (const string normal_path = optional_path("normal.png"); !normal_path.empty())
+                    {
+                        layer->SetTexture(MaterialTextureType::Normal, normal_path, 0);
+                    }
+                    layer->SetPackedSources(
+                        0,
+                        optional_path("occlusion.png"),
+                        optional_path("roughness.png"),
+                        string{},
+                        optional_path("height.png")
+                    );
 
                     // no render component owns a layer, so nothing else would ever pack its orm, compress
                     // it or upload it, the call guards itself against a second pass
@@ -2316,7 +2328,12 @@ namespace spartan
 
             m_mesh_pending.reset();
             const float maps_ms = generation_timer.GetElapsedTimeMs();
-            BuildCpuMesh();
+            const bool defer_mesh = World::IsLoadingFromFile();
+            m_defer_surface_commit = defer_mesh;
+            if (!defer_mesh)
+            {
+                BuildCpuMesh();
+            }
             SP_LOG_INFO("Terrain load: surface %.2f ms, maps %.2f ms, mesh %.2f ms",
                 surface_ms, maps_ms - surface_ms, generation_timer.GetElapsedTimeMs() - maps_ms);
 
@@ -2334,13 +2351,16 @@ namespace spartan
     {
         if (!m_is_generating.load(memory_order_acquire) &&
             !m_gpu_commit_pending.load(memory_order_acquire) &&
+            !m_surface_commit_pending.load(memory_order_acquire) &&
             !m_props_commit_pending.load(memory_order_acquire))
         {
             return;
         }
 
         m_gpu_commit_pending.store(false, memory_order_release);
+        m_surface_commit_pending.store(false, memory_order_release);
         m_props_commit_pending.store(false, memory_order_release);
+        m_defer_surface_commit = false;
         m_props_population_step = {};
         m_mesh_pending.reset();
         m_progress.Finish();
@@ -2461,6 +2481,32 @@ namespace spartan
             return;
         }
 
+        if (m_surface_commit_pending.load(memory_order_acquire))
+        {
+            if (Spline::HasPendingRoadWork())
+            {
+                return;
+            }
+
+            // Carve the dense grid first so the terrain mesh, heightmap, collision and
+            // pad refines are built once against the final road-graded surface.
+            if (m_road_carve_dirty)
+            {
+                RefreshSplineHeightCarves();
+            }
+
+            m_surface_commit_pending.store(false, memory_order_release);
+            m_defer_surface_commit = false;
+            FinalizeSurfaceCommit();
+            if (m_props_commit_pending.load(memory_order_acquire))
+            {
+                // Flow rivers spawned during FinalizeSurfaceCommit live in pending_additions
+                // until World::ProcessPendingAdditions runs. Return now so their splines tick
+                // first and CommitProps computes road exclusions and scatters vegetation once.
+                return;
+            }
+        }
+
         if (m_props_commit_pending.exchange(false, memory_order_acq_rel))
         {
             CommitProps();
@@ -2501,10 +2547,96 @@ namespace spartan
     void Terrain::CommitGpu()
     {
         const Stopwatch commit_timer;
+
+        auto queue_terrain_roads = [this]() -> uint32_t
+        {
+            uint32_t queued = 0;
+            generated_cache::Hash road_surface_hash;
+            road_surface_hash.Add(uint32_t(2));
+            road_surface_hash.Add(m_dense_width);
+            road_surface_hash.Add(m_dense_height);
+            road_surface_hash.Add(m_density);
+            road_surface_hash.Add(m_scale);
+            road_surface_hash.Add(GetEntity()->GetMatrix());
+            // Roads use the sculpted seed, independently of movable building pads.
+            // The same base must identify their bakes or saving a house invalidates every road.
+            const auto& road_base = m_positions_seed.size() == m_positions.size() ? m_positions_seed : m_positions;
+            for (const Vector3& point : road_base) road_surface_hash.Add(point);
+            for (Entity* entity : World::GetEntities())
+            {
+                if (!entity)
+                {
+                    continue;
+                }
+
+                if (Spline* spline = entity->GetComponent<Spline>())
+                {
+                    if (spline->GetConformToTerrain())
+                    {
+                        spline->QueueRoadRegeneration(road_surface_hash.value);
+                        ++queued;
+                    }
+                }
+            }
+            return queued;
+        };
+
+        if (m_defer_surface_commit)
+        {
+            m_progress.SetStep("Preparing terrain-conforming roads");
+            const uint32_t queued_roads = queue_terrain_roads();
+            if (queued_roads > 0)
+            {
+                SP_LOG_INFO("Terrain commit deferred for %u roads: queue roads %.2f ms", queued_roads, commit_timer.GetElapsedTimeMs());
+                m_surface_commit_pending.store(true, memory_order_release);
+                if (m_spawn_biome_props)
+                {
+                    m_props_commit_pending.store(true, memory_order_release);
+                }
+                return;
+            }
+            m_defer_surface_commit = false;
+        }
+
+        FinalizeSurfaceCommit();
+
+        const float terrain_ms = commit_timer.GetElapsedTimeMs();
+        m_progress.SetStep("Preparing terrain-conforming roads");
+        queue_terrain_roads();
+        SP_LOG_INFO("Terrain commit: terrain %.2f ms, queue roads %.2f ms", terrain_ms, commit_timer.GetElapsedTimeMs() - terrain_ms);
+
+        if (m_spawn_biome_props)
+        {
+            m_progress.SetStep("Populating vegetation and props");
+            m_props_commit_pending.store(true, memory_order_release);
+            return;
+        }
+
+        m_progress.Finish();
+        m_is_generating.store(false, memory_order_release);
+    }
+
+    void Terrain::FinalizeSurfaceCommit()
+    {
+        const Stopwatch commit_timer;
         m_progress.SetStep("Uploading gpu mesh");
 
         DetachTileMeshes();
         ClearTileEntities();
+
+        if (!m_prop_mask_bake_dirty.IsEmpty())
+        {
+            FlushPendingPropMask();
+        }
+        if (m_height_data.size() == m_positions.size() && !m_positions.empty())
+        {
+            BakeHeightMapPixels();
+        }
+
+        if (!m_mesh_pending && !m_positions.empty())
+        {
+            BuildCpuMesh();
+        }
 
         if (m_mesh_pending)
         {
@@ -2551,50 +2683,17 @@ namespace spartan
         const float terrain_ms = commit_timer.GetElapsedTimeMs();
         SP_LOG_INFO("Terrain commit breakdown: mesh %.2f ms, textures/tiles/collision %.2f ms, layers %.2f ms, rivers/refines %.2f ms",
             mesh_ms, collision_end_ms - mesh_ms, layers_end_ms - collision_end_ms, terrain_ms - layers_end_ms);
-        m_progress.SetStep("Preparing terrain-conforming roads");
-        generated_cache::Hash road_surface_hash;
-        road_surface_hash.Add(uint32_t(2));
-        road_surface_hash.Add(m_dense_width);
-        road_surface_hash.Add(m_dense_height);
-        road_surface_hash.Add(m_density);
-        road_surface_hash.Add(m_scale);
-        road_surface_hash.Add(GetEntity()->GetMatrix());
-        // Roads use the sculpted seed, independently of movable building pads.
-        // The same base must identify their bakes or saving a house invalidates every road.
-        const auto& road_base = m_positions_seed.size() == m_positions.size() ? m_positions_seed : m_positions;
-        for (const Vector3& point : road_base) road_surface_hash.Add(point);
-        for (Entity* entity : World::GetEntities())
-        {
-            if (!entity)
-            {
-                continue;
-            }
-
-            if (Spline* spline = entity->GetComponent<Spline>())
-            {
-                if (spline->GetConformToTerrain())
-                {
-                    spline->QueueRoadRegeneration(road_surface_hash.value);
-                }
-            }
-        }
-
-        SP_LOG_INFO("Terrain commit: terrain %.2f ms, queue roads %.2f ms", terrain_ms, commit_timer.GetElapsedTimeMs() - terrain_ms);
 
         m_vertices.clear();
         m_indices.clear();
         m_tile_vertices.clear();
         m_tile_indices.clear();
 
-        if (m_spawn_biome_props)
+        if (!m_spawn_biome_props && !m_props_commit_pending.load(memory_order_acquire))
         {
-            m_progress.SetStep("Populating vegetation and props");
-            m_props_commit_pending.store(true, memory_order_release);
-            return;
+            m_progress.Finish();
+            m_is_generating.store(false, memory_order_release);
         }
-
-        m_progress.Finish();
-        m_is_generating.store(false, memory_order_release);
     }
 
     void Terrain::CommitProps()
@@ -2622,7 +2721,7 @@ namespace spartan
         const Stopwatch population_slice;
         while (!m_props_population_step())
         {
-            if (!World::IsPreparing() || population_slice.GetElapsedTimeMs() >= 20.0f)
+            if (!World::IsPreparing() || population_slice.GetElapsedTimeMs() >= 250.0f)
             {
                 m_props_commit_pending.store(true, memory_order_release);
                 return;
@@ -3517,29 +3616,52 @@ namespace spartan
                 generated_cache::Save(carve_path, carve_hash.value, baked_heights);
             }
 
-            // repair only what moved, the flush adds the seam ring and patches the height texture in place
-            MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
-            FlushHeightEdits(true);
+            if (m_defer_surface_commit)
+            {
+                if (m_height_data.size() == m_positions.size())
+                {
+                    for (int32_t z = rect_z0; z <= rect_z1; ++z)
+                    {
+                        const size_t row = static_cast<size_t>(z) * m_dense_width;
+                        for (int32_t x = rect_x0; x <= rect_x1; ++x)
+                        {
+                            m_height_data[row + x] = m_positions[row + x].y;
+                        }
+                    }
+                }
+                m_prop_mask_bake_dirty.Merge(max(rect_x0 - 2, 0), max(rect_z0 - 2, 0),
+                    min(rect_x1 + 2, static_cast<int32_t>(m_dense_width) - 1),
+                    min(rect_z1 + 2, static_cast<int32_t>(m_dense_height) - 1));
+            }
+            else
+            {
+                // repair only what moved, the flush adds the seam ring and patches the height texture in place
+                MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
+                FlushHeightEdits(true);
+            }
 
             // the road edges and their cut and fill slopes are graded again on the pages, a metre apart
             MarkRoadDetailDirty(rect_x0 - 1, rect_z0 - 1, rect_x1, rect_z1);
         }
         // Existing fine patches must follow road edits and the first road bake too.
         // Otherwise their pre-carve triangles can cover an otherwise protected deck.
-        for (const TerrainPlatform& pad : m_platforms)
+        if (!m_defer_surface_commit)
         {
-            float cx, cz, hx, hz, yaw, height;
-            platform_to_local(GetEntity(), pad, cx, cz, hx, hz, yaw, height);
-            float min_x, min_z, max_x, max_z;
-            obb_write_aabb(cx, cz, hx, hz, yaw, min_x, min_z, max_x, max_z);
-            const float margin = pad_deform_margin(pad, max(mapping.scale_x, mapping.scale_z));
-            const auto bounds = to_grid_bounds(min_x - margin, min_z - margin, max_x + margin, max_z + margin);
-            for (const auto& region : dirty_regions)
+            for (const TerrainPlatform& pad : m_platforms)
             {
-                if (bounds[1] < region[0] || bounds[0] > region[1] ||
-                    bounds[3] < region[2] || bounds[2] > region[3]) continue;
-                SyncPadRefine(pad, true);
-                break;
+                float cx, cz, hx, hz, yaw, height;
+                platform_to_local(GetEntity(), pad, cx, cz, hx, hz, yaw, height);
+                float min_x, min_z, max_x, max_z;
+                obb_write_aabb(cx, cz, hx, hz, yaw, min_x, min_z, max_x, max_z);
+                const float margin = pad_deform_margin(pad, max(mapping.scale_x, mapping.scale_z));
+                const auto bounds = to_grid_bounds(min_x - margin, min_z - margin, max_x + margin, max_z + margin);
+                for (const auto& region : dirty_regions)
+                {
+                    if (bounds[1] < region[0] || bounds[0] > region[1] ||
+                        bounds[3] < region[2] || bounds[2] > region[3]) continue;
+                    SyncPadRefine(pad, true);
+                    break;
+                }
             }
         }
         SP_LOG_INFO("Road carve bake: %u hits, %u misses (missing/stale/invalid), %.2f ms",
@@ -4443,6 +4565,10 @@ namespace spartan
                 roads.push_back(part);
             }
         }
+        if (!m_road_exclusions.empty() && m_road_exclusions_hash == hash.value)
+        {
+            return;
+        }
         const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "road_exclusions", hash.value);
         vector<Vector4> cached;
         bool hit = generated_cache::Load(cache_path, hash.value, cached) && cached.size() >= 2 + grid_size * grid_size &&
@@ -4503,11 +4629,52 @@ namespace spartan
             }
             generated_cache::Save(cache_path, hash.value, m_road_exclusions);
         }
+        m_road_exclusions_hash = hash.value;
         SP_LOG_INFO("Road exclusion bake: %s, %.2f ms", hit ? "hit" : "miss (missing/stale/invalid)", timer.GetElapsedTimeMs());
         m_road_exclusion_buffer_dirty = true;
         // Seeds retain the original instances, so removing/narrowing a road restores
         // nearby vegetation instead of making each rebuild progressively emptier.
         ApplySplineCarveToProps(mapping.x, mapping.y, mapping.x + 1.0f / mapping.z, mapping.y + 1.0f / mapping.w);
+    }
+
+    vector<Terrain::PlatformFootprint> Terrain::GetPlatformFootprints() const
+    {
+        vector<PlatformFootprint> footprints;
+        footprints.reserve(m_platforms.size() + (m_live_pad_active ? 1 : 0));
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float cell = max(max(mapping.scale_x, mapping.scale_z), 1.0f);
+        auto add = [&](const TerrainPlatform& pad)
+        {
+            float deform_hx = 0.0f;
+            float deform_hz = 0.0f;
+            pad_deform_extents(pad, cell, deform_hx, deform_hz);
+            const float cy = cosf(pad.yaw);
+            const float sy = sinf(pad.yaw);
+            const float ex = fabsf(cy) * deform_hx + fabsf(sy) * deform_hz;
+            const float ez = fabsf(sy) * deform_hx + fabsf(cy) * deform_hz;
+            footprints.push_back({
+                pad.center_x, pad.center_z,
+                pad.half_x, pad.half_z,
+                deform_hx, deform_hz,
+                cy, sy,
+                pad.center_x - ex, pad.center_z - ez,
+                pad.center_x + ex, pad.center_z + ez
+            });
+        };
+        if (m_live_pad_active) add(m_live_pad);
+        for (const TerrainPlatform& pad : m_platforms) add(pad);
+        return footprints;
+    }
+
+    void Terrain::ClearPropSeeds()
+    {
+        m_prop_instance_seed.clear();
+        m_prop_entity_seed.clear();
+    }
+
+    void Terrain::RecordPropInstanceSeed(uint64_t entity_id, const vector<Instance>& seed)
+    {
+        m_prop_instance_seed[entity_id] = seed;
     }
 
     bool Terrain::IsOnRoad(float world_x, float world_z) const
@@ -5526,6 +5693,7 @@ namespace spartan
         // one static grid per tile, physx samples the heights directly so there is nothing to cook and
         // the collision matches the rendered mesh exactly, cooked per tile meshes did neither, keeping
         // it per tile is what lets the distance activation drop everything but the tiles around you
+        Physics::PrefetchTerrainHeightfields(this);
         for (Entity* child : m_entity_ptr->GetChildren())
         {
             if (ParseTileIndex(child) < 0)
@@ -5550,6 +5718,7 @@ namespace spartan
                 physics->SetBodyType(BodyType::Heightfield);
             }
         }
+        Physics::ClearPrefetchedHeightfields();
     }
 
     void Terrain::CreateTileEntities()

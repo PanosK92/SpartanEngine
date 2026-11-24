@@ -102,7 +102,7 @@ static const uint  grass_blades_per_thread = 1u;
 static const float grass_patch_max_boost = 4.0f;
 // ceiling on the patch and frustum boosts combined, this is what bounds the dispatch, every thread
 // past it would be work the atomic cap refuses to accept anyway
-static const float grass_max_boost = 12.0f;
+static const float grass_max_boost = 8.0f;
 
 // what fraction of the eligible ground survives the patch field on average, the threshold keeps
 // coverage exactly and the fringe is symmetric about it so it costs nothing on average
@@ -425,18 +425,76 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     int world_cell_x = (int)floor(camera_xz_anchor.x / cell_size) + cell_x_s;
     int world_cell_z = (int)floor(camera_xz_anchor.y / cell_size) + cell_z_s;
 
-    // distance thinning of the blade rings, the cpu hands every ring the distance it starts at and its exponent.
-    // the stratified sequence below is progressive, its first n candidates cover the cell evenly for any n, so
-    // a cell keeps the leading share of its candidates and the same blades stay as the camera backs away. the
-    // nearest point of the cell bounds the share of every candidate in it, which rejects most of a far cell's
-    // threads before they hash anything
+    // wide overlapping fades, then warp the radius with low frequency noise so the lod
+    // seam is a blob instead of a stamped circle
+    float inner_transition = max(
+        cell_size * 10.0f,
+        inner_radius * 0.5f
+    );
+    float outer_transition = max(
+        cell_size * 10.0f,
+        ring_radius * 0.42f
+    );
+    float inner_start = max(
+        0.0f,
+        inner_radius - inner_transition
+    );
+    float outer_start = max(
+        inner_radius,
+        ring_radius - outer_transition
+    );
+    float reject_outer = ring_radius + outer_transition * 0.15f;
+
+    // Cell-level ring & band distance reject BEFORE hashing, stratification, or heightmap fetches.
+    // Rejects the corners and inner hole of the rectangular dispatch window in ~4 ALU instructions.
+    float2 cell_min      = float2(world_cell_x, world_cell_z) * cell_size;
+    float2 cell_max      = cell_min + cell_size;
+    float2 cell_nearest  = clamp(camera_xz_anchor, cell_min, cell_max) - camera_xz_anchor;
+    float  cell_min_d2   = dot(cell_nearest, cell_nearest);
+    float  outer_bound   = min(reject_outer, band_max);
+    if (cell_min_d2 > outer_bound * outer_bound)
+        return false;
+    float inner_bound = max(inner_start, band_min);
+    if (inner_bound > 0.0f)
+    {
+        float2 cell_farthest = max(abs(cell_min - camera_xz_anchor), abs(cell_max - camera_xz_anchor));
+        if (dot(cell_farthest, cell_farthest) < inner_bound * inner_bound)
+            return false;
+    }
+
+    // distance thinning of the blade rings: evaluate before frustum plane work so thinned threads exit immediately
     float thin_start    = grass_lod_parameters[5u + count_index].z;
     float thin_exponent = grass_lod_parameters[5u + count_index].w;
     if (thin_start > 0.0f)
     {
-        float2 cell_min     = float2(world_cell_x, world_cell_z) * cell_size;
-        float2 cell_nearest = clamp(camera_xz_anchor, cell_min, cell_min + cell_size) - camera_xz_anchor;
-        if (float(blade_index) >= grass_distance_keep(dot(cell_nearest, cell_nearest), thin_start, thin_exponent) * float(blades_per_cell))
+        if (float(blade_index) >= grass_distance_keep(cell_min_d2, thin_start, thin_exponent) * float(blades_per_cell))
+            return false;
+    }
+
+    // Conservative cell-level AABB test against the left/right frustum planes before hashing or heightmap fetch.
+    // The vertical span covers the full authored [height_min, height_max] band plus blade cull height/radius.
+    {
+        float4 cell_plane_l, cell_plane_r, cell_plane_b, cell_plane_t;
+        get_frustum_side_planes(cell_plane_l, cell_plane_r, cell_plane_b, cell_plane_t);
+        float cell_y_min = height_min - cull_radius;
+        float cell_y_max = height_max + cull_height + cull_radius;
+        float2 cell_x_min = cell_min - cull_radius;
+        float2 cell_x_max = cell_max + cull_radius;
+
+        float3 p_l = float3(
+            cell_plane_l.x >= 0.0f ? cell_x_max.x : cell_x_min.x,
+            cell_plane_l.y >= 0.0f ? cell_y_max   : cell_y_min,
+            cell_plane_l.z >= 0.0f ? cell_x_max.y : cell_x_min.y
+        );
+        if (dot(cell_plane_l.xyz, p_l) + cell_plane_l.w < 0.0f)
+            return false;
+
+        float3 p_r = float3(
+            cell_plane_r.x >= 0.0f ? cell_x_max.x : cell_x_min.x,
+            cell_plane_r.y >= 0.0f ? cell_y_max   : cell_y_min,
+            cell_plane_r.z >= 0.0f ? cell_x_max.y : cell_x_min.y
+        );
+        if (dot(cell_plane_r.xyz, p_r) + cell_plane_r.w < 0.0f)
             return false;
     }
 
@@ -470,31 +528,11 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
         uint capacity = max(1u, (uint)ceil(float(max_instances_per_lod) * GRASS_FILL_MARGIN * maximum_boost / max(cells_in_ring, 1.0f)));
         cell_position = grass_stratified_position(blade_index, capacity, cell_position, seed);
     }
-    float2 cell_origin_xz = float2(world_cell_x, world_cell_z) * cell_size;
+    float2 cell_origin_xz = cell_min;
     float2 world_xz       = cell_origin_xz + cell_position * cell_size;
-
-    // wide overlapping fades, then warp the radius with low frequency noise so the lod
-    // seam is a blob instead of a stamped circle
-    float inner_transition = max(
-        cell_size * 10.0f,
-        inner_radius * 0.5f
-    );
-    float outer_transition = max(
-        cell_size * 10.0f,
-        ring_radius * 0.42f
-    );
-    float inner_start = max(
-        0.0f,
-        inner_radius - inner_transition
-    );
-    float outer_start = max(
-        inner_radius,
-        ring_radius - outer_transition
-    );
 
     float2 to_camera = world_xz - camera_xz_anchor;
     float  dist2     = dot(to_camera, to_camera);
-    float  reject_outer = ring_radius + outer_transition * 0.15f;
     if (
         dist2 < inner_start * inner_start ||
         dist2 > reject_outer * reject_outer ||
@@ -783,6 +821,481 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     candidate.yaw_01      = ys;
     candidate.scale_01    = scale_01;
     candidate.cull_radius = cull_radius;
+    candidate.hash        = h0;
+    return true;
+}
+
+struct GrassCellContext
+{
+    GrassPlacementParams params;
+    uint   lod_index;
+    uint   slot_index;
+    uint   mask_channel;
+    uint   count_index;
+    uint   blades_per_cell;
+    uint   slot0_capacity;
+    uint   slot0_seed;
+    uint   habitat;
+    int    world_cell_x;
+    int    world_cell_z;
+    float  cell_keep;
+    float  scale_01_min;
+    float  scale_01_max;
+    float  tilt_deg;
+    float  tilt_tan;
+    float  cull_radius;
+    float  cull_height;
+    float  inner_transition;
+    float  outer_transition;
+    float  inner_start;
+    float  outer_start;
+    float  reject_outer;
+    float  thin_start;
+    float  thin_exponent;
+    float  patch_size;
+    bool   patch_invert;
+    float  patch_coverage;
+    float  patch_edge;
+    float  hiz_max_mip;
+    float2 camera_xz_anchor;
+    float2 cell_min;
+    float2 height_size;
+    float2 mask_size;
+    float4 plane_l;
+    float4 plane_r;
+    float4 plane_b;
+    float4 plane_t;
+};
+
+bool grass_prepare_cell(
+    GrassPlacementParams params,
+    uint2                cell_id,
+    uint                 first_blade,
+    out GrassCellContext cell,
+    out uint             max_active_blades
+)
+{
+    cell = (GrassCellContext)0;
+    max_active_blades = 0u;
+
+    float cell_size     = params.cell_size;
+    float ring_radius   = params.ring_radius;
+    float inner_radius  = params.inner_radius;
+    uint cells_per_axis = (uint)(2.0f * ceil(ring_radius / cell_size)) + 2u;
+    if (cell_id.x >= cells_per_axis || cell_id.y >= cells_per_axis)
+    {
+        return false;
+    }
+
+    uint packed_index   = params.packed_index;
+    uint lod_index      = packed_index & 0x3u;
+    uint slot_index     = (packed_index >> 4) & 0xFu;
+    uint mask_channel   = (packed_index >> 8) & 0xFu;
+    uint count_index    = slot_index * 3u + lod_index;
+
+    float patch_size_signed = params.patch_size;
+    float patch_size        = abs(patch_size_signed);
+    float patch_coverage    = saturate(params.patch_coverage);
+
+    float ring_area      = PI * (ring_radius * ring_radius - inner_radius * inner_radius);
+    float cells_in_ring  = ring_area / max(cell_size * cell_size, 1e-6f);
+    float patch_boost    = grass_patch_density_boost(patch_size, patch_coverage);
+    float total_boost    = min(patch_boost * grass_frustum_density_boost(), grass_max_boost);
+    float per_cell       = float(params.max_instances_per_lod) * GRASS_FILL_MARGIN * total_boost / max(cells_in_ring, 1.0f);
+    uint blades_per_cell = max(1u, (uint)ceil(per_cell));
+    if (first_blade >= blades_per_cell)
+    {
+        return false;
+    }
+
+    float2 camera_xz_anchor = get_camera_position().xz;
+    int half_cells   = (int)(cells_per_axis / 2u);
+    int world_cell_x = (int)floor(camera_xz_anchor.x / cell_size) + ((int)cell_id.x - half_cells);
+    int world_cell_z = (int)floor(camera_xz_anchor.y / cell_size) + ((int)cell_id.y - half_cells);
+
+    float inner_transition = max(cell_size * 10.0f, inner_radius * 0.5f);
+    float outer_transition = max(cell_size * 10.0f, ring_radius * 0.42f);
+    float inner_start      = max(0.0f, inner_radius - inner_transition);
+    float outer_start      = max(inner_radius, ring_radius - outer_transition);
+    float reject_outer     = ring_radius + outer_transition * 0.15f;
+
+    float2 cell_min     = float2(world_cell_x, world_cell_z) * cell_size;
+    float2 cell_max     = cell_min + cell_size;
+    float2 cell_nearest = clamp(camera_xz_anchor, cell_min, cell_max) - camera_xz_anchor;
+    float  cell_min_d2  = dot(cell_nearest, cell_nearest);
+    if (cell_min_d2 > reject_outer * reject_outer)
+    {
+        return false;
+    }
+    if (inner_start > 0.0f)
+    {
+        float2 cell_farthest = max(abs(cell_min - camera_xz_anchor), abs(cell_max - camera_xz_anchor));
+        if (dot(cell_farthest, cell_farthest) < inner_start * inner_start)
+        {
+            return false;
+        }
+    }
+
+    max_active_blades   = blades_per_cell;
+    float thin_start    = grass_lod_parameters[5u + count_index].z;
+    float thin_exponent = grass_lod_parameters[5u + count_index].w;
+    if (thin_start > 0.0f)
+    {
+        uint thin_cap     = (uint)ceil(grass_distance_keep(cell_min_d2, thin_start, thin_exponent) * float(blades_per_cell));
+        max_active_blades = min(max_active_blades, thin_cap);
+        if (first_blade >= max_active_blades)
+        {
+            return false;
+        }
+    }
+
+    float scale_01_min  = float((packed_index >> 12) & 0xFFu) / 255.0f;
+    float scale_01_max  = float((packed_index >> 20) & 0xFFu) / 255.0f;
+    float tilt_deg      = float((packed_index >> 28) & 0xFu) * (45.0f / 15.0f);
+    float largest_scale = exp2(lerp(-6.643856f, 6.643856f, scale_01_max));
+    float cull_radius   = (params.root_radius > 0.0f ? params.root_radius : grass_cull_radius) * largest_scale;
+    float cull_height   = params.root_radius > 0.0f ? 0.0f : grass_cull_half_height * largest_scale;
+
+    // Conservative cell-level frustum + Hi-Z occlusion reject (single tap for all blades in the cell).
+    float4 plane_l, plane_r, plane_b, plane_t;
+    get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
+    {
+        float cell_y_min  = params.height_min - cull_radius;
+        float cell_y_max  = params.height_max + cull_height + cull_radius;
+        float2 cell_x_min = cell_min - cull_radius;
+        float2 cell_x_max = cell_max + cull_radius;
+
+        float3 p_l = float3(plane_l.x >= 0.0f ? cell_x_max.x : cell_x_min.x, plane_l.y >= 0.0f ? cell_y_max : cell_y_min, plane_l.z >= 0.0f ? cell_x_max.y : cell_x_min.y);
+        if (dot(plane_l.xyz, p_l) + plane_l.w < 0.0f)
+        {
+            return false;
+        }
+        float3 p_r = float3(plane_r.x >= 0.0f ? cell_x_max.x : cell_x_min.x, plane_r.y >= 0.0f ? cell_y_max : cell_y_min, plane_r.z >= 0.0f ? cell_x_max.y : cell_x_min.y);
+        if (dot(plane_r.xyz, p_r) + plane_r.w < 0.0f)
+        {
+            return false;
+        }
+    }
+
+    uint height_w, height_h;
+    tex.GetDimensions(height_w, height_h);
+    float2 height_size = float2(height_w, height_h);
+
+    uint hiz_w, hiz_h, hiz_mips;
+    tex2.GetDimensions(0, hiz_w, hiz_h, hiz_mips);
+    float hiz_max_mip = float(hiz_mips - 1u);
+
+    // When each thread evaluates multiple blades in a cell, reject the whole cell with a single
+    // heightmap + Hi-Z tap upfront. When grass_blades_per_thread == 1, skip the extra cell-center
+    // tap so each thread pays only 1 heightmap + 1 Hi-Z tap on the blade itself.
+    if (grass_blades_per_thread > 1u)
+    {
+        float cell_valid;
+        float2 cell_center_xz = cell_min + cell_size * 0.5f;
+        float cell_center_y   = sample_terrain_height(cell_center_xz, height_size, params.terrain_mapping, cell_valid) + params.seat_y;
+        if (cell_valid >= 0.5f)
+        {
+            float3 cell_center_ws = float3(cell_center_xz.x, cell_center_y + cull_height, cell_center_xz.y);
+            // Tight conservative bound covering cell corners and slopes up to 45 deg without poking through walls.
+            float cell_sphere_r   = cell_size * 0.95f + cull_radius + cull_height + 0.35f;
+            if (!sphere_in_side_planes(cell_center_ws, cell_sphere_r, plane_l, plane_r, plane_b, plane_t))
+            {
+                return false;
+            }
+            if (!sphere_hiz_visible(tex2, cell_center_ws, cell_sphere_r, hiz_max_mip))
+            {
+                return false;
+            }
+        }
+    }
+
+    uint mask_w = 1u, mask_h = 1u;
+    if (params.biome_min >= 0.0f || params.ground_mask != 0u)
+    {
+        tex3.GetDimensions(mask_w, mask_h);
+    }
+
+    cell.params           = params;
+    cell.lod_index        = lod_index;
+    cell.slot_index       = slot_index;
+    cell.mask_channel     = mask_channel;
+    cell.count_index      = count_index;
+    cell.blades_per_cell  = blades_per_cell;
+    cell.cell_keep        = saturate(per_cell / float(blades_per_cell));
+    cell.world_cell_x     = world_cell_x;
+    cell.world_cell_z     = world_cell_z;
+    cell.scale_01_min     = scale_01_min;
+    cell.scale_01_max     = scale_01_max;
+    cell.tilt_deg         = tilt_deg;
+    cell.tilt_tan         = tilt_deg > 0.0f ? tan(radians(tilt_deg)) : 0.0f;
+    cell.cull_radius      = cull_radius;
+    cell.cull_height      = cull_height;
+    cell.inner_transition = inner_transition;
+    cell.outer_transition = outer_transition;
+    cell.inner_start      = inner_start;
+    cell.outer_start      = outer_start;
+    cell.reject_outer     = reject_outer;
+    cell.thin_start       = thin_start;
+    cell.thin_exponent    = thin_exponent;
+    cell.patch_size       = patch_size;
+    cell.patch_invert     = patch_size_signed < 0.0f;
+    cell.patch_coverage   = patch_coverage;
+    cell.patch_edge       = saturate(params.patch_edge);
+    cell.hiz_max_mip      = hiz_max_mip;
+    cell.camera_xz_anchor = camera_xz_anchor;
+    cell.cell_min         = cell_min;
+    cell.height_size      = height_size;
+    cell.mask_size        = float2(mask_w, mask_h);
+    cell.plane_l          = plane_l;
+    cell.plane_r          = plane_r;
+    cell.plane_b          = plane_b;
+    cell.plane_t          = plane_t;
+    cell.habitat          = (uint)(grass_lod_parameters[slot_index].z + 0.5f);
+    if (slot_index == 0u)
+    {
+        float maximum_boost = min(patch_boost / 0.18f, grass_max_boost);
+        cell.slot0_capacity = max(1u, (uint)ceil(float(params.max_instances_per_lod) * GRASS_FILL_MARGIN * maximum_boost / max(cells_in_ring, 1.0f)));
+        cell.slot0_seed     = hash_u32((uint)world_cell_x, (uint)world_cell_z, lod_index * 2654435761u);
+    }
+    return true;
+}
+
+bool grass_place_candidate_in_cell(
+    GrassCellContext   cell,
+    uint               blade_index,
+    out GrassCandidate candidate
+)
+{
+    candidate = (GrassCandidate)0;
+
+    uint h0 = hash_u32(
+        (uint)cell.world_cell_x,
+        (uint)cell.world_cell_z,
+        cell.lod_index * 2654435761u + blade_index * 0x9e3779b9u + cell.slot_index * 0x85ebca6bu
+    );
+    uint h1 = hash_mix(h0 ^ 0x9e3779b9u);
+    uint h2 = hash_mix(h1 ^ 0x85ebca6bu);
+    uint h3 = hash_mix(h2 ^ 0xc2b2ae35u);
+
+    float jx = hash_unit(h0);
+    float jz = hash_unit(h1);
+    float ys = hash_unit(h2);
+    float sc = hash_unit(h3);
+
+    float2 cell_position = float2(jx, jz);
+    if (cell.slot_index == 0u)
+    {
+        cell_position = grass_stratified_position(blade_index, cell.slot0_capacity, cell_position, cell.slot0_seed);
+    }
+    float2 world_xz  = cell.cell_min + cell_position * cell.params.cell_size;
+    float2 to_camera = world_xz - cell.camera_xz_anchor;
+    float  dist2     = dot(to_camera, to_camera);
+    if (dist2 < cell.inner_start * cell.inner_start || dist2 > cell.reject_outer * cell.reject_outer)
+    {
+        return false;
+    }
+
+    float valid;
+    float local_y = sample_terrain_height(world_xz, cell.height_size, cell.params.terrain_mapping, valid);
+    float world_y = local_y + cell.params.seat_y;
+    if (valid < 0.5f || world_y < cell.params.height_min || world_y > cell.params.height_max)
+    {
+        return false;
+    }
+
+    float thin_grow = 1.0f;
+    if (cell.thin_start > 0.0f)
+    {
+        float camera_dy = world_y - get_camera_position().y;
+        float keep      = grass_distance_keep(dist2 + camera_dy * camera_dy, cell.thin_start, cell.thin_exponent);
+        float rank      = (float(blade_index) + 0.5f) / float(cell.blades_per_cell);
+        if (rank >= keep)
+        {
+            return false;
+        }
+        thin_grow = saturate((keep - rank) / (keep * grass_thin_exit_share));
+    }
+
+    float3 blade_center = float3(world_xz.x, world_y + cell.cull_height, world_xz.y);
+    if (!sphere_in_side_planes(blade_center, cell.cull_radius, cell.plane_l, cell.plane_r, cell.plane_b, cell.plane_t))
+    {
+        return false;
+    }
+    if (!sphere_hiz_visible(tex2, blade_center, cell.cull_radius, cell.hiz_max_mip))
+    {
+        return false;
+    }
+
+    float distance_to_camera  = sqrt(dist2);
+    float warp_n              = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
+                              + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
+    float distance_warped_in  = distance_to_camera + warp_n * cell.inner_transition * 0.55f;
+    float distance_warped_out = distance_to_camera + warp_n * cell.outer_transition * 0.55f;
+
+    float fade_in     = cell.params.inner_radius > 0.0f ? smoothstep(cell.inner_start, cell.params.inner_radius, distance_warped_in) : 1.0f;
+    float fade_out    = 1.0f - smoothstep(cell.outer_start, cell.params.ring_radius, distance_warped_out);
+    float lod_random  = hash_unit(hash_mix(h0 ^ 0xa511e9b3u));
+    float fade_weight = fade_in * fade_out * cell.cell_keep;
+    if (lod_random > fade_weight)
+    {
+        return false;
+    }
+
+    float biome_min    = cell.params.biome_min;
+    float biome_ground = 1.0f;
+    if (biome_min >= 0.0f || cell.params.ground_mask != 0u)
+    {
+        float2 mask_uv = terrain_normalized_to_uv(
+            terrain_world_to_normalized(world_xz, cell.params.terrain_mapping),
+            cell.mask_size
+        );
+        if (cell.params.ground_mask != 0u)
+        {
+            float index_a  = tex3.SampleLevel(samplers[sampler_point_clamp], mask_uv, 0).a;
+            uint  dominant = min((uint)(index_a * 255.0f + 0.5f), grass_ground_layer_max - 1u);
+            if ((cell.params.ground_mask & (1u << dominant)) == 0u)
+            {
+                return false;
+            }
+        }
+        if (biome_min >= 0.0f)
+        {
+            float4 mask   = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
+            float grass_w = cell.mask_channel == 0u ? mask.r : (cell.mask_channel == 1u ? mask.g : mask.b);
+            if (grass_w < biome_min)
+            {
+                return false;
+            }
+            biome_ground = saturate((grass_w - biome_min) / grass_biome_gain);
+            float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
+            if (biome_roll > biome_ground)
+            {
+                return false;
+            }
+        }
+    }
+
+    if (on_road(world_xz))
+    {
+        return false;
+    }
+
+    float patch      = grass_patch_weight(world_xz, cell.patch_size, cell.patch_coverage, cell.patch_edge, cell.patch_invert);
+    float lod_weight = fade_weight * patch;
+    if (lod_random > lod_weight)
+    {
+        return false;
+    }
+
+    float3 surface_normal = sample_terrain_normal(world_xz, cell.height_size, cell.params.terrain_mapping, local_y);
+    bool below_slope_floor = cell.params.min_slope_cos < 1.0f && surface_normal.y > cell.params.min_slope_cos;
+    if (surface_normal.y < cell.params.max_slope_cos || below_slope_floor)
+    {
+        return false;
+    }
+
+    float slope_rad = 0.0f;
+    bool need_slope = (cell.habitat >= 1u && cell.habitat <= 3u) || cell.params.slope_bias != 0.0f || biome_min >= 0.0f;
+    if (need_slope)
+    {
+        slope_rad = acos(saturate(surface_normal.y));
+    }
+
+    if (cell.habitat >= 1u && cell.habitat <= 3u)
+    {
+        float above_sea = world_y - grass_lod_parameters[cell.slot_index].w;
+        float slope_deg = slope_rad * 57.2957795f;
+        float woodland  = habitat_woodland(world_xz.x, world_xz.y, above_sea, slope_deg, 0.5f, 0.5f);
+        float h_weight  = woodland;
+        if (cell.habitat == 2u)
+        {
+            h_weight = habitat_grove(world_xz.x, world_xz.y, above_sea, slope_deg, woodland);
+        }
+        else if (cell.habitat == 3u)
+        {
+            h_weight = (0.30f + 0.70f * (1.0f - woodland)) * habitat_smooth((habitat_noise(world_xz.x / 70.0f, world_xz.y / 70.0f, 521u) - 0.25f) / 0.40f);
+        }
+        float habitat_roll = hash_unit(hash_mix(h0 ^ 0x517cc1b7u));
+        if (habitat_roll > h_weight)
+        {
+            return false;
+        }
+    }
+
+    float shape = 1.0f;
+    if (cell.params.height_fade > 0.0f)
+    {
+        shape *= saturate((world_y - cell.params.height_min) / cell.params.height_fade);
+    }
+    if (cell.params.slope_bias != 0.0f)
+    {
+        float slope_floor = acos(saturate(cell.params.min_slope_cos));
+        float slope_roof  = acos(saturate(cell.params.max_slope_cos));
+        float t           = saturate((slope_rad - slope_floor) / max(slope_roof - slope_floor, 1e-3f));
+        shape            *= cell.params.slope_bias > 0.0f ? pow(t, cell.params.slope_bias) : pow(1.0f - t, -cell.params.slope_bias);
+    }
+    if (shape < 1.0f)
+    {
+        float shape_roll = hash_unit(hash_mix(h0 ^ 0x3c6ef372u));
+        if (shape_roll > shape)
+        {
+            return false;
+        }
+    }
+
+    if (biome_min >= 0.0f)
+    {
+        float slope_fit  = saturate((acos(saturate(cell.params.max_slope_cos)) - slope_rad) / grass_slope_fade);
+        float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
+        if (biome_roll > biome_ground * slope_fit)
+        {
+            return false;
+        }
+    }
+
+    uint   growth_seed  = 0x4b1d7u + cell.slot_index * 919u;
+    float  wave_macro   = grass_value_noise(world_xz * 0.075f, growth_seed) * 0.5f + 0.5f;
+    float2 growth_warp  = float2(
+        grass_value_noise(world_xz * 0.14f, growth_seed + 11u),
+        grass_value_noise(world_xz * 0.14f, growth_seed + 29u)
+    ) * 1.15f;
+    float  wave_tuft    = grass_value_noise((world_xz + growth_warp) * 0.36f, growth_seed + 53u) * 0.5f + 0.5f;
+    float  wave_micro   = grass_value_noise(world_xz * 1.18f, growth_seed + 97u) * 0.5f + 0.5f;
+    float  growth_field = smoothstep(0.14f, 0.88f, 0.40f * wave_macro + 0.42f * wave_tuft + 0.18f * wave_micro);
+
+    if (cell.slot_index > 0u)
+    {
+        float colony_keep = lerp(0.60f, 1.0f, smoothstep(0.15f, 0.72f, wave_tuft * 0.72f + wave_micro * 0.28f));
+        float colony_roll = hash_unit(hash_mix(h0 ^ 0x6f2a9c13u));
+        if (colony_roll > colony_keep)
+        {
+            return false;
+        }
+    }
+
+    float tuft_curve = pow(growth_field, 1.18f);
+    float jitter_mix = cell.slot_index == 0u ? 0.25f : 0.36f;
+    float emergent   = pow(sc, 3.6f) * (cell.slot_index == 0u ? 0.28f : 0.24f) * (0.25f + 0.75f * tuft_curve);
+    float sc_shaped  = saturate(lerp(tuft_curve, sc, jitter_mix) + emergent);
+    float scale_01   = lerp(cell.scale_01_min, cell.scale_01_max, sc_shaped);
+    scale_01         = lerp(cell.scale_01_min, scale_01, saturate(patch * 1.4f));
+    scale_01        += log2(lerp(grass_thin_exit_scale, 1.0f, thin_grow)) / (2.0f * 6.643856f);
+
+    if (cell.tilt_deg > 0.0f)
+    {
+        float2 lean = float2(
+            hash_unit(hash_mix(h0 ^ 0x1b56c4e9u)),
+            hash_unit(hash_mix(h0 ^ 0x632be5abu))
+        ) * 2.0f - 1.0f;
+
+        surface_normal = normalize(surface_normal + float3(lean.x, 0.0f, lean.y) * cell.tilt_tan);
+    }
+
+    candidate.position    = float3(world_xz.x, world_y, world_xz.y);
+    candidate.normal      = surface_normal;
+    candidate.yaw_01      = ys;
+    candidate.scale_01    = scale_01;
+    candidate.cull_radius = cell.cull_radius;
     candidate.hash        = h0;
     return true;
 }

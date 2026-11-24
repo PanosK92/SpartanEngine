@@ -133,14 +133,14 @@ float road_blobs(float2 p, float density, float2 radius, float2 seed)
 // =============================================================================
 static const float ROAD_DETAIL_REPEAT_PRIMARY   = 1.05f; // metres per 4K scanned asphalt tile (~3900 px/m = 0.25 mm/texel)
 static const float ROAD_DETAIL_REPEAT_SECONDARY = 2.71f; // irrational rotated secondary octave eliminates all tiling
-static const float ROAD_POM_MAX_STEPS           = 26.0f;
-static const float ROAD_POM_MIN_STEPS           = 10.0f;
-static const uint  ROAD_POM_REFINE_STEPS        = 6;
-static const float ROAD_POM_FADE_START          = 16.0f;
-static const float ROAD_POM_FADE_END            = 32.0f;
+static const float ROAD_POM_MAX_STEPS           = 8.0f;
+static const float ROAD_POM_MIN_STEPS           = 3.0f;
+static const uint  ROAD_POM_REFINE_STEPS        = 2;
+static const float ROAD_POM_FADE_START          = 6.0f;
+static const float ROAD_POM_FADE_END            = 15.0f;
 static const float ROAD_POM_MIN_COSINE          = 0.16f;
 static const float ROAD_POM_RELIEF_METRES       = 0.026f; // 2.6 cm effective relief across cracks, divots & crushed aggregate
-static const uint  ROAD_POM_SHADOW_STEPS        = 5;
+static const uint  ROAD_POM_SHADOW_STEPS        = 2;
 static const float ROAD_POM_SHADOW_HARDNESS     = 4.0f;
 
 struct RoadImperfections
@@ -225,19 +225,20 @@ RoadImperfections road_eval_imperfections(float2 xz, float footprint)
     }
 
     // 2. Primary meandering thermal & structural cracks (domain-warped jagged fissures ~3.4 m, sparse & organic)
+    // Skip Voronoi crack search when cracks are sub-pixel far down the road or burst presence is zero.
     float sealed_zone = smoothstep(0.56f, 0.72f, road_noise_soft(xz * 0.028f + float2(9.0f, 61.0f)));
+    if (fp < 0.08f)
     {
-        float2 p = xz / 3.40f;
-        p += (float2(road_noise_soft(p * 0.90f + float2(4.0f, 19.0f)), road_noise_soft(p * 0.90f + float2(37.0f, 11.0f))) - 0.5f) * 1.15f;
-        p += (float2(road_noise(p * 4.8f + float2(2.0f, 8.0f)), road_noise(p * 4.8f + float2(61.0f, 3.0f))) - 0.5f) * 0.22f;
-        p += (float2(road_noise(p * 15.0f + float2(11.0f, 5.0f)), road_noise(p * 15.0f + float2(3.0f, 29.0f))) - 0.5f) * 0.05f;
-        float2 away;
-        float d = road_cell_border(p, away) * 3.40f;
-        // Modulate crack runs so cracks appear in realistic localized bursts, never uniform loops
         float burst = smoothstep(0.46f, 0.68f, road_noise_soft(xz * 0.15f + float2(17.0f, 53.0f))) * smoothstep(0.32f, 0.62f, road_noise(xz * 0.65f + float2(7.0f, 13.0f)));
         float presence = burst * smoothstep(0.22f, 0.68f, distress) * (1.0f - w.repair * 0.92f);
         if (presence > 0.01f)
         {
+            float2 p = xz / 3.40f;
+            p += (float2(road_noise_soft(p * 0.90f + float2(4.0f, 19.0f)), road_noise_soft(p * 0.90f + float2(37.0f, 11.0f))) - 0.5f) * 1.15f;
+            p += (float2(road_noise(p * 4.8f + float2(2.0f, 8.0f)), road_noise(p * 4.8f + float2(61.0f, 3.0f))) - 0.5f) * 0.22f;
+            p += (float2(road_noise(p * 15.0f + float2(11.0f, 5.0f)), road_noise(p * 15.0f + float2(3.0f, 29.0f))) - 0.5f) * 0.05f;
+            float2 away;
+            float d = road_cell_border(p, away) * 3.40f;
             float half_w = 0.0022f + 0.0030f * road_noise(xz * 7.3f);
             float is_sealed = saturate(sealed_zone + step(0.74f, road_noise(floor(p) + float2(5.0f, 13.0f))) * 0.65f);
             float seal_w = 0.010f + half_w * 2.4f;
@@ -268,7 +269,8 @@ RoadImperfections road_eval_imperfections(float2 xz, float footprint)
         w.slope += away * c * saturate(half_w * 4.0f / fp) * 0.9f;
     }
 
-    // 4. Spalled shallow mini-potholes / raveled stone divots
+    // 4. Spalled shallow mini-potholes / raveled stone divots (skip beyond sub-pixel footprint)
+    if (fp < 0.08f)
     {
         float2 dp = xz / 1.85f + (float2(road_noise(xz * 1.9f), road_noise(xz * 1.9f + float2(7.0f, 23.0f))) - 0.5f) * 0.28f;
         float d_raw = road_blobs(dp, 0.08f + 0.10f * distress, float2(0.10f, 0.26f), float2(27.0f, 63.0f));
@@ -281,10 +283,13 @@ RoadImperfections road_eval_imperfections(float2 xz, float footprint)
     w.bleach = smoothstep(0.56f, 0.74f, road_noise_soft((xz + warp) * 0.14f + float2(13.0f, 71.0f)) + ragged) * (1.0f - w.repair * 0.7f);
     w.stain  = smoothstep(0.58f, 0.75f, road_noise_soft((xz + warp) * 0.19f + float2(59.0f, 11.0f)) + ragged) * (1.0f - w.bleach * 0.7f);
 
-    float2 ow = (float2(road_noise_soft(xz * 1.6f), road_noise_soft(xz * 1.6f + float2(11.0f, 5.0f))) - 0.5f) * 0.35f;
-    float drips  = road_blobs(xz / 0.85f + ow, 0.09f, float2(0.10f, 0.26f), float2(17.0f, 3.0f)) * 0.55f;
-    float spills = road_blobs(xz / 4.2f + ow * 0.3f, 0.025f, float2(0.08f, 0.18f), float2(61.0f, 29.0f)) * 0.65f;
-    w.oil = saturate(max(drips, spills));
+    if (fp < 0.06f)
+    {
+        float2 ow = (float2(road_noise_soft(xz * 1.6f), road_noise_soft(xz * 1.6f + float2(11.0f, 5.0f))) - 0.5f) * 0.35f;
+        float drips  = road_blobs(xz / 0.85f + ow, 0.09f, float2(0.10f, 0.26f), float2(17.0f, 3.0f)) * 0.55f;
+        float spills = road_blobs(xz / 4.2f + ow * 0.3f, 0.025f, float2(0.08f, 0.18f), float2(61.0f, 29.0f)) * 0.65f;
+        w.oil = saturate(max(drips, spills));
+    }
 
     // Fine millimeter mineral grit & loose gravel specks (subtle, realistic scale, never round white confetti)
     float grit_res = 1.0f - smoothstep(0.0018f, 0.0055f, fp);
@@ -299,8 +304,8 @@ RoadImperfections road_eval_imperfections(float2 xz, float footprint)
     return w;
 }
 
-// Samples the high-resolution road heightfield at world XZ for Contact-Refinement POM.
-// Combines Slot-1 4K scanned asphalt height (when bound) + procedural aggregate + cracks/divots/tar-snakes.
+// Fast crushed-stone height sampler for POM marching: single bilinear tap (zero per-step Voronoi/aniso).
+// Macro cracks, tar-snakes, divots, and dual-rotated 4K micro-detail are applied in full at the POM hit point.
 float road_sample_relief_height(
     uint   detail_packed_idx,
     float2 xz,
@@ -310,50 +315,16 @@ float road_sample_relief_height(
     float  macro_crack_bias
 )
 {
-    float h_agg;
     if (detail_packed_idx > 0u)
     {
-        float2 uv1  = xz / ROAD_DETAIL_REPEAT_PRIMARY;
-        float2 dx1  = dxz_dx / ROAD_DETAIL_REPEAT_PRIMARY;
-        float2 dy1  = dxz_dy / ROAD_DETAIL_REPEAT_PRIMARY;
-        float  h1   = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv1, dx1, dy1).a;
-
-        float2 xz2  = road_rot37(xz);
-        float2 uv2  = xz2 / ROAD_DETAIL_REPEAT_SECONDARY;
-        float2 dx2  = road_rot37(dxz_dx) / ROAD_DETAIL_REPEAT_SECONDARY;
-        float2 dy2  = road_rot37(dxz_dy) / ROAD_DETAIL_REPEAT_SECONDARY;
-        float  h2   = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv2, dx2, dy2).a;
-
-        // Strong contrast-expanded scanned asphalt stone relief for crisp 3D POM pebbles
-        h_agg = saturate((h1 * 0.76f + h2 * 0.24f - 0.20f) * 1.85f);
-    }
-    else
-    {
-        h_agg = road_procedural_aggregate(xz);
+        float2 uv1 = xz / ROAD_DETAIL_REPEAT_PRIMARY;
+        float2 dx1 = dxz_dx / ROAD_DETAIL_REPEAT_PRIMARY;
+        float2 dy1 = dxz_dy / ROAD_DETAIL_REPEAT_PRIMARY;
+        float  h1  = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv1, dx1, dy1).a;
+        return saturate(0.36f + saturate((h1 - 0.20f) * 1.85f) * 0.56f);
     }
 
-    // Matching jagged crack/divot/tar-snake macro relief terms inside the POM march
-    float2 p = xz / 3.40f;
-    p += (float2(road_noise_soft(p * 0.90f + float2(4.0f, 19.0f)), road_noise_soft(p * 0.90f + float2(37.0f, 11.0f))) - 0.5f) * 1.15f;
-    p += (float2(road_noise(p * 4.8f + float2(2.0f, 8.0f)), road_noise(p * 4.8f + float2(61.0f, 3.0f))) - 0.5f) * 0.22f;
-    p += (float2(road_noise(p * 15.0f + float2(11.0f, 5.0f)), road_noise(p * 15.0f + float2(3.0f, 29.0f))) - 0.5f) * 0.05f;
-    float2 dummy_away;
-    float d_crack = road_cell_border(p, dummy_away) * 3.40f;
-    float burst   = smoothstep(0.46f, 0.68f, road_noise_soft(xz * 0.15f + float2(17.0f, 53.0f))) * smoothstep(0.32f, 0.62f, road_noise(xz * 0.65f + float2(7.0f, 13.0f)));
-    float c_zone  = burst * macro_crack_bias;
-    float sealed  = smoothstep(0.56f, 0.72f, road_noise_soft(xz * 0.028f + float2(9.0f, 61.0f)));
-    float open_c  = road_band(d_crack, 0.005f, footprint) * (1.0f - sealed * 0.90f) * c_zone;
-    float tar_s   = road_band(d_crack, 0.016f, footprint) * sealed * c_zone;
-
-    float2 dp = xz / 1.85f + (float2(road_noise(xz * 1.9f), road_noise(xz * 1.9f + float2(7.0f, 23.0f))) - 0.5f) * 0.28f;
-    float divot = smoothstep(0.18f, 0.68f, road_blobs(dp, 0.12f, float2(0.10f, 0.26f), float2(27.0f, 63.0f))) * (1.0f - tar_s);
-
-    // Base stone relief lives in 0.36..0.92; open cracks carve down to ~0.04; tar-snakes mound gently to ~0.95
-    float h = 0.36f + h_agg * 0.56f;
-    h -= open_c * 0.44f;
-    h -= divot  * 0.28f;
-    h  = lerp(h, 0.95f, saturate(tar_s * 0.80f));
-    return saturate(h);
+    return saturate(0.36f + road_procedural_aggregate(xz) * 0.56f);
 }
 
 // Contact-Refinement Parallax Occlusion Mapping + Directional Relief Self-Shadowing in World XZ
@@ -377,12 +348,10 @@ float2 road_parallax_march(
     float n_dot_v = saturate(view_ray.z);
     if (depth_metres <= 1e-5f || n_dot_v <= 0.02f)
     {
-        hit_height = road_sample_relief_height(detail_packed_idx, xz, dxz_dx, dxz_dy, footprint, 0.7f);
         return xz;
     }
 
-    float age_n = road_noise_soft(xz * 0.022f + float2(11.0f, 47.0f));
-    float crack_bias = smoothstep(0.20f, 0.65f, age_n * 0.65f + road_noise_soft(xz * 0.065f + float2(73.0f, 19.0f)) * 0.35f);
+    float crack_bias = 0.0f;
 
     uint   num_steps  = (uint)lerp(ROAD_POM_MAX_STEPS, ROAD_POM_MIN_STEPS, n_dot_v);
     float  layer_step = 1.0f / (float)num_steps;
@@ -498,31 +467,54 @@ void road_apply_aaa_detail(
         float2 dx1 = dxz_dx / ROAD_DETAIL_REPEAT_PRIMARY;
         float2 dy1 = dxz_dy / ROAD_DETAIL_REPEAT_PRIMARY;
 
-        float2 xz2 = road_rot37(road_xz);
-        float2 uv2 = xz2 / ROAD_DETAIL_REPEAT_SECONDARY;
-        float2 dx2 = road_rot37(dxz_dx) / ROAD_DETAIL_REPEAT_SECONDARY;
-        float2 dy2 = road_rot37(dxz_dy) / ROAD_DETAIL_REPEAT_SECONDARY;
-
         float3 c1 = srgb_to_linear(material_textures[NonUniformResourceIndex(detail_albedo_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv1, dx1, dy1).rgb);
-        float3 c2 = srgb_to_linear(material_textures[NonUniformResourceIndex(detail_albedo_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv2, dx2, dy2).rgb);
-        det_albedo = c1 * 0.72f + c2 * 0.28f;
+        float4 p1 = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv1, dx1, dy1);
+        float dual_fade = saturate((34.0f - distance) / 14.0f);
+        if (detail_fade > 0.02f)
+        {
+            float3 n1 = material_textures[NonUniformResourceIndex(detail_normal_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv1, dx1, dy1).xyz * 2.0f - 1.0f;
+            float2 n_xy;
+            if (dual_fade > 0.02f)
+            {
+                float2 xz2 = road_rot37(road_xz);
+                float2 uv2 = xz2 / ROAD_DETAIL_REPEAT_SECONDARY;
+                float2 dx2 = road_rot37(dxz_dx) / ROAD_DETAIL_REPEAT_SECONDARY;
+                float2 dy2 = road_rot37(dxz_dy) / ROAD_DETAIL_REPEAT_SECONDARY;
 
-        float4 p1 = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv1, dx1, dy1);
-        float4 p2 = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv2, dx2, dy2);
-        float4 pk = p1 * 0.72f + p2 * 0.28f;
-        det_ao     = pk.r;
-        det_rough  = pk.g;
-        det_height = saturate((pk.a - 0.18f) * 1.55f);
+                float3 c2 = srgb_to_linear(material_textures[NonUniformResourceIndex(detail_albedo_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv2, dx2, dy2).rgb);
+                float4 p2 = material_textures[NonUniformResourceIndex(detail_packed_idx)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv2, dx2, dy2);
+                float3 n2 = material_textures[NonUniformResourceIndex(detail_normal_idx)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv2, dx2, dy2).xyz * 2.0f - 1.0f;
+                float  w2 = 0.28f * dual_fade;
+                det_albedo = lerp(c1, c2, w2);
+                float4 pk  = lerp(p1, p2, w2);
+                det_ao     = pk.r;
+                det_rough  = pk.g;
+                det_height = saturate((pk.a - 0.18f) * 1.55f);
 
-        float3 n1 = material_textures[NonUniformResourceIndex(detail_normal_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv1, dx1, dy1).xyz * 2.0f - 1.0f;
-        float3 n2 = material_textures[NonUniformResourceIndex(detail_normal_idx)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv2, dx2, dy2).xyz * 2.0f - 1.0f;
-        // Rotate n2 back from 37 deg to world XZ
-        float2 n2_rot = float2(n2.x * 0.7986355f + n2.y * 0.6018150f, -n2.x * 0.6018150f + n2.y * 0.7986355f);
-        float2 n_xy = (n1.xy * 0.78f + n2_rot * 0.28f) * 2.35f * detail_fade;
-        // OpenGL normal (+Y up in UV -> +Z in world XZ), build orthonormal tangent basis on road surface
-        float3 t_x = normalize(float3(1.0f, 0.0f, 0.0f) - geometric_normal * geometric_normal.x);
-        float3 t_z = normalize(cross(geometric_normal, t_x));
-        det_normal_ws = normalize(geometric_normal + t_x * n_xy.x + t_z * n_xy.y);
+                // Rotate n2 back from 37 deg to world XZ
+                float2 n2_rot = float2(n2.x * 0.7986355f + n2.y * 0.6018150f, -n2.x * 0.6018150f + n2.y * 0.7986355f);
+                n_xy = lerp(n1.xy, n1.xy * 0.78f + n2_rot * 0.28f, dual_fade) * 2.35f * detail_fade;
+            }
+            else
+            {
+                det_albedo = c1;
+                det_ao     = p1.r;
+                det_rough  = p1.g;
+                det_height = saturate((p1.a - 0.18f) * 1.55f);
+                n_xy       = n1.xy * 2.35f * detail_fade;
+            }
+            // OpenGL normal (+Y up in UV -> +Z in world XZ), build orthonormal tangent basis on road surface
+            float3 t_x = normalize(float3(1.0f, 0.0f, 0.0f) - geometric_normal * geometric_normal.x);
+            float3 t_z = normalize(cross(geometric_normal, t_x));
+            det_normal_ws = normalize(geometric_normal + t_x * n_xy.x + t_z * n_xy.y);
+        }
+        else
+        {
+            det_albedo = c1;
+            det_ao     = p1.r;
+            det_rough  = p1.g;
+            det_height = saturate((p1.a - 0.18f) * 1.55f);
+        }
     }
     else
     {

@@ -107,7 +107,7 @@ namespace spartan
     constexpr std::array<std::array<uint32_t, renderer_max_gpu_scatter_lods>, renderer_max_gpu_scatter_slots>
     renderer_max_gpu_scatter_per_lod =
     {{
-        {{ 4608u * 1024u, 3072u * 1024u, 1536u * 1024u }}, // grass, 144 MiB total
+        {{  960u * 1024u,  640u * 1024u,  384u * 1024u }}, // grass, ~31 MiB total
         {{   32u * 1024u,   48u * 1024u,   48u * 1024u }}, // detail slot 1 (woodland understory / ferns)
         {{   24u * 1024u,   32u * 1024u,   32u * 1024u }}, // detail slot 2 (wildflowers / ground herbs)
         {{    8u * 1024u,   16u * 1024u,   24u * 1024u }}  // detail slot 3 (pebbles / micro detail)
@@ -166,7 +166,7 @@ namespace spartan
     // keep in sync with volume_width, volume_height, volume_depth in particles_volumetric.hlsl
     const uint32_t renderer_particle_volume_width   = 160;
     const uint32_t renderer_particle_volume_height  = 90;
-    const uint32_t renderer_particle_volume_depth   = 128;
+    const uint32_t renderer_particle_volume_depth   = 64;
     // keep in sync with fluid_resolution in common_particle_fluid.hlsl
     const uint32_t renderer_particle_fluid_width    = 144;
     const uint32_t renderer_particle_fluid_height   = 48;
@@ -523,6 +523,8 @@ namespace spartan
         indirect_cull_triangle_c,
         gbuffer_indirect_v,
         gbuffer_indirect_p,
+        gbuffer_impostor_p,
+        gbuffer_alpha_p,
         depth_prepass_indirect_v,
         depth_prepass_mesh_alpha_p,
         meshlet_mesh_m,

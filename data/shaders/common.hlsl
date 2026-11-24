@@ -1503,7 +1503,7 @@ uint2 reflections_checkerboard_pixel(uint2 packed)
 }
 
 // roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
-float get_rt_reflection_roughness(float2 uv, out float coat, out float metallic)
+float get_rt_reflection_roughness(float2 uv, out float coat, out float metallic, out bool is_foliage)
 {
     uint2  texel            = gbuffer_texel(uv);
     uint   material_packed  = tex_material[texel];
@@ -1511,14 +1511,22 @@ float get_rt_reflection_roughness(float2 uv, out float coat, out float metallic)
     uint   material_index   = gbuffer_unpack_material_index(tex_normal[texel], material_packed);
     MaterialParameters mat  = material_parameters[material_index];
     metallic                = sample_material.g;
+    is_foliage              = (mat.flags & ((1u << 11) | (1u << 12) | (1u << 21))) != 0u;
     coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - gbuffer_decal_coverage(sample_material.b, mat)), metallic);
     return lerp(sample_material.r, mat.clearcoat_roughness, coat);
+}
+
+float get_rt_reflection_roughness(float2 uv, out float coat, out float metallic)
+{
+    bool is_foliage;
+    return get_rt_reflection_roughness(uv, coat, metallic, is_foliage);
 }
 
 float get_rt_reflection_roughness(float2 uv, out float coat)
 {
     float metallic;
-    return get_rt_reflection_roughness(uv, coat, metallic);
+    bool  is_foliage;
+    return get_rt_reflection_roughness(uv, coat, metallic, is_foliage);
 }
 
 // a rough dielectric lobe returns a few percent of its surroundings spread over a wide cone, by day the sky ambient every
@@ -1528,8 +1536,8 @@ float get_rt_reflection_roughness(float2 uv, out float coat)
 // asphalt, so the cut follows the sun and is gone once it sets, a metal is all reflection and keeps its ray at any
 // roughness, so does anything seen through, returns how much of the reflection the cell provides, 1 is not traced,
 // trace, shade, denoise and apply must agree
-static const float rt_reflection_cut_start = 0.65f;
-static const float rt_reflection_cut_band  = 0.1f;
+static const float rt_reflection_cut_start = 0.50f;
+static const float rt_reflection_cut_band  = 0.10f;
 float get_rt_reflection_cached(float2 uv)
 {
     // the directional light colour is the sun as the atmosphere lets it through, black below the horizon
@@ -1541,9 +1549,15 @@ float get_rt_reflection_cached(float2 uv)
 
     float coat;
     float metallic;
-    float roughness = get_rt_reflection_roughness(uv, coat, metallic);
+    bool  is_foliage;
+    float roughness = get_rt_reflection_roughness(uv, coat, metallic, is_foliage);
     if (tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a < 1.0f)
         return 0.0f;
+
+    // dry grass blades, flowers, and tree canopies are sub-pixel dielectric foliage whose wide specular lobe is
+    // visually indistinguishable from the radiance cache while burning milliseconds of RT + NRD denoising
+    if (is_foliage && roughness > 0.35f && metallic < 0.1f)
+        return 1.0f;
 
     float cut_start = lerp(1.0f, rt_reflection_cut_start, daylight);
     return smoothstep(cut_start, cut_start + rt_reflection_cut_band, roughness) * (1.0f - smoothstep(0.1f, 0.5f, metallic));

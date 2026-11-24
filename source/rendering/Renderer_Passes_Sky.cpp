@@ -74,7 +74,7 @@ namespace spartan
             const bool refresh_cloud_shadow =
                 sky_state_changed ||
                 m_pass_state.sky.warmup_this_frame ||
-                (!cloud_shadow_stays_clear && (cloud_shadow_anchor_moved || (frame & 7u) == 2u));
+                (!cloud_shadow_stays_clear && (cloud_shadow_anchor_moved || (frame & 15u) == 2u));
 
             // Slot 0 contains the authored sun, the empty editor's default light, or a
             // zero-intensity sentinel when no lights are visible in a loaded world.
@@ -147,10 +147,10 @@ namespace spartan
                 }
             }
 
-            // averaging downsampler every fourth frame, the ggx prefilter below is warmup only since clouds mostly drive diffuse ibl
+            // averaging downsampler aligned with the 16-frame 4x4 tile refresh cycle, the ggx prefilter below is warmup only since clouds mostly drive diffuse ibl
             {
                 const bool do_downscale = m_pass_state.sky.warmup_this_frame ||
-                                          ((frame & 3u) == 1u);
+                                          ((frame & 15u) == 1u);
                 if (do_downscale)
                 {
                     Pass_Downscale(tex_skysphere, Renderer_DownsampleFilter::Average);

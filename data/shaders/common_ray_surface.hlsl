@@ -465,6 +465,8 @@ float3 ray_direct_light(float3 position, float3 normal, float2 pixel, uint light
         for (uint i = 1u; i < light_count; i++)
         {
             LightParameters light_p = light_parameters[i];
+            if ((light_p.flags & (1u << 7)) != 0u)
+                continue;
             bool is_directional     = (light_p.flags & 1u) != 0u;
             float3 to_light         = is_directional ? -light_p.direction : light_p.position - position;
             if (!is_directional && (light_p.range <= 0.0f || dot(to_light, to_light) > light_p.range * light_p.range))
@@ -506,22 +508,27 @@ float3 ray_direct_light(float3 position, float3 normal, float2 pixel, uint light
     return direct * INV_PI;
 }
 
-// radiance leaving a secondary hit toward the ray origin, the sun and one sampled local light with
-// shadow rays, the diffuse bounce from the radiance cache and the sky specular it reflects, the
-// sky openness the cache measured in its cell stands in for how enclosed the surface is
+// radiance leaving a secondary hit toward the ray origin, direct lighting from the converged
+// radiance cache (falling back to sun + sampled local light shadow rays only where the cache has
+// not converged yet), diffuse bounce from the cache and sky specular weighted by cell openness
 float3 ray_surface_shade_secondary(RaySurface s, float3 view_dir, Texture2D sky, float sky_mip_count, float2 pixel, uint light_count)
 {
     float3 diffuse  = s.albedo * (1.0f - s.metallic);
     float3 radiance = s.emission;
-    if (any(diffuse > 0.0f))
-    {
-        radiance += diffuse * ray_direct_light(s.position, s.normal, pixel, light_count);
-    }
 
     float confidence;
     float cell_openness;
     float3 cell_direct;
     float3 cached     = radiance_cache_lookup(s.position, s.normal, 0.0f, confidence, cell_openness, cell_direct);
+
+    if (any(diffuse > 0.0f))
+    {
+        float3 direct = confidence >= 0.5f
+            ? cell_direct
+            : ray_direct_light(s.position, s.normal, pixel, light_count);
+        radiance += diffuse * direct;
+    }
+
     float3 open_sky   = ray_sky_ambient(sky, sky_mip_count, s.normal);
     float3 indirect   = lerp(open_sky, cached, confidence);
     radiance         += diffuse * indirect;

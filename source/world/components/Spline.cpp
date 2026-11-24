@@ -9,10 +9,12 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "../../profiling/Profiler.h"
 #include "Spline.h"
+#include "../../core/ThreadPool.h"
 #include "SplineMeshGeometry.h"
 #include "../RoadVerticalProfile.h"
 #include "Physics.h"
 #include "Render.h"
+#include "Camera.h"
 #include "Terrain.h"
 #include "Water.h"
 #include "../Entity.h"
@@ -679,11 +681,32 @@ namespace spartan
 
         if (m_entity_ptr)
         {
-            m_prev_world_position = m_entity_ptr->GetPosition();
-            m_prev_world_rotation = m_entity_ptr->GetRotation();
-            m_prev_world_scale    = m_entity_ptr->GetScale();
-            m_prev_world_revision = m_entity_ptr->GetTransformRevision();
+            m_prev_world_position      = m_entity_ptr->GetPosition();
+            m_prev_world_rotation      = m_entity_ptr->GetRotation();
+            m_prev_world_scale         = m_entity_ptr->GetScale();
+            m_prev_world_revision      = m_entity_ptr->GetTransformRevision();
+            m_prev_child_data_revision = m_entity_ptr->GetChildDataRevision();
         }
+        if (m_source_spline_entity)
+        {
+            m_prev_source_transform_revision = m_source_spline_entity->GetTransformRevision();
+            m_prev_source_child_revision     = m_source_spline_entity->GetChildDataRevision();
+            if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+            {
+                m_prev_source_frames_revision = source->GetRoadFramesRevision();
+            }
+            else
+            {
+                m_prev_source_frames_revision = uint64_t(-1);
+            }
+        }
+        else
+        {
+            m_prev_source_transform_revision = uint64_t(-1);
+            m_prev_source_child_revision     = uint64_t(-1);
+            m_prev_source_frames_revision    = uint64_t(-1);
+        }
+        m_state_snapshotted = true;
     }
 
     std::shared_ptr<RacingLine> Spline::GetRacingLine(float edge_margin)
@@ -710,7 +733,8 @@ namespace spartan
 
         // Queued roads must not also rebuild from the missing-mesh check below.
         if (pending_road_regeneration.count(this) || pending_road_uploads.count(this) ||
-            (!m_base_road_frames.empty() && road_junctions_dirty))
+            (!m_base_road_frames.empty() && road_junctions_dirty) ||
+            (IsAttached() && World::IsPreparing() && HasPendingRoadWork()))
         {
             return;
         }
@@ -735,91 +759,191 @@ namespace spartan
 
         // auto-regenerate mesh when any property/control point changes, or when mesh is enabled but missing
         if (!m_mesh_enabled && HasRoadMesh()) ClearRoadMesh();
-        uint64_t road_nodes = 0;
-        const vector<Vector3> current_points = GetControlPointsLocal(&road_nodes);
-        const uint32_t control_point_count = static_cast<uint32_t>(current_points.size());
-        bool has_mesh_input = IsAttached() ? (m_source_spline_entity != nullptr) : (control_point_count >= 2);
 
-        if (has_mesh_input)
+        // Fast path: when neither the entity transform, its children, the attached source spline,
+        // nor any scalar spline property has changed since SnapshotState(), avoid scanning children,
+        // allocating control-point vectors, and rehashing every road spline every frame.
+        bool needs_full_dirty_check = true;
+        if (m_state_snapshotted && m_entity_ptr && !world_transform_changed &&
+            m_entity_ptr->GetChildDataRevision() == m_prev_child_data_revision &&
+            (!m_mesh_enabled || HasRoadMesh()))
         {
-            bool mesh_missing              = m_mesh_enabled && !HasRoadMesh();
-            uint64_t source_hash           = ComputeSourceHash();
-
-            bool transform_dirty = false;
-            if (m_conform_to_terrain && world_transform_changed)
+            bool source_unchanged = true;
+            if (IsAttached())
             {
-                transform_dirty =
-                    m_entity_ptr->GetPosition() != m_prev_world_position ||
-                    m_entity_ptr->GetRotation() != m_prev_world_rotation ||
-                    m_entity_ptr->GetScale()    != m_prev_world_scale;
+                if (!m_source_spline_entity)
+                {
+                    source_unchanged = (m_prev_source_transform_revision == uint64_t(-1));
+                }
+                else
+                {
+                    Spline* source = m_source_spline_entity->GetComponent<Spline>();
+                    source_unchanged =
+                        (m_source_spline_entity->GetTransformRevision() == m_prev_source_transform_revision) &&
+                        (m_source_spline_entity->GetChildDataRevision() == m_prev_source_child_revision) &&
+                        ((source ? source->GetRoadFramesRevision() : uint64_t(-1)) == m_prev_source_frames_revision);
+                }
             }
 
             float material_tiling_v = m_prev_material_tiling_v;
             if (Render* render = m_entity_ptr->GetComponent<Render>())
-                if (Material* material = render->GetMaterial())
-                    material_tiling_v = material->GetProperty(MaterialProperty::TextureTilingY);
-            bool dirty = (material_tiling_v            != m_prev_material_tiling_v)
-                      || (road_nodes                      != m_prev_road_nodes)
-                      || (m_closed_loop                != m_prev_closed_loop)
-                      || (m_resolution                 != m_prev_resolution)
-                      || (m_road_width                 != m_prev_road_width)
-                      || (m_curve_alpha                != m_prev_curve_alpha)
-                      || (m_road_width_end             != m_prev_road_width_end)
-                      || (m_profile                    != m_prev_profile)
-                      || (m_height                     != m_prev_height)
-                      || (m_thickness                  != m_prev_thickness)
-                      || (m_tube_sides                 != m_prev_tube_sides)
-                      || (m_uv_tiling_u                != m_prev_uv_tiling_u)
-                      || (m_uv_tiling_v                != m_prev_uv_tiling_v)
-                      || (m_sidewalk_enabled           != m_prev_sidewalk_enabled)
-                      || (m_sidewalk_width             != m_prev_sidewalk_width)
-                      || (m_sidewalk_ranges            != m_prev_sidewalk_ranges)
-                      || (m_curb_height                != m_prev_curb_height)
-                      || (m_conform_to_terrain         != m_prev_conform_to_terrain)
-                      || (m_terrain_offset             != m_prev_terrain_offset)
-                      || (m_grade_limit_enabled        != m_prev_grade_limit_enabled)
-                      || (m_max_grade_degrees          != m_prev_max_grade_degrees)
-                      || (m_max_cut                    != m_prev_max_cut)
-                      || (m_grade_smoothing            != m_prev_grade_smoothing)
-                      || (m_smoothing_length           != m_prev_smoothing_length)
-                      || (m_embankment_enabled         != m_prev_embankment_enabled)
-                      || (m_embankment_slope_degrees   != m_prev_embankment_slope_degrees)
-                      || (m_embankment_max_height      != m_prev_embankment_max_height)
-                      || (m_carve_terrain              != m_prev_carve_terrain)
-                      || (m_carve_bed_drop             != m_prev_carve_bed_drop)
-                      || (m_carve_fill_slope_degrees   != m_prev_carve_fill_slope_degrees)
-                      || (m_carve_cut_slope_degrees    != m_prev_carve_cut_slope_degrees)
-                      || (m_carve_max_shoulder         != m_prev_carve_max_shoulder)
-                      || (current_points               != m_prev_control_points)
-                      || (m_attach_mode                != m_prev_attach_mode)
-                      || (m_source_spline_entity_id    != m_prev_source_spline_entity_id)
-                      || (m_attach_lateral_offset      != m_prev_attach_lateral_offset)
-                      || (m_attach_vertical_offset     != m_prev_attach_vertical_offset)
-                      || (m_attach_inherit_closed_loop != m_prev_attach_inherit_closed_loop)
-                      || (m_attach_sample_count        != m_prev_attach_sample_count)
-                      || (source_hash                  != m_prev_source_hash)
-                      || transform_dirty;
-
-            if (dirty || mesh_missing)
             {
-                if (m_mesh_enabled)
+                if (Material* material = render->GetMaterial())
                 {
-                    GenerateRoadMesh();
+                    material_tiling_v = material->GetProperty(MaterialProperty::TextureTilingY);
                 }
+            }
 
-                // instances ride the same frames as the road, they have to move with it
-                if (HasSpawnedInstances())
-                {
-                    SpawnInstances();
-                }
+            const bool props_unchanged =
+                (material_tiling_v            == m_prev_material_tiling_v) &&
+                (m_closed_loop                == m_prev_closed_loop) &&
+                (m_resolution                 == m_prev_resolution) &&
+                (m_road_width                 == m_prev_road_width) &&
+                (m_curve_alpha                == m_prev_curve_alpha) &&
+                (m_road_width_end             == m_prev_road_width_end) &&
+                (m_profile                    == m_prev_profile) &&
+                (m_height                     == m_prev_height) &&
+                (m_thickness                  == m_prev_thickness) &&
+                (m_tube_sides                 == m_prev_tube_sides) &&
+                (m_uv_tiling_u                == m_prev_uv_tiling_u) &&
+                (m_uv_tiling_v                == m_prev_uv_tiling_v) &&
+                (m_sidewalk_enabled           == m_prev_sidewalk_enabled) &&
+                (m_sidewalk_width             == m_prev_sidewalk_width) &&
+                (m_sidewalk_ranges            == m_prev_sidewalk_ranges) &&
+                (m_curb_height                == m_prev_curb_height) &&
+                (m_conform_to_terrain         == m_prev_conform_to_terrain) &&
+                (m_terrain_offset             == m_prev_terrain_offset) &&
+                (m_grade_limit_enabled        == m_prev_grade_limit_enabled) &&
+                (m_max_grade_degrees          == m_prev_max_grade_degrees) &&
+                (m_max_cut                    == m_prev_max_cut) &&
+                (m_grade_smoothing            == m_prev_grade_smoothing) &&
+                (m_smoothing_length           == m_prev_smoothing_length) &&
+                (m_embankment_enabled         == m_prev_embankment_enabled) &&
+                (m_embankment_slope_degrees   == m_prev_embankment_slope_degrees) &&
+                (m_embankment_max_height      == m_prev_embankment_max_height) &&
+                (m_carve_terrain              == m_prev_carve_terrain) &&
+                (m_carve_bed_drop             == m_prev_carve_bed_drop) &&
+                (m_carve_fill_slope_degrees   == m_prev_carve_fill_slope_degrees) &&
+                (m_carve_cut_slope_degrees    == m_prev_carve_cut_slope_degrees) &&
+                (m_carve_max_shoulder         == m_prev_carve_max_shoulder) &&
+                (m_attach_mode                == m_prev_attach_mode) &&
+                (m_source_spline_entity_id    == m_prev_source_spline_entity_id) &&
+                (m_attach_lateral_offset      == m_prev_attach_lateral_offset) &&
+                (m_attach_vertical_offset     == m_prev_attach_vertical_offset) &&
+                (m_attach_inherit_closed_loop == m_prev_attach_inherit_closed_loop) &&
+                (m_attach_sample_count        == m_prev_attach_sample_count);
 
-                SnapshotState();
-                RefreshHandlePositions();
+            if (source_unchanged && props_unchanged)
+            {
+                needs_full_dirty_check = false;
             }
         }
-        else if (m_mesh_enabled && !has_mesh_input && HasRoadMesh())
+
+        if (needs_full_dirty_check)
         {
-            ClearRoadMesh();
+            uint64_t road_nodes = 0;
+            const vector<Vector3> current_points = GetControlPointsLocal(&road_nodes);
+            const uint32_t control_point_count = static_cast<uint32_t>(current_points.size());
+            bool has_mesh_input = IsAttached() ? (m_source_spline_entity != nullptr) : (control_point_count >= 2);
+
+            if (has_mesh_input)
+            {
+                bool mesh_missing              = m_mesh_enabled && !HasRoadMesh();
+                uint64_t source_hash           = ComputeSourceHash();
+
+                bool transform_dirty = false;
+                if (m_conform_to_terrain && world_transform_changed)
+                {
+                    transform_dirty =
+                        m_entity_ptr->GetPosition() != m_prev_world_position ||
+                        m_entity_ptr->GetRotation() != m_prev_world_rotation ||
+                        m_entity_ptr->GetScale()    != m_prev_world_scale;
+                }
+
+                float material_tiling_v = m_prev_material_tiling_v;
+                if (Render* render = m_entity_ptr->GetComponent<Render>())
+                    if (Material* material = render->GetMaterial())
+                        material_tiling_v = material->GetProperty(MaterialProperty::TextureTilingY);
+                bool dirty = (material_tiling_v            != m_prev_material_tiling_v)
+                          || (road_nodes                      != m_prev_road_nodes)
+                          || (m_closed_loop                != m_prev_closed_loop)
+                          || (m_resolution                 != m_prev_resolution)
+                          || (m_road_width                 != m_prev_road_width)
+                          || (m_curve_alpha                != m_prev_curve_alpha)
+                          || (m_road_width_end             != m_prev_road_width_end)
+                          || (m_profile                    != m_prev_profile)
+                          || (m_height                     != m_prev_height)
+                          || (m_thickness                  != m_prev_thickness)
+                          || (m_tube_sides                 != m_prev_tube_sides)
+                          || (m_uv_tiling_u                != m_prev_uv_tiling_u)
+                          || (m_uv_tiling_v                != m_prev_uv_tiling_v)
+                          || (m_sidewalk_enabled           != m_prev_sidewalk_enabled)
+                          || (m_sidewalk_width             != m_prev_sidewalk_width)
+                          || (m_sidewalk_ranges            != m_prev_sidewalk_ranges)
+                          || (m_curb_height                != m_prev_curb_height)
+                          || (m_conform_to_terrain         != m_prev_conform_to_terrain)
+                          || (m_terrain_offset             != m_prev_terrain_offset)
+                          || (m_grade_limit_enabled        != m_prev_grade_limit_enabled)
+                          || (m_max_grade_degrees          != m_prev_max_grade_degrees)
+                          || (m_max_cut                    != m_prev_max_cut)
+                          || (m_grade_smoothing            != m_prev_grade_smoothing)
+                          || (m_smoothing_length           != m_prev_smoothing_length)
+                          || (m_embankment_enabled         != m_prev_embankment_enabled)
+                          || (m_embankment_slope_degrees   != m_prev_embankment_slope_degrees)
+                          || (m_embankment_max_height      != m_prev_embankment_max_height)
+                          || (m_carve_terrain              != m_prev_carve_terrain)
+                          || (m_carve_bed_drop             != m_prev_carve_bed_drop)
+                          || (m_carve_fill_slope_degrees   != m_prev_carve_fill_slope_degrees)
+                          || (m_carve_cut_slope_degrees    != m_prev_carve_cut_slope_degrees)
+                          || (m_carve_max_shoulder         != m_prev_carve_max_shoulder)
+                          || (current_points               != m_prev_control_points)
+                          || (m_attach_mode                != m_prev_attach_mode)
+                          || (m_source_spline_entity_id    != m_prev_source_spline_entity_id)
+                          || (m_attach_lateral_offset      != m_prev_attach_lateral_offset)
+                          || (m_attach_vertical_offset     != m_prev_attach_vertical_offset)
+                          || (m_attach_inherit_closed_loop != m_prev_attach_inherit_closed_loop)
+                          || (m_attach_sample_count        != m_prev_attach_sample_count)
+                          || (source_hash                  != m_prev_source_hash)
+                          || transform_dirty;
+
+                if (dirty || mesh_missing)
+                {
+                    if (m_mesh_enabled)
+                    {
+                        GenerateRoadMesh();
+                    }
+
+                    // instances ride the same frames as the road, they have to move with it
+                    if (HasSpawnedInstances())
+                    {
+                        SpawnInstances();
+                    }
+
+                    SnapshotState();
+                    RefreshHandlePositions();
+                }
+                else
+                {
+                    if (m_entity_ptr)
+                    {
+                        m_prev_child_data_revision = m_entity_ptr->GetChildDataRevision();
+                    }
+                    if (m_source_spline_entity)
+                    {
+                        m_prev_source_transform_revision = m_source_spline_entity->GetTransformRevision();
+                        m_prev_source_child_revision     = m_source_spline_entity->GetChildDataRevision();
+                        if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+                        {
+                            m_prev_source_frames_revision = source->GetRoadFramesRevision();
+                        }
+                    }
+                    m_state_snapshotted = true;
+                }
+            }
+            else if (m_mesh_enabled && !has_mesh_input && HasRoadMesh())
+            {
+                ClearRoadMesh();
+            }
         }
 
         if (world_transform_changed)
@@ -877,15 +1001,15 @@ namespace spartan
             return;
         }
 
-        vector<Vector3> points = GetControlPoints();
-        if (points.size() < 2)
-        {
-            return;
-        }
-
         // path mode keeps the flying guide, road mode is the mesh itself
         if (!m_mesh_enabled)
         {
+            vector<Vector3> points = GetControlPoints();
+            if (points.size() < 2)
+            {
+                return;
+            }
+
             uint32_t span_count = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
             for (uint32_t span = 0; span < span_count; span++)
             {
@@ -911,17 +1035,36 @@ namespace spartan
                     prev_point = current_point;
                 }
             }
-        }
 
-        // draw markers at each control point, from the cache so no raycasts run per frame
-        if (m_handle_positions.size() != points.size())
+            if (m_handle_positions.size() != points.size())
+            {
+                RefreshHandlePositions();
+            }
+        }
+        else
         {
-            RefreshHandlePositions();
+            if (m_prev_control_points.size() < 2)
+            {
+                return;
+            }
+            if (m_handle_positions.size() != m_prev_control_points.size())
+            {
+                RefreshHandlePositions();
+            }
         }
 
-        float marker_size = 0.15f;
+        // draw markers at nearby control points from the cache (0.15 m crosshairs are sub-pixel past 150 m)
+        Camera* view_camera          = Renderer::GetViewCamera();
+        const bool has_camera        = view_camera && view_camera->GetEntity();
+        const Vector3 camera_pos     = has_camera ? view_camera->GetEntity()->GetPosition() : Vector3::Zero;
+        constexpr float max_dist_sq  = 150.0f * 150.0f;
+        float marker_size            = 0.15f;
         for (const Vector3& point : m_handle_positions)
         {
+            if (has_camera && Vector3::DistanceSquared(point, camera_pos) > max_dist_sq)
+            {
+                continue;
+            }
             Renderer::DrawLine(point - Vector3(marker_size, 0, 0), point + Vector3(marker_size, 0, 0), color_point, color_point);
             Renderer::DrawLine(point - Vector3(0, marker_size, 0), point + Vector3(0, marker_size, 0), color_point, color_point);
             Renderer::DrawLine(point - Vector3(0, 0, marker_size), point + Vector3(0, 0, marker_size), color_point, color_point);
@@ -1698,34 +1841,42 @@ namespace spartan
     {
         struct CachedRoad { vector<SplineFrame> frames; vector<uint8_t> segments; vector<JunctionPatch> patches; vector<SplineCarveSample> carves; };
         vector<CachedRoad> cached(roads.size());
-        bool valid = true;
-        for (size_t i = 0; valid && i < roads.size(); i++)
+        vector<filesystem::path> paths(roads.size());
+        for (size_t i = 0; i < roads.size(); ++i) paths[i] = CachePath(i);
+        atomic<bool> valid{true};
+        auto load_range = [&](uint32_t begin, uint32_t end)
         {
-            vector<uint64_t> counts;
-            vector<Vector3> points;
-            auto& entry = cached[i];
-            valid = generated_cache::Load(CachePath(i), network_hash.value, entry.frames, entry.segments, counts, points, entry.carves) &&
-                entry.frames.size() == roads[i].frames.size() && entry.segments.size() + 1 == entry.frames.size() && counts.size() % 3 == 0;
-            size_t cursor = 0;
-            for (size_t k = 0; valid && k < counts.size(); k += 3)
+            for (size_t i = begin; i < end && valid.load(memory_order_relaxed); ++i)
             {
-                if (cursor >= points.size()) { valid = false; break; }
-                JunctionPatch patch;
-                patch.center = points[cursor++];
-                size_t part = 0;
-                for (auto* output : {&patch.boundary, &patch.sidewalk_quads, &patch.skirt_quads})
+                vector<uint64_t> counts;
+                vector<Vector3> points;
+                auto& entry = cached[i];
+                bool ok = generated_cache::Load(paths[i], network_hash.value, entry.frames, entry.segments, counts, points, entry.carves) &&
+                    entry.frames.size() == roads[i].frames.size() && entry.segments.size() + 1 == entry.frames.size() && counts.size() % 3 == 0;
+                size_t cursor = 0;
+                for (size_t k = 0; ok && k < counts.size(); k += 3)
                 {
-                    const uint64_t count = counts[k + part++];
-                    if (count > points.size() - cursor) { valid = false; break; }
-                    output->assign(points.begin() + cursor, points.begin() + cursor + count);
-                    cursor += static_cast<size_t>(count);
+                    if (cursor >= points.size()) { ok = false; break; }
+                    JunctionPatch patch;
+                    patch.center = points[cursor++];
+                    size_t part = 0;
+                    for (auto* output : {&patch.boundary, &patch.sidewalk_quads, &patch.skirt_quads})
+                    {
+                        const uint64_t count = counts[k + part++];
+                        if (count > points.size() - cursor) { ok = false; break; }
+                        output->assign(points.begin() + cursor, points.begin() + cursor + count);
+                        cursor += static_cast<size_t>(count);
+                    }
+                    if (patch.boundary.size() < 3 || patch.sidewalk_quads.size() % 4 || patch.skirt_quads.size() % 4) ok = false;
+                    entry.patches.push_back(move(patch));
                 }
-                if (patch.boundary.size() < 3 || patch.sidewalk_quads.size() % 4 || patch.skirt_quads.size() % 4) valid = false;
-                entry.patches.push_back(move(patch));
+                ok &= cursor == points.size();
+                if (!ok) valid.store(false, memory_order_relaxed);
             }
-            valid &= cursor == points.size();
-        }
-        if (valid)
+        };
+        if (roads.size() > 1) ThreadPool::ParallelLoop(load_range, static_cast<uint32_t>(roads.size()));
+        else if (roads.size() == 1) load_range(0, 1);
+        if (valid.load(memory_order_relaxed))
         {
             for (size_t i = 0; i < roads.size(); i++)
             {
@@ -2356,11 +2507,76 @@ namespace spartan
         return road_junctions_dirty || !pending_road_regeneration.empty() || !pending_road_uploads.empty();
     }
 
+    uint64_t Spline::ComputeFrameCacheHash() const
+    {
+        generated_cache::Hash frame_hash;
+        frame_hash.Add(uint32_t(5)); // sampling/grade solver version
+        frame_hash.Add(m_pending_surface_hash);
+        frame_hash.Add(GetControlPointsLocal());
+        frame_hash.Add(m_entity_ptr->GetMatrix());
+        frame_hash.Add(m_resolution);
+        frame_hash.Add(m_closed_loop);
+        frame_hash.Add(m_profile);
+        frame_hash.Add(m_sidewalk_enabled);
+        frame_hash.Add(m_grade_limit_enabled);
+        for (float value : {m_road_width, m_road_width_end, m_curve_alpha, m_sidewalk_width,
+            m_terrain_offset, m_max_grade_degrees, m_max_cut, m_grade_smoothing, m_smoothing_length}) frame_hash.Add(value);
+        if (Water* water = find_active_water()) frame_hash.Add(water->GetSeaLevel());
+        else if (Terrain* terrain = Terrain::FindActive()) frame_hash.Add(terrain->GetSeaLevel());
+        frame_hash.Add(m_conform_to_terrain);
+        return frame_hash.value;
+    }
+
     void Spline::ProcessPendingRoadMeshes()
     {
         if (ProgressTracker::IsLoading() && !World::IsPreparing()) return;
         const Stopwatch timer;
         const float budget_ms = World::IsPreparing() ? 20.0f : 3.0f;
+
+        if (World::IsPreparing() && pending_road_regeneration.size() > 1)
+        {
+            const Stopwatch batch_timer;
+            vector<Spline*> batch(pending_road_regeneration.begin(), pending_road_regeneration.end());
+            pending_road_regeneration.clear();
+            const string resources = World::GetResourceDirectory();
+            struct FrameJob
+            {
+                uint64_t key = 0;
+                filesystem::path path;
+                bool cacheable = false;
+                vector<SplineFrame> frames;
+                bool hit = false;
+            };
+            vector<FrameJob> jobs(batch.size());
+            for (size_t i = 0; i < batch.size(); ++i)
+            {
+                Spline* s = batch[i];
+                if (!s->m_mesh_enabled) continue;
+                jobs[i].cacheable = !s->IsAttached() && (!s->m_conform_to_terrain || s->m_pending_surface_hash != 0);
+                if (jobs[i].cacheable)
+                {
+                    jobs[i].key = s->ComputeFrameCacheHash();
+                    jobs[i].path = generated_cache::Path(resources, "road_frames", jobs[i].key);
+                }
+            }
+            ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+            {
+                for (uint32_t i = begin; i < end; ++i)
+                {
+                    if (!jobs[i].cacheable) continue;
+                    jobs[i].hit = generated_cache::Load(jobs[i].path, jobs[i].key, jobs[i].frames) && jobs[i].frames.size() >= 2;
+                }
+            }, static_cast<uint32_t>(jobs.size()));
+            for (size_t i = 0; i < batch.size(); ++i)
+            {
+                if (!batch[i]->m_mesh_enabled) continue;
+                batch[i]->GenerateRoadMeshWithFrames(jobs[i].hit ? &jobs[i].frames : nullptr);
+                batch[i]->SnapshotState();
+            }
+            SP_LOG_INFO("Road frames batch (%zu roads): %.2f ms", batch.size(), batch_timer.GetElapsedTimeMs());
+            return;
+        }
+
         // Complete one road at a time, then yield the main thread back to rendering/input.
         while (!pending_road_regeneration.empty())
         {
@@ -2375,6 +2591,127 @@ namespace spartan
         }
         // The entire network must have its final shared grades before any junction mesh is uploaded.
         if (road_junctions_dirty) return;
+
+        if (World::IsPreparing() && pending_road_uploads.size() > 1)
+        {
+            const Stopwatch batch_timer;
+            vector<Spline*> batch(pending_road_uploads.begin(), pending_road_uploads.end());
+            pending_road_uploads.clear();
+            const string resources = World::GetResourceDirectory();
+            struct UploadJob
+            {
+                vector<Vector2> profile_points;
+                uint64_t prepared_key = 0;
+                filesystem::path prepared_path;
+                bool valid_input = false;
+                PreloadedRoadMeshes preloaded;
+            };
+            vector<UploadJob> jobs(batch.size());
+            for (size_t i = 0; i < batch.size(); ++i)
+            {
+                Spline* s = batch[i];
+                if (!s->m_mesh_enabled || s->m_junction_frames.size() < 2) continue;
+                jobs[i].profile_points = s->GetProfilePoints();
+                if (jobs[i].profile_points.size() < 2) continue;
+                const bool embankment = s->UsesEmbankment();
+                const bool layered_finish = s->m_profile == SplineProfile::Road && road_surface::Enabled(s->m_entity_ptr);
+                float v_period = 1.0f;
+                Material* uv_material = nullptr;
+                if (Render* render = s->m_entity_ptr->GetComponent<Render>())
+                    uv_material = render->GetMaterial();
+                if (!uv_material && !s->m_saved_material_name.empty())
+                    uv_material = ResourceCache::GetByName<Material>(s->m_saved_material_name).get();
+                if (uv_material)
+                {
+                    const float tiling = fabsf(uv_material->GetProperty(MaterialProperty::TextureTilingY));
+                    v_period = tiling > 0.0001f ? 1.0f / tiling : 0.0f;
+                }
+                uint64_t geom_key = 0;
+                s->ComputeMeshCacheHashes(s->m_junction_frames, jobs[i].profile_points, false, layered_finish, embankment, v_period, geom_key, jobs[i].prepared_key);
+                jobs[i].prepared_path = generated_cache::Path(resources, "spline_meshes", jobs[i].prepared_key);
+                jobs[i].valid_input = true;
+            }
+            atomic<uint32_t> recooked_count{0};
+            ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+            {
+                for (uint32_t i = begin; i < end; ++i)
+                {
+                    auto& job = jobs[i];
+                    if (!job.valid_input) continue;
+                    vector<uint8_t> deck, sidewalk, shoulder, paint;
+                    if (!generated_cache::Load(job.prepared_path, job.prepared_key, deck, sidewalk, shoulder, paint) || deck.empty())
+                        continue;
+                    bool any_recooked = false;
+                    auto restore = [&](const vector<uint8_t>& bytes, shared_ptr<Mesh>& mesh)
+                    {
+                        if (bytes.empty()) return true;
+                        mesh = make_shared<Mesh>();
+                        bool recooked = false;
+                        const bool ok = mesh->LoadPrepared(bytes, &recooked);
+                        any_recooked |= recooked;
+                        return ok;
+                    };
+                    if (restore(deck, job.preloaded.deck) && restore(sidewalk, job.preloaded.sidewalk) &&
+                        restore(shoulder, job.preloaded.shoulder) && restore(paint, job.preloaded.paint))
+                    {
+                        job.preloaded.valid = true;
+                        if (any_recooked)
+                        {
+                            recooked_count.fetch_add(1, memory_order_relaxed);
+                            auto encode = [](const shared_ptr<Mesh>& mesh) { return mesh ? mesh->SerializePrepared() : vector<uint8_t>{}; };
+                            const auto d = encode(job.preloaded.deck), sw = encode(job.preloaded.sidewalk),
+                                sh = encode(job.preloaded.shoulder), p = encode(job.preloaded.paint);
+                            if (!d.empty() && (!job.preloaded.sidewalk || !sw.empty()) &&
+                                (!job.preloaded.shoulder || !sh.empty()) && (!job.preloaded.paint || !p.empty()))
+                                generated_cache::Save(job.prepared_path, job.prepared_key, d, sw, sh, p);
+                        }
+                        if (job.preloaded.deck) { job.preloaded.deck->SetObjectName("spline_mesh"); job.preloaded.deck->CreateGpuBuffers(); }
+                        if (job.preloaded.sidewalk) job.preloaded.sidewalk->CreateGpuBuffers();
+                        if (job.preloaded.shoulder) job.preloaded.shoulder->CreateGpuBuffers();
+                        if (job.preloaded.paint) job.preloaded.paint->CreateGpuBuffers();
+                    }
+                    else
+                    {
+                        job.preloaded = {};
+                    }
+                }
+            }, static_cast<uint32_t>(jobs.size()));
+            const float decode_ms = batch_timer.GetElapsedTimeMs();
+            bool need_layered_materials = false;
+            for (Spline* s : batch)
+            {
+                if (s->m_mesh_enabled && s->m_profile == SplineProfile::Road && road_surface::Enabled(s->m_entity_ptr))
+                {
+                    need_layered_materials = true;
+                    break;
+                }
+            }
+            if (need_layered_materials)
+            {
+                ThreadPool::ParallelLoop([](uint32_t begin, uint32_t end)
+                {
+                    for (uint32_t layer = begin; layer < end; ++layer)
+                    {
+                        if (auto mat = road_surface::MaterialFor(static_cast<int>(layer)))
+                        {
+                            mat->PrepareForGpu();
+                        }
+                    }
+                }, 3u);
+            }
+            for (size_t i = 0; i < batch.size(); ++i)
+            {
+                Spline* s = batch[i];
+                if (!s->m_mesh_enabled) continue;
+                s->GenerateMesh(s->m_junction_frames, jobs[i].valid_input ? jobs[i].profile_points : s->GetProfilePoints(), false,
+                    jobs[i].preloaded.valid ? &jobs[i].preloaded : nullptr);
+                s->SnapshotState();
+            }
+            SP_LOG_INFO("Road meshes batch (%zu roads, %u upgraded): decode %.2f ms, attach %.2f ms",
+                batch.size(), recooked_count.load(), decode_ms, batch_timer.GetElapsedTimeMs() - decode_ms);
+            return;
+        }
+
         while (!pending_road_uploads.empty())
         {
             Spline* spline = *pending_road_uploads.begin();
@@ -2390,33 +2727,28 @@ namespace spartan
 
     void Spline::GenerateRoadMesh()
     {
+        GenerateRoadMeshWithFrames(nullptr);
+    }
+
+    void Spline::GenerateRoadMeshWithFrames(const vector<SplineFrame>* preloaded_frames)
+    {
         m_needs_road_regeneration = false;
         // Cache standalone terrain roads against their authored inputs and the actual terrain surface.
         // Attached paths still evaluate their source live, since their source can be edited independently.
-        generated_cache::Hash frame_hash;
-        frame_hash.Add(uint32_t(5)); // sampling/grade solver version
-        frame_hash.Add(m_pending_surface_hash);
-        frame_hash.Add(GetControlPointsLocal());
-        frame_hash.Add(m_entity_ptr->GetMatrix());
-        frame_hash.Add(m_resolution);
-        frame_hash.Add(m_closed_loop);
-        frame_hash.Add(m_profile);
-        frame_hash.Add(m_sidewalk_enabled);
-        frame_hash.Add(m_grade_limit_enabled);
-        for (float value : {m_road_width, m_road_width_end, m_curve_alpha, m_sidewalk_width,
-            m_terrain_offset, m_max_grade_degrees, m_max_cut, m_grade_smoothing, m_smoothing_length}) frame_hash.Add(value);
-        if (Water* water = find_active_water()) frame_hash.Add(water->GetSeaLevel());
-        else if (Terrain* terrain = Terrain::FindActive()) frame_hash.Add(terrain->GetSeaLevel());
         const bool cache_frames = !IsAttached() && (!m_conform_to_terrain || m_pending_surface_hash != 0);
-        frame_hash.Add(m_conform_to_terrain);
-        const auto frame_path = generated_cache::Path(World::GetResourceDirectory(), "road_frames", frame_hash.value);
+        const uint64_t frame_key = ComputeFrameCacheHash();
+        const auto frame_path = generated_cache::Path(World::GetResourceDirectory(), "road_frames", frame_key);
         vector<SplineFrame> frames;
-        if (!cache_frames || !generated_cache::Load(frame_path, frame_hash.value, frames) || frames.size() < 2)
+        if (preloaded_frames && preloaded_frames->size() >= 2)
+        {
+            frames = *preloaded_frames;
+        }
+        else if (!cache_frames || !generated_cache::Load(frame_path, frame_key, frames) || frames.size() < 2)
         {
             frames = SampleFrames(m_resolution);
-            if (cache_frames && frames.size() >= 2) generated_cache::Save(frame_path, frame_hash.value, frames);
+            if (cache_frames && frames.size() >= 2) generated_cache::Save(frame_path, frame_key, frames);
         }
-        m_sampled_surface_hash = cache_frames ? frame_hash.value : 0;
+        m_sampled_surface_hash = cache_frames ? frame_key : 0;
         m_pending_surface_hash = 0;
         m_sidewalk_ramp_t = frames.empty() ? 0.001f : 5.0f / max(frames.back().distance, 1.0f);
         if (frames.size() < 2)
@@ -2525,6 +2857,7 @@ namespace spartan
         road_network_members.erase(this);
         m_base_road_frames.clear();
         m_generated_road_frames.clear();
+        ++m_road_frames_revision;
         m_racing_lines.clear();
         m_junction_frames.clear();
         m_junction_segments.clear();
@@ -3681,40 +4014,9 @@ namespace spartan
         vector<uint32_t> paint_indices;
     };
 
-    void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile)
+    void Spline::ComputeMeshCacheHashes(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile,
+        bool layered_finish, bool embankment, float v_period, uint64_t& geometry_hash, uint64_t& prepared_hash_out) const
     {
-        if (m_profile == SplineProfile::Road)
-        {
-            m_generated_road_frames = frames;
-            m_racing_lines.clear();
-        }
-        if (frames.size() < 2 || profile_points.size() < 2)
-        {
-            return;
-        }
-
-        const bool embankment = UsesEmbankment();
-        const bool layered_finish = m_profile==SplineProfile::Road && road_surface::Enabled(m_entity_ptr);
-
-
-        RoadGeometry geometry;
-
-        // Material tiling happens after vertex decoding. Rebase by a full material repeat.
-        float v_period = 1.0f;
-        Material* uv_material = nullptr;
-        if (Render* render = m_entity_ptr->GetComponent<Render>())
-            uv_material = render->GetMaterial();
-        if (!uv_material && !m_saved_material_name.empty())
-            uv_material = ResourceCache::GetByName<Material>(m_saved_material_name).get();
-        if (uv_material)
-        {
-            Material* material = uv_material;
-            {
-                const float tiling = fabsf(material->GetProperty(MaterialProperty::TextureTilingY));
-                v_period = tiling > 0.0001f ? 1.0f / tiling : 0.0f;
-            }
-        }
-
         generated_cache::Hash cache_hash;
         cache_hash.Add(uint32_t(3)); // road extrusion, junction skirts and paint generator version
         cache_hash.Add(JunctionUvSnap());
@@ -3748,29 +4050,96 @@ namespace spartan
             cache_hash.Add(patch.sidewalk_quads);
             cache_hash.Add(patch.skirt_quads);
         }
-        const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "roads", cache_hash.value);
-        // Cache the completed meshes together, before GPU publication. A hit skips
-        // extrusion, welding, meshlet construction and bounds calculation for every layer.
+        geometry_hash = cache_hash.value;
         auto prepared_hash = cache_hash;
         prepared_hash.Add(uint32_t(2)); // prepared spline format / mesh processing version
         prepared_hash.Add(sizeof(GeometryRange));
         prepared_hash.Add(sizeof(Sb_MeshletBounds));
-        const auto prepared_path = generated_cache::Path(World::GetResourceDirectory(), "spline_meshes", prepared_hash.value);
+        prepared_hash_out = prepared_hash.value;
+    }
+
+    void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile,
+        const PreloadedRoadMeshes* preloaded)
+    {
+        if (m_profile == SplineProfile::Road)
+        {
+            m_generated_road_frames = frames;
+            ++m_road_frames_revision;
+            m_racing_lines.clear();
+        }
+        if (frames.size() < 2 || profile_points.size() < 2)
+        {
+            return;
+        }
+
+        const bool embankment = UsesEmbankment();
+        const bool layered_finish = m_profile==SplineProfile::Road && road_surface::Enabled(m_entity_ptr);
+
+
+        RoadGeometry geometry;
+
+        // Material tiling happens after vertex decoding. Rebase by a full material repeat.
+        float v_period = 1.0f;
+        Material* uv_material = nullptr;
+        if (Render* render = m_entity_ptr->GetComponent<Render>())
+            uv_material = render->GetMaterial();
+        if (!uv_material && !m_saved_material_name.empty())
+            uv_material = ResourceCache::GetByName<Material>(m_saved_material_name).get();
+        if (uv_material)
+        {
+            Material* material = uv_material;
+            {
+                const float tiling = fabsf(material->GetProperty(MaterialProperty::TextureTilingY));
+                v_period = tiling > 0.0001f ? 1.0f / tiling : 0.0f;
+            }
+        }
+
         shared_ptr<Mesh> deck_mesh, sidewalk_mesh, shoulder_mesh, paint_mesh;
         bool prepared_hit = false;
+        uint64_t cache_key = 0;
+        uint64_t prepared_key = 0;
+        filesystem::path cache_path;
+        filesystem::path prepared_path;
+        if (preloaded && preloaded->valid)
         {
+            deck_mesh     = preloaded->deck;
+            sidewalk_mesh = preloaded->sidewalk;
+            shoulder_mesh = preloaded->shoulder;
+            paint_mesh    = preloaded->paint;
+            prepared_hit  = deck_mesh != nullptr;
+        }
+        else
+        {
+            ComputeMeshCacheHashes(frames, profile_points, close_profile, layered_finish, embankment, v_period, cache_key, prepared_key);
+            cache_path = generated_cache::Path(World::GetResourceDirectory(), "roads", cache_key);
+            // Cache the completed meshes together, before GPU publication. A hit skips
+            // extrusion, welding, meshlet construction and bounds calculation for every layer.
+            prepared_path = generated_cache::Path(World::GetResourceDirectory(), "spline_meshes", prepared_key);
             vector<uint8_t> deck, sidewalk, shoulder, paint;
-            auto restore = [](const vector<uint8_t>& bytes, shared_ptr<Mesh>& mesh)
+            bool any_recooked = false;
+            auto restore = [&](const vector<uint8_t>& bytes, shared_ptr<Mesh>& mesh)
             {
                 if (bytes.empty()) return true; // absent optional layer
                 mesh = make_shared<Mesh>();
-                return mesh->LoadPrepared(bytes);
+                bool recooked = false;
+                const bool ok = mesh->LoadPrepared(bytes, &recooked);
+                any_recooked |= recooked;
+                return ok;
             };
-            prepared_hit = generated_cache::Load(prepared_path, prepared_hash.value, deck, sidewalk, shoulder, paint) &&
+            prepared_hit = generated_cache::Load(prepared_path, prepared_key, deck, sidewalk, shoulder, paint) &&
                 !deck.empty() && restore(deck, deck_mesh) && restore(sidewalk, sidewalk_mesh) &&
                 restore(shoulder, shoulder_mesh) && restore(paint, paint_mesh);
+            if (prepared_hit && any_recooked)
+            {
+                auto encode = [](const shared_ptr<Mesh>& mesh) { return mesh ? mesh->SerializePrepared() : vector<uint8_t>{}; };
+                const auto d = encode(deck_mesh), sw = encode(sidewalk_mesh),
+                    sh = encode(shoulder_mesh), p = encode(paint_mesh);
+                if (!d.empty() && (!sidewalk_mesh || !sw.empty()) &&
+                    (!shoulder_mesh || !sh.empty()) && (!paint_mesh || !p.empty()))
+                    generated_cache::Save(prepared_path, prepared_key, d, sw, sh, p);
+            }
         }
-        if (!prepared_hit && !generated_cache::Load(cache_path, cache_hash.value, geometry.vertices, geometry.indices,
+        if (!prepared_hit && !generated_cache::Load(cache_path, cache_key, geometry.vertices, geometry.indices,
             geometry.sidewalk_vertices, geometry.sidewalk_indices, geometry.shoulder_vertices, geometry.shoulder_indices, geometry.paint_vertices, geometry.paint_indices))
         {
             ExtrudeRoadGeometry(frames, profile_points, close_profile, v_period, geometry);
@@ -3802,7 +4171,7 @@ namespace spartan
             // Never record a partially serialized result as an intentionally absent layer.
             if (!deck.empty() && (!sidewalk_mesh || !sidewalk.empty()) &&
                 (!shoulder_mesh || !shoulder.empty()) && (!paint_mesh || !paint.empty()))
-                generated_cache::Save(prepared_path, prepared_hash.value, deck, sidewalk, shoulder, paint);
+                generated_cache::Save(prepared_path, prepared_key, deck, sidewalk, shoulder, paint);
         }
         if (!deck_mesh) return;
 

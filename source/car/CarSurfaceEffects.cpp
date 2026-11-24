@@ -350,6 +350,13 @@ namespace spartan
                 {
                     Render* render = receiver.frame_render;
                     if (!render || !receiver.collision->ready.load(std::memory_order_acquire) || receiver.collision->nodes.empty()) continue;
+                    const math::BoundingBox& box = render->GetBoundingBox();
+                    const Vector3 clamped(
+                        std::clamp(contact_position.x, box.GetMin().x, box.GetMax().x),
+                        std::clamp(contact_position.y, box.GetMin().y, box.GetMax().y),
+                        std::clamp(contact_position.z, box.GetMin().z, box.GetMax().z)
+                    );
+                    if ((contact_position - clamped).LengthSquared() >= closest) continue;
                     float distance = closest;
                     Vector3 p, n;
                     receiver.collision->Nearest(0, contact_position, receiver.world, distance, p, n);
@@ -393,10 +400,19 @@ namespace spartan
             float closest = 1.0f;
             Render* target = nullptr;
             Vector3 point, normal, impact_velocity;
+            const Vector3 seg_min(std::min(drop.position.x, next.x) - 0.15f, std::min(drop.position.y, next.y) - 0.15f, std::min(drop.position.z, next.z) - 0.15f);
+            const Vector3 seg_max(std::max(drop.position.x, next.x) + 0.15f, std::max(drop.position.y, next.y) + 0.15f, std::max(drop.position.z, next.z) + 0.15f);
             for (auto& receiver : receivers)
             {
                 Render* render = receiver.frame_render;
                 if (!render || !receiver.collision->ready.load(std::memory_order_acquire) || receiver.collision->nodes.empty()) continue;
+                const math::BoundingBox& box = render->GetBoundingBox();
+                if (seg_max.x < box.GetMin().x || seg_min.x > box.GetMax().x ||
+                    seg_max.y < box.GetMin().y || seg_min.y > box.GetMax().y ||
+                    seg_max.z < box.GetMin().z || seg_min.z > box.GetMax().z)
+                {
+                    continue;
+                }
                 // Relative segment includes body translation/rotation, so sideways/yaw motion can catch spray.
                 const Matrix& inverse = receiver.inverse;
                 const Matrix& old_inverse = receiver.old_inverse;
@@ -489,43 +505,59 @@ namespace spartan
                 if (Entity* e = World::GetEntityById(receiver.entity_id)) receiver.previous = e->GetMatrix();
         }
         s.active = true; s.previous_position = vehicle->GetPosition();
-        for (auto& receiver : s.receivers)
-            if (Entity* e = World::GetEntityById(receiver.entity_id))
-            {
-                receiver.frame_render = e->GetComponent<Render>();
-                receiver.world = e->GetMatrix();
-                receiver.inverse = receiver.world.Inverted();
-                receiver.old_inverse = receiver.previous.Inverted();
-            }
+        const bool need_scratch = !teleport && !mesh_changed && s.scratch_cooldown <= dt && !PhysicsWorld::GetFrameContacts().empty();
+        const bool need_drops   = !s.drops.empty();
+        if (need_scratch || need_drops)
+        {
+            for (auto& receiver : s.receivers)
+                if (Entity* e = World::GetEntityById(receiver.entity_id))
+                {
+                    receiver.frame_render = e->GetComponent<Render>();
+                    receiver.world = e->GetMatrix();
+                    if (need_drops)
+                    {
+                        receiver.inverse = receiver.world.Inverted();
+                        receiver.old_inverse = receiver.previous.Inverted();
+                    }
+                }
+        }
         if (!teleport && !mesh_changed) s.Scratch(vehicle, dt);
         // Existing droplets land before this frame's newly launched particles; no instant appearance.
-        const int steps = std::max(1, static_cast<int>(ceilf(dt * 120.0f)));
-        const float step = dt / steps;
-        for (int k = 0; k < steps; ++k)
+        if (need_drops)
         {
-            for (size_t j = 0; j < s.drops.size();)
+            const int steps = std::clamp(static_cast<int>(ceilf(dt * 45.0f)), 1, 2);
+            const float step = dt / steps;
+            for (int k = 0; k < steps; ++k)
             {
-                auto& drop = s.drops[j];
-                drop.velocity.y -= 9.81f * step;
-                drop.velocity *= expf(-0.8f * step);
-                Vector3 next = drop.position + drop.velocity * step;
-                const float ground_distance = (next - drop.ground_point).Dot(drop.ground_normal);
-                const bool landed = ground_distance < 0.0f;
-                if (landed)
+                for (size_t j = 0; j < s.drops.size();)
                 {
-                    const float previous_distance = std::max(0.0f, (drop.position - drop.ground_point).Dot(drop.ground_normal));
-                    next = drop.position + (next - drop.position) * (previous_distance / std::max(previous_distance - ground_distance, 0.00001f));
+                    auto& drop = s.drops[j];
+                    drop.velocity.y -= 9.81f * step;
+                    drop.velocity *= expf(-0.8f * step);
+                    Vector3 next = drop.position + drop.velocity * step;
+                    const float ground_distance = (next - drop.ground_point).Dot(drop.ground_normal);
+                    const bool landed = ground_distance < 0.0f;
+                    if (landed)
+                    {
+                        const float previous_distance = std::max(0.0f, (drop.position - drop.ground_point).Dot(drop.ground_normal));
+                        next = drop.position + (next - drop.position) * (previous_distance / std::max(previous_distance - ground_distance, 0.00001f));
+                    }
+                    const bool hit = s.Deposit(vehicle, drop, next, static_cast<float>(k) / steps, static_cast<float>(k+1) / steps, step);
+                    drop.position = next; drop.age += step;
+                    if (hit || landed || drop.age > 0.55f) { s.drops[j] = s.drops.back(); s.drops.pop_back(); }
+                    else ++j;
                 }
-                const bool hit = s.Deposit(vehicle, drop, next, static_cast<float>(k) / steps, static_cast<float>(k+1) / steps, step);
-                drop.position = next; drop.age += step;
-                if (hit || landed || drop.age > 0.55f) { s.drops[j] = s.drops.back(); s.drops.pop_back(); }
-                else ++j;
             }
         }
         for (auto& receiver : s.receivers)
             if (Entity* e = World::GetEntityById(receiver.entity_id)) receiver.previous = e->GetMatrix();
         // only the car that carries a dirt atlas needs tracers, the rest keep the gpu plume
         const bool collects_dirt = vehicle == CarRain::GetBakedRoot();
+        Vector3 dust_contacts[4];
+        uint32_t dust_wheel_count = 0;
+        float dust_grains_total   = 0.0f;
+        Vector3 dust_color_sum    = Vector3::Zero;
+        Vector3 dust_vel_sum      = Vector3::Zero;
         for (int i = 0; i < 4; ++i)
         {
             const auto& wheel = sim->get_wheel_state(i);
@@ -584,16 +616,16 @@ namespace spartan
             const float dust_rate = rate * (1.0f - surface.wet) * (1.0f - surface.grass * 0.8f) * 0.6f;
             if (dust_rate > 0.0f)
             {
-                CarDirt::Deposit powder;
-                powder.color      = surface.dust;
-                powder.moisture   = 0.0f;
-                powder.coarseness = 0.0f;
-                CarDirt::Dust(vehicle, &point, 1, hub_velocity, powder, dust_rate * 60000.0f * dt);
+                const float grains = dust_rate * 60000.0f * dt;
+                dust_contacts[dust_wheel_count++] = point;
+                dust_grains_total                += grains;
+                dust_color_sum                   += surface.dust * grains;
+                dust_vel_sum                     += hub_velocity * grains;
             }
             // A representative subset of the spray is traced against a cached triangle BVH.
             // The GPU keeps the full plume; deposition cost stays bounded even in a four-wheel burnout.
-            s.remainder[i] += std::min(rate * 0.6f, 40.0f) * dt;
-            while (s.remainder[i] >= 1.0f && s.drops.size() < 320)
+            s.remainder[i] += std::min(rate * 0.4f, 24.0f) * dt;
+            while (s.remainder[i] >= 1.0f && s.drops.size() < 48)
             {
                 s.remainder[i] -= 1.0f;
                 const Vector3 jitter = axle * ((s.Random()-0.5f) * 0.36f) + normal * ((s.Random()-0.5f) * 0.16f);
@@ -601,6 +633,14 @@ namespace spartan
                 s.drops.push_back({origin + axle * ((s.Random()-0.5f) * width),velocity,surface,0.0f,s.Random()*100.0f,point,normal});
             }
             s.remainder[i] = std::min(s.remainder[i], 1.0f);
+        }
+        if (dust_wheel_count > 0 && dust_grains_total > 0.0f)
+        {
+            CarDirt::Deposit powder;
+            powder.color      = dust_color_sum / dust_grains_total;
+            powder.moisture   = 0.0f;
+            powder.coarseness = 0.0f;
+            CarDirt::Dust(vehicle, dust_contacts, dust_wheel_count, dust_vel_sum / dust_grains_total, powder, dust_grains_total);
         }
     }
 }

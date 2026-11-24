@@ -3738,6 +3738,32 @@ namespace spartan
         // Run only preparation components. Scripts, gameplay and ordinary editor ticks
         // must not observe a world whose roads, collision and vegetation are incomplete.
         const vector<Entity*> preparation_entities = entities;
+        bool initial_commit_pending = false;
+        for (Entity* entity : preparation_entities)
+        {
+            if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
+            {
+                initial_commit_pending |= terrain->IsCpuGenerationPending() || terrain->IsMeshCommitPending();
+            }
+        }
+        // Once Terrain::CommitGpu has queued roads, finish all splines (including attached
+        // splines that wait for their source road to upload) BEFORE Terrain::Tick finalizes
+        // its surface and populates vegetation, so road carves and biome props run once.
+        if (!initial_commit_pending)
+        {
+            for (uint32_t pass = 0; pass < 4; ++pass)
+            {
+                for (Entity* entity : preparation_entities)
+                    if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
+                const bool had_work = Spline::HasPendingRoadWork();
+                Spline::ProcessPendingRoadMeshes();
+                Spline::RebuildRoadJunctions();
+                if (!had_work && !Spline::HasPendingRoadWork())
+                {
+                    break;
+                }
+            }
+        }
         for (Entity* entity : preparation_entities)
         {
             if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
@@ -3748,10 +3774,17 @@ namespace spartan
             }
         }
         World::ProcessPendingAdditions();
-        if (!surface_busy)
+        if (initial_commit_pending && !surface_busy)
         {
-            // Authored/non-terrain and attached splines also have deferred first-tick work.
             for (Entity* entity : preparation_entities)
+                if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
+            Spline::ProcessPendingRoadMeshes();
+            Spline::RebuildRoadJunctions();
+        }
+        else if (!initial_commit_pending && !surface_busy && terrain_busy)
+        {
+            // Flush newly added flow-river splines before the next tick runs CommitProps.
+            for (Entity* entity : entities)
                 if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
             Spline::ProcessPendingRoadMeshes();
             Spline::RebuildRoadJunctions();

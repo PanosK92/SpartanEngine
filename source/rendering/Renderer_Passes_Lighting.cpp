@@ -268,7 +268,7 @@ namespace spartan
                 }
             }
             
-            m_pcb_pass_cpu.set(pass_reflections_shade::light_count, m_count_active_lights);
+            m_pcb_pass_cpu.set(pass_reflections_shade::light_count, m_count_shading_lights);
             m_pcb_pass_cpu.set(pass_reflections_shade::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));
             m_pcb_pass_cpu.set(pass_reflections_shade::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
             m_pcb_pass_cpu.set(pass_reflections_shade::checkerboard, m_pass_state.reflections_checkerboard);
@@ -621,9 +621,13 @@ namespace spartan
             RHI_CommandList::EndMarker();
         }
 
-        // nrd needs lightDirection only for the sun, local lights pass zero
+        // nrd needs lightDirection only for the sun, local lights pass zero.
+        // Cap full-res local SIGMA passes (sun already dominates daylight; secondary local lights use checkerboard_fill).
         const Vector3 local_direction = Vector3::Zero;
-        for (uint32_t i = 1; i < m_count_active_lights; i++)
+        Camera* view_camera           = GetViewCamera();
+        const uint32_t max_local_sigma = sun_casts ? 1u : 2u;
+        uint32_t local_sigma_count     = 0u;
+        for (uint32_t i = 1; i < m_count_shading_lights; i++)
         {
             const uint32_t slot = (m_bindless_lights[i].flags >> 8) & 7u;
             if (slot == 0)
@@ -637,6 +641,23 @@ namespace spartan
             {
                 continue;
             }
+
+            // skip full-res SIGMA denoising for local lights whose influence volume is outside the view frustum
+            if (view_camera && m_bindless_lights[i].range > 0.0f)
+            {
+                const Vector3 pos = m_bindless_lights[i].position;
+                const Vector3 ext(m_bindless_lights[i].range, m_bindless_lights[i].range, m_bindless_lights[i].range);
+                if (!view_camera->IsInViewFrustum(math::BoundingBox(pos - ext, pos + ext)))
+                {
+                    continue;
+                }
+            }
+
+            if (local_sigma_count >= max_local_sigma)
+            {
+                continue;
+            }
+            ++local_sigma_count;
 
             RHI_CommandList::BeginMarker("nrd_local");
             {

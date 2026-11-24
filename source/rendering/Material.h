@@ -203,6 +203,8 @@ namespace spartan
         void SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot = 0, const bool auto_adjust_multiplier = true);
         void SetTexture(const MaterialTextureType texture_type, std::shared_ptr<RHI_Texture> texture, const uint8_t slot = 0);
         void SetTexture(const MaterialTextureType texture_type, const std::string& file_path, const uint8_t slot = 0);
+        // Set O/R/M/H source paths together, reusing a cached compressed packed texture when source files are unchanged.
+        void SetPackedSources(const uint8_t slot, const std::string& occlusion_path, const std::string& roughness_path, const std::string& metalness_path, const std::string& height_path);
         bool HasTextureOfType(const std::string& path) const;
         bool HasTextureOfType(const MaterialTextureType texture_type) const;
         std::string GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot = 0);
@@ -270,6 +272,7 @@ namespace spartan
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         // per slot, the packed texture was loaded from disk and none of its sources changed since
         std::array<bool, slots_per_texture> m_packed_from_disk = {};
+        std::array<uint64_t, slots_per_texture> m_packed_cache_keys = {};
         // A material can outlive the component or cache entry that supplied its textures.
         TextureBindings m_texture_owners;
         // recursive, PrepareForGpu holds this while pack_textures calls SetTexture

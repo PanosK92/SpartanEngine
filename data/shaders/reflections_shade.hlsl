@@ -25,19 +25,19 @@ static const float k_exact_shadow_alpha     = 0.2f;
 static const float k_sky_ray_weight         = 0.25f;
 // a hit takes its lighting from its cache cell once the lobe lands this many cells wide, and only under a lobe wide
 // enough for the denoiser to resolve the dither between cells, mirrors and polished floors shade every hit
-static const float k_cached_footprint_start = 1.5f;
-static const float k_cached_footprint_end   = 3.0f;
-static const float k_cached_alpha_start     = 0.08f;
-static const float k_cached_alpha_end       = 0.16f;
+static const float k_cached_footprint_start = 1.0f;
+static const float k_cached_footprint_end   = 2.0f;
+static const float k_cached_alpha_start     = 0.05f;
+static const float k_cached_alpha_end       = 0.11f;
 // hits smoother than this trace their own reflection, rougher ones read the prefiltered sky
-static const float k_second_bounce_start    = 0.25f;
-static const float k_second_bounce_end      = 0.35f;
-// a 0.25 m cell is covered by many pixels, so one write in sixteen still fills it within a few frames
-static const uint  k_cache_update_divisor   = 16;
+static const float k_second_bounce_start    = 0.06f;
+static const float k_second_bounce_end      = 0.12f;
+// a 0.25 m cell is covered by many pixels, so one write in thirty-two still fills it smoothly
+static const uint  k_cache_update_divisor   = 32;
 // diffuse bounces only need nearby occlusion, the specular bounce below keeps the long ray
 static const float k_cache_bounce_distance  = 32.0f;
 // a facing clearcoat is a few percent of the lobe, trace the coat only once it carries real energy
-static const float k_coat_trace_fresnel     = 0.10f;
+static const float k_coat_trace_fresnel     = 0.25f;
 // misses cross this much air before reaching the sky
 static const float k_fog_miss_distance      = 256.0f;
 // paper whites one ray may add to its pixel, and the ggx alpha range over which that bound sets in
@@ -304,7 +304,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (shade_hit)
     {
         LightCandidate top0 = (LightCandidate)0;
-        LightCandidate top1 = (LightCandidate)0;
         LightCandidate sampled = (LightCandidate)0;
         float sampled_total = 0.0f;
         Surface hit_surface  = (Surface)0;
@@ -414,18 +413,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             {
                 out_direct += candidate.radiance * ray_trace_shadow(light_p, position, normal, float2(pixel));
             }
-            else if (exact_shadows && candidate.weight > top1.weight)
+            else if (exact_shadows && candidate.weight > top0.weight)
             {
-                LightCandidate displaced = top1;
-                if (candidate.weight > top0.weight)
-                {
-                    top1 = top0;
-                    top0 = candidate;
-                }
-                else
-                {
-                    top1 = candidate;
-                }
+                LightCandidate displaced = top0;
+                top0 = candidate;
                 reflections_stream_light(sampled, sampled_total, displaced, seed);
             }
             else
@@ -436,10 +427,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (top0.weight > 0.0f)
         {
             out_direct += top0.radiance * ray_trace_shadow(light_parameters[top0.index], position, normal, float2(pixel));
-        }
-        if (top1.weight > 0.0f)
-        {
-            out_direct += top1.radiance * ray_trace_shadow(light_parameters[top1.index], position, normal, float2(pixel));
         }
         if (sampled_total > 0.0f)
         {
@@ -483,7 +470,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             ray.Origin    = position + normal * 0.01f;
             ray.Direction = reflect_dir;
             ray.TMin      = 0.001f;
-            ray.TMax      = 1000.0f;
+            ray.TMax      = 120.0f;
             float  pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
             float2 cone        = float2((length(source_pos - get_camera_position()) + view_dist) * pixel_angle, pixel_angle + source_alpha + ggx_alpha_from_roughness(roughness));
             RaySurface second  = ray_surface_trace(ray, cone);

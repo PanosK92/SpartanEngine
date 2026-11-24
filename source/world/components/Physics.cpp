@@ -2374,14 +2374,6 @@ namespace spartan
                 continue;
             }
 
-            // simplify geometry for physics (use moderate detail for convex hulls)
-            const size_t max_convex_verts = 256; // physx limit
-            if (vertices.size() > max_convex_verts)
-            {
-                const size_t target_index_count = min<size_t>(indices.size(), max_convex_verts * 3);
-                geometry_processing::simplify(indices, vertices, target_index_count, false, false);
-            }
-
             // compute the local transform of this entity relative to the physics body
             Vector3 entity_world_pos = entity->GetPosition();
             Quaternion entity_world_rot = entity->GetRotation();
@@ -2391,134 +2383,175 @@ namespace spartan
             Vector3 local_pos = body_rot_inv * (entity_world_pos - body_pos);
             Quaternion local_rot = body_rot_inv * entity_world_rot;
 
-            // convert vertices to physx format in entity-local space (with scale)
-            vector<PxVec3> px_vertices;
-            px_vertices.reserve(vertices.size());
-            for (const auto& vertex : vertices)
+            generated_cache::Hash hull_hash;
+            hull_hash.Add(uint32_t{1});
+            hull_hash.Add(uint32_t{PX_PHYSICS_VERSION});
+            hull_hash.Add(entity_scale);
+            hull_hash.Add(gravity);
+            hull_hash.Add(vertices);
+            hull_hash.Add(indices);
+            const auto hull_path = generated_cache::Path(World::GetResourceDirectory(), "convex_compound", hull_hash.value);
+            vector<uint8_t> cooked_hull;
+            PxConvexMesh* convex_mesh = nullptr;
+            if (generated_cache::Load(hull_path, hull_hash.value, cooked_hull) && !cooked_hull.empty())
             {
-                px_vertices.emplace_back(
-                    vertex.pos[0] * entity_scale.x,
-                    vertex.pos[1] * entity_scale.y,
-                    vertex.pos[2] * entity_scale.z
-                );
-            }
-            PxVec3 minimum(PX_MAX_F32);
-            PxVec3 maximum(-PX_MAX_F32);
-            bool finite = true;
-            for (const PxVec3& vertex : px_vertices)
-            {
-                if (!vertex.isFinite())
-                {
-                    finite = false;
-                    break;
-                }
-                minimum.x = min(minimum.x, vertex.x);
-                minimum.y = min(minimum.y, vertex.y);
-                minimum.z = min(minimum.z, vertex.z);
-                maximum.x = max(maximum.x, vertex.x);
-                maximum.y = max(maximum.y, vertex.y);
-                maximum.z = max(maximum.z, vertex.z);
+                PxDefaultMemoryInputData input(cooked_hull.data(), static_cast<PxU32>(cooked_hull.size()));
+                convex_mesh = physics->createConvexMesh(input);
             }
 
-            auto attach_box = [&](PxVec3 box_min, PxVec3 box_max) -> bool
+            if (!convex_mesh)
             {
-                // thin or failed hulls still collide as a box
-                if (box_min.x > box_max.x)
+                // simplify geometry for physics (use moderate detail for convex hulls)
+                const size_t max_convex_verts = 256; // physx limit
+                if (vertices.size() > max_convex_verts)
                 {
-                    const BoundingBox& mesh_aabb = render->GetBoundingBoxMesh();
-                    if (mesh_aabb.IsInfinite())
+                    const size_t target_index_count = min<size_t>(indices.size(), max_convex_verts * 3);
+                    geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+                }
+
+                // convert vertices to physx format in entity-local space (with scale)
+                vector<PxVec3> px_vertices;
+                px_vertices.reserve(vertices.size());
+                for (const auto& vertex : vertices)
+                {
+                    px_vertices.emplace_back(
+                        vertex.pos[0] * entity_scale.x,
+                        vertex.pos[1] * entity_scale.y,
+                        vertex.pos[2] * entity_scale.z
+                    );
+                }
+                PxVec3 minimum(PX_MAX_F32);
+                PxVec3 maximum(-PX_MAX_F32);
+                bool finite = true;
+                for (const PxVec3& vertex : px_vertices)
+                {
+                    if (!vertex.isFinite())
+                    {
+                        finite = false;
+                        break;
+                    }
+                    minimum.x = min(minimum.x, vertex.x);
+                    minimum.y = min(minimum.y, vertex.y);
+                    minimum.z = min(minimum.z, vertex.z);
+                    maximum.x = max(maximum.x, vertex.x);
+                    maximum.y = max(maximum.y, vertex.y);
+                    maximum.z = max(maximum.z, vertex.z);
+                }
+
+                auto attach_box = [&](PxVec3 box_min, PxVec3 box_max) -> bool
+                {
+                    // thin or failed hulls still collide as a box
+                    if (box_min.x > box_max.x)
+                    {
+                        const BoundingBox& mesh_aabb = render->GetBoundingBoxMesh();
+                        if (mesh_aabb.IsInfinite())
+                        {
+                            return false;
+                        }
+
+                        const Vector3& mn = mesh_aabb.GetMin();
+                        const Vector3& mx = mesh_aabb.GetMax();
+                        const float x0 = mn.x * entity_scale.x;
+                        const float x1 = mx.x * entity_scale.x;
+                        const float y0 = mn.y * entity_scale.y;
+                        const float y1 = mx.y * entity_scale.y;
+                        const float z0 = mn.z * entity_scale.z;
+                        const float z1 = mx.z * entity_scale.z;
+                        box_min = PxVec3(min(x0, x1), min(y0, y1), min(z0, z1));
+                        box_max = PxVec3(max(x0, x1), max(y0, y1), max(z0, z1));
+                    }
+
+                    const PxVec3 extent = box_max - box_min;
+                    const float min_half = 0.005f;
+                    const PxVec3 half(
+                        max(extent.x * 0.5f, min_half),
+                        max(extent.y * 0.5f, min_half),
+                        max(extent.z * 0.5f, min_half)
+                    );
+                    const PxVec3 center(
+                        (box_min.x + box_max.x) * 0.5f,
+                        (box_min.y + box_max.y) * 0.5f,
+                        (box_min.z + box_max.z) * 0.5f
+                    );
+                    const Vector3 offset = local_rot * Vector3(center.x, center.y, center.z);
+                    const Vector3 box_pos = local_pos + offset;
+                    PxBoxGeometry geometry(half.x, half.y, half.z);
+                    PxShape* box_shape = physics->createShape(geometry, *material);
+                    if (!box_shape)
                     {
                         return false;
                     }
 
-                    const Vector3& mn = mesh_aabb.GetMin();
-                    const Vector3& mx = mesh_aabb.GetMax();
-                    const float x0 = mn.x * entity_scale.x;
-                    const float x1 = mx.x * entity_scale.x;
-                    const float y0 = mn.y * entity_scale.y;
-                    const float y1 = mx.y * entity_scale.y;
-                    const float z0 = mn.z * entity_scale.z;
-                    const float z1 = mx.z * entity_scale.z;
-                    box_min = PxVec3(min(x0, x1), min(y0, y1), min(z0, z1));
-                    box_max = PxVec3(max(x0, x1), max(y0, y1), max(z0, z1));
+                    PxTransform local_pose(
+                        PxVec3(box_pos.x, box_pos.y, box_pos.z),
+                        PxQuat(local_rot.x, local_rot.y, local_rot.z, local_rot.w)
+                    );
+                    box_shape->setLocalPose(local_pose);
+                    box_shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                    actor->attachShape(*box_shape);
+                    box_shape->release();
+                    return true;
+                };
+
+                const PxVec3 extent = maximum - minimum;
+                const bool degenerate =
+                    !finite ||
+                    px_vertices.size() < 4 ||
+                    extent.x <= 0.000001f ||
+                    extent.y <= 0.000001f ||
+                    extent.z <= 0.000001f;
+                if (degenerate)
+                {
+                    if (!finite)
+                    {
+                        minimum = PxVec3(1.0f);
+                        maximum = PxVec3(-1.0f);
+                    }
+                    if (attach_box(minimum, maximum))
+                    {
+                        shapes_created++;
+                    }
+                    continue;
                 }
 
-                const PxVec3 extent = box_max - box_min;
-                const float min_half = 0.005f;
-                const PxVec3 half(
-                    max(extent.x * 0.5f, min_half),
-                    max(extent.y * 0.5f, min_half),
-                    max(extent.z * 0.5f, min_half)
-                );
-                const PxVec3 center(
-                    (box_min.x + box_max.x) * 0.5f,
-                    (box_min.y + box_max.y) * 0.5f,
-                    (box_min.z + box_max.z) * 0.5f
-                );
-                const Vector3 offset = local_rot * Vector3(center.x, center.y, center.z);
-                const Vector3 box_pos = local_pos + offset;
-                PxBoxGeometry geometry(half.x, half.y, half.z);
-                PxShape* box_shape = physics->createShape(geometry, *material);
-                if (!box_shape)
-                {
-                    return false;
-                }
+                // create convex mesh
+                PxConvexMeshDesc mesh_desc;
+                mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
+                mesh_desc.points.stride = sizeof(PxVec3);
+                mesh_desc.points.data = px_vertices.data();
+                mesh_desc.flags =
+                    PxConvexFlag::eCOMPUTE_CONVEX |
+                    PxConvexFlag::eSHIFT_VERTICES;
+                mesh_desc.vertexLimit = 64;
 
-                PxTransform local_pose(
-                    PxVec3(box_pos.x, box_pos.y, box_pos.z),
-                    PxQuat(local_rot.x, local_rot.y, local_rot.z, local_rot.w)
-                );
-                box_shape->setLocalPose(local_pose);
-                box_shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
-                actor->attachShape(*box_shape);
-                box_shape->release();
-                return true;
-            };
-
-            const PxVec3 extent = maximum - minimum;
-            const bool degenerate =
-                !finite ||
-                px_vertices.size() < 4 ||
-                extent.x <= 0.000001f ||
-                extent.y <= 0.000001f ||
-                extent.z <= 0.000001f;
-            if (degenerate)
-            {
-                if (!finite)
+                PxConvexMeshCookingResult::Enum condition;
+                PxDefaultMemoryOutputStream output;
+                if (PxCookConvexMesh(params, mesh_desc, output, &condition) && condition == PxConvexMeshCookingResult::eSUCCESS)
                 {
-                    minimum = PxVec3(1.0f);
-                    maximum = PxVec3(-1.0f);
+                    cooked_hull.assign(output.getData(), output.getData() + output.getSize());
+                    PxDefaultMemoryInputData input(cooked_hull.data(), static_cast<PxU32>(cooked_hull.size()));
+                    convex_mesh = physics->createConvexMesh(input);
+                    if (convex_mesh)
+                    {
+                        generated_cache::Save(hull_path, hull_hash.value, cooked_hull);
+                    }
                 }
-                if (attach_box(minimum, maximum))
+                if (!convex_mesh)
                 {
-                    shapes_created++;
+                    convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
                 }
-                continue;
-            }
-
-            // create convex mesh
-            PxConvexMeshDesc mesh_desc;
-            mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
-            mesh_desc.points.stride = sizeof(PxVec3);
-            mesh_desc.points.data = px_vertices.data();
-            mesh_desc.flags =
-                PxConvexFlag::eCOMPUTE_CONVEX |
-                PxConvexFlag::eSHIFT_VERTICES;
-            mesh_desc.vertexLimit = 64;
-
-            PxConvexMeshCookingResult::Enum condition;
-            PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
-            if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
-            {
-                if (convex_mesh)
+                if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
                 {
-                    convex_mesh->release();
+                    if (convex_mesh)
+                    {
+                        convex_mesh->release();
+                    }
+                    if (attach_box(minimum, maximum))
+                    {
+                        shapes_created++;
+                    }
+                    continue;
                 }
-                if (attach_box(minimum, maximum))
-                {
-                    shapes_created++;
-                }
-                continue;
             }
 
             // create shape with local pose relative to body
@@ -2535,10 +2568,6 @@ namespace spartan
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                 actor->attachShape(*shape);
                 shape->release(); // actor owns the shape now
-                shapes_created++;
-            }
-            else if (attach_box(minimum, maximum))
-            {
                 shapes_created++;
             }
 
@@ -2942,6 +2971,138 @@ namespace spartan
         return true;
     }
 
+    namespace
+    {
+        struct PrefetchedHeightfield
+        {
+            uint64_t key = 0;
+            vector<uint8_t> cooked;
+            float height_centre = 0.0f;
+            float height_scale  = 1.0f;
+            bool valid = false;
+        };
+        const Terrain* prefetched_heightfield_terrain = nullptr;
+        vector<PrefetchedHeightfield> prefetched_heightfields;
+    }
+
+    void Physics::PrefetchTerrainHeightfields(const Terrain* terrain)
+    {
+        ClearPrefetchedHeightfields();
+        if (!terrain || !terrain->HasHeightfield()) return;
+
+        const vector<Vector3>& positions = terrain->GetPositions();
+        const uint32_t grid_width        = terrain->GetDenseWidth();
+        const uint32_t grid_height       = terrain->GetDenseHeight();
+        if (positions.size() < static_cast<size_t>(grid_width) * static_cast<size_t>(grid_height)) return;
+
+        const uint32_t n = max(terrain->GetTileCountAxis(), 1u);
+        const uint32_t tile_count = n * n;
+        const string resources = World::GetResourceDirectory();
+        prefetched_heightfield_terrain = terrain;
+        prefetched_heightfields.resize(tile_count);
+
+        ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+        {
+            for (uint32_t tile_index = begin; tile_index < end; ++tile_index)
+            {
+                const uint32_t tx = tile_index % n;
+                const uint32_t tz = tile_index / n;
+                const uint32_t x_start = (tx * (grid_width - 1)) / n;
+                const uint32_t z_start = (tz * (grid_height - 1)) / n;
+                const uint32_t x_count = ((tx + 1) * (grid_width - 1)) / n - x_start + 1;
+                const uint32_t z_count = ((tz + 1) * (grid_height - 1)) / n - z_start + 1;
+                if (x_count < 2 || z_count < 2) continue;
+
+                vector<uint32_t> holes;
+                for (uint32_t z = 0; z + 1 < z_count; ++z)
+                {
+                    for (uint32_t x = 0; x + 1 < x_count; ++x)
+                    {
+                        if (terrain->IsDetailCell(x_start + x, z_start + z))
+                        {
+                            holes.push_back(x * z_count + z);
+                        }
+                    }
+                }
+
+                generated_cache::Hash cache_key;
+                cache_key.Add(uint32_t(2)); cache_key.Add(uint32_t(PX_PHYSICS_VERSION));
+                cache_key.Add(x_count); cache_key.Add(z_count);
+                for (uint32_t z = 0; z < z_count; ++z)
+                    cache_key.Bytes(positions.data() + size_t(z_start + z) * grid_width + x_start, size_t(x_count) * sizeof(Vector3));
+                cache_key.Add(holes);
+
+                auto& dst = prefetched_heightfields[tile_index];
+                dst.key = cache_key.value;
+                const auto cache_path = generated_cache::Path(resources, "heightfields", cache_key.value);
+                vector<float> metadata;
+                if (generated_cache::Load(cache_path, cache_key.value, dst.cooked, metadata) && !dst.cooked.empty() &&
+                    metadata.size() == 2 && std::isfinite(metadata[0]) && std::isfinite(metadata[1]) && metadata[1] > 0)
+                {
+                    dst.height_centre = metadata[0];
+                    dst.height_scale  = metadata[1];
+                    dst.valid = true;
+                    continue;
+                }
+
+                float height_min = positions[static_cast<size_t>(z_start) * grid_width + x_start].y;
+                float height_max = height_min;
+                for (uint32_t z = 0; z < z_count; ++z)
+                {
+                    const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+                    for (uint32_t x = 0; x < x_count; ++x)
+                    {
+                        const float height = positions[source_row + x].y;
+                        height_min = min(height_min, height);
+                        height_max = max(height_max, height);
+                    }
+                }
+                const float height_centre = (height_max + height_min) * 0.5f;
+                const float height_scale  = max((height_max - height_min) / 65534.0f, 1e-4f);
+                const uint32_t sample_count = x_count * z_count;
+                vector<PxHeightFieldSample> samples(sample_count);
+                for (uint32_t z = 0; z < z_count; ++z)
+                {
+                    const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+                    for (uint32_t x = 0; x < x_count; ++x)
+                    {
+                        const float quantised = (positions[source_row + x].y - height_centre) / height_scale;
+                        samples[x * z_count + z].height = static_cast<PxI16>(clamp(quantised, -32767.0f, 32767.0f));
+                    }
+                }
+                for (uint32_t index : holes)
+                {
+                    samples[index].materialIndex0 = PxHeightFieldMaterial::eHOLE;
+                    samples[index].materialIndex1 = PxHeightFieldMaterial::eHOLE;
+                }
+
+                PxHeightFieldDesc desc;
+                desc.nbRows         = x_count;
+                desc.nbColumns      = z_count;
+                desc.format         = PxHeightFieldFormat::eS16_TM;
+                desc.samples.data   = samples.data();
+                desc.samples.stride = sizeof(PxHeightFieldSample);
+
+                PxDefaultMemoryOutputStream output;
+                if (PxCookHeightField(desc, output))
+                {
+                    dst.cooked.assign(output.getData(), output.getData() + output.getSize());
+                    dst.height_centre = height_centre;
+                    dst.height_scale  = height_scale;
+                    dst.valid = true;
+                    generated_cache::Save(cache_path, cache_key.value, dst.cooked, vector<float>{height_centre, height_scale});
+                }
+            }
+        }, tile_count);
+    }
+
+    void Physics::ClearPrefetchedHeightfields()
+    {
+        prefetched_heightfield_terrain = nullptr;
+        prefetched_heightfields.clear();
+        prefetched_heightfields.shrink_to_fit();
+    }
+
     void Physics::CreateHeightfield()
     {
         // the component sits on a tile child of the terrain, so each body covers only the slice of the
@@ -2994,6 +3155,34 @@ namespace spartan
         {
             SP_LOG_WARNING("terrain tile %d is too small to build a heightfield from", tile_index);
             return;
+        }
+
+        if (tile_index >= 0 && terrain == prefetched_heightfield_terrain &&
+            static_cast<size_t>(tile_index) < prefetched_heightfields.size() &&
+            prefetched_heightfields[tile_index].valid)
+        {
+            auto& pre = prefetched_heightfields[tile_index];
+            PxDefaultMemoryInputData input(pre.cooked.data(), static_cast<PxU32>(pre.cooked.size()));
+            m_mesh = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics())->createHeightField(input);
+            if (m_mesh)
+            {
+                m_mesh_is_heightfield = true;
+                const TerrainGridMapping mapping = terrain->GetGridMapping();
+                m_heightfield_scale_row          = mapping.scale_x;
+                m_heightfield_scale_column       = mapping.scale_z;
+                m_heightfield_scale_height       = pre.height_scale;
+                m_heightfield_offset             = Vector3(
+                    -mapping.offset_x + static_cast<float>(x_start) * mapping.scale_x,
+                    pre.height_centre,
+                    -mapping.offset_z + static_cast<float>(z_start) * mapping.scale_z
+                );
+                m_heightfield_offset.x -= entity->GetPositionLocal().x;
+                m_heightfield_offset.z -= entity->GetPositionLocal().z;
+                pre.cooked.clear();
+                pre.cooked.shrink_to_fit();
+                pre.valid = false;
+                return;
+            }
         }
 
         // cells under terrain detail pages are holes, the page meshes carry their own collision

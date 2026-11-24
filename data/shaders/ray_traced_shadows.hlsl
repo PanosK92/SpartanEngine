@@ -13,7 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 static const float SUN_ANGULAR_RADIUS = 0.00465f;
 
 // blockers beyond this distance are treated as non occluding, prunes traversal through the far tlas
-static const float SHADOW_RAY_MAX_DISTANCE = 1000.0f;
+static const float SHADOW_RAY_MAX_DISTANCE = 250.0f;
 
 struct [raypayload] ShadowPayload
 {
@@ -49,6 +49,24 @@ float2 trace_opaque_shadow(float3 origin, float3 direction, float t_max)
     return float2(1.0f, 0.0f);
 }
 
+// Fast hardware-only opaque shadow query for distant receivers (> 55 m) where individual leaf cutouts are sub-pixel.
+float2 trace_fast_opaque_shadow(float3 origin, float3 direction, float t_max)
+{
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001f;
+    ray.TMax      = max(t_max, 0.001f);
+    RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
+    query.Proceed();
+    if (query.CommittedStatus() != COMMITTED_NOTHING)
+    {
+        return float2(0.0f, query.CommittedRayT());
+    }
+    return float2(1.0f, 0.0f);
+}
+
 // rgb visibility through the glass in xyz, distance to the nearest glass hit in w, negative when the ray crossed none
 float4 trace_glass_shadow(float visibility, float3 origin, float3 direction, float t_max)
 {
@@ -75,7 +93,9 @@ void write_local_shadow(uint2 pixel, uint slice, float3 visibility, float blocke
 
 // Fixed stratified samples keep stationary shadows stable. Long showroom tubes need
 // most of the samples along their long axis, while panels sample both dimensions.
-static const uint AREA_SHADOW_SAMPLES = 8u;
+// With checkerboard tracing (stride 4), 4 strata give 1 stratified sample per traced pixel
+// and SIGMA's spatiotemporal filter integrates all 4 strata across neighbouring pixels.
+static const uint AREA_SHADOW_SAMPLES = 4u;
 
 float2 area_shadow_rect_uv(uint sample_index, float width, float height)
 {
@@ -88,7 +108,7 @@ float2 area_shadow_rect_uv(uint sample_index, float width, float height)
     return (float2(sample_index % nx, sample_index / nx) + 0.5f) / float2(nx, ny) - 0.5f;
 }
 
-void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light, float3 ray_origin, bool checkerboard)
+void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light, float3 ray_origin, float camera_distance, bool checkerboard)
 {
     bool is_area = (light.flags & (1u << 6)) != 0u;
     float3 to_light = light.position - ray_origin;
@@ -140,8 +160,17 @@ void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light
         float2 vis = float2(1.0f, 0.0f);
         if (distance > emitter_safety + 0.001f)
         {
-            vis = trace_opaque_shadow(ray_origin, to_sample / distance,
-                min(distance - emitter_safety, SHADOW_RAY_MAX_DISTANCE));
+            float ray_max = min(distance - emitter_safety, SHADOW_RAY_MAX_DISTANCE);
+            if (is_area)
+            {
+                // Indoor/showroom area fixtures bypass SIGMA and never need per-leaf alpha cutouts;
+                // hardware-only FORCE_OPAQUE + ACCEPT_FIRST_HIT runs purely in RT Core silicon.
+                vis = trace_fast_opaque_shadow(ray_origin, to_sample / distance, ray_max);
+            }
+            else
+            {
+                vis = trace_opaque_shadow(ray_origin, to_sample / distance, ray_max);
+            }
         }
         visibility_sum += vis.x;
         if (vis.x < 1.0f)
@@ -151,8 +180,11 @@ void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light
         }
     }
     float center_distance = length(to_light);
+    float vis_avg         = visibility_sum / float(sample_count);
     float glass_t_max     = min(max(center_distance - emitter_safety, 0.001f), SHADOW_RAY_MAX_DISTANCE);
-    float4 visibility     = trace_glass_shadow(visibility_sum / float(sample_count), ray_origin, to_light / center_distance, glass_t_max);
+    float4 visibility     = (vis_avg > 0.0f && !is_area && camera_distance < 10.0f && center_distance < 8.0f)
+        ? trace_glass_shadow(vis_avg, ray_origin, to_light / center_distance, glass_t_max)
+        : float4(vis_avg.xxx, -1.0f);
     write_local_shadow(launch_id, slice, visibility.rgb, shadow_blocker_distance(any_hit, hit_min, visibility.w));
 }
 
@@ -244,10 +276,14 @@ void ray_gen()
                 float normal_sign = thin_foliage && dot(offset_normal, sample_dir) < 0.0f ? -1.0f : 1.0f;
                 float sample_offset = max(base_offset, rt_lod_shadow_offset(camera_distance));
                 float3 origin = pos_ws + offset_normal * (sample_offset * normal_sign);
-                float2 vis = thin_foliage
-                    ? rt_trace_canopy_transmission(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
-                    : trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
-                float4 glass = trace_glass_shadow(vis.x, origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
+                float2 vis = camera_distance > 35.0f
+                    ? trace_fast_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
+                    : (thin_foliage
+                        ? rt_trace_canopy_transmission(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
+                        : trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE));
+                float4 glass = (vis.x > 0.0f && camera_distance < 12.0f)
+                    ? trace_glass_shadow(vis.x, origin, sample_dir, min(SHADOW_RAY_MAX_DISTANCE, 12.0f))
+                    : float4(vis.x.xxx, -1.0f);
                 transmission += glass.rgb;
                 float distance = shadow_blocker_distance(vis.x < 0.99f, vis.y, glass.w);
                 if (distance > 0.0f)
@@ -292,7 +328,7 @@ void ray_gen()
         float3 to_light    = normalize(light.position - pos_ws);
         float local_offset = max(0.001f + min(camera_distance * 0.00001f, 0.002f), rt_lod_shadow_offset(camera_distance));
         float normal_sign  = thin_foliage && dot(offset_normal, to_light) < 0.0f ? -1.0f : 1.0f;
-        trace_local_light_shadow(pixel, slot, light, pos_ws + offset_normal * (local_offset * normal_sign), checkerboard);
+        trace_local_light_shadow(pixel, slot, light, pos_ws + offset_normal * (local_offset * normal_sign), camera_distance, checkerboard);
     }
 }
 

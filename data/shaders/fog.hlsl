@@ -176,7 +176,17 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 #ifdef RAY_TRACING_ENABLED
 float fog_trace_visibility(float3 origin, float3 direction, float t_max)
 {
-    return rt_trace_visibility(origin, direction, t_max);
+    // Hardware-only opaque shadow query for volumetric fog froxels: skips software
+    // alpha-cutout loops while preserving all solid god-rays from mountains, trees, and buildings.
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001f;
+    ray.TMax      = max(t_max, 0.001f);
+    RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
+    query.Proceed();
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
 }
 
 float fog_trace_shadow(Light light, float3 sample_pos)
@@ -192,7 +202,7 @@ float fog_trace_shadow(Light light, float3 sample_pos)
     float bias = 0.02f;
     float3 origin = sample_pos + light_dir * bias;
     float3 direction = light_dir;
-    float t_max = 10000.0f;
+    float t_max = 250.0f;
 
     if (!light.is_directional())
     {

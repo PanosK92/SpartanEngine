@@ -490,11 +490,22 @@ void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3
         positions[0] = get_camera_position() + ray_direction * (air_start + air_length * 0.25f);
         positions[1] = get_camera_position() + ray_direction * (air_start + air_length * 0.75f);
         float3 sigma_s = (air_extinction * 0.95f).xxx;
-        // Subdivide long segments where the lighting can change along the ray.
-        // For short cells the midpoint already resolves the near-field shafts.
-        uint air_samples = air_length < 0.25f ? 1u : 2u;
+        // Subdivide near long segments where shadow edges move fast across a cell.
+        // Beyond 28 m temporal reprojection already integrates ~11 frames, so alternating
+        // the two strata across frames keeps shaft smoothness at half the RT ray count.
+        uint air_samples = (air_length >= 0.25f && d1 < 28.0f) ? 2u : 1u;
         if (air_samples == 1u)
-            positions[0] = air_position;
+        {
+            if (air_length < 0.25f)
+            {
+                positions[0] = air_position;
+            }
+            else
+            {
+                float stratum_t = (((buffer_frame.frame ^ thread_id.z) & 1u) == 0u) ? 0.25f : 0.75f;
+                positions[0] = get_camera_position() + ray_direction * (air_start + air_length * stratum_t);
+            }
+        }
         scatter_rate = fog_light_medium(positions, air_samples, ray_direction, thread_id, uv, false, sigma_s);
         if (air_extinction > 0.0f)
             scatter_rate += fog_ambient_medium(sky, uv, air_distance, air_position, ray_direction, false) * sigma_s;
@@ -704,7 +715,7 @@ FogTransport integrate_camera_atmosphere(Surface surface, FogTransport local_end
     float previous_distance = 0.0f;
     // Resolve the shortest atmospheric density scale. Short gameplay rays do
     // not need the same quadrature count as a multi-kilometre mountain vista.
-    uint steps = clamp(uint(ceil(surface.camera_to_pixel_length / mie_height)), 2u, 16u);
+    uint steps = clamp(uint(ceil(surface.camera_to_pixel_length / mie_height)), 2u, 8u);
     for (uint i = 0u; i < steps; ++i)
     {
         // Quadratic spacing resolves the denser air and local media near the

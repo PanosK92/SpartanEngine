@@ -2240,15 +2240,33 @@ namespace spartan
         }
     }
 
-    void Terrain::OnBiomePropsPopulated()
+    void Terrain::OnBiomePropsPopulated(bool seeds_and_exclusions_applied)
     {
         if (!ProgressTracker::IsLoading(ProgressType::World))
         {
             PruneOrphanPlatforms();
         }
 
+        if (seeds_and_exclusions_applied)
+        {
+            if (!m_platforms.empty())
+            {
+                for (const TerrainPlatform& platform : m_platforms)
+                {
+                    RestampPropsForPad(platform, false, false);
+                }
+
+                if (UploadPropMask())
+                {
+                    WorldHelpers::RefreshTerrainGpuScatter(this);
+                }
+            }
+            return;
+        }
+
         SnapshotPropInstances();
         ApplyPlatformsToProps();
+        m_road_exclusions_hash = 0;
         MarkSplinePropCarvesDirty();
     }
 
@@ -2739,10 +2757,13 @@ namespace spartan
                     if (SampleHeight(position.x, position.z, height))
                     {
                         const Vector3 local_pos = inverse * Vector3(position.x, height, position.z);
-                        local.m30 = local_pos.x;
-                        local.m31 = local_pos.y;
-                        local.m32 = local_pos.z;
-                        changed = true;
+                        if (fabsf(local_pos.y - local.m31) > 1e-3f)
+                        {
+                            local.m30 = local_pos.x;
+                            local.m31 = local_pos.y;
+                            local.m32 = local_pos.z;
+                            changed = true;
+                        }
                     }
 
                     next.push_back(local);

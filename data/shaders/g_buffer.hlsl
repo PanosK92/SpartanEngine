@@ -40,20 +40,20 @@ static const float3 flower_stem_tip     = float3(0.058f, 0.092f, 0.028f);
 // contact refinement parallax mapping, a coarse march finds the slice the ray enters the relief in and a second
 // march walks that one slice in finer steps, so the surface is resolved at coarse times refine slices for the
 // price of coarse plus refine fetches
-static const uint  POM_MAX_STEPS    = 32;
-static const uint  POM_MIN_STEPS    = 10;
-static const uint  POM_REFINE_STEPS = 8;
-static const float POM_FADE_START   = 25.0f;
-static const float POM_FADE_END     = 50.0f;
+static const uint  POM_MAX_STEPS    = 12;
+static const uint  POM_MIN_STEPS    = 4;
+static const uint  POM_REFINE_STEPS = 3;
+static const float POM_FADE_START   = 12.0f;
+static const float POM_FADE_END     = 25.0f;
 static const float POM_MIN_COSINE   = 0.16f;
 static const float POM_HEIGHT_SCALE = 0.065f;
 
 // terrain relief, the depth is authored per layer in metres so a handful of steps resolves it
-static const float TERRAIN_POM_MAX_STEPS       = 32.0f;
-static const float TERRAIN_POM_MIN_STEPS       = 4.0f;
-static const uint  TERRAIN_POM_REFINE_STEPS    = 5;
+static const float TERRAIN_POM_MAX_STEPS       = 10.0f;
+static const float TERRAIN_POM_MIN_STEPS       = 3.0f;
+static const uint  TERRAIN_POM_REFINE_STEPS    = 2;
 static const float TERRAIN_POM_MIN_COSINE      = 0.14f; // bound ray travel at the horizon
-static const uint  TERRAIN_POM_SHADOW_STEPS    = 5;
+static const uint  TERRAIN_POM_SHADOW_STEPS    = 2;
 static const float TERRAIN_POM_SHADOW_HARDNESS = 3.0f;
 static const float TERRAIN_RELIEF_SHADOW       = 0.75f; // how much occlusion a fully buried texel loses
 // scatter detail, a chip swaps the ground blend for sinking to its dirt line somewhere between the blend reach and this many times it
@@ -193,7 +193,9 @@ float2 parallax_occlusion_uv(
 // at a shallow angle and a fade tuned for facing surfaces would leave it flat past a few metres
 float terrain_parallax_fade(float distance, float n_dot_v)
 {
-    float distance_fade = saturate((terrain_parallax_fade_end - distance) / (terrain_parallax_fade_end - terrain_parallax_fade_start));
+    static const float fade_start = 8.0f;
+    static const float fade_end   = 18.0f;
+    float distance_fade = saturate((fade_end - distance) / (fade_end - fade_start));
     float grazing_fade  = smoothstep(0.0f, 0.06f, n_dot_v);
     return distance_fade * grazing_fade;
 }
@@ -762,11 +764,236 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     face_normal = face_normal_length_sq > 0.0f ? face_normal * rsqrt(face_normal_length_sq) : normalize(vertex.normal);
     face_normal *= dot(face_normal, camera_to_pixel) > 0.0f ? -1.0f : 1.0f;
 
+#ifdef GRASS_SPECIALIZED
+    // Dedicated slim pixel path for GPU-scattered grass blades: eliminates road POM, ocean FFT,
+    // terrain, rain, decals, clearcoat, and impostor register pressure from grass_opaque_p/grass_gbuffer_p.
+    {
+        float height_percent = vertex.uv_misc.z;
+        float variation      = vertex.uv_misc.w;
+        float3 blade_albedo  = compute_grass_color(height_percent, variation);
+        float tip_warmth     = smoothstep(0.64f, 1.0f, height_percent) * (0.10f + 0.14f * variation);
+        blade_albedo         = lerp(blade_albedo, blade_albedo * float3(1.12f, 1.08f, 0.84f), tip_warmth);
+        albedo.rgb           = saturate(albedo.rgb * blade_albedo);
+        albedo.a             = 1.0f;
+
+        occlusion            = lerp(0.14f, 1.0f, smoothstep(0.0f, 0.72f, height_percent));
+        float dry_blend      = smoothstep(0.45f, 0.92f, variation);
+        float tip_gloss      = lerp(0.60f, 0.44f, smoothstep(0.15f, 0.85f, height_percent));
+        roughness            = lerp(tip_gloss, 0.86f, dry_blend);
+
+        // Analytic curved V-fold blade normal (direct sin/cos rotation in the normal-tangent plane)
+        float centered       = vertex.width_percent - 0.5f;
+        float v_fold         = (centered >= 0.0f ? 1.0f : -1.0f) * 0.18f;
+        float curve_angle    = clamp((centered * 72.0f + v_fold * 55.0f) * DEG_TO_RAD, -PI * 0.42f, PI * 0.42f);
+        float s_curve, c_curve;
+        sincos(curve_angle, s_curve, c_curve);
+        float3 n_unit        = normalize(vertex.normal);
+        float3 t_unit        = normalize(vertex.tangent);
+        normal               = normalize(n_unit * c_curve + t_unit * s_curve);
+        if (dot(normal, camera_to_pixel) > 0.0f)
+        {
+            normal = -normal;
+        }
+
+        // Light wetness sheen when raining without compiling full rain_apply ubershader
+        float wetness        = rain_weather_wetness();
+        if (wetness > 0.0f)
+        {
+            roughness = lerp(roughness, roughness * 0.55f, wetness);
+            albedo.rgb *= lerp(1.0f, 0.82f, wetness);
+        }
+
+        gbuffer g_buffer;
+        uint material_index  = pass_get_material_index();
+        g_buffer.albedo      = albedo;
+        g_buffer.normal      = uint2(gbuffer_pack_normal(normal, material_index), gbuffer_pack_normal(face_normal, 0u));
+        g_buffer.material    = gbuffer_pack_material(roughness, 0.0f, 0.0f, occlusion, material_index, noise_interleaved_gradient(vertex.position.xy));
+        float previous_depth = vertex.position_previous.w > 0.0f ?
+            min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;
+        g_buffer.velocity    = float4(velocity, 0.0f, -previous_depth);
+        g_buffer.emissive    = 0.0f;
+        return g_buffer;
+    }
+#endif
+
     // impostor texels carry pre-baked srgb rgb + volumetric cavity ao + micro-normal + depth_z
     float4 impostor_albedo      = 1.0f;
     bool   impostor_is_bark     = false;
     float  impostor_cavity_ao   = 1.0f;
     float  foliage_sun_shadow   = 0.0f;
+#ifdef IMPOSTOR_SPECIALIZED
+    {
+        float3 bitangent        = cross(vertex.normal, vertex.tangent);
+        float3 view_dir_world   = -camera_to_pixel / max(distance, 1e-4f);
+        float3 view_dir_frame   = float3(dot(view_dir_world, vertex.tangent), dot(view_dir_world, bitangent), dot(view_dir_world, vertex.normal));
+        float3 normal_frame;
+        float  depth_z;
+        float2 resolved_uv_frames;
+        impostor_resolve(
+            vertex.uv_misc.xy,
+            view_dir_frame,
+            GET_TEXTURE(material_texture_index_albedo),
+            get_alpha_threshold(position_world, material.alpha_cutoff),
+            impostor_albedo,
+            normal_frame,
+            impostor_is_bark,
+            impostor_cavity_ao,
+            depth_z,
+            resolved_uv_frames
+        );
+        normal = normalize(normal_frame.x * vertex.tangent + normal_frame.y * bitangent + normal_frame.z * vertex.normal);
+
+        if (distance < 350.0f)
+        {
+            float3 sun_dir_world = normalize(-light_parameters[0].direction);
+            float3 sun_dir_frame = float3(dot(sun_dir_world, vertex.tangent), dot(sun_dir_world, bitangent), dot(sun_dir_world, vertex.normal));
+            float  shadow_fade   = 1.0f - smoothstep(260.0f, 350.0f, distance);
+            foliage_sun_shadow   = impostor_raymarch_sun_shadow(resolved_uv_frames, depth_z, sun_dir_frame, noise_interleaved_gradient(vertex.position.xy)) * shadow_fade;
+        }
+
+        float4 albedo_sample = impostor_albedo;
+        if (material.is_albedo_srgb())
+        {
+            albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
+        }
+        albedo *= albedo_sample;
+        if (surface.color_variation_from_instance() && !impostor_is_bark)
+        {
+            albedo.rgb *= vegetation_instance_tint((uint)vertex.uv_misc.w);
+        }
+        if (surface.is_foliage())
+        {
+            albedo.rgb = saturate(albedo.rgb);
+            occlusion *= impostor_cavity_ao;
+            roughness  = impostor_is_bark ? 0.90f : 0.56f;
+        }
+        albedo.a = 1.0f;
+
+        gbuffer g_buffer;
+        g_buffer.albedo       = albedo;
+        uint material_index   = pass_get_material_index();
+        float paint           = surface.is_foliage() ? saturate(foliage_sun_shadow) : 0.0f;
+        g_buffer.normal       = uint2(gbuffer_pack_normal(normal, material_index), gbuffer_pack_normal(face_normal, 0u));
+        g_buffer.material     = gbuffer_pack_material(roughness, metalness, paint, occlusion, material_index, noise_interleaved_gradient(vertex.position.xy));
+        float previous_depth  = vertex.position_previous.w > 0.0f ?
+            min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;
+        if (material.is_alpha_tested() || surface.is_foliage())
+            previous_depth = -previous_depth;
+        g_buffer.velocity     = float4(velocity, 0.0f, previous_depth);
+        g_buffer.emissive     = 0.0f;
+        return g_buffer;
+    }
+#endif
+#ifdef ALPHA_SPECIALIZED
+    {
+        if (surface.has_texture_albedo())
+        {
+            float4 albedo_sample = sample_texture(vertex, material_texture_index_albedo);
+            if (material.is_albedo_srgb())
+            {
+                albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
+            }
+            albedo *= albedo_sample;
+        }
+        if (surface.color_variation_from_instance())
+        {
+            albedo.rgb *= vegetation_instance_tint((uint)vertex.uv_misc.w);
+        }
+        if (surface.is_foliage())
+        {
+            albedo.rgb = saturate(albedo.rgb);
+        }
+        albedo.a = 1.0f;
+
+        if (surface.has_texture_normal())
+        {
+            float3 normal_sample  = sample_texture(vertex, material_texture_index_normal).xyz;
+            float3 tangent_normal = normalize(unpack(normal_sample));
+            if (material.is_normal_green_up())
+            {
+                tangent_normal.y *= -uv_handedness(vertex.normal, vertex.tangent, dpdx_world, dpdy_world, ddx(vertex.uv_misc.xy), ddy(vertex.uv_misc.xy));
+            }
+            tangent_normal.z          = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
+            tangent_normal.xy        *= saturate(max(0.01f, material.normal));
+            float3x3 tangent_to_world = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
+            normal                    = normalize(mul(tangent_normal, tangent_to_world).xyz);
+        }
+
+        if (surface.is_foliage())
+        {
+            if (dot(normal, -camera_to_pixel) < 0.0f)
+            {
+                normal = -normal;
+            }
+        }
+
+        if (material.has_texture_occlusion() || material.has_texture_roughness() || material.has_texture_metalness())
+        {
+            float4 packed = sample_texture(vertex, material_texture_index_packed);
+            occlusion     = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
+            roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
+            metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
+        }
+
+        if (surface.is_foliage())
+        {
+            float crown_ao     = clamp(vertex.width_percent, 0.28f, 1.0f);
+            occlusion         *= crown_ao;
+            foliage_sun_shadow = max(foliage_sun_shadow, (1.0f - crown_ao) * 0.26f);
+        }
+
+        if (rain_weather_wetness() > 0.0f)
+        {
+            float wet  = saturate(rain_weather_wetness()) * 0.65f;
+            albedo.rgb *= lerp(1.0f, 0.72f, wet);
+            roughness  = lerp(roughness, min(roughness, 0.22f), wet);
+        }
+
+        if (surface.has_texture_normal())
+        {
+            float3 dndu    = ddx(normal);
+            float3 dndv    = ddy(normal);
+            float variance = 0.25f * (dot(dndu, dndu) + dot(dndv, dndv));
+            roughness      = fast_sqrt(saturate(roughness * roughness + min(2.0f * variance, 0.18f)));
+        }
+
+        if (surface.has_texture_emissive())
+        {
+            float3 emissive = sample_texture(vertex, material_texture_index_emission).rgb;
+            if (material.is_emissive_srgb())
+            {
+                emissive = srgb_to_linear(emissive);
+            }
+            emission = emissive * material.emissive_color.rgb;
+        }
+        else if (material.has_emissive_color())
+        {
+            emission = material.emissive_color.rgb;
+        }
+        if (material.emissive_from_albedo())
+        {
+            emission = material.emissive_strength;
+        }
+
+        gbuffer g_buffer;
+        g_buffer.albedo      = albedo;
+        uint material_index  = pass_get_material_index();
+        float paint          = surface.is_foliage() ? saturate(foliage_sun_shadow) : 0.0f;
+        g_buffer.normal      = uint2(gbuffer_pack_normal(normal, material_index), gbuffer_pack_normal(face_normal, 0u));
+        g_buffer.material    = gbuffer_pack_material(roughness, metalness, paint, occlusion, material_index, noise_interleaved_gradient(vertex.position.xy));
+        float previous_depth = vertex.position_previous.w > 0.0f ?
+            min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;
+        if (material.is_alpha_tested() || surface.is_foliage())
+        {
+            previous_depth = -previous_depth;
+        }
+        g_buffer.velocity    = float4(velocity, 0.0f, previous_depth);
+        g_buffer.emissive    = material.emissive_from_albedo()
+            ? emission * albedo.rgb * photometric_to_radiometric(lighting_emissive_nits_from_albedo)
+            : emission * photometric_to_radiometric(lighting_emissive_nits_texture);
+        return g_buffer;
+    }
+#endif
     if (is_impostor)
     {
         float3 bitangent        = cross(vertex.normal, vertex.tangent);
@@ -789,9 +1016,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         );
         normal = normalize(normal_frame.x * vertex.tangent + normal_frame.y * bitangent + normal_frame.z * vertex.normal);
 
-        float3 sun_dir_world = normalize(-light_parameters[0].direction);
-        float3 sun_dir_frame = float3(dot(sun_dir_world, vertex.tangent), dot(sun_dir_world, bitangent), dot(sun_dir_world, vertex.normal));
-        foliage_sun_shadow   = impostor_raymarch_sun_shadow(resolved_uv_frames, depth_z, sun_dir_frame, noise_interleaved_gradient(vertex.position.xy));
+        if (distance < 350.0f)
+        {
+            float3 sun_dir_world = normalize(-light_parameters[0].direction);
+            float3 sun_dir_frame = float3(dot(sun_dir_world, vertex.tangent), dot(sun_dir_world, bitangent), dot(sun_dir_world, vertex.normal));
+            float  shadow_fade   = 1.0f - smoothstep(260.0f, 350.0f, distance);
+            foliage_sun_shadow   = impostor_raymarch_sun_shadow(resolved_uv_frames, depth_z, sun_dir_frame, noise_interleaved_gradient(vertex.position.xy)) * shadow_fade;
+        }
 
         surface.flags &= ~((1u << 0) | (1u << 1));
     }

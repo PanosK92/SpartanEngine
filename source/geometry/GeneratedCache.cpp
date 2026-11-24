@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstdio>
+#include <unordered_set>
+#include <SDL3/SDL_iostream.h>
 #if defined(__EMSCRIPTEN__)
 // xxhash includes this inside extern "C" on wasm, emscripten's version carries templates, so it goes in first
 #include <arm_neon.h>
@@ -32,14 +35,69 @@ namespace spartan::generated_cache
         std::mutex checksum_mutex;
         std::map<std::pair<uint64_t, uint64_t>, uint64_t> legacy_checksums;
         struct ChecksumEntry { uint64_t original, size, fast; };
+        std::mutex touched_mutex;
+        std::unordered_set<uint64_t> session_touched;
+
+        // Avoids OS path-canonicalization syscalls on every cache read while remaining stable
+        // across relative and absolute paths for the same category/filename pair.
+        uint64_t PathIdentityHash(const std::filesystem::path& path)
+        {
+            std::string key = path.parent_path().filename().string();
+            key.push_back('/');
+            key += path.filename().string();
+            for (char& c : key)
+            {
+                if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+            }
+            return HashBytes(key.data(), key.size());
+        }
 
         std::mutex& FileMutex(const std::filesystem::path& path)
         {
-            auto name = std::filesystem::absolute(path).lexically_normal().generic_string();
-#ifdef _WIN32
-            std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-#endif
-            return file_mutexes[std::hash<std::string>{}(name) % file_mutexes.size()];
+            return file_mutexes[PathIdentityHash(path) % file_mutexes.size()];
+        }
+
+        void MarkTouched(const std::filesystem::path& path)
+        {
+            const uint64_t id = PathIdentityHash(path);
+            std::lock_guard lock(touched_mutex);
+            session_touched.insert(id);
+        }
+
+        bool ReadWholeFile(const std::filesystem::path& path, size_t max_bytes, std::vector<uint8_t>& out)
+        {
+            const std::u8string u8 = path.generic_u8string();
+            const std::string utf8(reinterpret_cast<const char*>(u8.data()), u8.size());
+            SDL_IOStream* stream = SDL_IOFromFile(utf8.c_str(), "rb");
+            if (!stream)
+            {
+                return false;
+            }
+            struct IoGuard
+            {
+                SDL_IOStream* s;
+                ~IoGuard() { SDL_CloseIO(s); }
+            } guard{stream};
+
+            const Sint64 file_size = SDL_GetIOSize(stream);
+            if (file_size < 16 || static_cast<uint64_t>(file_size) > max_bytes)
+            {
+                return false;
+            }
+
+            const size_t total = static_cast<size_t>(file_size);
+            out.resize(total);
+            size_t offset = 0;
+            while (offset < total)
+            {
+                const size_t bytes_read = SDL_ReadIO(stream, out.data() + offset, total - offset);
+                if (bytes_read == 0)
+                {
+                    return false;
+                }
+                offset += bytes_read;
+            }
+            return true;
         }
 
         // Caller holds the file's lock. Never delete the previous file on a failed replacement.
@@ -80,21 +138,32 @@ namespace spartan::generated_cache
         }
     }
 
+    void ClearTouched()
+    {
+        std::lock_guard lock(touched_mutex);
+        session_touched.clear();
+    }
+
     bool ReadPayload(const std::filesystem::path& path, uint64_t key, std::vector<uint8_t>& bytes)
     {
         try
         {
-            std::lock_guard lock(FileMutex(path));
-            std::ifstream file(path, std::ios::binary | std::ios::ate);
-            if (!file) return false;
-            const auto length = file.tellg();
-            if (length < 16 || length > static_cast<std::streamoff>(maximum_payload_size + header_size)) return false;
-            file.seekg(0);
+            std::vector<uint8_t> raw;
+            {
+                std::lock_guard lock(FileMutex(path));
+                if (!ReadWholeFile(path, maximum_payload_size + header_size, raw))
+                {
+                    return false;
+                }
+            }
+
+            const size_t length = raw.size();
+            if (length < 16) return false;
             uint64_t stored_key = 0, checksum = 0, marker = 0;
-            file.read(reinterpret_cast<char*>(&stored_key), sizeof(stored_key));
-            file.read(reinterpret_cast<char*>(&checksum), sizeof(checksum));
-            if (!file || stored_key != key) return false;
-            if (length >= 24) file.read(reinterpret_cast<char*>(&marker), sizeof(marker));
+            memcpy(&stored_key, raw.data(), sizeof(stored_key));
+            memcpy(&checksum, raw.data() + 8, sizeof(checksum));
+            if (stored_key != key) return false;
+            if (length >= 24) memcpy(&marker, raw.data() + 16, sizeof(marker));
             // In a valid legacy file this slot is a vector count, bounded far below magic.
             const bool legacy = marker != magic;
             uint64_t raw_size = static_cast<uint64_t>(length) - 16;
@@ -102,31 +171,29 @@ namespace spartan::generated_cache
             size_t payload_offset = 16;
             if (!legacy)
             {
-                if (length < static_cast<std::streamoff>(header_size)) return false;
-                file.read(reinterpret_cast<char*>(&raw_size), sizeof(raw_size));
-                file.read(reinterpret_cast<char*>(&stored_version), sizeof(stored_version));
-                file.read(reinterpret_cast<char*>(&codec), sizeof(codec));
-                if (!file || (stored_version != 1 && stored_version != version) || codec > 1) return false;
+                if (length < header_size) return false;
+                memcpy(&raw_size, raw.data() + 24, sizeof(raw_size));
+                memcpy(&stored_version, raw.data() + 32, sizeof(stored_version));
+                memcpy(&codec, raw.data() + 36, sizeof(codec));
+                if ((stored_version != 1 && stored_version != version) || codec > 1) return false;
                 payload_offset = header_size;
             }
             if (raw_size > maximum_payload_size) return false;
-            const size_t stored_size = static_cast<size_t>(length) - payload_offset;
+            const size_t stored_size = length - payload_offset;
             if ((!codec && stored_size != raw_size) || (codec && (stored_size == 0 || stored_size >= raw_size))) return false;
             std::vector<uint8_t> decoded(static_cast<size_t>(raw_size));
-            file.seekg(static_cast<std::streamoff>(payload_offset));
-            std::vector<char> packed;
             if (codec)
             {
-                // Bulk reads also perform well when the compressed file is not
-                // resident in the OS cache; demand-paged decoding can stall on
-                // thousands of small disk faults during a cold world load.
-                packed.resize(stored_size);
-                if (!file.read(packed.data(), static_cast<std::streamsize>(packed.size()))) return false;
-                const char* source = packed.data();
+                const char* source = reinterpret_cast<const char*>(raw.data() + payload_offset);
                 if (LZ4_decompress_safe(source, reinterpret_cast<char*>(decoded.data()), static_cast<int>(stored_size), static_cast<int>(raw_size)) != static_cast<int>(raw_size)) return false;
             }
-            else if (raw_size && !file.read(reinterpret_cast<char*>(decoded.data()), static_cast<std::streamsize>(raw_size))) return false;
-            file.close();
+            else if (raw_size)
+            {
+                memcpy(decoded.data(), raw.data() + payload_offset, static_cast<size_t>(raw_size));
+            }
+            raw.clear();
+            raw.shrink_to_fit();
+
             const uint64_t fast_checksum = HashBytes(decoded.data(), decoded.size());
             if (stored_version < 2)
             {
@@ -153,8 +220,7 @@ namespace spartan::generated_cache
                 }
             }
             else if (fast_checksum != checksum) return false;
-            std::error_code error;
-            std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), error);
+            MarkTouched(path);
             bytes = std::move(decoded);
             return true;
         }
@@ -163,7 +229,12 @@ namespace spartan::generated_cache
 
     void WritePayload(const std::filesystem::path& path, uint64_t key, const std::vector<uint8_t>& bytes)
     {
-        try { std::lock_guard lock(FileMutex(path)); Write(path, key, bytes); }
+        try
+        {
+            std::lock_guard lock(FileMutex(path));
+            Write(path, key, bytes);
+            MarkTouched(path);
+        }
         catch (const std::exception&) {} // Cache storage is optional.
     }
 
@@ -207,7 +278,14 @@ namespace spartan::generated_cache
             const auto root = std::filesystem::path(world_resources) / "generated_cache";
             std::error_code error;
             if (!std::filesystem::is_directory(root, error) || std::filesystem::is_symlink(std::filesystem::symlink_status(root, error)) || error) return result;
-            struct Entry { std::filesystem::path path; uint64_t size; std::filesystem::file_time_type time; };
+            std::unordered_set<uint64_t> touched_snapshot;
+            {
+                std::lock_guard lock(touched_mutex);
+                touched_snapshot = session_touched;
+            }
+            const auto now = std::filesystem::file_time_type::clock::now();
+            const auto touch_threshold = now - std::chrono::hours(1);
+            struct Entry { std::filesystem::path path; uint64_t size; std::filesystem::file_time_type time; bool active; };
             std::vector<Entry> entries;
             uint64_t total = 0;
             // Do not recurse through links or walk outside this disposable cache directory.
@@ -220,7 +298,15 @@ namespace spartan::generated_cache
                     const auto stem = entry.path().stem().string();
                     if (stem.empty() || stem.size() > 20 || !std::all_of(stem.begin(), stem.end(), [](char c) { return c >= '0' && c <= '9'; })) continue;
                     const auto size = entry.file_size();
-                    entries.push_back({entry.path(), size, entry.last_write_time()});
+                    const auto mtime = entry.last_write_time();
+                    const bool active = touched_snapshot.contains(PathIdentityHash(entry.path()));
+                    if (active && mtime < touch_threshold)
+                    {
+                        // Refresh LRU timestamp off the load path so cross-session eviction still knows this entry is hot.
+                        std::error_code touch_error;
+                        std::filesystem::last_write_time(entry.path(), now, touch_error);
+                    }
+                    entries.push_back({entry.path(), size, mtime, active});
                     total += size;
                 }
             }
@@ -228,13 +314,18 @@ namespace spartan::generated_cache
             for (const auto& entry : entries)
             {
                 if (total <= budget) break;
-                if (entry.time >= protect_since) continue;
+                if (entry.active || entry.time >= protect_since) continue;
                 std::lock_guard lock(FileMutex(entry.path));
                 // A load/write since the scan makes this entry recent, so leave it alone.
                 error.clear();
                 if (std::filesystem::last_write_time(entry.path, error) != entry.time || error) continue;
                 if (std::filesystem::remove(entry.path, error))
                 {
+                    // Remove any companion .mesh sidecar (e.g. imported_models).
+                    auto sidecar = entry.path;
+                    sidecar.replace_extension(".mesh");
+                    std::error_code sidecar_error;
+                    std::filesystem::remove(sidecar, sidecar_error);
                     total -= entry.size;
                     ++result.removed;
                     result.bytes_removed += entry.size;

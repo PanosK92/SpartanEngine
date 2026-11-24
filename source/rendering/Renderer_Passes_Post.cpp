@@ -1019,9 +1019,9 @@ namespace spartan
             // the smoke fluid, see particles_fluid.hlsl
             constexpr float particle_fluid_cell_size = 0.14f; // metres, the box comes out about twenty across and under seven tall
             // odd, so the relaxation ends in the texture the projection and the next warm start read
-            constexpr uint32_t particle_fluid_pressure_iterations = 13;
+            constexpr uint32_t particle_fluid_pressure_iterations = 6;
             // seconds without an emitter feeding it before the air is left alone, long enough for the smoke to thin out
-            constexpr float particle_fluid_quiet_limit = 30.0f;
+            constexpr float particle_fluid_quiet_limit = 3.5f;
             // matches the record layout in particles_fluid.hlsl
             constexpr uint32_t particle_fluid_box_offset      = 0;
             constexpr uint32_t particle_fluid_wheel_offset    = 16;
@@ -1542,6 +1542,45 @@ namespace spartan
         // what the volumetric emitters pour into the smoke fluid this frame
         vector<ParticleFluidSource> fluid_sources;
 
+        // Project active volumetric emitters (and active fluid box) to a tight screen-space UV rect
+        // so particle_volume_composite skips empty sky/road tiles instead of raymarching the full screen.
+        math::Vector2 volume_uv_min(1.0f, 1.0f);
+        math::Vector2 volume_uv_max(0.0f, 0.0f);
+        bool volume_rect_full = IsSecondaryViewActive();
+        auto expand_volume_screen_rect = [&](const math::BoundingBox& box, Camera* cam)
+        {
+            if (volume_rect_full || !cam)
+            {
+                volume_rect_full = true;
+                return;
+            }
+            const math::Matrix& vp = cam->GetViewProjectionMatrix();
+            const math::Vector3 bmin = box.GetMin();
+            const math::Vector3 bmax = box.GetMax();
+            for (uint32_t c = 0; c < 8u; ++c)
+            {
+                const math::Vector3 p(
+                    (c & 1u) ? bmax.x : bmin.x,
+                    (c & 2u) ? bmax.y : bmin.y,
+                    (c & 4u) ? bmax.z : bmin.z
+                );
+                const math::Vector4 clip = math::Vector4(p.x, p.y, p.z, 1.0f) * vp;
+                if (clip.w <= 1e-3f)
+                {
+                    // Box crosses the camera near plane: conservatively composite full screen.
+                    volume_rect_full = true;
+                    return;
+                }
+                const float inv_w = 1.0f / clip.w;
+                const float u = clip.x * inv_w * 0.5f + 0.5f;
+                const float v = 0.5f - clip.y * inv_w * 0.5f;
+                volume_uv_min.x = std::min(volume_uv_min.x, u);
+                volume_uv_min.y = std::min(volume_uv_min.y, v);
+                volume_uv_max.x = std::max(volume_uv_max.x, u);
+                volume_uv_max.y = std::max(volume_uv_max.y, v);
+            }
+        };
+
         // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray
         // march every frame, and that cost is the same whether one emitter is smoking or forty are, a
         // world full of cars hands us dozens of volumetric emitters and the pass then overruns the
@@ -1549,6 +1588,7 @@ namespace spartan
         {
             const float volume_max_distance    = 64.0f; // must match volume_max_distance in particles_volumetric.hlsl
             const uint32_t volumetric_budget   = 8;
+            Camera* view_camera                = Renderer::GetViewCamera();
 
             vector<uint32_t> candidates;
             candidates.reserve(emitter_count);
@@ -1559,6 +1599,16 @@ namespace spartan
                     emitters[i]->GetRenderMode() == ParticleRenderMode::Volumetric &&
                     emitters[i]->HasLiveParticles() &&
                     emitter_distance[i] < volume_max_distance;
+
+                if (eligible && view_camera)
+                {
+                    // Conservative plume bounding box so volumetric emitters behind or outside the frustum
+                    // do not pay for full-screen clear/splat/resolve/raymarch passes when no smoke is visible.
+                    const float plume_radius = max(4.0f, emitters[i]->GetEmissionRadius() * 2.0f + emitters[i]->GetEndSize() * 3.0f + emitters[i]->GetVortexRadius() * 2.5f);
+                    const Vector3 extents(plume_radius, plume_radius, plume_radius);
+                    const math::BoundingBox plume_box(emitter_params[i].position - extents, emitter_params[i].position + extents);
+                    eligible = view_camera->IsInViewFrustum(plume_box);
+                }
 
                 if (eligible)
                 {
@@ -1588,6 +1638,9 @@ namespace spartan
             for (uint32_t index : candidates)
             {
                 emitter_params[index].render_mode = static_cast<uint32_t>(ParticleRenderMode::Volumetric);
+                const float plume_radius = max(4.0f, emitters[index]->GetEmissionRadius() * 2.0f + emitters[index]->GetEndSize() * 3.0f + emitters[index]->GetVortexRadius() * 2.5f);
+                const Vector3 extents(plume_radius, plume_radius, plume_radius);
+                expand_volume_screen_rect(math::BoundingBox(emitter_params[index].position - extents, emitter_params[index].position + extents), view_camera);
             }
 
             volume_present = !candidates.empty();
@@ -1648,6 +1701,12 @@ namespace spartan
                 source.velocity     = params.emission_direction * params.start_speed + params.emitter_velocity * params.velocity_inheritance;
                 source.radius       = params.radius;
                 source.density_rate = static_cast<float>(emit_counts[index]) / delta_time * parcel;
+                // Skip spinning up the 3D Navier-Stokes fluid grid for faint exhaust wisps;
+                // active tire smoke, burnouts, and dense plumes easily clear this threshold.
+                if (source.density_rate < 0.08f)
+                {
+                    continue;
+                }
                 source.heat         = max(params.thermal_strength, 0.0f);
                 source.shade        = clamp(params.start_color.r * 0.2126f + params.start_color.g * 0.7152f + params.start_color.b * 0.0722f, 0.0f, 1.0f);
                 fluid_sources.push_back(source);
@@ -1696,9 +1755,32 @@ namespace spartan
         m_pcb_pass_cpu.set(pass_particles_fluid::origin, fluid_running ? fluid.origin : Vector3::Zero);
         m_pcb_pass_cpu.set(pass_particles_fluid::cell_size, fluid_running ? fluid.cell_size : 0.0f);
         // smoke left standing in the fluid is still there to draw after the last particle is gone
-        volume_present = volume_present || fluid_running;
+        bool fluid_visible = fluid_running;
+        if (fluid_visible)
+        {
+            if (Camera* view_camera = Renderer::GetViewCamera())
+            {
+                const Vector3 fluid_size(
+                    static_cast<float>(renderer_particle_fluid_width)  * fluid.cell_size,
+                    static_cast<float>(renderer_particle_fluid_height) * fluid.cell_size,
+                    static_cast<float>(renderer_particle_fluid_depth)  * fluid.cell_size
+                );
+                const math::BoundingBox fluid_box(fluid.origin, fluid.origin + fluid_size);
+                fluid_visible = view_camera->IsInViewFrustum(fluid_box);
+                if (fluid_visible)
+                {
+                    expand_volume_screen_rect(fluid_box, view_camera);
+                }
+            }
+            else
+            {
+                volume_rect_full = true;
+            }
+        }
+        volume_present = volume_present || fluid_visible;
 
         // emit, one dispatch per emitter so each spawns from its own position and rate
+        constexpr float billboard_cull_distance = 85.0f;
         RHI_CommandList::BeginPass("particle_emit");
         RHI_CommandList::SetShader(shader_emit, "particle_emit");
         RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
@@ -1706,7 +1788,7 @@ namespace spartan
         RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
         for (uint32_t i = 0; i < emitter_count; i++)
         {
-            if (emit_counts[i] == 0 || range_counts[i] == 0)
+            if (emit_counts[i] == 0 || range_counts[i] == 0 || emitter_distance[i] > billboard_cull_distance)
             {
                 continue;
             }
@@ -1743,64 +1825,88 @@ namespace spartan
         // one draw per emitter so each can bind its own smoke texture and only its own range is drawn
         RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
         RHI_Texture* tex_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        Camera* billboard_cam   = Renderer::GetViewCamera();
         RHI_CommandList::BeginPass("particle_render");
-        for (uint32_t i = 0; i < emitter_count; i++)
         {
-            // Traffic cars retain their smoke emitters even when idle. Keep
-            // their buffer slices stable, but don't draw thousands of dead quads.
-            if (range_counts[i] == 0 || !emitters[i]->HasLiveParticles())
+            bool state_bound                    = false;
+            Renderer_BlendState last_blend      = Renderer_BlendState::Max;
+            RHI_Texture* last_particle_texture  = nullptr;
+
+            for (uint32_t i = 0; i < emitter_count; i++)
             {
-                continue;
-            }
-            // demoted emitters draw as billboards, only the ones that kept a volumetric slot are skipped here
-            if (volume_shaders_ready && emitter_params[i].render_mode == static_cast<uint32_t>(ParticleRenderMode::Volumetric))
-            {
-                continue;
-            }
-
-            RHI_Texture* tex_particle = emitters[i]->GetTexture();
-            bool has_texture          = tex_particle != nullptr;
-
-            RHI_CommandList::SetShaders(shader_render_v, shader_render_p);
-            RHI_CommandList::SetBlendState(GetBlendState(to_blend_state(emitters[i]->GetBlendMode())));
-            RHI_CommandList::SetColorTargets(tex_render,
-                GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity),
-                GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
-            RHI_CommandList::SetResolutionScale(true);
-
-            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
-            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
-            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
-            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
-            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, has_texture ? tex_particle : tex_white);
-            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-
-            if (RHI_Device::IsSupportedRayTracing())
-            {
-                if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
+                // Traffic cars retain their smoke emitters even when idle. Keep
+                // their buffer slices stable, but don't draw thousands of dead quads.
+                if (range_counts[i] == 0 || !emitters[i]->HasLiveParticles() || emitter_distance[i] > billboard_cull_distance)
                 {
-                    if (tlas->GetRhiResource())
+                    continue;
+                }
+                // demoted emitters draw as billboards, only the ones that kept a volumetric slot are skipped here
+                if (volume_shaders_ready && emitter_params[i].render_mode == static_cast<uint32_t>(ParticleRenderMode::Volumetric))
+                {
+                    continue;
+                }
+                if (billboard_cam)
+                {
+                    const float margin = max(20.0f, emitters[i]->GetEmissionRadius() * 2.0f + emitters[i]->GetEndSize() * 4.0f + emitters[i]->GetStartSpeed() * emitters[i]->GetLifetime());
+                    const Vector3 ext(margin, margin, margin);
+                    if (!billboard_cam->IsInViewFrustum(math::BoundingBox(emitter_params[i].position - ext, emitter_params[i].position + ext)))
                     {
-                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                        continue;
                     }
                 }
+
+                RHI_Texture* tex_particle   = emitters[i]->GetTexture();
+                bool has_texture            = tex_particle != nullptr;
+                RHI_Texture* bound_texture  = has_texture ? tex_particle : tex_white;
+                Renderer_BlendState blend   = to_blend_state(emitters[i]->GetBlendMode());
+
+                if (!state_bound)
+                {
+                    RHI_CommandList::SetShaders(shader_render_v, shader_render_p);
+                    RHI_CommandList::SetColorTargets(tex_render,
+                        GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity),
+                        GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
+                    RHI_CommandList::SetResolutionScale(true);
+
+                    RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+                    RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+                    RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+                    RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+                    RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+
+                    if (tlas_collision)
+                    {
+                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                    }
+                    RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                    state_bound = true;
+                }
+
+                if (blend != last_blend)
+                {
+                    RHI_CommandList::SetBlendState(GetBlendState(blend));
+                    last_blend = blend;
+                }
+                if (bound_texture != last_particle_texture)
+                {
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, bound_texture);
+                    last_particle_texture = bound_texture;
+                }
+
+                m_pcb_pass_cpu.set(pass_particles::emitter_index, i);
+                m_pcb_pass_cpu.set(pass_particles::use_texture, has_texture);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+
+                RHI_CommandList::Draw(range_counts[i] * 6);
             }
-
-            m_pcb_pass_cpu.set(pass_particles::emitter_index, i);
-            m_pcb_pass_cpu.set(pass_particles::use_texture, has_texture);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-            RHI_CommandList::SetCullMode(RHI_CullMode::None);
-            RHI_CommandList::Draw(range_counts[i] * 6);
         }
-
         RHI_CommandList::EndPass();
 
         if (volume_shaders_ready && volume_present)
@@ -1877,10 +1983,34 @@ namespace spartan
                     RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
                     RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
                     bind_particle_fluid();
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    const uint32_t width = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
+                    const uint32_t width  = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
                     const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());
-                    RHI_CommandList::Dispatch((width + 15u) / 16u, (height + 15u) / 16u);
+                    const uint32_t total_tiles_x = (width + 15u) / 16u;
+                    const uint32_t total_tiles_y = (height + 15u) / 16u;
+                    uint32_t min_tile_x = 0u;
+                    uint32_t min_tile_y = 0u;
+                    uint32_t tile_count_x = total_tiles_x;
+                    uint32_t tile_count_y = total_tiles_y;
+                    if (!volume_rect_full && volume_uv_max.x > volume_uv_min.x && volume_uv_max.y > volume_uv_min.y)
+                    {
+                        const float u0 = std::clamp(volume_uv_min.x, 0.0f, 1.0f);
+                        const float v0 = std::clamp(volume_uv_min.y, 0.0f, 1.0f);
+                        const float u1 = std::clamp(volume_uv_max.x, 0.0f, 1.0f);
+                        const float v1 = std::clamp(volume_uv_max.y, 0.0f, 1.0f);
+                        min_tile_x = static_cast<uint32_t>(u0 * static_cast<float>(width)) / 16u;
+                        min_tile_y = static_cast<uint32_t>(v0 * static_cast<float>(height)) / 16u;
+                        const uint32_t max_tile_x = std::min(total_tiles_x, (static_cast<uint32_t>(std::ceil(u1 * static_cast<float>(width))) + 15u) / 16u + 1u);
+                        const uint32_t max_tile_y = std::min(total_tiles_y, (static_cast<uint32_t>(std::ceil(v1 * static_cast<float>(height))) + 15u) / 16u + 1u);
+                        tile_count_x = max_tile_x > min_tile_x ? max_tile_x - min_tile_x : 0u;
+                        tile_count_y = max_tile_y > min_tile_y ? max_tile_y - min_tile_y : 0u;
+                    }
+                    if (tile_count_x > 0u && tile_count_y > 0u)
+                    {
+                        m_pcb_pass_cpu.set(pass_particles_volumetric::tile_offset_x, min_tile_x);
+                        m_pcb_pass_cpu.set(pass_particles_volumetric::tile_offset_y, min_tile_y);
+                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                        RHI_CommandList::Dispatch(tile_count_x, tile_count_y);
+                    }
                 }
                 RHI_CommandList::EndPass();
 

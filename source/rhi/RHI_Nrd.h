@@ -237,15 +237,15 @@ namespace spartan
             settings                                    = {};
             // the shaders trace the pixel where (x ^ y ^ frame) is even, nrd's black cells, frameIndex is the engine frame
             settings.checkerboardMode                   = checkerboard ? nrd::CheckerboardMode::BLACK : nrd::CheckerboardMode::OFF;
-            settings.specularPrepassBlurRadius          = 15.0f;
+            settings.specularPrepassBlurRadius          = 10.0f;
             settings.specularMaxAccumulatedFrameNum     = get_accumulated_frame_num(nrd::RELAX_DEFAULT_ACCUMULATION_TIME, nrd::RELAX_MAX_HISTORY_FRAME_NUM, delta_time);
             settings.specularMaxFastAccumulatedFrameNum = (std::min)(settings.specularMaxAccumulatedFrameNum, (std::max)(4u, get_accumulated_frame_num(nrd::RELAX_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.specularMaxAccumulatedFrameNum, delta_time)));
-            settings.historyFixFrameNum                 = (std::min)(3u, settings.specularMaxFastAccumulatedFrameNum > 0u ? settings.specularMaxFastAccumulatedFrameNum - 1u : 0u);
+            settings.historyFixFrameNum                 = (std::min)(2u, settings.specularMaxFastAccumulatedFrameNum > 0u ? settings.specularMaxFastAccumulatedFrameNum - 1u : 0u);
             settings.specularPhiLuminance               = 1.0f;
-            settings.atrousIterationNum                 = 4u;
+            settings.atrousIterationNum                 = 3u;
             settings.lobeAngleFraction                  = 0.5f;
             settings.roughnessFraction                  = 0.15f;
-            settings.enableAntiFirefly                  = true;
+            settings.enableAntiFirefly                  = false;
             settings.enableRoughnessEdgeStopping        = true;
         }
 

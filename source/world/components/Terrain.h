@@ -218,12 +218,30 @@ namespace spartan
         void SetDebugView(TerrainDebugView view);
         RHI_Texture* GetAnalysisMapA() const    { return m_map_a.get(); }
         RHI_Texture* GetAnalysisMapB() const    { return m_map_b.get(); }
+        struct PlatformFootprint
+        {
+            float x = 0.0f;
+            float z = 0.0f;
+            float half_x = 0.0f;
+            float half_z = 0.0f;
+            float deform_hx = 0.0f;
+            float deform_hz = 0.0f;
+            float cos_yaw = 1.0f;
+            float sin_yaw = 0.0f;
+            float min_x = 0.0f;
+            float min_z = 0.0f;
+            float max_x = 0.0f;
+            float max_z = 0.0f;
+        };
+        std::vector<PlatformFootprint> GetPlatformFootprints() const;
         bool IsOnRoad(float world_x, float world_z) const;
         RHI_Buffer* GetRoadExclusionBuffer();
         RHI_Texture* GetPropMask() const        { return m_prop_mask.get(); }
         void RebuildPropMask();
+        void ClearPropSeeds();
+        void RecordPropInstanceSeed(uint64_t entity_id, const std::vector<Instance>& seed);
         // after biome scatter, keep instance seeds then hide props on occupied pads
-        void OnBiomePropsPopulated();
+        void OnBiomePropsPopulated(bool seeds_and_exclusions_applied = false);
         // same bookkeeping after a partial scatter, only the tiles that were re-placed are visited
         void OnBiomePropsRepopulated(const std::vector<uint32_t>& tile_indices);
         // drop the seed entries of a prop root that is about to be removed, and of everything under it
@@ -272,6 +290,7 @@ namespace spartan
         bool IsCpuGenerationPending() const { return m_worker_busy.load(std::memory_order_acquire) != 0; }
         bool IsGenerating() const { return m_is_generating.load(); }
         bool IsMeshCommitPending() const { return m_gpu_commit_pending.load(std::memory_order_acquire); }
+        bool IsSurfaceCommitPending() const { return m_surface_commit_pending; }
         void Tick() override;
 
         // generation
@@ -411,6 +430,7 @@ namespace spartan
         void BuildCpuMesh();
         void BuildTileMesh(Mesh& mesh, const bool stream_geometry);
         void CommitGpu();
+        void FinalizeSurfaceCommit();
         void CommitProps();
         void FinishGenerate();
         void BakePropMask();
@@ -633,6 +653,7 @@ namespace spartan
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
         std::vector<uint8_t> m_prop_mask_seed;
         std::vector<math::Vector4> m_road_exclusions; // header, grid ranges, then projected triangle pairs
+        uint64_t m_road_exclusions_hash = 0;
         std::shared_ptr<RHI_Buffer> m_road_exclusion_buffer;
         bool m_road_exclusion_buffer_dirty = true;
         bool m_spline_carve_dirty = false;
@@ -691,7 +712,9 @@ namespace spartan
         std::atomic<uint32_t> m_worker_busy = 0;
         std::thread::id m_worker_thread;
         std::atomic<bool> m_gpu_commit_pending = false;
+        std::atomic<bool> m_surface_commit_pending = false;
         std::atomic<bool> m_props_commit_pending = false;
+        bool m_defer_surface_commit = false;
         std::function<bool()> m_props_population_step;
         std::shared_ptr<Mesh> m_mesh_pending;
         uint32_t m_height_samples         = 0;

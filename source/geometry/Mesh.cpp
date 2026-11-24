@@ -1030,8 +1030,9 @@ namespace spartan
         return measurement.hit;
     }
 
-    bool Mesh::LoadPrepared(span<const uint8_t> bytes)
+    bool Mesh::LoadPrepared(span<const uint8_t> bytes, bool* recooked)
     {
+        if (recooked) *recooked = false;
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices, remaps, micro;
         vector<Sb_MeshletBounds> meshlets;
@@ -1087,6 +1088,7 @@ namespace spartan
             Mesh cooked;
             if (!cooked.CookFromHighestDetail(*this)) return false;
             AdoptGeometry(cooked);
+            if (recooked) *recooked = true;
         }
         return true;
     }
@@ -2057,6 +2059,23 @@ namespace spartan
                 proxy.vertices = GeometryBuffer::AppendVertices(surface.data(), proxy.vertex_count);
             proxy.indices = GeometryBuffer::AppendIndices(topology.data(), proxy.index_count);
         };
+        auto upload_precomputed = [](GeometryParentPage& proxy,
+            const RHI_Vertex_PosTexNorTan* surface, uint32_t vertex_count,
+            const uint32_t* topology, uint32_t index_count,
+            const Sb_MeshletBounds* meshlets, uint32_t meshlet_count,
+            const uint32_t* remaps, uint32_t remap_count,
+            const uint32_t* micro, uint32_t micro_count)
+        {
+            proxy.vertex_count  = vertex_count;
+            proxy.index_count   = index_count;
+            proxy.meshlet_count = meshlet_count;
+            proxy.remaps        = GeometryBuffer::AppendMeshletVertices(remaps, remap_count);
+            proxy.micro         = GeometryBuffer::AppendMeshletMicroIndices(micro, micro_count);
+            proxy.meshlet       = GeometryBuffer::AppendMeshletBounds(meshlets, meshlet_count);
+            if (!proxy.uses_root_vertices && vertex_count)
+                proxy.vertices = GeometryBuffer::AppendVertices(surface, vertex_count);
+            proxy.indices = GeometryBuffer::AppendIndices(topology, index_count);
+        };
         if (!tree)
         {
             const bool terrain = (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges)) != 0;
@@ -2068,19 +2087,29 @@ namespace spartan
                 vector<RHI_Vertex_PosTexNorTan> source_vertices;
                 vector<uint32_t> source_indices;
                 const bool shared_vertices = m_skeletal_mesh_binding || sub.HasResidentRootOnly();
-                struct ParentLevel { uint32_t vertices, indices; float error; };
+                struct ParentLevel
+                {
+                    uint32_t vertices, indices, meshlets, remaps, micro;
+                    float error;
+                };
                 vector<ParentLevel> levels;
                 vector<RHI_Vertex_PosTexNorTan> baked_vertices;
                 vector<uint32_t> baked_indices;
+                vector<Sb_MeshletBounds> baked_meshlets;
+                vector<uint32_t> baked_remaps;
+                vector<uint32_t> baked_micro;
                 generated_cache::Hash recipe;
                 filesystem::path bake_path;
-                if (terrain && !shared_vertices && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache)))
+                const bool can_cache = !m_skeletal_mesh_binding && !m_dynamic;
+                if (can_cache)
                 {
                     // The resident triangles and the finest pages together describe ReadGeometry's input.
-                    recipe.Add(uint32_t(1)); // parent simplification policy
+                    recipe.Add(uint32_t(2)); // parent simplification + prebuilt meshlets policy
                     recipe.Add(uint32_t(MESHOPTIMIZER_VERSION));
                     recipe.Add(GeometryPage::max_corners);
+                    recipe.Add(sizeof(Sb_MeshletBounds));
                     recipe.Add(m_flags);
+                    recipe.Add(shared_vertices);
                     recipe.Add(range.aabb.GetMin());
                     recipe.Add(range.aabb.GetMax());
                     recipe.Add(generated_cache::HashBytes(m_vertices.data() + range.vertex_offset,
@@ -2096,27 +2125,36 @@ namespace spartan
                             recipe.Add(cluster.refinements.front().page->checksum);
                     }
                     bake_path = generated_cache::Path(World::GetResourceDirectory(), "parent_pages", recipe.value);
-                    if (generated_cache::Load(bake_path, recipe.value, levels, baked_vertices, baked_indices))
+                    if (generated_cache::Load(bake_path, recipe.value, levels, baked_vertices, baked_indices,
+                        baked_meshlets, baked_remaps, baked_micro))
                     {
-                        size_t v = 0, i = 0;
+                        size_t v = 0, i = 0, m = 0, r = 0, u = 0;
                         bool valid = levels.size() <= 3;
                         for (const ParentLevel& level : levels)
                         {
-                            if (!level.vertices || !level.indices || level.indices % 3 || !isfinite(level.error) ||
-                                level.vertices > baked_vertices.size() - v || level.indices > baked_indices.size() - i ||
+                            const uint32_t expected_v = shared_vertices ? 0u : level.vertices;
+                            const uint32_t index_limit = shared_vertices ? range.vertex_count : level.vertices;
+                            if (!level.vertices || !level.indices || level.indices % 3 || !level.meshlets || !isfinite(level.error) ||
+                                expected_v > baked_vertices.size() - v || level.indices > baked_indices.size() - i ||
+                                level.meshlets > baked_meshlets.size() - m || level.remaps > baked_remaps.size() - r ||
+                                level.micro > baked_micro.size() - u ||
                                 any_of(baked_indices.begin() + i, baked_indices.begin() + i + level.indices,
-                                    [&](uint32_t index) { return index >= level.vertices; }))
+                                    [&](uint32_t index) { return index >= index_limit; }))
                             {
                                 valid = false;
                                 break;
                             }
-                            v += level.vertices;
+                            v += expected_v;
                             i += level.indices;
+                            m += level.meshlets;
+                            r += level.remaps;
+                            u += level.micro;
                         }
-                        if (valid && v == baked_vertices.size() && i == baked_indices.size())
+                        if (valid && v == baked_vertices.size() && i == baked_indices.size() &&
+                            m == baked_meshlets.size() && r == baked_remaps.size() && u == baked_micro.size())
                         {
                             auto* next = &sub.parent_page;
-                            v = i = 0;
+                            v = i = m = r = u = 0;
                             for (const ParentLevel& level : levels)
                             {
                                 auto parent = make_shared<GeometryParentPage>();
@@ -2124,19 +2162,30 @@ namespace spartan
                                 parent->center = range.aabb.GetCenter();
                                 parent->radius = range.aabb.GetExtents().Length();
                                 parent->error = level.error;
-                                vector<RHI_Vertex_PosTexNorTan> surface(baked_vertices.begin() + v, baked_vertices.begin() + v + level.vertices);
-                                vector<uint32_t> topology(baked_indices.begin() + i, baked_indices.begin() + i + level.indices);
-                                upload(*parent, surface, topology);
+                                parent->uses_root_vertices = shared_vertices;
+                                const uint32_t stored_v = shared_vertices ? 0u : level.vertices;
+                                upload_precomputed(*parent,
+                                    stored_v ? (baked_vertices.data() + v) : nullptr, level.vertices,
+                                    baked_indices.data() + i, level.indices,
+                                    baked_meshlets.data() + m, level.meshlets,
+                                    baked_remaps.data() + r, level.remaps,
+                                    baked_micro.data() + u, level.micro);
                                 *next = move(parent);
                                 next = &(*next)->coarser;
-                                v += level.vertices;
+                                v += stored_v;
                                 i += level.indices;
+                                m += level.meshlets;
+                                r += level.remaps;
+                                u += level.micro;
                             }
                             return;
                         }
                         levels.clear();
                         baked_vertices.clear();
                         baked_indices.clear();
+                        baked_meshlets.clear();
+                        baked_remaps.clear();
+                        baked_micro.clear();
                     }
                 }
                 // ReadGeometry already welds the borders between independently streamable pages.
@@ -2197,33 +2246,56 @@ namespace spartan
                     if (count == 0 || count >= previous_count * 0.85) continue;
                     previous_count = count;
                     reduced.resize(count);
+                    vector<RHI_Vertex_PosTexNorTan> surface;
                     if (shared_vertices)
                     {
-                        vector<RHI_Vertex_PosTexNorTan> surface(first_vertex, first_vertex + vertex_count);
-                        upload(*parent, surface, reduced);
-                        if (m_skeletal_mesh_binding) parent->skin_indices = move(reduced);
+                        surface.assign(first_vertex, first_vertex + vertex_count);
                     }
                     else
                     {
-                        vector<RHI_Vertex_PosTexNorTan> compact(vertex_count);
-                        compact.resize(meshopt_optimizeVertexFetch(compact.data(), reduced.data(), reduced.size(),
+                        surface.resize(vertex_count);
+                        surface.resize(meshopt_optimizeVertexFetch(surface.data(), reduced.data(), reduced.size(),
                             source_vertices.data(), vertex_count, sizeof(source_vertices[0])));
-                        if (!bake_path.empty())
-                        {
-                            levels.push_back({static_cast<uint32_t>(compact.size()), static_cast<uint32_t>(reduced.size()), parent->error});
-                            baked_vertices.insert(baked_vertices.end(), compact.begin(), compact.end());
-                            baked_indices.insert(baked_indices.end(), reduced.begin(), reduced.end());
-                        }
-                        upload(*parent, compact, reduced);
                     }
+                    vector<Sb_MeshletBounds> meshlets;
+                    vector<uint32_t> remaps, micro;
+                    BoundingBox unused;
+                    geometry_processing::build_meshlets(surface, reduced, meshlets, remaps, micro, unused, false, &parent->bounds);
+                    if (!bake_path.empty())
+                    {
+                        levels.push_back({
+                            static_cast<uint32_t>(surface.size()),
+                            static_cast<uint32_t>(reduced.size()),
+                            static_cast<uint32_t>(meshlets.size()),
+                            static_cast<uint32_t>(remaps.size()),
+                            static_cast<uint32_t>(micro.size()),
+                            parent->error
+                        });
+                        if (!shared_vertices) baked_vertices.insert(baked_vertices.end(), surface.begin(), surface.end());
+                        baked_indices.insert(baked_indices.end(), reduced.begin(), reduced.end());
+                        baked_meshlets.insert(baked_meshlets.end(), meshlets.begin(), meshlets.end());
+                        baked_remaps.insert(baked_remaps.end(), remaps.begin(), remaps.end());
+                        baked_micro.insert(baked_micro.end(), micro.begin(), micro.end());
+                    }
+                    upload_precomputed(*parent,
+                        surface.data(), static_cast<uint32_t>(surface.size()),
+                        reduced.data(), static_cast<uint32_t>(reduced.size()),
+                        meshlets.data(), static_cast<uint32_t>(meshlets.size()),
+                        remaps.data(), static_cast<uint32_t>(remaps.size()),
+                        micro.data(), static_cast<uint32_t>(micro.size()));
+                    if (m_skeletal_mesh_binding) parent->skin_indices = move(reduced);
                     *next = move(parent);
                     next = &(*next)->coarser;
                 }
-                if (!bake_path.empty()) generated_cache::Save(bake_path, recipe.value, levels, baked_vertices, baked_indices);
+                if (!bake_path.empty())
+                {
+                    generated_cache::Save(bake_path, recipe.value, levels, baked_vertices, baked_indices,
+                        baked_meshlets, baked_remaps, baked_micro);
+                }
             };
-            // Terrain tiles have independent parent chains. The geometry buffer synchronizes each append.
+            // Submeshes have independent parent chains. The geometry buffer synchronizes each append.
             const uint32_t count = static_cast<uint32_t>(m_sub_meshes.size());
-            if (count > 1 && terrain)
+            if (count > 1)
             {
                 ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
                 {
@@ -2270,6 +2342,9 @@ namespace spartan
         // distant trunks cull out completely in phase a
         struct MaterialImpostorMaps
         {
+            string albedo_path;
+            string normal_path;
+            string occlusion_path;
             vector<uint8_t> rgba;
             uint32_t w = 0, h = 0;
             vector<uint8_t> normal_rgba;
@@ -2280,7 +2355,7 @@ namespace spartan
             float cutoff = 0.5f;
         };
 
-        auto load_material_maps = [](const filesystem::path& xml_path, MaterialImpostorMaps& out) -> bool
+        auto parse_material_meta = [](const filesystem::path& xml_path, MaterialImpostorMaps& out) -> bool
         {
             if (!filesystem::exists(xml_path))
             {
@@ -2306,9 +2381,6 @@ namespace spartan
             );
             out.cutoff = root.child("alpha_cutoff").text().as_float(0.5f);
 
-            string albedo_path;
-            string normal_path;
-            string occlusion_path;
             for (const pugi::xml_node tex : root.child("textures").children())
             {
                 const uint32_t type = tex.attribute("texture_type").as_uint(999u);
@@ -2324,33 +2396,45 @@ namespace spartan
                 }
                 if (type == 0u)
                 {
-                    albedo_path = path;
+                    out.albedo_path = path;
                 }
                 else if (type == 3u)
                 {
-                    normal_path = path;
+                    out.normal_path = path;
                 }
                 else if (type == 4u)
                 {
-                    occlusion_path = path;
+                    out.occlusion_path = path;
                 }
             }
-            if (albedo_path.empty())
-            {
-                return false;
-            }
+            return !out.albedo_path.empty() && filesystem::exists(out.albedo_path);
+        };
 
-            if (!ImageImporter::LoadSdrRgba8(albedo_path, out.w, out.h, out.rgba))
+        auto hash_file_stamp = [](generated_cache::Hash& h, const string& file_path)
+        {
+            h.Add(file_path);
+            if (file_path.empty()) return;
+            error_code ec;
+            const uint64_t sz = filesystem::file_size(file_path, ec);
+            h.Add(ec ? uint64_t(0) : sz);
+            const auto mt = filesystem::last_write_time(file_path, ec);
+            h.Add(ec ? int64_t(0) : static_cast<int64_t>(mt.time_since_epoch().count()));
+        };
+
+        auto decode_material_maps = [](MaterialImpostorMaps& out) -> bool
+        {
+            if (out.albedo_path.empty()) return false;
+            if (!ImageImporter::LoadSdrRgba8(out.albedo_path, out.w, out.h, out.rgba))
             {
                 return false;
             }
-            if (!normal_path.empty())
+            if (!out.normal_path.empty())
             {
-                ImageImporter::LoadSdrRgba8(normal_path, out.nw, out.nh, out.normal_rgba);
+                ImageImporter::LoadSdrRgba8(out.normal_path, out.nw, out.nh, out.normal_rgba);
             }
-            if (!occlusion_path.empty())
+            if (!out.occlusion_path.empty())
             {
-                ImageImporter::LoadSdrRgba8(occlusion_path, out.ow, out.oh, out.occlusion_rgba);
+                ImageImporter::LoadSdrRgba8(out.occlusion_path, out.ow, out.oh, out.occlusion_rgba);
             }
             return true;
         };
@@ -2360,14 +2444,15 @@ namespace spartan
         MaterialImpostorMaps bark_maps;
         bark_maps.tint = Vector3(0.35f, 0.28f, 0.22f);
         bool has_baked_rgba = false;
+        bool has_bark_meta  = false;
         if (!GetResourceFilePath().empty())
         {
             const filesystem::path mesh_path(GetResourceFilePath());
             const filesystem::path base = mesh_path.parent_path() / mesh_path.stem();
-            has_baked_rgba = load_material_maps(base.string() + "_foliage.xml", leaf_maps);
+            has_baked_rgba = parse_material_meta(base.string() + "_foliage.xml", leaf_maps);
             if (has_baked_rgba)
             {
-                load_material_maps(base.string() + "_bark.xml", bark_maps);
+                has_bark_meta = parse_material_meta(base.string() + "_bark.xml", bark_maps);
             }
         }
 
@@ -2396,19 +2481,21 @@ namespace spartan
 
             constexpr uint32_t baked_res = GeometryParentPage::baked_resolution;
             generated_cache::Hash hash;
-            hash.Add(uint32_t{3});
+            hash.Add(uint32_t{4});
             hash.Add(GeometryParentPage::frames);
             hash.Add(baked_res);
-            hash.Add(leaf_maps.w);
-            hash.Add(leaf_maps.h);
-            hash.Add(leaf_maps.nw);
-            hash.Add(leaf_maps.nh);
-            hash.Add(leaf_maps.ow);
-            hash.Add(leaf_maps.oh);
-            hash.Add(bark_maps.w);
-            hash.Add(bark_maps.h);
+            hash_file_stamp(hash, leaf_maps.albedo_path);
+            hash_file_stamp(hash, leaf_maps.normal_path);
+            hash_file_stamp(hash, leaf_maps.occlusion_path);
             hash.Add(leaf_maps.cutoff);
             hash.Add(leaf_maps.tint);
+            hash.Add(uint8_t(has_bark_meta ? 1 : 0));
+            if (has_bark_meta)
+            {
+                hash_file_stamp(hash, bark_maps.albedo_path);
+                hash_file_stamp(hash, bark_maps.normal_path);
+                hash_file_stamp(hash, bark_maps.occlusion_path);
+            }
             hash.Add(bark_maps.tint);
             hash.Add(vertices);
             hash.Add(indices);
@@ -2420,6 +2507,8 @@ namespace spartan
             const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
             if (!cache || !generated_cache::Load(path, hash.value, atlas) || atlas.size() != words)
             {
+                if (!decode_material_maps(leaf_maps)) return;
+                if (has_bark_meta) decode_material_maps(bark_maps);
                 geometry_processing::ImpostorTextureInput bark_tex
                 {
                     bark_maps.rgba.empty() ? nullptr : bark_maps.rgba.data(), bark_maps.w, bark_maps.h,

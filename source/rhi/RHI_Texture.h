@@ -45,7 +45,9 @@ namespace spartan
         // immutable material textures start with a small resident tail
         RHI_Texture_Stream            = 1U << 13,
         // submit the initial upload without a cpu wait, the graphics queue orders it before later frames
-        RHI_Texture_AsyncUpload       = 1U << 14
+        RHI_Texture_AsyncUpload       = 1U << 14,
+        // request BC5 normal-map compression for direct source-to-mips caching
+        RHI_Texture_CompressBc5       = 1U << 15
     };
 
     struct RHI_Texture_Mip
@@ -218,6 +220,7 @@ namespace spartan
     private:
         friend class RHI_TextureStreaming;
         uint32_t m_resident_mip = 0;
+        uint64_t m_source_mips_key = 0;
         friend class RHI_CommandList;
         friend class RHI_DescriptorSet;
         friend class RHI_DescriptorSetLayout;

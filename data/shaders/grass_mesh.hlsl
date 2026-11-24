@@ -74,17 +74,26 @@ void main_ms(
         float3 up   = transform[1].xyz / max(blade_scale, 1e-6f);
         Surface surface;
         surface.flags = 1u << 11; // grass blade
-        [unroll]
-        for (uint frame = 0; frame < 2; ++frame)
+        float3 pressure0 = grass_root_pressure(surface, root, 0.0f);
+        blade_interactions[0][blade] = sample_vegetation_interaction(root.xz, 0.0f);
+        blade_roots[0][blade]        = float4(pressure0, grass_camera_bias(root, up, transform[2].xyz, pressure0.z, 0.0f));
+        blade_transforms[blade]      = transform;
+        blade_bends_current[blade]   = grass_bend_compute(true, root, up, blade_scale, 0.0f, instance_id);
+
+        if (buffer_frame.delta_time > 1e-6f)
         {
-            float time_offset = frame == 0 ? 0.0f : -buffer_frame.delta_time;
-            float3 pressure = grass_root_pressure(surface, root, time_offset);
-            blade_interactions[frame][blade] = sample_vegetation_interaction(root.xz, time_offset);
-            blade_roots[frame][blade] = float4(pressure, grass_camera_bias(root, up, transform[2].xyz, pressure.z, time_offset));
+            float time_offset = -buffer_frame.delta_time;
+            float3 pressure1  = grass_root_pressure(surface, root, time_offset);
+            blade_interactions[1][blade] = sample_vegetation_interaction(root.xz, time_offset);
+            blade_roots[1][blade]        = float4(pressure1, grass_camera_bias(root, up, transform[2].xyz, pressure1.z, time_offset));
+            blade_bends_previous[blade]  = grass_bend_compute(true, root, up, blade_scale, time_offset, instance_id);
         }
-        blade_transforms[blade]     = transform;
-        blade_bends_current[blade]  = grass_bend_compute(true, root, up, blade_scale, 0.0f, instance_id);
-        blade_bends_previous[blade] = grass_bend_compute(true, root, up, blade_scale, -buffer_frame.delta_time, instance_id);
+        else
+        {
+            blade_interactions[1][blade] = blade_interactions[0][blade];
+            blade_roots[1][blade]        = blade_roots[0][blade];
+            blade_bends_previous[blade]  = blade_bends_current[blade];
+        }
     }
     GroupMemoryBarrierWithGroupSync();
 

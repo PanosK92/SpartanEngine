@@ -79,6 +79,7 @@ namespace spartan
     struct GeometryPageSource
     {
         mutable size_t request_index = SIZE_MAX; // render-thread index, never serialized
+        mutable uint32_t slot_index  = UINT32_MAX; // render-thread pool slot, never serialized
         mutable std::vector<uint8_t> bytes; // newly imported, before the first native save
         mutable std::string file;
         mutable uint64_t offset = 0;
@@ -152,7 +153,7 @@ namespace spartan
         static int UpgradeGeometryDirectory(const std::string& directory);
         // CPU-only, validated generated geometry. GPU resources are created after scene publication.
         bool LoadPrepared(const std::string& path, uint64_t key);
-        bool LoadPrepared(std::span<const uint8_t> bytes);
+        bool LoadPrepared(std::span<const uint8_t> bytes, bool* recooked = nullptr);
         std::vector<uint8_t> SerializePrepared() const;
         void SavePrepared(const std::string& path, uint64_t key) const;
         void AppendPrepared(const Mesh& tile, uint32_t sub_mesh_index);

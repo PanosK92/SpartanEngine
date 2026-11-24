@@ -215,8 +215,10 @@ namespace spartan
                 budget -= static_cast<uint32_t>(count);
             }
 
-            // what is left refreshes the window round robin so streamed in or moved geometry is picked up
-            budget = min(budget, ray_refresh);
+            // what is left refreshes the window round robin so streamed in or moved geometry is picked up.
+            // On dry days the shelter grid only serves ambient falling leaves, so trim steady-state refreshes.
+            const uint32_t refresh_cap = (rain > 0.0f || wetness > 0.0f) ? ray_refresh : max<uint32_t>(1u, ray_refresh / 4u);
+            budget = min(budget, refresh_cap);
             for (uint32_t i = 0; i < budget; i++)
             {
                 grid_trace(grid.refresh_cursor, top_y);

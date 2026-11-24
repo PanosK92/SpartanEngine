@@ -1717,6 +1717,12 @@ float trace_particle_shadow_ray(Light light, Surface surface)
         return 1.0;
     }
 
+    // Beyond 25 m particles are tiny screen footprints and already carry open-sky occlusion.
+    if (surface.camera_to_pixel_length > 25.0)
+    {
+        return surface.occlusion;
+    }
+
     float bias    = 0.005 + surface.camera_to_pixel_length * 0.0001;
     float3 origin = surface.position + surface.normal * bias;
     float3 direction;
@@ -1725,7 +1731,7 @@ float trace_particle_shadow_ray(Light light, Surface surface)
     if (light.is_directional())
     {
         direction = normalize(-light.forward);
-        t_max     = 10000.0;
+        t_max     = 120.0;
     }
     else
     {
@@ -1746,7 +1752,16 @@ float trace_particle_shadow_ray(Light light, Surface surface)
         return 1.0;
     }
 
-    return rt_trace_visibility(origin, direction, t_max);
+    // Fast hardware-only opaque traversal for particles (skips software foliage alpha-test loop).
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001;
+    ray.TMax      = max(t_max, 0.001);
+    RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
+    query.Proceed();
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
 }
 #endif
 
@@ -2074,6 +2089,13 @@ particle_output main_ps(ps_input input)
     float relief_dx    = ddx(relief);
     float relief_dy    = ddy(relief);
 
+    // Discard transparent quad margin pixels AFTER screen derivatives and BEFORE lighting / RT shadow rays.
+    float alpha = saturate(alpha_mask * input.alpha * soft_factor * falloff);
+    if (alpha <= 0.0)
+    {
+        discard;
+    }
+
     uint lighting_mode = (uint)round(input.render_params.y);
     float3 lit_color = base_color;
     if (lighting_mode == particle_lighting_lit)
@@ -2106,12 +2128,6 @@ particle_output main_ps(ps_input input)
         lit_color = base_color * max(input.render_params.z, 1.0);
         if (input.emissive_shape.x > 0.5)
             lit_color *= lerp(0.5, 0.09, smoothstep(0.15, 1.0, input.age_t));
-    }
-
-    float alpha = saturate(alpha_mask * input.alpha * soft_factor * falloff);
-    if (alpha <= 0.0)
-    {
-        discard;
     }
 
     float camera_distance = distance(input.position_world, get_camera_position());

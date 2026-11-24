@@ -1089,7 +1089,7 @@ namespace spartan
         const bool can_render               = !Window::IsMinimized() && m_initialized_resources && resolution_valid;
         // Keep presenting the last viewport image and the loading UI, but don't
         // rebuild/draw a half-published world or compete with its bulk uploads.
-        const bool render_world             = can_render && !World::IsLoadingFromFile();
+        const bool render_world             = can_render && !World::IsLoadingFromFile() && !World::IsPreparing();
 
         // the swapchain image is acquired late, right before the back buffer blit, so the cpu doesn't
         // block on scanout before it has even recorded the frame
@@ -1112,7 +1112,8 @@ namespace spartan
         RHI_Device::Bind(RHI_Frame_List::Graphics);
 
         // a file load publishes gigabytes of geometry, streaming it out keeps it from piling up in the upload tail
-        if (World::IsLoadingFromFile() && GeometryBuffer::GetPendingUploadBytes() >= 256ull * 1024 * 1024)
+        // during Preparing, ReserveForWorldLoad already sized the arena so World::Tick builds and uploads once at the end
+        if (World::IsLoadingFromFile() && !World::IsPreparing() && GeometryBuffer::GetPendingUploadBytes() >= 256ull * 1024 * 1024)
         {
             GeometryBuffer::BuildIfDirty();
         }
@@ -1501,7 +1502,7 @@ namespace spartan
         // a full island traversal every frame. Publish the maximum over the whole
         // sweep so shared materials do not oscillate between their near/far users.
         Camera* streaming_camera = Renderer::GetViewCamera();
-        constexpr uint64_t demand_frames = 8;
+        constexpr uint64_t demand_frames = 32;
         struct MaterialDemand
         {
             weak_ptr<Material> material;
@@ -1585,17 +1586,48 @@ namespace spartan
         }
         SP_PROFILE_CPU_END();
         SP_PROFILE_CPU_START("material_requests");
-        if (m_frame_num % demand_frames == demand_frames - 1)
-        for (const auto& [id, demand] : material_pixels)
+        // Amortize texture-streaming demand submission evenly across demand_frames so the
+        // sweep completion frame never spikes by +1 ms.
+        static vector<MaterialDemand> pending_material_requests;
+        static size_t pending_material_cursor = 0;
+        if (m_frame_num == 0)
         {
-            // The world can change during a sweep. Never retain or dereference a
-            // removed material, and never keep GPU resources alive past shutdown.
-            if (auto material = demand.material.lock())
-            for (RHI_Texture* texture : material->GetTextures())
+            pending_material_requests.clear();
+            pending_material_cursor = 0;
+        }
+        if (m_frame_num % demand_frames == demand_frames - 1)
+        {
+            pending_material_requests.clear();
+            pending_material_requests.reserve(material_pixels.size());
+            for (const auto& [id, demand] : material_pixels)
             {
-                if (!texture) continue;
-                RHI_TextureStreaming::Request(texture, demand.pixels, m_frame_num);
+                pending_material_requests.push_back(demand);
             }
+            pending_material_cursor = 0;
+        }
+        if (pending_material_cursor < pending_material_requests.size())
+        {
+            const size_t total = pending_material_requests.size();
+            const size_t slice = max<size_t>(1, (total + demand_frames - 1) / demand_frames);
+            const size_t end   = min(total, pending_material_cursor + slice);
+            for (size_t i = pending_material_cursor; i < end; ++i)
+            {
+                const MaterialDemand& demand = pending_material_requests[i];
+                // The world can change during a sweep. Never retain or dereference a
+                // removed material, and never keep GPU resources alive past shutdown.
+                if (auto material = demand.material.lock())
+                {
+                    for (RHI_Texture* texture : material->GetTextures())
+                    {
+                        if (!texture)
+                        {
+                            continue;
+                        }
+                        RHI_TextureStreaming::Request(texture, demand.pixels, m_frame_num);
+                    }
+                }
+            }
+            pending_material_cursor = end;
         }
         // Terrain layers and scatter materials can exist outside the entity list.
         auto request_full_material = [](Material* material)
@@ -2824,10 +2856,17 @@ namespace spartan
         };
         static vector<SpinRecord> records;
         static unordered_map<uint64_t, PoseSpin> pose_spins;
+        static unordered_map<uint32_t, uint32_t> record_of_id;
         static uint64_t frame = 0;
         records.clear();
+        record_of_id.clear();
         frame++;
-        unordered_map<uint32_t, uint32_t> record_of_id;
+        if (!Engine::IsPlayingUnpaused())
+        {
+            Renderer::view().frame.radial_blur_bounds    = Vector4(1.0f, 1.0f, 0.0f, 0.0f);
+            Renderer::view().frame.radial_blur_hub_count = 0.0f;
+            return;
+        }
         const float dt = Renderer::view().frame.delta_time;
 
         // The cylinder a part sweeps. The face centers of its mesh box lie on its rim and on its axis
@@ -2898,25 +2937,31 @@ namespace spartan
 
         for (Render* render : frame_render_candidates)
         {
-            if (!render->IsVisible() || !render->GetMotionBlurId() || render->HasInstancing())
+            const uint32_t id = render->GetMotionBlurId();
+            if (!id || render->HasInstancing() || !render->IsVisible())
                 continue;
             Entity* entity = render->GetEntity();
+            const uint64_t group = render->GetMotionBlurGroup();
+
+            // Static ungrouped meshes return the same matrix reference for current and previous;
+            // skip them in one pointer check before touching the hash table or comparing 16 floats.
+            if (!group && &entity->GetMatrix() == &entity->GetMatrixPrevious())
+                continue;
 
             // the parts of a wheel share one id and one record, each widens the cylinder
-            const uint32_t id = render->GetMotionBlurId();
             if (auto known = record_of_id.find(id); known != record_of_id.end())
             {
                 grow_cylinder(render, records[known->second]);
                 continue;
             }
 
-            Entity* body = render->GetMotionBlurGroup() ? World::GetEntityById(render->GetMotionBlurGroup()) : entity;
+            Entity* body = group ? World::GetEntityById(group) : entity;
             if (!body)
                 continue;
 
             const Matrix& current  = body->GetMatrix();
             const Matrix& previous = body->GetMatrixPrevious();
-            if (!Engine::IsPlayingUnpaused() || current == previous || !current.IsFinite() || !previous.IsFinite())
+            if (&current == &previous || current == previous || !current.IsFinite() || !previous.IsFinite())
                 continue;
 
             SpinRecord record;
@@ -4629,6 +4674,12 @@ namespace spartan
         // raster draw distance. Keep their physical range, but not camera culling.
         const bool retain_transport_lights = cvar_restir_pt.GetValueAs<bool>() || IsPathTracingActive();
 
+        // Collect flare-only distant lights separately so active shading lights occupy
+        // a contiguous prefix [0, m_count_shading_lights) and RT reflection / transparent
+        // passes do not iterate over hundreds of distant 2 km flare-only streetlights.
+        static vector<Light*> flare_only_lights;
+        flare_only_lights.clear();
+
         for (Entity* entity : light_entities())
         {
             if (!is_secondary_view_entity(entity))
@@ -4682,8 +4733,7 @@ namespace spartan
                         continue;
                     }
 
-                    fill_light(light_component);
-                    m_bindless_lights[light_component->GetIndex()].flags |= (1u << 7);
+                    flare_only_lights.push_back(light_component);
                     continue;
                 }
     
@@ -4696,12 +4746,25 @@ namespace spartan
             }
         }
 
-        // nrd sigma has one history per slot, pick the strongest local shadowed lights
+        m_count_shading_lights = m_count_active_lights;
+        for (Light* light_component : flare_only_lights)
         {
+            if (m_count_active_lights >= rhi_max_array_size)
+            {
+                break;
+            }
+            fill_light(light_component);
+            m_bindless_lights[light_component->GetIndex()].flags |= (1u << 7);
+        }
+
+        // nrd sigma has one history per slot, pick the strongest visible nearby local shadowed lights
+        {
+            Camera* shadow_camera = GetViewCamera();
+            const Vector3 shadow_cam_pos = shadow_camera ? shadow_camera->GetEntity()->GetPosition() : Vector3::Zero;
             uint32_t chosen[nrd_local_shadow_max];
             float scores[nrd_local_shadow_max];
             uint32_t chosen_count = 0;
-            for (uint32_t i = 1; i < m_count_active_lights; i++)
+            for (uint32_t i = 1; i < m_count_shading_lights; i++)
             {
                 const uint32_t flags = m_bindless_lights[i].flags;
                 if ((flags & (1u << 3)) == 0 || (flags & (1u << 0)) != 0)
@@ -4709,7 +4772,19 @@ namespace spartan
                     continue;
                 }
 
-                float score = m_bindless_lights[i].intensity;
+                const Vector3 pos = m_bindless_lights[i].position;
+                const float range = m_bindless_lights[i].range;
+                if (shadow_camera && range > 0.0f)
+                {
+                    const Vector3 ext(range, range, range);
+                    if (!shadow_camera->IsInViewFrustum(math::BoundingBox(pos - ext, pos + ext)))
+                    {
+                        continue;
+                    }
+                }
+
+                const float dist_sq = Vector3::DistanceSquared(pos, shadow_cam_pos);
+                float score = m_bindless_lights[i].intensity / max(dist_sq, 4.0f);
                 if (flags & (1u << 6))
                 {
                     score *= 100.0f;
@@ -4763,7 +4838,8 @@ namespace spartan
             sun.direction         = Vector3(0.35f, -0.82f, -0.45f).Normalized();
             sun.direction_right   = Vector3(0.79f, 0.0f, 0.61f).Normalized();
             sun.flags             = 1 << 0; // directional, deliberately without shadows or volumetrics
-            m_count_active_lights = 1;
+            m_count_active_lights  = 1;
+            m_count_shading_lights = 1;
         }
 
         // gpu upload
@@ -4998,14 +5074,14 @@ namespace spartan
         }
 
         // opaque before transparent; opaque groups by material then front to back, transparent sorts strictly back to front
-        auto draw_sort_key = [](bool transparent, uint32_t material_index, float distance_squared)
+        auto draw_sort_key = [](bool transparent, uint32_t material_index, float distance_squared) -> uint64_t
         {
             uint32_t distance_bits = 0;
             memcpy(&distance_bits, &distance_squared, sizeof(distance_bits));
             if (transparent)
             {
                 const uint32_t inv_distance = (~distance_bits) & 0x7fffffffu;
-                return (1ull << 63) | (static_cast<uint64_t>(inv_distance) << 32) | static_cast<uint64_t>(material_index);
+                return (static_cast<uint64_t>(1) << 63) | (static_cast<uint64_t>(inv_distance) << 32) | static_cast<uint64_t>(material_index);
             }
             return (static_cast<uint64_t>(material_index & 0x7fffffffu) << 32) | distance_bits;
         };
@@ -5328,6 +5404,7 @@ namespace spartan
         }
         SP_PROFILE_CPU_END();
 
+        SP_PROFILE_CPU_START("indirect_expand");
         for (size_t p = 0; p < plans.size(); ++p)
         {
             const IndirectPlan& plan = draw_plans[plans[p]];
@@ -5336,6 +5413,7 @@ namespace spartan
                     indirect_draw_capacity, expected_instances_worst_case, expected_survivors_worst_case, cluster_densities[p]);
             AttachTreeProxyDraw(plan.dc->render, plan.draw_base, plan.task_base, plan.inst_n, first_extra, indirect_draw_capacity);
         }
+        SP_PROFILE_CPU_END();
 
         // Report the conservative pre-cull meshlet bound once per session.
         EnsureCullingBufferCapacity(m_indirect_draw_count, expected_instances_worst_case, expected_survivors_worst_case);
@@ -5529,7 +5607,7 @@ namespace spartan
 
     // scatter beyond its shadow distance casts nothing in either path, the margin lets the
     // camera travel before the set has to be rebuilt
-    constexpr float instanced_tlas_hysteresis = 25.0f;
+    constexpr float instanced_tlas_hysteresis = 40.0f;
 
     // one bounds group of a stale instanced cache, groups are rebuilt in parallel and then appended in order
     struct InstancedTlasGroupWork

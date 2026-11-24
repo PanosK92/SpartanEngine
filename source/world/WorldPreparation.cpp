@@ -31,7 +31,10 @@ namespace spartan
         while (cursor < entities.size())
         {
             Entity* entity = entities[cursor];
-            progress.SetDetail("Preparing scene: " + entity->GetObjectName());
+            if ((cursor & 255u) == 0)
+            {
+                progress.SetDetail("Preparing scene: " + entity->GetObjectName());
+            }
             if (entity->GetActive())
             {
                 for (const auto& component : entity->GetAllComponents())
@@ -41,7 +44,7 @@ namespace spartan
                     if (component && !component->PrepareWorld()) return false;
             }
             ++cursor;
-            if (slice.GetElapsedTimeMs() >= 20.0f) return false;
+            if (slice.GetElapsedTimeMs() >= 250.0f) return false;
         }
         World::ProcessPendingAdditions();
         if (cursor < entities.size()) return false;

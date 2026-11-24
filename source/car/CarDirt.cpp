@@ -25,7 +25,7 @@ namespace spartan
     {
         constexpr float wet_seconds         = 150.0f; // a soaked deposit stays wet this long on the dirt clock, a damp one less
         constexpr float find_tolerance      = 0.025f; // metres a stamped point may sit off the paint, curvature under a speck
-        constexpr uint32_t dust_grains_max  = 20000;  // per frame
+        constexpr uint32_t dust_grains_max  = 600;    // per frame (deposit scales proportionally when clamped)
         constexpr int32_t stamp_reach_max   = 6;      // texels from the centre of one speck
 
         // shape, an open panel in the airflow only keeps a film, a crevice the body closes over fills up and an edge is wiped
@@ -455,10 +455,11 @@ namespace spartan
             return (1.6f * wheel + 0.5f * low) * (0.25f + facing);
         }
 
-        void dust_local(const Vector3* contacts, uint32_t contact_count, const Vector3& travel, const CarDirt::Deposit& d, uint32_t count)
+        void dust_local(const Vector3* contacts, uint32_t contact_count, const Vector3& travel, const CarDirt::Deposit& d, uint32_t count, float deposit_scale = 1.0f)
         {
             const vector<uint32_t>& paint = CarRain::GetPaintTexels();
             const float bottom            = CarRain::GetBoxMin().y;
+            const float grain_base        = min(0.15f, 0.022f * deposit_scale);
             for (uint32_t k = 0; k < count; k++)
             {
                 const uint32_t texel = paint[min(static_cast<uint32_t>(random01() * static_cast<float>(paint.size())), static_cast<uint32_t>(paint.size()) - 1)];
@@ -468,7 +469,7 @@ namespace spartan
 
                 // the wake keeps the dust on the rear faces, so they cake even where they are flat
                 const Vector3 tint = d.color * (0.88f + 0.24f * random01());
-                deposit(texel, tint, 0.022f * (0.5f + random01()), d.moisture, d.coarseness, min(1.0f, hold_dust + 0.6f * wake));
+                deposit(texel, tint, grain_base * (0.5f + random01()), d.moisture, d.coarseness, min(1.0f, hold_dust + 0.6f * wake));
             }
         }
 
@@ -963,9 +964,14 @@ namespace spartan
         }
 
         dust_remainder += grains;
-        const uint32_t count = min(static_cast<uint32_t>(dust_remainder), dust_grains_max);
-        dust_remainder       = min(dust_remainder - static_cast<float>(count), 1.0f);
-        dust_local(contacts, wheel_count, travel, d, count);
+        const uint32_t requested = static_cast<uint32_t>(dust_remainder);
+        const uint32_t count     = min(requested, dust_grains_max);
+        dust_remainder           = min(dust_remainder - static_cast<float>(requested), 1.0f);
+        if (count > 0)
+        {
+            const float deposit_scale = requested > count ? min(static_cast<float>(requested) / static_cast<float>(count), 6.0f) : 1.0f;
+            dust_local(contacts, wheel_count, travel, d, count, deposit_scale);
+        }
     }
 
     void CarDirt::Tick(float delta_time, const CarRain::Conditions& conditions)

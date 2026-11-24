@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Texture.h"
 #include "../rhi/RHI_Device.h"
 #include "../world/World.h"
+#include "../geometry/GeneratedCache.h"
 #include "../core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
@@ -510,6 +511,22 @@ namespace spartan
                 hydrate_source(texture_roughness);
                 hydrate_source(texture_metalness);
                 hydrate_source(texture_height);
+            }
+
+            // If color was loaded directly from the compressed source cache, reload an uncompressed copy
+            // when a subsequent edit attached an alpha mask or enabled NormalFromAlbedo.
+            if (texture_color && texture_color->IsCompressedFormat() &&
+                (texture_alpha_mask || material->GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f) &&
+                !texture_color->GetResourceFilePath().empty() &&
+                FileSystem::IsSupportedImageFile(texture_color->GetResourceFilePath()))
+            {
+                shared_ptr<RHI_Texture> raw_color = make_shared<RHI_Texture>();
+                raw_color->SetFlags(RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream);
+                if (raw_color->LoadFromFile(texture_color->GetResourceFilePath()))
+                {
+                    material->SetTexture(MaterialTextureType::Color, raw_color, slot);
+                    texture_color = raw_color.get();
+                }
             }
 
             // check for normal_from_albedo flag
@@ -1220,6 +1237,112 @@ namespace spartan
             }
         }
 
+        // fallback to generated_cache packed_textures when a material has foreign O/R/M/H images without a saved .tex_packed.texture
+        array<uint64_t, slots_per_texture> pending_packed_keys = {};
+        if (!World::GetResourceDirectory().empty() && RHI_Device::IsSupportedBcCompression())
+        {
+            for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
+            {
+                if (packed_reused[slot]) continue;
+                const array<MaterialTextureType, 4> packed_types = {
+                    MaterialTextureType::Occlusion,
+                    MaterialTextureType::Roughness,
+                    MaterialTextureType::Metalness,
+                    MaterialTextureType::Height
+                };
+                bool any_image = false;
+                bool can_cache = true;
+                generated_cache::Hash key;
+                key.Add(uint32_t{1});
+                for (const MaterialTextureType type : packed_types)
+                {
+                    const string source_path = texture_path_of(type, slot);
+                    const bool has = !source_path.empty();
+                    key.Add(uint8_t(has ? 1 : 0));
+                    if (!has) continue;
+                    if (!FileSystem::IsSupportedImageFile(source_path))
+                    {
+                        can_cache = false;
+                        break;
+                    }
+                    any_image = true;
+                    error_code ec_sz, ec_tm;
+                    const uint64_t sz = filesystem::file_size(source_path, ec_sz);
+                    const auto tm     = filesystem::last_write_time(source_path, ec_tm);
+                    if (ec_sz || ec_tm || sz == 0)
+                    {
+                        can_cache = false;
+                        break;
+                    }
+                    string norm = filesystem::path(source_path).lexically_normal().generic_string();
+                    transform(norm.begin(), norm.end(), norm.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                    key.Add(norm);
+                    key.Add(sz);
+                    key.Add(static_cast<int64_t>(tm.time_since_epoch().count()));
+                }
+                if (!any_image || !can_cache) continue;
+
+                const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "packed_textures", key.value);
+                vector<uint32_t> meta;
+                vector<uint8_t> bytes;
+                if (generated_cache::Load(cache_path, key.value, meta, bytes) && meta.size() == 5)
+                {
+                    const uint32_t w         = meta[0];
+                    const uint32_t h         = meta[1];
+                    const RHI_Format fmt     = static_cast<RHI_Format>(meta[2]);
+                    const uint32_t mip_count = meta[4];
+                    if (w > 0 && w <= 65536 && h > 0 && h <= 65536 && RHI_Texture::IsCompressedFormat(fmt) && mip_count > 0)
+                    {
+                        size_t expected_size = 0;
+                        for (uint32_t mip = 0; mip < mip_count; ++mip)
+                            expected_size += RHI_Texture::CalculateMipSize(max(1u, w >> mip), max(1u, h >> mip), 1, fmt, 8, 4);
+                        if (bytes.size() == expected_size)
+                        {
+                            vector<RHI_Texture_Slice> slices(1);
+                            slices[0].mips.resize(mip_count);
+                            size_t cursor = 0;
+                            for (uint32_t mip = 0; mip < mip_count; ++mip)
+                            {
+                                const size_t sz = RHI_Texture::CalculateMipSize(max(1u, w >> mip), max(1u, h >> mip), 1, fmt, 8, 4);
+                                slices[0].mips[mip].bytes.resize(sz);
+                                memcpy(slices[0].mips[mip].bytes.data(), bytes.data() + cursor, sz);
+                                cursor += sz;
+                            }
+                            const string tex_name    = GetObjectName() + "_packed_slot" + to_string(slot);
+                            const string packed_name = tex_name + ".tex_packed";
+                            shared_ptr<RHI_Texture> texture_packed = make_shared<RHI_Texture>(
+                                RHI_Texture_Type::Type2D,
+                                w, h, 1, mip_count, fmt,
+                                RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream,
+                                tex_name.c_str(),
+                                std::move(slices)
+                            );
+                            texture_packed->SetResourceName(packed_name);
+                            texture_packed->SetPersistent(IsPersistent());
+                            texture_packed->SetCompressionFormat(fmt);
+                            texture_packed->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + packed_name + ".texture");
+                            texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
+                            SetTexture(MaterialTextureType::Packed, texture_packed.get(), slot, false);
+                            packed_reused[slot] = true;
+                            continue;
+                        }
+                    }
+                }
+                pending_packed_keys[slot] = key.value;
+            }
+        }
+
+        // pre-scan which slots carry an alpha mask so color maps without alpha-mask merges can hit the direct compressed cache
+        array<bool, slots_per_texture> slot_has_alpha_mask = {};
+        for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
+        {
+            if (!texture_path_of(MaterialTextureType::AlphaMask, slot).empty())
+            {
+                slot_has_alpha_mask[slot] = true;
+            }
+        }
+        const bool normal_from_albedo = GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f;
+
         // load textures, packed ones were resolved above
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
@@ -1264,7 +1387,18 @@ namespace spartan
                     }
                     else
                     {
-                        texture = ResourceCache::Load<RHI_Texture>(tex_path, RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream);
+                        uint32_t load_flags = RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream;
+                        const auto tex_type = static_cast<MaterialTextureType>(type);
+                        if (tex_type == MaterialTextureType::Normal)
+                        {
+                            load_flags |= RHI_Texture_Compress | RHI_Texture_CompressBc5;
+                        }
+                        else if (tex_type == MaterialTextureType::Emission ||
+                                 (tex_type == MaterialTextureType::Color && !slot_has_alpha_mask[slot] && !normal_from_albedo))
+                        {
+                            load_flags |= RHI_Texture_Compress;
+                        }
+                        texture = ResourceCache::Load<RHI_Texture>(tex_path, load_flags);
                     }
                 }
 
@@ -1281,8 +1415,9 @@ namespace spartan
         }
 
         // set after the sources, SetTexture clears it for every packed source it assigns
-        m_packed_from_disk = packed_reused;
-        m_object_size      = sizeof(*this);
+        m_packed_from_disk  = packed_reused;
+        m_packed_cache_keys = pending_packed_keys;
+        m_object_size       = sizeof(*this);
         return true;
     }
 
@@ -1481,8 +1616,152 @@ namespace spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        // only packed textures get compressed, the gpu upload is deferred so pack_textures can still mutate the cpu bytes
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream), slot);
+        uint32_t load_flags = RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream;
+        if (texture_type == MaterialTextureType::Normal)
+        {
+            load_flags |= RHI_Texture_Compress | RHI_Texture_CompressBc5;
+        }
+        else if (texture_type == MaterialTextureType::Emission)
+        {
+            load_flags |= RHI_Texture_Compress;
+        }
+        else if (texture_type == MaterialTextureType::Color &&
+                 !GetTexture(MaterialTextureType::AlphaMask, slot) &&
+                 GetProperty(MaterialProperty::NormalFromAlbedo) != 1.0f)
+        {
+            load_flags |= RHI_Texture_Compress;
+        }
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, load_flags), slot);
+    }
+
+    void Material::SetPackedSources(
+        const uint8_t slot,
+        const string& occlusion_path,
+        const string& roughness_path,
+        const string& metalness_path,
+        const string& height_path
+    )
+    {
+        SP_ASSERT(slot < slots_per_texture);
+        const array<pair<MaterialTextureType, const string*>, 4> entries = {{
+            { MaterialTextureType::Occlusion, &occlusion_path },
+            { MaterialTextureType::Roughness, &roughness_path },
+            { MaterialTextureType::Metalness, &metalness_path },
+            { MaterialTextureType::Height,    &height_path }
+        }};
+
+        bool any_present = false;
+        for (const auto& [type, path] : entries)
+        {
+            if (path && !path->empty()) any_present = true;
+        }
+        if (!any_present) return;
+
+        bool can_cache = !World::GetResourceDirectory().empty() && RHI_Device::IsSupportedBcCompression();
+        generated_cache::Hash key;
+        if (can_cache)
+        {
+            key.Add(uint32_t{1});
+            for (const auto& [type, path] : entries)
+            {
+                const bool has = path && !path->empty();
+                key.Add(uint8_t(has ? 1 : 0));
+                if (!has) continue;
+                error_code ec_sz, ec_tm;
+                const uint64_t sz = filesystem::file_size(*path, ec_sz);
+                const auto tm     = filesystem::last_write_time(*path, ec_tm);
+                if (ec_sz || ec_tm || sz == 0)
+                {
+                    can_cache = false;
+                    break;
+                }
+                string norm = filesystem::path(*path).lexically_normal().generic_string();
+                transform(norm.begin(), norm.end(), norm.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                key.Add(norm);
+                key.Add(sz);
+                key.Add(static_cast<int64_t>(tm.time_since_epoch().count()));
+            }
+        }
+
+        if (can_cache)
+        {
+            const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "packed_textures", key.value);
+            vector<uint32_t> meta;
+            vector<uint8_t> bytes;
+            if (generated_cache::Load(cache_path, key.value, meta, bytes) && meta.size() == 5)
+            {
+                const uint32_t w         = meta[0];
+                const uint32_t h         = meta[1];
+                const RHI_Format fmt     = static_cast<RHI_Format>(meta[2]);
+                const uint32_t mip_count = meta[4];
+                if (w > 0 && w <= 65536 && h > 0 && h <= 65536 && RHI_Texture::IsCompressedFormat(fmt) && mip_count > 0)
+                {
+                    size_t expected_size = 0;
+                    for (uint32_t mip = 0; mip < mip_count; ++mip)
+                        expected_size += RHI_Texture::CalculateMipSize(max(1u, w >> mip), max(1u, h >> mip), 1, fmt, 8, 4);
+                    if (bytes.size() == expected_size)
+                    {
+                        vector<RHI_Texture_Slice> slices(1);
+                        slices[0].mips.resize(mip_count);
+                        size_t cursor = 0;
+                        for (uint32_t mip = 0; mip < mip_count; ++mip)
+                        {
+                            const size_t sz = RHI_Texture::CalculateMipSize(max(1u, w >> mip), max(1u, h >> mip), 1, fmt, 8, 4);
+                            slices[0].mips[mip].bytes.resize(sz);
+                            memcpy(slices[0].mips[mip].bytes.data(), bytes.data() + cursor, sz);
+                            cursor += sz;
+                        }
+
+                        const string tex_name    = GetObjectName() + "_packed_slot" + to_string(slot);
+                        const string packed_name = tex_name + ".tex_packed";
+                        shared_ptr<RHI_Texture> texture_packed = make_shared<RHI_Texture>(
+                            RHI_Texture_Type::Type2D,
+                            w, h, 1, mip_count, fmt,
+                            RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream,
+                            tex_name.c_str(),
+                            std::move(slices)
+                        );
+                        texture_packed->SetResourceName(packed_name);
+                        texture_packed->SetPersistent(IsPersistent());
+                        texture_packed->SetCompressionFormat(fmt);
+                        texture_packed->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + packed_name + ".texture");
+                        texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
+
+                        for (const auto& [type, path] : entries)
+                        {
+                            if (!path || path->empty()) continue;
+                            shared_ptr<RHI_Texture> placeholder = ResourceCache::GetByPath<RHI_Texture>(*path);
+                            if (!placeholder)
+                            {
+                                placeholder = make_shared<RHI_Texture>();
+                                placeholder->SetResourceFilePath(*path);
+                                placeholder->SetFlag(RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream);
+                            }
+                            SetTexture(type, placeholder.get(), slot, true);
+                        }
+                        SetTexture(MaterialTextureType::Packed, texture_packed.get(), slot, false);
+                        {
+                            lock_guard<recursive_mutex> lock(m_mutex);
+                            m_packed_from_disk[slot]  = true;
+                            m_packed_cache_keys[slot] = 0;
+                        }
+                        return;
+                    }
+                }
+            }
+            {
+                lock_guard<recursive_mutex> lock(m_mutex);
+                m_packed_cache_keys[slot] = key.value;
+            }
+        }
+
+        for (const auto& [type, path] : entries)
+        {
+            if (path && !path->empty())
+            {
+                SetTexture(type, *path, slot);
+            }
+        }
     }
 
     bool Material::HasTextureOfType(const string& path) const
@@ -1653,6 +1932,39 @@ namespace spartan
                 if (texture->GetResourceState() == ResourceState::Max)
                 {
                     texture->PrepareForGpu(true);
+                }
+
+                if (type == static_cast<uint32_t>(MaterialTextureType::Packed) &&
+                    m_packed_cache_keys[slot] != 0 && texture->IsCompressedFormat() &&
+                    texture->HasData() && !World::GetResourceDirectory().empty())
+                {
+                    const uint64_t packed_key = m_packed_cache_keys[slot];
+                    m_packed_cache_keys[slot] = 0;
+                    const uint32_t mip_count = texture->GetMipCount();
+                    const vector<uint32_t> meta = {
+                        texture->GetWidth(), texture->GetHeight(),
+                        static_cast<uint32_t>(texture->GetFormat()), 0u, mip_count
+                    };
+                    vector<uint8_t> bytes;
+                    size_t total = 0;
+                    for (uint32_t mip = 0; mip < mip_count; ++mip)
+                        if (RHI_Texture_Mip* m = texture->GetMip(0, mip)) total += m->bytes.size();
+                    bytes.reserve(total);
+                    for (uint32_t mip = 0; mip < mip_count; ++mip)
+                    {
+                        if (RHI_Texture_Mip* m = texture->GetMip(0, mip))
+                        {
+                            const auto* first = reinterpret_cast<const uint8_t*>(m->bytes.data());
+                            bytes.insert(bytes.end(), first, first + m->bytes.size());
+                        }
+                    }
+                    if (!bytes.empty())
+                    {
+                        generated_cache::Save(
+                            generated_cache::Path(World::GetResourceDirectory(), "packed_textures", packed_key),
+                            packed_key, meta, bytes
+                        );
+                    }
                 }
             }
         }

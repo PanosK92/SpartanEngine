@@ -806,6 +806,8 @@ namespace spartan
             m_bits_per_channel = std::move(loaded.m_bits_per_channel);
             m_channel_count = std::move(loaded.m_channel_count);
             m_format = std::move(loaded.m_format);
+            m_compression_format = loaded.m_compression_format;
+            m_source_mips_key = loaded.m_source_mips_key;
             m_type = std::move(loaded.m_type);
             m_viewport = std::move(loaded.m_viewport);
             m_flags = std::move(loaded.m_flags);
@@ -843,8 +845,87 @@ namespace spartan
             m_flags          |= RHI_Texture_Srv;
             m_object_name     = FileSystem::GetFileNameFromFilePath(file_path);
             m_resource_state  = ResourceState::LoadingFromDrive;
+            m_source_mips_key = 0;
 
-            ImageImporter::Load(file_path, 0, this);
+            bool loaded_compressed_cache = false;
+            if ((m_flags & RHI_Texture_Compress) && RHI_Device::IsSupportedBcCompression() && !World::GetResourceDirectory().empty())
+            {
+                const RHI_Format requested_target =
+                    m_compression_format != RHI_Format::Max
+                    ? m_compression_format
+                    : ((m_flags & RHI_Texture_CompressBc5) ? RHI_Format::BC5_Unorm : RHI_Format::BC7_Unorm);
+                m_compression_format = requested_target;
+
+                error_code ec_size, ec_time;
+                const uint64_t src_size = filesystem::file_size(file_path, ec_size);
+                const auto src_time     = filesystem::last_write_time(file_path, ec_time);
+                if (!ec_size && !ec_time && src_size > 0)
+                {
+                    constexpr uint32_t key_flags_mask = RHI_Texture_Greyscale | RHI_Texture_Srgb | RHI_Texture_Transparent | RHI_Texture_CompressBc5;
+                    string norm_path = filesystem::path(file_path).lexically_normal().generic_string();
+                    transform(norm_path.begin(), norm_path.end(), norm_path.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                    generated_cache::Hash src_key;
+                    src_key.Add(uint32_t{1});
+                    src_key.Add(norm_path);
+                    src_key.Add(src_size);
+                    src_key.Add(static_cast<int64_t>(src_time.time_since_epoch().count()));
+                    src_key.Add(m_width);
+                    src_key.Add(m_height);
+                    src_key.Add(m_flags & key_flags_mask);
+                    src_key.Add(requested_target);
+
+                    const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "source_texture_mips", src_key.value);
+                    vector<uint32_t> meta;
+                    vector<uint8_t> bytes;
+                    if (generated_cache::Load(cache_path, src_key.value, meta, bytes) && meta.size() == 5)
+                    {
+                        const uint32_t w          = meta[0];
+                        const uint32_t h          = meta[1];
+                        const RHI_Format fmt      = static_cast<RHI_Format>(meta[2]);
+                        const uint32_t flag_delta = meta[3];
+                        const uint32_t mip_count  = meta[4];
+                        if (w > 0 && w <= 65536 && h > 0 && h <= 65536 && IsCompressedFormat(fmt) &&
+                            mip_count > 0 && mip_count == mips::compute_count(w, h))
+                        {
+                            size_t expected_size = 0;
+                            for (uint32_t mip = 0; mip < mip_count; ++mip)
+                                expected_size += CalculateMipSize(max(1u, w >> mip), max(1u, h >> mip), 1, fmt, 8, 4);
+                            if (bytes.size() == expected_size)
+                            {
+                                m_width            = w;
+                                m_height           = h;
+                                m_mip_count        = mip_count;
+                                m_format           = fmt;
+                                m_channel_count    = rhi_to_format_channel_count(fmt);
+                                m_bits_per_channel = rhi_format_to_bits_per_channel(fmt);
+                                constexpr uint32_t delta_mask = RHI_Texture_Greyscale | RHI_Texture_Srgb | RHI_Texture_Transparent;
+                                m_flags            = (m_flags & ~delta_mask) | (flag_delta & delta_mask) | RHI_Texture_Srv;
+                                m_viewport         = RHI_Viewport(0, 0, static_cast<float>(m_width), static_cast<float>(m_height));
+                                m_slices.resize(1);
+                                m_slices[0].mips.resize(mip_count);
+                                size_t cursor = 0;
+                                for (uint32_t mip = 0; mip < mip_count; ++mip)
+                                {
+                                    const size_t sz = CalculateMipSize(max(1u, w >> mip), max(1u, h >> mip), 1, fmt, 8, 4);
+                                    m_slices[0].mips[mip].bytes.resize(sz);
+                                    memcpy(m_slices[0].mips[mip].bytes.data(), bytes.data() + cursor, sz);
+                                    cursor += sz;
+                                }
+                                loaded_compressed_cache = true;
+                            }
+                        }
+                    }
+                    if (!loaded_compressed_cache)
+                    {
+                        m_source_mips_key = src_key.value;
+                    }
+                }
+            }
+
+            if (!loaded_compressed_cache)
+            {
+                ImageImporter::Load(file_path, 0, this);
+            }
         }
         // load native compressed bytes
         else if (FileSystem::IsEngineTextureFile(file_path))
@@ -1256,6 +1337,28 @@ namespace spartan
                 bytes.insert(bytes.end(), first, first + mip.bytes.size());
             }
             generated_cache::Save(bake_path, bake_key.value, bytes);
+        }
+
+        if (m_source_mips_key != 0 && IsCompressedFormat() && m_slices.size() == 1 &&
+            !m_slices[0].mips.empty() && !World::GetResourceDirectory().empty())
+        {
+            constexpr uint32_t delta_mask = RHI_Texture_Greyscale | RHI_Texture_Srgb | RHI_Texture_Transparent;
+            const vector<uint32_t> meta = {
+                m_width, m_height, static_cast<uint32_t>(m_format),
+                m_flags & delta_mask, static_cast<uint32_t>(m_slices[0].mips.size())
+            };
+            vector<uint8_t> bytes;
+            size_t total = 0;
+            for (const auto& mip : m_slices[0].mips) total += mip.bytes.size();
+            bytes.reserve(total);
+            for (const auto& mip : m_slices[0].mips)
+            {
+                const auto* first = reinterpret_cast<const uint8_t*>(mip.bytes.data());
+                bytes.insert(bytes.end(), first, first + mip.bytes.size());
+            }
+            const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "source_texture_mips", m_source_mips_key);
+            generated_cache::Save(cache_path, m_source_mips_key, meta, bytes);
+            m_source_mips_key = 0;
         }
 
         // upload to gpu

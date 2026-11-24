@@ -1227,7 +1227,11 @@ bool impostor_resolve(
 
     if (baked_rgba)
     {
-        uint2 center_texel = min((uint2)(uv_in_frame * (float)resolution), resolution - 1u);
+        // Compute screen-space texel footprint before branching on validity so derivatives remain well-defined.
+        float2 texel_coords    = uv_in_frame * (float)resolution;
+        float  texel_footprint = max(length(ddx(texel_coords)), length(ddy(texel_coords)));
+
+        uint2 center_texel = min((uint2)texel_coords, resolution - 1u);
         uint center_addr   = frame_base + (center_texel.y * resolution + center_texel.x) * 2u;
         uint center_geom   = meshlet_vertices[center_addr + 1u];
         if ((center_geom & (1u << 31)) == 0u)
@@ -1237,74 +1241,89 @@ bool impostor_resolve(
 
         // depth-guided view parallax shifts protruding leaf clusters relative to inner boughs as the camera moves
         float center_z     = (float)((center_geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
-        float2 parallax_uv = saturate(uv_in_frame - view_dir_frame.xy * (center_z * 0.35f));
-        uint2 p_texel      = min((uint2)(parallax_uv * (float)resolution), resolution - 1u);
-        uint p_geom        = meshlet_vertices[frame_base + (p_texel.y * resolution + p_texel.x) * 2u + 1u];
-        if ((p_geom & (1u << 31)) != 0u)
+        uint  resolved_addr = center_addr;
+        uint  resolved_geom = center_geom;
+        float resolved_z    = center_z;
+        if (texel_footprint < 1.5f)
         {
-            uv_in_frame        = parallax_uv;
-            resolved_uv_frames = float2(frame) + uv_in_frame;
-        }
-
-        // validity-aware 2x2 bilinear filter eliminates blocky 128px texel stepping without bleeding empty borders
-        float2 fpos = uv_in_frame * (float)resolution - 0.5f;
-        int2   t0   = (int2)floor(fpos);
-        float2 frac_t = frac(fpos);
-
-        float3 rgb_sum    = 0.0f;
-        float3 norm_sum   = 0.0f;
-        float  ao_sum     = 0.0f;
-        float  z_sum      = 0.0f;
-        float  bark_sum   = 0.0f;
-        float  weight_sum = 0.0f;
-
-        [unroll]
-        for (int dy = 0; dy <= 1; dy++)
-        {
-            [unroll]
-            for (int dx = 0; dx <= 1; dx++)
+            float2 parallax_uv = saturate(uv_in_frame - view_dir_frame.xy * (center_z * 0.35f));
+            uint2 p_texel      = min((uint2)(parallax_uv * (float)resolution), resolution - 1u);
+            uint  p_addr       = frame_base + (p_texel.y * resolution + p_texel.x) * 2u;
+            uint  p_geom       = meshlet_vertices[p_addr + 1u];
+            if ((p_geom & (1u << 31)) != 0u)
             {
-                int2 coord = clamp(t0 + int2(dx, dy), int2(0, 0), int2((int)resolution - 1, (int)resolution - 1));
-                uint addr  = frame_base + ((uint)coord.y * resolution + (uint)coord.x) * 2u;
-                uint geom  = meshlet_vertices[addr + 1u];
-                if ((geom & (1u << 31)) == 0u)
-                {
-                    continue;
-                }
-
-                float w = (dx == 0 ? (1.0f - frac_t.x) : frac_t.x) * (dy == 0 ? (1.0f - frac_t.y) : frac_t.y);
-                uint packed0 = meshlet_vertices[addr];
-                float3 sample_rgb = float3(
-                    (packed0 & 0xFFu) * (1.0f / 255.0f),
-                    ((packed0 >> 8) & 0xFFu) * (1.0f / 255.0f),
-                    ((packed0 >> 16) & 0xFFu) * (1.0f / 255.0f)
-                );
-                float sample_ao = ((packed0 >> 24) & 0xFFu) * (1.0f / 255.0f);
-                float2 o        = float2(geom & 0xFFu, (geom >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
-                float3 sample_n = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
-                float  sample_z = (float)((geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
-
-                rgb_sum    += sample_rgb * w;
-                norm_sum   += sample_n * w;
-                ao_sum     += sample_ao * w;
-                z_sum      += sample_z * w;
-                bark_sum   += ((geom & (1u << 30)) != 0u ? 1.0f : 0.0f) * w;
-                weight_sum += w;
+                uv_in_frame        = parallax_uv;
+                resolved_uv_frames = float2(frame) + uv_in_frame;
+                resolved_addr      = p_addr;
+                resolved_geom      = p_geom;
+                resolved_z         = (float)((p_geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
             }
         }
 
-        if (weight_sum > 1e-5f)
+        // Distant impostors where >= 1 baked texel maps into a single screen pixel get zero visual gain from a
+        // 4-tap scattered buffer filter; unpack the resolved texel directly to cut global memory traffic by 4-5x.
+        if (texel_footprint < 1.0f)
         {
-            float inv_w   = 1.0f / weight_sum;
-            albedo_sample = float4(rgb_sum * inv_w, 1.0f);
-            normal_frame  = normalize(norm_sum);
-            cavity_ao     = ao_sum * inv_w;
-            depth_z       = z_sum * inv_w;
-            is_bark       = (bark_sum * inv_w) > 0.5f;
-            return true;
+            // validity-aware 2x2 bilinear filter eliminates blocky 128px texel stepping without bleeding empty borders
+            float2 fpos = uv_in_frame * (float)resolution - 0.5f;
+            int2   t0   = (int2)floor(fpos);
+            float2 frac_t = frac(fpos);
+
+            float3 rgb_sum    = 0.0f;
+            float3 norm_sum   = 0.0f;
+            float  ao_sum     = 0.0f;
+            float  z_sum      = 0.0f;
+            float  bark_sum   = 0.0f;
+            float  weight_sum = 0.0f;
+
+            [unroll]
+            for (int dy = 0; dy <= 1; dy++)
+            {
+                [unroll]
+                for (int dx = 0; dx <= 1; dx++)
+                {
+                    int2 coord = clamp(t0 + int2(dx, dy), int2(0, 0), int2((int)resolution - 1, (int)resolution - 1));
+                    uint addr  = frame_base + ((uint)coord.y * resolution + (uint)coord.x) * 2u;
+                    uint geom  = meshlet_vertices[addr + 1u];
+                    if ((geom & (1u << 31)) == 0u)
+                    {
+                        continue;
+                    }
+
+                    float w = (dx == 0 ? (1.0f - frac_t.x) : frac_t.x) * (dy == 0 ? (1.0f - frac_t.y) : frac_t.y);
+                    uint packed0 = meshlet_vertices[addr];
+                    float3 sample_rgb = float3(
+                        (packed0 & 0xFFu) * (1.0f / 255.0f),
+                        ((packed0 >> 8) & 0xFFu) * (1.0f / 255.0f),
+                        ((packed0 >> 16) & 0xFFu) * (1.0f / 255.0f)
+                    );
+                    float sample_ao = ((packed0 >> 24) & 0xFFu) * (1.0f / 255.0f);
+                    float2 o        = float2(geom & 0xFFu, (geom >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+                    float3 sample_n = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
+                    float  sample_z = (float)((geom >> 16) & 0x3FFFu) * (2.0f / 16383.0f) - 1.0f;
+
+                    rgb_sum    += sample_rgb * w;
+                    norm_sum   += sample_n * w;
+                    ao_sum     += sample_ao * w;
+                    z_sum      += sample_z * w;
+                    bark_sum   += ((geom & (1u << 30)) != 0u ? 1.0f : 0.0f) * w;
+                    weight_sum += w;
+                }
+            }
+
+            if (weight_sum > 1e-5f)
+            {
+                float inv_w   = 1.0f / weight_sum;
+                albedo_sample = float4(rgb_sum * inv_w, 1.0f);
+                normal_frame  = normalize(norm_sum);
+                cavity_ao     = ao_sum * inv_w;
+                depth_z       = z_sum * inv_w;
+                is_bark       = (bark_sum * inv_w) > 0.5f;
+                return true;
+            }
         }
 
-        uint packed_rgba = meshlet_vertices[center_addr];
+        uint packed_rgba = meshlet_vertices[resolved_addr];
         albedo_sample = float4(
             (packed_rgba & 0xFFu) * (1.0f / 255.0f),
             ((packed_rgba >> 8) & 0xFFu) * (1.0f / 255.0f),
@@ -1312,10 +1331,10 @@ bool impostor_resolve(
             1.0f
         );
         cavity_ao    = ((packed_rgba >> 24) & 0xFFu) * (1.0f / 255.0f);
-        float2 o     = float2(center_geom & 0xFFu, (center_geom >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+        float2 o     = float2(resolved_geom & 0xFFu, (resolved_geom >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
         normal_frame = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
-        depth_z      = center_z;
-        is_bark      = (center_geom & (1u << 30)) != 0u;
+        depth_z      = resolved_z;
+        is_bark      = (resolved_geom & (1u << 30)) != 0u;
         return true;
     }
 
@@ -1369,14 +1388,14 @@ float impostor_raymarch_sun_shadow(float2 uv_frames, float depth_z, float3 light
     uint frame_words   = resolution * resolution * layers * 2u;
     uint frame_base    = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words;
 
-    static const float step_t[6] = { 0.032f, 0.072f, 0.125f, 0.195f, 0.285f, 0.400f };
+    static const float step_t[4] = { 0.042f, 0.108f, 0.215f, 0.365f };
     const float jitter           = lerp(0.78f, 1.22f, dither);
     const float depth_bias       = 0.028f;
     const float max_thickness    = 0.72f;
 
     float optical_depth = 0.0f;
     [unroll]
-    for (uint s = 0u; s < 6u; s++)
+    for (uint s = 0u; s < 4u; s++)
     {
         float t          = step_t[s] * jitter;
         float2 sample_uv = uv_in_frame + light_dir_frame.xy * (0.5f * t);
@@ -1405,7 +1424,7 @@ float impostor_raymarch_sun_shadow(float2 uv_frames, float depth_z, float3 light
     }
 
     // exponential Beer-Lambert attenuation gives crisp cluster shadows while preserving slight thin-rim glow
-    float transmission = exp(-optical_depth * 1.15f);
+    float transmission = exp(-optical_depth * 1.55f);
     return saturate((1.0f - transmission) * 0.94f);
 }
 

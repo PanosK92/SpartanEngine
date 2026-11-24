@@ -1552,6 +1552,8 @@ namespace spartan
             { Renderer_Shader::cull_phase_c,                          RHI_Shader_Type::Compute, "cull_phase.hlsl"                                                            },
             { Renderer_Shader::gbuffer_indirect_v,                    RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::gbuffer_indirect_p,                    RHI_Shader_Type::Pixel,   "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
+            { Renderer_Shader::gbuffer_impostor_p,                    RHI_Shader_Type::Pixel,   "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW", true, false, "IMPOSTOR_SPECIALIZED" },
+            { Renderer_Shader::gbuffer_alpha_p,                       RHI_Shader_Type::Pixel,   "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW", true, false, "ALPHA_SPECIALIZED" },
             { Renderer_Shader::depth_prepass_indirect_v,              RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::depth_prepass_indirect_alpha_test_p,   RHI_Shader_Type::Pixel,   "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "ALPHA_TEST_INDIRECT"  },
             { Renderer_Shader::depth_prepass_mesh_alpha_p,            RHI_Shader_Type::Pixel,   "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "ALPHA_TEST_INDIRECT", true, false, "DEPTH_MESH_ALPHA", true },
