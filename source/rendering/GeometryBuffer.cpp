@@ -537,11 +537,41 @@ namespace spartan
             shared_ptr<GeometryPage> decoded;
             future<void> read;
             ResidentGeometryPage address = {};
-            uint64_t last_request = 0;
-            uint64_t last_counted_frame = 0;
+            atomic<uint64_t> last_request{0};
+            atomic<uint64_t> last_counted_frame{0};
             bool allocated = false;
             bool uploaded = false;
             bool failed = false;
+
+            GeometryPageSlot() = default;
+            GeometryPageSlot(GeometryPageSlot&& other) noexcept
+                : source(move(other.source))
+                , decoded(move(other.decoded))
+                , read(move(other.read))
+                , address(other.address)
+                , last_request(other.last_request.load(memory_order_relaxed))
+                , last_counted_frame(other.last_counted_frame.load(memory_order_relaxed))
+                , allocated(other.allocated)
+                , uploaded(other.uploaded)
+                , failed(other.failed)
+            {
+            }
+            GeometryPageSlot& operator=(GeometryPageSlot&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    source = move(other.source);
+                    decoded = move(other.decoded);
+                    read = move(other.read);
+                    address = other.address;
+                    last_request.store(other.last_request.load(memory_order_relaxed), memory_order_relaxed);
+                    last_counted_frame.store(other.last_counted_frame.load(memory_order_relaxed), memory_order_relaxed);
+                    allocated = other.allocated;
+                    uploaded = other.uploaded;
+                    failed = other.failed;
+                }
+                return *this;
+            }
         };
         // One pool shared by all cameras. Only the render thread mutates the slots.
         TConsoleVar<float> page_budget("r.geometry_page_budget", 6144.0f, "Maximum active streamed geometry pages; pool storage is reclaimed on world unload");
@@ -556,7 +586,7 @@ namespace spartan
         vector<uint32_t> pending_read_slots;
         size_t pending_page_reads = 0;
         uint32_t resident_page_count = 0;
-        uint32_t resident_requests_this_frame = 0;
+        atomic<uint32_t> resident_requests_this_frame{0};
         bool page_pool_reserved = false;
         GeometryBuffer::PageStatistics page_statistics;
 
@@ -620,7 +650,7 @@ namespace spartan
         }
     }
 
-    static uint32_t select_pages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors)
+    static uint32_t select_pages_impl(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors, vector<GeometryBuffer::GeometryPageRequest>* local_requests)
     {
         const float projected_error = cluster.error * density;
         if (cluster.refinements.empty() || projected_error <= 1.0f) return 0;
@@ -642,11 +672,16 @@ namespace spartan
                     // Stamp resident slots in-place without pushing shared_ptr requests or sorting 4k entries/frame.
                     if (want_request)
                     {
-                        slot.last_request = frame;
-                        if (slot.last_counted_frame != frame)
+                        if (slot.last_request.load(memory_order_relaxed) != frame)
                         {
-                            slot.last_counted_frame = frame;
-                            ++resident_requests_this_frame;
+                            slot.last_request.store(frame, memory_order_relaxed);
+                        }
+                        if (slot.last_counted_frame.load(memory_order_relaxed) != frame)
+                        {
+                            if (slot.last_counted_frame.exchange(frame, memory_order_relaxed) != frame)
+                            {
+                                resident_requests_this_frame.fetch_add(1, memory_order_relaxed);
+                            }
                         }
                     }
                     if (!slot.uploaded ||
@@ -657,7 +692,7 @@ namespace spartan
                     errors[count++] = level.error;
                     continue;
                 }
-                else if (want_request && frame - slot.last_request < 120)
+                else if (want_request && frame - slot.last_request.load(memory_order_relaxed) < 120)
                 {
                     continue;
                 }
@@ -666,13 +701,20 @@ namespace spartan
             if (want_request)
             {
                 const float priority = i + 1 < cluster.refinements.size() ? cluster.refinements[i + 1].error * density : projected_error;
-                const size_t index = level.page->request_index;
-                if (index < page_requests.size() && page_requests[index].source.get() == level.page.get())
-                    page_requests[index].error = max(page_requests[index].error, priority);
+                if (local_requests)
+                {
+                    local_requests->push_back({ level.page, priority });
+                }
                 else
                 {
-                    level.page->request_index = page_requests.size();
-                    page_requests.push_back({level.page, priority});
+                    const size_t index = level.page->request_index;
+                    if (index < page_requests.size() && page_requests[index].source.get() == level.page.get())
+                        page_requests[index].error = max(page_requests[index].error, priority);
+                    else
+                    {
+                        level.page->request_index = page_requests.size();
+                        page_requests.push_back({level.page, priority});
+                    }
                 }
             }
         }
@@ -681,12 +723,43 @@ namespace spartan
 
     uint32_t GeometryBuffer::SelectInstancePages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors)
     {
-        return select_pages(cluster, density, pages, errors);
+        return select_pages_impl(cluster, density, pages, errors, nullptr);
     }
 
     bool GeometryBuffer::SelectPage(const GeometryCluster& cluster, float density, ResidentGeometryPage& resident)
     {
-        return select_pages(cluster, density, &resident, nullptr) != 0;
+        return select_pages_impl(cluster, density, &resident, nullptr, nullptr) != 0;
+    }
+
+    uint32_t GeometryBuffer::SelectInstancePagesParallel(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors, vector<GeometryPageRequest>& pending_requests)
+    {
+        return select_pages_impl(cluster, density, pages, errors, &pending_requests);
+    }
+
+    bool GeometryBuffer::SelectPageParallel(const GeometryCluster& cluster, float density, ResidentGeometryPage& resident, vector<GeometryPageRequest>& pending_requests)
+    {
+        return select_pages_impl(cluster, density, &resident, nullptr, &pending_requests) != 0;
+    }
+
+    void GeometryBuffer::MergePageRequests(const vector<GeometryPageRequest>& pending_requests)
+    {
+        for (const GeometryPageRequest& req : pending_requests)
+        {
+            if (!req.source)
+            {
+                continue;
+            }
+            const size_t index = req.source->request_index;
+            if (index < page_requests.size() && page_requests[index].source.get() == req.source.get())
+            {
+                page_requests[index].error = max(page_requests[index].error, req.error);
+            }
+            else
+            {
+                req.source->request_index = page_requests.size();
+                page_requests.push_back({ req.source, req.error });
+            }
+        }
     }
 
     GeometryBuffer::PageStatistics GeometryBuffer::GetPageStatistics()
@@ -856,7 +929,7 @@ namespace spartan
                 {
                     const auto& s = page_slots[i];
                     if (s.read.valid()) continue;
-                    const uint64_t age = s.source ? s.last_request : 0u;
+                    const uint64_t age = s.source ? s.last_request.load(memory_order_relaxed) : 0ull;
                     if (s.source && age >= frame) continue;
                     if (evict_count < max_new_reads)
                     {

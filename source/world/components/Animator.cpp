@@ -1628,15 +1628,15 @@ namespace spartan
             }
             interval = 16;
         }
-        else if (distance_squared > 90.0f * 90.0f)
+        else if (distance_squared > 55.0f * 55.0f)
         {
             interval = 8;
         }
-        else if (distance_squared > 35.0f * 35.0f)
+        else if (distance_squared > 25.0f * 25.0f)
         {
             interval = 4;
         }
-        else if (distance_squared > 12.0f * 12.0f)
+        else if (distance_squared > 10.0f * 10.0f)
         {
             interval = 2;
         }
@@ -2090,6 +2090,14 @@ namespace spartan
             }
         }
 
+        // Skip clip sampling, IK raycasts, and pose copies completely on frames when this
+        // character is not due for skinning (unless an inertial transition is still decaying).
+        const bool skin_due = !batch_skinning || IsSkinDue(mesh);
+        if (!skin_due && !m_inertializer.IsActive())
+        {
+            return;
+        }
+
         // member scratch, a local vector would heap allocate the whole pose every frame
         vector<Matrix>& local_matrices = m_tick_locals;
         if (!animation_evaluate::SampleLocals(clip, *skeleton, m_time, local_matrices, m_loop))
@@ -2105,6 +2113,11 @@ namespace spartan
             max(0.01f, m_blend_duration * 0.25f)
         );
 
+        if (!skin_due)
+        {
+            return;
+        }
+
         if (!m_hands_attach_attempted)
         {
             AttachHandsToArms();
@@ -2115,15 +2128,23 @@ namespace spartan
         m_anim_pose.swap(m_anim_pose_previous);
         m_anim_pose = local_matrices;
 
-        ApplyFootIk(*skeleton, local_matrices);
+        bool run_foot_ik = m_foot_ik_enabled;
+        if (run_foot_ik)
+        {
+            if (Camera* camera = World::GetCamera())
+            {
+                run_foot_ik = Vector3::DistanceSquared(camera->GetEntity()->GetPosition(), GetEntity()->GetPosition()) <= 20.0f * 20.0f;
+            }
+        }
+        if (run_foot_ik)
+        {
+            ApplyFootIk(*skeleton, local_matrices);
+        }
         ApplyLimbIk(*skeleton, local_matrices);
         m_last_local_matrices = local_matrices;
-        if (!batch_skinning || IsSkinDue(mesh))
-        {
-            const bool unmodified_clip = m_loop && !m_foot_ik_enabled && !m_inertializer.IsActive() &&
-                none_of(begin(m_limb_ik), end(m_limb_ik), [](const LimbIk& limb) { return limb.weight > 0.0f; });
-            SkinFromLocalPose(mesh, *skeleton, local_matrices, unmodified_clip);
-        }
+        const bool unmodified_clip = m_loop && !run_foot_ik && !m_inertializer.IsActive() &&
+            none_of(begin(m_limb_ik), end(m_limb_ik), [](const LimbIk& limb) { return limb.weight > 0.0f; });
+        SkinFromLocalPose(mesh, *skeleton, local_matrices, unmodified_clip);
     }
 
     float Animator::GetFootIkGroundOffset()

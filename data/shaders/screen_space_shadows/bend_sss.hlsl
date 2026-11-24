@@ -10,7 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //=======================
 
 #define WAVE_SIZE           64
-#define SAMPLE_COUNT        256 // shadow samples per-pixel, determines overall cost, default: 60
+#define SAMPLE_COUNT        60 // shadow samples per-pixel, determines overall cost, default: 60
 #define HARD_SHADOW_SAMPLES 0   // initial shadow samples that will produce a hard shadow, and not perform sample-averaging, defauult: 4
 #define FADE_OUT_SAMPLES    64  // samples that will fade out at the end of the shadow (for a minor cost), default : 8
 

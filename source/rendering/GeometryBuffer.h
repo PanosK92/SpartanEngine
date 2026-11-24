@@ -18,6 +18,7 @@ namespace spartan
 {
     class RHI_Buffer;
     struct GeometryCluster;
+    struct GeometryPageSource;
     struct ResidentGeometryPage
     {
         uint32_t vertices, indices, meshlets, remaps, micro, meshlet_count, index_count, vertex_count;
@@ -68,8 +69,16 @@ namespace spartan
 
         // uploads only the new portion when it fits the existing capacity, otherwise recreates with headroom
         static void BuildIfDirty();
+        struct GeometryPageRequest
+        {
+            std::shared_ptr<const GeometryPageSource> source;
+            float error = 0.0f;
+        };
         static uint32_t SelectInstancePages(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors);
         static bool SelectPage(const GeometryCluster& cluster, float pixels_per_unit, ResidentGeometryPage& resident);
+        static uint32_t SelectInstancePagesParallel(const GeometryCluster& cluster, float density, ResidentGeometryPage* pages, float* errors, std::vector<GeometryPageRequest>& pending_requests);
+        static bool SelectPageParallel(const GeometryCluster& cluster, float pixels_per_unit, ResidentGeometryPage& resident, std::vector<GeometryPageRequest>& pending_requests);
+        static void MergePageRequests(const std::vector<GeometryPageRequest>& pending_requests);
         struct PageStatistics
         {
             uint32_t resident = 0, pending = 0, requested = 0;

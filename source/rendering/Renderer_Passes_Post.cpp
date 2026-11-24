@@ -1317,10 +1317,42 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_Particles()
+    namespace
     {
+        struct ParticlePreparedFrame
+        {
+            bool simulated                  = false;
+            bool has_work                   = false;
+            bool volume_ready               = false;
+            bool volume_resolved            = false;
+            bool volume_rect_full           = false;
+            uint32_t emitter_count          = 0;
+            uint32_t total_particles        = 0;
+            math::Vector2 volume_uv_min     = math::Vector2(1.0f, 1.0f);
+            math::Vector2 volume_uv_max     = math::Vector2(0.0f, 0.0f);
+            RHI_Texture* tex_volume_write   = nullptr;
+            RHI_AccelerationStructure* tlas_collision = nullptr;
+            vector<ParticleSystem*> emitters;
+            vector<uint32_t> range_counts;
+            vector<Sb_EmitterParams> emitter_params;
+            vector<float> emitter_distance;
+            Vector3 fluid_origin            = Vector3::Zero;
+            float fluid_cell_size           = 0.0f;
+        };
+        ParticlePreparedFrame s_particle_frame;
+    }
+
+    void Renderer::Pass_Particles_Simulate()
+    {
+        s_particle_frame.simulated       = true;
+        s_particle_frame.has_work        = false;
+        s_particle_frame.volume_ready    = false;
+        s_particle_frame.volume_resolved = false;
+        s_particle_frame.tex_volume_write = nullptr;
+
         // gather every active emitter, cached at world resolve
-        vector<ParticleSystem*> emitters;
+        vector<ParticleSystem*>& emitters = s_particle_frame.emitters;
+        emitters.clear();
         emitters.reserve(World::GetEntitiesWithParticles().size());
         for (Entity* entity : World::GetEntitiesWithParticles())
         {
@@ -1389,9 +1421,12 @@ namespace spartan
         // each emitter gets a stable slice of the shared buffer, avoiding cross emitter stomping
         uint32_t buffer_capacity = static_cast<uint32_t>(buf_a->GetObjectSize() / sizeof(Sb_Particle));
         uint32_t total_particles = 0;
-        vector<uint32_t> range_starts(emitter_count, 0);
-        vector<uint32_t> range_counts(emitter_count, 0);
-        vector<uint32_t> emit_counts(emitter_count, 0);
+        static vector<uint32_t> range_starts;
+        range_starts.assign(emitter_count, 0);
+        vector<uint32_t>& range_counts = s_particle_frame.range_counts;
+        range_counts.assign(emitter_count, 0);
+        static vector<uint32_t> emit_counts;
+        emit_counts.assign(emitter_count, 0);
         bool volume_present = false;
         uint64_t requested_particles[2] = {};
         uint32_t nonempty_emitters[2] = {};
@@ -1436,20 +1471,6 @@ namespace spartan
             return;
         }
 
-        auto to_blend_state = [](ParticleBlendMode mode)
-        {
-            switch (mode)
-            {
-                case ParticleBlendMode::Alpha:
-                    return Renderer_BlendState::Alpha;
-                case ParticleBlendMode::Premultiplied:
-                    return Renderer_BlendState::Premultiplied;
-                case ParticleBlendMode::Additive:
-                default:
-                    return Renderer_BlendState::Additive;
-            }
-        };
-
         // a spawn hitch can hand us a multi hundred millisecond frame, every other simulation in the
         // engine clamps to 0.1 and the particle sim has to match or it integrates one huge step
         //
@@ -1459,8 +1480,10 @@ namespace spartan
         const float delta_time = paused ? 0.0f : std::clamp(Renderer::view().frame.delta_time, 0.0f, 0.1f);
 
         // one params entry per emitter, the ring size and frame data are shared so every entry carries the same copy
-        vector<Sb_EmitterParams> emitter_params(emitter_count);
-        vector<float> emitter_distance(emitter_count, 0.0f);
+        vector<Sb_EmitterParams>& emitter_params = s_particle_frame.emitter_params;
+        emitter_params.assign(emitter_count, Sb_EmitterParams{});
+        vector<float>& emitter_distance = s_particle_frame.emitter_distance;
+        emitter_distance.assign(emitter_count, 0.0f);
         math::Vector3 camera_position = math::Vector3::Zero;
         if (Camera* camera = Renderer::GetViewCamera())
         {
@@ -1821,6 +1844,125 @@ namespace spartan
         }
         RHI_CommandList::EndPass();
 
+        bool resolve_ran = false;
+        RHI_Texture* tex_volume_write = nullptr;
+        if (volume_shaders_ready && volume_present)
+        {
+            const uint32_t voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
+
+            // the resolve accumulates against the previous frame's grid, so the two swap roles each frame,
+            // a secondary view has no history of its own and its reprojection belongs to the primary
+            const bool use_history = m_pass_state.particle_volume_history.valid && !IsSecondaryViewActive();
+            tex_volume_write = m_pass_state.particle_volume_history.SelectWrite(tex_volume, tex_volume_history);
+            RHI_Texture* tex_volume_read = m_pass_state.particle_volume_history.SelectRead(tex_volume, tex_volume_history);
+
+            bool clear_ran = false;
+            RHI_CommandList::BeginPass("particle_volume_clear");
+            {
+                RHI_CommandList::SetShader(shader_volume_clear, "particle_volume_clear");
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                RHI_CommandList::Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
+                clear_ran = RHI_CommandList::IsPipelineReady();
+            }
+            RHI_CommandList::EndPass();
+
+            bool splat_ran = false;
+            RHI_CommandList::BeginPass("particle_volume_splat");
+            {
+                RHI_CommandList::SetShader(shader_volume_splat, "particle_volume_splat");
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
+                splat_ran = RHI_CommandList::IsPipelineReady();
+            }
+            RHI_CommandList::EndPass();
+
+            if (clear_ran && splat_ran)
+            {
+                RHI_CommandList::BeginPass("particle_volume_resolve");
+                {
+                    RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_volume_write);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_read);
+                    m_pcb_pass_cpu.set(pass_particles_volumetric::reset_history, !use_history);
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
+                    resolve_ran = RHI_CommandList::IsPipelineReady();
+                }
+                RHI_CommandList::EndPass();
+            }
+        }
+        RHI_CommandList::EndPass();
+
+        s_particle_frame.has_work         = true;
+        s_particle_frame.volume_ready     = volume_shaders_ready;
+        s_particle_frame.volume_resolved  = resolve_ran;
+        s_particle_frame.volume_rect_full = volume_rect_full;
+        s_particle_frame.emitter_count    = emitter_count;
+        s_particle_frame.total_particles  = total_particles;
+        s_particle_frame.volume_uv_min    = volume_uv_min;
+        s_particle_frame.volume_uv_max    = volume_uv_max;
+        s_particle_frame.tex_volume_write = tex_volume_write;
+        s_particle_frame.tlas_collision   = tlas_collision;
+        s_particle_frame.fluid_origin     = fluid_running ? fluid.origin : Vector3::Zero;
+        s_particle_frame.fluid_cell_size  = fluid_running ? fluid.cell_size : 0.0f;
+    }
+
+    void Renderer::Pass_Particles_Render()
+    {
+        if (!s_particle_frame.simulated)
+        {
+            Pass_Particles_Simulate();
+        }
+        s_particle_frame.simulated = false;
+        if (!s_particle_frame.has_work)
+        {
+            return;
+        }
+
+        RHI_Shader* shader_render_v         = GetShader(Renderer_Shader::particle_render_v);
+        RHI_Shader* shader_render_p         = GetShader(Renderer_Shader::particle_render_p);
+        RHI_Shader* shader_volume_composite = GetShader(Renderer_Shader::particle_volume_composite_c);
+        RHI_Buffer* buf_a                   = GetBuffer(Renderer_Buffer::ParticleBufferA);
+        RHI_Buffer* buf_emitter             = GetBuffer(Renderer_Buffer::ParticleEmitter);
+        if (!shader_render_v || !shader_render_p || !buf_a || !buf_emitter)
+        {
+            return;
+        }
+
+        auto to_blend_state = [](ParticleBlendMode mode)
+        {
+            switch (mode)
+            {
+                case ParticleBlendMode::Alpha:
+                    return Renderer_BlendState::Alpha;
+                case ParticleBlendMode::Premultiplied:
+                    return Renderer_BlendState::Premultiplied;
+                case ParticleBlendMode::Additive:
+                default:
+                    return Renderer_BlendState::Additive;
+            }
+        };
+
+        const uint32_t emitter_count                     = s_particle_frame.emitter_count;
+        const auto& emitters                             = s_particle_frame.emitters;
+        const auto& range_counts                         = s_particle_frame.range_counts;
+        const auto& emitter_params                       = s_particle_frame.emitter_params;
+        const auto& emitter_distance                     = s_particle_frame.emitter_distance;
+        const bool volume_shaders_ready                  = s_particle_frame.volume_ready;
+        RHI_AccelerationStructure* tlas_collision        = s_particle_frame.tlas_collision;
+        constexpr float billboard_cull_distance          = 85.0f;
+
+        m_pcb_pass_cpu = {};
+        m_pcb_pass_cpu.set(pass_particles_fluid::origin, s_particle_frame.fluid_origin);
+        m_pcb_pass_cpu.set(pass_particles_fluid::cell_size, s_particle_frame.fluid_cell_size);
+
         // render, each particle becomes a camera facing quad with the emitter selected blend mode
         // one draw per emitter so each can bind its own smoke texture and only its own range is drawn
         RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
@@ -1909,122 +2051,72 @@ namespace spartan
         }
         RHI_CommandList::EndPass();
 
-        if (volume_shaders_ready && volume_present)
+        if (volume_shaders_ready && s_particle_frame.volume_resolved && s_particle_frame.tex_volume_write && shader_volume_composite)
         {
-            const uint32_t voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
-
-            // the resolve accumulates against the previous frame's grid, so the two swap roles each frame,
-            // a secondary view has no history of its own and its reprojection belongs to the primary
-            const bool use_history      = m_pass_state.particle_volume_history.valid && !IsSecondaryViewActive();
-            RHI_Texture* tex_volume_write = m_pass_state.particle_volume_history.SelectWrite(tex_volume, tex_volume_history);
-            RHI_Texture* tex_volume_read  = m_pass_state.particle_volume_history.SelectRead(tex_volume, tex_volume_history);
-
-            bool clear_ran = false;
-            RHI_CommandList::BeginPass("particle_volume_clear");
+            RHI_CommandList::BeginPass("particle_volume_composite");
             {
-                RHI_CommandList::SetShader(shader_volume_clear, "particle_volume_clear");
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
-                RHI_CommandList::Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
-                clear_ran = RHI_CommandList::IsPipelineReady();
-            }
-            RHI_CommandList::EndPass();
-
-            bool splat_ran = false;
-            RHI_CommandList::BeginPass("particle_volume_splat");
-            {
-                RHI_CommandList::SetShader(shader_volume_splat, "particle_volume_splat");
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_emitter, buf_emitter);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
-                splat_ran = RHI_CommandList::IsPipelineReady();
-            }
-            RHI_CommandList::EndPass();
-
-            bool resolve_ran = false;
-            if (clear_ran && splat_ran)
-            {
-                RHI_CommandList::BeginPass("particle_volume_resolve");
+                RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
+                RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+                RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+                RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+                RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+                RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+                RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_render);
+                if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
                 {
-                    RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::particle_volume_color, buf_volume_color);
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3d, tex_volume_write);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_read);
-                    m_pcb_pass_cpu.set(pass_particles_volumetric::reset_history, !use_history);
+                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reactivity);
+                }
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, s_particle_frame.tex_volume_write);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                bind_particle_fluid();
+                const uint32_t width  = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
+                const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());
+                const uint32_t total_tiles_x = (width + 15u) / 16u;
+                const uint32_t total_tiles_y = (height + 15u) / 16u;
+                uint32_t min_tile_x = 0u;
+                uint32_t min_tile_y = 0u;
+                uint32_t tile_count_x = total_tiles_x;
+                uint32_t tile_count_y = total_tiles_y;
+                if (!s_particle_frame.volume_rect_full && s_particle_frame.volume_uv_max.x > s_particle_frame.volume_uv_min.x && s_particle_frame.volume_uv_max.y > s_particle_frame.volume_uv_min.y)
+                {
+                    const float u0 = std::clamp(s_particle_frame.volume_uv_min.x, 0.0f, 1.0f);
+                    const float v0 = std::clamp(s_particle_frame.volume_uv_min.y, 0.0f, 1.0f);
+                    const float u1 = std::clamp(s_particle_frame.volume_uv_max.x, 0.0f, 1.0f);
+                    const float v1 = std::clamp(s_particle_frame.volume_uv_max.y, 0.0f, 1.0f);
+                    min_tile_x = static_cast<uint32_t>(u0 * static_cast<float>(width)) / 16u;
+                    min_tile_y = static_cast<uint32_t>(v0 * static_cast<float>(height)) / 16u;
+                    const uint32_t max_tile_x = std::min(total_tiles_x, (static_cast<uint32_t>(std::ceil(u1 * static_cast<float>(width))) + 15u) / 16u + 1u);
+                    const uint32_t max_tile_y = std::min(total_tiles_y, (static_cast<uint32_t>(std::ceil(v1 * static_cast<float>(height))) + 15u) / 16u + 1u);
+                    tile_count_x = max_tile_x > min_tile_x ? max_tile_x - min_tile_x : 0u;
+                    tile_count_y = max_tile_y > min_tile_y ? max_tile_y - min_tile_y : 0u;
+                }
+                if (tile_count_x > 0u && tile_count_y > 0u)
+                {
+                    m_pcb_pass_cpu.set(pass_particles_volumetric::tile_offset_x, min_tile_x);
+                    m_pcb_pass_cpu.set(pass_particles_volumetric::tile_offset_y, min_tile_y);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
-                    resolve_ran = RHI_CommandList::IsPipelineReady();
-                }
-                RHI_CommandList::EndPass();
-            }
-
-            if (resolve_ran)
-            {
-                RHI_CommandList::BeginPass("particle_volume_composite");
-                {
-                    RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
-                    RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
-                    RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
-                    RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
-                    RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
-                    RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-                    RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_render);
-                    if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
-                    {
-                        RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reactivity);
-                    }
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, tex_volume_write);
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-                    bind_particle_fluid();
-                    const uint32_t width  = GetScaledDimension(tex_render->GetWidth(), GetResolutionScale());
-                    const uint32_t height = GetScaledDimension(tex_render->GetHeight(), GetResolutionScale());
-                    const uint32_t total_tiles_x = (width + 15u) / 16u;
-                    const uint32_t total_tiles_y = (height + 15u) / 16u;
-                    uint32_t min_tile_x = 0u;
-                    uint32_t min_tile_y = 0u;
-                    uint32_t tile_count_x = total_tiles_x;
-                    uint32_t tile_count_y = total_tiles_y;
-                    if (!volume_rect_full && volume_uv_max.x > volume_uv_min.x && volume_uv_max.y > volume_uv_min.y)
-                    {
-                        const float u0 = std::clamp(volume_uv_min.x, 0.0f, 1.0f);
-                        const float v0 = std::clamp(volume_uv_min.y, 0.0f, 1.0f);
-                        const float u1 = std::clamp(volume_uv_max.x, 0.0f, 1.0f);
-                        const float v1 = std::clamp(volume_uv_max.y, 0.0f, 1.0f);
-                        min_tile_x = static_cast<uint32_t>(u0 * static_cast<float>(width)) / 16u;
-                        min_tile_y = static_cast<uint32_t>(v0 * static_cast<float>(height)) / 16u;
-                        const uint32_t max_tile_x = std::min(total_tiles_x, (static_cast<uint32_t>(std::ceil(u1 * static_cast<float>(width))) + 15u) / 16u + 1u);
-                        const uint32_t max_tile_y = std::min(total_tiles_y, (static_cast<uint32_t>(std::ceil(v1 * static_cast<float>(height))) + 15u) / 16u + 1u);
-                        tile_count_x = max_tile_x > min_tile_x ? max_tile_x - min_tile_x : 0u;
-                        tile_count_y = max_tile_y > min_tile_y ? max_tile_y - min_tile_y : 0u;
-                    }
-                    if (tile_count_x > 0u && tile_count_y > 0u)
-                    {
-                        m_pcb_pass_cpu.set(pass_particles_volumetric::tile_offset_x, min_tile_x);
-                        m_pcb_pass_cpu.set(pass_particles_volumetric::tile_offset_y, min_tile_y);
-                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                        RHI_CommandList::Dispatch(tile_count_x, tile_count_y);
-                    }
-                }
-                RHI_CommandList::EndPass();
-
-                if (!IsSecondaryViewActive())
-                {
-                    m_pass_state.particle_volume_history.Advance();
+                    RHI_CommandList::Dispatch(tile_count_x, tile_count_y);
                 }
             }
-            else if (!IsSecondaryViewActive())
+            RHI_CommandList::EndPass();
+
+            if (!IsSecondaryViewActive())
             {
-                m_pass_state.particle_volume_history.Reset();
+                m_pass_state.particle_volume_history.Advance();
             }
         }
+        else if (!IsSecondaryViewActive())
+        {
+            m_pass_state.particle_volume_history.Reset();
+        }
+    }
 
-        RHI_CommandList::EndPass();
+    void Renderer::Pass_Particles()
+    {
+        Pass_Particles_Simulate();
+        Pass_Particles_Render();
     }
 }

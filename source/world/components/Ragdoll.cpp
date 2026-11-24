@@ -725,6 +725,7 @@ namespace spartan
         tag_shapes(actor, physics_collision_pedestrian);
         PhysicsWorld::AddActor(actor);
         m_hit_body = actor;
+        m_hit_body_pose_valid = false;
     }
 
     void Ragdoll::DestroyHitBody()
@@ -738,6 +739,7 @@ namespace spartan
         PhysicsWorld::RemoveActor(m_hit_body);
         m_hit_body->release();
         m_hit_body = nullptr;
+        m_hit_body_pose_valid = false;
     }
 
     void Ragdoll::DestroyJoints()
@@ -909,26 +911,49 @@ namespace spartan
             return;
         }
 
+        const bool pose_changed = !m_hit_body_pose_valid ||
+            Vector3::DistanceSquared(center, m_hit_body_last_pos) > 1e-6f ||
+            fabsf(rotation.x - m_hit_body_last_rot.x) + fabsf(rotation.y - m_hit_body_last_rot.y) +
+            fabsf(rotation.z - m_hit_body_last_rot.z) + fabsf(rotation.w - m_hit_body_last_rot.w) > 1e-4f;
+        const bool shape_changed = !m_hit_body_pose_valid ||
+            fabsf(radius - m_hit_body_last_radius) > 0.01f ||
+            fabsf(half_height - m_hit_body_last_half_height) > 0.01f;
+        if (!pose_changed && !shape_changed)
+        {
+            return;
+        }
+
         const PxTransform pose = to_px(center, rotation);
 
         lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
-        // follow the walker between steps, leave velocity clear so the next phys step owns hits
-        m_hit_body->setGlobalPose(pose);
-        m_hit_body->setLinearVelocity(PxVec3(0.0f, 0.0f, 0.0f));
-        m_hit_body->setAngularVelocity(PxVec3(0.0f, 0.0f, 0.0f));
-
-        PxShape* shapes[4];
-        const PxU32 count = m_hit_body->getShapes(shapes, 4);
-        for (PxU32 i = 0; i < count; ++i)
+        if (pose_changed)
         {
-            if (!shapes[i] ||
-                shapes[i]->getGeometry().getType() != PxGeometryType::eCAPSULE)
-            {
-                continue;
-            }
-
-            shapes[i]->setGeometry(PxCapsuleGeometry(radius, half_height));
+            // follow the walker between steps, leave velocity clear so the next phys step owns hits
+            m_hit_body->setGlobalPose(pose);
+            m_hit_body->setLinearVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+            m_hit_body->setAngularVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+            m_hit_body_last_pos = center;
+            m_hit_body_last_rot = rotation;
         }
+
+        if (shape_changed)
+        {
+            PxShape* shapes[4];
+            const PxU32 count = m_hit_body->getShapes(shapes, 4);
+            for (PxU32 i = 0; i < count; ++i)
+            {
+                if (!shapes[i] ||
+                    shapes[i]->getGeometry().getType() != PxGeometryType::eCAPSULE)
+                {
+                    continue;
+                }
+
+                shapes[i]->setGeometry(PxCapsuleGeometry(radius, half_height));
+            }
+            m_hit_body_last_radius = radius;
+            m_hit_body_last_half_height = half_height;
+        }
+        m_hit_body_pose_valid = true;
     }
 
     void Ragdoll::ProcessHits()

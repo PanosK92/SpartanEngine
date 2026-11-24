@@ -352,7 +352,9 @@ namespace spartan
         void update_collision_streaming()
         {
             if (ProgressTracker::IsLoading()) return;
-            unordered_set<Entity*> work;
+            SP_PROFILE_CPU_START("world_collision_streaming");
+            static unordered_set<Entity*> work;
+            work.clear();
             {
                 lock_guard lock(collision_dirty_mutex);
                 work.swap(collision_dirty);
@@ -366,25 +368,38 @@ namespace spartan
                     collision_grid.Update(entity, render->GetBoundingBox());
                 }
             }
-            work.merge(collision_retry);
-            collision_retry.clear();
+            if (!collision_retry.empty())
+            {
+                work.merge(collision_retry);
+                collision_retry.clear();
+            }
             Camera* camera = World::GetCamera();
             const Vector3 position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const uint64_t revision = PhysicsWorld::GetCollisionInterestRevision();
             const bool playing = Engine::IsFlagSet(EngineMode::Playing);
-            if (collision_had_camera != bool(camera) || collision_was_playing != playing)
+            const bool state_changed = collision_had_camera != bool(camera) || collision_was_playing != playing;
+            // Deactivation already has a wide hysteresis margin over activation; only re-query the spatial grid once the camera moves >= 2 m.
+            const bool camera_moved = camera && (!collision_had_camera || Vector3::DistanceSquared(collision_position, position) >= 4.0f);
+            const bool revision_changed = revision != collision_revision || collision_had_camera != bool(camera);
+            if (!state_changed && !camera_moved && !revision_changed && work.empty())
+            {
+                SP_PROFILE_CPU_END();
+                return;
+            }
+            if (state_changed)
                 collision_grid.All(work);
             // Query both ends of a move. A teleport never visits the cells in between.
-            if (camera && (collision_position != position || !collision_had_camera))
+            if (camera_moved)
             {
                 const Vector3 extent(Physics::deactivation_distance);
                 if (collision_had_camera)
                     collision_grid.Query({collision_position - extent, collision_position + extent}, work);
                 collision_grid.Query({position - extent, position + extent}, work);
             }
-            if (revision != collision_revision || collision_had_camera != bool(camera))
+            if (revision_changed)
             {
-                unordered_map<const void*, BoundingBox> regions;
+                static unordered_map<const void*, BoundingBox> regions;
+                regions.clear();
                 if (camera)
                 {
                     for (const auto& interest : PhysicsWorld::GetCollisionInterests())
@@ -422,6 +437,7 @@ namespace spartan
                 }
                 physics->Tick();
             }
+            SP_PROFILE_CPU_END();
         }
 
         RenderSpatialIndex render_spatial_index;

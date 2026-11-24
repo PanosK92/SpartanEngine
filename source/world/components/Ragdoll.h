@@ -156,6 +156,11 @@ namespace spartan
         mutable int32_t m_hit_foot_l = -1;
         mutable int32_t m_hit_foot_r = -1;
         physx::PxRigidDynamic* m_hit_body = nullptr;
+        mutable math::Vector3 m_hit_body_last_pos = math::Vector3::Zero;
+        mutable math::Quaternion m_hit_body_last_rot = math::Quaternion::Identity;
+        mutable float m_hit_body_last_radius = -1.0f;
+        mutable float m_hit_body_last_half_height = -1.0f;
+        mutable bool m_hit_body_pose_valid = false;
         physx::PxMaterial* m_material = nullptr;
         std::vector<BoneBody> m_bodies;
         std::vector<BoneJoint> m_joints;

@@ -141,27 +141,37 @@ namespace spartan::Renderer
         }
     }
 
-    inline void ExpandGeometryClusters(Render* render, uint32_t first_draw, uint32_t first_task,
-        uint32_t instance_count, uint32_t capacity, uint64_t& instance_budget, uint64_t& meshlet_budget,
-        const std::vector<float>& densities)
+    struct ExpandedClusterPlan
     {
-        if (densities.empty()) return;
-        const auto& clusters = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex()).clusters;
-        const auto base = m_indirect_draw_data[first_draw];
-        const bool instanced = render->HasInstancing();
-        const uint32_t batches = (instance_count + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
         struct Range
         {
-            const GeometryCluster* first;
+            const GeometryCluster* first = nullptr;
             math::BoundingBox bounds;
-            uint32_t meshlet_count;
-            uint32_t page_offset, page_count;
+            uint32_t meshlet_count = 0;
+            uint32_t page_offset = 0;
+            uint32_t page_count = 0;
         };
-        struct Level { ResidentGeometryPage page; float error; };
-        static std::vector<Range> ranges;
-        static std::vector<Level> levels;
-        ranges.clear();
-        levels.clear();
+        struct Level
+        {
+            ResidentGeometryPage page;
+            float error = 0.0f;
+        };
+        std::vector<Range> ranges;
+        std::vector<Level> levels;
+        std::vector<GeometryBuffer::GeometryPageRequest> requests;
+    };
+
+    inline void PrepareExpandedClusters(Render* render, const std::vector<float>& densities, ExpandedClusterPlan& out)
+    {
+        out.ranges.clear();
+        out.levels.clear();
+        out.requests.clear();
+        if (densities.empty())
+        {
+            return;
+        }
+        const auto& clusters = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex()).clusters;
+        const bool instanced = render->HasInstancing();
         // Native directories validate at most 16 refinements. A generated
         // page starts with 512 triangles and halves at each level.
         ResidentGeometryPage pages[16];
@@ -174,19 +184,21 @@ namespace spartan::Renderer
             if (!cluster.refinements.empty() && cluster.error * density > 1.0f)
             {
                 if (instanced)
-                    count = GeometryBuffer::SelectInstancePages(cluster, density, pages, errors);
-                else if (GeometryBuffer::SelectPage(cluster, density, pages[0]))
+                {
+                    count = GeometryBuffer::SelectInstancePagesParallel(cluster, density, pages, errors, out.requests);
+                }
+                else if (GeometryBuffer::SelectPageParallel(cluster, density, pages[0], out.requests))
                 {
                     count = 1;
                     errors[0] = 0;
                 }
             }
-            if (levels.empty() && count == 0)
+            if (out.levels.empty() && count == 0)
             {
                 // Defer building the initial unrefined range until a resident refinement actually hits.
                 continue;
             }
-            if (levels.empty() && i > 0)
+            if (out.levels.empty() && i > 0)
             {
                 // Materialize the skipped coarse prefix [0, i) once on the first resident refinement.
                 math::BoundingBox prefix_bounds = clusters[0].bounds;
@@ -196,28 +208,274 @@ namespace spartan::Renderer
                     prefix_meshlets += clusters[k].meshlet_count;
                     prefix_bounds.Merge(clusters[k].bounds);
                 }
-                ranges.push_back({&clusters[0], prefix_bounds, prefix_meshlets, 0u, 0u});
+                out.ranges.push_back({&clusters[0], prefix_bounds, prefix_meshlets, 0u, 0u});
             }
-            if (!count && !ranges.empty() && !ranges.back().page_count)
+            if (!count && !out.ranges.empty() && !out.ranges.back().page_count)
             {
-                ranges.back().meshlet_count += cluster.meshlet_count;
-                ranges.back().bounds.Merge(cluster.bounds);
+                out.ranges.back().meshlet_count += cluster.meshlet_count;
+                out.ranges.back().bounds.Merge(cluster.bounds);
             }
             else
-                ranges.push_back({&cluster, cluster.bounds, cluster.meshlet_count, static_cast<uint32_t>(levels.size()), count});
+            {
+                out.ranges.push_back({&cluster, cluster.bounds, cluster.meshlet_count, static_cast<uint32_t>(out.levels.size()), count});
+            }
             for (uint32_t j = count; j > 0; --j)
-                levels.push_back({pages[j - 1], errors[j - 1]});
+            {
+                out.levels.push_back({pages[j - 1], errors[j - 1]});
+            }
         }
-        if (levels.empty() || ranges.size() + (instanced ? levels.size() : 0) > capacity - m_indirect_draw_count + 1)
-            return;
-        const uint64_t extra_tasks = (ranges.size() - 1) * uint64_t(batches);
-        if (extra_tasks + m_cull_task_count > renderer_max_cull_tasks) return;
-        if (m_cull_tasks.size() < m_cull_task_count + extra_tasks)
-            m_cull_tasks.resize(static_cast<size_t>(m_cull_task_count + extra_tasks));
-        const float error_pixels = GeometryErrorPixels(render);
-        for (size_t c = 0; c < ranges.size(); ++c)
+    }
+
+    struct ExpandedCommitSlot
+    {
+        uint32_t cluster_draw_base   = 0;
+        uint32_t cluster_task_base   = 0;
+        uint32_t cluster_extra_tasks = 0;
+        uint32_t proxy_draw          = UINT32_MAX;
+        bool     commit_clusters     = false;
+        bool     attach_proxy        = false;
+    };
+
+    inline void PlanExpandedCommit(Render* render, uint32_t first_draw, uint32_t first_task,
+        uint32_t instance_count, uint32_t capacity, uint64_t& instance_budget, uint64_t& meshlet_budget,
+        const ExpandedClusterPlan& plan, ExpandedCommitSlot& slot)
+    {
+        slot = {};
+        const bool instanced = render->HasInstancing();
+        const uint32_t batches = (instance_count + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
+        if (!plan.levels.empty())
         {
-            const Range& range = ranges[c];
+            const uint32_t extra_draws = static_cast<uint32_t>((plan.ranges.size() - 1) + (instanced ? plan.levels.size() : 0));
+            const uint64_t extra_tasks = (plan.ranges.size() - 1) * uint64_t(batches);
+            if (extra_draws <= capacity - m_indirect_draw_count && extra_tasks + m_cull_task_count <= renderer_max_cull_tasks)
+            {
+                slot.commit_clusters     = true;
+                slot.cluster_draw_base   = m_indirect_draw_count;
+                slot.cluster_task_base   = m_cull_task_count;
+                slot.cluster_extra_tasks = static_cast<uint32_t>(extra_tasks);
+                m_indirect_draw_count   += extra_draws;
+                m_cull_task_count       += static_cast<uint32_t>(extra_tasks);
+                instance_budget         += uint64_t(plan.ranges.size() - 1) * instance_count;
+                for (size_t c = 0; c < plan.ranges.size(); ++c)
+                {
+                    const ExpandedClusterPlan::Range& range = plan.ranges[c];
+                    uint32_t max_meshlets = range.meshlet_count;
+                    for (uint32_t j = 0; j < range.page_count; ++j)
+                    {
+                        max_meshlets = std::max(max_meshlets, plan.levels[range.page_offset + j].page.meshlet_count);
+                    }
+                    meshlet_budget += uint64_t(instance_count) * (max_meshlets - range.meshlet_count);
+                }
+            }
+        }
+        if (instanced && m_indirect_draw_count < capacity)
+        {
+            Mesh* mesh = render->GetMesh();
+            const bool tree = (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
+            const bool bark_covered_by_impostor = tree && render->GetSubMeshIndex() == 0 &&
+                mesh->GetSubMeshCount() > 1 && mesh->GetSubMesh(1).parent_page && mesh->GetSubMesh(1).parent_page->baked_rgba;
+            const auto& proxy = bark_covered_by_impostor ? mesh->GetSubMesh(1).parent_page : mesh->GetSubMesh(render->GetSubMeshIndex()).parent_page;
+            if (proxy)
+            {
+                const uint32_t vertices = proxy->uses_root_vertices ? render->GetVertexOffset() : proxy->vertices;
+                if (bark_covered_by_impostor || GeometryBuffer::IsResident(vertices + proxy->vertex_count, proxy->indices + proxy->index_count))
+                {
+                    slot.attach_proxy = true;
+                    slot.proxy_draw   = m_indirect_draw_count++;
+                }
+            }
+        }
+        (void)first_draw;
+        (void)first_task;
+    }
+
+    inline void CommitExpandedClustersAt(Render* render, uint32_t first_draw, uint32_t first_task,
+        uint32_t instance_count, const ExpandedClusterPlan& plan, const ExpandedCommitSlot& slot,
+        uint32_t base_canopy_draw = 0u, uint32_t extra_canopy_draw = 0u,
+        const GeometryParentPage* canopy_proxy = nullptr, float diameter_pixels = 0.0f)
+    {
+        if (!slot.commit_clusters)
+        {
+            return;
+        }
+        const auto base = m_indirect_draw_data[first_draw];
+        const bool instanced = render->HasInstancing();
+        const uint32_t batches = (instance_count + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
+        const float error_pixels = GeometryErrorPixels(render);
+        uint32_t draw_cursor = slot.cluster_draw_base;
+        uint32_t task_cursor = slot.cluster_task_base;
+        for (size_t c = 0; c < plan.ranges.size(); ++c)
+        {
+            const ExpandedClusterPlan::Range& range = plan.ranges[c];
+            const GeometryCluster& cluster = *range.first;
+            const uint32_t draw = c == 0 ? first_draw : draw_cursor++;
+            auto& coarse = m_indirect_draw_data[draw];
+            if (c != 0)
+            {
+                coarse = base;
+                m_indirect_renders[draw] = render;
+            }
+            coarse.geometry_meshlet_offset += cluster.first_meshlet;
+            coarse.geometry_meshlet_count = range.meshlet_count;
+            coarse.cluster_center = range.bounds.GetCenter();
+            coarse.cluster_radius = range.bounds.GetExtents().Length();
+            coarse.cluster_error = cluster.error / error_pixels;
+            coarse.previous_vertex_offset = 0;
+            if (canopy_proxy)
+            {
+                coarse.impostor_center     = canopy_proxy->center;
+                coarse.impostor_radius     = canopy_proxy->radius;
+                coarse.impostor_uv_scale.x = diameter_pixels;
+            }
+
+            const uint32_t first_level = draw_cursor;
+            for (uint32_t j = 0; j < range.page_count; ++j)
+            {
+                const auto& level = plan.levels[range.page_offset + j];
+                const auto& fine = level.page;
+                const uint32_t selected_draw = instanced ? draw_cursor++ : draw;
+                auto& selected = m_indirect_draw_data[selected_draw];
+                if (instanced)
+                {
+                    selected = coarse;
+                }
+                selected.cluster_error = level.error / error_pixels;
+                selected.geometry_bounds_min = cluster.bounds.GetMin();
+                selected.geometry_bounds_extent = cluster.bounds.GetSize();
+                selected.geometry_bounds_diag = selected.geometry_bounds_extent.Length();
+                selected.geometry_first_index = fine.indices;
+                selected.geometry_vertex_offset = fine.vertices;
+                selected.geometry_meshlet_offset = fine.meshlets;
+                selected.geometry_meshlet_count = fine.meshlet_count;
+                selected.meshlet_vertex_base = fine.remaps;
+                selected.meshlet_micro_base = fine.micro;
+                m_indirect_renders[selected_draw] = render;
+            }
+            const uint32_t task_offset = c == 0 ? first_task : task_cursor;
+            if (c != 0) task_cursor += batches;
+            const uint32_t task_canopy = c == 0 ? base_canopy_draw : extra_canopy_draw;
+            const uint32_t refinement = instanced && range.page_count ? (CULL_TASK_CLUSTER_REFINEMENT |
+                ((range.page_count - 1) << CULL_TASK_LEVEL_SHIFT) | first_level) : 0u;
+            Sb_CullTask* tasks_dst = m_cull_tasks.data() + task_offset;
+            for (uint32_t t = 0; t < batches; ++t)
+            {
+                auto& task = tasks_dst[t];
+                task.draw_index = draw;
+                task.canopy_draw = task_canopy;
+                task.instance_index = t * INSTANCE_CULL_BATCH_SIZE;
+                task.instance_count = std::min(INSTANCE_CULL_BATCH_SIZE, instance_count - task.instance_index);
+                task.refinement_draw = refinement;
+            }
+        }
+    }
+
+    inline void CommitPlanWithProxyAt(Render* render, uint32_t first_draw, uint32_t first_task, uint32_t instances,
+        const ExpandedClusterPlan& plan, const ExpandedCommitSlot& slot, float diameter_pixels)
+    {
+        if (!slot.attach_proxy)
+        {
+            CommitExpandedClustersAt(render, first_draw, first_task, instances, plan, slot);
+            return;
+        }
+        Mesh* mesh = render->GetMesh();
+        const bool tree = (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
+        const bool canopy = tree && render->GetSubMeshIndex() == 1;
+        const bool bark_covered_by_impostor = tree && render->GetSubMeshIndex() == 0 &&
+            mesh->GetSubMeshCount() > 1 && mesh->GetSubMesh(1).parent_page && mesh->GetSubMesh(1).parent_page->baked_rgba;
+        const auto& proxy = bark_covered_by_impostor ? mesh->GetSubMesh(1).parent_page : mesh->GetSubMesh(render->GetSubMeshIndex()).parent_page;
+        const uint32_t vertices = proxy->uses_root_vertices ? render->GetVertexOffset() : proxy->vertices;
+        const uint32_t index = slot.proxy_draw;
+        const uint32_t base_canopy_draw  = bark_covered_by_impostor ? ((index + 1) | 0x80000000u) : (index + 1);
+        const uint32_t extra_canopy_draw = (index + 1) | 0x80000000u;
+
+        // Snapshot first_draw BEFORE CommitExpandedClustersAt mutates it for the proxy draw.
+        auto& draw = m_indirect_draw_data[index];
+        draw = m_indirect_draw_data[first_draw];
+        if (slot.commit_clusters)
+        {
+            CommitExpandedClustersAt(render, first_draw, first_task, instances, plan, slot,
+                base_canopy_draw, extra_canopy_draw, canopy ? proxy.get() : nullptr, diameter_pixels);
+        }
+        else
+        {
+            if (canopy)
+            {
+                auto& target = m_indirect_draw_data[first_draw];
+                target.impostor_center     = proxy->center;
+                target.impostor_radius     = proxy->radius;
+                target.impostor_uv_scale.x = diameter_pixels;
+            }
+            const uint32_t batches = (instances + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
+            for (uint32_t i = first_task; i < first_task + batches; ++i)
+            {
+                m_cull_tasks[i].canopy_draw = base_canopy_draw;
+            }
+        }
+        if (canopy)
+        {
+            draw.flags |= (1u << 14) | 8u | 16u;
+            draw.impostor_layout = GeometryParentPage::frames |
+                (proxy->impostor_resolution << 8) |
+                (proxy->impostor_layers << 24) |
+                (proxy->baked_rgba ? 0x80000000u : 0u);
+            draw.impostor_center = proxy->center;
+            draw.impostor_radius = proxy->radius;
+            draw.impostor_uv_min = proxy->uv_min;
+            draw.impostor_uv_scale = proxy->uv_scale;
+            draw.impostor_texel_offset = proxy->atlas;
+        }
+        draw.cluster_center = proxy->center;
+        draw.cluster_radius = proxy->radius;
+        draw.cluster_error = (canopy || bark_covered_by_impostor) ? diameter_pixels :
+            (tree ? std::min(diameter_pixels, 4.0f * proxy->radius / std::max(proxy->error, 1e-5f))
+                  : 2.0f * GeometryErrorPixels(render) * proxy->radius / std::max(proxy->error, 1e-5f));
+        draw.geometry_bounds_min = proxy->bounds.GetMin();
+        draw.geometry_bounds_extent = proxy->bounds.GetSize();
+        draw.geometry_bounds_diag = draw.geometry_bounds_extent.Length();
+        draw.geometry_first_index = proxy->indices;
+        draw.geometry_vertex_offset = vertices;
+        draw.geometry_meshlet_offset = proxy->meshlet;
+        draw.geometry_meshlet_count = proxy->meshlet_count;
+        draw.meshlet_vertex_base = proxy->remaps;
+        draw.meshlet_micro_base = proxy->micro;
+        draw.previous_vertex_offset = 0;
+        m_indirect_renders[index] = render;
+    }
+
+    inline float GetTreeProxyCanopyPixels()
+    {
+        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 420.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
+        return canopy_pixels.GetValue();
+    }
+
+    inline void CommitExpandedClusters(Render* render, uint32_t first_draw, uint32_t first_task,
+        uint32_t instance_count, uint32_t capacity, uint64_t& instance_budget, uint64_t& meshlet_budget,
+        const ExpandedClusterPlan& plan)
+    {
+        if (plan.levels.empty())
+        {
+            return;
+        }
+        const auto base = m_indirect_draw_data[first_draw];
+        const bool instanced = render->HasInstancing();
+        const uint32_t batches = (instance_count + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
+        if (plan.ranges.size() + (instanced ? plan.levels.size() : 0) > capacity - m_indirect_draw_count + 1)
+        {
+            return;
+        }
+        const uint64_t extra_tasks = (plan.ranges.size() - 1) * uint64_t(batches);
+        if (extra_tasks + m_cull_task_count > renderer_max_cull_tasks)
+        {
+            return;
+        }
+        if (m_cull_tasks.size() < m_cull_task_count + extra_tasks)
+        {
+            m_cull_tasks.resize(static_cast<size_t>(m_cull_task_count + extra_tasks));
+        }
+        const float error_pixels = GeometryErrorPixels(render);
+        for (size_t c = 0; c < plan.ranges.size(); ++c)
+        {
+            const ExpandedClusterPlan::Range& range = plan.ranges[c];
             const GeometryCluster& cluster = *range.first;
             const uint32_t draw = c == 0 ? first_draw : m_indirect_draw_count++;
             auto& coarse = m_indirect_draw_data[draw];
@@ -237,7 +495,7 @@ namespace spartan::Renderer
             uint32_t max_meshlets = range.meshlet_count;
             for (uint32_t j = 0; j < range.page_count; ++j)
             {
-                const auto& level = levels[range.page_offset + j];
+                const auto& level = plan.levels[range.page_offset + j];
                 const auto& fine = level.page;
                 const uint32_t selected_draw = instanced ? m_indirect_draw_count++ : draw;
                 auto& selected = m_indirect_draw_data[selected_draw];
@@ -274,10 +532,23 @@ namespace spartan::Renderer
             meshlet_budget += uint64_t(instance_count) * (max_meshlets - range.meshlet_count);
         }
     }
+
+    inline void ExpandGeometryClusters(Render* render, uint32_t first_draw, uint32_t first_task,
+        uint32_t instance_count, uint32_t capacity, uint64_t& instance_budget, uint64_t& meshlet_budget,
+        const std::vector<float>& densities)
+    {
+        static ExpandedClusterPlan plan;
+        PrepareExpandedClusters(render, densities, plan);
+        if (!plan.requests.empty())
+        {
+            GeometryBuffer::MergePageRequests(plan.requests);
+        }
+        CommitExpandedClusters(render, first_draw, first_task, instance_count, capacity, instance_budget, meshlet_budget, plan);
+    }
     inline void AttachTreeProxyDraw(Render* render, uint32_t first_draw, uint32_t first_task, uint32_t instances,
         uint32_t first_extra, uint32_t capacity)
     {
-        static TConsoleVar<float> canopy_pixels("r.geometry_canopy_pixels", 272.0f, "Maximum projected canopy diameter in pixels for the baked virtual parent page");
+        const float diameter_pixels = GetTreeProxyCanopyPixels();
         Mesh* mesh = render->GetMesh();
         const bool tree = (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::FoliageCardClusters)) != 0;
         const bool canopy = tree && render->GetSubMeshIndex() == 1;
@@ -305,7 +576,6 @@ namespace spartan::Renderer
         }
         draw.cluster_center = proxy->center;
         draw.cluster_radius = proxy->radius;
-        const float diameter_pixels = canopy_pixels.GetValue();
         // When the whole-tree impostor already bakes the trunk, cull the bark submesh at the exact same pixel threshold.
         draw.cluster_error = (canopy || bark_covered_by_impostor) ? diameter_pixels :
             (tree ? std::min(diameter_pixels, 4.0f * proxy->radius / std::max(proxy->error, 1e-5f))

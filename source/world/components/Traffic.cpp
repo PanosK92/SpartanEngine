@@ -186,8 +186,16 @@ namespace spartan
         Vector3 player_velocity;
         const bool has_player = GetPlayerState(player_position, player_velocity);
 
-        for (Driver& driver : m_drivers)
+        // Limit simultaneous full-PhysX traffic vehicles to the nearest 8 cars and pace
+        // activations to 1 per frame so dense traffic jams never spike PhysX simulation.
+        constexpr uint32_t max_active_physics_cars = 8;
+        static vector<pair<float, size_t>> physics_candidates;
+        static vector<uint8_t> physics_desired;
+        physics_candidates.clear();
+        physics_desired.assign(m_drivers.size(), 0);
+        for (size_t i = 0; i < m_drivers.size(); ++i)
         {
+            Driver& driver = m_drivers[i];
             if (!driver.car || !std::binary_search(sorted_cars.begin(), sorted_cars.end(), driver.car))
             {
                 driver.car = nullptr;
@@ -195,7 +203,6 @@ namespace spartan
                 driver.physics = nullptr;
                 continue;
             }
-
             if (!driver.entity || !driver.physics || driver.entity->GetComponent<Physics>() != driver.physics)
             {
                 driver.car = nullptr;
@@ -203,16 +210,56 @@ namespace spartan
                 driver.physics = nullptr;
                 continue;
             }
-
-            bool physics_selected = false;
             if (has_player)
             {
+                if (driver.physics_cooldown > 0.0f)
+                {
+                    driver.physics_cooldown = std::max(0.0f, driver.physics_cooldown - delta_time);
+                }
                 Vector3 offset = driver.entity->GetPosition() - player_position;
                 offset.y = 0.0f;
                 const float radius = driver.physics_active ? m_physics_exit_radius : m_physics_radius;
-                physics_selected = offset.LengthSquared() <= radius * radius;
+                const float dist_sq = offset.LengthSquared();
+                if (dist_sq <= radius * radius)
+                {
+                    // Apply strong distance hysteresis (-20 m) to already-active physics cars so
+                    // vehicles near the 8-car boundary never ping-pong between spline and PhysX.
+                    const float score = sqrtf(dist_sq) - (driver.physics_active ? 20.0f : 0.0f);
+                    physics_candidates.emplace_back(score, i);
+                }
             }
-            SetPhysicsActive(driver, physics_selected);
+        }
+        if (physics_candidates.size() > max_active_physics_cars)
+        {
+            std::nth_element(physics_candidates.begin(), physics_candidates.begin() + max_active_physics_cars, physics_candidates.end());
+            physics_candidates.resize(max_active_physics_cars);
+        }
+        for (const auto& [score, idx] : physics_candidates)
+        {
+            physics_desired[idx] = 1;
+        }
+
+        uint32_t activations_this_frame = 0;
+        for (size_t i = 0; i < m_drivers.size(); ++i)
+        {
+            Driver& driver = m_drivers[i];
+            if (!driver.car || !driver.entity || !driver.physics)
+            {
+                continue;
+            }
+
+            const bool want_physics = physics_desired[i] != 0;
+            if (!want_physics && driver.physics_active && driver.physics_cooldown <= 0.0f)
+            {
+                SetPhysicsActive(driver, false);
+                driver.physics_cooldown = 2.0f;
+            }
+            else if (want_physics && !driver.physics_active && driver.physics_cooldown <= 0.0f && activations_this_frame < 1)
+            {
+                SetPhysicsActive(driver, true);
+                driver.physics_cooldown = 2.0f;
+                ++activations_this_frame;
+            }
 
             if (m_follow_roads)
             {
@@ -781,7 +828,8 @@ namespace spartan
         {
             Vector3 velocity = driver.physics->GetLinearVelocity();
             velocity.y = 0.0f;
-            driver.spline_speed = std::clamp(velocity.Length(), m_follow_roads ? 0.0f : 2.0f, driver.cruise_speed);
+            const float planar_speed = velocity.IsFinite() ? velocity.Length() : 0.0f;
+            driver.spline_speed = std::clamp(planar_speed, m_follow_roads ? 0.0f : 2.0f, driver.cruise_speed);
             driver.throttle = 0.0f;
             driver.brake = 0.0f;
             driver.steering = 0.0f;
@@ -822,21 +870,22 @@ namespace spartan
             }
             driver.physics->SetBodyTransform(spawn_position, driver.entity->GetRotation());
             const Vector3 forward = horizontal(driver.entity->GetForward());
-            driver.physics->SetLinearVelocity(forward * driver.spline_speed);
+            const float safe_speed = std::isfinite(driver.spline_speed) ? std::clamp(driver.spline_speed, 0.0f, driver.cruise_speed) : 0.0f;
+            driver.spline_speed = safe_speed;
+            driver.physics->SetLinearVelocity(forward * safe_speed);
             driver.physics->SetAngularVelocity(Vector3::Zero);
             driver.last_position = driver.entity->GetPosition();
-            driver.previous_speed = driver.spline_speed;
+            driver.previous_speed = safe_speed;
             driver.throttle = 0.0f;
             driver.brake = 0.0f;
             driver.transition_time = 0.5f;
-            driver.diagnostic_time = 3.0f;
+            driver.diagnostic_time = 0.0f;
             driver.diagnostic_interval = 0.25f;
             driver.stalled_time = 0.0f;
             driver.blocked_time = 0.0f;
             driver.recovery = RecoveryState::None;
             driver.recovery_time = 0.0f;
             driver.decision_time = decision_interval;
-            SP_LOG_INFO("traffic_ai %s physics_on speed=%.2f", driver.entity->GetObjectName().c_str(), driver.spline_speed);
         }
         driver.physics_active = active;
     }

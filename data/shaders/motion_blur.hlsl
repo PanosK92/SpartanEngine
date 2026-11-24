@@ -24,7 +24,7 @@ static const float SHUTTER_CENTER_SCALE     = 0.5f;
 static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 
 // spinning objects, any whose pose turned this frame (see Renderer::UpdateFrameCb_RadialBlurHubs)
-static const int   SPIN_MAX_TAPS        = 12;        // along the swept arc, jittered for smooth rims at lower cost
+static const int   SPIN_MAX_TAPS        = 8;         // along the swept arc, jittered for smooth rims at lower cost
 static const float SPIN_MAX_HALF_ANGLE  = 0.785398f; // past 45 degrees each way a streak reads the same
 static const float SPIN_RIM_FRACTION    = 0.8f;      // of the radius, where open spokes give way to solid tire
 static const float SPIN_TIRE_FADE       = 0.12f;     // width of that transition, fraction of the rim radius
@@ -34,7 +34,7 @@ static const float SPIN_TIRE_TAIL_MIN   = 0.12f;
 static const float SPIN_TIRE_TAIL_POWER = 0.85f;
 // tread blocks stand past the tire outline by this fraction of the radius, searched for in this many steps
 static const float SPIN_LUG_REACH       = 0.08f;
-static const int   SPIN_LUG_STEPS       = 4;
+static const int   SPIN_LUG_STEPS       = 2;
 
 // soft depth comparison, linear depth larger is farther, returns 1 when depth_a is closer or equal
 float soft_depth_compare(float depth_a, float depth_b)

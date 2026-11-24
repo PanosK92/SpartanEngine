@@ -48,6 +48,13 @@ namespace spartan
         std::vector<Render*> previous_renders;
         std::vector<uint64_t> previous_ids;
         std::vector<uint8_t> previous_dynamic;
+        // reusable scratch buffers so Update avoids per-call 60k-element heap allocations
+        std::vector<uint8_t> scratch_state;
+        std::vector<Render*> scratch_renders;
+        std::vector<uint64_t> scratch_ids;
+        std::vector<size_t> scratch_skipped;
+        std::unordered_set<const RenderSceneData*> scratch_seen;
+        std::vector<const RenderSceneData*> scratch_next_moving;
 
         static math::BoundingBox Bounds(const RenderSceneData& data)
         {
@@ -182,39 +189,39 @@ namespace spartan
             // the world keeps entity order, removals close up and additions append, so the two lists match
             // in step except where something changed, only those entries pay for a lookup
             enum : uint8_t { known_static, known_moving, unknown };
-            std::vector<uint8_t> state(source.size(), unknown);
-            std::vector<Render*> renders(source.size());
-            std::vector<uint64_t> ids(source.size());
-            std::vector<size_t> skipped;
-            std::unordered_set<const RenderSceneData*> seen;
+            scratch_state.assign(source.size(), unknown);
+            scratch_renders.resize(source.size());
+            scratch_ids.resize(source.size());
+            scratch_skipped.clear();
+            scratch_seen.clear();
             size_t j = 0;
             for (size_t i = 0; i < source.size(); ++i)
             {
                 const RenderSceneData* data = source[i];
-                renders[i] = data->render;
-                const uint64_t id = ids[i] = data->render->GetObjectId();
+                scratch_renders[i] = data->render;
+                const uint64_t id = scratch_ids[i] = data->render->GetObjectId();
                 if (j < previous.size() && previous[j] == data && previous_ids[j] == id)
                 {
-                    state[i] = previous_dynamic[j] ? known_moving : known_static;
+                    scratch_state[i] = previous_dynamic[j] ? known_moving : known_static;
                     ++j;
                     continue;
                 }
 
                 const auto found = leaves.find(data->render);
-                if (found != leaves.end() && found->second.id == id && found->second.data == data) state[i] = known_static;
-                else if (moving_members.count(data)) state[i] = known_moving;
+                if (found != leaves.end() && found->second.id == id && found->second.data == data) scratch_state[i] = known_static;
+                else if (moving_members.count(data)) scratch_state[i] = known_moving;
                 else continue;
 
-                seen.insert(data);
-                while (j < previous.size() && !(previous[j] == data && previous_ids[j] == id)) skipped.push_back(j++);
+                scratch_seen.insert(data);
+                while (j < previous.size() && !(previous[j] == data && previous_ids[j] == id)) scratch_skipped.push_back(j++);
                 if (j < previous.size()) ++j;
             }
-            while (j < previous.size()) skipped.push_back(j++);
+            while (j < previous.size()) scratch_skipped.push_back(j++);
 
             // a skipped entry that never showed up again left, a recycled address is removed before it is re-added
-            for (const size_t k : skipped)
+            for (const size_t k : scratch_skipped)
             {
-                if (previous_dynamic[k] || seen.count(previous[k])) continue;
+                if (previous_dynamic[k] || scratch_seen.count(previous[k])) continue;
                 const auto found = leaves.find(previous_renders[k]);
                 if (found == leaves.end() || found->second.id != previous_ids[k] || found->second.data != previous[k]) continue;
                 RemoveLeaf(previous_renders[k], found->second);
@@ -222,16 +229,16 @@ namespace spartan
             }
 
             // moving renders are few, they are the only known ones whose classification is re-read
-            std::vector<const RenderSceneData*> next_moving;
+            scratch_next_moving.clear();
             previous_dynamic.assign(source.size(), 0);
             for (size_t i = 0; i < source.size(); ++i)
             {
                 const RenderSceneData* data = source[i];
-                if (state[i] == known_static) continue;
+                if (scratch_state[i] == known_static) continue;
                 if (data->entity->IsDynamic())
                 {
                     data->render->SetSpatiallyDynamic(true);
-                    next_moving.push_back(data);
+                    scratch_next_moving.push_back(data);
                     previous_dynamic[i] = 1;
                     continue;
                 }
@@ -245,13 +252,13 @@ namespace spartan
                 added.push_back(render);
             }
 
-            moving.swap(next_moving);
+            moving.swap(scratch_next_moving);
             moving_members.clear();
             moving_members.insert(moving.begin(), moving.end());
 
             previous = source;
-            previous_renders.swap(renders);
-            previous_ids.swap(ids);
+            previous_renders.swap(scratch_renders);
+            previous_ids.swap(scratch_ids);
 
             const size_t churn = tombstones + loose_entries.size();
             return churn <= std::max<size_t>(256, entries.size() / 4);

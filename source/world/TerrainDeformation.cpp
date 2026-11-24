@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "TerrainDeformation.h"
 #include "../commands/console/ConsoleCommands.h"
+#include "../core/ThreadPool.h"
 #include "../rhi/RHI_Vertex.h"
 #include <cmath>
 #include <mutex>
@@ -56,6 +57,11 @@ namespace spartan
 
             bool IsEmpty() const { return x1 < x0 || z1 < z0; }
 
+            int64_t Area() const
+            {
+                return IsEmpty() ? 0 : static_cast<int64_t>(x1 - x0 + 1) * static_cast<int64_t>(z1 - z0 + 1);
+            }
+
             void Merge(int32_t a_x0, int32_t a_z0, int32_t a_x1, int32_t a_z1)
             {
                 if (IsEmpty())
@@ -78,8 +84,8 @@ namespace spartan
             int32_t origin_x  = 0;
             int32_t origin_z  = 0;
             bool origin_valid = false;
-            Rect content;     // world cells that hold anything, inclusive
-            Rect dirty;       // storage texels to upload, inclusive
+            Rect content;           // world cells that hold anything, inclusive
+            vector<Rect> dirty;     // storage texels to upload, inclusive
             bool full_upload = true;
         };
 
@@ -111,28 +117,175 @@ namespace spartan
             content_flag.store(false, memory_order_relaxed);
         }
 
-        // a world cell rect lands in storage as up to four rects once the wrap splits it
-        void mark_dirty(State& s, int32_t cx0, int32_t cz0, int32_t cx1, int32_t cz1)
+        void add_storage_dirty(State& s, int32_t sx0, int32_t sz0, int32_t sx1, int32_t sz1)
         {
-            if (cx1 - cx0 + 1 >= res || cz1 - cz0 + 1 >= res)
+            if (sx1 < sx0 || sz1 < sz0)
+            {
+                return;
+            }
+            if (sx0 == 0 && sx1 == mask && sz0 == 0 && sz1 == mask)
             {
                 s.full_upload = true;
+                s.dirty.clear();
                 return;
             }
 
-            const int32_t sx0 = cx0 & mask;
-            const int32_t sx1 = cx1 & mask;
-            const int32_t sz0 = cz0 & mask;
-            const int32_t sz1 = cz1 & mask;
-            const int32_t xs[2][2] = { { sx0, sx0 <= sx1 ? sx1 : mask }, { 0, sx1 } };
-            const int32_t zs[2][2] = { { sz0, sz0 <= sz1 ? sz1 : mask }, { 0, sz1 } };
-            const int32_t x_count  = sx0 <= sx1 ? 1 : 2;
-            const int32_t z_count  = sz0 <= sz1 ? 1 : 2;
+            Rect incoming{ sx0, sz0, sx1, sz1 };
+            for (Rect& existing : s.dirty)
+            {
+                Rect merged = existing;
+                merged.Merge(sx0, sz0, sx1, sz1);
+                // merge only when it does not bloat across disjoint wrapped edges
+                if (merged.Area() <= existing.Area() + incoming.Area() + 4096)
+                {
+                    existing = merged;
+                    return;
+                }
+            }
+
+            if (s.dirty.size() < 16)
+            {
+                s.dirty.push_back(incoming);
+            }
+            else
+            {
+                s.dirty.back().Merge(sx0, sz0, sx1, sz1);
+            }
+        }
+
+        // a world cell rect lands in storage as up to four rects once the wrap splits it
+        void mark_dirty(State& s, int32_t cx0, int32_t cz0, int32_t cx1, int32_t cz1)
+        {
+            if (cx1 < cx0 || cz1 < cz0 || s.full_upload)
+            {
+                return;
+            }
+
+            const bool full_x = (cx1 - cx0 + 1) >= res;
+            const bool full_z = (cz1 - cz0 + 1) >= res;
+            if (full_x && full_z)
+            {
+                s.full_upload = true;
+                s.dirty.clear();
+                return;
+            }
+
+            int32_t xs[2][2];
+            int32_t x_count = 1;
+            if (full_x)
+            {
+                xs[0][0] = 0;
+                xs[0][1] = mask;
+            }
+            else
+            {
+                const int32_t sx0 = cx0 & mask;
+                const int32_t sx1 = cx1 & mask;
+                xs[0][0] = sx0;
+                xs[0][1] = sx0 <= sx1 ? sx1 : mask;
+                xs[1][0] = 0;
+                xs[1][1] = sx1;
+                x_count  = sx0 <= sx1 ? 1 : 2;
+            }
+
+            int32_t zs[2][2];
+            int32_t z_count = 1;
+            if (full_z)
+            {
+                zs[0][0] = 0;
+                zs[0][1] = mask;
+            }
+            else
+            {
+                const int32_t sz0 = cz0 & mask;
+                const int32_t sz1 = cz1 & mask;
+                zs[0][0] = sz0;
+                zs[0][1] = sz0 <= sz1 ? sz1 : mask;
+                zs[1][0] = 0;
+                zs[1][1] = sz1;
+                z_count  = sz0 <= sz1 ? 1 : 2;
+            }
+
             for (int32_t i = 0; i < x_count; i++)
             {
                 for (int32_t j = 0; j < z_count; j++)
                 {
-                    s.dirty.Merge(xs[i][0], zs[j][0], xs[i][1], zs[j][1]);
+                    add_storage_dirty(s, xs[i][0], zs[j][0], xs[i][1], zs[j][1]);
+                }
+            }
+        }
+
+        // row-major clear of a world cell rectangle in the toroidal storage buffer
+        void clear_world_rect(State& s, int32_t cx0, int32_t cz0, int32_t cx1, int32_t cz1)
+        {
+            if (cx1 < cx0 || cz1 < cz0)
+            {
+                return;
+            }
+
+            const bool full_x = (cx1 - cx0 + 1) >= res;
+            const bool full_z = (cz1 - cz0 + 1) >= res;
+            if (full_x && full_z)
+            {
+                fill(s.cells.begin(), s.cells.end(), 0.0f);
+                s.full_upload = true;
+                s.dirty.clear();
+                return;
+            }
+
+            int32_t xs[2][2];
+            int32_t x_count = 1;
+            if (full_x)
+            {
+                xs[0][0] = 0;
+                xs[0][1] = mask;
+            }
+            else
+            {
+                const int32_t sx0 = cx0 & mask;
+                const int32_t sx1 = cx1 & mask;
+                xs[0][0] = sx0;
+                xs[0][1] = sx0 <= sx1 ? sx1 : mask;
+                xs[1][0] = 0;
+                xs[1][1] = sx1;
+                x_count  = sx0 <= sx1 ? 1 : 2;
+            }
+
+            int32_t zs[2][2];
+            int32_t z_count = 1;
+            if (full_z)
+            {
+                zs[0][0] = 0;
+                zs[0][1] = mask;
+            }
+            else
+            {
+                const int32_t sz0 = cz0 & mask;
+                const int32_t sz1 = cz1 & mask;
+                zs[0][0] = sz0;
+                zs[0][1] = sz0 <= sz1 ? sz1 : mask;
+                zs[1][0] = 0;
+                zs[1][1] = sz1;
+                z_count  = sz0 <= sz1 ? 1 : 2;
+            }
+
+            for (int32_t j = 0; j < z_count; j++)
+            {
+                for (int32_t sz = zs[j][0]; sz <= zs[j][1]; sz++)
+                {
+                    float* row = s.cells.data() + static_cast<size_t>(sz) * res;
+                    for (int32_t i = 0; i < x_count; i++)
+                    {
+                        fill(row + xs[i][0], row + xs[i][1] + 1, 0.0f);
+                    }
+                }
+            }
+
+            for (int32_t i = 0; i < x_count; i++)
+            {
+                for (int32_t j = 0; j < z_count; j++)
+                {
+                    add_storage_dirty(s, xs[i][0], zs[j][0], xs[i][1], zs[j][1]);
                 }
             }
         }
@@ -308,8 +461,7 @@ namespace spartan
         lock_guard<mutex> guard(s.lock);
         if (!s.cells.empty() && !s.content.IsEmpty())
         {
-            fill(s.cells.begin(), s.cells.end(), 0.0f);
-            s.full_upload = true;
+            clear_world_rect(s, s.content.x0, s.content.z0, s.content.x1, s.content.z1);
         }
         reset_content(s);
     }
@@ -343,40 +495,44 @@ namespace spartan
             return;
         }
 
+        // When no ruts exist in the window, every cell is already zero on CPU and GPU; just shift the origin.
+        if (s.content.IsEmpty())
+        {
+            s.origin_x = want_x;
+            s.origin_z = want_z;
+            return;
+        }
+
         if (abs(dx) >= res || abs(dz) >= res)
         {
-            fill(s.cells.begin(), s.cells.end(), 0.0f);
-            s.full_upload = true;
+            clear_world_rect(s, s.content.x0, s.content.z0, s.content.x1, s.content.z1);
             reset_content(s);
         }
         else
         {
-            // the columns and rows that enter reuse the storage of the ones that leave, erase them
-            const int32_t enter_x0 = dx > 0 ? s.origin_x + res : want_x;
-            const int32_t enter_x1 = dx > 0 ? want_x + res - 1 : s.origin_x - 1;
-            for (int32_t cx = enter_x0; cx <= enter_x1; cx++)
-            {
-                const int32_t column = cx & mask;
-                for (int32_t row = 0; row < res; row++)
-                {
-                    s.cells[static_cast<size_t>(row) * res + column] = 0.0f;
-                }
-            }
+            // Only cells inside s.content can be non-zero in the leaving strips that get reused by entering coordinates.
             if (dx != 0)
             {
-                mark_dirty(s, enter_x0, 0, enter_x1, res - 1);
+                const int32_t leave_x0 = dx > 0 ? s.origin_x : want_x + res;
+                const int32_t leave_x1 = dx > 0 ? want_x - 1 : s.origin_x + res - 1;
+                const int32_t clear_x0 = max(leave_x0, s.content.x0);
+                const int32_t clear_x1 = min(leave_x1, s.content.x1);
+                if (clear_x0 <= clear_x1)
+                {
+                    clear_world_rect(s, clear_x0, s.content.z0, clear_x1, s.content.z1);
+                }
             }
 
-            const int32_t enter_z0 = dz > 0 ? s.origin_z + res : want_z;
-            const int32_t enter_z1 = dz > 0 ? want_z + res - 1 : s.origin_z - 1;
-            for (int32_t cz = enter_z0; cz <= enter_z1; cz++)
-            {
-                float* row = s.cells.data() + static_cast<size_t>(cz & mask) * res;
-                fill(row, row + res, 0.0f);
-            }
             if (dz != 0)
             {
-                mark_dirty(s, 0, enter_z0, res - 1, enter_z1);
+                const int32_t leave_z0 = dz > 0 ? s.origin_z : want_z + res;
+                const int32_t leave_z1 = dz > 0 ? want_z - 1 : s.origin_z + res - 1;
+                const int32_t clear_z0 = max(leave_z0, s.content.z0);
+                const int32_t clear_z1 = min(leave_z1, s.content.z1);
+                if (clear_z0 <= clear_z1)
+                {
+                    clear_world_rect(s, s.content.x0, clear_z0, s.content.x1, clear_z1);
+                }
             }
         }
 
@@ -871,35 +1027,63 @@ namespace spartan
         lock_guard<mutex> guard(s.lock);
         ensure_cells(s);
 
-        Rect rect = s.dirty;
+        vector<Rect> rects;
         if (s.full_upload)
         {
-            rect = { 0, 0, mask, mask };
+            rects.push_back({ 0, 0, mask, mask });
         }
-        if (rect.IsEmpty())
+        else
+        {
+            rects.swap(s.dirty);
+        }
+        s.dirty.clear();
+        s.full_upload = false;
+
+        if (rects.empty())
         {
             return false;
         }
 
-        TerrainDeformationUpload& upload = uploads.emplace_back();
-        upload.x      = static_cast<uint32_t>(rect.x0);
-        upload.y      = static_cast<uint32_t>(rect.z0);
-        upload.width  = static_cast<uint32_t>(rect.x1 - rect.x0 + 1);
-        upload.height = static_cast<uint32_t>(rect.z1 - rect.z0 + 1);
-        upload.texels.resize(static_cast<size_t>(upload.width) * upload.height);
-        for (uint32_t z = 0; z < upload.height; z++)
+        uploads.reserve(rects.size());
+        for (const Rect& rect : rects)
         {
-            const float* source = s.cells.data() + static_cast<size_t>(upload.y + z) * res + upload.x;
-            uint16_t* target    = upload.texels.data() + static_cast<size_t>(z) * upload.width;
-            for (uint32_t x = 0; x < upload.width; x++)
+            if (rect.IsEmpty())
             {
-                target[x] = vertex_pack::float_to_half(source[x]);
+                continue;
+            }
+
+            TerrainDeformationUpload& upload = uploads.emplace_back();
+            upload.x      = static_cast<uint32_t>(rect.x0);
+            upload.y      = static_cast<uint32_t>(rect.z0);
+            upload.width  = static_cast<uint32_t>(rect.x1 - rect.x0 + 1);
+            upload.height = static_cast<uint32_t>(rect.z1 - rect.z0 + 1);
+            const size_t texel_count = static_cast<size_t>(upload.width) * upload.height;
+            upload.texels.resize(texel_count);
+
+            auto convert_rows = [&](uint32_t z_begin, uint32_t z_end)
+            {
+                for (uint32_t z = z_begin; z < z_end; z++)
+                {
+                    const float* source = s.cells.data() + static_cast<size_t>(upload.y + z) * res + upload.x;
+                    uint16_t* target    = upload.texels.data() + static_cast<size_t>(z) * upload.width;
+                    for (uint32_t x = 0; x < upload.width; x++)
+                    {
+                        target[x] = vertex_pack::float_to_half(source[x]);
+                    }
+                }
+            };
+
+            if (upload.height >= 64 && texel_count >= 65536)
+            {
+                ThreadPool::ParallelLoop(convert_rows, upload.height);
+            }
+            else
+            {
+                convert_rows(0, upload.height);
             }
         }
 
-        s.dirty       = Rect();
-        s.full_upload = false;
-        return true;
+        return !uploads.empty();
     }
 
     Vector4 TerrainDeformation::GetMapping()

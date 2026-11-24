@@ -121,6 +121,7 @@ namespace spartan
             float spline_speed = 0.0f;
             float previous_speed = 0.0f;
             float transition_time = 0.0f;
+            float physics_cooldown = 0.0f;
             float diagnostic_time = 0.0f;
             float diagnostic_interval = 0.0f;
             float recovery_steering = 0.0f;

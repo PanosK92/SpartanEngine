@@ -93,6 +93,7 @@ namespace spartan
         bool bindless_textures_dirty = false;
 
         vector<Render*> frame_render_candidates;
+        vector<Render*> frame_radial_blur_candidates;
 
         void draw_watermark()
         {
@@ -2937,7 +2938,7 @@ namespace spartan
             return spin.spinning && axis.LengthSquared() > 0.5f;
         };
 
-        for (Render* render : frame_render_candidates)
+        for (Render* render : frame_radial_blur_candidates)
         {
             const uint32_t id = render->GetMotionBlurId();
             if (!id || render->HasInstancing() || !render->IsVisible())
@@ -3022,8 +3023,8 @@ namespace spartan
             if (!camera || reach_world <= 0.0f)
                 return false;
 
-            if (clip.w + reach_world < near_z)
-                return true; // behind the camera
+            if (clip.w + reach_world < near_z || clip.w > 35.0f)
+                return true; // behind the camera or too distant for spoke blur to resolve
 
             if (clip.w - reach_world <= near_z)
                 return false; // around the camera, it can be anywhere on screen
@@ -3041,8 +3042,8 @@ namespace spartan
             return record.bounds.x > 1.0f || record.bounds.y > 1.0f || record.bounds.z < 0.0f || record.bounds.w < 0.0f;
         });
 
-        // the largest on screen win when more spin than the frame buffer holds
-        const size_t capacity = size(Renderer::view().frame.radial_blur_hubs);
+        // the largest on screen win when more spin than the frame buffer holds; cap to 8 nearest wheels so radial blur bounds stay tight
+        const size_t capacity = min(size(Renderer::view().frame.radial_blur_hubs), size_t(8));
         if (records.size() > capacity)
         {
             partial_sort(records.begin(), records.begin() + capacity, records.end(), [](const SpinRecord& a, const SpinRecord& b) { return a.coverage > b.coverage; });
@@ -4171,7 +4172,12 @@ namespace spartan
         const uint64_t stamp = Material::NewVisitStamp();
         // Materials and textures have independent indices. Share descriptors for reused
         // textures and reserve slot 0 for absent maps, including textureless grass.
-        unordered_map<RHI_Texture*, uint32_t> texture_indices;
+        static unordered_map<RHI_Texture*, uint32_t> texture_indices;
+        texture_indices.clear();
+        if (texture_indices.bucket_count() < 4096)
+        {
+            texture_indices.reserve(4096);
+        }
         uint32_t texture_count = 1;
         // Keep this order in sync with common_resources_buffers.hlsl.
         static constexpr array gpu_texture_types = {
@@ -4352,7 +4358,7 @@ namespace spartan
             return;
         }
 
-        auto update_material = [&count, &write_values, &texture_indices, &texture_count, stamp](Material* material)
+        auto update_material = [&count, &write_values, &texture_count, stamp](Material* material)
         {
             if (!material->Visit(stamp))
             {
@@ -4941,9 +4947,10 @@ namespace spartan
         // Candidates are classified on the workers, so the serial staging below reads one compact list.
         enum : uint8_t
         {
-            candidate_drawn   = 1 << 0, // visible, or kept off screen for a shadow cascade or the gpu tessellation cull
-            candidate_decals  = 1 << 1, // receiver data is staged even off screen, a reflection may still see it
-            candidate_grouped = 1 << 2  // shares one motion blur stencil value with its group (all wheel parts)
+            candidate_drawn       = 1 << 0, // visible, or kept off screen for a shadow cascade or the gpu tessellation cull
+            candidate_decals      = 1 << 1, // receiver data is staged even off screen, a reflection may still see it
+            candidate_grouped     = 1 << 2, // shares one motion blur stencil value with its group (all wheel parts)
+            candidate_radial_blur = 1 << 3  // visible non-instanced grouped or moving render eligible for radial blur hubs
         };
         struct Candidate
         {
@@ -4998,6 +5005,11 @@ namespace spartan
                 {
                     flags |= candidate_grouped;
                 }
+                if (data.is_visible && data.instances.empty() &&
+                    ((flags & candidate_grouped) || &render->GetEntity()->GetMatrix() != &render->GetEntity()->GetMatrixPrevious()))
+                {
+                    flags |= candidate_radial_blur;
+                }
                 // off screen glass would push the reflection trace behind lighting for nothing
                 if (render->IsVisible() && material->IsTransparent() && material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
                 {
@@ -5027,6 +5039,7 @@ namespace spartan
         static vector<uint32_t> accepted_motion;
         accepted.clear();
         accepted_motion.clear();
+        frame_radial_blur_candidates.clear();
         for (const auto& batch : batches)
         {
             m_transparents_present         |= batch.transparent;
@@ -5057,6 +5070,10 @@ namespace spartan
                 }
                 accepted.push_back(render);
                 accepted_motion.push_back(motion);
+                if (candidate.flags & candidate_radial_blur)
+                {
+                    frame_radial_blur_candidates.push_back(render);
+                }
             }
         }
         SP_PROFILE_CPU_END();
@@ -5219,7 +5236,9 @@ namespace spartan
         };
         static vector<IndirectPlan> draw_plans;
         static vector<vector<float>> cluster_densities;
+        static vector<ExpandedClusterPlan> expanded_plans;
         cluster_densities.resize(m_draw_call_count);
+        expanded_plans.resize(m_draw_call_count);
         static vector<uint32_t> plans;
         draw_plans.resize(m_draw_call_count);
         plans.clear();
@@ -5384,9 +5403,17 @@ namespace spartan
                 draw.cluster_radius = draw.geometry_bounds_diag * 0.5f;
                 draw.max_render_distance_squared = plan.max_distance_sq;
                 if (SelectObjectParent(render, draw, camera, view_position, view_forward, focal_pixels))
+                {
                     cluster_densities[p].clear();
+                    expanded_plans[p].ranges.clear();
+                    expanded_plans[p].levels.clear();
+                    expanded_plans[p].requests.clear();
+                }
                 else
+                {
                     MeasureGeometryClusters(render, draw, camera, view_position, view_forward, focal_pixels, cluster_densities[p]);
+                    PrepareExpandedClusters(render, cluster_densities[p], expanded_plans[p]);
+                }
                 Sb_CullTask* task = m_cull_tasks.data() + plan.task_base;
                 for (uint32_t inst = 0; inst < plan.inst_n; inst += INSTANCE_CULL_BATCH_SIZE, ++task)
                 {
@@ -5409,13 +5436,51 @@ namespace spartan
         SP_PROFILE_CPU_END();
 
         SP_PROFILE_CPU_START("indirect_expand");
+        static vector<ExpandedCommitSlot> commit_slots;
+        commit_slots.resize(plans.size());
         for (size_t p = 0; p < plans.size(); ++p)
         {
             const IndirectPlan& plan = draw_plans[plans[p]];
-            const uint32_t first_extra = m_cull_task_count;
-            ExpandGeometryClusters(plan.dc->render, plan.draw_base, plan.task_base, plan.inst_n,
-                    indirect_draw_capacity, expected_instances_worst_case, expected_survivors_worst_case, cluster_densities[p]);
-            AttachTreeProxyDraw(plan.dc->render, plan.draw_base, plan.task_base, plan.inst_n, first_extra, indirect_draw_capacity);
+            const ExpandedClusterPlan& expanded = expanded_plans[p];
+            if (!expanded.requests.empty())
+            {
+                GeometryBuffer::MergePageRequests(expanded.requests);
+            }
+            PlanExpandedCommit(plan.dc->render, plan.draw_base, plan.task_base, plan.inst_n,
+                indirect_draw_capacity, expected_instances_worst_case, expected_survivors_worst_case,
+                expanded, commit_slots[p]);
+        }
+        if (m_cull_tasks.size() < m_cull_task_count)
+        {
+            m_cull_tasks.resize(m_cull_task_count);
+        }
+        const float diameter_pixels = GetTreeProxyCanopyPixels();
+        if (plans.size() >= 2)
+        {
+            // Dynamic work-stealing across plans so a single huge instanced forest mesh never stalls a static chunk.
+            atomic<uint32_t> next_plan{ 0 };
+            const uint32_t plan_count = static_cast<uint32_t>(plans.size());
+            const uint32_t workers    = min(plan_count, max(ThreadPool::GetThreadCount(), 1u));
+            ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
+            {
+                while (true)
+                {
+                    const uint32_t p = next_plan.fetch_add(1, memory_order_relaxed);
+                    if (p >= plan_count)
+                    {
+                        break;
+                    }
+                    const IndirectPlan& plan = draw_plans[plans[p]];
+                    CommitPlanWithProxyAt(plan.dc->render, plan.draw_base, plan.task_base, plan.inst_n,
+                        expanded_plans[p], commit_slots[p], diameter_pixels);
+                }
+            }, workers);
+        }
+        else if (!plans.empty())
+        {
+            const IndirectPlan& plan = draw_plans[plans[0]];
+            CommitPlanWithProxyAt(plan.dc->render, plan.draw_base, plan.task_base, plan.inst_n,
+                expanded_plans[0], commit_slots[0], diameter_pixels);
         }
         SP_PROFILE_CPU_END();
 
@@ -5611,7 +5676,7 @@ namespace spartan
 
     // scatter beyond its shadow distance casts nothing in either path, the margin lets the
     // camera travel before the set has to be rebuilt
-    constexpr float instanced_tlas_hysteresis = 40.0f;
+    constexpr float instanced_tlas_hysteresis = 55.0f;
 
     // one bounds group of a stale instanced cache, groups are rebuilt in parallel and then appended in order
     struct InstancedTlasGroupWork
@@ -5626,7 +5691,7 @@ namespace spartan
     };
 
     // true when the cache must be rebuilt, its header is then updated and its instance lists cleared
-    static bool begin_instanced_tlas_refresh(InstancedTlasCache& cache, Render* render, Material* material, const Vector3& camera_position)
+    static bool begin_instanced_tlas_refresh(InstancedTlasCache& cache, Render* render, Material* material, const Vector3& camera_position, uint32_t& distance_refresh_budget)
     {
         constexpr float hysteresis = instanced_tlas_hysteresis;
         constexpr float radius_max = 500.0f;
@@ -5635,7 +5700,7 @@ namespace spartan
 
         Entity* entity               = render->GetEntity();
         const uint64_t blas_address  = render->GetAccelerationStructureDeviceAddress();
-        const bool stale =
+        const bool structural_stale =
             cache.render_id != render->GetObjectId() ||
             cache.blas_address != blas_address ||
             cache.material_index != material->GetIndex() ||
@@ -5646,11 +5711,21 @@ namespace spartan
             cache.group_count != static_cast<uint32_t>(render->GetInstanceBoundsGroups().size()) ||
             cache.cull_radius != radius ||
             cache.transform_revision != entity->GetTransformRevision() ||
-            cache.instance_revision != render->GetInstanceRevision() ||
-            Vector3::DistanceSquared(cache.cull_center, camera_position) > hysteresis * hysteresis;
-        if (!stale)
+            cache.instance_revision != render->GetInstanceRevision();
+        const float drift_sq = Vector3::DistanceSquared(cache.cull_center, camera_position);
+        const bool distance_stale = drift_sq > hysteresis * hysteresis;
+        if (!structural_stale && !distance_stale)
         {
             return false;
+        }
+        // Pace purely camera-drift refreshes across frames unless the camera teleported well past the hysteresis shell.
+        if (!structural_stale && drift_sq < (hysteresis * 1.5f) * (hysteresis * 1.5f))
+        {
+            if (distance_refresh_budget == 0)
+            {
+                return false;
+            }
+            --distance_refresh_budget;
         }
 
         cache.cull_center    = camera_position;
@@ -5874,6 +5949,7 @@ namespace spartan
                 static vector<InstancedTlasGroupWork> group_work;
                 static vector<pair<float, const Render::InstanceBoundsGroup*>> candidate_groups;
                 uint32_t group_work_count = 0;
+                uint32_t distance_refresh_budget = 3;
                 const float cull_margin   = instanced_tlas_hysteresis;
                 for (size_t i = 0; i < ray_tracing_instanced_renders.size(); ++i)
                 {
@@ -5887,7 +5963,7 @@ namespace spartan
                         continue;
                     }
 
-                    if (!begin_instanced_tlas_refresh(cache, render, material, camera_position))
+                    if (!begin_instanced_tlas_refresh(cache, render, material, camera_position, distance_refresh_budget))
                     {
                         continue;
                     }
@@ -6032,6 +6108,7 @@ namespace spartan
                 {
                     Render* render = ray_tracing_renders[i];
                     SingleTlasCache& cache = single_tlas_caches[i];
+                    const bool was_valid = cache.valid;
                     cache.valid = false;
                     cache.invalid_transform = false;
                     cache.instanced = render->HasInstancing();
@@ -6041,11 +6118,23 @@ namespace spartan
                     if (!material) continue;
                     const uint64_t device_address = render->GetAccelerationStructureDeviceAddress();
                     if (!device_address || !render->GetVertexBuffer() || !render->GetIndexBuffer()) continue;
-                    const GeometryRange range = render->GetMesh()->GetBlasRange(render->GetSubMeshIndex());
-                    const Matrix& m = entity->GetMatrix();
                     const uint64_t transform_revision = entity->GetTransformRevision();
                     const bool transform_changed = cache.entity_id != entity->GetObjectId() ||
                         cache.transform_revision != transform_revision;
+                    // Fast path for static, non-skinned renders with no decals and unchanged material/BLAS.
+                    if (was_valid && !transform_changed && !materials_uploaded_this_frame &&
+                        cache.instance.device_address == device_address &&
+                        cache.instance.instance_custom_index == material->GetIndex() &&
+                        !render->GetMesh()->IsSkinned() &&
+                        render->GetDecals().empty() &&
+                        cache.geometry.decal_count == 0)
+                    {
+                        fill_uv_draw_fields_from_render(cache.geometry, render);
+                        cache.valid = true;
+                        continue;
+                    }
+                    const GeometryRange range = render->GetMesh()->GetBlasRange(render->GetSubMeshIndex());
+                    const Matrix& m = entity->GetMatrix();
                     if (transform_changed)
                         cache.transform_traceable = is_transform_traceable(m);
                     // Geometry bounds can change independently through skinning;
@@ -6098,6 +6187,7 @@ namespace spartan
             // primary hit history and reconnection vertices both cache tlas slots, one identity per slot lets
             // the temporal pass follow an instance to its new slot when streaming or culling compacts the list
             // moving transforms preserve identity, geometry replacement does not
+            const bool track_restir_slots = cvar_restir_pt.GetValueAs<bool>();
             static vector<uint64_t> slot_keys;
             slot_keys.clear();
             auto slot_key = [](uint64_t owner, uint64_t blas_address, uint64_t geometry)
@@ -6124,7 +6214,10 @@ namespace spartan
                     {
                         output_offsets[i] = output_count++;
                         output_counts[i]  = 1;
-                        slot_keys.push_back(slot_key(cache.entity_id, cache.instance.device_address, (static_cast<uint64_t>(cache.geometry.vertex_offset) << 31) ^ cache.geometry.index_offset));
+                        if (track_restir_slots)
+                        {
+                            slot_keys.push_back(slot_key(cache.entity_id, cache.instance.device_address, (static_cast<uint64_t>(cache.geometry.vertex_offset) << 31) ^ cache.geometry.index_offset));
+                        }
                     }
                 }
                 else if (cache.invalid_transform)
@@ -6151,9 +6244,12 @@ namespace spartan
                 const uint32_t take      = min(static_cast<uint32_t>(cache_size), remaining);
                 output_offsets[i] = output_count;
                 output_counts[i]  = take;
-                for (uint32_t k = 0; k < take; ++k)
+                if (track_restir_slots)
                 {
-                    slot_keys.push_back(slot_key(instances_cache.render_id, instances_cache.blas_address, (1ull << 63) | instances_cache.source_indices[k]));
+                    for (uint32_t k = 0; k < take; ++k)
+                    {
+                        slot_keys.push_back(slot_key(instances_cache.render_id, instances_cache.blas_address, (1ull << 63) | instances_cache.source_indices[k]));
+                    }
                 }
                 output_count += take;
             }
@@ -6228,7 +6324,14 @@ namespace spartan
                 // identities of the tlas being traced and of the tlas the reservoir history was written against
                 static vector<uint64_t> tlas_slot_keys;
                 static vector<uint64_t> history_slot_keys;
-                if (slot_keys != tlas_slot_keys)
+                if (!track_restir_slots)
+                {
+                    tlas_slot_keys.clear();
+                    history_slot_keys.clear();
+                    m_pass_state.restir.history_invalid      = true;
+                    m_pass_state.restir.instance_remap_count = 0;
+                }
+                else if (slot_keys != tlas_slot_keys)
                 {
                     SP_PROFILE_CPU_START("rt_restir_remap");
 
@@ -7415,25 +7518,15 @@ namespace spartan
 
     void Renderer::Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async)
     {
-        // the async path ran the early cull already, its grass populate reads the early hi-z
+        // the async path already ran both cull_early and cull_late before Pass_ComputeBatchA
         if (!scatter_prepared_async)
         {
             Pass_Cull_Early();
-        }
-        Pass_Cull_Late();
-        // populate the gpu procedural grass ring before the geometry rasters that consume it
-        // safe to run unconditionally, the pass early-outs when grass is disabled
-        if (!scatter_prepared_async)
-        {
+            Pass_Cull_Late();
+            // populate the gpu procedural grass ring before the geometry rasters that consume it
+            // safe to run unconditionally, the pass early-outs when grass is disabled
             Pass_Grass_Populate();
             Pass_Grass_Interaction();
-        }
-        if (scatter_prepared_async)
-        {
-            // Depth does not consume procedural scatter. Submit it without the
-            // scatter wait; the subsequent g-buffer submission waits for it.
-            RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
-            RHI_Device::Bind(RHI_Frame_List::Graphics);
         }
         Pass_GBuffer(false, scatter_prepared_async);
         Pass_MeshletVisualize();
@@ -7523,7 +7616,7 @@ namespace spartan
         // particles simulate as they draw, a second view would step the world's emitters twice
         if (eye == 0 && !secondary_render_root_active)
         {
-            Pass_Particles();
+            Pass_Particles_Render();
         }
 
         Pass_AA_Upscale(eye_layer);
@@ -7840,24 +7933,22 @@ namespace spartan
         m_cross_queue_sync.gi_upload_hazard      = false;
         RHI_Work uploads = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, uploads_wait_timeline, uploads_wait_value);
 
-        RHI_Device::Bind(RHI_Frame_List::ComputeA);
-        Pass_ComputeBatchA(update_skysphere);
-        RHI_Work batch_a = RHI_Device::Submit(
-            RHI_Frame_List::ComputeA,
-            nullptr,
-            false,
-            nullptr,
-            uploads.timeline.get(),
-            uploads.value
-        );
-        RHI_SyncPrimitive* batch_a_timeline = batch_a.timeline.get();
-        const uint64_t batch_a_value        = batch_a.value;
-        m_cross_queue_sync.pending_compute_timeline       = batch_a_timeline;
-        m_cross_queue_sync.pending_compute_timeline_value = batch_a_value;
-        RHI_Device::SetFrameWait(batch_a_timeline, batch_a_value);
-
         if (IsPathTracingActive())
         {
+            RHI_Device::Bind(RHI_Frame_List::ComputeA);
+            Pass_ComputeBatchA(update_skysphere);
+            RHI_Work batch_a = RHI_Device::Submit(
+                RHI_Frame_List::ComputeA,
+                nullptr,
+                false,
+                nullptr,
+                uploads.timeline.get(),
+                uploads.value
+            );
+            m_cross_queue_sync.pending_compute_timeline       = batch_a.timeline.get();
+            m_cross_queue_sync.pending_compute_timeline_value = batch_a.value;
+            RHI_Device::SetFrameWait(batch_a.timeline.get(), batch_a.value);
+
             // Keep the normal queue dependency on compute A (AS builds and sky LUTs).
             // Everything after this branch is the hybrid raster pipeline.
             if (RHI_Device::IsRecording(RHI_Frame_List::ComputeB))
@@ -7877,6 +7968,71 @@ namespace spartan
             m_pass_state.path_tracing.accumulation.reset();
             ResetPathTracing();
         }
+
+        Camera* early_camera = Renderer::GetViewCamera();
+        const bool fog_prepared_async = early_camera && (IsRayTracedShadowsActive() || IsRestirActive()) &&
+            !Xr::IsSessionRunning() && !IsSecondaryViewActive();
+
+        // Start early graphics work (wind, VRS, early+late depth prepass) BEFORE recording
+        // Pass_ComputeBatchA so the GPU executes cull_early + cull_late while CPU prepares TLAS.
+        // When fog_prepared_async is active, Pass_Ocean runs on the async compute queue after
+        // surface (ocean_wake) so it never delays cull_early on the graphics critical path.
+        RHI_Work surface;
+        RHI_Work scatter_work;
+        RHI_Device::Bind(RHI_Frame_List::Graphics);
+        if (!secondary_render_root_active)
+        {
+            Pass_WindField();
+            Pass_Vegetation_Interaction();
+            Pass_TerrainDeformation();
+            Pass_OceanWake();
+            Pass_CarRain();
+            if (!fog_prepared_async)
+            {
+                Pass_Ocean();
+            }
+        }
+        if (early_camera)
+        {
+            Pass_VariableRateShading();
+            if (fog_prepared_async)
+            {
+                Pass_Cull_Early();
+                surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+                // cull_late only reads cull_early's Hi-Z/depth, so submit it right away to keep
+                // the graphics queue busy while the CPU records Pass_ComputeBatchA (TLAS build).
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
+                Pass_Cull_Late();
+                RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+
+                // Queue procedural grass scatter on Compute BEFORE Pass_ComputeBatchA (TLAS) so it
+                // runs immediately after cull_early in parallel with cull_late and finishes before
+                // g_buffer starts, eliminating the ~1 ms graphics idle bubble waiting on scatter.
+                RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+                scatter_commands->Begin();
+                RHI_Device::Bind(scatter_commands);
+                Pass_Grass_Populate();
+                Pass_Grass_Interaction();
+                scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
+                scatter_work = scatter_commands->GetWork();
+            }
+        }
+
+        RHI_Device::Bind(RHI_Frame_List::ComputeA);
+        Pass_ComputeBatchA(update_skysphere);
+        RHI_Work batch_a = RHI_Device::Submit(
+            RHI_Frame_List::ComputeA,
+            nullptr,
+            false,
+            nullptr,
+            uploads.timeline.get(),
+            uploads.value
+        );
+        RHI_SyncPrimitive* batch_a_timeline = batch_a.timeline.get();
+        const uint64_t batch_a_value        = batch_a.value;
+        m_cross_queue_sync.pending_compute_timeline       = batch_a_timeline;
+        m_cross_queue_sync.pending_compute_timeline_value = batch_a_value;
+        RHI_Device::SetFrameWait(batch_a_timeline, batch_a_value);
 
         // the sky is first read by the reflection trace, on its own list the scatter work the gbuffer waits on queues ahead of it
         RHI_CommandList* sky_commands = nullptr;
@@ -7902,45 +8058,23 @@ namespace spartan
             RHI_Device::SetFrameWait(sky_work.timeline.get(), sky_work.value);
         };
 
-        // the wind, the car's rain and the sea belong to the world, they advance once per frame with the primary
         RHI_Device::Bind(RHI_Frame_List::Graphics);
-        if (!secondary_render_root_active)
-        {
-            Pass_WindField();
-            Pass_Vegetation_Interaction();
-            Pass_TerrainDeformation();
-            Pass_OceanWake();
-            Pass_CarRain();
-            Pass_Ocean();
-        }
 
-        if (Camera* camera = Renderer::GetViewCamera())
+        if (Camera* camera = early_camera)
         {
-            // Fog injection reads the current ocean, sky and TLAS, but not the
-            // g-buffer. Run it while graphics builds depth and shades geometry.
-            // Atlas shadows and stereo still prepare fog per eye after shadows.
-            const bool fog_prepared_async = (IsRayTracedShadowsActive() || IsRestirActive()) &&
-                !Xr::IsSessionRunning() && !IsSecondaryViewActive();
-            RHI_Work scatter_work;
-            // the shading rate reads last frame's output and both depth prepasses consume it
-            Pass_VariableRateShading();
             if (fog_prepared_async)
             {
-                Pass_Cull_Early();
-                const RHI_Work surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
-                RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
-                scatter_commands->Begin();
-                RHI_Device::Bind(scatter_commands);
-                Pass_Grass_Populate();
-                Pass_Grass_Interaction();
-                scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-                scatter_work = scatter_commands->GetWork();
                 submit_sky();
-                // Queue fog behind its sky and ocean inputs while graphics shades the terrain.
-                // The later compute B signal covers fog as well as screen-space lighting.
+                // Queue ocean FFT + fog on Compute behind sky/TLAS while graphics shades the terrain.
+                // Both wait on surface (ocean_wake + cull_early), and the later ComputeB signal covers them
+                // well before g_buffer_transparent or fog_composite reads their outputs.
                 RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 fog_commands->Begin();
                 RHI_Device::Bind(fog_commands);
+                if (!secondary_render_root_active)
+                {
+                    Pass_Ocean();
+                }
                 Pass_Fog(0, rhi_all_mips);
                 fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
@@ -8019,14 +8153,18 @@ namespace spartan
                 Pass_GraphicsPhase2_ShadowsAndRT();
             }
 
-            // clouds and the opaque reflection trace read only depth, the gbuffer, the tlas and the sky, none of
-            // which compute b writes, so they fill the graphics queue while it waits for shadows and occlusion
+            // clouds, particle fluid/sim/volume-resolve, and the opaque reflection trace read only depth, the gbuffer,
+            // the tlas and the sky, none of which compute b writes, so they fill the graphics queue while it waits for shadows and occlusion
             const bool early_work_recorded = !IsStereoView();
             bool clouds_prepared_early     = false;
             if (early_work_recorded)
             {
                 m_pcb_pass_cpu.eye_index = 0;
                 clouds_prepared_early    = Pass_Clouds_Prepare(rhi_all_mips);
+                if (!secondary_render_root_active)
+                {
+                    Pass_Particles_Simulate();
+                }
             }
 
             if (shadow_maps_required || early_work_recorded)

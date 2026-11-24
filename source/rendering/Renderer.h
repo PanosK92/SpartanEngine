@@ -526,6 +526,8 @@ namespace spartan
         bool Pass_Lut_AtmosphericScattering();
         bool Pass_CloudNoise();
         // passes - particles
+        void Pass_Particles_Simulate();
+        void Pass_Particles_Render();
         void Pass_Particles();
         // passes - gpu procedural grass
         // runs the placement compute + indirect args build, the draw is folded into the g-buffer pass via Pass_Grass_Draw

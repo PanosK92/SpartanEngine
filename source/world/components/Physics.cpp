@@ -511,12 +511,9 @@ namespace spartan
                 CountWorldWork(WorldWork::physics_creation_far_skips);
                 return;
             }
-            // The editor can render and select meshes without cooked collision.
-            // Spread initial actor creation across frames instead of cooking the
-            // entire island in the first visible frame. Play still creates every
-            // required actor synchronously before the next simulation step.
-            // Rendering can stop while the editor is minimized or resources are
-            // preparing. The engine clock still advances once per world tick.
+            // Spread static mesh cooking across frames so driving into a new
+            // town/junction never stalls the main thread. Anything within immediate
+            // activation or collision-interest range still cooks immediately.
             static double creation_tick_ms = -1.0;
             static float creation_time_ms = 0.0f;
             const double tick_ms = Timer::GetTimeMs();
@@ -525,7 +522,22 @@ namespace spartan
                 creation_tick_ms = tick_ms;
                 creation_time_ms = 0.0f;
             }
-            if (!Engine::IsFlagSet(EngineMode::Playing) && creation_time_ms >= 2.0f)
+            const bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+            bool allow_defer = !is_playing;
+            if (is_playing && m_is_static && m_body_type == BodyType::Mesh && m_distance_streaming && creation_time_ms >= 1.5f)
+            {
+                Camera* camera = World::GetCamera();
+                Render* render = GetEntity()->GetComponent<Render>();
+                if (camera && render)
+                {
+                    const Vector3 cam_pos = camera->GetEntity()->GetPosition();
+                    const BoundingBox& bounds = render->GetBoundingBox();
+                    const float immediate_radius = distance_activate + 15.0f;
+                    const float dist_sq = Vector3::DistanceSquared(cam_pos, bounds.GetClosestPoint(cam_pos));
+                    allow_defer = dist_sq > immediate_radius * immediate_radius && !PhysicsWorld::IsCollisionRelevant(bounds);
+                }
+            }
+            if (allow_defer && creation_time_ms >= (is_playing ? 1.5f : 2.0f))
             {
                 return;
             }
@@ -2745,11 +2757,23 @@ namespace spartan
                 params.areaTestEpsilon                 = 0.06f * _scale.length * _scale.length;
                 params.planeTolerance                  = 0.0007f;
                 params.convexMeshCookingType           = PxConvexMeshCookingType::eQUICKHULL;
-                params.suppressTriangleMeshRemapTable  = false;
-                params.buildTriangleAdjacencies        = true;
+                params.suppressTriangleMeshRemapTable  = true;
+                params.buildTriangleAdjacencies        = false;
                 params.buildGPUData                    = false;
-                params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-                params.meshWeldTolerance               = weld_tolerance;
+                params.midphaseDesc.mBVH34Desc.numPrimsPerLeaf = 8;
+                // Procedural terrain detail chunks are already clean regular grids and cook at runtime while driving.
+                const bool is_terrain_detail           = GetEntity() && GetEntity()->GetObjectName().rfind("terrain_detail_", 0) == 0;
+                if (is_terrain_detail)
+                {
+                    params.meshPreprocessParams       |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
+                    params.meshPreprocessParams       |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
+                    params.midphaseDesc.mBVH34Desc.quantized = false;
+                }
+                else
+                {
+                    params.meshPreprocessParams       |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+                    params.meshWeldTolerance           = weld_tolerance;
+                }
                 params.meshAreaMinLimit                = 0.0f;
                 params.meshEdgeLengthMaxLimit          = 500.0f;
                 params.gaussMapLimit                   = 32;

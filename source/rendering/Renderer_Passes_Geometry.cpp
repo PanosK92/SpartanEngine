@@ -2329,14 +2329,14 @@ namespace spartan
                 // Skip distant non-water transparent meshes (far building windows, traffic glass) before binding state.
                 if (is_persp && material->GetProperty(MaterialProperty::IsWater) == 0.0f)
                 {
-                    if (dist_sq > 250.0f * 250.0f)
+                    if (dist_sq > 120.0f * 120.0f)
                     {
                         continue;
                     }
-                    if (dist_sq > 35.0f * 35.0f)
+                    if (dist_sq > 25.0f * 25.0f)
                     {
                         const float radius = box.GetExtents().Length();
-                        if (radius * 2.0f * focal < 5.0f * sqrt(dist_sq))
+                        if (radius * 2.0f * focal < 8.0f * sqrt(dist_sq))
                         {
                             continue;
                         }
@@ -2374,9 +2374,9 @@ namespace spartan
                     last_ib = ib;
                 }
 
-                // Resolve virtual geometry cluster ranges once per draw (skip past 35 m where root LOD suffices for glass).
+                // Resolve virtual geometry cluster ranges once per draw (skip past 10 m where root LOD suffices for glass).
                 bool has_clusters = false;
-                if (dist_sq < 35.0f * 35.0f)
+                if (dist_sq < 10.0f * 10.0f)
                 {
                     if (Mesh* mesh = render->GetMesh(); mesh && !mesh->GetSubMesh(render->GetSubMeshIndex()).HasResidentRootOnly() && !mesh->GetSubMesh(render->GetSubMeshIndex()).clusters.empty())
                     {

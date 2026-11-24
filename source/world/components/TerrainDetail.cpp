@@ -351,10 +351,16 @@ namespace spartan
                 const int32_t z1 = min(z + static_cast<int32_t>(detail_chunk_cells) - 1, max_z);
                 if (x <= x1 && z <= z1)
                 {
-                    m_detail_textures_stale = RebuildDetailRegion(x, z, x1, z1, true) || m_detail_textures_stale;
+                    // Stream geometry first; cook physics in a separate budgeted step so mesh rebuild + PhysX cook never stack into one frame.
+                    m_detail_textures_stale = RebuildDetailRegion(x, z, x1, z1, false) || m_detail_textures_stale;
+                    m_detail_cook_pending.insert(key);
                 }
-            } while (!m_detail_window_queue.empty() && chrono::duration<double, milli>(chrono::steady_clock::now() - start).count() < 2.0);
+            } while (!m_detail_window_queue.empty() && chrono::duration<double, milli>(chrono::steady_clock::now() - start).count() < 1.5);
             SP_PROFILE_CPU_END();
+            if (chrono::duration<double, milli>(chrono::steady_clock::now() - start).count() < 1.5)
+            {
+                CookNearbyDetailChunks();
+            }
         }
         else
         {
