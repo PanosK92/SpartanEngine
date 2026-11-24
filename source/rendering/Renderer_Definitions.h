@@ -107,10 +107,10 @@ namespace spartan
     constexpr std::array<std::array<uint32_t, renderer_max_gpu_scatter_lods>, renderer_max_gpu_scatter_slots>
     renderer_max_gpu_scatter_per_lod =
     {{
-        {{  960u * 1024u,  640u * 1024u,  384u * 1024u }}, // grass, ~31 MiB total
-        {{   32u * 1024u,   48u * 1024u,   48u * 1024u }}, // detail slot 1 (woodland understory / ferns)
-        {{   24u * 1024u,   32u * 1024u,   32u * 1024u }}, // detail slot 2 (wildflowers / ground herbs)
-        {{    8u * 1024u,   16u * 1024u,   24u * 1024u }}  // detail slot 3 (pebbles / micro detail)
+        {{ 1792u * 1024u, 1152u * 1024u,  640u * 1024u }}, // grass, ~56 MiB total
+        {{   64u * 1024u,   96u * 1024u,   96u * 1024u }}, // detail slot 1 (understory / ground herbs)
+        {{   64u * 1024u,   96u * 1024u,   96u * 1024u }}, // detail slot 2 (wildflowers)
+        {{   16u * 1024u,   24u * 1024u,   32u * 1024u }}  // detail slot 3 (pebbles / micro detail)
     }};
 
     constexpr uint32_t renderer_gpu_scatter_cap(uint32_t slot, uint32_t lod)

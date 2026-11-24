@@ -102,7 +102,7 @@ static const uint  grass_blades_per_thread = 1u;
 static const float grass_patch_max_boost = 4.0f;
 // ceiling on the patch and frustum boosts combined, this is what bounds the dispatch, every thread
 // past it would be work the atomic cap refuses to accept anyway
-static const float grass_max_boost = 8.0f;
+static const float grass_max_boost = 10.0f;
 
 // what fraction of the eligible ground survives the patch field on average, the threshold keeps
 // coverage exactly and the fringe is symmetric about it so it costs nothing on average
@@ -692,6 +692,16 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
         return false;
     }
 
+    // Smooth scale emergence/recession across ring fade bands so distant grass blades, wildflowers,
+    // and understory plants grow silently from tiny seeds instead of popping in at full size.
+    float edge_fade = fade_in * fade_out;
+    float ring_grow = 1.0f;
+    if (edge_fade < 0.999f)
+    {
+        float edge_margin = (lod_weight - lod_random) / max(cell_keep * patch, 1e-4f);
+        ring_grow         = smoothstep(0.0f, 0.34f, edge_margin);
+    }
+
     // slope reject, two forward taps reusing the centre height, paid only by visible blades
     float3 surface_normal = sample_terrain_normal(
         world_xz,
@@ -797,9 +807,11 @@ bool grass_place_candidate(GrassPlacementParams params, uint2 cell_id, uint blad
     // exponent and the blades shrink geometrically, which is how a tuft actually thins out
     scale_01 = lerp(scale_01_min, scale_01, saturate(patch * 1.4f));
 
-    // a blade about to be thinned out is already down to a fraction of its height, so it leaves and
-    // arrives among taller neighbours instead of popping at full size, the packed scale is logarithmic
-    scale_01 += log2(lerp(grass_thin_exit_scale, 1.0f, thin_grow)) / (2.0f * 6.643856f);
+    // a blade about to be thinned out or crossing a ring fade band is already down to a fraction of
+    // its height, so it leaves and arrives among taller neighbours instead of popping at full size,
+    // the packed scale is logarithmic
+    float fade_scale = lerp(grass_thin_exit_scale, 1.0f, thin_grow) * lerp(0.12f, 1.0f, ring_grow);
+    scale_01        += log2(fade_scale) / (2.0f * 6.643856f);
 
     // a stone that has come to rest is not flat on the ground. the lean goes on after the slope gate so
     // it cannot smuggle an instance onto a cliff, and the mesh sits low enough that the raised edge
@@ -1187,6 +1199,14 @@ bool grass_place_candidate_in_cell(
         return false;
     }
 
+    float edge_fade = fade_in * fade_out;
+    float ring_grow = 1.0f;
+    if (edge_fade < 0.999f)
+    {
+        float edge_margin = (lod_weight - lod_random) / max(cell.cell_keep * patch, 1e-4f);
+        ring_grow         = smoothstep(0.0f, 0.34f, edge_margin);
+    }
+
     float3 surface_normal = sample_terrain_normal(world_xz, cell.height_size, cell.params.terrain_mapping, local_y);
     bool below_slope_floor = cell.params.min_slope_cos < 1.0f && surface_normal.y > cell.params.min_slope_cos;
     if (surface_normal.y < cell.params.max_slope_cos || below_slope_floor)
@@ -1279,7 +1299,8 @@ bool grass_place_candidate_in_cell(
     float sc_shaped  = saturate(lerp(tuft_curve, sc, jitter_mix) + emergent);
     float scale_01   = lerp(cell.scale_01_min, cell.scale_01_max, sc_shaped);
     scale_01         = lerp(cell.scale_01_min, scale_01, saturate(patch * 1.4f));
-    scale_01        += log2(lerp(grass_thin_exit_scale, 1.0f, thin_grow)) / (2.0f * 6.643856f);
+    float fade_scale = lerp(grass_thin_exit_scale, 1.0f, thin_grow) * lerp(0.12f, 1.0f, ring_grow);
+    scale_01        += log2(fade_scale) / (2.0f * 6.643856f);
 
     if (cell.tilt_deg > 0.0f)
     {

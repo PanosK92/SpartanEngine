@@ -679,7 +679,7 @@ struct grass_bend
     float  rest_scale;        // how far the breeze deepens or relaxes the arch
 };
 
-grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 instance_up, float instance_scale, float time_offset, uint instance_id)
+grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 instance_up, float3 blade_forward, float instance_scale, float time_offset, uint instance_id)
 {
     float time = (float)buffer_frame.time + time_offset;
 
@@ -743,13 +743,24 @@ grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 i
     bend.rest_scale = 1.0f;
     if (is_grass_blade)
     {
-        // Gravity gives every blade a gentle resting arch, even with no wind.
-        // Taller mature blades arch more gracefully than short stiff shoots, breaking up the vertical picket look.
-        float rest_heading  = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
+        // Gravity gives every blade a graceful resting arch over its own broad face (midrib),
+        // rather than bending sideways edge-on. Taller mature blades arch more than short shoots.
         float height_factor = saturate((instance_scale - 0.35f) / 1.0f);
-        float base_arch     = lerp(7.0f, 18.0f, hash(instance_pos.zx + float2(73.1f, 5.9f)));
-        float tall_droop    = height_factor * lerp(6.0f, 18.0f, hash(instance_pos.xz * 1.7f + float2(11.3f, 37.9f)));
-        bend.rest_angle     = (base_arch + tall_droop) * DEG_TO_RAD;
+        float base_arch     = lerp(18.0f, 36.0f, hash(instance_pos.zx + float2(73.1f, 5.9f)));
+        float tall_droop    = height_factor * lerp(10.0f, 24.0f, hash(instance_pos.xz * 1.7f + float2(11.3f, 37.9f)));
+
+        // When looking steeply down at grass near the camera's feet, upright blades foreshorten
+        // into tiny green dots and expose naked soil. Smoothly open each blade's resting arch
+        // outward along its own deterministic face direction so top-down views show full ribbons.
+        float3 cam_pos       = time_offset < 0.0f ? buffer_frame.camera_position_previous : buffer_frame.camera_position;
+        float3 to_cam        = cam_pos - instance_pos;
+        float  cam_dist_3d   = length(to_cam);
+        float  up_dot_view   = dot(instance_up, to_cam / max(cam_dist_3d, 1e-4f));
+        float  steep_look    = smoothstep(0.35f, 0.92f, up_dot_view);
+        float  near_feet     = 1.0f - smoothstep(4.0f, 18.0f, cam_dist_3d);
+        float  topdown_splay = steep_look * lerp(14.0f, 40.0f, near_feet);
+        bend.rest_angle      = min(base_arch + tall_droop + topdown_splay, 76.0f) * DEG_TO_RAD;
+
         // Let the resting arch deepen and relax in the breeze. Keep its direction
         // stable, and retain the exact resting pose at zero wind. Shared gusts drive
         // the strength while each blade's phase/frequency keeps the flex from marching
@@ -757,9 +768,25 @@ grass_bend grass_bend_compute(bool is_grass_blade, float3 instance_pos, float3 i
         float rest_flex = sin(time * (1.3f + nat_freq * 0.2f) + instance_phase) * 0.65f +
                           sin(time * 0.93f + instance_phase * 1.7f) * 0.35f;
         bend.rest_scale = 1.0f + rest_flex * wind_response * (0.10f + 0.14f * ws.gust);
-        float3 rest_direction = float3(cos(rest_heading), 0.0f, sin(rest_heading));
+
+        // Arch broad-side along the blade's own face normal with a tiny deterministic twist,
+        // so blades radiate naturally in 360 degrees without ever collapsing edge-on from above.
+        float3 rest_direction = blade_forward - instance_up * dot(blade_forward, instance_up);
+        float  dir_len_sq     = dot(rest_direction, rest_direction);
+        if (dir_len_sq > 1e-6f)
+        {
+            rest_direction *= rsqrt(dir_len_sq);
+            float  twist     = (hash(instance_pos.xz + float2(17.3f, 91.7f)) - 0.5f) * (24.0f * DEG_TO_RAD);
+            float3 side      = cross(instance_up, rest_direction);
+            rest_direction   = normalize(rest_direction * cos(twist) + side * sin(twist));
+        }
+        else
+        {
+            float rest_heading = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
+            rest_direction     = float3(cos(rest_heading), 0.0f, sin(rest_heading));
+        }
         float3 rest_axis = cross(instance_up, rest_direction);
-        bend.rest_axis = rest_axis * rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
+        bend.rest_axis   = rest_axis * rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
     }
     else
     {
@@ -958,7 +985,7 @@ struct vertex_processing
 #if defined(GRASS_BEND_PRECOMPUTED)
             grass_bend bend = grass_bend_precomputed[time_offset < 0.0f ? 1 : 0];
 #else
-            grass_bend bend = grass_bend_compute(surface.is_grass_blade(), instance_pos, instance_up, length(transform[1].xyz), time_offset, instance_id);
+            grass_bend bend = grass_bend_compute(surface.is_grass_blade(), instance_pos, instance_up, transform[2].xyz, length(transform[1].xyz), time_offset, instance_id);
 #endif
 
             // height fraction along the blade, base = 0, tip = 1
@@ -972,7 +999,7 @@ struct vertex_processing
 
             if (surface.is_grass_blade() || surface.is_flower())
             {
-                float rest_profile = surface.is_grass_blade() ? h_cantilever : h;
+                float rest_profile = surface.is_grass_blade() ? lerp(h, h_cantilever, 0.35f) : h;
                 float rest_angle = bend.rest_angle * rest_profile;
                 rest_angle *= bend.rest_scale;
                 float3 rotation_vector = axis * angle + bend.rest_axis * rest_angle;
@@ -1544,11 +1571,21 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         float height_bias  = lerp(0.14f, -0.08f, saturate((blade_scale - 0.35f) / 1.0f)) + is_tall_oat * 0.28f;
         vertex.uv_misc.w   = saturate(meadow_macro * 0.36f + meadow_tuft * 0.34f + blade_var * 0.30f + height_bias);
 
-        // Botanical blade aspect: slender photographic meadow blades, with extra-fine tall emergent dry stalks
-        float width_comp = clamp(pow(blade_scale, -0.35f), 0.65f, 1.22f);
-        float width_var  = lerp(0.72f, 1.08f, hash(root_xz * 1.9f + float2(13.7f, 47.3f)));
-        local_scale.x    = width_comp * width_var * lerp(0.84f, 0.58f, is_tall_oat);
-        local_scale.y    = tuft_height;
+        // Botanical blade aspect: slender photographic meadow blades, with extra-fine tall emergent dry stalks.
+        // Smoothly widen blades with distance as rings thin AND gently broaden when viewed steeply from above.
+        float3 root_pos      = transform[3].xyz;
+        float3 to_cam_v      = buffer_frame.camera_position - root_pos;
+        float  cam_dist_3d_v = length(to_cam_v);
+        float  cam_dist      = length(to_cam_v.xz);
+        float3 root_up       = transform[1].xyz / blade_scale;
+        float  steep_v       = smoothstep(0.42f, 0.92f, dot(root_up, to_cam_v / max(cam_dist_3d_v, 1e-4f)));
+        float  topdown_widen = lerp(1.0f, 1.85f, steep_v * (1.0f - smoothstep(3.0f, 16.0f, cam_dist_3d_v)));
+        float  dist_widen    = lerp(1.0f, 2.75f, smoothstep(14.0f, 145.0f, cam_dist));
+        float  dist_height   = lerp(1.0f, 1.26f, smoothstep(14.0f, 115.0f, cam_dist));
+        float  width_comp    = clamp(pow(blade_scale, -0.35f), 0.65f, 1.22f);
+        float  width_var     = lerp(0.76f, 1.12f, hash(root_xz * 1.9f + float2(13.7f, 47.3f)));
+        local_scale.x        = width_comp * width_var * lerp(0.95f, 0.65f, is_tall_oat) * dist_widen * topdown_widen;
+        local_scale.y        = tuft_height * dist_height;
     }
     else if (surface.is_flower())
     {
@@ -1600,8 +1637,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
             stem_mult = 0.84f;
             head_mult = 0.82f; // Pink Rockrose
         }
-        float stem_jitter = lerp(0.86f, 1.12f, hash(root_xz * 4.1f + float2(61.3f, 27.9f)));
-        local_scale       = float3(head_mult, stem_mult * stem_jitter, head_mult);
+        float stem_jitter  = lerp(0.86f, 1.12f, hash(root_xz * 4.1f + float2(61.3f, 27.9f)));
+        float flower_dist  = length(root_xz - buffer_frame.camera_position.xz);
+        float flower_widen = lerp(1.0f, 1.55f, smoothstep(22.0f, 140.0f, flower_dist));
+        float flower_lift  = lerp(1.0f, 1.22f, smoothstep(22.0f, 140.0f, flower_dist));
+        local_scale        = float3(head_mult * flower_widen, stem_mult * stem_jitter * flower_lift, head_mult * flower_widen);
     }
 
     // transform position to world space

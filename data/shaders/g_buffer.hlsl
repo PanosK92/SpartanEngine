@@ -29,10 +29,10 @@ struct gbuffer
 // the light (the foliage patch of a colour chart is 0.095, 0.150, 0.056) and its green is only 1.2 to 1.5 times
 // its red, lime tips with twice as much green as red are what reads as nuclear once the blade is lit properly.
 // The root is thatch, the colour of the ground the blade grows out of.
-static const float3 grass_base          = float3(0.032f, 0.036f, 0.015f);
-static const float3 grass_mature         = float3(0.045f, 0.070f, 0.020f);
-static const float3 grass_fresh          = float3(0.064f, 0.094f, 0.025f);
-static const float3 grass_olive          = float3(0.084f, 0.092f, 0.029f);
+static const float3 grass_base          = float3(0.036f, 0.044f, 0.017f);
+static const float3 grass_mature         = float3(0.052f, 0.082f, 0.022f);
+static const float3 grass_fresh          = float3(0.074f, 0.112f, 0.028f);
+static const float3 grass_olive          = float3(0.092f, 0.105f, 0.032f);
 static const float3 grass_straw          = float3(0.195f, 0.152f, 0.058f);
 static const float  grass_normal_lean    = 0.18f;
 static const float3 flower_stem_base    = float3(0.032f, 0.050f, 0.017f);
@@ -318,22 +318,24 @@ float3 compute_grass_color(float height_percent, float variation)
     return lerp(root_tint, leaf_tint, t);
 }
 
-// grass seen from past its last ring, the terrain under a meadow takes on the colour of the carpet the
-// blades and cards would have drawn, gated by the same biome, ground, slope and patch rules the
-// populate pass uses so a meadow keeps its outline to the horizon for the cost of a few taps
-static const float grass_far_undercoat  = 0.45f; // share of the carpet laid under the rings, the ground between tufts is thatch, not soil
-static const float grass_far_top_cover  = 0.6f;  // fraction of the ground a full meadow hides seen from straight above
-static const float grass_far_brightness = 1.0f;  // opaque ground has no transmission, this stands in for the light blades let through
+// grass seen from near root thatch all the way to the horizon: the terrain under a meadow carries a
+// dark mossy root-thatch undercoat beneath the near blades and ramps smoothly into a multi-scale
+// populated grass & low-scrub carpet as the real blades thin out, gated by the same biome, altitude,
+// ground, slope and patch rules the populate pass uses so meadows never turn bald
+static const float grass_far_near_undercoat = 0.70f; // dark mossy thatch undercoat right inside grass pockets so pale dirt doesn't glare between near blades
+static const float grass_far_mid_cover      = 0.92f; // carpet weight reached by outer_start so mid-distance thinned rings never expose a bald band
+static const float grass_far_top_cover      = 0.90f; // fraction of the ground a full meadow hides seen from straight above
+static const float grass_far_brightness     = 1.0f;  // opaque ground has no transmission, this stands in for the light blades let through
 
 // the clearing is the heart of the bare ground between pockets, as fractions of the pocket threshold in the
 // uniform patch space, fully bare below inner and gone by outer, the ground between outer and the pocket edge
 // keeps its own layer, the layer scoring is not linear in this so the share of soil on screen has to be looked at
-static const float grass_clearing_inner = 0.1f;
-static const float grass_clearing_outer = 0.28f;
+static const float grass_clearing_inner = 0.06f;
+static const float grass_clearing_outer = 0.18f;
 
 struct GrassGround
 {
-    float density;  // how thick the grass slot stands here, biome, slope and pocket together
+    float density;  // how thick the grass slot stands here, biome, altitude, slope and pocket together
     float clearing; // 1 in the heart of the bare ground between pockets, 0 under a pocket and where no grass could grow anyway
 };
 
@@ -351,6 +353,19 @@ GrassGround grass_ground_evaluate(float3 position_world, float3 normal_world, fl
 
     float4 fade = buffer_frame.grass_far_fade;
     float4 gate = buffer_frame.grass_far_gate;
+
+    float h_min      = buffer_frame.grass_far_patch.z;
+    float h_max      = buffer_frame.grass_far_patch.w;
+    float height_fit = 1.0f;
+    if (h_max > h_min)
+    {
+        height_fit = smoothstep(h_min - 1.0f, h_min + 2.5f, position_world.y)
+                   * (1.0f - smoothstep(h_max - 28.0f, h_max + 6.0f, position_world.y));
+        if (height_fit <= 0.0f)
+        {
+            return ground;
+        }
+    }
 
     float slope_fit = saturate((acos(saturate(gate.y)) - acos(saturate(normal_world.y))) / grass_slope_fade);
     if (slope_fit <= 0.0f)
@@ -417,44 +432,53 @@ GrassGround grass_ground_evaluate(float3 position_world, float3 normal_world, fl
     patch        = lerp(patch, patch_mean, settle);
     clearing    *= 1.0f - settle;
 
-    ground.density  = biome * slope_fit * patch;
-    ground.clearing = biome * slope_fit * clearing;
+    ground.density  = biome * height_fit * slope_fit * patch;
+    ground.clearing = biome * height_fit * slope_fit * clearing;
     return ground;
 }
 
-float grass_far_cover(float3 normal_world, float3 view_direction, float distance, float density)
+float grass_far_cover(float3 normal_world, float3 view_direction, float distance, float density, out float ring_blend)
 {
-    if (buffer_frame.grass_far_tint.w <= 0.0f)
+    ring_blend = 0.0f;
+    if (buffer_frame.grass_far_tint.w <= 0.0f || density <= 0.0f)
     {
         return 0.0f;
     }
 
-    float4 fade = buffer_frame.grass_far_fade;
-    float ring  = lerp(grass_far_undercoat * smoothstep(fade.x, fade.y, distance), 1.0f, smoothstep(fade.y, fade.z, distance));
-    if (ring <= 0.0f)
-    {
-        return 0.0f;
-    }
+    float4 fade      = buffer_frame.grass_far_fade;
+    float  mid_t     = smoothstep(fade.x, fade.y, distance);
+    float  far_t     = smoothstep(fade.y, fade.z, distance);
+    ring_blend       = saturate(mid_t * 0.80f + far_t * 0.20f);
+    float  ring      = lerp(lerp(grass_far_near_undercoat, grass_far_mid_cover, mid_t), 1.0f, far_t);
 
     // a meadow hides more of the ground the flatter it is seen, beer lambert through the blade layer
     float n_dot_v = saturate(abs(dot(normal_world, view_direction)));
-    float opacity = 1.0f - pow(saturate(1.0f - grass_far_top_cover * density), 1.0f / max(n_dot_v, 0.15f));
+    float opacity = 1.0f - pow(saturate(1.0f - grass_far_top_cover * density), 1.0f / max(n_dot_v, 0.18f));
     return opacity * ring;
 }
 
-float3 grass_far_color(float3 position_world)
+float3 grass_far_color(float3 position_world, float n_dot_v, float ring_blend)
 {
-    // the blades draw their colour from a uniform variation, far enough out they average over it
+    // Near the feet the carpet sits beneath real 3D blades so it should read as shaded root thatch;
+    // farther out, grazing angles see warm sunlit blade tips while overhead views look deeper into the sward.
+    float height_view   = lerp(0.76f, 0.48f, saturate(n_dot_v));
+    float height_sample = lerp(0.42f, height_view, ring_blend);
     float3 leaf = (
-        compute_grass_color(0.7f, 0.125f) +
-        compute_grass_color(0.7f, 0.375f) +
-        compute_grass_color(0.7f, 0.625f) +
-        compute_grass_color(0.7f, 0.875f)
+        compute_grass_color(height_sample, 0.125f) +
+        compute_grass_color(height_sample, 0.375f) +
+        compute_grass_color(height_sample, 0.625f) +
+        compute_grass_color(height_sample, 0.875f)
     ) * 0.25f;
 
-    // neighbouring tufts share colour over a few metres, a slow drift keeps the carpet from reading as paint
-    float drift = grass_value_noise(position_world.xz * (1.0f / 23.0f), 0x3c1u) * 0.5f + 0.5f;
-    return leaf * buffer_frame.grass_far_tint.rgb * lerp(0.85f, 1.15f, drift) * grass_far_brightness;
+    // Match the warm chlorophyll tip tint applied in GRASS_SPECIALIZED so the handoff has no colour step
+    float tip_warmth = smoothstep(0.58f, 0.95f, height_sample) * 0.17f;
+    leaf             = lerp(leaf, leaf * float3(1.12f, 1.08f, 0.84f), tip_warmth);
+
+    // Multi-scale meadow colour rhythm: hillside swales (~34m) + broad sun/moisture drift (~115m)
+    float drift_mid   = grass_value_noise(position_world.xz * (1.0f / 29.0f), 0x3c1u) * 0.5f + 0.5f;
+    float drift_macro = grass_value_noise(position_world.xz * (1.0f / 112.0f), 0x5a7u) * 0.5f + 0.5f;
+    float3 warm_shift = lerp(float3(0.90f, 0.96f, 0.92f), float3(1.12f, 1.05f, 0.84f), drift_macro);
+    return leaf * buffer_frame.grass_far_tint.rgb * warm_shift * lerp(0.86f, 1.14f, drift_mid) * grass_far_brightness;
 }
 
 // Gaussian color variation around a species' ideal linear RGB color:
@@ -776,7 +800,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         albedo.rgb           = saturate(albedo.rgb * blade_albedo);
         albedo.a             = 1.0f;
 
-        occlusion            = lerp(0.14f, 1.0f, smoothstep(0.0f, 0.72f, height_percent));
+        occlusion            = lerp(0.24f, 1.0f, smoothstep(0.0f, 0.65f, height_percent));
         float dry_blend      = smoothstep(0.45f, 0.92f, variation);
         float tip_gloss      = lerp(0.60f, 0.44f, smoothstep(0.15f, 0.85f, height_percent));
         roughness            = lerp(tip_gloss, 0.86f, dry_blend);
@@ -1075,7 +1099,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
 
         // the grass slot's own pocket field, the layers read it so soil shows exactly where the blades stop
-        GrassGround grass_ground = grass_ground_evaluate(position_world, vertex.normal, max(length(dpdx), length(dpdy)));
+        float terrain_footprint  = max(length(dpdx), length(dpdy));
+        GrassGround grass_ground = grass_ground_evaluate(position_world, vertex.normal, terrain_footprint);
         TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians, grass_ground.clearing);
 
         // parallax, the two leading layers are marched as one height field in metres and the offset uv then
@@ -1129,19 +1154,73 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float rut_offset = terrain_deformation_offset(position_world.xz);
         float rut_bare   = saturate(abs(rut_offset) / 0.01f);
 
-        // past the blades the meadow is still there, it just has to be drawn as the carpet colour
-        float grass_cover = grass_far_cover(vertex.normal, -camera_to_pixel / max(distance, 1e-4f), distance, grass_ground.density);
-        grass_cover      *= 1.0f - rut_bare;
+        // near-to-horizon populated grass, herb & scrub carpet: dark mossy root thatch under near blades,
+        // ramping seamlessly into multi-scale grass tufts, meadow hummocks, subtle wildflower drifts,
+        // and distant evergreen garrigue/understory cushions so hillsides look richly populated to the horizon
+        float3 grass_view_dir = -camera_to_pixel / max(distance, 1e-4f);
+        float  grass_ring     = 0.0f;
+        float  grass_cover    = grass_far_cover(vertex.normal, grass_view_dir, distance, grass_ground.density, grass_ring);
+        grass_cover          *= 1.0f - rut_bare;
         if (grass_cover > 0.0f)
         {
-            // Multi-scale tuft micro-shadow and roughness relief so distant grassy hillsides read as textured meadow rather than flat paint
-            float far_tuft  = grass_value_noise(position_world.xz * 0.38f, 0x71bu) * 0.5f + 0.5f;
-            float far_clump = grass_value_noise(position_world.xz * 0.08f, 0x94du) * 0.5f + 0.5f;
-            float far_occ   = lerp(0.56f, 0.96f, saturate(far_tuft * 0.65f + far_clump * 0.35f));
-            float far_rough = lerp(0.68f, 0.88f, far_clump);
-            float3 far_col  = grass_far_color(position_world) * lerp(0.86f, 1.12f, far_tuft);
+            float2 p_xz         = position_world.xz;
+            float  grass_ndv    = saturate(abs(dot(vertex.normal, grass_view_dir)));
+
+            // Alias-free frequency attenuation based on world-space pixel footprint
+            float  fine_atten   = 1.0f - smoothstep(0.14f, 0.55f, terrain_footprint);
+            float  clump_atten  = 1.0f - smoothstep(0.65f, 2.40f, terrain_footprint);
+            float  shrub_atten  = 1.0f - smoothstep(2.20f, 8.00f, terrain_footprint);
+
+            // Scale 1 (~0.7m): fine grass tuft texture + analytic slope gradient
+            float  tuft_c       = grass_value_noise(p_xz * 1.45f, 0x71bu) * 0.5f + 0.5f;
+            float  tuft_x       = grass_value_noise((p_xz + float2(0.28f, 0.0f)) * 1.45f, 0x71bu) * 0.5f + 0.5f;
+            float  tuft_z       = grass_value_noise((p_xz + float2(0.0f, 0.28f)) * 1.45f, 0x71bu) * 0.5f + 0.5f;
+            float  far_tuft     = lerp(0.5f, tuft_c, fine_atten);
+
+            // Scale 2 (~3.0m): rolling meadow hummocks & tall grass waves (matches growth_field)
+            float  clump_c      = grass_value_noise(p_xz * 0.34f, 0x94du) * 0.5f + 0.5f;
+            float  clump_x      = grass_value_noise((p_xz + float2(0.9f, 0.0f)) * 0.34f, 0x94du) * 0.5f + 0.5f;
+            float  clump_z      = grass_value_noise((p_xz + float2(0.0f, 0.9f)) * 0.34f, 0x94du) * 0.5f + 0.5f;
+            float  far_clump    = lerp(0.5f, clump_c, clump_atten);
+
+            // Scale 3 (~8.5m): distant low evergreen scrub / fern / garrigue cushions visible out to kilometres
+            float  scrub_n      = grass_value_noise(p_xz * 0.12f, 0x4e9u) * 0.5f + 0.5f;
+            float  scrub_nx     = grass_value_noise((p_xz + float2(2.2f, 0.0f)) * 0.12f, 0x4e9u) * 0.5f + 0.5f;
+            float  scrub_nz     = grass_value_noise((p_xz + float2(0.0f, 2.2f)) * 0.12f, 0x4e9u) * 0.5f + 0.5f;
+            float  scrub_mask   = smoothstep(0.58f, 0.84f, scrub_n) * grass_ring * lerp(0.35f, 1.0f, smoothstep(40.0f, 180.0f, distance));
+
+            // Analytic canopy normal relief (tuft roughness + hummock rolls + rounded scrub cushions)
+            float2 grad_xz      = float2(tuft_x - tuft_c, tuft_z - tuft_c) * (1.15f * fine_atten)
+                                + float2(clump_x - clump_c, clump_z - clump_c) * (0.95f * clump_atten)
+                                + float2(scrub_nx - scrub_n, scrub_nz - scrub_n) * (1.35f * scrub_mask * shrub_atten);
+            float3 canopy_n     = normalize(vertex.normal - float3(grad_xz.x, 0.0f, grad_xz.y) * (0.65f * grass_ring + 0.25f));
+
+            // Base meadow colour + sunlit hummock tips + dark evergreen scrub cushions
+            float3 far_col      = grass_far_color(position_world, grass_ndv, grass_ring);
+            far_col            *= lerp(0.84f, 1.15f, far_tuft * 0.55f + far_clump * 0.45f);
+            float3 scrub_col    = float3(0.036f, 0.058f, 0.021f) * lerp(0.85f, 1.18f, scrub_n);
+            far_col             = lerp(far_col, scrub_col, scrub_mask * 0.52f);
+
+            // Subtle mid-to-far wildflower drift flecks inside lush meadows so blooms hand off softly past the flower rings
+            float  flower_band  = smoothstep(30.0f, 100.0f, distance) * (1.0f - smoothstep(260.0f, 650.0f, distance));
+            float  flower_core  = smoothstep(0.52f, 0.85f, grass_ground.density) * flower_band * (1.0f - scrub_mask);
+            if (flower_core > 0.01f)
+            {
+                float fl_drift  = grass_value_noise(p_xz * 0.11f, 0x2b3u) * 0.5f + 0.5f;
+                float fl_fleck  = grass_value_noise(p_xz * 0.92f, 0x617u) * 0.5f + 0.5f;
+                float fl_spot   = smoothstep(0.68f, 0.90f, fl_fleck) * smoothstep(0.38f, 0.72f, fl_drift) * fine_atten;
+                float3 fl_tint  = fl_drift > 0.62f ? float3(0.46f, 0.38f, 0.10f) : (fl_drift > 0.48f ? float3(0.42f, 0.40f, 0.34f) : float3(0.28f, 0.16f, 0.30f));
+                far_col         = lerp(far_col, fl_tint, fl_spot * flower_core * 0.24f);
+            }
+
+            // Canopy cavity AO: deeper shadow in root thatch, tuft hollows, and beneath scrub cushions
+            float  tuft_occ     = lerp(0.50f, 0.96f, saturate(far_tuft * 0.55f + far_clump * 0.45f));
+            float  thatch_occ   = lerp(0.48f, tuft_occ, grass_ring);
+            float  far_occ      = thatch_occ * lerp(1.0f, 0.62f, scrub_mask);
+            float  far_rough    = lerp(0.62f, 0.86f, lerp(far_clump, 0.88f, scrub_mask * 0.6f));
+
             albedo.rgb = lerp(albedo.rgb, far_col, grass_cover);
-            normal     = normalize(lerp(normal, vertex.normal, grass_cover * 0.45f));
+            normal     = normalize(lerp(normal, canopy_n, grass_cover * lerp(0.35f, 0.82f, grass_ring)));
             roughness  = lerp(roughness, far_rough, grass_cover);
             metalness *= 1.0f - grass_cover;
             occlusion *= lerp(1.0f, far_occ, grass_cover);

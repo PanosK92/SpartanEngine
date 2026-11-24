@@ -78,7 +78,7 @@ void main_ms(
         blade_interactions[0][blade] = sample_vegetation_interaction(root.xz, 0.0f);
         blade_roots[0][blade]        = float4(pressure0, grass_camera_bias(root, up, transform[2].xyz, pressure0.z, 0.0f));
         blade_transforms[blade]      = transform;
-        blade_bends_current[blade]   = grass_bend_compute(true, root, up, blade_scale, 0.0f, instance_id);
+        blade_bends_current[blade]   = grass_bend_compute(true, root, up, transform[2].xyz, blade_scale, 0.0f, instance_id);
 
         if (buffer_frame.delta_time > 1e-6f)
         {
@@ -86,7 +86,7 @@ void main_ms(
             float3 pressure1  = grass_root_pressure(surface, root, time_offset);
             blade_interactions[1][blade] = sample_vegetation_interaction(root.xz, time_offset);
             blade_roots[1][blade]        = float4(pressure1, grass_camera_bias(root, up, transform[2].xyz, pressure1.z, time_offset));
-            blade_bends_previous[blade]  = grass_bend_compute(true, root, up, blade_scale, time_offset, instance_id);
+            blade_bends_previous[blade]  = grass_bend_compute(true, root, up, transform[2].xyz, blade_scale, time_offset, instance_id);
         }
         else
         {

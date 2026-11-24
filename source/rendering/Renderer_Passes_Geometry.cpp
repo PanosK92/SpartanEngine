@@ -153,7 +153,7 @@ namespace spartan
             "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
         TConsoleVar<bool> cvar_gbuffer_scatter_first("r.gbuffer_scatter_first", true,
             "rasterize gpu scatter before the opaque g-buffer so the ground it hides is never shaded; disable for comparison");
-        TConsoleVar<float> cvar_grass_thin_distance("r.grass_thin_distance", 7.0f,
+        TConsoleVar<float> cvar_grass_thin_distance("r.grass_thin_distance", 18.0f,
             "distance in metres past which a grass blade ring thins out towards the density of the ring after it, every blade nearer than that is kept; 0 keeps every blade");
         TConsoleVar<float> cvar_scatter_blend_distance("r.scatter_blend_distance", 8.0f,
             "distance in metres past which scattered detail such as pebbles sinks to its dirt line instead of blending with the ground, handed over chip by chip up to twice as far; 0 blends every chip");
@@ -324,12 +324,12 @@ namespace spartan
         const float gpu_scatter_patch_max_boost = 4.0f;
 
         // has to match grass_max_boost in grass_populate.hlsl, this is what bounds the dispatch
-        const float gpu_scatter_max_boost = 8.0f;
+        const float gpu_scatter_max_boost = 10.0f;
 
         // distance thinning of a blade ring starts no nearer than this many times the height of the camera over the ground
         const float gpu_scatter_thin_clearance_reach = 2.5f;
         // steepest fall of the share of blades a thinned ring keeps, as a power of the distance
-        const float gpu_scatter_thin_exponent_max = 4.0f;
+        const float gpu_scatter_thin_exponent_max = 2.5f;
 
         // mirrors grass_patch_density_boost in grass_populate.hlsl, the two decide the same thing from
         // opposite ends, this one sizes dispatch z and the shader one sizes the keep probability, so a
@@ -2574,12 +2574,16 @@ namespace spartan
                 const float patch_size       = max(grass.params.patch_size_m, 0.0f);
                 const float biome_min        = grass.params.biome_min_weight < 0.0f ? -1.0f : grass.params.biome_min_weight;
 
+                const float thin_start = cvar_grass_thin_distance.GetValue() > 0.0f
+                    ? min(cvar_grass_thin_distance.GetValue(), grass.params.ring_radii_m[0] * 0.6f)
+                    : grass.params.ring_radii_m[0] * 0.5f;
+
                 auto& far       = m_pass_state.grass_far;
                 far.prop_mask   = grass.prop_mask;
                 far.tint        = Vector4(grass.material->GetProperty(MaterialProperty::ColorR), grass.material->GetProperty(MaterialProperty::ColorG), grass.material->GetProperty(MaterialProperty::ColorB), 1.0f);
-                far.fade        = Vector4(grass.params.ring_radii_m[0], outer_start, ring_end, grass.params.patch_invert ? -patch_size : patch_size);
+                far.fade        = Vector4(thin_start, outer_start, ring_end, grass.params.patch_invert ? -patch_size : patch_size);
                 far.gate        = Vector4(biome_min, cosf(grass.params.max_slope_deg * (math::pi / 180.0f)), static_cast<float>(grass.params.ground_mask), static_cast<float>(min(grass.params.mask_channel, 3u)));
-                far.patch       = Vector4(grass.params.patch_coverage, grass.params.patch_edge, 0.0f, 0.0f);
+                far.patch       = Vector4(grass.params.patch_coverage, grass.params.patch_edge, grass.params.height_min, grass.params.height_max);
             }
         }
 

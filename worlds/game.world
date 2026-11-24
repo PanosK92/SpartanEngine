@@ -38,6 +38,7 @@
   <Resource file="materials/fern_fern_foliage_4.xml" />
   <Resource file="materials/fern_fern_foliage_5.xml" />
   <Resource file="materials/fern_fern_foliage_6.xml" />
+  <Resource file="materials/fern_fern_foliage_6_2.xml" />
   <Resource file="materials/fern_foliage.xml" />
   <Resource file="materials/ferrari_laferrari_29.xml" />
   <Resource file="materials/gs_asphalt.xml" />
@@ -60,39 +61,22 @@
   <Resource file="materials/herb_herb_card_foliage_4.xml" />
   <Resource file="materials/herb_herb_card_foliage_5.xml" />
   <Resource file="materials/herb_herb_card_foliage_6.xml" />
+  <Resource file="materials/herb_herb_card_foliage_6_2.xml" />
   <Resource file="materials/home_amber.xml" />
-  <Resource file="materials/home_blossom_2.xml" />
   <Resource file="materials/home_brass.xml" />
   <Resource file="materials/home_ceramic.xml" />
   <Resource file="materials/home_chrome.xml" />
   <Resource file="materials/home_cork.xml" />
   <Resource file="materials/home_cream.xml" />
-  <Resource file="materials/home_cream_3.xml" />
-  <Resource file="materials/home_detail_brass.xml" />
-  <Resource file="materials/home_detail_ceramic.xml" />
-  <Resource file="materials/home_detail_chrome.xml" />
-  <Resource file="materials/home_detail_leather.xml" />
-  <Resource file="materials/home_detail_linen.xml" />
-  <Resource file="materials/home_detail_oak.xml" />
-  <Resource file="materials/home_detail_oxblood.xml" />
-  <Resource file="materials/home_detail_speaker_cloth.xml" />
-  <Resource file="materials/home_detail_velvet_2.xml" />
-  <Resource file="materials/home_detail_wood.xml" />
   <Resource file="materials/home_floor.xml" />
   <Resource file="materials/home_flower.xml" />
-  <Resource file="materials/home_geranium_2.xml" />
   <Resource file="materials/home_glass.xml" />
-  <Resource file="materials/home_grille_2.xml" />
-  <Resource file="materials/home_lavender_2.xml" />
   <Resource file="materials/home_lawn.xml" />
   <Resource file="materials/home_leaf.xml" />
   <Resource file="materials/home_linen.xml" />
   <Resource file="materials/home_metal.xml" />
-  <Resource file="materials/home_metal_3.xml" />
   <Resource file="materials/home_mint_glow.xml" />
   <Resource file="materials/home_oak.xml" />
-  <Resource file="materials/home_oleander_2.xml" />
-  <Resource file="materials/home_oleander_leaf_2.xml" />
   <Resource file="materials/home_oxblood.xml" />
   <Resource file="materials/home_paper.xml" />
   <Resource file="materials/home_paving.xml" />
@@ -102,12 +86,9 @@
   <Resource file="materials/home_print_2.xml" />
   <Resource file="materials/home_roof.xml" />
   <Resource file="materials/home_rubber.xml" />
-  <Resource file="materials/home_rug.xml" />
   <Resource file="materials/home_sage.xml" />
   <Resource file="materials/home_soil.xml" />
   <Resource file="materials/home_stone.xml" />
-  <Resource file="materials/home_tolex_2.xml" />
-  <Resource file="materials/home_water_2.xml" />
   <Resource file="materials/home_wood.xml" />
   <Resource file="materials/inside_stickers.xml" />
   <Resource file="materials/island_asphalt_baked.xml" />
@@ -126,7 +107,7 @@
   <Resource file="materials/road.xml" />
   <Resource file="materials/seets_logo.xml" />
   <Resource file="materials/terrain_2.xml" />
-  <Resource file="materials/terrain_4.xml" />
+  <Resource file="materials/terrain_3.xml" />
   <Resource file="materials/town_amber.xml" />
   <Resource file="materials/town_blue.xml" />
   <Resource file="materials/town_canvas.xml" />
@@ -696,6 +677,7 @@
   <Resource file="meshes/fern_c_6.mesh" />
   <Resource file="meshes/fern_c_7.mesh" />
   <Resource file="meshes/fern_c_8.mesh" />
+  <Resource file="meshes/fern_c_9.mesh" />
   <Resource file="meshes/fern_d.mesh" />
   <Resource file="meshes/fern_d_3.mesh" />
   <Resource file="meshes/fern_d_4.mesh" />
@@ -703,6 +685,7 @@
   <Resource file="meshes/fern_d_6.mesh" />
   <Resource file="meshes/fern_d_7.mesh" />
   <Resource file="meshes/fern_d_8.mesh" />
+  <Resource file="meshes/fern_d_9.mesh" />
   <Resource file="meshes/fuel_canopy_frame_frame_column_c76569e798db.mesh" />
   <Resource file="meshes/fuel_canopy_frame_frame_cross_beam_16eeab528a4b.mesh" />
   <Resource file="meshes/fuel_canopy_frame_frame_long_beam_5c58c648cd9d.mesh" />
@@ -770,6 +753,7 @@
   <Resource file="meshes/herb_a_6.mesh" />
   <Resource file="meshes/herb_a_7.mesh" />
   <Resource file="meshes/herb_a_8.mesh" />
+  <Resource file="meshes/herb_a_9.mesh" />
   <Resource file="meshes/herb_b.mesh" />
   <Resource file="meshes/herb_b_3.mesh" />
   <Resource file="meshes/herb_b_4.mesh" />
@@ -777,6 +761,7 @@
   <Resource file="meshes/herb_b_6.mesh" />
   <Resource file="meshes/herb_b_7.mesh" />
   <Resource file="meshes/herb_b_8.mesh" />
+  <Resource file="meshes/herb_b_9.mesh" />
   <Resource file="meshes/herb_c.mesh" />
   <Resource file="meshes/herb_c_3.mesh" />
   <Resource file="meshes/herb_c_4.mesh" />
@@ -784,6 +769,7 @@
   <Resource file="meshes/herb_c_6.mesh" />
   <Resource file="meshes/herb_c_7.mesh" />
   <Resource file="meshes/herb_c_8.mesh" />
+  <Resource file="meshes/herb_c_9.mesh" />
   <Resource file="meshes/herb_d.mesh" />
   <Resource file="meshes/herb_d_3.mesh" />
   <Resource file="meshes/herb_d_4.mesh" />
@@ -791,166 +777,7 @@
   <Resource file="meshes/herb_d_6.mesh" />
   <Resource file="meshes/herb_d_7.mesh" />
   <Resource file="meshes/herb_d_8.mesh" />
-  <Resource file="meshes/home_architectural_details_chrome_dd0dd6ab02.mesh" />
-  <Resource file="meshes/home_architectural_details_cork_70e2e2efbb.mesh" />
-  <Resource file="meshes/home_architectural_details_cream_72f0a31d7b.mesh" />
-  <Resource file="meshes/home_architectural_details_metal_bb71586b3d.mesh" />
-  <Resource file="meshes/home_architectural_details_oak_b936c5dbd8.mesh" />
-  <Resource file="meshes/home_architectural_details_rubber_df1bb54859.mesh" />
-  <Resource file="meshes/home_architectural_details_sage_7d3f653d6c.mesh" />
-  <Resource file="meshes/home_architectural_details_stone_ddd7ef626d.mesh" />
-  <Resource file="meshes/home_architectural_details_wood_292fc99ef3.mesh" />
-  <Resource file="meshes/home_bar_amber_495fc4804e_2.mesh" />
-  <Resource file="meshes/home_bar_brass_34fc8630d1.mesh" />
-  <Resource file="meshes/home_bar_details_brass_42a6e7cef9.mesh" />
-  <Resource file="meshes/home_bar_details_ceramic_5d09628f83.mesh" />
-  <Resource file="meshes/home_bar_details_chrome_16cbd8e403.mesh" />
-  <Resource file="meshes/home_bar_details_cream_d3c6963744.mesh" />
-  <Resource file="meshes/home_bar_details_linen_12c8587d40.mesh" />
-  <Resource file="meshes/home_bar_details_metal_279dcc6004.mesh" />
-  <Resource file="meshes/home_bar_details_oak_bcaecfdf9d.mesh" />
-  <Resource file="meshes/home_bar_details_roof_f7c89249a7.mesh" />
-  <Resource file="meshes/home_bar_details_sage_e201628738.mesh" />
-  <Resource file="meshes/home_bar_metal_551b65905d.mesh" />
-  <Resource file="meshes/home_bar_oak_6b5f0b117e.mesh" />
-  <Resource file="meshes/home_bar_sage_f383fe72a4.mesh" />
-  <Resource file="meshes/home_bar_wood_f6cb46dc11.mesh" />
-  <Resource file="meshes/home_bench_details_ceramic_ddfd7e4b28.mesh" />
-  <Resource file="meshes/home_bench_details_chrome_d6f110655f.mesh" />
-  <Resource file="meshes/home_bench_details_cork_a513346ed3.mesh" />
-  <Resource file="meshes/home_bench_details_metal_8fe4dbdd91.mesh" />
-  <Resource file="meshes/home_bench_details_oxblood_ac7ed35605.mesh" />
-  <Resource file="meshes/home_bench_details_paper_091001eede.mesh" />
-  <Resource file="meshes/home_bench_details_sage_a0252fdafe.mesh" />
-  <Resource file="meshes/home_bench_details_wood_ee8f1395a4.mesh" />
-  <Resource file="meshes/home_clock_and_memorabilia_chrome_16fddd2b1d.mesh" />
-  <Resource file="meshes/home_clock_and_memorabilia_cream_bdb88da096.mesh" />
-  <Resource file="meshes/home_clock_and_memorabilia_metal_5f83b8a49d.mesh" />
-  <Resource file="meshes/home_fan_brass_ac14d46546.mesh" />
-  <Resource file="meshes/home_fan_mount_metal_ce0f6d656c_2.mesh" />
-  <Resource file="meshes/home_fan_wood_c1578b494a.mesh" />
-  <Resource file="meshes/home_foundation_floor_c9db25383c.mesh" />
-  <Resource file="meshes/home_foundation_paving_3f92a279cc.mesh" />
-  <Resource file="meshes/home_foundation_stone_52c9e9e1a7.mesh" />
-  <Resource file="meshes/home_fountain_bowl_water_c4db2c3879_2.mesh" />
-  <Resource file="meshes/home_fountain_pool_water_701a556652_2.mesh" />
-  <Resource file="meshes/home_fountain_stone_5b2474274f_2.mesh" />
-  <Resource file="meshes/home_garden_amber_91a48cada7.mesh" />
-  <Resource file="meshes/home_garden_blossom_45256711f2_2.mesh" />
-  <Resource file="meshes/home_garden_ceramic_ff2a8b6cbe_2.mesh" />
-  <Resource file="meshes/home_garden_cork_f53fc42d6e_2.mesh" />
-  <Resource file="meshes/home_garden_details_brass_dc1c50cf09.mesh" />
-  <Resource file="meshes/home_garden_details_ceramic_1d7aeb6397.mesh" />
-  <Resource file="meshes/home_garden_details_leaf_e2865f38ce_2.mesh" />
-  <Resource file="meshes/home_garden_details_metal_b39f724664.mesh" />
-  <Resource file="meshes/home_garden_details_oak_da4d935920.mesh" />
-  <Resource file="meshes/home_garden_details_sage_c965ccd71a.mesh" />
-  <Resource file="meshes/home_garden_details_wood_8b7a207954.mesh" />
-  <Resource file="meshes/home_garden_flower_efd3772915_2.mesh" />
-  <Resource file="meshes/home_garden_geranium_7c24ec4dfa_2.mesh" />
-  <Resource file="meshes/home_garden_lavender_683f02b829_2.mesh" />
-  <Resource file="meshes/home_garden_lawn_8dd3e946f3.mesh" />
-  <Resource file="meshes/home_garden_leaf_e73b29e511_2.mesh" />
-  <Resource file="meshes/home_garden_linen_2ff9da1d10_2.mesh" />
-  <Resource file="meshes/home_garden_metal_ba6fefe393.mesh" />
-  <Resource file="meshes/home_garden_oak_837f4fd901.mesh" />
-  <Resource file="meshes/home_garden_oleander_d4ccf4a1eb_2.mesh" />
-  <Resource file="meshes/home_garden_oleander_leaf_43355ecb34_2.mesh" />
-  <Resource file="meshes/home_garden_plaster_fbefc92bda_2.mesh" />
-  <Resource file="meshes/home_garden_roof_41d9398004_2.mesh" />
-  <Resource file="meshes/home_garden_soil_9230d95cdc_2.mesh" />
-  <Resource file="meshes/home_garden_stone_6d54aef180_2.mesh" />
-  <Resource file="meshes/home_garden_wood_7f82ba7343.mesh" />
-  <Resource file="meshes/home_glazing_amber_4f726cefc3_2.mesh" />
-  <Resource file="meshes/home_glazing_glass_775f3f4265.mesh" />
-  <Resource file="meshes/home_glazing_metal_5cbb647722.mesh" />
-  <Resource file="meshes/home_glazing_plaster_de98b1b38a_2.mesh" />
-  <Resource file="meshes/home_lighting_amber_110c6fd974.mesh" />
-  <Resource file="meshes/home_lighting_metal_1b7a20c33e.mesh" />
-  <Resource file="meshes/home_lighting_sage_04f6c21728.mesh" />
-  <Resource file="meshes/home_listening_corner_chrome_9f0e0f3a29.mesh" />
-  <Resource file="meshes/home_listening_corner_cream_c2fe7b87b6_2.mesh" />
-  <Resource file="meshes/home_listening_corner_metal_d5c6046148.mesh" />
-  <Resource file="meshes/home_listening_corner_oak_79a9583f9d.mesh" />
-  <Resource file="meshes/home_listening_corner_oxblood_fb7ac50563_2.mesh" />
-  <Resource file="meshes/home_listening_corner_paper_5968dedc9f_2.mesh" />
-  <Resource file="meshes/home_listening_corner_rug_ae51fa800f_2.mesh" />
-  <Resource file="meshes/home_listening_corner_sage_8a25f29b8d.mesh" />
-  <Resource file="meshes/home_listening_corner_wood_eeaa39978a.mesh" />
-  <Resource file="meshes/home_listening_details_amber_e3e4e73766.mesh" />
-  <Resource file="meshes/home_listening_details_brass_61462de9ca_2.mesh" />
-  <Resource file="meshes/home_listening_details_chrome_99e05a0955.mesh" />
-  <Resource file="meshes/home_listening_details_linen_697f0499d7_2.mesh" />
-  <Resource file="meshes/home_listening_details_metal_e451ec56ab.mesh" />
-  <Resource file="meshes/home_listening_details_oak_fbdb9cfb8e.mesh" />
-  <Resource file="meshes/home_listening_details_paper_b3966fcff8.mesh" />
-  <Resource file="meshes/home_listening_details_rubber_c1bfd35dd6.mesh" />
-  <Resource file="meshes/home_lounge_details_amber_858fa52aae_2.mesh" />
-  <Resource file="meshes/home_lounge_details_brass_75a7f7da39_2.mesh" />
-  <Resource file="meshes/home_lounge_details_ceramic_bea051c306_2.mesh" />
-  <Resource file="meshes/home_lounge_details_chrome_dda115411f_2.mesh" />
-  <Resource file="meshes/home_lounge_details_cream_4c57e4d6da_2.mesh" />
-  <Resource file="meshes/home_lounge_details_geranium_1f557208fb_2.mesh" />
-  <Resource file="meshes/home_lounge_details_grille_d720a30c93_2.mesh" />
-  <Resource file="meshes/home_lounge_details_leaf_f4e58548c0_2.mesh" />
-  <Resource file="meshes/home_lounge_details_linen_e06d3ebb8c_2.mesh" />
-  <Resource file="meshes/home_lounge_details_metal_c8781b4281_2.mesh" />
-  <Resource file="meshes/home_lounge_details_oak_ab6d8a38d9.mesh" />
-  <Resource file="meshes/home_lounge_details_oxblood_b95814f0de_2.mesh" />
-  <Resource file="meshes/home_lounge_details_paper_6df3d98c5f_2.mesh" />
-  <Resource file="meshes/home_lounge_details_rubber_c0d30bfbd2_2.mesh" />
-  <Resource file="meshes/home_lounge_details_sage_b5acf1cde6_2.mesh" />
-  <Resource file="meshes/home_lounge_details_soil_ee4029b6bd_2.mesh" />
-  <Resource file="meshes/home_lounge_details_tolex_3b531a31e9_2.mesh" />
-  <Resource file="meshes/home_lounge_details_wood_9e75b92760_2.mesh" />
-  <Resource file="meshes/home_lounge_oak_0108a105ff.mesh" />
-  <Resource file="meshes/home_lounge_plaster_6cc5cd412b.mesh" />
-  <Resource file="meshes/home_lounge_roof_95094dd267.mesh" />
-  <Resource file="meshes/home_lounge_sage_b244fc7c66.mesh" />
-  <Resource file="meshes/home_lounge_wood_49bf7ba138.mesh" />
-  <Resource file="meshes/home_memories_brass_9d53d144b3_2.mesh" />
-  <Resource file="meshes/home_memories_oak_95c3055f06_2.mesh" />
-  <Resource file="meshes/home_memories_oxblood_a5f1c44500_2.mesh" />
-  <Resource file="meshes/home_memories_prints_paper_83f631a79c_2.mesh" />
-  <Resource file="meshes/home_memories_prints_print_0_13a7306f40_2.mesh" />
-  <Resource file="meshes/home_memories_prints_print_1_19a205b00d_2.mesh" />
-  <Resource file="meshes/home_memories_prints_print_2_746ce17126_2.mesh" />
-  <Resource file="meshes/home_memories_prints_wood_d3745f3d5d_2.mesh" />
-  <Resource file="meshes/home_memories_sage_035cf10bed_2.mesh" />
-  <Resource file="meshes/home_memories_wood_088572b0e7_2.mesh" />
-  <Resource file="meshes/home_roof_cream_45e5a44c10.mesh" />
-  <Resource file="meshes/home_roof_metal_e49b02dd86.mesh" />
-  <Resource file="meshes/home_roof_plaster_c273b8a5b2.mesh" />
-  <Resource file="meshes/home_roof_roof_0cd5ffe058.mesh" />
-  <Resource file="meshes/home_roof_sage_3725e053c3.mesh" />
-  <Resource file="meshes/home_service_bay_details_brass_62caa3933b.mesh" />
-  <Resource file="meshes/home_service_bay_details_chrome_a969388b32.mesh" />
-  <Resource file="meshes/home_service_bay_details_cream_5bbab0bcdf.mesh" />
-  <Resource file="meshes/home_service_bay_details_linen_a81ce5c5a8.mesh" />
-  <Resource file="meshes/home_service_bay_details_metal_8e033fdced.mesh" />
-  <Resource file="meshes/home_service_bay_details_oxblood_fa3f923ee7.mesh" />
-  <Resource file="meshes/home_service_bay_details_rubber_40ffd5a122.mesh" />
-  <Resource file="meshes/home_service_bay_details_sage_1ac5f9d0f3.mesh" />
-  <Resource file="meshes/home_window_textiles_brass_fdbf827dd7.mesh" />
-  <Resource file="meshes/home_window_textiles_linen_09884278fc.mesh" />
-  <Resource file="meshes/home_workbench_chrome_4a152dfadb.mesh" />
-  <Resource file="meshes/home_workbench_cream_87990362de.mesh" />
-  <Resource file="meshes/home_workbench_metal_1ae7b2cf8f.mesh" />
-  <Resource file="meshes/home_workbench_oak_a907128051.mesh" />
-  <Resource file="meshes/home_workbench_oxblood_2e15e88149.mesh" />
-  <Resource file="meshes/home_workbench_rubber_e398b19b39.mesh" />
-  <Resource file="meshes/home_workbench_sage_2772515f78.mesh" />
-  <Resource file="meshes/home_workbench_wood_3f82ce18fa.mesh" />
-  <Resource file="meshes/home_workshop_chrome_e67ebeedb0.mesh" />
-  <Resource file="meshes/home_workshop_cream_bdd9830729.mesh" />
-  <Resource file="meshes/home_workshop_glass_be237627f8.mesh" />
-  <Resource file="meshes/home_workshop_plaster_eb1b110b73.mesh" />
-  <Resource file="meshes/home_workshop_sage_1ac466323e.mesh" />
-  <Resource file="meshes/home_workshop_storage_chrome_0858254e29_2.mesh" />
-  <Resource file="meshes/home_workshop_storage_cream_4b8228a76a_2.mesh" />
-  <Resource file="meshes/home_workshop_storage_metal_436374e9d8_2.mesh" />
-  <Resource file="meshes/home_workshop_storage_sage_b1b20a90d9_2.mesh" />
-  <Resource file="meshes/home_workshop_wood_d6aed85e11.mesh" />
+  <Resource file="meshes/herb_d_9.mesh" />
   <Resource file="meshes/jump_wedge.mesh" />
   <Resource file="meshes/olive_01.mesh" />
   <Resource file="meshes/price_sign_monument_sign_face_e94ed6852a2f.mesh" />
@@ -1471,9 +1298,7 @@
   <Resource file="meshes/ufo_disc_craft_8_reactor_guard_47915e32.mesh" />
   <Resource file="meshes/ufo_disc_craft_9_rim_light_00_e9fd3eb3.mesh" />
   <Resource file="textures/albedo.texture" />
-  <Resource file="textures/albedo_2.texture" />
   <Resource file="textures/albedo_3.texture" />
-  <Resource file="textures/albedo_4.texture" />
   <Resource file="textures/albedo_5.texture" />
   <Resource file="textures/albedo_6.texture" />
   <Resource file="textures/alu_brushed_packed_slot0.tex_packed.texture" />
@@ -1502,20 +1327,16 @@
   <Resource file="textures/car_playground_paint_packed_slot0.tex_packed.texture" />
   <Resource file="textures/car_playground_painted_wall_packed_slot0.tex_packed.texture" />
   <Resource file="textures/carbon_weave_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/carbon_weave_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/carbon_weave_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/carpet_noir_packed_slot0.tex_packed.texture" />
   <Resource file="textures/clay_roof_tiles_02_diff.texture" />
   <Resource file="textures/clay_roof_tiles_02_diff_2.texture" />
-  <Resource file="textures/clay_roof_tiles_02_diff_4.texture" />
   <Resource file="textures/clay_roof_tiles_02_nor_gl.texture" />
   <Resource file="textures/clay_roof_tiles_02_nor_gl_2.texture" />
-  <Resource file="textures/clay_roof_tiles_02_nor_gl_4.texture" />
   <Resource file="textures/cobblestone_floor_08_diff.texture" />
   <Resource file="textures/cobblestone_floor_08_diff_2.texture" />
-  <Resource file="textures/cobblestone_floor_08_diff_4.texture" />
   <Resource file="textures/cobblestone_floor_08_nor_gl.texture" />
   <Resource file="textures/cobblestone_floor_08_nor_gl_2.texture" />
-  <Resource file="textures/cobblestone_floor_08_nor_gl_4.texture" />
   <Resource file="textures/crackle_crimson_packed_slot0.tex_packed.texture" />
   <Resource file="textures/exo_lime_packed_slot0.tex_packed.texture" />
   <Resource file="textures/exo_ochre_packed_slot0.tex_packed.texture" />
@@ -1533,6 +1354,7 @@
   <Resource file="textures/fern_02_color_2k_6.texture" />
   <Resource file="textures/fern_02_color_2k_7.texture" />
   <Resource file="textures/fern_02_color_2k_8.texture" />
+  <Resource file="textures/fern_02_color_2k_9.texture" />
   <Resource file="textures/fern_02_nor_gl_2k.texture" />
   <Resource file="textures/fern_02_nor_gl_2k_3.texture" />
   <Resource file="textures/fern_02_nor_gl_2k_4.texture" />
@@ -1540,11 +1362,13 @@
   <Resource file="textures/fern_02_nor_gl_2k_6.texture" />
   <Resource file="textures/fern_02_nor_gl_2k_7.texture" />
   <Resource file="textures/fern_02_nor_gl_2k_8.texture" />
+  <Resource file="textures/fern_02_nor_gl_2k_9.texture" />
   <Resource file="textures/fern_fern_foliage_2_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_fern_foliage_3_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_fern_foliage_4_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_fern_foliage_5_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_fern_foliage_6_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/fern_fern_foliage_6_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/fern_fern_foliage_packed_slot0.tex_packed.texture" />
   <Resource file="textures/fern_foliage_packed_slot0.tex_packed.texture" />
   <Resource file="textures/grille_mesh_packed_slot0.tex_packed.texture" />
@@ -1572,6 +1396,7 @@
   <Resource file="textures/herb_cards_color_5.texture" />
   <Resource file="textures/herb_cards_color_6.texture" />
   <Resource file="textures/herb_cards_color_7.texture" />
+  <Resource file="textures/herb_cards_color_8.texture" />
   <Resource file="textures/herb_cards_normal.texture" />
   <Resource file="textures/herb_cards_normal_2.texture" />
   <Resource file="textures/herb_cards_normal_3.texture" />
@@ -1579,6 +1404,7 @@
   <Resource file="textures/herb_cards_normal_5.texture" />
   <Resource file="textures/herb_cards_normal_6.texture" />
   <Resource file="textures/herb_cards_normal_7.texture" />
+  <Resource file="textures/herb_cards_normal_8.texture" />
   <Resource file="textures/hide_cognac_packed_slot0.tex_packed.texture" />
   <Resource file="textures/hide_cognac_rib_packed_slot0.tex_packed.texture" />
   <Resource file="textures/hide_crimson_packed_slot0.tex_packed.texture" />
@@ -1590,22 +1416,10 @@
   <Resource file="textures/home_cork_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_cream_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_curtain_linen_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_brass_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_ceramic_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_chrome_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_leather_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_linen_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_oak_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_oxblood_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_speaker_cloth_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_detail_velvet_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/home_detail_wood_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_floor_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_floor_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/home_grille_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_kilim_rug_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_lawn_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_lawn_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/home_leather_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_limestone_carved_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_linen_packed_slot0.tex_packed.texture" />
@@ -1613,17 +1427,13 @@
   <Resource file="textures/home_oak_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_oak_planks_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_oxblood_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_paving_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_paving_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/home_pegboard_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_plaster_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_plaster_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/home_roof_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_roof_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/home_rubber_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_sage_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_speaker_cloth_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/home_stone_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_stone_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/home_terracotta_fabric_packed_slot0.tex_packed.texture" />
   <Resource file="textures/home_terracotta_packed_slot0.tex_packed.texture" />
@@ -1640,19 +1450,14 @@
   <Resource file="textures/local_dirt_nor_gl.texture" />
   <Resource file="textures/local_dirt_nor_gl_2.texture" />
   <Resource file="textures/normal.texture" />
-  <Resource file="textures/normal_2.texture" />
   <Resource file="textures/normal_3.texture" />
   <Resource file="textures/normal_4.texture" />
   <Resource file="textures/normal_5.texture" />
-  <Resource file="textures/normal_6.texture" />
-  <Resource file="textures/normal_7.texture" />
   <Resource file="textures/normal_8.texture" />
   <Resource file="textures/painted_plaster_wall_diff.texture" />
   <Resource file="textures/painted_plaster_wall_diff_2.texture" />
-  <Resource file="textures/painted_plaster_wall_diff_4.texture" />
   <Resource file="textures/painted_plaster_wall_nor_gl.texture" />
   <Resource file="textures/painted_plaster_wall_nor_gl_2.texture" />
-  <Resource file="textures/painted_plaster_wall_nor_gl_4.texture" />
   <Resource file="textures/plan_olive_3511_bark_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3511_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plan_olive_3512_bark_packed_slot0.tex_packed_2.texture" />
@@ -1661,19 +1466,14 @@
   <Resource file="textures/plan_olive_3513_foliage_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/plastered_stone_wall_diff.texture" />
   <Resource file="textures/plastered_stone_wall_diff_2.texture" />
-  <Resource file="textures/plastered_stone_wall_diff_4.texture" />
   <Resource file="textures/plastered_stone_wall_nor_gl.texture" />
   <Resource file="textures/plastered_stone_wall_nor_gl_2.texture" />
-  <Resource file="textures/plastered_stone_wall_nor_gl_4.texture" />
   <Resource file="textures/plastic_satin_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/print_0.texture" />
-  <Resource file="textures/print_1.texture" />
-  <Resource file="textures/print_2.texture" />
   <Resource file="textures/road_packed_slot0.tex_packed.texture" />
   <Resource file="textures/rubra_game_caliper_packed_slot0.tex_packed.texture" />
   <Resource file="textures/rubra_game_rim_packed_slot0.tex_packed.texture" />
   <Resource file="textures/rubra_game_rotor_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/rubra_game_rotor_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/rubra_game_rotor_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/rubra_game_rubber_packed_slot0.tex_packed.texture" />
   <Resource file="textures/suede_noir_packed_slot0.tex_packed.texture" />
   <Resource file="textures/town_lime_packed_slot0.tex_packed.texture" />
@@ -1697,19 +1497,19 @@
   <Resource file="textures/ufo_metal_packed_slot0.tex_packed.texture" />
   <Resource file="textures/ufo_painted_metal_packed_slot0.tex_packed.texture" />
   <Resource file="textures/zth_apron_concrete_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_apron_concrete_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_apron_concrete_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_mown_grass_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_mown_grass_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_mown_grass_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_parking_asphalt_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_parking_asphalt_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_parking_asphalt_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_runway_asphalt_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_runway_asphalt_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_runway_asphalt_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_runway_paint_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_runway_paint_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_runway_paint_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_sign_airport_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_sign_airport_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_sign_airport_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_taxi_paint_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_taxi_paint_packed_slot0.tex_packed_3.texture" />
+  <Resource file="textures/zth_taxi_paint_packed_slot0.tex_packed_2.texture" />
  </OwnedResources>
  <Environment utc_days="9664.9166670143604" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="0" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="2" wind_y="0" wind_z="1" puddliness="0" rain="0" cloud_coverage="0.280000001" />
  <ConsoleVariables>
@@ -1746,16 +1546,16 @@
      <scatter>
       <layer name="pine_woodland" mesh_path="project/game_resources/trees/plan_aleppo_1147/plan_aleppo_1147.prefab" mesh_variants="project/game_resources/trees/plan_aleppo_1148/plan_aleppo_1148.prefab;project/game_resources/trees/plan_aleppo_1149/plan_aleppo_1149.prefab;project/game_resources/trees/plan_cypress_421/plan_cypress_421.prefab;project/game_resources/trees/plan_cypress_422/plan_cypress_422.prefab;project/game_resources/trees/plan_carob_6173/plan_carob_6173.prefab;project/game_resources/trees/plan_carob_6174/plan_carob_6174.prefab" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="2400" max_per_tile="55000" seed="1147" slope_min="0" slope_max="52" slope_bias="0" height_min="4" height_max="700" height_fade="12" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="40" clump_count="48" clump_raggedness="0.699999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.779999971" size_max="1.27999997" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0.0599999987" giant_size="1.39999998" align_to_normal="0" surface_offset="-0.0799999982" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="100" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="111" />
       <layer name="limestone_outcrops" mesh_path="project/models/island_biomes/limestone_slab/limestone_slab.gltf" mesh_variants="project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="true" formation_spacing="130" formation_length="60" formation_width="30" formation_height="16" formation_jitter="12" embed_fraction="0.479999989" coating="0.400000006" coating_scale="3" density="12" max_per_tile="700" seed="631" slope_min="14" slope_max="75" slope_bias="0" height_min="12" height_max="100000" height_fade="10" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="0" clump_count="10" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="8" size_min="0.300000012" size_max="0.899999976" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.5" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="260" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="12" />
-      <layer name="loose_stones" mesh_path="project/models/island_biomes/weathered_stone/weathered_stone.gltf" mesh_variants="project/models/island_biomes/angular_stone/angular_stone.gltf;project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="110" max_per_tile="2400" seed="2591" slope_min="0" slope_max="70" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0.349999994" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="14" clump_count="4" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.300000012" size_max="2.0999999" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.75" surface_offset="-0.0399999991" sink="0.0599999987" blend_height="1" blend_sharpness="0.5" render_distance="250" shadow_distance="110" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
-      <layer name="flowers" mesh_path="builtin/flower" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.239999995" max_per_tile="0" seed="0" slope_min="0" slope_max="32" slope_bias="0" height_min="3" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.449999988" clump_radius="8" clump_count="24" clump_raggedness="1" clump_coverage="0.219999999" clump_invert="false" mesh_scale="0.379999995" size_min="0.419999987" size_max="0.949999988" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.0199999996" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="180" shadow_distance="45" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="18" grass_ring_1="45" grass_ring_2="95" grass_cell_0="1.79999995" grass_cell_1="3.20000005" grass_cell_2="5.5" flags="32" />
-      <layer name="grass" mesh_path="builtin/grass_blade" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="1" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.800000012" max_per_tile="0" seed="0" slope_min="0" slope_max="38" slope_bias="0" height_min="1" height_max="400" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="65" mask_channel="0" mask_min="0.200000003" clump_radius="18" clump_count="1" clump_raggedness="0.850000024" clump_coverage="0.800000012" clump_invert="false" mesh_scale="1" size_min="0.25" size_max="1.48000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="225" shadow_distance="150" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.449999988" grass_ring_0="42" grass_ring_1="105" grass_ring_2="225" grass_cell_0="0.319999993" grass_cell_1="0.75" grass_cell_2="1.95000005" flags="0" />
+      <layer name="loose_stones" mesh_path="project/models/island_biomes/weathered_stone/weathered_stone.gltf" mesh_variants="project/models/island_biomes/angular_stone/angular_stone.gltf;project/models/island_biomes/limestone_boulder/limestone_boulder.gltf" habitat="0" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="110" max_per_tile="2400" seed="2591" slope_min="0" slope_max="70" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0.349999994" ground_mask="0" mask_channel="2" mask_min="0.00999999978" clump_radius="14" clump_count="4" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.300000012" size_max="2.0999999" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.75" surface_offset="-0.0399999991" sink="0.0599999987" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="110" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
+      <layer name="flowers" mesh_path="builtin/flower" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.550000012" max_per_tile="0" seed="0" slope_min="0" slope_max="32" slope_bias="0" height_min="3" height_max="720" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="0" mask_min="0.319999993" clump_radius="8" clump_count="24" clump_raggedness="1" clump_coverage="0.319999993" clump_invert="false" mesh_scale="0.379999995" size_min="0.419999987" size_max="0.949999988" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.0199999996" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="215" shadow_distance="45" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="42" grass_ring_1="105" grass_ring_2="215" grass_cell_0="1.5" grass_cell_1="2.79999995" grass_cell_2="5" flags="32" />
+      <layer name="grass" mesh_path="builtin/grass_blade" mesh_variants="" habitat="0" material_folder="" enabled="true" kind="1" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.949999988" max_per_tile="0" seed="0" slope_min="0" slope_max="38" slope_bias="0" height_min="1" height_max="720" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="193" mask_channel="0" mask_min="0.200000003" clump_radius="18" clump_count="1" clump_raggedness="0.850000024" clump_coverage="0.899999976" clump_invert="false" mesh_scale="1" size_min="0.25" size_max="1.48000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="290" shadow_distance="150" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.449999988" grass_ring_0="54" grass_ring_1="140" grass_ring_2="290" grass_cell_0="0.340000004" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="0" />
       <layer name="pebbles" mesh_path="builtin/pebble" mesh_variants="" habitat="0" material_folder="project/materials/gravel" enabled="false" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1" max_per_tile="0" seed="0" slope_min="0" slope_max="45" slope_bias="0" height_min="0.5" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="18" clump_count="1" clump_raggedness="0.699999988" clump_coverage="0.319999993" clump_invert="true" mesh_scale="0.109999999" size_min="0.153222814" size_max="1.70018411" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="-0.0500000007" sink="0" blend_height="2.29999995" blend_sharpness="0.159999996" render_distance="0" shadow_distance="150" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="7" grass_ring_1="28" grass_ring_2="64" grass_cell_0="0.230000004" grass_cell_1="0.620000005" grass_cell_2="0.949999988" flags="0" />
       <layer name="olive_groves" mesh_path="project/game_resources/trees/plan_olive_3511/plan_olive_3511.prefab" mesh_variants="project/game_resources/trees/plan_olive_3512/plan_olive_3512.prefab;project/game_resources/trees/plan_olive_3513/plan_olive_3513.prefab" habitat="2" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="420" max_per_tile="10000" seed="3511" slope_min="0" slope_max="30" slope_bias="0" height_min="3" height_max="280" height_fade="5" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="22" clump_count="12" clump_raggedness="0.649999976" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.35000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0" surface_offset="-0.119999997" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="85" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="111" />
-      <layer name="maquis_scrub" mesh_path="project/models/forest/lentisk/lentisk_a.gltf" mesh_variants="project/models/forest/lentisk/lentisk_b.gltf;project/models/forest/lentisk/lentisk_c.gltf;project/models/forest/lentisk/lentisk_d.gltf;project/models/forest/myrtle/myrtle_a.gltf;project/models/forest/myrtle/myrtle_b.gltf;project/models/forest/myrtle/myrtle_c.gltf;project/models/forest/myrtle/myrtle_d.gltf;project/models/forest/mastic/mastic_b.gltf;project/models/forest/mastic/mastic_c.gltf" habitat="3" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1000" max_per_tile="18000" seed="6173" slope_min="0" slope_max="45" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0.200000003" wear="0" deposition="0.150000006" talus="0" ground_mask="217" mask_channel="-1" mask_min="0.00999999978" clump_radius="9" clump_count="20" clump_raggedness="0.949999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.550000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.100000001" surface_offset="-0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="650" shadow_distance="90" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.699999988" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="171" />
-      <layer name="woodland_understory" mesh_path="project/models/forest/fern/fern_a.gltf" mesh_variants="project/models/forest/fern/fern_a.gltf;project/models/forest/fern/fern_c.gltf;project/models/forest/fern/fern_d.gltf;project/models/forest/herb/herb_a.gltf;project/models/forest/herb/herb_b.gltf;project/models/forest/herb/herb_c.gltf;project/models/forest/herb/herb_d.gltf;project/models/forest/myrtle/myrtle_c.gltf;project/models/forest/myrtle/myrtle_d.gltf;project/models/forest/lentisk/lentisk_c.gltf;project/models/forest/lentisk/lentisk_d.gltf" habitat="1" material_folder="" enabled="true" kind="2" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="0.479999989" max_per_tile="22000" seed="8129" slope_min="0" slope_max="50" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="-0.150000006" wear="0" deposition="0.150000006" talus="0" ground_mask="193" mask_channel="1" mask_min="0.0299999993" clump_radius="16" clump_count="9" clump_raggedness="0.949999988" clump_coverage="0.600000024" clump_invert="false" mesh_scale="1" size_min="0.419999987" size_max="1.48000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.100000001" surface_offset="-0.0299999993" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="180" shadow_distance="65" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.75" grass_ring_0="12" grass_ring_1="28" grass_ring_2="55" grass_cell_0="2.79999995" grass_cell_1="5" grass_cell_2="9" flags="171" />
+      <layer name="maquis_scrub" mesh_path="project/models/forest/lentisk/lentisk_a.gltf" mesh_variants="project/models/forest/lentisk/lentisk_b.gltf;project/models/forest/lentisk/lentisk_c.gltf;project/models/forest/lentisk/lentisk_d.gltf;project/models/forest/myrtle/myrtle_a.gltf;project/models/forest/myrtle/myrtle_b.gltf;project/models/forest/myrtle/myrtle_c.gltf;project/models/forest/myrtle/myrtle_d.gltf;project/models/forest/mastic/mastic_b.gltf;project/models/forest/mastic/mastic_c.gltf" habitat="3" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1000" max_per_tile="18000" seed="6173" slope_min="0" slope_max="45" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="0.200000003" wear="0" deposition="0.150000006" talus="0" ground_mask="217" mask_channel="-1" mask_min="0.00999999978" clump_radius="9" clump_count="20" clump_raggedness="0.949999988" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.550000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.100000001" surface_offset="-0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="90" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.699999988" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="171" />
+      <layer name="woodland_understory" mesh_path="project/models/forest/fern/fern_a.gltf" mesh_variants="project/models/forest/fern/fern_a.gltf;project/models/forest/fern/fern_c.gltf;project/models/forest/fern/fern_d.gltf;project/models/forest/herb/herb_a.gltf;project/models/forest/herb/herb_b.gltf;project/models/forest/herb/herb_c.gltf;project/models/forest/herb/herb_d.gltf;project/models/forest/myrtle/myrtle_c.gltf;project/models/forest/myrtle/myrtle_d.gltf;project/models/forest/lentisk/lentisk_c.gltf;project/models/forest/lentisk/lentisk_d.gltf" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="850" max_per_tile="14000" seed="8129" slope_min="0" slope_max="50" slope_bias="0" height_min="2" height_max="800" height_fade="3" curvature="0" flow="0" occlusion="0" insolation="-0.150000006" wear="0" deposition="0.150000006" talus="0" ground_mask="193" mask_channel="1" mask_min="0.0299999993" clump_radius="10" clump_count="14" clump_raggedness="0.949999988" clump_coverage="0.600000024" clump_invert="false" mesh_scale="1" size_min="0.550000012" size_max="1.35000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0.100000001" surface_offset="-0.0299999993" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="65" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.75" grass_ring_0="12" grass_ring_1="28" grass_ring_2="55" grass_cell_0="2.79999995" grass_cell_1="5" grass_cell_2="9" flags="171" />
       <layer name="pine_regeneration" mesh_path="project/game_resources/trees/plan_aleppo_young_9281/plan_aleppo_young_9281.prefab" mesh_variants="project/game_resources/trees/plan_aleppo_young_9282/plan_aleppo_young_9282.prefab" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="1200" max_per_tile="22000" seed="9281" slope_min="0" slope_max="50" slope_bias="0" height_min="4" height_max="700" height_fade="12" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="1" mask_min="0.00999999978" clump_radius="12" clump_count="10" clump_raggedness="0.800000012" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.649999976" size_max="1.14999998" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="0" surface_offset="-0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="60" foliage_tint_r="1" foliage_tint_g="1" foliage_tint_b="1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="107" />
-      <layer name="fallen_trunks" mesh_path="project/models/forest/deadwood/log_a.gltf" mesh_variants="project/models/forest/deadwood/log_b.gltf;project/models/forest/deadwood/stump_a.gltf;project/models/forest/deadwood/stump_b.gltf;project/models/forest/mossy_rock/mossy_rock_a.gltf;project/models/forest/mossy_rock/mossy_rock_d.gltf;project/models/forest/mossy_rock/mossy_rock_f.gltf" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="30" max_per_tile="800" seed="1987" slope_min="0" slope_max="32" slope_bias="0" height_min="5" height_max="700" height_fade="8" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0" ground_mask="193" mask_channel="1" mask_min="0.00999999978" clump_radius="8" clump_count="2" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.29999995" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0.0350000001" blend_height="0.349999994" blend_sharpness="0.5" render_distance="400" shadow_distance="90" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="44" />
-      <layer name="fallen_branches" mesh_path="project/models/forest/deadwood/branches_a.gltf" mesh_variants="project/models/forest/deadwood/branches_b.gltf;project/models/forest/deadwood/branches_c.gltf;project/models/forest/deadwood/bark_a.gltf;project/models/forest/deadwood/bark_b.gltf" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="180" max_per_tile="3500" seed="2099" slope_min="0" slope_max="32" slope_bias="0" height_min="5" height_max="700" height_fade="8" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0" ground_mask="193" mask_channel="1" mask_min="0.00999999978" clump_radius="6" clump_count="7" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.60000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.00999999978" sink="0.00499999989" blend_height="0.349999994" blend_sharpness="0.5" render_distance="100" shadow_distance="35" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
+      <layer name="fallen_trunks" mesh_path="project/models/forest/deadwood/log_a.gltf" mesh_variants="project/models/forest/deadwood/log_b.gltf;project/models/forest/deadwood/stump_a.gltf;project/models/forest/deadwood/stump_b.gltf;project/models/forest/mossy_rock/mossy_rock_a.gltf;project/models/forest/mossy_rock/mossy_rock_d.gltf;project/models/forest/mossy_rock/mossy_rock_f.gltf" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="30" max_per_tile="800" seed="1987" slope_min="0" slope_max="32" slope_bias="0" height_min="5" height_max="700" height_fade="8" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0" ground_mask="193" mask_channel="1" mask_min="0.00999999978" clump_radius="8" clump_count="2" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.29999995" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0" sink="0.0350000001" blend_height="0.349999994" blend_sharpness="0.5" render_distance="0" shadow_distance="90" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="44" />
+      <layer name="fallen_branches" mesh_path="project/models/forest/deadwood/branches_a.gltf" mesh_variants="project/models/forest/deadwood/branches_b.gltf;project/models/forest/deadwood/branches_c.gltf;project/models/forest/deadwood/bark_a.gltf;project/models/forest/deadwood/bark_b.gltf" habitat="1" material_folder="" enabled="true" kind="0" mountain_rocks="false" formation_spacing="300" formation_length="300" formation_width="130" formation_height="90" formation_jitter="15" embed_fraction="0.449999988" coating="0" coating_scale="3" density="180" max_per_tile="3500" seed="2099" slope_min="0" slope_max="32" slope_bias="0" height_min="5" height_max="700" height_fade="8" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0.200000003" talus="0" ground_mask="193" mask_channel="1" mask_min="0.00999999978" clump_radius="6" clump_count="7" clump_raggedness="1" clump_coverage="0" clump_invert="false" mesh_scale="1" size_min="0.800000012" size_max="1.60000002" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.00999999978" sink="0.00499999989" blend_height="0.349999994" blend_sharpness="0.5" render_distance="0" shadow_distance="35" foliage_tint_r="-1" foliage_tint_g="-1" foliage_tint_b="-1" foliage_scattering="0.349999994" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="40" />
      </scatter>
      <platforms>
       <platform entity_id="9017000000000000086" min_x="11003.5264" min_z="-2363.6311" max_x="11041.5264" max_z="-2321.6311" center_x="11022.5264" center_z="-2342.6311" half_x="19" half_z="21" yaw="0" height="6.55026054" margin="11.0518818" anchor_x="11022.5" anchor_y="6.28026009" anchor_z="-2342.62988" anchor_qx="0" anchor_qy="0" anchor_qz="0" anchor_qw="1" />
@@ -1824,7 +1624,7 @@
      </platforms>
     </terrain>
    </Entity>
-   <Entity name="ocean" id="9001000000000000006" active="true" position="6208.5 0 -2857" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="ocean" id="9001000000000000006" active="true" position="6180 0 -2840" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <water>
      <water biome="1" species_mask="31" population="0.649999976" wave_size="1" surf_size="0.899999976" clarity="0.75" sea_level="0" />
@@ -66736,7 +66536,7 @@
    </Entity>
    <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="6208.8 14.3293 -2856.99" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.0314192 -0.821162 0.0454219 -0.568016" scale="1 1 1">
+    <Entity name="component_camera" id="17524583551347340245" active="true" position="-28.7998 3.1707 16.99" rotation="0.0115859 -0.484726 0.00642148 0.874566" scale="1 1 1">
      <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="0.699999988" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="100000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
     </Entity>
    </Entity>
@@ -73778,7 +73578,7 @@
     </Entity>
    </Entity>
    <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="1847.36 795.925 -28332.9" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-    <script file_path="project/game_resources/scripts/ufo_hover.lua" Tick="" hover_height="2" Initialize="" minimum_distance="1100" altitude_clearance="350" hover_speed="0" elapsed_time="0" follow_altitude="650" watch_time="0" side="1" Start="" zap_duration="0" follow_distance="1700" rotation_speed="0" watched_distance="2800" />
+    <script file_path="project/game_resources/scripts/ufo_hover.lua" follow_altitude="650" elapsed_time="0" watched_distance="2800" side="1" Initialize="" watch_time="0" Tick="" hover_speed="0" hover_height="2" Start="" follow_distance="1700" altitude_clearance="350" minimum_distance="1100" rotation_speed="0" zap_duration="0" />
     <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
      <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
      <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/game_resources/meshes/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/game_resources/materials/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -75839,6 +75639,24 @@
   </Entity>
   <Entity name="herb_b" id="8145355958970310713" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.51671 1.51671 1.51671">
    <render mesh_name="herb_b_8" mesh_path="./project/game_resources/meshes/herb_b_8.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_6" material_path="./project/game_resources/materials/herb_herb_card_foliage_6.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="fern_c" id="16874037482685496692" active="true" position="0 0 0" rotation="0 0 0 1" scale="2.12446 2.12446 2.12446">
+   <render mesh_name="fern_c_9" mesh_path="./project/game_resources/meshes/fern_c_9.mesh" sub_mesh_index="0" material_name="fern_fern_foliage_6_2" material_path="./project/game_resources/materials/fern_fern_foliage_6_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="fern_d" id="16892699883731814674" active="true" position="0 0 0" rotation="0 0 0 1" scale="3.2726 3.2726 3.2726">
+   <render mesh_name="fern_d_9" mesh_path="./project/game_resources/meshes/fern_d_9.mesh" sub_mesh_index="0" material_name="fern_fern_foliage_6_2" material_path="./project/game_resources/materials/fern_fern_foliage_6_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_d" id="13474385576367195519" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.64034 1.64034 1.64034">
+   <render mesh_name="herb_d_9" mesh_path="./project/game_resources/meshes/herb_d_9.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_6_2" material_path="./project/game_resources/materials/herb_herb_card_foliage_6_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_a" id="13467220941146069216" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.28648 1.28648 1.28648">
+   <render mesh_name="herb_a_9" mesh_path="./project/game_resources/meshes/herb_a_9.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_6_2" material_path="./project/game_resources/materials/herb_herb_card_foliage_6_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_b" id="13466710222304039926" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.51671 1.51671 1.51671">
+   <render mesh_name="herb_b_9" mesh_path="./project/game_resources/meshes/herb_b_9.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_6_2" material_path="./project/game_resources/materials/herb_herb_card_foliage_6_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="herb_c" id="16384962056985005302" active="true" position="0 0 0" rotation="0 0 0 1" scale="1.26021 1.26021 1.26021">
+   <render mesh_name="herb_c_9" mesh_path="./project/game_resources/meshes/herb_c_9.mesh" sub_mesh_index="0" material_name="herb_herb_card_foliage_6_2" material_path="./project/game_resources/materials/herb_herb_card_foliage_6_2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
  </Entities>
 </World>
