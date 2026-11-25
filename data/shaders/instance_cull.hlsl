@@ -58,10 +58,12 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     uint     visible_bit           = 1u << (thread_id.x & 31u);
 
     if (task_index >= task_count) return; // uniform across the whole workgroup
+#if !defined(API_WEBGPU)
     if (late)
     {
         // Uniform workgroup-level exit: if zero instances in this 64-instance batch passed
         // distance/frustum/contribution in the early pass, skip the entire task before any fetches.
+        // Disabled on WebGPU because Tint flags reads of RWStructuredBuffer before the !late barrier.
         uint frustum_any = 0u;
         [unroll]
         for (uint w = 0u; w < vis_words_per_task; ++w)
@@ -70,6 +72,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         }
         if (frustum_any == 0u) return;
     }
+#endif
     if (!late && thread_id.x < vis_words_per_task)
     {
         gs_visibility[thread_id.x] = 0u;

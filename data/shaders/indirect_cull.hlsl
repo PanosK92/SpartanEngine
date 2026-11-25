@@ -73,12 +73,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
     SurvivingInstance si = surviving_instances[surv_index];
     bool split_meshlets = (si.draw_index & survivor_split_draw) != 0u;
-    if (!split_meshlets && group_id.y != 0u)
-        return;
     si.draw_index &= ~survivor_split_draw;
 
     // header load, one thread rebuilds the per-instance state into groupshared, all threads consume after the barrier
-    if (lid == 0)
+    if (lid == 0 && (split_meshlets || group_id.y == 0u))
     {
         gs_drawn_early        = (si.instance_index & SURVIVING_INSTANCE_DRAWN_EARLY) != 0u;
         si.instance_index    &= ~SURVIVING_INSTANCE_DRAWN_EARLY;
@@ -119,6 +117,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         }
     }
     GroupMemoryBarrierWithGroupSync();
+    if (!split_meshlets && group_id.y != 0u)
+        return;
 
     uint meshlet_count = gs_meshlet_count;
     uint iterations    = (meshlet_count + 63u) / 64u; // uniform across the workgroup so the wave ops below stay convergent

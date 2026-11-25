@@ -242,7 +242,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     const int2  tile_origin = int2(group_base) - 2;
     const uint  tile_index  = group_thread_id.y * THREAD_GROUP_COUNT_X + group_thread_id.x;
 
+#if !defined(API_WEBGPU)
     // Pure-sky tiles skip the 12x12 LDS gather, 32 moving-occluder taps, and reduction barriers.
+    // Disabled on WebGPU because Tint forbids workgroupBarrier() after an early return gated on groupshared state.
     if (tile_index == 0u)
     {
         gs_tile_has_geo = 0u;
@@ -250,17 +252,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     GroupMemoryBarrierWithGroupSync();
     const uint2 pixel_clamped = uint2(min(int2(thread_id.xy), out_size - 1));
     const float depth_self    = get_depth(pixel_clamped);
-#if defined(API_WEBGPU)
-    if (depth_self > 0.0f)
-    {
-        InterlockedOr(gs_tile_has_geo, 1u);
-    }
-#else
     if (WaveActiveAnyTrue(depth_self > 0.0f) && WaveIsFirstLane())
     {
         InterlockedOr(gs_tile_has_geo, 1u);
     }
-#endif
     GroupMemoryBarrierWithGroupSync();
     if (gs_tile_has_geo == 0u)
     {
@@ -271,6 +266,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
         }
         return;
     }
+#else
+    const uint2 pixel_clamped = uint2(min(int2(thread_id.xy), out_size - 1));
+    const float depth_self    = get_depth(pixel_clamped);
+#endif
 
     for (uint i = tile_index; i < TILE_N; i += THREAD_GROUP_COUNT_X * THREAD_GROUP_COUNT_Y)
     {
@@ -502,6 +501,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     const uint thread_idx = group_thread_id.y * TILE_W + group_thread_id.x;
 
     // Pure-sky tiles skip the 12x12 LDS gather and the 5x5 bilateral filter (sky has age = 1/32 so it previously hit the 25-tap branch).
+#if !defined(API_WEBGPU)
     if (thread_idx == 0u)
     {
         gs_denoise_has_geo = 0u;
@@ -510,17 +510,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     const int2   c_clamped      = min(int2(thread_id.xy), max_coord);
     const float2 depth_age_self = tex2.Load(int3(c_clamped, 0)).rg;
     const bool   is_geo_self    = depth_age_self.r < 64999.0f;
-#if defined(API_WEBGPU)
-    if (is_geo_self)
-    {
-        InterlockedOr(gs_denoise_has_geo, 1u);
-    }
-#else
     if (WaveActiveAnyTrue(is_geo_self) && WaveIsFirstLane())
     {
         InterlockedOr(gs_denoise_has_geo, 1u);
     }
-#endif
     GroupMemoryBarrierWithGroupSync();
     if (gs_denoise_has_geo == 0u)
     {
@@ -530,6 +523,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
         }
         return;
     }
+#else
+    const int2   c_clamped      = min(int2(thread_id.xy), max_coord);
+    const float2 depth_age_self = tex2.Load(int3(c_clamped, 0)).rg;
+    const bool   is_geo_self    = depth_age_self.r < 64999.0f;
+#endif
 
     const int2 tile_origin = int2(group_id.xy) * int2(TILE_W, TILE_H) - HALO;
     for (uint i = thread_idx; i < LDS_N; i += TILE_W * TILE_H)
