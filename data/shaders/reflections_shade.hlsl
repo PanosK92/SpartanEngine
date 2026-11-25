@@ -19,7 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 // a lobe narrower than this resolves each hit, so the two strongest shadowed local lights get their own shadow ray and
 // the rest share one sampled ray, a wider lobe averages hundreds of hits and samples one ray for all of them
-static const float k_exact_shadow_alpha     = 0.12f;
+static const float k_exact_shadow_alpha     = 0.2f;
 // a converged cache cell knows how open to the sky it is, a hit only traces its own sky visibility once the sky it
 // reflects weighs this much, metals and grazing gloss
 static const float k_sky_ray_weight         = 0.25f;
@@ -30,12 +30,12 @@ static const float k_cached_footprint_end   = 2.0f;
 static const float k_cached_alpha_start     = 0.05f;
 static const float k_cached_alpha_end       = 0.11f;
 // hits smoother than this trace their own reflection, rougher ones read the prefiltered sky
-static const float k_second_bounce_start    = 0.04f;
-static const float k_second_bounce_end      = 0.08f;
+static const float k_second_bounce_start    = 0.06f;
+static const float k_second_bounce_end      = 0.12f;
 // a 0.25 m cell is covered by many pixels, so one write in thirty-two still fills it smoothly
 static const uint  k_cache_update_divisor   = 32;
 // diffuse bounces only need nearby occlusion, the specular bounce below keeps the long ray
-static const float k_cache_bounce_distance  = 24.0f;
+static const float k_cache_bounce_distance  = 32.0f;
 // a facing clearcoat is a few percent of the lobe, trace the coat only once it carries real energy
 static const float k_coat_trace_fresnel     = 0.25f;
 // misses cross this much air before reaching the sky
@@ -470,7 +470,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             ray.Origin    = position + normal * 0.01f;
             ray.Direction = reflect_dir;
             ray.TMin      = 0.001f;
-            ray.TMax      = 64.0f;
+            ray.TMax      = 120.0f;
             float  pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
             float2 cone        = float2((length(source_pos - get_camera_position()) + view_dist) * pixel_angle, pixel_angle + source_alpha + ggx_alpha_from_roughness(roughness));
             RaySurface second  = ray_surface_trace(ray, cone);

@@ -7541,7 +7541,7 @@ namespace spartan
         }
     }
 
-    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early)
+    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early, bool reflections_denoised_early)
     {
         const bool clouds_prepared = early_work_recorded ? clouds_prepared_early : Pass_Clouds_Prepare(eye_layer);
         if (IsRestirActive())
@@ -7590,8 +7590,11 @@ namespace spartan
             {
                 Pass_Light_Ibl(true, eye_layer);
             }
-            Pass_Reflections_Shade(eye_layer);
-            Pass_Reflections_Denoise(eye_layer);
+            if (!reflections_denoised_early)
+            {
+                Pass_Reflections_Shade(eye_layer);
+                Pass_Reflections_Denoise(eye_layer);
+            }
 
             Pass_Reflections_Apply(eye_layer);
         }
@@ -8062,6 +8065,7 @@ namespace spartan
 
         if (Camera* camera = early_camera)
         {
+            RHI_Work fog_work;
             if (fog_prepared_async)
             {
                 submit_sky();
@@ -8077,6 +8081,7 @@ namespace spartan
                 }
                 Pass_Fog(0, rhi_all_mips);
                 fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
+                fog_work = fog_commands->GetWork();
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
             submit_sky();
@@ -8180,26 +8185,6 @@ namespace spartan
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
 
-            // the trace misses into the sky, so it is the first graphics work that has to wait for it
-            if (!IsRestirActive() && early_work_recorded && !m_water_present)
-            {
-                Pass_Reflections_Trace(rhi_all_mips);
-            }
-            if (sky_work.timeline)
-            {
-                RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, sky_work.timeline.get(), sky_work.value);
-                RHI_Device::Bind(RHI_Frame_List::Graphics);
-            }
-
-            if (restir_async)
-            {
-                compute_b_timeline = m_cross_queue_sync.gi_timeline;
-                compute_b_value    = m_cross_queue_sync.gi_timeline_value;
-            }
-            m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
-            m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
-            RHI_Device::SetFrameWait(compute_b_timeline, compute_b_value);
-
             RHI_Texture* tex_exposure_previous =
                 GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
             const bool auto_exposure_enabled =
@@ -8220,6 +8205,47 @@ namespace spartan
                 );
             }
 
+            // The trace misses into the sky, so it waits on sky_work; shade + NRD denoise then wait on
+            // fog_work and run on Graphics in parallel with ComputeB (SSAO + ray traced shadows).
+            bool reflections_denoised_early = false;
+            if (!IsRestirActive() && early_work_recorded && !m_water_present)
+            {
+                Pass_Reflections_Trace(rhi_all_mips);
+                if (sky_work.timeline)
+                {
+                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, sky_work.timeline.get(), sky_work.value);
+                    RHI_Device::Bind(RHI_Frame_List::Graphics);
+                }
+                else if (fog_work.timeline)
+                {
+                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+                    RHI_Device::Bind(RHI_Frame_List::Graphics);
+                }
+
+                if (fog_work.timeline)
+                {
+                    Pass_Reflections_Shade(rhi_all_mips);
+                    Pass_Reflections_Denoise(rhi_all_mips);
+                    reflections_denoised_early = true;
+                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, fog_work.timeline.get(), fog_work.value);
+                    RHI_Device::Bind(RHI_Frame_List::Graphics);
+                }
+            }
+            else if (sky_work.timeline)
+            {
+                RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, sky_work.timeline.get(), sky_work.value);
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
+            }
+
+            if (restir_async)
+            {
+                compute_b_timeline = m_cross_queue_sync.gi_timeline;
+                compute_b_value    = m_cross_queue_sync.gi_timeline_value;
+            }
+            m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
+            m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
+            RHI_Device::SetFrameWait(compute_b_timeline, compute_b_value);
+
             const bool xr_stereo     = IsStereoView();
             const uint32_t eye_count = xr_stereo ? Xr::eye_count : 1;
             for (uint32_t eye = 0; eye < eye_count; eye++)
@@ -8228,7 +8254,7 @@ namespace spartan
                 m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
                 if (!fog_prepared_async)
                     Pass_Fog(eye, eye_layer);
-                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early);
+                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early, reflections_denoised_early);
             }
 
             if (xr_stereo)

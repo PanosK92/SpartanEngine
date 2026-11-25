@@ -240,7 +240,7 @@ namespace spartan
 
         RHI_CommandList::BeginPass("reflections_shade");
         {
-            SetCommonTextures(eye_layer);
+            SetCommonTextures(eye_layer, false);
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::reflections_shade_c));
             
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_reflections_position);
@@ -326,7 +326,7 @@ namespace spartan
         {
             RHI_CommandList::BeginMarker("nrd_pack");
             {
-                SetCommonTextures(eye_layer);
+                SetCommonTextures(eye_layer, false);
                 RHI_CommandList::SetShader(shader_pack, "nrd_pack_reflections");
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_reflections);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_mv);
