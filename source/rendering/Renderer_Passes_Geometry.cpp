@@ -318,7 +318,7 @@ namespace spartan
         // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
         const float gpu_scatter_fill_margin = 0.85f;
         // has to match grass_blades_per_thread in grass_placement.hlsl
-        const uint32_t gpu_scatter_blades_per_thread = 1;
+        const uint32_t gpu_scatter_blades_per_thread = 4;
 
         // has to match grass_patch_max_boost in grass_populate.hlsl
         const float gpu_scatter_patch_max_boost = 4.0f;
@@ -1353,6 +1353,58 @@ namespace spartan
         Pass_Downscale(tex_hiz, Renderer_DownsampleFilter::Min);
     }
 
+    void Renderer::Pass_Water_Visibility()
+    {
+        if (!m_water_present || !m_pass_state.ocean || IsSecondaryViewActive() || IsStereoView())
+        {
+            return;
+        }
+
+        RHI_Shader* shader = GetShader(Renderer_Shader::water_visibility_c);
+        RHI_Texture* tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz);
+        RHI_Buffer* buf_vis = GetBuffer(Renderer_Buffer::WaterVisibility);
+        RHI_Buffer* buf_boxes = GetBuffer(Renderer_Buffer::WaterVisibilityBoxes);
+        const uint32_t slot = m_frame_resource_index % renderer_draw_data_buffer_count;
+        RHI_Buffer* buf_readback = GetBuffer(static_cast<Renderer_Buffer>(static_cast<uint32_t>(Renderer_Buffer::WaterVisibilityReadback0) + slot));
+        if (!shader || !shader->IsCompiled() || !tex_hiz || !buf_vis || !buf_boxes || !buf_readback || tex_hiz->GetMipCount() == 0)
+        {
+            return;
+        }
+
+        const uint32_t max_hiz_mip = tex_hiz->GetMipCount() - 1u;
+        const uint32_t mip_level   = min(3u, max_hiz_mip);
+        const uint32_t mip_width   = max(1u, tex_hiz->GetWidth() >> mip_level);
+        const uint32_t mip_height  = max(1u, tex_hiz->GetHeight() >> mip_level);
+        const uint32_t box_count   = static_cast<uint32_t>(m_water_visibility_boxes.size() / 2);
+
+        const uint32_t zero = 0u;
+        RHI_CommandList::UpdateBuffer(buf_vis, 0, sizeof(uint32_t), &zero, false);
+        if (box_count > 0)
+        {
+            RHI_CommandList::UpdateBuffer(buf_boxes, 0, static_cast<uint64_t>(box_count) * 2ull * sizeof(Vector4), m_water_visibility_boxes.data(), false);
+        }
+
+        RHI_CommandList::BeginPass("water_visibility");
+        {
+            RHI_CommandList::SetShader(shader, "water_visibility");
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_hiz);
+            RHI_CommandList::SetBuffer("water_visibility", buf_vis);
+            RHI_CommandList::SetBuffer("water_visibility_boxes", buf_boxes);
+            m_pcb_pass_cpu.set(0, mip_level);
+            m_pcb_pass_cpu.set(1, mip_width);
+            m_pcb_pass_cpu.set(2, mip_height);
+            m_pcb_pass_cpu.set(3, Renderer::view().frame.ocean_sea_level);
+            m_pcb_pass_cpu.set(4, box_count);
+            m_pcb_pass_cpu.set(5, max_hiz_mip);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch((mip_width + 7u) / 8u, (mip_height + 7u) / 8u, 1u);
+
+            RHI_CommandList::PrepareBufferForReadback(buf_vis);
+            RHI_CommandList::CopyBufferToBuffer(buf_vis, buf_readback, sizeof(uint32_t));
+        }
+        RHI_CommandList::EndPass();
+    }
+
     void Renderer::Pass_TessellatedCull(bool late)
     {
         static vector<Sb_TessellatedDraw> draws;
@@ -2185,11 +2237,40 @@ namespace spartan
             return;
         }
 
-        // Collect visible transparent draws once (avoids scanning all opaque draws twice) and check refraction demand.
-        static vector<uint32_t> visible_transparent_draws;
+        // Collect visible transparent draws once (m_draw_calls is sorted with transparents at the end).
+        // Apply the distance and screen-size culls here so distant frosted windows never trigger a
+        // full-screen refraction blit or open an empty forward pass.
+        struct TransparentDrawEntry
+        {
+            uint32_t draw_index;
+            float    dist_sq;
+        };
+        static vector<TransparentDrawEntry> visible_transparent_draws;
         visible_transparent_draws.clear();
-        bool needs_refraction_source = Renderer::view().frame.rain_vehicle.x > 0.0f || Renderer::view().frame.rain_car_atlas.x > 0.0f;
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        Camera* view_camera      = GetViewCamera();
+        const float render_h     = GetResolutionRender().y;
+        const bool is_persp      = view_camera && view_camera->GetProjectionType() == Projection_Perspective;
+        const float focal        = view_camera ? abs(view_camera->GetProjectionMatrix().m11) * render_h * 0.5f : render_h;
+        const float near_plane   = view_camera ? view_camera->GetNearPlane() : 0.1f;
+        const Vector3 cam_pos    = view_camera ? view_camera->GetEntity()->GetPosition() : Vector3::Zero;
+        const Vector3 cam_fwd    = view_camera ? view_camera->GetEntity()->GetForward() : Vector3::Forward;
+
+        bool needs_refraction_source = Renderer::view().frame.rain_vehicle.x > 0.0f || Renderer::view().frame.rain_car_atlas.w > 0.0f;
+        uint32_t lo = 0;
+        uint32_t hi = m_draw_call_count;
+        while (lo < hi)
+        {
+            const uint32_t mid = lo + (hi - lo) / 2;
+            if (m_draw_calls[mid].is_transparent)
+            {
+                hi = mid;
+            }
+            else
+            {
+                lo = mid + 1;
+            }
+        }
+        for (uint32_t i = lo; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             if (!draw_call.is_transparent || !draw_call.camera_visible)
@@ -2201,7 +2282,24 @@ namespace spartan
             {
                 continue;
             }
-            visible_transparent_draws.push_back(i);
+            const BoundingBox& box = draw_call.render->GetBoundingBox();
+            const float dist_sq    = Vector3::DistanceSquared(box.GetCenter(), cam_pos);
+            if (is_persp)
+            {
+                if (dist_sq > 120.0f * 120.0f)
+                {
+                    continue;
+                }
+                if (dist_sq > 25.0f * 25.0f)
+                {
+                    const float radius = box.GetExtents().Length();
+                    if (radius * 2.0f * focal < 8.0f * sqrt(dist_sq))
+                    {
+                        continue;
+                    }
+                }
+            }
+            visible_transparent_draws.push_back({ i, dist_sq });
             if (!needs_refraction_source &&
                 material->GetProperty(MaterialProperty::AlphaBlend) <= 0.0f &&
                 (material->GetProperty(MaterialProperty::ThinWalled) == 0.0f || material->GetProperty(MaterialProperty::Roughness) > 0.06f))
@@ -2311,37 +2409,12 @@ namespace spartan
                 );
             };
 
-            Camera* view_camera      = GetViewCamera();
-            const float render_h     = GetResolutionRender().y;
-            const bool is_persp      = view_camera && view_camera->GetProjectionType() == Projection_Perspective;
-            const float focal        = view_camera ? abs(view_camera->GetProjectionMatrix().m11) * render_h * 0.5f : render_h;
-            const float near_plane   = view_camera ? view_camera->GetNearPlane() : 0.1f;
-            const Vector3 cam_pos    = view_camera ? view_camera->GetEntity()->GetPosition() : Vector3::Zero;
-            const Vector3 cam_fwd    = view_camera ? view_camera->GetEntity()->GetForward() : Vector3::Forward;
-            for (const uint32_t i : visible_transparent_draws)
+            for (const TransparentDrawEntry& entry : visible_transparent_draws)
             {
-                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                const Renderer_DrawCall& draw_call = m_draw_calls[entry.draw_index];
                 Render* render     = draw_call.render;
                 Material* material = render->GetMaterial();
-
-                const BoundingBox& box = render->GetBoundingBox();
-                const float dist_sq    = Vector3::DistanceSquared(box.GetCenter(), cam_pos);
-                // Skip distant non-water transparent meshes (far building windows, traffic glass) before binding state.
-                if (is_persp && material->GetProperty(MaterialProperty::IsWater) == 0.0f)
-                {
-                    if (dist_sq > 120.0f * 120.0f)
-                    {
-                        continue;
-                    }
-                    if (dist_sq > 25.0f * 25.0f)
-                    {
-                        const float radius = box.GetExtents().Length();
-                        if (radius * 2.0f * focal < 8.0f * sqrt(dist_sq))
-                        {
-                            continue;
-                        }
-                    }
-                }
+                const float dist_sq = entry.dist_sq;
 
                 const bool is_tessellated = material->IsTessellated();
                 RHI_Shader* hull          = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;

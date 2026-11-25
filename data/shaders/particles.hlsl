@@ -1518,6 +1518,28 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
         return o;
     }
 
+    float4 clip_c          = mul(float4(p.position, 1.0), buffer_frame.view_projection);
+    float  camera_distance = distance(p.position, get_camera_position());
+
+    // Early frustum, behind-camera, and fade-distance cull for small atmosphere particles before building quads
+    if (emitter.render_mode >= 2u)
+    {
+        float max_dist = emitter.render_mode == 5u ? 60.0 : 160.0;
+        if (camera_distance >= max_dist || (leaf && camera_distance <= 0.3) || (!leaf && camera_distance <= 0.45))
+        {
+            return o;
+        }
+        if (clip_c.w <= 0.0)
+        {
+            return o;
+        }
+        float pad = max(p.size * 2.0, 0.25);
+        if (abs(clip_c.x) > clip_c.w * 1.15 + pad || abs(clip_c.y) > clip_c.w * 1.15 + pad)
+        {
+            return o;
+        }
+    }
+
     // two triangles, corners laid out as a quad in the minus one to one range
     float2 quad[6] =
     {
@@ -1527,77 +1549,103 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float2 c = quad[corner];
     bool luminous = emitter.lighting_mode == particle_lighting_emissive && emitter.blend_mode == particle_blend_additive;
     float taper = p.end_size / max(p.start_size, 0.001);
-    bool flame = luminous && p.max_lifetime < 0.30 && taper > 0.10 && taper < 0.6;
-    bool spark = luminous && p.start_size < 0.075 && taper <= 0.12;
+    bool flame = !leaf && luminous && p.max_lifetime < 0.30 && taper > 0.10 && taper < 0.6;
+    bool spark = !leaf && luminous && p.start_size < 0.075 && taper <= 0.12;
     o.emissive_shape = float2(flame ? 1.0 : 0.0, spark ? 1.0 : 0.0);
 
-    // screen aligned billboard basis, optionally stretched along the authored plume direction
-    float3 right = safe_normalize(buffer_frame.camera_right, float3(1.0, 0.0, 0.0));
-    float3 up    = safe_normalize(cross(buffer_frame.camera_forward, right), float3(0.0, 1.0, 0.0));
-    float3 flow_velocity = p.velocity - emitter.emitter_velocity * emitter.velocity_inheritance;
-    // the streak a drop draws on the sensor is its motion relative to the camera, so driving into the rain tilts it
-    // toward the lens and stretches it, the same relative velocity that sets how hard the lens and the body get hit
-    if (emitter.rain_occluded != 0u)
-    {
-        float3 camera_velocity = (buffer_frame.camera_position - buffer_frame.camera_position_previous) / max(buffer_frame.delta_time, 1e-4);
-        camera_velocity       *= (buffer_frame.delta_time > 0.0 && length(camera_velocity) < 150.0) ? 1.0 : 0.0; // paused or teleported
-        flow_velocity          = p.velocity - camera_velocity;
-    }
-    float  velocity_len  = length(flow_velocity);
-    float3 velocity_dir  = velocity_len > 0.05 ? flow_velocity / velocity_len : emitter.emission_direction;
-    float3 flow_axis     = flame ? safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction) : velocity_dir;
-    float3 velocity_axis = flow_axis - buffer_frame.camera_forward * dot(flow_axis, buffer_frame.camera_forward);
-    float projected_flow_length = length(velocity_axis);
-    velocity_axis = safe_normalize(velocity_axis, right);
-    float stretch = saturate(velocity_len * (spark ? 0.16 : 0.08)) * emitter.velocity_stretch;
-    float alignment = (flame || spark) ? 1.0 : saturate(stretch);
-    right = safe_normalize(lerp(right, velocity_axis, alignment), right);
-    up    = safe_normalize(cross(buffer_frame.camera_forward, right), up);
-    float half_size_x = p.size * (spark ? (0.5 + stretch * 3.8) : (0.5 + stretch * 1.5));
-    float half_size_y = p.size * (spark ? 0.34 : (0.5 - saturate(stretch) * 0.2));
-    // A flame starts at its nozzle and extends downstream. Centred, fully
-    // stretched quads put half the jet back over the bumper in a chase view.
-    // Preserve foreshortening when looking along the exhaust direction.
-    if (flame)
-        half_size_x *= max(projected_flow_length, 0.2);
-    // a raindrop is a couple of millimetres across, what the eye sees is the streak it draws during one exposure:
-    // the segment from where it was relative to the camera one exposure ago to where it is now, drawn in world space
-    // so perspective does the rest, drops the camera drives into come at the lens and grow, corners sweep them sideways
-    float3 streak_center = p.position;
-    float streak_share   = 1.0;
-    if (emitter.rain_occluded != 0u)
-    {
-        float3 trail     = flow_velocity * 0.03; // a touch longer than a real shutter so each drop lingers in the eye
-        float3 to_camera = safe_normalize(get_camera_position() - p.position, -buffer_frame.camera_forward);
-        right            = safe_normalize(trail, float3(0.0, -1.0, 0.0));
-        up               = safe_normalize(cross(right, to_camera), up);
-        half_size_x      = max(length(trail) * 0.5, p.size);
-        half_size_y      = p.size * 0.5;
-        streak_center    = p.position - trail * 0.5;
+    float3 world          = p.position;
+    float3 previous_world = p.previous_position;
+    float  streak_share   = 1.0;
+    float  alignment      = 0.0;
 
-        // a drop is a couple of millimetres across, a streak thinner than a pixel and a half is drawn that wide and as much fainter,
-        // so a distant one fades into the downpour instead of flickering as a bright line
-        float depth   = max(dot(streak_center - get_camera_position(), buffer_frame.camera_forward), 0.05);
-        float pixels  = p.size * buffer_frame.projection[1][1] * buffer_frame.resolution_render.y * 0.5 / depth;
-        streak_share  = saturate(pixels / 1.5);
-        half_size_y  /= max(streak_share, 0.05);
-    }
-    float longitudinal = c.x + (flame ? 1.0 : 0.0);
-    float3 world = streak_center + right * longitudinal * half_size_x + up * c.y * half_size_y;
-    // a leaf is drawn in its own simulated plane in flight and at rest alike, so landing is not a
-    // switch between two looks, and it is lit two sided from the face the camera sees
-    float3 leaf_offset = 0.0;
     if (leaf)
     {
-        float3 normal  = safe_normalize(p.wake_axis.xyz, float3(0, 1, 0));
-        float3 tangent = safe_normalize(p.birth_effect.xyz - normal * dot(p.birth_effect.xyz, normal), safe_normalize(cross(float3(0, 0, 1), normal), float3(1, 0, 0)));
-        leaf_offset    = (tangent * c.x + cross(normal, tangent) * c.y) * p.size * 0.5;
-        world          = p.position + leaf_offset;
+        // a leaf is drawn in its own simulated plane in flight and at rest alike, so landing is not a
+        // switch between two looks, and it is lit two sided from the face the camera sees
+        float3 normal    = safe_normalize(p.wake_axis.xyz, float3(0, 1, 0));
+        float3 tangent   = safe_normalize(p.birth_effect.xyz - normal * dot(p.birth_effect.xyz, normal), safe_normalize(cross(float3(0, 0, 1), normal), float3(1, 0, 0)));
+        float3 leaf_offset = (tangent * c.x + cross(normal, tangent) * c.y) * p.size * 0.5;
+        world            = p.position + leaf_offset;
+        previous_world   = p.previous_position + leaf_offset;
         o.contact_normal = dot(normal, get_camera_position() - p.position) < 0.0 ? -normal : normal;
     }
+    else
+    {
+        // screen aligned billboard basis, optionally stretched along the authored plume direction
+        float3 right = safe_normalize(buffer_frame.camera_right, float3(1.0, 0.0, 0.0));
+        float3 up    = safe_normalize(cross(buffer_frame.camera_forward, right), float3(0.0, 1.0, 0.0));
+        float3 flow_velocity = p.velocity - emitter.emitter_velocity * emitter.velocity_inheritance;
+        // the streak a drop draws on the sensor is its motion relative to the camera, so driving into the rain tilts it
+        // toward the lens and stretches it, the same relative velocity that sets how hard the lens and the body get hit
+        if (emitter.rain_occluded != 0u)
+        {
+            float3 camera_velocity = (buffer_frame.camera_position - buffer_frame.camera_position_previous) / max(buffer_frame.delta_time, 1e-4);
+            camera_velocity       *= (buffer_frame.delta_time > 0.0 && length(camera_velocity) < 150.0) ? 1.0 : 0.0; // paused or teleported
+            flow_velocity          = p.velocity - camera_velocity;
+        }
+        float  velocity_len  = length(flow_velocity);
+        float3 velocity_dir  = velocity_len > 0.05 ? flow_velocity / velocity_len : emitter.emission_direction;
+        float3 flow_axis     = flame ? safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction) : velocity_dir;
+        float3 velocity_axis = flow_axis - buffer_frame.camera_forward * dot(flow_axis, buffer_frame.camera_forward);
+        float projected_flow_length = length(velocity_axis);
+        velocity_axis = safe_normalize(velocity_axis, right);
+        float stretch = saturate(velocity_len * (spark ? 0.16 : 0.08)) * emitter.velocity_stretch;
+        alignment = (flame || spark) ? 1.0 : saturate(stretch);
+        right = safe_normalize(lerp(right, velocity_axis, alignment), right);
+        up    = safe_normalize(cross(buffer_frame.camera_forward, right), up);
+        float half_size_x = p.size * (spark ? (0.5 + stretch * 3.8) : (0.5 + stretch * 1.5));
+        float half_size_y = p.size * (spark ? 0.34 : (0.5 - saturate(stretch) * 0.2));
+        // A flame starts at its nozzle and extends downstream. Centred, fully
+        // stretched quads put half the jet back over the bumper in a chase view.
+        // Preserve foreshortening when looking along the exhaust direction.
+        if (flame)
+            half_size_x *= max(projected_flow_length, 0.2);
+        // a raindrop is a couple of millimetres across, what the eye sees is the streak it draws during one exposure:
+        // the segment from where it was relative to the camera one exposure ago to where it is now, drawn in world space
+        // so perspective does the rest, drops the camera drives into come at the lens and grow, corners sweep them sideways
+        float3 streak_center = p.position;
+        if (emitter.rain_occluded != 0u)
+        {
+            float3 trail     = flow_velocity * 0.03; // a touch longer than a real shutter so each drop lingers in the eye
+            float3 to_camera = safe_normalize(get_camera_position() - p.position, -buffer_frame.camera_forward);
+            right            = safe_normalize(trail, float3(0.0, -1.0, 0.0));
+            up               = safe_normalize(cross(right, to_camera), up);
+            half_size_x      = max(length(trail) * 0.5, p.size);
+            half_size_y      = p.size * 0.5;
+            streak_center    = p.position - trail * 0.5;
 
-    float4 clip   = mul(float4(world, 1.0),      buffer_frame.view_projection);
-    float4 clip_c = mul(float4(p.position, 1.0), buffer_frame.view_projection);
+            // a drop is a couple of millimetres across, a streak thinner than a pixel and a half is drawn that wide and as much fainter,
+            // so a distant one fades into the downpour instead of flickering as a bright line
+            float depth   = max(dot(streak_center - get_camera_position(), buffer_frame.camera_forward), 0.05);
+            float pixels  = p.size * buffer_frame.projection[1][1] * buffer_frame.resolution_render.y * 0.5 / depth;
+            streak_share  = saturate(pixels / 1.5);
+            half_size_y  /= max(streak_share, 0.05);
+        }
+        float longitudinal = c.x + (flame ? 1.0 : 0.0);
+        world = streak_center + right * longitudinal * half_size_x + up * c.y * half_size_y;
+
+        if (emitter.rain_occluded != 0u)
+        {
+            previous_world = world + p.previous_position - p.position;
+        }
+        else
+        {
+            float3 previous_right = normalize(float3(buffer_frame.view_previous[0][0], buffer_frame.view_previous[1][0], buffer_frame.view_previous[2][0]));
+            float3 previous_up = normalize(float3(buffer_frame.view_previous[0][1], buffer_frame.view_previous[1][1], buffer_frame.view_previous[2][1]));
+            float3 previous_forward = normalize(cross(previous_right, previous_up));
+            float3 previous_projected_flow = flow_axis - previous_forward * dot(flow_axis, previous_forward);
+            float3 previous_axis = safe_normalize(previous_projected_flow, previous_right);
+            previous_right = safe_normalize(lerp(previous_right, previous_axis, alignment), previous_right);
+            previous_up = safe_normalize(cross(previous_forward, previous_right), previous_up);
+            float previous_length_scale = flame ? max(length(previous_projected_flow), 0.2) : 1.0;
+            float prev_scale_x = spark ? (0.5 + stretch * 3.8) : (0.5 + stretch * 1.5);
+            float prev_scale_y = spark ? 0.34 : (0.5 - saturate(stretch) * 0.2);
+            previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * prev_scale_x * previous_length_scale
+                + previous_up * c.y * p.previous_size * prev_scale_y;
+        }
+    }
+
+    float4 clip = mul(float4(world, 1.0), buffer_frame.view_projection);
 
     // age driven fade in, rotation and spin, matches the old compute look
     float age_t    = 1.0 - saturate(p.lifetime / p.max_lifetime);
@@ -1606,6 +1654,24 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     if (leaf) o.nature_shape.y = dot(p.wake_axis.xyz, get_camera_position() - p.position) < 0.0 ? -2.0 : -1.0;
     float fade_in  = saturate(age_t / (luminous ? 0.04 : 0.2));
     if (leaf) fade_in = saturate(p.ground_plane.w / 0.75);
+    float alpha = p.color.a * fade_in * streak_share;
+    if (emitter.render_mode >= 2u)
+    {
+        // Airborne details dissolve near the lens, keeping cockpit/road views clear.
+        if (!leaf) alpha *= smoothstep(0.45, 1.4, camera_distance);
+        if (!leaf) alpha *= 1.0 - smoothstep(0.85, 1.0, age_t);
+        if (leaf)
+        {
+            // only a leaf brushing the lens fades, the far edge matches the spatial cull
+            alpha *= smoothstep(0.3, 0.9, camera_distance);
+            alpha *= emitter.render_mode == 5u ? 1.0 - smoothstep(50.0, 60.0, camera_distance) : 1.0 - smoothstep(140.0, 160.0, camera_distance);
+        }
+    }
+    if (alpha <= 0.0)
+    {
+        return o;
+    }
+
     float base_ang = rng(index * 2654435761u) * 6.28318530718;
     float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
     float ang      = base_ang + spin * age_t;
@@ -1617,39 +1683,12 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     else if (animated_directional_flipbook)
         ang = (alignment > 0.5 ? -1.57079633 : 3.14159265) + spin * 0.18;
 
-    float3 previous_right = normalize(float3(buffer_frame.view_previous[0][0], buffer_frame.view_previous[1][0], buffer_frame.view_previous[2][0]));
-    float3 previous_up = normalize(float3(buffer_frame.view_previous[0][1], buffer_frame.view_previous[1][1], buffer_frame.view_previous[2][1]));
-    float3 previous_forward = normalize(cross(previous_right, previous_up));
-    float3 previous_projected_flow = flow_axis - previous_forward * dot(flow_axis, previous_forward);
-    float3 previous_axis = safe_normalize(previous_projected_flow, previous_right);
-    previous_right = safe_normalize(lerp(previous_right, previous_axis, alignment), previous_right);
-    previous_up = safe_normalize(cross(previous_forward, previous_right), previous_up);
-    float previous_length_scale = flame ? max(length(previous_projected_flow), 0.2) : 1.0;
-    float prev_scale_x = spark ? (0.5 + stretch * 3.8) : (0.5 + stretch * 1.5);
-    float prev_scale_y = spark ? 0.34 : (0.5 - saturate(stretch) * 0.2);
-    float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * prev_scale_x * previous_length_scale
-        + previous_up * c.y * p.previous_size * prev_scale_y;
-    if (leaf) previous_world = p.previous_position + leaf_offset;
-    if (emitter.rain_occluded != 0u) previous_world = world + p.previous_position - p.position;
     o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
     o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
     o.position  = clip;
     o.local     = c;
     o.color     = p.color.rgb;
-    o.alpha     = p.color.a * fade_in * streak_share;
-    if (emitter.render_mode >= 2u)
-    {
-        // Airborne details dissolve near the lens, keeping cockpit/road views clear.
-        float camera_distance = distance(p.position, get_camera_position());
-        if (!leaf) o.alpha *= smoothstep(0.45, 1.4, camera_distance);
-        if (!leaf) o.alpha *= 1.0 - smoothstep(0.85, 1.0, age_t);
-        if (leaf)
-        {
-            // only a leaf brushing the lens fades, the far edge matches the spatial cull
-            o.alpha *= smoothstep(0.3, 0.9, camera_distance);
-            o.alpha *= emitter.render_mode == 5u ? 1.0 - smoothstep(50.0, 60.0, camera_distance) : 1.0 - smoothstep(140.0, 160.0, camera_distance);
-        }
-    }
+    o.alpha     = alpha;
     o.lin_depth = linearize_depth(clip_c.z / max(clip_c.w, 1e-6));
     if (leaf) o.lin_depth = linearize_depth(clip.z / max(clip.w, 1e-6));
     o.rot       = float2(cos(ang), sin(ang));
@@ -1966,19 +2005,22 @@ particle_output main_ps(ps_input input)
             leaf_blade  = true;
 
             // Shade the ridges, rim and veins while retaining the blade's birth hue.
-            float2 nq    = q * 2.5 + seed * 37.0;
-            float blotch = leaf_noise(nq) * 0.65 + leaf_noise(nq * 2.9 + 5.0) * 0.35;
-            float rim    = smoothstep(-0.10, 0.0, edge);
-            float3 tint  = base_color * lerp(1.06, 0.86, along * 0.5 + 0.5);
-            tint         = lerp(tint, tint * 0.48, smoothstep(0.55, 0.85, blotch) * 0.85);
-            tint         = lerp(tint, tint * 0.58, rim * 0.7);
-            tint        *= 1.0 - 0.45 * pow(leaf_noise(q * 15.0 + seed * 91.0), 6.0);
-            tint        *= 1.0 + vein * 0.18 - ribs * 0.06;
-            if (input.nature_shape.y < -1.5)
+            if (alpha_mask > 0.001)
             {
-                tint = lerp(tint, dot(tint, float3(0.3, 0.59, 0.11)) * float3(1.05, 1.0, 0.9), 0.3) * 1.12;
+                float2 nq    = q * 2.5 + seed * 37.0;
+                float blotch = leaf_noise(nq) * 0.65 + leaf_noise(nq * 2.9 + 5.0) * 0.35;
+                float rim    = smoothstep(-0.10, 0.0, edge);
+                float3 tint  = base_color * lerp(1.06, 0.86, along * 0.5 + 0.5);
+                tint         = lerp(tint, tint * 0.48, smoothstep(0.55, 0.85, blotch) * 0.85);
+                tint         = lerp(tint, tint * 0.58, rim * 0.7);
+                tint        *= 1.0 - 0.45 * pow(leaf_noise(q * 15.0 + seed * 91.0), 6.0);
+                tint        *= 1.0 + vein * 0.18 - ribs * 0.06;
+                if (input.nature_shape.y < -1.5)
+                {
+                    tint = lerp(tint, dot(tint, float3(0.3, 0.59, 0.11)) * float3(1.05, 1.0, 0.9), 0.3) * 1.12;
+                }
+                base_color = tint;
             }
-            base_color = tint;
         }
         else if (nature == 3u)
         {

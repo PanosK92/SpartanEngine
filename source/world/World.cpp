@@ -433,9 +433,12 @@ namespace spartan
                 if (physics->GetBodyType() != BodyType::Custom)
                 {
                     if (!playing || physics->NeedsRunningPreTick()) physics->PreTick();
-                    if (physics->NeedsStreamingRetry()) collision_retry.insert(entity);
                 }
                 physics->Tick();
+                if (physics->GetBodyType() != BodyType::Custom && physics->NeedsStreamingRetry())
+                {
+                    collision_retry.insert(entity);
+                }
             }
             SP_PROFILE_CPU_END();
         }
@@ -1313,18 +1316,19 @@ namespace spartan
                 // is read. Pending pointers may refer to removed components.
                 changed.clear();
                 render_previous_candidates.clear();
-                std::array<WorldWorkCounters, 8> rebuild_work;
-                const uint32_t count = static_cast<uint32_t>(all_render_entries.size());
+                const uint32_t count   = static_cast<uint32_t>(all_render_entries.size());
+                const uint32_t workers = min(max(count, 1u), min(max(ThreadPool::GetThreadCount(), 1u), 32u));
+                std::array<WorldWorkCounters, 32> rebuild_work;
                 ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
                 {
                     ScopedWorldWork scope(rebuild_work[begin]);
-                    for (uint32_t i = count * begin / 8; i < count * end / 8; ++i)
+                    for (uint32_t i = count * begin / workers; i < count * end / workers; ++i)
                     {
                         all_render_entries[i]->render->AcknowledgeSpatialBounds();
                         all_render_entries[i]->render->Tick();
                     }
-                }, 8u);
-                for (const auto& batch : rebuild_work) work_counters.Merge(batch);
+                }, workers);
+                for (uint32_t w = 0; w < workers; ++w) work_counters.Merge(rebuild_work[w]);
                 render_spatial_index.Build(all_render_entries);
                 render_spatial_rebuild = false;
                 CountWorldWork(WorldWork::spatial_rebuilds);
@@ -1375,7 +1379,7 @@ namespace spartan
                             data->render->Tick();
                         }
                     }
-                }, min(jobs, 8u));
+                }, min(jobs, max(ThreadPool::GetThreadCount(), 1u)));
                 for (const auto& batch : batch_work) work_counters.Merge(batch);
             }
             // Clear only objects which left the candidate set. Keeping the old
@@ -1456,6 +1460,7 @@ namespace spartan
         // resolve if needed
         if (resolve)
         {
+            SP_PROFILE_CPU_START("world_resolve");
             // track entities
             {
                 // the pick below walks the entity list, and that list is reordered as entities come and
@@ -1468,92 +1473,215 @@ namespace spartan
                 light              = nullptr;
                 audio_source_count = 0;
                 views.Clear();
-                for (Entity* entity : entities)
+                bounding_box = BoundingBox::Unit;
+
+                struct ResolveBatch
                 {
-                    // still in the live list until next removal flush, skip so draw does not
-                    // read a mesh the owner already freed this tick
-                    if (pending_remove.count(entity->GetObjectId()) > 0)
+                    vector<Entity*> terrains;
+                    vector<Entity*> ambient;
+                    vector<Entity*> volumes;
+                    vector<Entity*> lights;
+                    vector<Entity*> render;
+                    vector<Entity*> logic;
+                    vector<Entity*> ragdolls;
+                    vector<Entity::PreTickGate*> pretick;
+                    vector<Entity*> particles;
+                    vector<Entity*> icons;
+                    vector<Entity*> collision_add;
+                    vector<Entity*> collision_remove;
+                    Entity* camera = nullptr;
+                    Entity* directional_light = nullptr;
+                    bool camera_incumbent_live = false;
+                    uint32_t audio_source_count = 0;
+                    BoundingBox bounds = BoundingBox::Unit;
+                    bool has_bounds = false;
+
+                    void Clear()
                     {
-                        continue;
+                        terrains.clear();
+                        ambient.clear();
+                        volumes.clear();
+                        lights.clear();
+                        render.clear();
+                        logic.clear();
+                        ragdolls.clear();
+                        pretick.clear();
+                        particles.clear();
+                        icons.clear();
+                        collision_add.clear();
+                        collision_remove.clear();
+                        camera                = nullptr;
+                        directional_light     = nullptr;
+                        camera_incumbent_live = false;
+                        audio_source_count    = 0;
+                        bounds                = BoundingBox::Unit;
+                        has_bounds            = false;
                     }
+                };
 
-                    if (entity->GetComponent<Terrain>())
-                        views.terrains.push_back(entity);
-                    if (entity->GetComponent<Terrain>() || entity->GetComponent<Volume>() ||
-                        entity->HasTag("terrain_canopy") || entity->HasTag("terrain_scrub"))
-                        views.ambient.push_back(entity);
+                static std::array<ResolveBatch, 32> batches;
+                const uint32_t entity_count = static_cast<uint32_t>(entities.size());
+                const uint32_t jobs         = entity_count >= 1024 ? min(max(ThreadPool::GetThreadCount(), 1u), 32u) : 1u;
+                const bool has_removals     = !pending_remove.empty();
 
-                    if (entity->GetComponent<Volume>())
+                auto scan = [&](uint32_t first, uint32_t last)
+                {
+                    for (uint32_t b = first; b < last; ++b)
                     {
-                        views.volumes.push_back(entity);
+                        ResolveBatch& batch = batches[b];
+                        batch.Clear();
+                        const uint32_t begin = static_cast<uint32_t>(static_cast<uint64_t>(entity_count) * b / jobs);
+                        const uint32_t end   = static_cast<uint32_t>(static_cast<uint64_t>(entity_count) * (b + 1) / jobs);
+                        for (uint32_t i = begin; i < end; ++i)
+                    {
+                        Entity* entity = entities[i];
+                        if (has_removals && pending_remove.count(entity->GetObjectId()) > 0)
+                        {
+                            continue;
+                        }
+
+                        const bool has_terrain = entity->GetComponent<Terrain>() != nullptr;
+                        const bool has_volume  = entity->GetComponent<Volume>() != nullptr;
+                        if (has_terrain)
+                        {
+                            batch.terrains.push_back(entity);
+                        }
+                        if (has_terrain || has_volume || entity->HasTag("terrain_canopy") || entity->HasTag("terrain_scrub"))
+                        {
+                            batch.ambient.push_back(entity);
+                        }
+                        if (has_volume)
+                        {
+                            batch.volumes.push_back(entity);
+                        }
+
+                        Physics* physics        = entity->GetComponent<Physics>();
+                        Render* collider_render = entity->GetComponent<Render>();
+                        const bool streamed     = physics && collider_render && physics->StreamsCollision();
+                        const bool in_grid      = collision_grid.Contains(entity);
+                        if (streamed && !in_grid)
+                        {
+                            batch.collision_add.push_back(entity);
+                        }
+                        else if (!streamed && in_grid)
+                        {
+                            batch.collision_remove.push_back(entity);
+                        }
+
+                        if (entity->GetActive())
+                        {
+                            batch.camera = pick_default_camera(batch.camera, entity);
+                            batch.camera_incumbent_live |= entity == camera_incumbent;
+
+                            if (Light* light_comp = entity->GetComponent<Light>())
+                            {
+                                if (!batch.directional_light && light_comp->GetLightType() == LightType::Directional)
+                                {
+                                    batch.directional_light = entity;
+                                }
+                                batch.lights.push_back(entity);
+                            }
+
+                            const bool has_render = collider_render != nullptr;
+                            if (has_render)
+                            {
+                                batch.render.push_back(entity);
+                                if (!batch.has_bounds)
+                                {
+                                    batch.bounds     = collider_render->GetBoundingBox();
+                                    batch.has_bounds = true;
+                                }
+                                else
+                                {
+                                    batch.bounds.Merge(collider_render->GetBoundingBox());
+                                }
+                            }
+                            else if (entity->GetComponentCount() > 0)
+                            {
+                                // lights, scripts, audio, etc without a mesh still need Entity::Tick
+                                batch.logic.push_back(entity);
+                            }
+
+                            if (entity->GetComponent<Ragdoll>())
+                            {
+                                batch.ragdolls.push_back(entity);
+                            }
+
+                            if (
+                                (physics && (!streamed || physics->GetBodyType() == BodyType::Custom)) ||
+                                entity->GetComponent<Script>() ||
+                                entity->GetComponent<Ragdoll>()
+                            )
+                            {
+                                batch.pretick.push_back(entity->GetPreTickGate());
+                            }
+
+                            if (entity->GetComponent<AudioSource>())
+                            {
+                                batch.audio_source_count++;
+                            }
+
+                            if (entity->GetComponent<ParticleSystem>())
+                            {
+                                batch.particles.push_back(entity);
+                            }
+
+                            // editor icons, skip empty and render-only props
+                            const uint32_t component_count = entity->GetComponentCount();
+                            if (component_count > 0 && !(component_count == 1 && has_render))
+                            {
+                                batch.icons.push_back(entity);
+                            }
+                        }
                     }
+                    }
+                };
 
-                    Physics* physics = entity->GetComponent<Physics>();
-                    Render* collider_render = entity->GetComponent<Render>();
-                    const bool streamed = physics && collider_render && physics->StreamsCollision();
-                    if (streamed && !collision_grid.Contains(entity))
+                if (jobs == 1)
+                {
+                    scan(0, 1);
+                }
+                else
+                {
+                    ThreadPool::ParallelLoop(scan, jobs);
+                }
+
+                // Merge in deterministic chunk order so entity views, camera selection, and light selection stay identical.
+                for (uint32_t b = 0; b < jobs; ++b)
+                {
+                    const ResolveBatch& batch = batches[b];
+                    views.terrains.insert(views.terrains.end(), batch.terrains.begin(), batch.terrains.end());
+                    views.ambient.insert(views.ambient.end(), batch.ambient.begin(), batch.ambient.end());
+                    views.volumes.insert(views.volumes.end(), batch.volumes.begin(), batch.volumes.end());
+                    views.lights.insert(views.lights.end(), batch.lights.begin(), batch.lights.end());
+                    views.render.insert(views.render.end(), batch.render.begin(), batch.render.end());
+                    views.logic.insert(views.logic.end(), batch.logic.begin(), batch.logic.end());
+                    views.ragdolls.insert(views.ragdolls.end(), batch.ragdolls.begin(), batch.ragdolls.end());
+                    views.pretick.insert(views.pretick.end(), batch.pretick.begin(), batch.pretick.end());
+                    views.particles.insert(views.particles.end(), batch.particles.begin(), batch.particles.end());
+                    views.icons.insert(views.icons.end(), batch.icons.begin(), batch.icons.end());
+                    for (Entity* entity : batch.collision_add)
                     {
-                        // Compute geometry on the owner thread when loading has finished.
                         collision_grid.Update(entity, BoundingBox::Infinite);
                         NotifyCollisionChanged(entity);
                     }
-                    else if (!streamed) collision_grid.Remove(entity);
-
-                    if (entity->GetActive())
+                    for (Entity* entity : batch.collision_remove)
                     {
-                        camera = pick_default_camera(camera, entity);
-                        camera_incumbent_live |= entity == camera_incumbent;
-
-                        if (Light* light_comp = entity->GetComponent<Light>())
-                        {
-                            if (!light && light_comp->GetLightType() == LightType::Directional)
-                            {
-                                light = entity;
-                            }
-                            views.lights.push_back(entity);
-                        }
-
-                        const bool has_render = entity->GetComponent<Render>() != nullptr;
-                        if (has_render)
-                        {
-                            views.render.push_back(entity);
-                        }
-                        else if (entity->GetComponentCount() > 0)
-                        {
-                            // lights, scripts, audio, etc without a mesh still need Entity::Tick
-                            views.logic.push_back(entity);
-                        }
-
-                        if (entity->GetComponent<Ragdoll>())
-                        {
-                            views.ragdolls.push_back(entity);
-                        }
-
-                        if (
-                            (physics && (!streamed || physics->GetBodyType() == BodyType::Custom)) ||
-                            entity->GetComponent<Script>() ||
-                            entity->GetComponent<Ragdoll>()
-                        )
-                        {
-                            views.pretick.push_back(entity->GetPreTickGate());
-                        }
-
-                        if (entity->GetComponent<AudioSource>())
-                        {
-                            audio_source_count++;
-                        }
-
-                        if (entity->GetComponent<ParticleSystem>())
-                        {
-                            views.particles.push_back(entity);
-                        }
-
-                        // editor icons, skip empty and render-only props
-                        const uint32_t component_count = entity->GetComponentCount();
-                        if (component_count > 0 && !(component_count == 1 && has_render))
-                        {
-                            views.icons.push_back(entity);
-                        }
+                        collision_grid.Remove(entity);
+                    }
+                    if (batch.camera)
+                    {
+                        camera = pick_default_camera(camera, batch.camera);
+                    }
+                    camera_incumbent_live |= batch.camera_incumbent_live;
+                    if (!light && batch.directional_light)
+                    {
+                        light = batch.directional_light;
+                    }
+                    audio_source_count += batch.audio_source_count;
+                    if (batch.has_bounds)
+                    {
+                        bounding_box.Merge(batch.bounds);
                     }
                 }
 
@@ -1564,9 +1692,8 @@ namespace spartan
                 }
             }
 
-            compute_bounding_box();
             resolve = false;
-
+            SP_PROFILE_CPU_END();
         }
 
     }

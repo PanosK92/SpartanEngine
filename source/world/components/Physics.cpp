@@ -478,7 +478,7 @@ namespace spartan
 
     bool Physics::NeedsStreamingRetry() const
     {
-        return m_needs_creation && (m_body_type != BodyType::Mesh || !outside_collision_prepare_range(GetEntity()));
+        return m_needs_activation_retry || (m_needs_creation && (m_body_type != BodyType::Mesh || !outside_collision_prepare_range(GetEntity())));
     }
 
     void Physics::PreTick()
@@ -532,9 +532,9 @@ namespace spartan
                 {
                     const Vector3 cam_pos = camera->GetEntity()->GetPosition();
                     const BoundingBox& bounds = render->GetBoundingBox();
-                    const float immediate_radius = distance_activate + 15.0f;
+                    const float immediate_radius = 18.0f;
                     const float dist_sq = Vector3::DistanceSquared(cam_pos, bounds.GetClosestPoint(cam_pos));
-                    allow_defer = dist_sq > immediate_radius * immediate_radius && !PhysicsWorld::IsCollisionRelevant(bounds);
+                    allow_defer = dist_sq > immediate_radius * immediate_radius;
                 }
             }
             if (allow_defer && creation_time_ms >= (is_playing ? 1.5f : 2.0f))
@@ -1264,6 +1264,19 @@ namespace spartan
             CountWorldWork(WorldWork::physics_activation_cached_skips);
             return;
         }
+        m_needs_activation_retry = false;
+        static double activation_budget_tick_ms = -1.0;
+        static uint32_t activation_budget_added = 0;
+        const double tick_ms = Timer::GetTimeMs();
+        if (activation_budget_tick_ms != tick_ms)
+        {
+            activation_budget_tick_ms = tick_ms;
+            activation_budget_added = 0;
+        }
+        const bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+        constexpr uint32_t max_distant_activations_per_frame = 48;
+        constexpr float urgent_activation_radius_sq = 20.0f * 20.0f;
+
         float activation_slack = distance_activate;
         auto test_actor = [&](uint32_t i, const Vector3& closest_point) -> bool
         {
@@ -1280,10 +1293,19 @@ namespace spartan
             }
             else if (!active && (distance_squared <= distance_activate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds)))
             {
+                if (is_playing && distance_squared > urgent_activation_radius_sq && activation_budget_added >= max_distant_activations_per_frame)
+                {
+                    m_needs_activation_retry = true;
+                    return false;
+                }
                 CountWorldWork(WorldWork::physics_actors_activated);
                 PhysicsWorld::AddActor(static_cast<PxRigidActor*>(m_actors[i]));
                 m_actors_active[i] = true;
                 ++m_actors_active_count;
+                if (distance_squared > urgent_activation_radius_sq)
+                {
+                    ++activation_budget_added;
+                }
             }
             return m_actors_active[i];
         };
@@ -1348,7 +1370,7 @@ namespace spartan
         m_activation_bounds = bounds;
         // Round conservatively at the boundary; a false miss only costs a rescan.
         m_activation_slack = max(0.0f, activation_slack - 0.001f);
-        m_activation_valid = true;
+        m_activation_valid = !m_needs_activation_retry;
     }
 
     void Physics::Save(pugi::xml_node& node)

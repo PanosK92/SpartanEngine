@@ -443,6 +443,42 @@ namespace spartan
             }
         }
 
+        // conservative hi-z ocean & non-ocean water visibility flag + AABB list + frame-rotated readback
+        {
+            at(buffers, Renderer_Buffer::WaterVisibility) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                static_cast<uint32_t>(sizeof(uint32_t)),
+                1,
+                nullptr,
+                false,
+                "water_visibility"
+            );
+            at(buffers, Renderer_Buffer::WaterVisibilityBoxes) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                static_cast<uint32_t>(sizeof(Vector4)),
+                512,
+                nullptr,
+                false,
+                "water_visibility_boxes"
+            );
+            for (uint32_t i = 0; i < renderer_draw_data_buffer_count; i++)
+            {
+                Renderer_Buffer type = static_cast<Renderer_Buffer>(static_cast<uint32_t>(Renderer_Buffer::WaterVisibilityReadback0) + i);
+                at(buffers, type) = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Readback,
+                    static_cast<uint32_t>(sizeof(uint32_t)),
+                    1,
+                    nullptr,
+                    true,
+                    "water_visibility_readback"
+                );
+                if (void* mapped = at(buffers, type)->GetMappedData())
+                {
+                    *static_cast<uint32_t*>(mapped) = 1u;
+                }
+            }
+        }
+
         // particle buffers
         const uint32_t particle_max = 200000;
         const uint32_t particle_counter_max = 64;
@@ -1549,6 +1585,7 @@ namespace spartan
             { Renderer_Shader::instance_cull_c,                       RHI_Shader_Type::Compute, "instance_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_c,                       RHI_Shader_Type::Compute, "indirect_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_triangle_c,              RHI_Shader_Type::Compute, "indirect_cull_triangle.hlsl"                                                },
+            { Renderer_Shader::water_visibility_c,                    RHI_Shader_Type::Compute, "water_visibility.hlsl"                                                      },
             { Renderer_Shader::cull_phase_c,                          RHI_Shader_Type::Compute, "cull_phase.hlsl"                                                            },
             { Renderer_Shader::gbuffer_indirect_v,                    RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::gbuffer_indirect_p,                    RHI_Shader_Type::Pixel,   "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },

@@ -46,10 +46,8 @@ bool rt_has_albedo_texture(GeometryInfo geo, MaterialParameters mat)
     return mat.has_texture_albedo() && !mat.is_terrain() && geo.uv_world_space <= 0.0f;
 }
 
-bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 barycentrics, float3 hit_position)
+bool rt_candidate_opaque_loaded(GeometryInfo geo, MaterialParameters mat, uint primitive_index, float2 barycentrics, float3 hit_position)
 {
-    GeometryInfo geo       = geometry_infos[instance_index];
-    MaterialParameters mat = material_parameters[geo.material_index];
     if (!rt_has_albedo_texture(geo, mat))
     {
         return true;
@@ -57,6 +55,13 @@ bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 baryc
 
     float alpha = rt_candidate_albedo(geo, primitive_index, barycentrics, hit_position).a;
     return alpha > get_alpha_threshold(hit_position, mat.alpha_cutoff);
+}
+
+bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 barycentrics, float3 hit_position)
+{
+    GeometryInfo geo       = geometry_infos[instance_index];
+    MaterialParameters mat = material_parameters[geo.material_index];
+    return rt_candidate_opaque_loaded(geo, mat, primitive_index, barycentrics, hit_position);
 }
 
 // the blas is built once from the full detail mesh, but the g-buffer draws whichever lod the distance selects,
@@ -119,14 +124,19 @@ float rt_trace_foliage_shadow(float3 origin, float3 direction, float t_max)
     while (query.Proceed())
     {
         if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE)
+        {
             continue;
+        }
         uint instance = query.CandidateInstanceIndex();
         uint primitive = query.CandidatePrimitiveIndex();
         float distance = query.CandidateTriangleRayT();
         float3 position = origin + direction * distance;
-        MaterialParameters material = material_parameters[geometry_infos[instance].material_index];
-        if (material.is_alpha_tested() && !rt_candidate_opaque(instance, primitive, query.CandidateTriangleBarycentrics(), position))
+        GeometryInfo geo = geometry_infos[instance];
+        MaterialParameters material = material_parameters[geo.material_index];
+        if (material.is_alpha_tested() && !rt_candidate_opaque_loaded(geo, material, primitive, query.CandidateTriangleBarycentrics(), position))
+        {
             continue;
+        }
         query.CommitNonOpaqueTriangleHit();
     }
     return query.CommittedStatus() == COMMITTED_NOTHING ? -1.0f : query.CommittedRayT();
@@ -160,8 +170,9 @@ float2 rt_trace_canopy_transmission(float3 origin, float3 direction, float t_max
         uint primitive = query.CandidatePrimitiveIndex();
         float distance = query.CandidateTriangleRayT();
         float3 position = origin + direction * distance;
-        MaterialParameters material = material_parameters[geometry_infos[instance].material_index];
-        if (material.is_alpha_tested() && !rt_candidate_opaque(instance, primitive, query.CandidateTriangleBarycentrics(), position))
+        GeometryInfo geo = geometry_infos[instance];
+        MaterialParameters material = material_parameters[geo.material_index];
+        if (material.is_alpha_tested() && !rt_candidate_opaque_loaded(geo, material, primitive, query.CandidateTriangleBarycentrics(), position))
         {
             continue;
         }

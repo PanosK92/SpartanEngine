@@ -231,6 +231,7 @@ groupshared float  g_tile_depth[TILE_N];
 groupshared float3 g_tile_normal[TILE_N];
 groupshared float3 g_tile_bent[TILE_N];
 groupshared float4 g_tile_mover[32];
+groupshared uint   gs_tile_has_geo;
 
 // tex = this frame's raw cortao, tex2/tex3 = history read, tex_uav/tex_uav2 = history write
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -240,6 +241,37 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     const uint2 group_base = thread_id.xy - group_thread_id.xy;
     const int2  tile_origin = int2(group_base) - 2;
     const uint  tile_index  = group_thread_id.y * THREAD_GROUP_COUNT_X + group_thread_id.x;
+
+    // Pure-sky tiles skip the 12x12 LDS gather, 32 moving-occluder taps, and reduction barriers.
+    if (tile_index == 0u)
+    {
+        gs_tile_has_geo = 0u;
+    }
+    GroupMemoryBarrierWithGroupSync();
+    const uint2 pixel_clamped = uint2(min(int2(thread_id.xy), out_size - 1));
+    const float depth_self    = get_depth(pixel_clamped);
+#if defined(API_WEBGPU)
+    if (depth_self > 0.0f)
+    {
+        InterlockedOr(gs_tile_has_geo, 1u);
+    }
+#else
+    if (WaveActiveAnyTrue(depth_self > 0.0f) && WaveIsFirstLane())
+    {
+        InterlockedOr(gs_tile_has_geo, 1u);
+    }
+#endif
+    GroupMemoryBarrierWithGroupSync();
+    if (gs_tile_has_geo == 0u)
+    {
+        if (all(int2(thread_id.xy) < out_size))
+        {
+            tex_uav[thread_id.xy]  = float4(0, 0, 0, 1);
+            tex_uav2[thread_id.xy] = float4(ssao_view_depth(0.0f), 1.0f / g_history_max_frames, 0.0f, 0.0f);
+        }
+        return;
+    }
+
     for (uint i = tile_index; i < TILE_N; i += THREAD_GROUP_COUNT_X * THREAD_GROUP_COUNT_Y)
     {
         const int2   tile_pixel = clamp(tile_origin + int2(i % TILE_DIM, i / TILE_DIM), int2(0, 0), out_size - 1);
@@ -253,7 +285,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     {
         const int2  mover_center = min(int2(group_base) + 4, out_size - 1);
         const float center_depth = get_depth(uint2(mover_center));
-        const float mover_depth  = center_depth > 0.0f ? center_depth : get_depth(uint2(min(int2(thread_id.xy), out_size - 1)));
+        const float mover_depth  = center_depth > 0.0f ? center_depth : depth_self;
         g_tile_mover[tile_index] = moving_occluder_tap(mover_center, tile_index, out_size, ssao_view_depth(mover_depth));
     }
     GroupMemoryBarrierWithGroupSync();
@@ -276,7 +308,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
     const uint2  pixel     = thread_id.xy;
     const float2 uv        = (float2(pixel) + 0.5f) / float2(out_size);
-    const float  depth_raw = get_depth(pixel);
+    const float  depth_raw = depth_self;
     const float  view_z    = ssao_view_depth(depth_raw);
     const int2   center    = int2(pixel) - tile_origin;
     const float3 normal    = g_tile_normal[center.y * TILE_DIM + center.x];
@@ -460,6 +492,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 #define LDS_N      (LDS_W * LDS_H)
 groupshared float4 g_lds_ao[LDS_N];
 groupshared float4 g_lds_normal_depth[LDS_N];
+groupshared uint   gs_denoise_has_geo;
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint3 group_id : SV_GroupID)
@@ -467,6 +500,36 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     const int2 out_size   = int2(get_render_resolution_active());
     const int2 max_coord  = out_size - 1;
     const uint thread_idx = group_thread_id.y * TILE_W + group_thread_id.x;
+
+    // Pure-sky tiles skip the 12x12 LDS gather and the 5x5 bilateral filter (sky has age = 1/32 so it previously hit the 25-tap branch).
+    if (thread_idx == 0u)
+    {
+        gs_denoise_has_geo = 0u;
+    }
+    GroupMemoryBarrierWithGroupSync();
+    const int2   c_clamped      = min(int2(thread_id.xy), max_coord);
+    const float2 depth_age_self = tex2.Load(int3(c_clamped, 0)).rg;
+    const bool   is_geo_self    = depth_age_self.r < 64999.0f;
+#if defined(API_WEBGPU)
+    if (is_geo_self)
+    {
+        InterlockedOr(gs_denoise_has_geo, 1u);
+    }
+#else
+    if (WaveActiveAnyTrue(is_geo_self) && WaveIsFirstLane())
+    {
+        InterlockedOr(gs_denoise_has_geo, 1u);
+    }
+#endif
+    GroupMemoryBarrierWithGroupSync();
+    if (gs_denoise_has_geo == 0u)
+    {
+        if (all(int2(thread_id.xy) <= max_coord))
+        {
+            tex_uav[thread_id.xy] = float4(0.0f, 0.0f, 1.0f, 1.0f);
+        }
+        return;
+    }
 
     const int2 tile_origin = int2(group_id.xy) * int2(TILE_W, TILE_H) - HALO;
     for (uint i = thread_idx; i < LDS_N; i += TILE_W * TILE_H)
@@ -485,10 +548,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
     const int2   lds_center  = int2(group_thread_id.xy) + HALO;
     const int    center_idx  = lds_center.y * LDS_W + lds_center.x;
-    const float4 center_ao   = g_lds_ao[center_idx];
     const float3 n_c         = g_lds_normal_depth[center_idx].xyz;
+    if (!is_geo_self)
+    {
+        tex_uav[c] = float4(n_c, 1.0f);
+        return;
+    }
+
+    const float4 center_ao   = g_lds_ao[center_idx];
     const float  z_c         = g_lds_normal_depth[center_idx].w;
-    const float  center_age  = tex2.Load(int3(c, 0)).g;
+    const float  center_age  = depth_age_self.g;
     const float  depth_scale = 1.0f / max(z_c, 1e-3f);
 
     // pixels that just lost their history under motion are the noisy ones, widen the depth gate, soften the normal weight and drop the center below a neighbor weight so the kernel actually averages, converged pixels keep the tight gates so static detail stays crisp

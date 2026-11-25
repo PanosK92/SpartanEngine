@@ -76,6 +76,26 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         gs_in_frustum[thread_id.x] = 0u;
     }
     task = cull_tasks[task_index];
+
+    // Wave-uniform task metadata hoisted once per workgroup so DXC scalarizes all draws/materials/distance roots.
+    const DrawData base_draw           = indirect_draw_data[task.draw_index];
+    const bool     skinned             = (base_draw.flags & 1u) != 0u;
+    const bool     is_per_instance     = (base_draw.flags & 2u) != 0u;
+    const bool     skip_hiz            = (base_draw.flags & 32u) != 0u;
+    const bool     has_canopy          = task.canopy_draw != 0u;
+    const uint     canopy_proxy_idx    = has_canopy ? ((task.canopy_draw & 0x7fffffffu) - 1u) : 0u;
+    DrawData       canopy_proxy        = base_draw;
+    if (has_canopy)
+    {
+        canopy_proxy = indirect_draw_data[canopy_proxy_idx];
+    }
+    const bool     base_wind_animated  = (material_parameters[base_draw.material_index].flags & (1u << 9)) != 0u;
+    const bool     proxy_wind_animated = has_canopy ? ((material_parameters[canopy_proxy.material_index].flags & (1u << 9)) != 0u) : base_wind_animated;
+    const float    base_max_dist       = base_draw.max_render_distance_squared > 0.0f ? sqrt(base_draw.max_render_distance_squared) : 0.0f;
+    const float    proxy_max_dist      = canopy_proxy.max_render_distance_squared > 0.0f ? sqrt(canopy_proxy.max_render_distance_squared) : 0.0f;
+    const float    proj_m11_res_y     = abs(buffer_frame.projection[1][1]) * get_render_resolution_active().y;
+    const float    proj_m23_abs       = abs(buffer_frame.projection[2][3]);
+
     uint meshlet_rows = 1u;
     if (thread_id.x < task.instance_count)
     {
@@ -98,13 +118,11 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         if (!skip_late)
         {
         task.instance_index += thread_id.x;
-        DrawData draw = indirect_draw_data[task.draw_index];
+        DrawData draw       = base_draw;
+        bool wind_animated  = base_wind_animated;
+        float max_dist_base = base_max_dist;
 
-        bool skinned         = (draw.flags & 1u) != 0u;
-        bool is_per_instance = (draw.flags & 2u) != 0u;
-        bool skip_hiz        = (draw.flags & 32u) != 0u;
-
-        if (late && drawn_early && (skip_hiz || skinned || (task.canopy_draw == 0u && task.refinement_draw == 0u && draw.geometry_meshlet_count <= 1u)))
+        if (late && drawn_early && (skip_hiz || skinned || (!has_canopy && task.refinement_draw == 0u && draw.geometry_meshlet_count <= 1u)))
         {
             skip_late = true;
         }
@@ -119,35 +137,44 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
         // Choose the parent once for this canopy. All its cluster ranges use
         // the same crown sphere, including ranges outside the camera frustum.
-        bool skip_range = false;
-        if (task.canopy_draw != 0u)
+        bool used_proxy = false;
+        float3 proxy_center = 0.0f;
+        float  proxy_radius = 0.0f;
+        if (has_canopy)
         {
-            uint proxy_index = (task.canopy_draw & 0x7fffffffu) - 1u;
-            DrawData proxy = indirect_draw_data[proxy_index];
-            float3 center = mul(float4(proxy.cluster_center, 1.0f), world_xform).xyz;
-            float radius = proxy.cluster_radius * world_scale;
-            float w = mul(float4(center, 1.0f), buffer_frame.view_projection).w;
-            float nearest = w - radius * abs(buffer_frame.projection[2][3]);
-            float diameter = radius * abs(buffer_frame.projection[1][1]) * get_render_resolution_active().y;
-            if (nearest > 0.0f && diameter <= proxy.cluster_error * nearest)
+            proxy_center    = mul(float4(canopy_proxy.cluster_center, 1.0f), world_xform).xyz;
+            proxy_radius    = canopy_proxy.cluster_radius * world_scale;
+            float w         = mul(float4(proxy_center, 1.0f), buffer_frame.view_projection).w;
+            float nearest   = w - proxy_radius * proj_m23_abs;
+            float diameter  = proxy_radius * proj_m11_res_y;
+            if (nearest > 0.0f && diameter <= canopy_proxy.cluster_error * nearest)
             {
-                skip_range = (task.canopy_draw & 0x80000000u) != 0u;
-                draw = proxy;
-                task.draw_index = proxy_index;
-                task.refinement_draw = 0u;
-                // Impostors drawn in the early pass leave zero unrendered meshlets for the late pass.
-                if (late && drawn_early && max_impostors > 0u && ((draw.flags & draw_flag_impostor) != 0u))
+                if ((task.canopy_draw & 0x80000000u) != 0u)
                 {
                     skip_late = true;
                 }
+                else
+                {
+                    draw                 = canopy_proxy;
+                    wind_animated        = proxy_wind_animated;
+                    max_dist_base        = proxy_max_dist;
+                    used_proxy           = true;
+                    task.draw_index      = canopy_proxy_idx;
+                    task.refinement_draw = 0u;
+                    // Impostors drawn in the early pass leave zero unrendered meshlets for the late pass.
+                    if (late && drawn_early && max_impostors > 0u && ((draw.flags & draw_flag_impostor) != 0u))
+                    {
+                        skip_late = true;
+                    }
+                }
             }
             else if (nearest > 0.0f && (task.canopy_draw & 0x80000000u) == 0u &&
-                     (proxy.flags & draw_flag_impostor) != 0u &&
-                     diameter < proxy.cluster_error * TREE_IMPOSTOR_FADE_BAND * nearest)
+                     (canopy_proxy.flags & draw_flag_impostor) != 0u &&
+                     diameter < canopy_proxy.cluster_error * TREE_IMPOSTOR_FADE_BAND * nearest)
             {
                 // Crossfade band: keep the 3D canopy active and also emit its impostor for screen-door blending
                 crossfade_impostor    = (max_impostors > 0u);
-                crossfade_proxy_index = proxy_index;
+                crossfade_proxy_index = canopy_proxy_idx;
             }
         }
 
@@ -162,6 +189,11 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             center_world = (aabb.min + aabb.max) * 0.5f;
             radius_world = length(aabb.max - aabb.min) * 0.5f;
         }
+        else if (used_proxy)
+        {
+            center_world = proxy_center;
+            radius_world = proxy_radius;
+        }
         else
         {
             // The conservative range covers every resident version of these clusters.
@@ -169,47 +201,47 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             radius_world = draw.cluster_radius * world_scale;
         }
 
-        // Test render distance before scattered material lookup & wind padding so distant island instances exit early.
-        bool passes_distance = true;
-        if (draw.max_render_distance_squared > 0.0f)
+        const float unpadded_radius = radius_world;
+
+        if (late)
         {
-            float3 to_camera = center_world - buffer_frame.camera_position;
-            float dist_center = length(to_camera);
-            float max_dist = sqrt(draw.max_render_distance_squared);
-            if ((dist_center - radius_world - 4.0f) > max_dist)
+            // in_frustum_early already proved !skip_range, passes_distance, side frustum, and contribution
+            // for this exact frame; only apply wind padding needed for the Hi-Z sphere test below.
+            if (wind_animated)
             {
-                passes_distance = false;
+                radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
             }
-            else
-            {
-                bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
-                if (wind_animated)
-                    radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
-                passes_distance = (dist_center - radius_world) <= max_dist;
-            }
+            in_frustum = true;
+            survives   = true;
         }
         else
         {
-            bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
             if (wind_animated)
+            {
                 radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
-        }
+            }
 
-        // frustum, then contribution, then hi-z, the hi-z test also rejects instances entirely behind the camera (the side planes alone do not)
-        // contribution runs before hi-z because it reuses the same projection without sampling the hi-z pyramid
-        in_frustum = !skip_range && passes_distance
-            && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
-            && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX);
-        survives = in_frustum;
+            // Frustum side planes first (4 dot products, no sqrt), then render distance, then screen contribution.
+            bool passes = sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t);
+            if (passes && max_dist_base > 0.0f)
+            {
+                float3 to_camera = center_world - buffer_frame.camera_position;
+                float dist_sq    = dot(to_camera, to_camera);
+                float max_dist   = max_dist_base + radius_world;
+                passes           = dist_sq <= (max_dist * max_dist);
+            }
+            in_frustum = passes && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX);
+            survives   = in_frustum;
+        }
 
         // Select an available cluster refinement independently for each instance.
         if (survives && (task.refinement_draw & 0xc0000000u) == CULL_TASK_CLUSTER_REFINEMENT)
         {
-            float3 cluster_center = mul(float4(draw.cluster_center, 1.0f), world_xform).xyz;
-            float cluster_radius = draw.cluster_radius * world_scale;
-            float clip_w = mul(float4(cluster_center, 1.0f), buffer_frame.view_projection).w;
-            float nearest = max(1e-4f, clip_w - cluster_radius * abs(buffer_frame.projection[2][3]));
-            float pixels = 0.5f * get_render_resolution_active().y * abs(buffer_frame.projection[1][1]);
+            float3 cluster_center = skinned ? mul(float4(draw.cluster_center, 1.0f), world_xform).xyz : center_world;
+            float  cluster_radius = skinned ? (draw.cluster_radius * world_scale) : unpadded_radius;
+            float  clip_w         = mul(float4(cluster_center, 1.0f), buffer_frame.view_projection).w;
+            float  nearest        = max(1e-4f, clip_w - cluster_radius * proj_m23_abs);
+            float  pixels         = 0.5f * proj_m11_res_y;
             uint first = task.refinement_draw & CULL_TASK_LEVEL_MASK;
             uint count = 1u + ((task.refinement_draw >> CULL_TASK_LEVEL_SHIFT) & 15u);
             float threshold = nearest / max(1e-8f, world_scale * pixels);
@@ -252,16 +284,43 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
     if (!late)
     {
-        GroupMemoryBarrierWithGroupSync();
-        if (survives)
-            InterlockedOr(gs_visibility[thread_id.x >> 5u], visible_bit);
-        if (in_frustum)
-            InterlockedOr(gs_in_frustum[thread_id.x >> 5u], visible_bit);
-        GroupMemoryBarrierWithGroupSync();
-        if (thread_id.x < vis_words_per_task)
+        const uint lane_count = WaveGetLaneCount();
+        if (lane_count == 32u)
         {
-            instance_visibility[vis_task_base + thread_id.x]                      = gs_visibility[thread_id.x];
-            instance_visibility[vis_task_base + vis_words_per_task + thread_id.x] = gs_in_frustum[thread_id.x];
+            uint surv_mask = WaveActiveBallot(survives).x;
+            uint frus_mask = WaveActiveBallot(in_frustum).x;
+            if (WaveIsFirstLane())
+            {
+                uint word_idx = thread_id.x >> 5u;
+                instance_visibility[vis_task_base + word_idx]                      = surv_mask;
+                instance_visibility[vis_task_base + vis_words_per_task + word_idx] = frus_mask;
+            }
+        }
+        else if (lane_count == 64u)
+        {
+            uint4 surv_mask = WaveActiveBallot(survives);
+            uint4 frus_mask = WaveActiveBallot(in_frustum);
+            if (WaveIsFirstLane())
+            {
+                instance_visibility[vis_task_base + 0u]                      = surv_mask.x;
+                instance_visibility[vis_task_base + 1u]                      = surv_mask.y;
+                instance_visibility[vis_task_base + vis_words_per_task + 0u] = frus_mask.x;
+                instance_visibility[vis_task_base + vis_words_per_task + 1u] = frus_mask.y;
+            }
+        }
+        else
+        {
+            GroupMemoryBarrierWithGroupSync();
+            if (survives)
+                InterlockedOr(gs_visibility[thread_id.x >> 5u], visible_bit);
+            if (in_frustum)
+                InterlockedOr(gs_in_frustum[thread_id.x >> 5u], visible_bit);
+            GroupMemoryBarrierWithGroupSync();
+            if (thread_id.x < vis_words_per_task)
+            {
+                instance_visibility[vis_task_base + thread_id.x]                      = gs_visibility[thread_id.x];
+                instance_visibility[vis_task_base + vis_words_per_task + thread_id.x] = gs_in_frustum[thread_id.x];
+            }
         }
     }
 

@@ -344,6 +344,7 @@ namespace spartan
         math::BoundingBox m_activation_bounds;
         float m_activation_slack = 0.0f;
         bool m_activation_valid = false;
+        bool m_needs_activation_retry = false;
         uint64_t m_activation_instance_revision = 0;
         uint64_t m_activation_collision_revision = 0;
 

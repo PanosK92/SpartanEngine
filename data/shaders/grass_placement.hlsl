@@ -61,7 +61,7 @@ static const float grass_cull_radius      = 1.5f;
 // squares without overflowing, a band that never ends
 static const float grass_band_unbounded = 1e18f;
 // candidates of one cell a blade ring thread walks, has to match gpu_scatter_blades_per_thread
-static const uint  grass_blades_per_thread = 1u;
+static const uint  grass_blades_per_thread = 4u;
 
 // gpu scatter placement (ghost of tsushima style), slot 0 is grass and the higher slots are micro
 // detail, pebbles and chips, the same ring machinery with a different mesh and a tighter reach
@@ -1107,48 +1107,40 @@ bool grass_place_candidate_in_cell(
         return false;
     }
 
-    float valid;
-    float local_y = sample_terrain_height(world_xz, cell.height_size, cell.params.terrain_mapping, valid);
-    float world_y = local_y + cell.params.seat_y;
-    if (valid < 0.5f || world_y < cell.params.height_min || world_y > cell.params.height_max)
+    // Zero-fetch probability + fade + patch rejection before touching terrain height, biome mask, or Hi-Z.
+    float lod_random = hash_unit(hash_mix(h0 ^ 0xa511e9b3u));
+    if (lod_random > cell.cell_keep)
     {
         return false;
     }
 
-    float thin_grow = 1.0f;
-    if (cell.thin_start > 0.0f)
+    float distance_to_camera = sqrt(dist2);
+    const bool need_in_fade  = cell.params.inner_radius > 0.0f && distance_to_camera < (cell.params.inner_radius + cell.inner_transition * 0.55f);
+    const bool need_out_fade = distance_to_camera > (cell.outer_start - cell.outer_transition * 0.55f);
+    float fade_in  = 1.0f;
+    float fade_out = 1.0f;
+    if (need_in_fade || need_out_fade)
     {
-        float camera_dy = world_y - get_camera_position().y;
-        float keep      = grass_distance_keep(dist2 + camera_dy * camera_dy, cell.thin_start, cell.thin_exponent);
-        float rank      = (float(blade_index) + 0.5f) / float(cell.blades_per_cell);
-        if (rank >= keep)
+        float warp_n = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
+                     + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
+        if (need_in_fade)
         {
-            return false;
+            fade_in = smoothstep(cell.inner_start, cell.params.inner_radius, distance_to_camera + warp_n * cell.inner_transition * 0.55f);
         }
-        thin_grow = saturate((keep - rank) / (keep * grass_thin_exit_share));
+        if (need_out_fade)
+        {
+            fade_out = 1.0f - smoothstep(cell.outer_start, cell.params.ring_radius, distance_to_camera + warp_n * cell.outer_transition * 0.55f);
+        }
     }
-
-    float3 blade_center = float3(world_xz.x, world_y + cell.cull_height, world_xz.y);
-    if (!sphere_in_side_planes(blade_center, cell.cull_radius, cell.plane_l, cell.plane_r, cell.plane_b, cell.plane_t))
-    {
-        return false;
-    }
-    if (!sphere_hiz_visible(tex2, blade_center, cell.cull_radius, cell.hiz_max_mip))
-    {
-        return false;
-    }
-
-    float distance_to_camera  = sqrt(dist2);
-    float warp_n              = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
-                              + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
-    float distance_warped_in  = distance_to_camera + warp_n * cell.inner_transition * 0.55f;
-    float distance_warped_out = distance_to_camera + warp_n * cell.outer_transition * 0.55f;
-
-    float fade_in     = cell.params.inner_radius > 0.0f ? smoothstep(cell.inner_start, cell.params.inner_radius, distance_warped_in) : 1.0f;
-    float fade_out    = 1.0f - smoothstep(cell.outer_start, cell.params.ring_radius, distance_warped_out);
-    float lod_random  = hash_unit(hash_mix(h0 ^ 0xa511e9b3u));
     float fade_weight = fade_in * fade_out * cell.cell_keep;
     if (lod_random > fade_weight)
+    {
+        return false;
+    }
+
+    float patch      = grass_patch_weight(world_xz, cell.patch_size, cell.patch_coverage, cell.patch_edge, cell.patch_invert);
+    float lod_weight = fade_weight * patch;
+    if (lod_random > lod_weight)
     {
         return false;
     }
@@ -1192,9 +1184,33 @@ bool grass_place_candidate_in_cell(
         return false;
     }
 
-    float patch      = grass_patch_weight(world_xz, cell.patch_size, cell.patch_coverage, cell.patch_edge, cell.patch_invert);
-    float lod_weight = fade_weight * patch;
-    if (lod_random > lod_weight)
+    float valid;
+    float local_y = sample_terrain_height(world_xz, cell.height_size, cell.params.terrain_mapping, valid);
+    float world_y = local_y + cell.params.seat_y;
+    if (valid < 0.5f || world_y < cell.params.height_min || world_y > cell.params.height_max)
+    {
+        return false;
+    }
+
+    float thin_grow = 1.0f;
+    if (cell.thin_start > 0.0f)
+    {
+        float camera_dy = world_y - get_camera_position().y;
+        float keep      = grass_distance_keep(dist2 + camera_dy * camera_dy, cell.thin_start, cell.thin_exponent);
+        float rank      = (float(blade_index) + 0.5f) / float(cell.blades_per_cell);
+        if (rank >= keep)
+        {
+            return false;
+        }
+        thin_grow = saturate((keep - rank) / (keep * grass_thin_exit_share));
+    }
+
+    float3 blade_center = float3(world_xz.x, world_y + cell.cull_height, world_xz.y);
+    if (!sphere_in_side_planes(blade_center, cell.cull_radius, cell.plane_l, cell.plane_r, cell.plane_b, cell.plane_t))
+    {
+        return false;
+    }
+    if (!sphere_hiz_visible(tex2, blade_center, cell.cull_radius, cell.hiz_max_mip))
     {
         return false;
     }

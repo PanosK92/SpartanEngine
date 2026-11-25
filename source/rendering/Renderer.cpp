@@ -4918,6 +4918,8 @@ namespace spartan
         m_cull_task_count               = 0;
         m_transparents_present          = false;
         m_water_present                 = false;
+        m_non_ocean_water_present       = false;
+        m_water_visibility_boxes.clear();
         m_forward_transparents_present  = false;
         m_tessellated_draws.clear();
         m_tessellated_gpu_culled    = false;
@@ -4960,6 +4962,7 @@ namespace spartan
         struct Candidates
         {
             vector<Candidate> renders;
+            vector<Render*> non_ocean_waters;
             bool transparent         = false;
             bool water               = false;
             bool forward_transparent = false;
@@ -4968,11 +4971,13 @@ namespace spartan
         for (auto& batch : batches)
         {
             batch.renders.clear();
+            batch.non_ocean_waters.clear();
             batch.transparent         = false;
             batch.water               = false;
             batch.forward_transparent = false;
         }
         const auto& entries = render_scene_data();
+        const Entity* ocean_entity = m_pass_state.ocean ? m_pass_state.ocean->GetEntity() : nullptr;
         SP_PROFILE_CPU_START("draw_collect");
         const uint32_t jobs = entries.size() >= 256 ? static_cast<uint32_t>(batches.size()) : 1u;
         auto collect = [&](uint32_t first, uint32_t last)
@@ -5016,6 +5021,13 @@ namespace spartan
                     const bool is_water = material->GetProperty(MaterialProperty::IsWater) != 0.0f;
                     batch.transparent         = true;
                     batch.water              |= is_water;
+                    if (is_water)
+                    {
+                        if (render->GetEntity() != ocean_entity)
+                        {
+                            batch.non_ocean_waters.push_back(render);
+                        }
+                    }
                     batch.forward_transparent |= !is_water;
                 }
                 batch.renders.push_back({ render, flags });
@@ -5040,11 +5052,58 @@ namespace spartan
         accepted.clear();
         accepted_motion.clear();
         frame_radial_blur_candidates.clear();
+        Camera* vis_camera = GetViewCamera();
         for (const auto& batch : batches)
         {
             m_transparents_present         |= batch.transparent;
             m_water_present                |= batch.water;
             m_forward_transparents_present |= batch.forward_transparent;
+            for (Render* water_render : batch.non_ocean_waters)
+            {
+                Entity* water_entity = water_render ? water_render->GetEntity() : nullptr;
+                Spline* spline = water_entity ? water_entity->GetComponent<Spline>() : nullptr;
+                if (spline)
+                {
+                    const vector<Vector3> points = spline->GetControlPoints();
+                    if (points.size() >= 2)
+                    {
+                        const float half_w = max(spline->GetRoadWidth(), spline->GetRoadWidthEnd()) * 0.5f + 2.5f;
+                        const Vector3 pad(half_w, 2.0f, half_w);
+                        for (size_t s = 0; s + 1 < points.size(); ++s)
+                        {
+                            const Vector3 seg_min = Vector3::Min(points[s], points[s + 1]) - pad;
+                            const Vector3 seg_max = Vector3::Max(points[s], points[s + 1]) + pad;
+                            if (vis_camera && !vis_camera->IsInViewFrustum(BoundingBox(seg_min, seg_max)))
+                            {
+                                continue;
+                            }
+                            if (m_water_visibility_boxes.size() + 2 <= 512)
+                            {
+                                m_water_visibility_boxes.emplace_back(seg_min.x, seg_min.y, seg_min.z, 0.0f);
+                                m_water_visibility_boxes.emplace_back(seg_max.x, seg_max.y, seg_max.z, 0.0f);
+                            }
+                            else
+                            {
+                                m_non_ocean_water_present = true;
+                                break;
+                            }
+                        }
+                        continue;
+                    }
+                }
+                const BoundingBox& box = water_render->GetBoundingBox();
+                if (m_water_visibility_boxes.size() + 2 <= 512)
+                {
+                    const Vector3 bmin = box.GetMin();
+                    const Vector3 bmax = box.GetMax();
+                    m_water_visibility_boxes.emplace_back(bmin.x, bmin.y, bmin.z, 0.0f);
+                    m_water_visibility_boxes.emplace_back(bmax.x, bmax.y, bmax.z, 0.0f);
+                }
+                else
+                {
+                    m_non_ocean_water_present = true;
+                }
+            }
             for (const Candidate& candidate : batch.renders)
             {
                 Render* render = candidate.render;
@@ -5162,11 +5221,25 @@ namespace spartan
         radix_sort_keys(sort_keys);
         static vector<Renderer_DrawCall> sorted_draw_calls;
         sorted_draw_calls.resize(m_draw_call_count);
-        for (uint32_t i = 0; i < m_draw_call_count; ++i)
+        if (m_draw_call_count >= 512)
         {
-            sorted_draw_calls[i] = m_draw_calls[sort_keys[i].second];
+            ThreadPool::ParallelLoop([&](uint32_t first, uint32_t last)
+            {
+                for (uint32_t i = first; i < last; ++i)
+                {
+                    sorted_draw_calls[i] = m_draw_calls[sort_keys[i].second];
+                }
+            }, m_draw_call_count);
+            ThreadPool::ParallelCopy(m_draw_calls.data(), sorted_draw_calls.data(), m_draw_call_count * sizeof(Renderer_DrawCall));
         }
-        copy(sorted_draw_calls.begin(), sorted_draw_calls.end(), m_draw_calls.begin());
+        else
+        {
+            for (uint32_t i = 0; i < m_draw_call_count; ++i)
+            {
+                sorted_draw_calls[i] = m_draw_calls[sort_keys[i].second];
+            }
+            copy(sorted_draw_calls.begin(), sorted_draw_calls.end(), m_draw_calls.begin());
+        }
         SP_PROFILE_CPU_END();
     }
 
@@ -5425,9 +5498,24 @@ namespace spartan
                 }
             }
         };
-        if (plans.size() >= 64)
+        if (plans.size() >= 16)
         {
-            ThreadPool::ParallelLoop(fill_plans, static_cast<uint32_t>(plans.size()));
+            // Dynamic work-stealing across plans so dense instanced foliage meshes balance across cores.
+            atomic<uint32_t> next_plan{ 0 };
+            const uint32_t plan_count = static_cast<uint32_t>(plans.size());
+            const uint32_t workers    = min(plan_count, max(ThreadPool::GetThreadCount(), 1u));
+            ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
+            {
+                while (true)
+                {
+                    const uint32_t p = next_plan.fetch_add(4, memory_order_relaxed);
+                    if (p >= plan_count)
+                    {
+                        break;
+                    }
+                    fill_plans(p, min(p + 4u, plan_count));
+                }
+            }, workers);
         }
         else
         {
@@ -7541,7 +7629,7 @@ namespace spartan
         }
     }
 
-    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early, bool reflections_denoised_early)
+    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early, bool reflections_denoised_early, bool water_visible)
     {
         const bool clouds_prepared = early_work_recorded ? clouds_prepared_early : Pass_Clouds_Prepare(eye_layer);
         if (IsRestirActive())
@@ -7567,7 +7655,7 @@ namespace spartan
                 Pass_LightClusterVisualize();
             }
 
-            if (m_water_present)
+            if (water_visible)
             {
                 RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
                 if (clouds_prepared)
@@ -7581,12 +7669,12 @@ namespace spartan
             }
 
             // trace after water gbuffer so water pixels own their reflection rays instead of the seabed behind them
-            if (!early_work_recorded || m_water_present)
+            if (!early_work_recorded || water_visible)
             {
                 Pass_Reflections_Trace(eye_layer);
             }
 
-            if (m_water_present)
+            if (water_visible)
             {
                 Pass_Light_Ibl(true, eye_layer);
             }
@@ -7973,6 +8061,45 @@ namespace spartan
         }
 
         Camera* early_camera = Renderer::GetViewCamera();
+
+        // Conservative Hi-Z ocean visibility readback: when driving inland with zero ocean pixels
+        // reachable by any 32x32 screen tile (with a +6m wave/crest margin), allow reflections to
+        // overlap ComputeB and skip water/ocean passes with zero visual difference near coasts.
+        static uint32_t water_visible_hold_frames  = 30;
+        static uint32_t water_visibility_written   = 0;
+        static Vector3  water_vis_last_cam_pos     = Vector3::Zero;
+        const uint32_t water_vis_slot              = m_frame_resource_index % renderer_draw_data_buffer_count;
+        const Vector3 water_vis_cam_pos            = early_camera ? early_camera->GetEntity()->GetPosition() : Vector3::Zero;
+        const bool water_vis_camera_jumped         = Vector3::DistanceSquared(water_vis_cam_pos, water_vis_last_cam_pos) > 400.0f;
+        water_vis_last_cam_pos                     = water_vis_cam_pos;
+        if (!m_water_present)
+        {
+            water_visible_hold_frames = 0;
+        }
+        else if (m_non_ocean_water_present || !m_pass_state.ocean || secondary_render_root_active || IsStereoView() || IsRestirActive() || m_frame_num < 30 ||
+            water_vis_camera_jumped || (early_camera && water_vis_cam_pos.y <= m_pass_state.ocean->GetSeaLevel() + 2.5f))
+        {
+            water_visible_hold_frames = 30;
+        }
+        else if (water_visibility_written & (1u << water_vis_slot))
+        {
+            RHI_Buffer* buf_readback = GetBuffer(static_cast<Renderer_Buffer>(static_cast<uint32_t>(Renderer_Buffer::WaterVisibilityReadback0) + water_vis_slot));
+            const uint32_t gpu_visible = (buf_readback && buf_readback->GetMappedData()) ? *static_cast<const uint32_t*>(buf_readback->GetMappedData()) : 1u;
+            if (gpu_visible != 0u)
+            {
+                water_visible_hold_frames = 30;
+            }
+            else if (water_visible_hold_frames > 0)
+            {
+                --water_visible_hold_frames;
+            }
+        }
+        else
+        {
+            water_visible_hold_frames = 30;
+        }
+        const bool water_visible = m_water_present && (water_visible_hold_frames > 0 || m_non_ocean_water_present || !m_pass_state.ocean || secondary_render_root_active || IsStereoView() || IsRestirActive());
+
         const bool fog_prepared_async = early_camera && (IsRayTracedShadowsActive() || IsRestirActive()) &&
             !Xr::IsSessionRunning() && !IsSecondaryViewActive();
         const bool ocean_prepared_async = fog_prepared_async && !(IsRestirActive() && m_transparents_present);
@@ -8003,25 +8130,12 @@ namespace spartan
             {
                 Pass_Cull_Early();
                 surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
-                // cull_late only reads cull_early's Hi-Z/depth, so submit it right away to keep
-                // the graphics queue busy while the CPU records Pass_ComputeBatchA (TLAS build).
-                RHI_Device::Bind(RHI_Frame_List::Graphics);
-                Pass_Cull_Late();
-                RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
-
-                // Queue procedural grass scatter on Compute BEFORE Pass_ComputeBatchA (TLAS) so it
-                // runs immediately after cull_early in parallel with cull_late and finishes before
-                // g_buffer starts, eliminating the ~1 ms graphics idle bubble waiting on scatter.
-                RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
-                scatter_commands->Begin();
-                RHI_Device::Bind(scatter_commands);
-                Pass_Grass_Populate();
-                Pass_Grass_Interaction();
-                scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-                scatter_work = scatter_commands->GetWork();
             }
         }
 
+        // Submit ComputeA (TLAS build) and sky LUTs BEFORE scatter_commands on the Compute queue.
+        // ComputeA only waits on uploads, so it executes concurrently with cull_early on Graphics
+        // instead of stalling behind scatter_commands' wait on surface (cull_early).
         RHI_Device::Bind(RHI_Frame_List::ComputeA);
         Pass_ComputeBatchA(update_skysphere);
         RHI_Work batch_a = RHI_Device::Submit(
@@ -8038,7 +8152,8 @@ namespace spartan
         m_cross_queue_sync.pending_compute_timeline_value = batch_a_value;
         RHI_Device::SetFrameWait(batch_a_timeline, batch_a_value);
 
-        // the sky is first read by the reflection trace, on its own list the scatter work the gbuffer waits on queues ahead of it
+        // the sky is first read by the reflection trace and fog injection; when fog_prepared_async is active
+        // we submit it right behind ComputeA so both finish during cull_early before scatter_commands starts
         RHI_CommandList* sky_commands = nullptr;
         RHI_Work sky_work;
         if (update_skysphere)
@@ -8062,29 +8177,44 @@ namespace spartan
             RHI_Device::SetFrameWait(sky_work.timeline.get(), sky_work.value);
         };
 
+        RHI_Work fog_work;
+        if (early_camera && fog_prepared_async)
+        {
+            submit_sky();
+
+            // Record grass scatter BEFORE Pass_Cull_Late sets cull_late_active so Pass_Grass_Populate
+            // samples gbuffer_depth_hiz_early (synced by surface) and overlaps Pass_Cull_Late cleanly.
+            RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+            scatter_commands->Begin();
+            RHI_Device::Bind(scatter_commands);
+            Pass_Grass_Populate();
+            Pass_Grass_Interaction();
+            scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
+            scatter_work = scatter_commands->GetWork();
+
+            // Queue ocean FFT + volumetric fog immediately behind scatter on Compute so both execute
+            // in parallel with Pass_GraphicsPhase1_Geometry and finish well before ComputeB starts.
+            RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+            fog_commands->Begin();
+            RHI_Device::Bind(fog_commands);
+            if (!secondary_render_root_active && ocean_prepared_async && water_visible)
+            {
+                Pass_Ocean();
+            }
+            Pass_Fog(0, rhi_all_mips);
+            fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
+            fog_work = fog_commands->GetWork();
+
+            // cull_late reads cull_early's depth/Hi-Z and runs on Graphics concurrently with scatter_commands.
+            RHI_Device::Bind(RHI_Frame_List::Graphics);
+            Pass_Cull_Late();
+            RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+        }
+
         RHI_Device::Bind(RHI_Frame_List::Graphics);
 
         if (Camera* camera = early_camera)
         {
-            RHI_Work fog_work;
-            if (fog_prepared_async)
-            {
-                submit_sky();
-                // Queue ocean FFT + fog on Compute behind sky/TLAS while graphics shades the terrain.
-                // Both wait on surface (ocean_wake + cull_early), and the later ComputeB signal covers them
-                // well before g_buffer_transparent or fog_composite reads their outputs.
-                RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
-                fog_commands->Begin();
-                RHI_Device::Bind(fog_commands);
-                if (!secondary_render_root_active && ocean_prepared_async)
-                {
-                    Pass_Ocean();
-                }
-                Pass_Fog(0, rhi_all_mips);
-                fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-                fog_work = fog_commands->GetWork();
-                RHI_Device::Bind(RHI_Frame_List::Graphics);
-            }
             submit_sky();
 
             // restir's history targets are render targets only, a compute list can't clear them on d3d12
@@ -8101,6 +8231,11 @@ namespace spartan
             }
 
             Pass_GraphicsPhase1_Geometry(fog_prepared_async);
+            if (m_water_present && m_pass_state.ocean && !secondary_render_root_active && !IsStereoView())
+            {
+                Pass_Water_Visibility();
+                water_visibility_written |= (1u << water_vis_slot);
+            }
             if (IsRestirActive() && m_transparents_present)
                 Pass_GBuffer(true);
 
@@ -8209,7 +8344,7 @@ namespace spartan
             // The trace misses into the sky, so it waits on sky_work; shade + NRD denoise then wait on
             // fog_work and run on Graphics in parallel with ComputeB (SSAO + ray traced shadows).
             bool reflections_denoised_early = false;
-            if (!IsRestirActive() && early_work_recorded && !m_water_present)
+            if (!IsRestirActive() && early_work_recorded && !water_visible)
             {
                 Pass_Reflections_Trace(rhi_all_mips);
                 if (sky_work.timeline)
@@ -8255,7 +8390,7 @@ namespace spartan
                 m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
                 if (!fog_prepared_async)
                     Pass_Fog(eye, eye_layer);
-                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early, reflections_denoised_early);
+                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early, reflections_denoised_early, water_visible);
             }
 
             if (xr_stereo)

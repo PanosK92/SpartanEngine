@@ -3145,6 +3145,7 @@ namespace spartan
 
     void Car::Tick()
     {
+        SP_PROFILE_CPU();
         if (!m_body_entity)
         {
             return;

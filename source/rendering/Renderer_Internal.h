@@ -493,6 +493,8 @@ namespace spartan
             std::atomic<bool> m_initialized_resources;
             bool m_transparents_present;
             bool m_water_present;
+            bool m_non_ocean_water_present;
+            std::vector<math::Vector4> m_water_visibility_boxes;
             bool m_forward_transparents_present;
             bool m_is_hiz_suppressed;
             bool m_taau_reset_history = true;
@@ -548,6 +550,8 @@ namespace spartan
         inline auto& m_initialized_resources = state().m_initialized_resources;
         inline auto& m_transparents_present = state().m_transparents_present;
         inline auto& m_water_present = state().m_water_present;
+        inline auto& m_non_ocean_water_present = state().m_non_ocean_water_present;
+        inline auto& m_water_visibility_boxes = state().m_water_visibility_boxes;
         inline auto& m_forward_transparents_present = state().m_forward_transparents_present;
         inline auto& m_is_hiz_suppressed = state().m_is_hiz_suppressed;
         inline auto& m_taau_reset_history = state().m_taau_reset_history;

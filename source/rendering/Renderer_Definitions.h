@@ -521,6 +521,7 @@ namespace spartan
         instance_cull_c,
         indirect_cull_c,
         indirect_cull_triangle_c,
+        water_visibility_c,
         gbuffer_indirect_v,
         gbuffer_indirect_p,
         gbuffer_impostor_p,
@@ -794,6 +795,12 @@ namespace spartan
         OceanHeightsReadback1,
         OceanHeightsReadback2,
         OceanHeightsReadback3,
+        WaterVisibility,           // conservative hi-z ocean & water visibility flag
+        WaterVisibilityBoxes,      // world-space AABBs of frustum-visible non-ocean water (rivers, pools, fountains)
+        WaterVisibilityReadback0,
+        WaterVisibilityReadback1,
+        WaterVisibilityReadback2,
+        WaterVisibilityReadback3,
         EmissiveTriangles,         // restir nee pool, rebuilt each frame from render components with non-zero emission
         RestirLightTiles,
         RestirEnvironmentCdf,
