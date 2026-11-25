@@ -7629,7 +7629,7 @@ namespace spartan
         }
     }
 
-    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early, bool reflections_denoised_early, bool water_visible)
+    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer, bool early_work_recorded, bool clouds_prepared_early, bool reflections_shaded_early, bool water_visible)
     {
         const bool clouds_prepared = early_work_recorded ? clouds_prepared_early : Pass_Clouds_Prepare(eye_layer);
         if (IsRestirActive())
@@ -7678,11 +7678,11 @@ namespace spartan
             {
                 Pass_Light_Ibl(true, eye_layer);
             }
-            if (!reflections_denoised_early)
+            if (!reflections_shaded_early)
             {
                 Pass_Reflections_Shade(eye_layer);
-                Pass_Reflections_Denoise(eye_layer);
             }
+            Pass_Reflections_Denoise(eye_layer);
 
             Pass_Reflections_Apply(eye_layer);
         }
@@ -8341,9 +8341,11 @@ namespace spartan
                 );
             }
 
-            // The trace misses into the sky, so it waits on sky_work; shade + NRD denoise then wait on
-            // fog_work and run on Graphics in parallel with ComputeB (SSAO + ray traced shadows).
-            bool reflections_denoised_early = false;
+            // The trace misses into the sky, so it waits on sky_work; shade then waits on fog_work
+            // and runs on Graphics in parallel with ComputeB (SSAO + ray traced shadows).
+            // NRD reflection denoising shares nrd_screen_* and nrd_in_spec_radiance with SIGMA
+            // shadows on ComputeB, so it always runs in ProduceFrame_PerEye after ComputeB finishes.
+            bool reflections_shaded_early = false;
             if (!IsRestirActive() && early_work_recorded && !water_visible)
             {
                 Pass_Reflections_Trace(rhi_all_mips);
@@ -8361,8 +8363,7 @@ namespace spartan
                 if (fog_work.timeline)
                 {
                     Pass_Reflections_Shade(rhi_all_mips);
-                    Pass_Reflections_Denoise(rhi_all_mips);
-                    reflections_denoised_early = true;
+                    reflections_shaded_early = true;
                     RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, fog_work.timeline.get(), fog_work.value);
                     RHI_Device::Bind(RHI_Frame_List::Graphics);
                 }
@@ -8390,7 +8391,7 @@ namespace spartan
                 m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
                 if (!fog_prepared_async)
                     Pass_Fog(eye, eye_layer);
-                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early, reflections_denoised_early, water_visible);
+                ProduceFrame_PerEye(eye, eye_layer, early_work_recorded, clouds_prepared_early, reflections_shaded_early, water_visible);
             }
 
             if (xr_stereo)

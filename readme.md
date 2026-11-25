@@ -2,8 +2,8 @@
   <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp" alt="Spartan Engine" width="100%"/>
 </p>
 
-<h3 align="center">Path traced. GPU driven.</h3>
-<p align="center"><i>Started before AI and developed alongside me while in the game industry.</i></p>
+<h3 align="center">AAA-scale worlds, open source.</h3>
+<p align="center"><i>Streamed at 200+ km/h with real-time ray tracing and 11M+ foliage instances. Started before AI and developed alongside me while in the game industry.</i></p>
 
 <p align="center">
   <a href="https://github.com/PanosK92/SpartanEngine/actions"><img src="https://img.shields.io/github/actions/workflow/status/PanosK92/SpartanEngine/workflow.yml?branch=master&style=for-the-badge&label=build&labelColor=161b22" alt="Build Status"></a>
@@ -27,8 +27,8 @@
 <table align="center">
   <tr>
     <td align="center" width="160"><h2>12</h2><sub>YEARS IN DEVELOPMENT</sub></td>
-    <td align="center" width="160"><h2>1</h2><sub>ENGINEER</sub></td>
-    <td align="center" width="160"><h2>600+</h2><sub>ENGINEERS ON DISCORD</sub></td>
+    <td align="center" width="160"><h2>33 × 25 km</h2><sub>STREAMED OPEN WORLD</sub></td>
+    <td align="center" width="160"><h2>11M+</h2><sub>INSTANCED FOLIAGE & ROCKS</sub></td>
     <td align="center" width="160"><h2>200 Hz</h2><sub>VEHICLE SIMULATION</sub></td>
   </tr>
 </table>
@@ -54,7 +54,9 @@
 
 ## Overview
 
-Spartan is a **complete C++ game engine**. Path-traced global illumination, hardware ray tracing, a bindless GPU-driven renderer and a racing-grade vehicle simulation sit alongside what a shipped game needs:
+Most open-source engines stall the moment you leave a small demo room. **Spartan is built for a different league.** It streams a seamless **33 × 25 km island** carpeted in **11+ million instanced trees, undergrowth and rocks** at **200+ km/h with zero traversal stutters at 60+ FPS** — while running real-time ray-traced lighting, volumetric atmosphere, an FFT ocean, live traffic and a **200 Hz racing-sim vehicle model** on top of a virtualized, GPU-driven C++ renderer.
+
+And it is no longer just a renderer — it ships everything a finished game needs:
 
 <table>
   <tr>
@@ -81,6 +83,12 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
     <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; subsurface scattering under path-traced light, down to the pores, the stubble and the glow through an ear</sub><br/><b><a href="https://panoskarabelas.com/engine/live/">▶ Click the head to run it live in your browser</a></b> <sub>(WebGPU, recent Chrome or Edge)</sub></td>
   </tr>
   <tr>
+    <td colspan="2"><img src=".github/images/showcase_island_town.jpg" width="100%" alt="Aerial golden-hour view over Zakynthos: 11+ million instanced trees, undergrowth and rocks carpeting mountain ridges down to the Ionian Sea, streamed seamlessly in Spartan Engine"/></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; a seamless 33 × 25 km island with 7.5M+ full-3D trees (11M+ total scattered instances), 200+ spline roads, towns, live traffic, volumetric clouds and an FFT ocean — streamed at 200+ km/h at 60+ FPS with zero traversal stutters</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src=".github/images/showcase_human.jpg" alt="Human: a photoscanned head in a dark studio, lit by soft area lights"/></td>
     <td width="50%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a mirror-black turntable inside the Maranello Atelier showroom, with ray-traced reflections and custom architectural lighting"/></td>
   </tr>
@@ -96,12 +104,6 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
     <td align="center"><sub><b>SPONZA</b> &nbsp;·&nbsp; ReSTIR path tracing, no light probes, no bake</sub></td>
     <td align="center"><sub><b>LIMINAL OFFICE</b> &nbsp;·&nbsp; procedural and streamed, path traced, no bake</sub></td>
   </tr>
-  <tr>
-    <td colspan="2"><img src=".github/images/showcase_island_town.jpg" alt="Zakynthos: an open island some 30 km across, with towns, an airport, more than 200 spline roads, instanced forests and an FFT ocean"/></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; an island some 30 km across with towns, an airport, 200+ spline roads, instanced forests and an FFT ocean</sub></td>
-  </tr>
 </table>
 
 <p align="center"><sub>All real-time captures. Every world is fully simulated: walkable, interactive and drivable.</sub></p>
@@ -111,9 +113,9 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
 
 <table>
   <tr>
-    <td width="33%" valign="top" align="center"><h3>No bake</h3><sub>ReSTIR path-traced global illumination every frame. No probes, no lightmaps.</sub></td>
-    <td width="33%" valign="top" align="center"><h3>One draw per pass</h3><sub>The GPU owns the data. Bindless buffers, GPU culling, a single indirect draw.</sub></td>
-    <td width="33%" valign="top" align="center"><h3>200 Hz</h3><sub>Racing-sim vehicle dynamics inside a general-purpose engine.</sub></td>
+    <td width="33%" valign="top" align="center"><h3>Open-world streaming</h3><sub>33 × 25 km worlds and 11M+ foliage instances streamed at 200+ km/h with zero hitching at 60+ FPS.</sub></td>
+    <td width="33%" valign="top" align="center"><h3>No bake, one draw</h3><sub>ReSTIR path-traced GI, hardware RT reflections & shadows, and GPU-driven virtualized geometry in a single indirect draw per pass.</sub></td>
+    <td width="33%" valign="top" align="center"><h3>200 Hz simulation</h3><sub>Racing-sim vehicle dynamics, Pacejka tires, thermal brakes and aero inside a general-purpose engine.</sub></td>
   </tr>
 </table>
 
@@ -354,7 +356,7 @@ tools/premake5 --file=tools/premake.lua --skip-setup xcode4 metal
 
 ## Ready for games?
 
-> **Yes.** Older coverage, like *"The BEST Game Engine You SHOULDN'T Use"*, describes an engine that no longer exists. Back then Spartan was a renderer. Today it has the scripting, runtime, packaging and Steam support to ship, and graphically it goes further than any other open-source engine.
+> **Yes.** Older coverage, like *"The BEST Game Engine You SHOULDN'T Use"*, describes an engine that no longer exists. Back then Spartan was a renderer. Today it has the editor, scripting, standalone runtime, packaging and Steam support to ship — and on open-world scale, streaming throughput and real-time rendering it operates in a league well beyond typical open-source engines.
 >
 > The one thing that hasn't changed is support: if you need hand-holding, pick something else. If you don't, **Spartan is ready.**
 
