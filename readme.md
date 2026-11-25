@@ -3,7 +3,7 @@
 </p>
 
 <h3 align="center">AAA-scale worlds, open source.</h3>
-<p align="center"><i>Streamed at 200+ km/h with real-time ray tracing and 11M+ foliage instances. Started before AI and developed alongside me while in the game industry.</i></p>
+<p align="center"><i>Started before AI and developed alongside me while in the game industry.</i></p>
 
 <p align="center">
   <a href="https://github.com/PanosK92/SpartanEngine/actions"><img src="https://img.shields.io/github/actions/workflow/status/PanosK92/SpartanEngine/workflow.yml?branch=master&style=for-the-badge&label=build&labelColor=161b22" alt="Build Status"></a>
@@ -74,7 +74,7 @@ And it is no longer just a renderer — it ships everything a finished game need
   </tr>
 </table>
 
-The bundled worlds show the range, from **Plan**, a playable racing game across the island of Zakynthos, to path-traced interiors, a car showroom and a photoscanned human head. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
+The bundled worlds show the range, from **Game**, a playable racing game across the island of Zakynthos, to path-traced interiors, a car showroom and a photoscanned human head. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
 
 > [!IMPORTANT]
 > **Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is [documentation](docs/README.md), a [Lua scripting guide](docs/scripting.md) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
