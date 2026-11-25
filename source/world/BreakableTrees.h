@@ -195,7 +195,7 @@ namespace spartan::breakable_trees
         stand.collider = physics->createRigidStatic(physx::PxTransform(physx::PxVec3(center.x, center.y, center.z)));
         if (!stand.collider)
             return;
-        if (physx::PxShape* shape = physics->createShape(physx::PxCapsuleGeometry(radius, half), *bark))
+        if (physx::PxShape* shape = physics->createShape(physx::PxCapsuleGeometry(radius, half), *bark, true))
         {
             shape->setLocalPose(physx::PxTransform(physx::PxVec3(0.0f), physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0.0f, 0.0f, 1.0f))));
             stand.collider->attachShape(*shape);

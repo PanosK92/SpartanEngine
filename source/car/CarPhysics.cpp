@@ -690,6 +690,7 @@ namespace spartan
             return;
         }
 
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
         car::Simulation* simulation = EnsureVehicleSimulation();
         if (!active)
         {
@@ -724,6 +725,7 @@ namespace spartan
             return;
         }
 
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
         PxRigidDynamic* body = VehicleState().vehicle_simulation->get_body();
         Vector3 position;
         Quaternion rotation;

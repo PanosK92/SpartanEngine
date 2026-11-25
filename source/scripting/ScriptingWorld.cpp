@@ -406,6 +406,15 @@ namespace spartan::scripting
         WorldTable["GetRoadTemperature"] = []() { return World::GetEnvironment().road_temperature; };
         WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
         WorldTable["GetDaylightIlluminance"]    = &World::GetDaylightIlluminance;
+        WorldTable["GetOceanHeight"]            = [](float x, float z) -> sol::optional<float>
+        {
+            float height = 0.0f;
+            if (Renderer::GetOceanHeight(x, z, height))
+            {
+                return height;
+            }
+            return sol::nullopt;
+        };
         WorldTable["GetCameraEntity"]           = []() -> Entity*
         {
             Camera* camera = World::GetCamera();

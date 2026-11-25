@@ -1240,7 +1240,7 @@ namespace car
                 return nullptr;
             }
 
-            PxShape* shape = multibody.physics->createShape(geometry, *material);
+            PxShape* shape = multibody.physics->createShape(geometry, *material, true);
             if (!shape)
             {
                 actor->release();
@@ -1813,7 +1813,7 @@ namespace car
             PxCookingParams cooking(multibody.physics->getTolerancesScale());
             PxConvexMesh* rim_mesh = PxCreateConvexMesh(cooking, rim_desc, multibody.physics->getPhysicsInsertionCallback());
             if (!rim_mesh) return false;
-            PxShape* rim = multibody.physics->createShape(PxConvexMeshGeometry(rim_mesh), *material);
+            PxShape* rim = multibody.physics->createShape(PxConvexMeshGeometry(rim_mesh), *material, true);
             rim_mesh->release();
             if (!rim) return false;
             rim->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
@@ -3172,23 +3172,23 @@ namespace car
 
             if (weight_sum < 1e-4f)
             {
-                return row;
+                return tire_probe_row();
             }
 
             float penetration = PxClamp(row_radius - height_sum / weight_sum, 0.0f, max_penetration);
             if (penetration <= 0.0f)
             {
-                return row;
+                return tire_probe_row();
             }
             PxVec3 normal = normal_sum / weight_sum;
             if (normal.normalize() < 1e-4f)
             {
-                return row;
+                return tire_probe_row();
             }
             PxVec3 point = point_sum / weight_sum;
             if (!is_finite_vec(point))
             {
-                return row;
+                return tire_probe_row();
             }
 
             row.hit = true;
@@ -4516,9 +4516,15 @@ namespace car
                 for (int r = 0; r < w.row_count; ++r)
                 {
                     const float weight = w.contacts[r].load * w.contacts[r].rolling_scale;
+                    if (!w.contacts[r].hit || weight <= 0.0f)
+                    {
+                        continue;
+                    }
                     rolling_load += weight;
                     if (const auto* ground = w.contacts[r].actor ? w.contacts[r].actor->is<PxRigidDynamic>() : nullptr)
+                    {
                         rolling_ground_spin += weight * ground->getAngularVelocity().dot(wheel_axis);
+                    }
                 }
                 rolling_ground_spin /= PxMax(rolling_load, 1e-6f);
                 float brake_work = 0.0f;
@@ -4657,9 +4663,20 @@ namespace car
                 w.force_debug.rolling = wheel_fwd * (mean_rolling / wr_eff);
                 w.force_debug.rolling_point = mass_center;
                 if (rolling_load > 0)
+                {
                     for (int r = 0; r < w.row_count; ++r)
+                    {
+                        const float weight = w.contacts[r].load * w.contacts[r].rolling_scale;
+                        if (!w.contacts[r].hit || weight <= 0.0f)
+                        {
+                            continue;
+                        }
                         if (auto* ground = w.contacts[r].actor ? w.contacts[r].actor->is<PxRigidDynamic>() : nullptr)
-                            safe_add_torque(ground, -w.force_debug.rolling_torque * (w.contacts[r].load * w.contacts[r].rolling_scale / rolling_load));
+                        {
+                            safe_add_torque(ground, -w.force_debug.rolling_torque * (weight / rolling_load));
+                        }
+                    }
+                }
                 w.brake_temp = PxMin(w.brake_temp + 0.9f * brake_work / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f), spec.brake_max_temp);
 
                 if (log_pacejka)
@@ -4974,7 +4991,7 @@ namespace car
             if (params.chassis_mesh)
             {
                 PxConvexMeshGeometry geometry(params.chassis_mesh);
-                PxShape* shape = params.physics->createShape(geometry, *material);
+                PxShape* shape = params.physics->createShape(geometry, *material, true);
                 if (shape)
                 {
                     shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
@@ -4986,7 +5003,8 @@ namespace car
             {
                 PxShape* chassis = params.physics->createShape(
                     PxBoxGeometry(cfg.width * 0.5f, cfg.height * 0.5f, cfg.length * 0.5f),
-                    *material
+                    *material,
+                    true
                 );
                 if (chassis)
                 {
@@ -5066,7 +5084,7 @@ namespace car
                     }
 
                     PxConvexMeshGeometry geometry(mesh);
-                    PxShape* shape = physics->createShape(geometry, *material);
+                    PxShape* shape = physics->createShape(geometry, *material, true);
                     if (!shape)
                     {
                         continue;
@@ -6549,6 +6567,10 @@ namespace car
                             || ground_point_velocity(wheels[i]).magnitudeSquared() > 0.0001f;
                         for (int r = 0; r < wheels[i].row_count; r++)
                         {
+                            if (!wheels[i].contacts[r].hit || wheels[i].contacts[r].load <= 0.0f)
+                            {
+                                continue;
+                            }
                             const PxRigidActor* support = wheels[i].contacts[r].actor;
                             sleep_support_static = sleep_support_static && (!support || support->is<PxRigidStatic>());
                         }

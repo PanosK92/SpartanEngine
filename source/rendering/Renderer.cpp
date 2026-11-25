@@ -403,6 +403,7 @@ namespace spartan
             const bool reference = Renderer::IsPathTracingActive();
             const bool full_transport = reference || (cvar_restir_pt.GetValueAs<bool>() && !Renderer::IsStereoView());
             const bool show_text_3d = cvar_text_3d.GetValueAs<bool>();
+            const Entity* ocean_entity = Renderer::m_pass_state.ocean ? Renderer::m_pass_state.ocean->GetEntity() : nullptr;
             Camera* camera = Renderer::GetViewCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
@@ -427,6 +428,13 @@ namespace spartan
                     if (!data.active.load(memory_order_relaxed) || (!full_transport && (data.flags & RenderFlags::ExcludeFromRayTracing))) continue;
                     if (!show_text_3d && (data.flags & RenderFlags::IsText3D)) continue;
                     Render* render = data.render;
+                    // the fft ocean mesh is flat in object space and displaced on the gpu; raster-primary
+                    // rt reflections and restir pt expect it absent from the tlas so wave troughs below sea
+                    // level do not hit the undisplaced plane
+                    if (!reference && ocean_entity && render->GetEntity() == ocean_entity)
+                    {
+                        continue;
+                    }
                     // Empty render components have no BLAS to build and cannot invalidate a static reference.
                     if (reference && (!render->GetMaterial() || render->GetIndexCount() == 0)) continue;
                     // Prepare resident geometry independently of TLAS visibility. Otherwise

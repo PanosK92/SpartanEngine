@@ -346,6 +346,17 @@ namespace spartan
                 valid &= check(true, false);
                 simulation.set_simulation_enabled(false);
                 valid &= check(false, false);
+                const physx::PxVec3 disabled_pos = simulation.get_body()->getGlobalPose().p;
+                {
+                    // Disabling a vehicle must remove its chassis shapes from the scene query pruner immediately.
+                    physx::PxSweepBuffer hit;
+                    const physx::PxQueryFilterData dynamic_filter(physx::PxQueryFlag::eDYNAMIC);
+                    if (params.scene->sweep(physx::PxSphereGeometry(0.25f), physx::PxTransform(disabled_pos + physx::PxVec3(0.0f, 3.0f, 0.0f)), physx::PxVec3(0.0f, -1.0f, 0.0f), 6.0f, hit, physx::PxHitFlag::ePOSITION, dynamic_filter) && hit.block.actor == simulation.get_body())
+                    {
+                        error = std::string("Disabled vehicle remained in scene query pruner: ") + path;
+                        return false;
+                    }
+                }
                 simulation.set_simulation_enabled(true);
                 valid &= check(true, false); // Reactivation must not silently enable suspension.
                 valid &= simulation.rebuild_multibody();
@@ -355,6 +366,19 @@ namespace spartan
                 valid &= check(false, true);
                 simulation.set_simulation_enabled(true);
                 valid &= check(true, true);
+                // Releasing a vehicle while disabled must not leak a dangling actor pointer in the scene query pruner.
+                simulation.set_simulation_enabled(false);
+                const physx::PxVec3 released_pos = simulation.get_body()->getGlobalPose().p;
+                simulation.destroy();
+                {
+                    physx::PxSweepBuffer hit;
+                    const physx::PxQueryFilterData dynamic_filter(physx::PxQueryFlag::eDYNAMIC);
+                    if (params.scene->sweep(physx::PxSphereGeometry(0.25f), physx::PxTransform(released_pos + physx::PxVec3(0.0f, 3.0f, 0.0f)), physx::PxVec3(0.0f, -1.0f, 0.0f), 6.0f, hit, physx::PxHitFlag::ePOSITION, dynamic_filter) && hit.block.actor)
+                    {
+                        error = std::string("Released disabled vehicle leaked into scene query pruner: ") + path;
+                        return false;
+                    }
+                }
                 if (!valid) { error = std::string("Vehicle mode invariant failed: ") + path; return false; }
             }
             return true;

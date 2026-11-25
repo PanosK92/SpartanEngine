@@ -118,12 +118,15 @@ namespace spartan
         m_material->SetProperty(MaterialProperty::IsWater,              1.0f);
         m_material->SetProperty(MaterialProperty::Ior,                  Material::EnumToIor(MaterialIor::Water));
 
-        // render the surface through the standard transparent path
+        // render the surface through the standard transparent path; the clipmap is flat in object
+        // space and displaced on the gpu, so it stays out of the tlas or reflection rays from wave
+        // troughs below sea level hit its undisplaced plane
         if (Render* render = GetEntity()->AddComponent<Render>())
         {
             render->SetMesh(m_mesh.get());
             render->SetMaterial(m_material);
             render->SetFlag(RenderFlags::CastsShadows, false);
+            render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
         }
     }
 

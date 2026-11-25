@@ -1,0 +1,460 @@
+<?xml version="1.0"?>
+<World name="ocean_example" description="Pure open ocean showcase with FFT waves, marine life, buoyancy tests, and a drivable boat">
+ <OwnedResources>
+  <Resource file="materials/ocean_beacon_amber.xml" />
+  <Resource file="materials/ocean_beacon_cyan.xml" />
+  <Resource file="materials/ocean_beacon_green.xml" />
+  <Resource file="materials/ocean_beacon_red.xml" />
+  <Resource file="materials/ocean_beacon_white.xml" />
+  <Resource file="materials/ocean_buoy_green.xml" />
+  <Resource file="materials/ocean_buoy_red.xml" />
+  <Resource file="materials/ocean_chrome.xml" />
+  <Resource file="materials/ocean_crate_wood.xml" />
+  <Resource file="materials/ocean_drum_blue.xml" />
+  <Resource file="materials/ocean_drum_yellow.xml" />
+  <Resource file="materials/ocean_glass.xml" />
+  <Resource file="materials/ocean_hull_white.xml" />
+  <Resource file="materials/ocean_iron_ballast.xml" />
+  <Resource file="materials/ocean_leather_tan.xml" />
+  <Resource file="materials/ocean_life_orange.xml" />
+  <Resource file="materials/ocean_navy.xml" />
+  <Resource file="materials/ocean_piling_wood.xml" />
+  <Resource file="materials/ocean_podium_body.xml" />
+  <Resource file="materials/ocean_reef_sand.xml" />
+  <Resource file="materials/ocean_rubber.xml" />
+  <Resource file="materials/ocean_steel_dark.xml" />
+  <Resource file="materials/ocean_teak.xml" />
+  <Resource file="meshes/boat_hull.mesh" />
+  <Resource file="meshes/boat_windshield.mesh" />
+  <Resource file="meshes/nav_buoy.mesh" />
+  <Resource file="meshes/ocean_life_ring_v1.mesh" />
+  <Resource file="meshes/podium_console.mesh" />
+  <Resource file="meshes/ship_anchor.mesh" />
+  <Resource file="textures/ocean_buoy_green_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_buoy_red_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_crate_wood_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_drum_blue_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_drum_yellow_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_hull_white_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_navy_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_piling_wood_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_reef_sand_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/ocean_steel_dark_packed_slot0.tex_packed.texture" />
+ </OwnedResources>
+ <Environment utc_days="9665.0699999928474" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.5" wind_y="0" wind_z="3.79999995" puddliness="0" rain="0" cloud_coverage="0.25" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2.75 -13.8" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0.0697565 0 0 0.997564" scale="1 1 1">
+    <camera flags="49" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.307121 0.605605 -0.27292 0.681494" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="ocean" id="4386971068186693131" active="true" position="4 0 74.5" rotation="0 0 0 1" scale="1 1 1">
+   <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <water>
+    <water biome="2" species_mask="31" population="0.850000024" wave_size="0.349999994" surf_size="0.300000012" clarity="0.850000024" sea_level="0" />
+   </water>
+  </Entity>
+  <Entity name="offshore_pier" id="9977188872145566803" active="true" position="0 0 -12" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="pier_deck" id="18428253641739159611" active="true" position="0 1.5 0" rotation="0 0 0 1" scale="10 0.3 7.6">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pier_beam_front" id="18363077853189426044" active="true" position="0 1.42 3.84" rotation="0 0 0 1" scale="10.16 0.44 0.14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pier_beam_back" id="18141078385548264736" active="true" position="0 1.42 -3.84" rotation="0 0 0 1" scale="10.16 0.44 0.14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pier_beam_port" id="18146391643477857491" active="true" position="-5.04 1.42 0" rotation="0 0 0 1" scale="0.14 0.44 7.68">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pier_beam_stbd" id="18145914668420610258" active="true" position="5.04 1.42 0" rotation="0 0 0 1" scale="0.14 0.44 7.68">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_fl" id="18146012179454478859" active="true" position="-4.75 -5.8 3.55" rotation="0 0 0 1" scale="0.48 16.5 0.48">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_fr" id="1082435255065204745" active="true" position="4.75 -5.8 3.55" rotation="0 0 0 1" scale="0.48 16.5 0.48">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_bl" id="1082933063558855774" active="true" position="-4.75 -5.8 -3.55" rotation="0 0 0 1" scale="0.48 16.5 0.48">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_br" id="1082919294821370281" active="true" position="4.75 -5.8 -3.55" rotation="0 0 0 1" scale="0.48 16.5 0.48">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_ml" id="1082016960347714920" active="true" position="-4.75 -5.8 0" rotation="0 0 0 1" scale="0.44 16.5 0.44">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_mr" id="1081900568576654071" active="true" position="4.75 -5.8 0" rotation="0 0 0 1" scale="0.44 16.5 0.44">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_fm" id="1081852325155098238" active="true" position="0 -6.5 3.55" rotation="0 0 0 1" scale="0.44 15.5 0.44">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_bm" id="1081744108309472094" active="true" position="0 -6.5 -3.55" rotation="0 0 0 1" scale="0.44 15.5 0.44">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_piling_wood" material_path="project/ocean_example_resources/materials/ocean_piling_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_cap_fl" id="1082407980345214385" active="true" position="-4.75 2.48 3.55" rotation="0 0 0 1" scale="0.5 0.1 0.5">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_cap_fr" id="972160982742146929" active="true" position="4.75 2.48 3.55" rotation="0 0 0 1" scale="0.5 0.1 0.5">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_cap_bl" id="976954512654996770" active="true" position="-4.75 2.48 -3.55" rotation="0 0 0 1" scale="0.5 0.1 0.5">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="piling_cap_br" id="976752959224907299" active="true" position="4.75 2.48 -3.55" rotation="0 0 0 1" scale="0.5 0.1 0.5">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="fender_f1" id="976634220367218217" active="true" position="-3.1 1.05 4" rotation="0 0 0 1" scale="0.3 1.1 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_rubber" material_path="project/ocean_example_resources/materials/ocean_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="fender_f2" id="975017880005059636" active="true" position="-1.3 1.05 4" rotation="0 0 0 1" scale="0.3 1.1 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_rubber" material_path="project/ocean_example_resources/materials/ocean_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="fender_f3" id="974925750753679544" active="true" position="1.3 1.05 4" rotation="0 0 0 1" scale="0.3 1.1 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_rubber" material_path="project/ocean_example_resources/materials/ocean_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="fender_f4" id="979716896909793546" active="true" position="3.1 1.05 4" rotation="0 0 0 1" scale="0.3 1.1 0.3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_rubber" material_path="project/ocean_example_resources/materials/ocean_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_back_top" id="979610111857516945" active="true" position="0 2.62 -3.65" rotation="0 0 0.707107 0.707107" scale="0.055 9.3 0.055">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_back_mid" id="977484768114765770" active="true" position="0 2.15 -3.65" rotation="0 0 0.707107 0.707107" scale="0.04 9.3 0.04">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_post_b1" id="977401358458676778" active="true" position="-2.35 2.14 -3.65" rotation="0 0 0 1" scale="0.05 0.98 0.05">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_post_b2" id="977956634143375084" active="true" position="0 2.14 -3.65" rotation="0 0 0 1" scale="0.05 0.98 0.05">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_post_b3" id="978016935538587153" active="true" position="2.35 2.14 -3.65" rotation="0 0 0 1" scale="0.05 0.98 0.05">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_stbd_top" id="977921007918159673" active="true" position="4.85 2.62 -1.65" rotation="0.707107 0 0 0.707107" scale="0.055 3.8 0.055">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="rail_port_top" id="977794014707330662" active="true" position="-4.85 2.62 -1.65" rotation="0.707107 0 0 0.707107" scale="0.055 3.8 0.055">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="swim_step_1" id="977861501791734487" active="true" position="-5.45 1.25 1.2" rotation="0 0 0 1" scale="0.8 0.12 1.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="swim_step_2" id="977740304362885584" active="true" position="-5.95 0.85 1.2" rotation="0 0 0 1" scale="0.8 0.12 1.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="swim_step_3" id="982473884598973070" active="true" position="-6.45 0.45 1.2" rotation="0 0 0 1" scale="0.8 0.12 1.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="swim_step_4" id="982433459701462614" active="true" position="-6.95 0.05 1.2" rotation="0 0 0 1" scale="0.8 0.12 1.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="swim_step_5" id="982430278144574529" active="true" position="-7.45 -0.35 1.2" rotation="0 0 0 1" scale="0.8 0.12 1.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beacon_mast_pole" id="982349056117193351" active="true" position="-4.75 4.15 3.55" rotation="0 0 0 1" scale="0.14 3.4 0.14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beacon_mast_band" id="982209741051497130" active="true" position="-4.75 4.9 3.55" rotation="0 0 0 1" scale="0.16 0.55 0.16">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_buoy_red" material_path="project/ocean_example_resources/materials/ocean_buoy_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beacon_lamp_base" id="889147736910923926" active="true" position="-4.75 5.88 3.55" rotation="0 0 0 1" scale="0.32 0.14 0.32">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beacon_lamp_globe" id="888953977644061697" active="true" position="-4.75 6.12 3.55" rotation="0 0 0 1" scale="0.3 0.34 0.3">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_amber" material_path="project/ocean_example_resources/materials/ocean_beacon_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beacon_lamp_cap" id="891906342619476363" active="true" position="-4.75 6.32 3.55" rotation="0 0 0 1" scale="0.36 0.08 0.36">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="crane_mast" id="891811540954961857" active="true" position="4.35 3.55 3.1" rotation="0 0 0 1" scale="0.24 3.8 0.24">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="crane_boom" id="892311891271091727" active="true" position="5.65 5.75 4.35" rotation="-0.192085 0.374321 0.0795644 0.903691" scale="0.22 0.24 4.2">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_drum_yellow" material_path="project/ocean_example_resources/materials/ocean_drum_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="crane_cable" id="803422788397300697" active="true" position="6.95 5.42 5.65" rotation="0 0 0 1" scale="0.035 2.2 0.035">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="crane_hook_ball" id="803932389443156615" active="true" position="6.95 4.32 5.65" rotation="0 0 0 1" scale="0.24 0.24 0.24">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_iron_ballast" material_path="project/ocean_example_resources/materials/ocean_iron_ballast.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pier_beacon_light" id="11228462884163251990" active="true" position="-4.75 6.12 3.55" rotation="0 0 0 1" scale="1 1 1">
+    <light flags="0" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4500.76318" range="37.8501968" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" />
+   </Entity>
+   <Entity name="pier_life_ring" id="12438003384548619317" active="true" position="-4.55 2.42 2.6" rotation="0.5 -0.5 0.5 0.5" scale="0.95 0.95 0.95">
+    <render mesh_name="ocean_life_ring_v1" mesh_path="project/ocean_example_resources/meshes/ocean_life_ring_v1.mesh" sub_mesh_index="0" material_name="ocean_life_orange" material_path="project/ocean_example_resources/materials/ocean_life_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="podium_sea_state" id="6113835504706610418" active="true" position="-2.4 1.65 2.6" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="podium_console" mesh_path="project/ocean_example_resources/meshes/podium_console.mesh" sub_mesh_index="0" material_name="ocean_podium_body" material_path="project/ocean_example_resources/materials/ocean_podium_body.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="button" id="11553968428724423695" active="true" position="0 0.94 -0.02" rotation="-0.156434 0 0 0.987688" scale="0.22 0.08 0.22">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_cyan" material_path="project/ocean_example_resources/materials/ocean_beacon_cyan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_sea_state_label" id="7018316451879677423" active="true" position="0 1.34 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="SEA STATE" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.165000007" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="0" />
+    </Entity>
+   </Entity>
+   <Entity name="podium_clarity" id="8711612126333731584" active="true" position="-0.8 1.65 2.6" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="podium_console" mesh_path="project/ocean_example_resources/meshes/podium_console.mesh" sub_mesh_index="0" material_name="ocean_podium_body" material_path="project/ocean_example_resources/materials/ocean_podium_body.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="button" id="11554176766010048124" active="true" position="0 0.94 -0.02" rotation="-0.156434 0 0 0.987688" scale="0.22 0.08 0.22">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_amber" material_path="project/ocean_example_resources/materials/ocean_beacon_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_clarity_label" id="7018378562234556313" active="true" position="0 1.34 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="CLARITY" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.165000007" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="0" />
+    </Entity>
+   </Entity>
+   <Entity name="podium_marine" id="9390124861689569609" active="true" position="0.8 1.65 2.6" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="podium_console" mesh_path="project/ocean_example_resources/meshes/podium_console.mesh" sub_mesh_index="0" material_name="ocean_podium_body" material_path="project/ocean_example_resources/materials/ocean_podium_body.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="button" id="11558622512756188941" active="true" position="0 0.94 -0.02" rotation="-0.156434 0 0 0.987688" scale="0.22 0.08 0.22">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_green" material_path="project/ocean_example_resources/materials/ocean_beacon_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_marine_label" id="7018342644790476483" active="true" position="0 1.34 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="MARINE LIFE" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.165000007" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="0" />
+    </Entity>
+   </Entity>
+   <Entity name="podium_drop" id="5644317483798191761" active="true" position="2.4 1.65 2.6" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="podium_console" mesh_path="project/ocean_example_resources/meshes/podium_console.mesh" sub_mesh_index="0" material_name="ocean_podium_body" material_path="project/ocean_example_resources/materials/ocean_podium_body.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="button" id="11558636678215018663" active="true" position="0 0.94 -0.02" rotation="-0.156434 0 0 0.987688" scale="0.22 0.08 0.22">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_red" material_path="project/ocean_example_resources/materials/ocean_beacon_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="podium_drop_label" id="7018336567292701183" active="true" position="0 1.34 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <text_3d text="DROP CARGO" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.165000007" depth="0.0199999996" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="0" />
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="ocean_boat" id="11440345467355038840" active="true" position="-1.8 0.28 -3.5" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="2150" friction="0.349999994" friction_rolling="0.349999994" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.449999988" center_of_mass_z="-0.150000006" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+   <render mesh_name="boat_hull" mesh_path="project/ocean_example_resources/meshes/boat_hull.mesh" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <Entity name="boat_deck_teak" id="17067375678385972689" active="true" position="0 0.06 -0.9" rotation="0 0 0 1" scale="1.82 0.06 3.95">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_stripe_port" id="17067055668096652737" active="true" position="-1.14 0.42 -0.65" rotation="0 0 0.0697565 0.997564" scale="0.04 0.14 3.8">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_navy" material_path="project/ocean_example_resources/materials/ocean_navy.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_stripe_stbd" id="16847018241761306621" active="true" position="1.14 0.42 -0.65" rotation="0 0 -0.0697565 0.997564" scale="0.04 0.14 3.8">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_navy" material_path="project/ocean_example_resources/materials/ocean_navy.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_console_base" id="16845757139341227238" active="true" position="0 0.56 0.22" rotation="0 0 0 1" scale="1.02 0.92 0.78">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_console_dash" id="16845884307983395711" active="true" position="0 0.98 0.12" rotation="-0.190809 0 0 0.981627" scale="0.94 0.22 0.52">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_chartplotter" id="16846320719355661309" active="true" position="0.16 1.02 0.02" rotation="-0.190809 0 0 0.981627" scale="0.34 0.2 0.04">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_cyan" material_path="project/ocean_example_resources/materials/ocean_beacon_cyan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_wheel_shaft" id="16848243145279224840" active="true" position="-0.22 0.92 -0.18" rotation="0.559193 0 0 0.829038" scale="0.055 0.28 0.055">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_throttle_lever" id="16848344498738160546" active="true" position="0.44 1.08 0.02" rotation="0.156434 0 0 0.987688" scale="0.035 0.24 0.035">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_seat_base" id="16848386388016118124" active="true" position="0 0.34 -0.92" rotation="0 0 0 1" scale="1.12 0.52 0.56">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_hull_white" material_path="project/ocean_example_resources/materials/ocean_hull_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_seat_cushion" id="16847604293532734268" active="true" position="0 0.65 -0.92" rotation="0 0 0 1" scale="1.18 0.14 0.62">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_leather_tan" material_path="project/ocean_example_resources/materials/ocean_leather_tan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_seat_back" id="16855097518937611373" active="true" position="0 0.92 -1.18" rotation="-0.104528 0 0 0.994522" scale="1.16 0.46 0.14">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_leather_tan" material_path="project/ocean_example_resources/materials/ocean_leather_tan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_aft_bench" id="16854753294525385081" active="true" position="0 0.46 -2.52" rotation="0 0 0 1" scale="1.72 0.14 0.58">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_leather_tan" material_path="project/ocean_example_resources/materials/ocean_leather_tan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_bow_sunpad" id="16854829757928675832" active="true" position="0 0.72 1.88" rotation="0.052336 0 0 0.99863" scale="1.02 0.1 1.15">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_leather_tan" material_path="project/ocean_example_resources/materials/ocean_leather_tan.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_outboard_cowl" id="16855286619421742801" active="true" position="0 0.56 -3.24" rotation="0 0 0 1" scale="0.44 0.58 0.56">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_outboard_cap" id="16855522737028780635" active="true" position="0 0.86 -3.22" rotation="0 0 0 1" scale="0.4 0.12 0.5">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_navy" material_path="project/ocean_example_resources/materials/ocean_navy.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_outboard_leg" id="16855003111967526711" active="true" position="0 -0.06 -3.22" rotation="0 0 0 1" scale="0.16 0.92 0.24">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_steel_dark" material_path="project/ocean_example_resources/materials/ocean_steel_dark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_stern_mast" id="16854710956532046041" active="true" position="0.86 1.15 -2.72" rotation="0 0 0 1" scale="0.035 1.35 0.035">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_light_stern" id="16854254743589169885" active="true" position="0.86 1.84 -2.72" rotation="0 0 0 1" scale="0.11 0.13 0.11">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_white" material_path="project/ocean_example_resources/materials/ocean_beacon_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_light_port" id="16857390418981855876" active="true" position="-0.64 0.78 1.95" rotation="0 0 0 1" scale="0.1 0.1 0.1">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_red" material_path="project/ocean_example_resources/materials/ocean_beacon_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_light_stbd" id="16859017409461827572" active="true" position="0.64 0.78 1.95" rotation="0 0 0 1" scale="0.1 0.1 0.1">
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_green" material_path="project/ocean_example_resources/materials/ocean_beacon_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_bow_rail_l" id="16861627485886145100" active="true" position="-0.56 0.88 1.92" rotation="0.644005 0.144005 -0.125182 0.740843" scale="0.028 1.55 0.028">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_bow_rail_r" id="16866540938170357065" active="true" position="0.56 0.88 1.92" rotation="0.644005 -0.144005 0.125182 0.740843" scale="0.028 1.55 0.028">
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_windshield" id="14244223597326223668" active="true" position="0 1.02 0.34" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="boat_windshield" mesh_path="project/ocean_example_resources/meshes/boat_windshield.mesh" sub_mesh_index="0" material_name="ocean_glass" material_path="project/ocean_example_resources/materials/ocean_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="boat_wheel_rim" id="15479806719690241358" active="true" position="-0.22 0.96 -0.32" rotation="0.559193 0 0 0.829038" scale="0.44 0.44 0.44">
+    <render mesh_name="ocean_life_ring_v1" mesh_path="project/ocean_example_resources/meshes/ocean_life_ring_v1.mesh" sub_mesh_index="0" material_name="ocean_chrome" material_path="project/ocean_example_resources/materials/ocean_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="buoyancy_flotilla" id="11346212313471194247" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="float_crate_1" id="16880116074230956581" active="true" position="6.4 0.35 -5.8" rotation="0 0.156434 0 0.987688" scale="0.95 0.95 0.95">
+    <physics mass="390" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_crate_wood" material_path="project/ocean_example_resources/materials/ocean_crate_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="float_crate_2" id="16726085323661528885" active="true" position="8.2 0.35 -4.4" rotation="0 -0.241922 0 0.970296" scale="0.95 0.95 0.95">
+    <physics mass="420" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_crate_wood" material_path="project/ocean_example_resources/materials/ocean_crate_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="float_crate_3" id="16724763844747964167" active="true" position="7.4 0.4 -2.1" rotation="0 0.358368 0 0.93358" scale="0.85 0.85 0.85">
+    <physics mass="260" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_crate_wood" material_path="project/ocean_example_resources/materials/ocean_crate_wood.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="float_drum_1" id="16724790877849229302" active="true" position="5.6 0.3 -2.8" rotation="0 0 0 1" scale="0.68 0.96 0.68">
+    <physics mass="210" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_drum_yellow" material_path="project/ocean_example_resources/materials/ocean_drum_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="float_drum_2" id="16725511777169948127" active="true" position="6.8 0.3 -0.6" rotation="0.681896 0.137257 -0.132547 0.706123" scale="0.68 0.96 0.68">
+    <physics mass="235" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_drum_blue" material_path="project/ocean_example_resources/materials/ocean_drum_blue.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="float_drum_3" id="16622721301039639129" active="true" position="9.2 0.3 -1.8" rotation="0.67438 -0.212631 0.212631 0.67438" scale="0.68 0.96 0.68">
+    <physics mass="255" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="ocean_drum_yellow" material_path="project/ocean_example_resources/materials/ocean_drum_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="float_raft" id="16623012294307193806" active="true" position="-10.2 0.28 -7.2" rotation="0 0.104528 0 0.994522" scale="2.8 0.32 3.8">
+    <physics mass="1120" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_teak" material_path="project/ocean_example_resources/materials/ocean_teak.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="nav_buoy_port_1" id="3156613453379226963" active="true" position="-9.5 0.2 10" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="420" friction="0.349999994" friction_rolling="0.400000006" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.720000029" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="nav_buoy" mesh_path="project/ocean_example_resources/meshes/nav_buoy.mesh" sub_mesh_index="0" material_name="ocean_buoy_red" material_path="project/ocean_example_resources/materials/ocean_buoy_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="buoy_lamp" id="11559288489141616301" active="true" position="0 1.64 0" rotation="0 0 0 1" scale="0.2 0.22 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_red" material_path="project/ocean_example_resources/materials/ocean_beacon_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="nav_buoy_stbd_1" id="17864518193987110436" active="true" position="9.5 0.2 10" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="420" friction="0.349999994" friction_rolling="0.400000006" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.720000029" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="nav_buoy" mesh_path="project/ocean_example_resources/meshes/nav_buoy.mesh" sub_mesh_index="0" material_name="ocean_buoy_green" material_path="project/ocean_example_resources/materials/ocean_buoy_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="buoy_lamp" id="11558881833542296389" active="true" position="0 1.64 0" rotation="0 0 0 1" scale="0.2 0.22 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_green" material_path="project/ocean_example_resources/materials/ocean_beacon_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="nav_buoy_port_2" id="1538345723454458159" active="true" position="-12.5 0.2 34" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="420" friction="0.349999994" friction_rolling="0.400000006" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.720000029" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="nav_buoy" mesh_path="project/ocean_example_resources/meshes/nav_buoy.mesh" sub_mesh_index="0" material_name="ocean_buoy_red" material_path="project/ocean_example_resources/materials/ocean_buoy_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="buoy_lamp" id="11559045079189714108" active="true" position="0 1.64 0" rotation="0 0 0 1" scale="0.2 0.22 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_red" material_path="project/ocean_example_resources/materials/ocean_beacon_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="nav_buoy_stbd_2" id="999387605171687062" active="true" position="12.5 0.2 34" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="420" friction="0.349999994" friction_rolling="0.400000006" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.720000029" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="nav_buoy" mesh_path="project/ocean_example_resources/meshes/nav_buoy.mesh" sub_mesh_index="0" material_name="ocean_buoy_green" material_path="project/ocean_example_resources/materials/ocean_buoy_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="buoy_lamp" id="11557991185583848367" active="true" position="0 1.64 0" rotation="0 0 0 1" scale="0.2 0.22 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_green" material_path="project/ocean_example_resources/materials/ocean_beacon_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="nav_buoy_port_3" id="15768828622330841709" active="true" position="-15 0.2 64" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="420" friction="0.349999994" friction_rolling="0.400000006" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.720000029" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="nav_buoy" mesh_path="project/ocean_example_resources/meshes/nav_buoy.mesh" sub_mesh_index="0" material_name="ocean_buoy_red" material_path="project/ocean_example_resources/materials/ocean_buoy_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="buoy_lamp" id="11558168980379964981" active="true" position="0 1.64 0" rotation="0 0 0 1" scale="0.2 0.22 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_red" material_path="project/ocean_example_resources/materials/ocean_beacon_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="nav_buoy_stbd_3" id="17811493710246224963" active="true" position="15 0.2 64" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="420" friction="0.349999994" friction_rolling="0.400000006" restitution="0.150000006" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="-0.720000029" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="nav_buoy" mesh_path="project/ocean_example_resources/meshes/nav_buoy.mesh" sub_mesh_index="0" material_name="ocean_buoy_green" material_path="project/ocean_example_resources/materials/ocean_buoy_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <Entity name="buoy_lamp" id="11558078005937883193" active="true" position="0 1.64 0" rotation="0 0 0 1" scale="0.2 0.22 0.2">
+     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_beacon_green" material_path="project/ocean_example_resources/materials/ocean_beacon_green.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="submerged_reef_shelf" id="12204262886731895662" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="caustics_seabed_main" id="5646669919536331854" active="true" position="0 -5.6 -4.5" rotation="0 0 0 1" scale="36 3.6 32">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_reef_sand" material_path="project/ocean_example_resources/materials/ocean_reef_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="reef_mound_1" id="5479265956990740023" active="true" position="-5.5 -3.65 -3.5" rotation="0 0 0 1" scale="4.8 1.7 3.8">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_reef_sand" material_path="project/ocean_example_resources/materials/ocean_reef_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="reef_mound_2" id="5478430797297538717" active="true" position="5.2 -3.55 -2" rotation="0 0 0 1" scale="4.2 1.6 4.6">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_reef_sand" material_path="project/ocean_example_resources/materials/ocean_reef_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="reef_boulder_1" id="5478235558648088435" active="true" position="-2.2 -3.5 1.8" rotation="0 0 0 1" scale="2.1 1.3 1.8">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_reef_sand" material_path="project/ocean_example_resources/materials/ocean_reef_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="reef_boulder_2" id="5478871727394416188" active="true" position="2.4 -3.55 -6.2" rotation="0 0 0 1" scale="2.4 1.2 1.9">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_reef_sand" material_path="project/ocean_example_resources/materials/ocean_reef_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="reef_boulder_3" id="5478758908833871619" active="true" position="-7.2 -3.7 -7.8" rotation="0 0 0 1" scale="3 1.5 2.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="ocean_reef_sand" material_path="project/ocean_example_resources/materials/ocean_reef_sand.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sunken_ballast_1" id="5478722956881363957" active="true" position="3.4 -3.55 -3.4" rotation="0.043915 0.209287 -0.0449647 0.975832" scale="0.75 0.55 0.75">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_iron_ballast" material_path="project/ocean_example_resources/materials/ocean_iron_ballast.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sunken_ballast_2" id="5478489081594804408" active="true" position="4.2 -3.55 -2.9" rotation="-0.0538793 -0.1529 0.0620251 0.984821" scale="0.62 0.48 0.62">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="ocean_iron_ballast" material_path="project/ocean_example_resources/materials/ocean_iron_ballast.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="sunken_anchor" id="10160638282479677393" active="true" position="-0.8 -3.55 -2.2" rotation="0.624019 0.149803 -0.0944269 0.76108" scale="1.15 1.15 1.15">
+    <render mesh_name="ship_anchor" mesh_path="project/ocean_example_resources/meshes/ship_anchor.mesh" sub_mesh_index="0" material_name="ocean_iron_ballast" material_path="project/ocean_example_resources/materials/ocean_iron_ballast.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+ </Entities>
+</World>

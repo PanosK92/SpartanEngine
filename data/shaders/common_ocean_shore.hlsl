@@ -267,95 +267,99 @@ float3 ocean_shore_surface(float2 grid_xz, float time, float spacing = 0.0f)
     return float3(grid_xz.x + o.displacement.x, y, grid_xz.y + o.displacement.z);
 }
 
-// nearest and second nearest feature distance of a jittered grid, and a random value for the nearest cell
-float3 ocean_shore_cells(float2 p, int salt)
+// organic multi-octave turbulent foam field, fades each octave to its mean as the pixel footprint grows
+// so close water shows crisp frothy curds and wind-drawn wisps while distant swells never shimmer
+float ocean_foam_fbm(float2 q, float footprint, out float fine_froth)
 {
-    float2 i  = floor(p);
-    float2 f  = p - i;
-    float d1  = 8.0f;
-    float d2  = 8.0f;
-    float id  = 0.0f;
-    [unroll] for (int y = -1; y <= 1; y++)
+    // two-scale eddy domain warp breaks up grid alignment and gives foam trails turbulent shear
+    const float warp_coarse = 1.05f;
+    float warp_fade_0 = 1.0f - smoothstep(0.15f, 0.70f, footprint / warp_coarse);
+    if (warp_fade_0 > 0.0f)
     {
-        [unroll] for (int x = -1; x <= 1; x++)
-        {
-            int2 cell  = int2(i) + int2(x, y);
-            float2 jit = 0.1f + 0.8f * float2(ocean_shore_hash(cell, salt), ocean_shore_hash(cell, salt + 1));
-            float2 d   = float2(x, y) + jit - f;
-            float dd   = dot(d, d);
-            if (dd < d1)
-            {
-                d2 = d1;
-                d1 = dd;
-                id = ocean_shore_hash(cell, salt + 2);
-            }
-            else if (dd < d2)
-            {
-                d2 = dd;
-            }
-        }
+        float2 warp0 = float2(
+            ocean_shore_noise(q / warp_coarse + float2(3.1f, 7.4f), 29),
+            ocean_shore_noise(q / warp_coarse + float2(11.7f, 2.3f), 31)
+        ) - 0.5f;
+        q += warp0 * (0.55f * warp_fade_0);
     }
-    return float3(sqrt(d1), sqrt(d2), id);
+
+    const float warp_fine = 0.26f;
+    float warp_fade_1 = 1.0f - smoothstep(0.15f, 0.70f, footprint / warp_fine);
+    if (warp_fade_1 > 0.0f)
+    {
+        float2 warp1 = float2(
+            ocean_shore_noise(q / warp_fine + float2(5.7f, 1.9f), 37),
+            ocean_shore_noise(q / warp_fine + float2(8.3f, 6.1f), 39)
+        ) - 0.5f;
+        q += warp1 * (0.12f * warp_fade_1);
+    }
+
+    // macro billowing foam mats and wind streaks (stays resolved out to mid-distant swells)
+    const float s0 = 2.60f;
+    float n0 = lerp(ocean_shore_noise(q / s0, 41), 0.5f, smoothstep(0.15f, 0.70f, footprint / s0));
+
+    // medium turbulent curds and ragged edges, rotated to avoid axis repetition
+    const float s1 = 0.68f;
+    float2 q1 = float2(q.x * 0.80f - q.y * 0.60f, q.x * 0.60f + q.y * 0.80f);
+    float n1 = lerp(ocean_shore_noise(q1 / s1, 47), 0.5f, smoothstep(0.15f, 0.70f, footprint / s1));
+
+    // fine frothy tufts and mottled sea-spray clusters
+    const float s2 = 0.18f;
+    float2 q2 = float2(q.x * 0.36f + q.y * 0.93f, -q.x * 0.93f + q.y * 0.36f);
+    float n2 = lerp(ocean_shore_noise(q2 / s2, 53), 0.5f, smoothstep(0.15f, 0.70f, footprint / s2));
+
+    // crisp micro-bubble spume visible up close
+    const float s3 = 0.048f;
+    float n3 = lerp(ocean_shore_noise(q1 / s3, 59), 0.5f, smoothstep(0.15f, 0.70f, footprint / s3));
+
+    fine_froth = n2 * 0.60f + n3 * 0.40f;
+    return n0 * 0.30f + n1 * 0.28f + n2 * 0.24f + n3 * 0.18f;
 }
 
-// surf foam is a raft of bubbles, what reads as white are the walls where bubbles touch, what reads as holes
-// are the big bubbles that burst, so the foam is a network of cell walls whose width follows the density
-// dense foam thickens the walls until the cells close, thin foam keeps only threads that snap apart
-// 1 on a wall, 0 in a hole, the rim is soft because the walls thin out towards the open water
-float ocean_shore_lace(float2 p, float density, int salt)
-{
-    // a bubble raft is never a regular grid, two octaves of warp give cells of every shape and size
-    p           += (float2(ocean_shore_noise(p * 0.31f, salt + 71), ocean_shore_noise(p * 0.31f + 5.3f, salt + 73)) - 0.5f) * 2.2f;
-    p           += (float2(ocean_shore_noise(p * 1.3f, salt + 75), ocean_shore_noise(p * 1.3f + 2.9f, salt + 77)) - 0.5f) * 0.45f;
-    float3 c     = ocean_shore_cells(p, salt + 11);
-    float edge   = c.y - c.x;
-    // some bubbles hold and stay closed, some burst into wide holes, a per cell value would jump right on the
-    // walls it is meant to widen, so the hole size is a smooth field over the raft
-    float burst  = lerp(0.4f, 1.6f, ocean_shore_noise(p * 0.55f, salt + 37));
-    float wall   = lerp(0.03f, 0.8f, density * density) / burst;
-    // a thin wall is a few bubbles across, its rim is diffuse and the water shows through it
-    float soft   = 0.08f + 0.3f * wall;
-    float net    = (1.0f - smoothstep(wall * 0.5f, wall + soft, edge)) * lerp(0.5f, 1.0f, saturate(wall * 4.0f));
-    // thin threads break, a strand survives only where the foam around it is still dense enough
-    float strand = ocean_shore_noise(p * 0.9f, salt + 79);
-    return net * smoothstep(0.15f, 0.55f, strand + density * 0.8f);
-}
-
-// dense whitewater is a solid mass, thinning foam erodes into a net and then into scattered strands
-// unresolved detail fades to its mean so the beach does not shimmer from a distance
-// the result is coverage and opacity in one, the thin walls of a draining net let the water through
+// dense whitewater forms a creamy frothy cap that thins into turbulent patches, wispy trails and scattered spray
+// unresolved detail fades to its mean so distant swells and surf never shimmer
 // p is where the foam sits on the water that carries it, along is the axis it is drawn out on, the surf, the
-// whitecaps, the wakes and the foam around objects all share this raft so they read as the same water
+// whitecaps, the wakes and the foam around objects all share this profile so they read as the same water
 float ocean_foam_raft(float foam, float2 p, float2 along, float footprint)
 {
     if (foam <= 0.0f)
-        return 0.0f;
-    // Foam collects in streaks and fragments into centimetre-scale clusters. Fade each
-    // frequency to its average as a pixel grows larger than the feature.
-    float2 q = float2(dot(p, float2(-along.y, along.x)), dot(p, along) * 0.72f);
-    const float patch_spacing = 0.34f;
-    const float lace_spacing  = 0.085f;
-    const float grain_spacing = 0.012f;
-    float patches = lerp(ocean_shore_noise(q / patch_spacing, 61), 0.5f,
-                         smoothstep(0.15f, 0.65f, footprint / patch_spacing));
-    float density = saturate(foam * (0.45f + patches));
-    float mean = density * density;
-    float lace = mean;
-    float lace_detail = 1.0f - smoothstep(0.12f, 0.55f, footprint / lace_spacing);
-    if (lace_detail > 0.0f)
     {
-        float walls = ocean_shore_lace(q / lace_spacing, density, 11);
-        lace = lerp(mean, density * walls, lace_detail);
+        return 0.0f;
     }
 
-    // Fresh crests have a wet, milky core. As they drain, open water shows
-    // between the surviving strands. Only resolve individual bubbles at close range.
-    float core = 0.38f * density * smoothstep(0.55f, 1.0f, density);
-    float grain_detail = 1.0f - smoothstep(0.12f, 0.55f, footprint / grain_spacing);
-    float grain = 1.0f;
-    if (grain_detail > 0.0f)
-        grain += grain_detail * 0.28f * (ocean_shore_noise(q / grain_spacing, 93) - 0.5f);
-    return saturate((core + (1.0f - core) * lace) * grain);
+    // stretch gently along the wind / swell axis for natural wind-driven froth streaks
+    float2 q = float2(dot(p, float2(-along.y, along.x)), dot(p, along) * 0.55f);
+
+    float fine_froth = 0.5f;
+    float froth      = ocean_foam_fbm(q, footprint, fine_froth);
+
+    // fine bubble stipple breaks up both the thick crest and thinning skirt so foam reads as aerated froth
+    const float grain_spacing = 0.018f;
+    float grain_detail = 1.0f - smoothstep(0.15f, 0.65f, footprint / grain_spacing);
+    float grain_noise  = grain_detail > 0.0f ? ocean_shore_noise(q / grain_spacing, 93) : 0.5f;
+    float grain        = 1.0f + grain_detail * 0.30f * (grain_noise - 0.5f);
+
+    // sharpen the erosion transition up close so foam edges read as crisp frothy curds rather than soft mist,
+    // relaxing smoothly to a realistic coverage mean at distance so far swells never turn into solid white bands
+    float close_sharp = 1.0f - smoothstep(0.05f, 0.40f, footprint);
+    float resolved    = 1.0f - smoothstep(0.35f, 1.80f, footprint);
+    float density     = saturate(foam);
+    float threshold   = lerp(0.72f, 0.28f, density);
+    float softness    = lerp(lerp(0.18f, 0.28f, density), lerp(0.07f, 0.14f, density), close_sharp);
+    float patchy      = smoothstep(threshold - softness, threshold + softness, froth);
+
+    // scattered fine spume flecks along the thinning edges
+    float fleck_threshold = lerp(0.80f, 0.36f, density);
+    float flecks          = smoothstep(fleck_threshold - 0.09f, fleck_threshold + 0.09f, fine_froth) * saturate(density * 1.15f) * close_sharp;
+
+    // wispy translucent aerated sheen holds residual froth between tufts without forming geometric rings
+    float wisps  = density * density * lerp(0.25f, 0.85f, froth);
+    float core   = smoothstep(0.60f, 0.98f, density) * lerp(0.55f, 0.88f, fine_froth);
+    float shaped = max(max(patchy * saturate(density * 1.25f), flecks * 0.62f), max(wisps * 0.45f, core));
+    float mean   = density * density * lerp(0.45f, 0.85f, froth);
+    float alpha  = lerp(mean, shaped, resolved);
+
+    return saturate(alpha * grain);
 }
 
 float ocean_shore_foam_shape(OceanShore o, float2 world_xz, float footprint)

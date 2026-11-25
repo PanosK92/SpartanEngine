@@ -2572,7 +2572,7 @@ namespace spartan
                     const Vector3 offset = local_rot * Vector3(center.x, center.y, center.z);
                     const Vector3 box_pos = local_pos + offset;
                     PxBoxGeometry geometry(half.x, half.y, half.z);
-                    PxShape* box_shape = physics->createShape(geometry, *material);
+                    PxShape* box_shape = physics->createShape(geometry, *material, true);
                     if (!box_shape)
                     {
                         return false;
@@ -2652,7 +2652,7 @@ namespace spartan
 
             // create shape with local pose relative to body
             PxConvexMeshGeometry geometry(convex_mesh);
-            PxShape* shape = physics->createShape(geometry, *material);
+            PxShape* shape = physics->createShape(geometry, *material, true);
             if (shape)
             {
                 // set local pose to position this shape relative to body center
@@ -3578,19 +3578,19 @@ namespace spartan
                 {
                     Vector3 scale = GetEntity()->GetScale();
                     PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
-                    shape = physics->createShape(geometry, *material);
+                    shape = physics->createShape(geometry, *material, true);
                     break;
                 }
                 case BodyType::Sphere:
                 {
                     PxSphereGeometry geometry(GetSphereRadius());
-                    shape = physics->createShape(geometry, *material);
+                    shape = physics->createShape(geometry, *material, true);
                     break;
                 }
                 case BodyType::Plane:
                 {
                     PxPlaneGeometry geometry;
-                    shape = physics->createShape(geometry, *material);
+                    shape = physics->createShape(geometry, *material, true);
                     shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
                     break;
                 }
@@ -3600,7 +3600,7 @@ namespace spartan
                     float radius      = max(scale.x, scale.z) * 0.5f;
                     float half_height = scale.y * 0.5f;
                     PxCapsuleGeometry geometry(radius, half_height);
-                    shape = physics->createShape(geometry, *material);
+                    shape = physics->createShape(geometry, *material, true);
                     shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
                     break;
                 }
@@ -3619,12 +3619,12 @@ namespace spartan
                         if (is_convex)
                         {
                             PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh), mesh_scale);
-                            shape = physics->createShape(geometry, *material);
+                            shape = physics->createShape(geometry, *material, true);
                         }
                         else
                         {
                             PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
-                            shape = physics->createShape(geometry, *material);
+                            shape = physics->createShape(geometry, *material, true);
                         }
                     }
                     break;
@@ -3640,7 +3640,7 @@ namespace spartan
                             m_heightfield_scale_row,
                             m_heightfield_scale_column
                         );
-                        shape = physics->createShape(geometry, *material);
+                        shape = physics->createShape(geometry, *material, true);
                         shape->setLocalPose(PxTransform(PxVec3(m_heightfield_offset.x, m_heightfield_offset.y, m_heightfield_offset.z)));
                     }
                     break;

@@ -129,7 +129,8 @@ namespace spartan::scripting
             {"Ragdoll",                  ComponentType::Ragdoll},
             {"Navigation",               ComponentType::Navigation},
             {"NetworkSync",              ComponentType::NetworkSync},
-            {"Destructible",             ComponentType::Destructible}
+            {"Destructible",             ComponentType::Destructible},
+            {"Water",                    ComponentType::Water}
         });
 
         visual::enumeration<KeyCode>(state_view, "KeyCode", {

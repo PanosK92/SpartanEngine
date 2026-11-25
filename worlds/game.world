@@ -107,7 +107,6 @@
   <Resource file="materials/road.xml" />
   <Resource file="materials/seets_logo.xml" />
   <Resource file="materials/terrain_2.xml" />
-  <Resource file="materials/terrain_3.xml" />
   <Resource file="materials/town_amber.xml" />
   <Resource file="materials/town_blue.xml" />
   <Resource file="materials/town_canvas.xml" />
@@ -1327,7 +1326,6 @@
   <Resource file="textures/car_playground_paint_packed_slot0.tex_packed.texture" />
   <Resource file="textures/car_playground_painted_wall_packed_slot0.tex_packed.texture" />
   <Resource file="textures/carbon_weave_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/carbon_weave_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/carpet_noir_packed_slot0.tex_packed.texture" />
   <Resource file="textures/clay_roof_tiles_02_diff.texture" />
   <Resource file="textures/clay_roof_tiles_02_diff_2.texture" />
@@ -1458,12 +1456,12 @@
   <Resource file="textures/painted_plaster_wall_diff_2.texture" />
   <Resource file="textures/painted_plaster_wall_nor_gl.texture" />
   <Resource file="textures/painted_plaster_wall_nor_gl_2.texture" />
-  <Resource file="textures/plan_olive_3511_bark_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/plan_olive_3511_foliage_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/plan_olive_3512_bark_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/plan_olive_3512_foliage_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/plan_olive_3513_bark_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/plan_olive_3513_foliage_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/plan_olive_3511_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3511_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3512_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3512_foliage_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3513_bark_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/plan_olive_3513_foliage_packed_slot0.tex_packed.texture" />
   <Resource file="textures/plastered_stone_wall_diff.texture" />
   <Resource file="textures/plastered_stone_wall_diff_2.texture" />
   <Resource file="textures/plastered_stone_wall_nor_gl.texture" />
@@ -1473,7 +1471,6 @@
   <Resource file="textures/rubra_game_caliper_packed_slot0.tex_packed.texture" />
   <Resource file="textures/rubra_game_rim_packed_slot0.tex_packed.texture" />
   <Resource file="textures/rubra_game_rotor_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/rubra_game_rotor_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/rubra_game_rubber_packed_slot0.tex_packed.texture" />
   <Resource file="textures/suede_noir_packed_slot0.tex_packed.texture" />
   <Resource file="textures/town_lime_packed_slot0.tex_packed.texture" />
@@ -1497,19 +1494,12 @@
   <Resource file="textures/ufo_metal_packed_slot0.tex_packed.texture" />
   <Resource file="textures/ufo_painted_metal_packed_slot0.tex_packed.texture" />
   <Resource file="textures/zth_apron_concrete_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_apron_concrete_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_mown_grass_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_mown_grass_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_parking_asphalt_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_parking_asphalt_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_runway_asphalt_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_runway_asphalt_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_runway_paint_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_runway_paint_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_sign_airport_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_sign_airport_packed_slot0.tex_packed_2.texture" />
   <Resource file="textures/zth_taxi_paint_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/zth_taxi_paint_packed_slot0.tex_packed_2.texture" />
  </OwnedResources>
  <Environment utc_days="9664.9166670143604" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="0" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="2" wind_y="0" wind_z="1" puddliness="0" rain="0" cloud_coverage="0.280000001" />
  <ConsoleVariables>
@@ -1620,11 +1610,11 @@
       <platform entity_id="9046000000000000391" min_x="-10428.5615" min_z="904.832275" max_x="-10413.7256" max_z="919.66864" center_x="-10421.1436" center_z="912.250488" half_x="5.5" half_z="5.5" yaw="-3.62155819" height="334.359985" margin="16.7500305" anchor_x="-10435.2002" anchor_y="338.600006" anchor_z="1065" anchor_qx="0" anchor_qy="0.237685978" anchor_qz="0" anchor_qw="0.971342087" />
       <platform entity_id="9062000000000000003" min_x="6182.77832" min_z="-2924.12939" max_x="6220.2583" max_z="-2875.53638" center_x="6201.51807" center_z="-2899.83276" half_x="22" half_z="15.1499996" yaw="1.39626336" height="10.1999998" margin="16.1205082" anchor_x="6204.12988" anchor_y="12.3999996" anchor_z="-2900.29004" anchor_qx="0" anchor_qy="-0.642787993" anchor_qz="0" anchor_qw="0.76604414" />
       <platform entity_id="9061000000000000003" min_x="6176.09424" min_z="-2961.69702" max_x="6209.38232" max_z="-2926.05688" center_x="6192.73828" center_z="-2943.87695" half_x="15.6000004" half_z="14.1499996" yaw="1.39626336" height="11.6000004" margin="12.2601652" anchor_x="6196.58008" anchor_y="12.3000002" anchor_z="-2943.12988" anchor_qx="0" anchor_qy="-0.642787993" anchor_qz="0" anchor_qw="0.76604414" />
-      <platform entity_id="9057000000000000013" min_x="6192.66064" min_z="-2878.09814" max_x="6230.21484" max_z="-2835.29785" center_x="6211.43799" center_z="-2856.698" half_x="18.5" half_z="15" yaw="1.34390342" height="12.240015" margin="12.089324" anchor_x="6213.38037" anchor_y="12.7999992" anchor_z="-2857.14502" anchor_qx="0" anchor_qy="-0.622514188" anchor_qz="0" anchor_qw="0.782608509" />
+      <platform entity_id="9057000000000000013" min_x="6189.604" min_z="-2878.09497" max_x="6230.08154" max_z="-2834.61987" center_x="6209.84277" center_z="-2856.35742" half_x="18.500061" half_z="16.5002441" yaw="1.34390247" height="12.60497" margin="6.28784418" anchor_x="6213.25342" anchor_y="12.9649696" anchor_z="-2857.14502" anchor_qx="0" anchor_qy="-0.622514188" anchor_qz="0" anchor_qw="0.782608509" />
      </platforms>
     </terrain>
    </Entity>
-   <Entity name="ocean" id="9001000000000000006" active="true" position="6180 0 -2840" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="ocean" id="9001000000000000006" active="true" position="6184 0 -2835.5" rotation="0 0 0 1" scale="1 1 1">
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <water>
      <water biome="1" species_mask="31" population="0.649999976" wave_size="1" surf_size="0.899999976" clarity="0.75" sea_level="0" />
@@ -65520,7 +65510,7 @@
    </Entity>
   </Entity>
   <Entity name="Player" id="9027000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="world_layer">
-   <Entity name="Player Home" id="9018000000000000022" active="true" position="12901.1 -4.1 -1354.99" rotation="0 0.948324 0 0.317305" scale="1 1 1" tags="location_root,location_player_home">
+   <Entity name="Player Home" id="9018000000000000022" active="true" position="12901 -3.93503 -1354.99" rotation="0 0.948324 0 0.317305" scale="1 1 1" tags="location_root,location_player_home">
     <Entity name="player_garage_hub" id="12848334842964081404" active="true" position="6245.06 16.9 -2825.09" rotation="0 0.939693 0 0.34202" scale="1 1 1" tags="location_player_home,landmark,home_garage">
      <Entity name="map_label" id="9003000000000000301" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
       <Entity name="map_label_a" id="9003000000000000302" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
@@ -66534,9 +66524,9 @@
      <spawn_point />
     </Entity>
    </Entity>
-   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="6208.8 14.3293 -2856.99" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="6184.18 18.3563 -2835.18" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <Entity name="component_camera" id="17524583551347340245" active="true" position="-28.7998 3.1707 16.99" rotation="0.0115859 -0.484726 0.00642148 0.874566" scale="1 1 1">
+    <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.02738 -0.941635 0.0790684 -0.326071" scale="1 1 1">
      <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="0.699999988" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="100000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
     </Entity>
    </Entity>
@@ -73578,7 +73568,7 @@
     </Entity>
    </Entity>
    <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="1847.36 795.925 -28332.9" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-    <script file_path="project/game_resources/scripts/ufo_hover.lua" follow_altitude="650" elapsed_time="0" watched_distance="2800" side="1" Initialize="" watch_time="0" Tick="" hover_speed="0" hover_height="2" Start="" follow_distance="1700" altitude_clearance="350" minimum_distance="1100" rotation_speed="0" zap_duration="0" />
+    <script file_path="project/game_resources/scripts/ufo_hover.lua" hover_height="2" altitude_clearance="350" watched_distance="2800" elapsed_time="16.6753207" rotation_speed="0" hover_time="1.91522028802179" Tick="" watch_time="0" anchor_x="4589.4775390625" anchor_y="663.426696777344" anchor_z="-2541.24755859375" minimum_distance="1100" bx="0" zap_duration="0" follow_distance="1700" Start="" Initialize="" bz="0" by="0.626092910766602" bw="0.779748439788818" hover_speed="0" side="1" follow_altitude="650" />
     <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
      <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
      <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/game_resources/meshes/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/game_resources/materials/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />

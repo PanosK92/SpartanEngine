@@ -37,6 +37,7 @@ publish the package. Read it before touching assets.
 | `dreamcore_example.world` | A procedural walkable tile city over the ocean |
 | `terrain_example.world` | A sculpted island with six hands-on workshop boards, an editable dirt trail and brush-stamped rock |
 | `weather_example.world` | A coastal observatory with a harbour light, a wind-driven anemometer and four weather presets |
+| `ocean_example.world` | Pure open ocean with FFT waves, live marine life (whales, sharks, fish, jellyfish), underwater sun caustics, buoyancy cargo drops, swimming, and a drivable buoyant motorboat with live wakes. F boards/exits the boat (W/S/A/D/Shift, V camera), 1–4 switch sea states, C cycles clarity, M cycles marine life, G drops cargo, R resets |
 | `audio_example.world` | A listening courtyard with a stereo panning fountain, a flyby pitch meter and matching bell strikes outdoors and in Resonance Hall |
 | `particles_example.world` | Walk-through particle studies with a layered hearth, sparks, steam, snow and a spillway. Keys 1–9 toggle individual effects, 0 restores them all, and Space fires the burst chamber |
 | `roads_example.world` | Spline roads, a junction, layered asphalt and markings, scripted traffic and a `SplineFollower` bus |

@@ -26,6 +26,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Script.h"
 #include "../world/components/Spline.h"
 #include "../world/components/Text3D.h"
+#include "../world/components/Water.h"
 //===================================================
 
 //= NAMESPACES ================
@@ -299,6 +300,32 @@ namespace spartan::scripting
                 "SetFlag",                         &Camera::SetFlag
             );
         }
+        void register_water(sol::state_view state)
+        {
+            visual::usertype<Water>(state, "Water",
+                sol::base_classes, sol::bases<Component>(),
+                "GetWaveSize",          &Water::GetWaveSize,
+                "SetWaveSize",          &Water::SetWaveSize,
+                "GetSurfSize",          &Water::GetSurfSize,
+                "SetSurfSize",          &Water::SetSurfSize,
+                "GetClarity",           &Water::GetClarity,
+                "SetClarity",           &Water::SetClarity,
+                "GetBiome",             &Water::GetBiome,
+                "SetBiome",             &Water::SetBiome,
+                "GetSpeciesMask",       &Water::GetSpeciesMask,
+                "SetSpeciesMask",       &Water::SetSpeciesMask,
+                "GetPopulation",        &Water::GetPopulation,
+                "SetPopulation",        &Water::SetPopulation,
+                "GetChoppiness",        &Water::GetChoppiness,
+                "SetChoppiness",        &Water::SetChoppiness,
+                "GetSeaLevel",          &Water::GetSeaLevel,
+                "SetSeaLevel",          &Water::SetSeaLevel,
+                "GetTurbidity",         &Water::GetTurbidity,
+                "SetTurbidity",         &Water::SetTurbidity,
+                "GetCausticsIntensity", &Water::GetCausticsIntensity,
+                "SetCausticsIntensity", &Water::SetCausticsIntensity
+            );
+        }
     }
 
     void register_components(sol::state_view state)
@@ -312,6 +339,7 @@ namespace spartan::scripting
         register_network_sync(state);
         register_destructible(state);
         register_camera(state);
+        register_water(state);
     }
 
     sol::object to_lua(sol::state_view state, Component* component)
@@ -337,6 +365,7 @@ namespace spartan::scripting
             case ComponentType::Script:         return sol::make_object(state, static_cast<Script*>(component));
             case ComponentType::Spline:         return sol::make_object(state, static_cast<Spline*>(component));
             case ComponentType::Text3D:         return sol::make_object(state, static_cast<Text3D*>(component));
+            case ComponentType::Water:          return sol::make_object(state, static_cast<Water*>(component));
             default:                            return sol::lua_nil;
         }
     }
