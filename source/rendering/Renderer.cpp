@@ -7975,10 +7975,11 @@ namespace spartan
         Camera* early_camera = Renderer::GetViewCamera();
         const bool fog_prepared_async = early_camera && (IsRayTracedShadowsActive() || IsRestirActive()) &&
             !Xr::IsSessionRunning() && !IsSecondaryViewActive();
+        const bool ocean_prepared_async = fog_prepared_async && !(IsRestirActive() && m_transparents_present);
 
         // Start early graphics work (wind, VRS, early+late depth prepass) BEFORE recording
         // Pass_ComputeBatchA so the GPU executes cull_early + cull_late while CPU prepares TLAS.
-        // When fog_prepared_async is active, Pass_Ocean runs on the async compute queue after
+        // When ocean_prepared_async is active, Pass_Ocean runs on the async compute queue after
         // surface (ocean_wake) so it never delays cull_early on the graphics critical path.
         RHI_Work surface;
         RHI_Work scatter_work;
@@ -7990,7 +7991,7 @@ namespace spartan
             Pass_TerrainDeformation();
             Pass_OceanWake();
             Pass_CarRain();
-            if (!fog_prepared_async)
+            if (!ocean_prepared_async)
             {
                 Pass_Ocean();
             }
@@ -8075,7 +8076,7 @@ namespace spartan
                 RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 fog_commands->Begin();
                 RHI_Device::Bind(fog_commands);
-                if (!secondary_render_root_active)
+                if (!secondary_render_root_active && ocean_prepared_async)
                 {
                     Pass_Ocean();
                 }

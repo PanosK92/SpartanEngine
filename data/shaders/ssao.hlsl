@@ -588,7 +588,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
 #else
 
-#define CORTAO_SAMPLE_COUNT             5
+#define CORTAO_SAMPLE_COUNT             8
 #define CORTAO_RAY_COUNT                16
 #define CORTAO_OCCLUDER_LOOKUP_TABLE    1
 #define CORTAO_BENT_NORMAL_LOOKUP_TABLE 1

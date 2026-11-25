@@ -114,13 +114,13 @@ float trace_forward_light_visibility(Surface surface, Light light, bool is_glass
             ray.Origin    = surface.position + surface.normal * offset;
             ray.Direction = direction;
             ray.TMin      = 0.001f;
-            ray.TMax      = 100.0f;
+            ray.TMax      = 150.0f;
             RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> q;
             q.TraceRayInline(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0x01, ray);
             q.Proceed();
             return q.CommittedStatus() != COMMITTED_NOTHING ? 0.0f : 1.0f;
         }
-        return rt_trace_visibility(surface.position + surface.normal * offset, direction, 100.0f);
+        return rt_trace_visibility(surface.position + surface.normal * offset, direction, 150.0f);
     }
 
     float3 target        = light.is_area() ? light.compute_closest_point_on_area(surface.position) : light.position;
@@ -158,7 +158,7 @@ void evaluate_forward_light(
     float3 L_shadow = 1.0f;
     if (light.has_shadows())
     {
-        const float rt_shadow_max_dist = light.is_directional() ? (is_glass ? 20.0f : 40.0f) : 12.0f;
+        const float rt_shadow_max_dist = light.is_directional() ? (is_glass ? 35.0f : 60.0f) : 18.0f;
         const bool trace_rt_shadow     = is_front_face && (!is_glass || light.is_directional()) && surface.camera_to_pixel_length < rt_shadow_max_dist;
         if (is_ray_traced_shadows_enabled() && trace_rt_shadow)
         {
@@ -423,7 +423,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
     float3 reflection   = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(reflect_dir), mip_level).rgb * (horizon * horizon);
 
 #ifdef RAY_TRACING_ENABLED
-    if (pass_bool(pass_transparent::ray_traced_reflections) && is_front_face && surface.roughness < 0.15f && distance < 10.0f)
+    if (pass_bool(pass_transparent::ray_traced_reflections) && is_front_face && surface.roughness < 0.25f && distance < 18.0f)
     {
         float3 mirror_dir = reflect(-view_dir, surface.normal);
         if (dot(mirror_dir, face_normal) <= 0.0f)
@@ -441,7 +441,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
         refl_ray.Origin    = position_world + face_normal * base_offset + mirror_dir * base_offset * grazing * 2.0f;
         refl_ray.Direction = mirror_dir;
         refl_ray.TMin      = 0.001f;
-        refl_ray.TMax      = 15.0f;
+        refl_ray.TMax      = 25.0f;
 
         // trace against solids with FORCE_OPAQUE so glass reflections avoid expensive per-leaf cutout loops
         RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> refl_query;
@@ -460,7 +460,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
             ? ray_surface_shade_secondary(hit, -mirror_dir, tex5, mip_count, vertex.position.xy, secondary_lights)
             : tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(mirror_dir), mip_level).rgb;
 
-        float rt_weight = (1.0f - smoothstep(0.08f, 0.15f, surface.roughness)) * (1.0f - smoothstep(6.0f, 10.0f, distance));
+        float rt_weight = (1.0f - smoothstep(0.15f, 0.25f, surface.roughness)) * (1.0f - smoothstep(12.0f, 18.0f, distance));
         reflection      = lerp(reflection, traced, rt_weight);
     }
 #endif

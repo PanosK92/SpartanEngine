@@ -13,7 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 static const float SUN_ANGULAR_RADIUS = 0.00465f;
 
 // blockers beyond this distance are treated as non occluding, prunes traversal through the far tlas
-static const float SHADOW_RAY_MAX_DISTANCE = 150.0f;
+static const float SHADOW_RAY_MAX_DISTANCE = 200.0f;
 
 struct [raypayload] ShadowPayload
 {
@@ -276,13 +276,13 @@ void ray_gen()
                 float normal_sign = thin_foliage && dot(offset_normal, sample_dir) < 0.0f ? -1.0f : 1.0f;
                 float sample_offset = max(base_offset, rt_lod_shadow_offset(camera_distance));
                 float3 origin = pos_ws + offset_normal * (sample_offset * normal_sign);
-                float2 vis = camera_distance > 22.0f
+                float2 vis = camera_distance > 35.0f
                     ? trace_fast_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
                     : (thin_foliage
                         ? rt_trace_canopy_transmission(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE)
                         : trace_opaque_shadow(origin, sample_dir, SHADOW_RAY_MAX_DISTANCE));
-                float4 glass = (vis.x > 0.0f && camera_distance < 8.0f)
-                    ? trace_glass_shadow(vis.x, origin, sample_dir, min(SHADOW_RAY_MAX_DISTANCE, 8.0f))
+                float4 glass = (vis.x > 0.0f && camera_distance < 12.0f)
+                    ? trace_glass_shadow(vis.x, origin, sample_dir, min(SHADOW_RAY_MAX_DISTANCE, 12.0f))
                     : float4(vis.x.xxx, -1.0f);
                 transmission += glass.rgb;
                 float distance = shadow_blocker_distance(vis.x < 0.99f, vis.y, glass.w);
