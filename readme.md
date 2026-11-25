@@ -83,7 +83,7 @@ The bundled worlds show the range, from **Plan**, a playable racing game across 
     <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; subsurface scattering under path-traced light, down to the pores, the stubble and the glow through an ear</sub><br/><b><a href="https://panoskarabelas.com/engine/live/">▶ Click the head to run it live in your browser</a></b> <sub>(WebGPU, recent Chrome or Edge)</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src=".github/images/showcase_island_town.jpg" width="100%" alt="Aerial golden-hour view over Zakynthos: 11+ million instanced trees, undergrowth and rocks carpeting mountain ridges down to the Ionian Sea, streamed seamlessly in Spartan Engine"/></td>
+    <td colspan="2"><img src=".github/images/showcase_island_forest.jpg" width="100%" alt="Aerial golden-hour view over Zakynthos: 11+ million instanced trees, undergrowth and rocks carpeting mountain ridges down to the Ionian Sea, streamed seamlessly in Spartan Engine"/></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; a seamless 33 × 25 km island with 7.5M+ full-3D trees (11M+ total scattered instances), 200+ spline roads, towns, live traffic, volumetric clouds and an FFT ocean — streamed at 200+ km/h at 60+ FPS with zero traversal stutters</sub></td>
