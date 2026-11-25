@@ -128,7 +128,8 @@ namespace spartan::scripting
             {"Animator",                 ComponentType::Animator},
             {"Ragdoll",                  ComponentType::Ragdoll},
             {"Navigation",               ComponentType::Navigation},
-            {"NetworkSync",              ComponentType::NetworkSync}
+            {"NetworkSync",              ComponentType::NetworkSync},
+            {"Destructible",             ComponentType::Destructible}
         });
 
         visual::enumeration<KeyCode>(state_view, "KeyCode", {

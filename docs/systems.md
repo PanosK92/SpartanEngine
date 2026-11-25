@@ -44,6 +44,7 @@ There is no lobby, NAT traversal, encryption, prediction or physics replication.
 [`source/geometry`](../source/geometry):
 
 - [`GeometryGeneration.h`](../source/geometry/GeometryGeneration.h): cubes, quads, grids, spheres, cylinders, cones, tori, capsules, extruded, revolved and swept profiles, pipes along paths, the ocean clipmap and foliage geometry.
+- [`MeshFracture.h`](../source/geometry/MeshFracture.h): real-time 3D Voronoi half-space mesh fracture (`Uniform`, `RadialGlass`, `SplinterWood`, `LayeredStone`), watertight interior plane capping with triplanar UVs, and ground-connectivity analysis (`FindUnsupportedCells`) backing the [`Destructible`](physics_and_vehicles.md#destruction) component.
 - **Trees**: `TreeGenerator` and `TreeSpecies` produce trees from species definitions in [`data/trees/species`](../data/trees/species); the editor's **Tree Creator** edits them.
 - **Meshes** are processed with meshoptimizer: meshlets, LODs and vertex cache optimization. Foliage gets impostors as its last LOD.
 - **Generated cache**: expensive generated data (road meshes, terrain products) is cached per world in `generated_cache/`, LZ4-compressed and checksummed, with a 2 GiB LRU budget ([`GeneratedCache.h`](../source/geometry/GeneratedCache.h)).

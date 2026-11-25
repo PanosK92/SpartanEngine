@@ -126,6 +126,7 @@ A few more small worlds each show one system from Lua, with the keys listed at t
 - [`weather_example.world`](../worlds/weather_example.world): eases `World` time of day, rain, clouds and wind between presets, and restores them in `Stop`.
 - [`audio_example.world`](../worlds/audio_example.world): `AudioSource` playback, a moving source with Doppler pitch and a reverb `Volume`.
 - [`particles_example.world`](../worlds/particles_example.world): `ParticleSystem:SetEmissionRate` fades and burst pulses.
+- [`destruction_example.world`](../worlds/destruction_example.world): `Destructible` 3D Voronoi fracture patterns, structural support checks (`HasTopSupport`), timed `Destructible.ApplyExplosion` chains, weapon switching (1–4), slow-motion (`T`) and full scene reset (`Destructible.ResetAll`).
 
 ## API reference
 
@@ -167,7 +168,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | State | `IsActive`, `GetActive`, `SetActive`, `IsDynamic` |
 | Components | `GetComponent(ComponentType.X)`, `AddComponent(ComponentType.X)`, `RemoveComponent(ComponentType.X)`, `GetAllComponents`, `GetComponentCount` |
 
-`ComponentType` values reachable from Lua: `AudioSource`, `Camera`, `Light`, `Physics`, `Render`, `Terrain`, `Volume`, `Script`, `ParticleSystem`, `Spline`, `Text3D`, `Animator`, `Ragdoll`, `Navigation`, `NetworkSync`. `GetComponent` returns the typed component or `nil`.
+`ComponentType` values reachable from Lua: `AudioSource`, `Camera`, `Light`, `Physics`, `Destructible`, `Render`, `Terrain`, `Volume`, `Script`, `ParticleSystem`, `Spline`, `Text3D`, `Animator`, `Ragdoll`, `Navigation`, `NetworkSync`. `GetComponent` returns the typed component or `nil`.
 
 ### Components
 
@@ -175,6 +176,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 | --------- | ---------- |
 | `Render` | `SetMesh(mesh or MeshType)`, `SetMaterial(material or path)`, `SetDefaultMaterial`, `GetMaterial`, `GetBoundingBox`, `SetFlag(RenderFlags, bool)`, `SetMaxRenderDistance`, `SetMaxShadowDistance`, `AddDecal(...)`, `ClearDecals` |
 | `Physics` | Mass, friction, restitution, `Get/SetLinearVelocity`, `Get/SetAngularVelocity`, center of mass, `SetBodyType(BodyType)`, `SetStatic`, `SetBodyTransform(position, rotation)`, `IsGrounded`, cloth parameters. Vehicles add throttle, brake, steering, gears, wheel telemetry and assists |
+| `Destructible` | `Get/SetPattern(FracturePattern)`, `Get/SetPatternIndex`, `Get/SetChunkCount`, `Get/SetImpactThreshold`, `Get/SetHealth`, `GetCurrentHealth`, `Get/SetDebrisMass`, `Get/SetExplosionImpulse`, `Get/SetInheritVelocity`, `Get/SetSupportAnchored`, `Get/SetDamageRadius`, `Get/SetMaxDepth`, `Get/SetDebrisLifetime`, `Get/SetInteriorUvScale`, `Get/SetSeed`, `IsFractured`, `GetActiveShardCount`, `GetStructuralIntegrity`, `HasTopSupport`, `Fracture(pos [, vel, radius, is_explosion])`, `Reset`. Static helpers: `Destructible.ApplyExplosion(origin, radius, force)`, `Destructible.ResetAll()`, `Destructible.GetTotalActiveShards()` |
 | `Light` | Type, color, `SetTemperature` (kelvin), intensity in lux or lumens, range, angle, IES profile, area size, shadow and volumetric distances, `LightFlags`, `LightPreset` |
 | `Camera` | FOV, near and far planes, exposure mode and auto-exposure settings, `CameraFlags` |
 | `AudioSource` | `SetAudioClip(path)`, `PlayClip`, `StopClip`, `IsPlaying`, volume, pitch, loop, `SetIs3d`, `SetPlayOnStart`, mute, reverb settings |
@@ -194,7 +196,7 @@ The standard libraries `base`, `package`, `coroutine`, `string`, `math`, `table`
 
 ### Enums
 
-`KeyCode` (keyboard `A`–`Z`, `Alpha0`–`Alpha9`, `F1`–`F12`, modifiers, arrows, `Click_Left/Middle/Right`, gamepad `Button_South/East/West/North`, `DPad_*`, shoulders, sticks), `ComponentType`, `BodyType` (plus `BodyType.Vehicle`), `WheelIndex`, `LightType`, `LightFlags`, `LightIntensity`, `LightIntensityUnit`, `LightPreset`, `CameraExposureMode`, `CameraFlags`, `MaterialProperty`, `MaterialTextureType`, `MeshType`, `MeshFlags`, `RenderFlags`, `Text3DAlignment`, `Intersection`.
+`KeyCode` (keyboard `A`–`Z`, `Alpha0`–`Alpha9`, `F1`–`F12`, modifiers, arrows, `Click_Left/Middle/Right`, gamepad `Button_South/East/West/North`, `DPad_*`, shoulders, sticks), `ComponentType`, `BodyType` (plus `BodyType.Vehicle`), `FracturePattern` (`Uniform`, `RadialGlass`, `SplinterWood`, `LayeredStone`), `WheelIndex`, `LightType`, `LightFlags`, `LightIntensity`, `LightIntensityUnit`, `LightPreset`, `CameraExposureMode`, `CameraFlags`, `MaterialProperty`, `MaterialTextureType`, `MeshType`, `MeshFlags`, `RenderFlags`, `Text3DAlignment`, `Intersection`.
 
 ### HUD
 

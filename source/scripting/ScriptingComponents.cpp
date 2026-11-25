@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Light.h"
 #include "../world/components/Navigation.h"
 #include "../world/components/NetworkSync.h"
+#include "../world/components/Destructible.h"
 #include "../world/components/ParticleSystem.h"
 #include "../world/components/Physics.h"
 #include "../world/components/Ragdoll.h"
@@ -206,6 +207,63 @@ namespace spartan::scripting
             );
         }
 
+        void register_destructible(sol::state_view state)
+        {
+            visual::enumeration<FracturePattern>(state, "FracturePattern", {
+                {"Uniform",      FracturePattern::Uniform},
+                {"RadialGlass",  FracturePattern::RadialGlass},
+                {"SplinterWood", FracturePattern::SplinterWood},
+                {"LayeredStone", FracturePattern::LayeredStone}
+            });
+
+            visual::usertype<Destructible>(state, "Destructible",
+                sol::base_classes, sol::bases<Component>(),
+                "GetPattern",            &Destructible::GetPattern,
+                "SetPattern",            &Destructible::SetPattern,
+                "GetPatternIndex",       &Destructible::GetPatternIndex,
+                "SetPatternIndex",       &Destructible::SetPatternIndex,
+                "GetChunkCount",         &Destructible::GetChunkCount,
+                "SetChunkCount",         &Destructible::SetChunkCount,
+                "GetImpactThreshold",    &Destructible::GetImpactThreshold,
+                "SetImpactThreshold",    &Destructible::SetImpactThreshold,
+                "GetHealth",             &Destructible::GetHealth,
+                "SetHealth",             &Destructible::SetHealth,
+                "GetCurrentHealth",      &Destructible::GetCurrentHealth,
+                "GetDebrisMass",         &Destructible::GetDebrisMass,
+                "SetDebrisMass",         &Destructible::SetDebrisMass,
+                "GetExplosionImpulse",   &Destructible::GetExplosionImpulse,
+                "SetExplosionImpulse",   &Destructible::SetExplosionImpulse,
+                "GetInheritVelocity",    &Destructible::GetInheritVelocity,
+                "SetInheritVelocity",    &Destructible::SetInheritVelocity,
+                "GetSupportAnchored",    &Destructible::GetSupportAnchored,
+                "SetSupportAnchored",    &Destructible::SetSupportAnchored,
+                "GetDamageRadius",       &Destructible::GetDamageRadius,
+                "SetDamageRadius",       &Destructible::SetDamageRadius,
+                "GetMaxDepth",           &Destructible::GetMaxDepth,
+                "SetMaxDepth",           &Destructible::SetMaxDepth,
+                "GetDebrisLifetime",     &Destructible::GetDebrisLifetime,
+                "SetDebrisLifetime",     &Destructible::SetDebrisLifetime,
+                "GetInteriorUvScale",    &Destructible::GetInteriorUvScale,
+                "SetInteriorUvScale",    &Destructible::SetInteriorUvScale,
+                "GetSeed",               &Destructible::GetSeed,
+                "SetSeed",               &Destructible::SetSeed,
+                "IsFractured",            &Destructible::IsFractured,
+                "GetActiveShardCount",    &Destructible::GetActiveShardCount,
+                "GetStructuralIntegrity", &Destructible::GetStructuralIntegrity,
+                "HasTopSupport",          &Destructible::HasTopSupport,
+                "Reset",                  &Destructible::Reset,
+                "Fracture", sol::overload(
+                    [](Destructible& self, const Vector3& impact_pos) { return self.Fracture(impact_pos); },
+                    [](Destructible& self, const Vector3& impact_pos, const Vector3& impact_vel) { return self.Fracture(impact_pos, impact_vel); },
+                    [](Destructible& self, const Vector3& impact_pos, const Vector3& impact_vel, float radius) { return self.Fracture(impact_pos, impact_vel, radius); },
+                    [](Destructible& self, const Vector3& impact_pos, const Vector3& impact_vel, float radius, bool is_explosion) { return self.Fracture(impact_pos, impact_vel, radius, is_explosion); }
+                ),
+                "ApplyExplosion",        &Destructible::ApplyExplosion,
+                "ResetAll",              &Destructible::ResetAll,
+                "GetTotalActiveShards",  &Destructible::GetTotalActiveShards
+            );
+        }
+
         void register_camera(sol::state_view state)
         {
             visual::enumeration<CameraExposureMode>(state, "CameraExposureMode", {
@@ -252,6 +310,7 @@ namespace spartan::scripting
         register_text_3d(state);
         register_navigation(state);
         register_network_sync(state);
+        register_destructible(state);
         register_camera(state);
     }
 
@@ -270,6 +329,7 @@ namespace spartan::scripting
             case ComponentType::Light:          return sol::make_object(state, static_cast<Light*>(component));
             case ComponentType::Navigation:     return sol::make_object(state, static_cast<Navigation*>(component));
             case ComponentType::NetworkSync:    return sol::make_object(state, static_cast<NetworkSync*>(component));
+            case ComponentType::Destructible:   return sol::make_object(state, static_cast<Destructible*>(component));
             case ComponentType::ParticleSystem: return sol::make_object(state, static_cast<ParticleSystem*>(component));
             case ComponentType::Physics:        return sol::make_object(state, static_cast<Physics*>(component));
             case ComponentType::Ragdoll:        return sol::make_object(state, static_cast<Ragdoll*>(component));

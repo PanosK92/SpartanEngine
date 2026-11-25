@@ -37,6 +37,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "components/CarReset.h"
 #include "components/CarService.h"
 #include "components/NetworkSync.h"
+#include "components/Destructible.h"
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON

@@ -104,6 +104,8 @@ namespace spartan
         }
         bool IsSpatiallyDynamic() const { return m_spatial_dynamic; }
         void ClearVisibility() { m_scene->is_visible = false; }
+        void SetRenderActive(bool active) { SetEntityActive(active); }
+        bool IsRenderActive() const { return m_scene->active.load(std::memory_order_relaxed); }
 
         // Runtime deposits follow this receiver, independently of material sharing and mesh UVs.
         struct Decal { DecalParameters parameters; Material* source_material = nullptr; };
@@ -115,7 +117,7 @@ namespace spartan
 
         // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
-        void SetOwnedMesh(const std::shared_ptr<Mesh>& mesh);
+        void SetOwnedMesh(const std::shared_ptr<Mesh>& mesh, const uint32_t sub_mesh_index = 0);
         void SetMesh(const MeshType type);
         void ClearMesh();
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
@@ -168,6 +170,12 @@ namespace spartan
         std::string GetMaterialName() const;
         Material* GetMaterial() const           { return m_scene->material; }
         bool IsUsingDefaultMaterial() const     { return m_material_default; }
+        void CopyMaterialFrom(const Render& source)
+        {
+            m_scene->material   = source.m_scene->material;
+            m_material_default  = source.m_material_default;
+            m_material_override = source.m_material_override;
+        }
 
         // per-render uv transform, nan fields resolve to the material's value at draw time
         const MaterialOverride& GetMaterialOverride() const { return m_material_override; }

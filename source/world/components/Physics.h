@@ -95,7 +95,11 @@ namespace spartan
         void Initialize() override;
         void Remove() override;
         // discard the current actors and build them again from the component's current state
-        void Rebuild() { Create(); }
+        void Rebuild()
+        {
+            m_needs_creation = false;
+            Create();
+        }
         // an inactive entity takes its rigid actors out of the scene, streamed static actors come back through distance activation
         void SetEntityActive(bool active);
         // Patch terrain detail holes without recooking the unchanged height samples.
@@ -139,6 +143,7 @@ namespace spartan
         // forces
         void SetLinearVelocity(const math::Vector3& velocity) const;
         math::Vector3 GetLinearVelocity() const;
+        const math::Vector3& GetPreStepVelocity() const { return m_pre_step_velocity; }
         math::Vector3 GetAngularVelocity() const;
         void SetAngularVelocity(const math::Vector3& velocity) const;
         void ApplyForce(const math::Vector3& force, PhysicsForce mode) const;
@@ -209,6 +214,15 @@ namespace spartan
         // enabled (controls whether the physics body processes input/forces)
         bool IsEnabled() const  { return m_enabled; }
         void SetEnabled(bool enabled) { m_enabled = enabled; }
+
+        // collision filter tag (word2) for simulation contact reporting / policy
+        uint32_t GetCollisionTag() const { return m_collision_tag; }
+        void SetCollisionTag(uint32_t tag);
+
+        // fast runtime convex hull cooking for transient procedural debris (parallel-safe, bypasses disk cache)
+        static void* CookConvexMeshFromPoints(const std::vector<math::Vector3>& points, uint32_t vertex_limit = 32);
+        static void ReleaseCookedConvexMesh(void* convex_mesh);
+        void SetPreCookedConvexMesh(void* convex_mesh);
 
         // static collision streams in and out around the camera, a race track turns it off so ai cars far from the player keep the road under them
         bool GetDistanceStreaming() const { return m_distance_streaming; }
@@ -300,11 +314,13 @@ namespace spartan
         bool m_is_static               = true;
         bool m_is_kinematic            = false;
         bool m_enabled                 = true;
+        uint32_t m_collision_tag       = 0;
         bool m_distance_streaming      = true;
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_velocity       = math::Vector3::Zero;
+        mutable math::Vector3 m_pre_step_velocity = math::Vector3::Zero;
         BodyType m_body_type           = BodyType::Max;
         bool m_use_convex_hull         = false;
         bool m_controller_was_playing  = false; // tracks the edit to play transition of the character controller
@@ -333,6 +349,7 @@ namespace spartan
 
         void* m_material                 = nullptr;
         void* m_mesh                     = nullptr;
+        void* m_precooked_convex_mesh    = nullptr;
         std::vector<void*> m_actors      = { nullptr };
         std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
         std::vector<bool> m_instances_suppressed; // per instance, never added to the scene while set

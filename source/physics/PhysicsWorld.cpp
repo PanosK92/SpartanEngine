@@ -478,15 +478,18 @@ namespace spartan
 
                     Vector3 relative_velocity = Vector3::Zero;
                     Vector3 local_position[2] = {};
-                    if (tracked_mask && point_count > 0 && pair_header.extraDataStreamSize)
+                    if (point_count > 0 && pair_header.extraDataStreamSize)
                     {
                         const PxContactPairVelocity* velocity = nullptr;
                         const PxContactPairPose* pose = nullptr;
                         PxContactPairExtraDataIterator extra(pair_header.extraDataStream, pair_header.extraDataStreamSize);
                         while (extra.nextItemSet() && extra.contactPairIndex <= i)
                         {
-                            velocity = extra.preSolverVelocity;
-                            pose = extra.eventPose;
+                            if (extra.contactPairIndex == i)
+                            {
+                                if (extra.preSolverVelocity) velocity = extra.preSolverVelocity;
+                                if (extra.eventPose)         pose     = extra.eventPose;
+                            }
                         }
                         if (velocity && pose)
                         {
@@ -502,6 +505,16 @@ namespace spartan
                             const PxVec3 relative = v[0] - v[1];
                             relative_velocity = Vector3(relative.x, relative.y, relative.z);
                         }
+                    }
+                    // CCD subpasses can omit extraDataStream preSolverVelocity; fall back to actor velocities immediately
+                    if (relative_velocity.LengthSquared() < 1.0e-5f)
+                    {
+                        PxVec3 v0(0.0f);
+                        PxVec3 v1(0.0f);
+                        if (auto* b0 = pair_header.actors[0] ? pair_header.actors[0]->is<PxRigidDynamic>() : nullptr) v0 = b0->getLinearVelocity();
+                        if (auto* b1 = pair_header.actors[1] ? pair_header.actors[1]->is<PxRigidDynamic>() : nullptr) v1 = b1->getLinearVelocity();
+                        const PxVec3 rel = v0 - v1;
+                        relative_velocity = Vector3(rel.x, rel.y, rel.z);
                     }
                     queue_contact(entity_a, entity_b, position, normal, impulse, relative_velocity, tracked_mask, local_position[0], local_position[1]);
                 }

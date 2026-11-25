@@ -85,6 +85,46 @@ Changing the pin mode or direction rebuilds the cloth. `ReleaseCloth` drops the 
 
 From Lua, `Physics` has `Get/Set` pairs for `ClothStiffness`, `ClothBending`, `ClothDamping`, `ClothIterations`, `ClothWindEnabled`, `ClothPinDirection` and `ClothPinMode` (`ClothPinMode.Edge`, `OppositeEdges`, `Border`, `None`), plus `ReleaseCloth` and `ResetCloth`.
 
+### Destruction
+
+The [`Destructible`](../source/world/components/Destructible.h) component turns any entity with a `Render` mesh and a `Physics` body into a real-time 3D Voronoi destructible backed by [`MeshFracture`](../source/geometry/MeshFracture.h).
+
+| Property | Meaning |
+| -------- | ------- |
+| `pattern` | Site distribution (`FracturePattern`): `Uniform` (concrete/stone chunks), `RadialGlass` (concentric impact spiderweb), `SplinterWood` (grain-aligned elongated splinters), `LayeredStone` (horizontal strata slabs) |
+| `chunk_count` | Number of 3D Voronoi cells generated on fracture (4–64) |
+| `impact_threshold` | Minimum collision energy required to damage or fracture the body |
+| `health` | Cumulative impact energy the body absorbs before fracturing |
+| `debris_mass` | Total mass distributed across shards by volume (0 derives mass from the intact body or material density) |
+| `explosion_impulse` | Radial outward speed added to shards during explosive blasts (`ApplyExplosion` or `Fracture(..., true)`) |
+| `inherit_velocity` | Fraction of impact velocity transferred into kinetic shards |
+| `support_anchored` | When enabled, only cells within `damage_radius` of the hit detach; cells outside stay static until severed from the ground |
+| `damage_radius` | World-space chipping radius around a kinetic impact for `support_anchored` objects (0 detaches the entire object) |
+| `max_depth` | Fracture recursion depth: `1` for single fracture, `2` to allow large detached shards to sub-fracture on secondary high-energy impacts |
+| `debris_lifetime` | Seconds before detached shards despawn (0 keeps debris until reset) |
+| `interior_uv_scale` | Triplanar UV tiling for freshly exposed Voronoi interior fracture faces |
+| `seed` | Deterministic Voronoi seed (0 derives a stable seed from the entity id) |
+
+**How it works.** On fracture, [`MeshFracture`](../source/geometry/MeshFracture.h) clips the source mesh triangles in parallel against sorted Voronoi bisector half-spaces (with a bounding-sphere early-out), caps each newly cut interior plane with watertight triangles and triplanar UVs, and packs all cells into a single shared resident `Mesh` submesh list. Each cell's PhysX convex hull is cooked in parallel via `Physics::CookConvexMeshFromPoints` with a 4% inward hull inset so tightly packed neighbors never interpenetrate on spawn, and transient debris rigid bodies cap `maxDepenetrationVelocity` at 2.2 m/s while skipping expensive swept CCD.
+
+**Localized chipping vs. gravity collapse vs. explosions.**
+- **Kinetic impacts** (`is_explosion = false`): on `support_anchored` entities, cells within `damage_radius` chip off locally with forward momentum transfer along the impact direction; remaining cells stay static. A connectivity pass (`mesh_fracture::FindUnsupportedCells`) checks whether every anchored cell still has a path to the ground; any cantilevered or upper piece cut off from support detaches cleanly under pure gravity with zero outward blast. `HasTopSupport()` and `GetStructuralIntegrity()` let scripts query whether a column or pier still carries load from base to top.
+- **Explosions** (`Destructible::ApplyExplosion(origin, radius, force)`): applies a true radial shockwave to destructibles inside the blast sphere, sorted nearest-first.
+- **Secondary fracturing** (`max_depth > 1`): large detached shards that strike the ground or another body above the secondary impact threshold cleave into smaller sub-shards.
+
+**Runtime performance and reset.** Runtime shard meshes set `MeshFlags::PostProcessSkipCache` and `MeshFlags::PostProcessMeshletsScan`, and transient convex bodies bypass `generated_cache/` entirely so fracturing never performs synchronous filesystem I/O. Primary and secondary fractures are budgeted per frame (`max_primary_per_frame = 2`, `max_secondary_per_frame = 1`, debris cap `320` shards) with excess blast targets queued cleanly across subsequent frames. When an intact entity fractures, its original `Physics` actor is suppressed via `Physics::SetInstanceSuppressed(0, true)` so distance streaming cannot re-add the invisible static collider on top of live debris. Calling `Reset()` (or `Destructible::ResetAll()`) removes all transient shards, unsuppresses the intact collider, and restores the original mesh and transform immediately; the **Properties** inspector also exposes live integrity readout plus **Fracture Now** and **Reset Intact** buttons during play.
+
+**Example world.** [`worlds/destruction_example.world`](../worlds/destruction_example.world) (companion script `project/destruction_example_resources/scripts/destruction_example.lua`) is a six-station proving ground. Press **LMB** (or **G**) to fire the active weapon, **1–4** to switch weapons (Iron Cannonball, Explosive Shell, Glass Buckshot, Wrecking Boulder), **T** to toggle 0.22× slow-motion, **R** to rebuild everything, and click or press **E** on any red podium button to trigger or reset its spectacle:
+
+| Station | What it shows |
+| ------- | ------------- |
+| Glass Pavilion | `RadialGlass` spiderweb shatter panes, skylight and vitrines |
+| Siege Breach Range | Anchored concrete (`Uniform`, `max_depth = 2`) and brick (`LayeredStone`) walls that take localized breach holes before upper sections collapse under gravity |
+| Marble Colonnade | Four load-bearing `LayeredStone` pillars (`HasTopSupport()`); chipping a pillar leaves the roof standing, while severing pillars drops the unsupported architrave and cornice naturally under gravity |
+| Wrecking Yard | Pendulum iron wrecking ball smashing a masonry wall, `SplinterWood` deck and timber crates |
+| Explosive Bunker | Five explosive barrels triggering a timed `Destructible.ApplyExplosion` chain reaction inside a reinforced bunker |
+| Obsidian Monolith | Drop hammer cleaving a heavy `max_depth = 2` monolith whose falling blocks shatter again on floor impact |
+
 ### Queries and contacts
 
 - `PhysicsWorld::RaycastStatic`, `BoxCastStatic` and `SphereCast` for C++; `World.Raycast` for Lua.

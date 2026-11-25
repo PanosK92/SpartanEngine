@@ -503,10 +503,10 @@ namespace spartan
         Tick(); // update bounding boxes, frustum and distance culling
     }
 
-    void Render::SetOwnedMesh(const shared_ptr<Mesh>& mesh)
+    void Render::SetOwnedMesh(const shared_ptr<Mesh>& mesh, const uint32_t sub_mesh_index)
     {
-        SetMesh(mesh.get());
         m_owned_mesh = mesh;
+        SetMesh(mesh.get(), sub_mesh_index);
     }
 
     void Render::SetMesh(const MeshType type)

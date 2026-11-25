@@ -33,6 +33,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarReset.h"
 #include "CarService.h"
 #include "NetworkSync.h"
+#include "Destructible.h"
 //=========================
 
 //= NAMESPACES =====

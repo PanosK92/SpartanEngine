@@ -27,10 +27,11 @@ namespace spartan
     class Entity;
 
     // word2 tags used by the simulation filter shader
-    constexpr uint32_t physics_collision_character  = 1;
-    constexpr uint32_t physics_collision_vehicle    = 2;
-    constexpr uint32_t physics_collision_pedestrian = 3;
-    constexpr uint32_t physics_collision_ragdoll    = 4;
+    constexpr uint32_t physics_collision_character    = 1;
+    constexpr uint32_t physics_collision_vehicle      = 2;
+    constexpr uint32_t physics_collision_pedestrian   = 3;
+    constexpr uint32_t physics_collision_ragdoll      = 4;
+    constexpr uint32_t physics_collision_destructible = 5;
 
     // Application policy; filter tags/groups are opaque to the physics backend.
     struct PhysicsCollisionResponse

@@ -89,6 +89,7 @@ Editable fields are registered as **attributes** (`SP_REGISTER_ATTRIBUTE_*` macr
 | `Camera` | `camera` | Physical camera: aperture, shutter, ISO, FOV, exposure, first-person control |
 | `Light` | `light` | Directional, point, spot and area lights, photometric units, IES profiles, shadows |
 | `Physics` | `physics` | PhysX body: box, sphere, plane, capsule, mesh, convex, character controller, vehicle, cloth, heightfield |
+| `Destructible` | `destructible` | Real-time 3D Voronoi mesh fracture, structural connectivity collapse, secondary fracturing and explosions ([Physics and vehicles](physics_and_vehicles.md#destruction)) |
 | `Script` | `script` | A Lua script; see [Lua scripting](scripting.md) |
 | `AudioSource` | `audio_source` | Clip playback or procedural synthesis, 3D attenuation, Doppler, reverb, mixer group |
 | `Animator` | `animator` | Skeletal clip playback, blending, foot IK |

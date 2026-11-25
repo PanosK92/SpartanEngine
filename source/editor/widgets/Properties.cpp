@@ -34,6 +34,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../world/components/Pedestrians.h"
 #include "world/components/Navigation.h"
 #include "world/components/NetworkSync.h"
+#include "world/components/Destructible.h"
 #include "world/components/Terrain.h"
 #include "world/WorldHelpers.h"
 #include "world/Weather.h"
@@ -1133,6 +1134,7 @@ void Properties::OnTickVisible()
             ShowRender(render);
             ShowMaterial(material, render);
             ShowPhysics(entity->GetComponent<Physics>());
+            ShowDestructible(entity->GetComponent<Destructible>());
             ShowVolume(entity->GetComponent<Volume>());
             ShowParticleSystem(entity->GetComponent<ParticleSystem>());
             ShowWater(entity->GetComponent<Water>());
@@ -4138,6 +4140,109 @@ void Properties::ShowPedestrians(spartan::Pedestrians* pedestrians) const
     component_end();
 }
 
+void Properties::ShowDestructible(spartan::Destructible* destructible) const
+{
+    if (!destructible)
+    {
+        return;
+    }
+
+    static const vector<string> patterns = { "Uniform", "Radial Glass", "Splinter Wood", "Layered Stone" };
+    {
+        const uint32_t pattern_idx = min(destructible->GetPatternIndex(), static_cast<uint32_t>(patterns.size() - 1));
+        char summary[128];
+        snprintf(summary, sizeof(summary), "%s \xC2\xB7 %u chunks%s", patterns[pattern_idx].c_str(), destructible->GetChunkCount(), destructible->GetSupportAnchored() ? " \xC2\xB7 anchored" : "");
+        component_summary(summary);
+    }
+
+    if (component_begin("Destructible", design::accent_physics(), destructible))
+    {
+        uint32_t pattern_index = destructible->GetPatternIndex();
+        if (property_combo("Pattern", patterns, &pattern_index, "Voronoi fracture geometry pattern."))
+        {
+            destructible->SetPatternIndex(pattern_index);
+        }
+
+        uint32_t chunk_count = destructible->GetChunkCount();
+        if (property_uint("Chunks", &chunk_count, 1.0f, 4, 64, "Number of 3D Voronoi cells generated when this object fractures."))
+        {
+            destructible->SetChunkCount(chunk_count);
+        }
+
+        float impact_threshold = destructible->GetImpactThreshold();
+        if (property_float("Impact threshold", &impact_threshold, 0.5f, 0.5f, 200.0f, "Minimum collision energy required to damage or shatter this object.", "%.1f"))
+        {
+            destructible->SetImpactThreshold(impact_threshold);
+        }
+
+        float health = destructible->GetHealth();
+        if (property_float("Health", &health, 1.0f, 1.0f, 1000.0f, "Cumulative damage before breaking. Heavy impacts shatter in one hit.", "%.0f"))
+        {
+            destructible->SetHealth(health);
+        }
+
+        bool support_anchored = destructible->GetSupportAnchored();
+        if (property_toggle("Support anchored", &support_anchored, "Keep chunks connected to the ground frozen in place so impacts punch holes and unsupported upper parts collapse."))
+        {
+            destructible->SetSupportAnchored(support_anchored);
+        }
+
+        if (support_anchored)
+        {
+            float damage_radius = destructible->GetDamageRadius();
+            if (property_float("Damage radius", &damage_radius, 0.05f, 0.1f, 20.0f, "Radius around an impact where chunks break free.", "%.2f m"))
+            {
+                destructible->SetDamageRadius(damage_radius);
+            }
+        }
+
+        uint32_t max_depth = destructible->GetMaxDepth();
+        if (property_uint("Fracture depth", &max_depth, 1.0f, 1, 2, "1 for single shatter, 2 allows large falling chunks to fracture a second time on heavy impact."))
+        {
+            destructible->SetMaxDepth(max_depth);
+        }
+
+        float debris_mass = destructible->GetDebrisMass();
+        if (property_float("Debris mass", &debris_mass, 1.0f, 0.0f, 10000.0f, "Total mass split across shards by volume. 0 derives mass automatically from material density.", "%.1f kg"))
+        {
+            destructible->SetDebrisMass(debris_mass);
+        }
+
+        float explosion_impulse = destructible->GetExplosionImpulse();
+        if (property_float("Scatter impulse", &explosion_impulse, 0.1f, 0.0f, 30.0f, "Outward velocity boost given to shards on fracture.", "%.1f m/s"))
+        {
+            destructible->SetExplosionImpulse(explosion_impulse);
+        }
+
+        float debris_lifetime = destructible->GetDebrisLifetime();
+        if (property_float("Debris lifetime", &debris_lifetime, 0.5f, 0.0f, 300.0f, "Seconds before detached shards disappear. 0 keeps debris until reset.", "%.0f s"))
+        {
+            destructible->SetDebrisLifetime(debris_lifetime);
+        }
+
+        if (Engine::IsFlagSet(EngineMode::Playing))
+        {
+            ImGui::Spacing();
+            ImGui::TextDisabled("Integrity: %.0f%%  (%u active shards)", destructible->GetStructuralIntegrity() * 100.0f, destructible->GetActiveShardCount());
+            if (!destructible->IsFractured())
+            {
+                if (ImGui::Button("Fracture Now"))
+                {
+                    destructible->Fracture(destructible->GetEntity()->GetPosition(), math::Vector3::Zero, 0.0f, true);
+                }
+            }
+            else
+            {
+                if (ImGui::Button("Reset Intact"))
+                {
+                    destructible->Reset();
+                }
+            }
+        }
+    }
+    component_end();
+}
+
 void Properties::ShowNetworkSync(spartan::NetworkSync* sync) const
 {
     if (!sync)
@@ -5703,6 +5808,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Network Sync"))
             {
                 entity->AddComponent<NetworkSync>();
+            }
+
+            if (ImGui::MenuItem("Destructible"))
+            {
+                entity->AddComponent<Destructible>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

@@ -28,6 +28,7 @@ publish the package. Read it before touching assets.
 | `ferrari_showroom_example.world` | A studio showroom with a car on a turntable and emissive light tubes |
 | `car_playground_example.world` | A test pad for driving and tuning cars; loads in seconds |
 | `physics_example.world` | One station per physics feature: bodies, joints, cloth, ragdolls, buttons that replay each experiment |
+| `destruction_example.world` | Real-time 3D Voronoi destruction proving ground: radial spiderweb glass pavilion, anchored siege breach walls, progressive-collapse marble colonnade, wrecking-ball demolition yard, explosive barrel bunker and secondary-fracture obsidian monolith. LMB/G fires (1–4 switch weapons), T toggles slow-motion, R resets all |
 | `character_animation_example.world` | A measured movement court for walk/run blending, jump landings and stair foot placement. F toggles the tracking camera |
 | `navigation_example.world` | Navmesh, crowd agents, path queries and doors that trigger a rebuild |
 | `multiplayer_example.world` | A UDP server and client in one script, run two instances |

@@ -275,6 +275,12 @@ namespace spartan
             buoyancy::bodies.erase(remove(buoyancy::bodies.begin(), buoyancy::bodies.end(), this), buoyancy::bodies.end());
         }
 
+        if (m_precooked_convex_mesh)
+        {
+            ReleaseCookedConvexMesh(m_precooked_convex_mesh);
+            m_precooked_convex_mesh = nullptr;
+        }
+
         Remove();
     }
 
@@ -659,6 +665,29 @@ namespace spartan
         m_activation_valid = false;
     }
 
+    void Physics::SetCollisionTag(uint32_t tag)
+    {
+        if (m_collision_tag == tag)
+        {
+            return;
+        }
+
+        m_collision_tag = tag;
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+        PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+        for (void* body : m_actors)
+        {
+            if (PxRigidActor* actor = static_cast<PxRigidActor*>(body))
+            {
+                tag_actor_shapes(actor, m_collision_tag);
+                if (scene && actor->getScene() == scene)
+                {
+                    scene->resetFiltering(*actor);
+                }
+            }
+        }
+    }
+
     void Physics::SetDistanceStreaming(bool enabled)
     {
         if (m_distance_streaming == enabled)
@@ -923,6 +952,11 @@ namespace spartan
                         Quaternion rot;
                         from_px_transform(actor->getGlobalPose(), pos, rot);
                         GetEntity()->SetPositionAndRotation(pos, rot);
+                        if (dynamic)
+                        {
+                            const PxVec3 v = dynamic->getLinearVelocity();
+                            m_pre_step_velocity = Vector3(v.x, v.y, v.z);
+                        }
                     }
                 }
             }
@@ -1584,8 +1618,16 @@ namespace spartan
 
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
+                if (dynamic->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC)
+                {
+                    continue;
+                }
                 dynamic->setLinearVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
-                dynamic->wakeUp();
+                m_pre_step_velocity = velocity;
+                if (dynamic->getScene())
+                {
+                    dynamic->wakeUp();
+                }
             }
         }
     }
@@ -1648,8 +1690,15 @@ namespace spartan
 
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
+                if (dynamic->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC)
+                {
+                    continue;
+                }
                 dynamic->setAngularVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
-                dynamic->wakeUp();
+                if (dynamic->getScene())
+                {
+                    dynamic->wakeUp();
+                }
             }
         }
     }
@@ -1671,6 +1720,10 @@ namespace spartan
 
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
+                if (!dynamic->getScene() || (dynamic->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC))
+                {
+                    continue;
+                }
                 PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;
                 dynamic->addForce(PxVec3(force.x, force.y, force.z), px_mode);
                 dynamic->wakeUp();
@@ -2030,6 +2083,14 @@ namespace spartan
         m_is_static    = is_static;
         m_is_kinematic = false; // statics can't be kinematic
 
+        // preserve an already-cooked convex hull across static<->dynamic transitions (e.g. anchored shards detaching)
+        if (m_mesh && m_mesh_is_convex && !m_precooked_convex_mesh)
+        {
+            m_precooked_convex_mesh = m_mesh;
+            m_mesh                  = nullptr;
+            m_mesh_is_convex        = false;
+        }
+
         // recreate bodies to apply static/dynamic state
         Create();
     }
@@ -2359,7 +2420,8 @@ namespace spartan
             if (dynamic)
             {
                 dynamic->setMass(m_mass);
-                dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, !m_is_kinematic);
+                dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, !m_is_kinematic);
+                dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, false);
                 dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
                 dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
             }
@@ -2645,6 +2707,78 @@ namespace spartan
         return true;
     }
 
+    void* Physics::CookConvexMeshFromPoints(const vector<Vector3>& points, uint32_t vertex_limit)
+    {
+        if (points.size() < 4)
+        {
+            return nullptr;
+        }
+
+        auto* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+        if (!physics)
+        {
+            return nullptr;
+        }
+
+        vector<PxVec3> px_points;
+        px_points.reserve(points.size());
+        for (const Vector3& p : points)
+        {
+            px_points.emplace_back(p.x, p.y, p.z);
+        }
+
+        PxTolerancesScale scale;
+        scale.length = 1.0f;
+        const Vector3 gravity = PhysicsWorld::GetGravity();
+        scale.speed = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z);
+
+        PxCookingParams params(scale);
+        params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+        params.gaussMapLimit         = 32;
+
+        PxConvexMeshDesc desc;
+        desc.points.count  = static_cast<PxU32>(px_points.size());
+        desc.points.stride = sizeof(PxVec3);
+        desc.points.data   = px_points.data();
+        desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX | PxConvexFlag::eFAST_INERTIA_COMPUTATION;
+        desc.vertexLimit   = static_cast<PxU16>(clamp(vertex_limit, 8u, 255u));
+
+        PxConvexMeshCookingResult::Enum condition = PxConvexMeshCookingResult::eFAILURE;
+        PxDefaultMemoryOutputStream output;
+        if (!PxCookConvexMesh(params, desc, output, &condition) || condition != PxConvexMeshCookingResult::eSUCCESS)
+        {
+            desc.flags |= PxConvexFlag::eQUANTIZE_INPUT;
+            desc.quantizedCount = static_cast<PxU16>(clamp(vertex_limit, 8u, 64u));
+            PxDefaultMemoryOutputStream retry_output;
+            if (!PxCookConvexMesh(params, desc, retry_output, &condition) || condition != PxConvexMeshCookingResult::eSUCCESS)
+            {
+                return nullptr;
+            }
+            PxDefaultMemoryInputData input(retry_output.getData(), retry_output.getSize());
+            return static_cast<void*>(physics->createConvexMesh(input));
+        }
+
+        PxDefaultMemoryInputData input(output.getData(), output.getSize());
+        return static_cast<void*>(physics->createConvexMesh(input));
+    }
+
+    void Physics::ReleaseCookedConvexMesh(void* convex_mesh)
+    {
+        if (convex_mesh && PhysicsWorld::GetPhysics())
+        {
+            static_cast<PxConvexMesh*>(convex_mesh)->release();
+        }
+    }
+
+    void Physics::SetPreCookedConvexMesh(void* convex_mesh)
+    {
+        if (m_precooked_convex_mesh && m_precooked_convex_mesh != convex_mesh)
+        {
+            ReleaseCookedConvexMesh(m_precooked_convex_mesh);
+        }
+        m_precooked_convex_mesh = convex_mesh;
+    }
+
     // primitive shapes and triangle or convex meshes from the render component, false when creation failed and Create should stop
     bool Physics::CreateShapes()
     {
@@ -2653,6 +2787,20 @@ namespace spartan
         // mesh
         if (m_body_type == BodyType::Mesh)
         {
+            const bool cook_convex  = m_use_convex_hull || !(IsStatic() || IsKinematic());
+            const bool is_transient = GetEntity() && GetEntity()->IsTransient();
+
+            // Fast path: adopt a pre-cooked convex mesh (e.g. parallel-cooked destructible shard) with zero disk I/O
+            if (cook_convex && m_precooked_convex_mesh)
+            {
+                m_mesh                  = m_precooked_convex_mesh;
+                m_precooked_convex_mesh = nullptr;
+                m_mesh_is_convex        = true;
+                CreateBodies();
+                m_scale_previous = GetEntity()->GetScale();
+                return true;
+            }
+
             Render* render = GetEntity()->GetComponent<Render>();
             if (!render)
             {
@@ -2670,6 +2818,29 @@ namespace spartan
                 return false;
             }
 
+            // Fast runtime path for transient convex bodies (e.g. detaching shards / projectiles):
+            // QuickHull only consumes vertex positions and must never stall on disk cache writes or mesh simplification.
+            if (is_transient && cook_convex)
+            {
+                const Vector3 scale = GetEntity()->GetScale();
+                vector<Vector3> scaled_points;
+                scaled_points.reserve(vertices.size());
+                for (const auto& vertex : vertices)
+                {
+                    scaled_points.emplace_back(vertex.pos[0] * scale.x, vertex.pos[1] * scale.y, vertex.pos[2] * scale.z);
+                }
+                m_mesh           = CookConvexMeshFromPoints(scaled_points, 32);
+                m_mesh_is_convex = true;
+                if (!m_mesh)
+                {
+                    SP_LOG_WARNING("Failed to cook transient convex mesh for '%s'", GetEntity()->GetObjectName().c_str());
+                    return false;
+                }
+                CreateBodies();
+                m_scale_previous = scale;
+                return true;
+            }
+
             // simplify geometry
             const float volume        = render->GetBoundingBox().GetVolume();
             const float max_volume    = 100000.0f;
@@ -2684,37 +2855,41 @@ namespace spartan
             // Hash the inputs before simplification/cooking. This also covers scale,
             // gravity-derived tolerances and the collision policy, not just the asset path.
             // Bump the version whenever simplification or cooking settings below change.
-            const bool cook_convex = m_use_convex_hull || !(IsStatic() || IsKinematic());
             m_mesh_is_convex = cook_convex;
+            const bool use_disk_cache = !is_transient;
             generated_cache::Hash collision_hash;
-            collision_hash.Add(uint32_t{1});
-            collision_hash.Add(uint32_t{PX_PHYSICS_VERSION});
-            collision_hash.Add(vertices);
-            collision_hash.Add(indices);
-            collision_hash.Add(GetEntity()->GetScale());
-            collision_hash.Add(PhysicsWorld::GetGravity());
-            collision_hash.Add(target_index_count);
-            collision_hash.Add(preserve_geometry);
-            // preserved geometry includes 3 mm guardrail sheet, a centimetre weld folds both faces into nothing
-            const float weld_tolerance = preserve_geometry ? 0.001f : 0.01f;
-            if (preserve_geometry)
-            {
-                collision_hash.Add(weld_tolerance);
-            }
-            collision_hash.Add(cook_convex);
-            collision_hash.Add(render->HasInstancing());
-            const auto collision_path = generated_cache::Path(World::GetResourceDirectory(), "collision", collision_hash.value);
+            filesystem::path collision_path;
             vector<uint8_t> cooked;
             auto load_cooked = [&]() -> void*
             {
                 if (cooked.empty()) return nullptr;
                 PxDefaultMemoryInputData input(cooked.data(), static_cast<PxU32>(cooked.size()));
-                auto* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
-                return cook_convex ? static_cast<void*>(physics->createConvexMesh(input))
-                                   : static_cast<void*>(physics->createTriangleMesh(input));
+                auto* px = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+                return cook_convex ? static_cast<void*>(px->createConvexMesh(input))
+                                   : static_cast<void*>(px->createTriangleMesh(input));
             };
-            if (generated_cache::Load(collision_path, collision_hash.value, cooked))
-                m_mesh = load_cooked();
+            // preserved geometry includes 3 mm guardrail sheet, a centimetre weld folds both faces into nothing
+            const float weld_tolerance = preserve_geometry ? 0.001f : 0.01f;
+            if (use_disk_cache)
+            {
+                collision_hash.Add(uint32_t{1});
+                collision_hash.Add(uint32_t{PX_PHYSICS_VERSION});
+                collision_hash.Add(vertices);
+                collision_hash.Add(indices);
+                collision_hash.Add(GetEntity()->GetScale());
+                collision_hash.Add(PhysicsWorld::GetGravity());
+                collision_hash.Add(target_index_count);
+                collision_hash.Add(preserve_geometry);
+                if (preserve_geometry)
+                {
+                    collision_hash.Add(weld_tolerance);
+                }
+                collision_hash.Add(cook_convex);
+                collision_hash.Add(render->HasInstancing());
+                collision_path = generated_cache::Path(World::GetResourceDirectory(), "collision", collision_hash.value);
+                if (generated_cache::Load(collision_path, collision_hash.value, cooked))
+                    m_mesh = load_cooked();
+            }
 
             if (!m_mesh)
             {
@@ -2877,7 +3052,7 @@ namespace spartan
                         return false;
                     }
                 }
-                if (m_mesh) generated_cache::Save(collision_path, collision_hash.value, cooked);
+                if (m_mesh && use_disk_cache) generated_cache::Save(collision_path, collision_hash.value, cooked);
             }
         }
 
@@ -3377,10 +3552,21 @@ namespace spartan
                 PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
                 if (dynamic)
                 {
+                    const bool is_transient_mesh = GetEntity() && GetEntity()->IsTransient() && m_body_type == BodyType::Mesh;
                     dynamic->setMass(m_mass);
-                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, !m_is_kinematic); // kinematics don't support ccd
+                    // Speculative CCD prevents fast dynamic bodies/projectiles from tunneling inside the TGS solver
+                    // without swept-CCD TOI=0 jamming against static triangle meshes or missing pre-solver velocities.
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, !m_is_kinematic && !is_transient_mesh);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, false);
                     dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
                     dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
+                    if (is_transient_mesh)
+                    {
+                        const bool is_heavy_debris = m_mass >= 40.0f;
+                        dynamic->setMaxDepenetrationVelocity(is_heavy_debris ? 1.6f : 2.2f);
+                        dynamic->setLinearDamping(is_heavy_debris ? 0.24f : 0.12f);
+                        dynamic->setAngularDamping(is_heavy_debris ? 0.55f : 0.25f);
+                    }
                 }
             }
 
@@ -3465,6 +3651,10 @@ namespace spartan
             {
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                 actor->attachShape(*shape);
+                if (m_collision_tag != 0)
+                {
+                    tag_actor_shapes(actor, m_collision_tag);
+                }
                 // Off-centre buoyancy and contacts need the inertia of the attached geometry.
                 if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>(); dynamic && (!m_is_kinematic || m_center_of_mass != Vector3::Zero))
                 {

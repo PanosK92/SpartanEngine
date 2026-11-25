@@ -26,6 +26,7 @@ namespace spartan
     class Pedestrians;
     class Navigation;
     class NetworkSync;
+    class Destructible;
     class Volume;
     class Script;
     class Component;
@@ -64,6 +65,7 @@ private:
     void ShowPedestrians(spartan::Pedestrians* pedestrians) const;
     void ShowNavigation(spartan::Navigation* navigation) const;
     void ShowNetworkSync(spartan::NetworkSync* sync) const;
+    void ShowDestructible(spartan::Destructible* destructible) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
     void ShowVolume(spartan::Volume* volume) const;
     void ShowParticleSystem(spartan::ParticleSystem* particle_system) const;
