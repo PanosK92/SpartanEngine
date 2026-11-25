@@ -27,9 +27,15 @@
 <table align="center">
   <tr>
     <td align="center" width="160"><h2>12</h2><sub>YEARS IN DEVELOPMENT</sub></td>
+    <td align="center" width="160"><h2>1</h2><sub>ENGINEER</sub></td>
+    <td align="center" width="160"><h2>600+</h2><sub>ENGINEERS ON DISCORD</sub></td>
+    <td align="center" width="160"><h2>200 Hz</h2><sub>VEHICLE SIMULATION</sub></td>
+  </tr>
+  <tr>
     <td align="center" width="160"><h2>33 × 25 km</h2><sub>STREAMED OPEN WORLD</sub></td>
     <td align="center" width="160"><h2>11M+</h2><sub>INSTANCED FOLIAGE & ROCKS</sub></td>
-    <td align="center" width="160"><h2>200 Hz</h2><sub>VEHICLE SIMULATION</sub></td>
+    <td align="center" width="160"><h2>200+ km/h</h2><sub>STUTTER-FREE STREAMING</sub></td>
+    <td align="center" width="160"><h2>60+ FPS</h2><sub>REAL-TIME RAY TRACING</sub></td>
   </tr>
 </table>
 
