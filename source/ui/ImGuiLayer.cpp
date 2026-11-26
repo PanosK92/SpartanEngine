@@ -176,7 +176,7 @@ void spartan::gui::render()
     {
         if (submitted.timeline && submitted.value > 0)
         {
-            submitted.timeline->Wait(submitted.value);
+            submitted.timeline->Wait(UINT64_MAX, submitted.value);
         }
         spartan::Renderer::NotifyFirstFrameCompleted();
     }

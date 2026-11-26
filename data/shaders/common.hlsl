@@ -1801,12 +1801,12 @@ float get_alpha_threshold(float3 position_world)
 }
 
 // stochastic alpha-to-coverage for hair, eyebrows, eyelashes and beard strands:
-// taa/fsr resolves the dithered sub-pixel coverage into smooth, feathered strands with exact depth sorting
+// solid strand cores (>= 0.72) stay 100% opaque every frame (no patchy holes), while fine tips feather smoothly
 float get_hair_alpha_threshold(float2 screen_pos, float cutoff, bool temporal)
 {
     float dither = noise_interleaved_gradient(screen_pos, temporal);
-    float lo     = max(cutoff * 0.15f, 0.015f);
-    return lerp(lo, 0.96f, dither);
+    float lo     = max(cutoff * 0.20f, 0.018f);
+    return lerp(lo, 0.72f, dither);
 }
 
 //= INCLUDES ===========================

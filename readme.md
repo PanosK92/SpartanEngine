@@ -68,7 +68,7 @@ And it is no longer just a renderer — it ships everything a finished game need
   </tr>
 </table>
 
-The bundled worlds show the range, from **Game**, a playable racing game across the island of Zakynthos, to path-traced interiors, a car showroom and a photoscanned human head. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
+The bundled worlds show the range, from **Game**, a playable racing game across the island of Zakynthos, to path-traced interiors, a car showroom and a real-time studio human showcase. Its rendering technology ships in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, it features in a **published programming book**, and more than **600 engineers** follow its development on Discord.
 
 > [!IMPORTANT]
 > **Built for veterans.** Spartan is one engineer's engine, so there is no support queue and no one-to-one help. There is [documentation](docs/README.md), a [Lua scripting guide](docs/scripting.md) and a codebase written to be read. If you are a high-agency engineer who can take it from there, you can ship with it.
@@ -77,10 +77,10 @@ The bundled worlds show the range, from **Game**, a playable racing game across 
 
 <table>
   <tr>
-    <td colspan="2"><a href="https://panoskarabelas.com/engine/live/"><img src=".github/images/showcase_human_close.jpg" width="100%" alt="Skin close-up: subsurface scattering under path-traced light, with pores, stubble and light glowing through the ear. Click to run it live in your browser."/></a></td>
+    <td colspan="2"><a href="https://panoskarabelas.com/engine/live/"><img src=".github/images/showcase_human_close.jpg" width="100%" alt="Skin close-up: Christensen-Burley subsurface scattering, dual-lobe skin specular, 4K micro-pores, 3D stubble, Marschner hair and refractive eyes. Click to run it live in your browser."/></a></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; subsurface scattering under path-traced light, down to the pores, the stubble and the glow through an ear</sub><br/><b><a href="https://panoskarabelas.com/engine/live/">▶ Click the head to run it live in your browser</a></b> <sub>(WebGPU, recent Chrome or Edge)</sub></td>
+    <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; Christensen-Burley subsurface scattering, dual-lobe skin specular, 4K micro-pores, 3D stubble, Marschner hair and refractive eyes</sub><br/><b><a href="https://panoskarabelas.com/engine/live/">▶ Click to run it live in your browser</a></b> <sub>(WebGPU, recent Chrome or Edge)</sub></td>
   </tr>
   <tr>
     <td colspan="2"><img src=".github/images/showcase_island_forest.jpg" width="100%" alt="Aerial golden-hour view over Zakynthos: 11+ million instanced trees, undergrowth and rocks carpeting mountain ridges down to the Ionian Sea, streamed seamlessly in Spartan Engine"/></td>
@@ -89,11 +89,11 @@ The bundled worlds show the range, from **Game**, a playable racing game across 
     <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; a seamless 33 × 25 km island with 7.5M+ full-3D trees (11M+ total scattered instances), 200+ spline roads, towns, live traffic, volumetric clouds and an FFT ocean — streamed at 200+ km/h at 60+ FPS with zero traversal stutters</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src=".github/images/showcase_human.jpg" alt="Human: a photoscanned head in a dark studio, lit by soft area lights"/></td>
+    <td width="50%"><img src=".github/images/showcase_human.jpg" alt="Human: a real-time character in a dark studio with subsurface skin, Marschner hair, procedural eye saccades/blinking and real-time XPBD cloth"/></td>
     <td width="50%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a mirror-black turntable inside the Maranello Atelier showroom, with ray-traced reflections and custom architectural lighting"/></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>HUMAN</b> &nbsp;·&nbsp; a photoscanned head in a dark studio, lit by soft area lights</sub></td>
+    <td align="center"><sub><b>HUMAN</b> &nbsp;·&nbsp; real-time character in a dark studio with subsurface skin, refractive eyes, procedural blinking and XPBD cloth</sub></td>
     <td align="center"><sub><b>SHOWROOM</b> &nbsp;·&nbsp; LaFerrari on a mirror-black turntable inside a dark architectural atelier</sub></td>
   </tr>
   <tr>
@@ -107,7 +107,6 @@ The bundled worlds show the range, from **Game**, a playable racing game across 
 </table>
 
 <p align="center"><sub>All real-time captures. Every world is fully simulated: walkable, interactive and drivable.</sub></p>
-<p align="center"><sub>Head scan by Lee Perry-Smith, Infinite Realities, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</sub></p>
 
 ## Features
 

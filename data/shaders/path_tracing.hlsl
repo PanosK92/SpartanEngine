@@ -244,13 +244,13 @@ float3 pt_direct(RaySurface surface, PathSurface bsdf, float3 view_dir, inout ui
     float3 scattered = 0.0f;
     if (!dielectric && is_subsurface_diffusion_enabled() && mat.has_subsurface_profile())
     {
-        float entry = saturate(0.3f - dot(surface.normal, light_dir));
-        if (entry > 0.0f)
+        float back_facing = saturate((-dot(surface.geometric_normal, light_dir) + 0.06f) / 0.26f);
+        if (back_facing > 0.0f)
         {
             float safety = is_area ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f : 0.01f;
             scattered = incoming * rt_subsurface_transmittance(shading_pos, surface.geometric_normal, light_dir,
                 light_dist, safety, mat.subsurface_radius) * surface.albedo * (1.0f - surface.metallic) *
-                (0.96f * INV_PI * entry * saturate(mat.subsurface_scattering));
+                (0.96f * INV_PI * back_facing * saturate(mat.subsurface_scattering));
         }
     }
     diffuse_light = scattered;

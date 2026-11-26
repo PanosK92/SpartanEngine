@@ -334,18 +334,91 @@ float rt_trace_nearest(float3 origin, float3 direction, float t_max)
     return rt_trace_foliage_shadow(origin, direction, t_max);
 }
 
+// Trace from just inside a scattering solid toward the light to find the far-side exit surface
+// where light enters the solid. Ignores front-facing self-hits near the origin and blocks if an
+// external front-facing occluder lies in front of any back-facing exit.
+float rt_trace_subsurface_exit(float3 origin, float3 direction, float t_min, float t_max, out float exit_ndotl)
+{
+    exit_ndotl = 0.0f;
+
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = t_min;
+    ray.TMax      = max(t_max, t_min);
+
+    float nearest_back_t  = -1.0f;
+    float nearest_front_t = t_max + 1.0f;
+    float best_ndotl      = 0.0f;
+
+    RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    while (query.Proceed())
+    {
+        if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE)
+        {
+            continue;
+        }
+
+        uint   instance  = query.CandidateInstanceIndex();
+        uint   primitive = query.CandidatePrimitiveIndex();
+        float  hit_t     = query.CandidateTriangleRayT();
+        float2 bary      = query.CandidateTriangleBarycentrics();
+        float3 hit_pos   = origin + direction * hit_t;
+        GeometryInfo geo = geometry_infos[instance];
+        MaterialParameters material = material_parameters[geo.material_index];
+        if (material.is_alpha_tested() && !rt_candidate_opaque_loaded(geo, material, primitive, bary, hit_pos))
+        {
+            continue;
+        }
+
+        float3 hit_normal = rt_candidate_normal(geo, primitive, bary);
+        float  ndotl      = dot(hit_normal, direction);
+        if (ndotl > 0.02f)
+        {
+            // Far-side wall of the solid facing toward the light
+            if (nearest_back_t < 0.0f || hit_t < nearest_back_t)
+            {
+                nearest_back_t = hit_t;
+                best_ndotl     = ndotl;
+            }
+        }
+        else if (hit_t > 0.0025f && hit_t < nearest_front_t)
+        {
+            // External front-facing occluder encountered before exiting our own solid
+            nearest_front_t = hit_t;
+        }
+    }
+
+    if (nearest_back_t < 0.0f || nearest_front_t < nearest_back_t)
+    {
+        return -1.0f;
+    }
+
+    exit_ndotl = saturate(best_ndotl);
+    return nearest_back_t;
+}
+
 // Measure a scattering slab toward the light, then test visibility beyond its far surface.
-float3 rt_subsurface_transmittance(float3 position, float3 normal, float3 l, float distance, float safety, float3 radius)
+float3 rt_subsurface_transmittance(float3 position, float3 geometric_normal, float3 l, float distance, float safety, float3 radius)
 {
     float max_thickness = 16.0f * max(radius.r, max(radius.g, radius.b));
-    const float inset = 0.0005f;
-    float3 origin = position - normal * inset;
-    float exit = rt_trace_nearest(origin, l, min(distance, max_thickness));
-    if (exit < 0.0f) return 0.0f;
-    float clearance = distance - exit - safety;
-    if (clearance > 0.002f && rt_trace_visibility(origin + l * (exit + 0.001f), l, clearance) <= 0.0f)
+    const float inset   = 0.0018f;
+    float3 origin       = position - geometric_normal * inset;
+    float  exit_ndotl   = 0.0f;
+    float  exit         = rt_trace_subsurface_exit(origin, l, 0.001f, min(distance, max_thickness), exit_ndotl);
+    if (exit < 0.0f)
+    {
         return 0.0f;
-    return subsurface_burley_transmittance(exit + inset, radius);
+    }
+
+    float clearance = distance - exit - safety;
+    if (clearance > 0.002f && rt_trace_visibility(origin + l * (exit + 0.002f), l, clearance) <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    return exit_ndotl * subsurface_burley_transmittance(exit + inset, radius);
 }
 
 #endif

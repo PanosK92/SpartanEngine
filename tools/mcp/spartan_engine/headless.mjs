@@ -12,7 +12,7 @@ import path from "node:path";
 import { EngineClient } from "./engine_client.mjs";
 
 const executable_names = process.platform === "win32"
-  ? ["spartan_vulkan_development.exe", "spartan_vulkan.exe", "spartan_vulkan_debug.exe", "spartan_d3d12_development.exe", "spartan_d3d12.exe", "spartan_d3d12_debug.exe"]
+  ? ["spartan_d3d12_development.exe", "spartan_d3d12.exe", "spartan_d3d12_debug.exe", "spartan_vulkan_development.exe", "spartan_vulkan.exe", "spartan_vulkan_debug.exe"]
   : ["spartan_vulkan_development", "spartan_vulkan", "spartan_vulkan_debug"];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -170,6 +170,60 @@ float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 }
 
 /*------------------------------------------------------------------------------
+    SPECULAR - DUAL-LOBE SKIN (Unreal Engine 5 DualSpecularGGX)
+------------------------------------------------------------------------------*/
+
+// Human skin exhibits two specular micro-lobes sharing one lipid Fresnel (F0 ~= 0.028):
+// - Lobe 0 (92%): velvety epidermal roughness following the pore micro-geometry
+// - Lobe 1 (8%):  soft dry sebum micro-lobe (~0.72x roughness, >=0.30) — natural living skin, NEVER sweaty/oily
+float3 BRDF_Specular_DualLobe_Skin(inout Surface surface, AngularInfo angular_info)
+{
+    const float lobe0_rough = clamp(surface.roughness, 0.42f, 0.95f);
+    const float lobe1_rough = max(lobe0_rough * 0.72f, 0.30f);
+    const float lobe_mix    = 0.08f;
+
+    const float a0  = D_GGX_Alpha(lobe0_rough);
+    const float a1  = D_GGX_Alpha(lobe1_rough);
+    const float a02 = a0 * a0;
+    const float a12 = a1 * a1;
+    const float avg = D_GGX_Alpha(lerp(lobe0_rough, lobe1_rough, lobe_mix));
+    const float av2 = avg * avg;
+
+    const float  D  = lerp(D_GGX(angular_info.n_dot_h, a02), D_GGX(angular_info.n_dot_h, a12), lobe_mix);
+    const float  V  = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, av2);
+    const float3 F  = F_Schlick(surface.F0, compute_f90(surface.F0), angular_info.v_dot_h);
+    float3       Fr = D * V * F;
+
+    Fr                     *= compute_multiscatter_energy(surface.F0, angular_info.n_dot_v, lobe0_rough);
+    surface.diffuse_energy *= compute_diffuse_energy(F, surface.metallic);
+
+    return Fr;
+}
+
+/*------------------------------------------------------------------------------
+    EYE - CONCAVE REFRACTIVE IRIS CAUSTIC (Unreal Engine 5 EyeBxDF)
+------------------------------------------------------------------------------*/
+
+// Models light refracted through the convex cornea onto the concave inner iris cup:
+// creates a luminous opposite-side caustic crescent on the colored iris while leaving the sclera & pupil untouched.
+float BRDF_Eye_Iris_Caustic(Surface surface, AngularInfo angular_info, float3 real_albedo)
+{
+    const float luma      = dot(real_albedo, float3(0.2126f, 0.7152f, 0.0722f));
+    const float iris_mask = smoothstep(0.020f, 0.075f, luma) * (1.0f - smoothstep(0.30f, 0.56f, luma));
+    if (iris_mask <= 0.001f)
+    {
+        return 1.0f;
+    }
+
+    // Concave iris cup bends the effective refraction normal opposite the outer corneal curvature
+    const float3 caustic_normal = normalize(lerp(surface.normal, -angular_info.v, 0.48f));
+    const float  iris_nol       = saturate(angular_info.n_dot_l);
+    const float  power          = lerp(12.0f, 1.0f, iris_nol);
+    const float  caustic        = 0.80f + 0.24f * (power + 1.0f) * pow(saturate(dot(caustic_normal, angular_info.l)), power);
+    return lerp(1.0f, caustic, iris_mask);
+}
+
+/*------------------------------------------------------------------------------
     SPECULAR - ANISOTROPIC
 ------------------------------------------------------------------------------*/
 
@@ -316,65 +370,69 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
 
 // Physically-based hair shading (Marschner 2003 / Karis 2016):
 // Models cylindrical keratin fibers (IOR 1.55) with tilted cuticles:
-// - R:   primary cuticle highlight shifted toward the root
-// - TRT: melanin-tinted secondary internal reflection shifted toward the tip
-// - TT:  warm forward-scattered backlit transmission glow
-// - MS:  soft cylindrical Kajiya-Kay multiple-scattering diffuse (eliminates harsh plastic terminator)
-void BRDF_Hair(Surface surface, AngularInfo angular_info, out float3 out_diffuse, out float3 out_specular)
+// - R:   primary cuticle highlight shifted toward the root (dielectric keratin F0 = 0.046)
+// - TRT: true melanin-tinted secondary internal reflection shifted toward the tip
+// - TT:  warm forward-scattered backlit rim transmission tinted by true melanin albedo
+// - MS:  demodulated Kajiya-Kay cylindrical multiple-scattering diffuse (multiplied by albedo in composition)
+void BRDF_Hair(Surface surface, AngularInfo angular_info, float3 hair_albedo, out float3 out_diffuse, out float3 out_specular)
 {
     float3 n = surface.normal;
     float3 v = angular_info.v;
     float3 l = angular_info.l;
-    float3 h = angular_info.h;
 
-    // Derive natural downward strand tangent along the surface (gravity-aligned flow over scalp/jaw)
-    float3 down_ref = abs(n.y) < 0.95f ? float3(0.0f, -1.0f, 0.0f) : float3(0.0f, 0.0f, 1.0f);
-    float3 t        = normalize(down_ref - n * dot(down_ref, n));
+    // Smooth continuous scalp-to-tip tangent flow with no crown discontinuity
+    float3 ref_a    = normalize(float3(0.0f, -1.0f, -0.15f));
+    float3 ref_b    = float3(0.0f, 0.0f, 1.0f);
+    float  pole     = smoothstep(0.85f, 0.98f, abs(dot(n, ref_a)));
+    float3 flow_ref = normalize(lerp(ref_a, ref_b, pole));
+    float3 t        = normalize(flow_ref - n * dot(flow_ref, n));
 
     float sin_theta_l = clamp(dot(t, l), -0.999f, 0.999f);
     float sin_theta_v = clamp(dot(t, v), -0.999f, 0.999f);
     float cos_theta_l = sqrt(saturate(1.0f - sin_theta_l * sin_theta_l));
-    float cos_theta_v = sqrt(saturate(1.0f - sin_theta_v * sin_theta_v));
     float cos_theta_d = cos(0.5f * abs(asin(sin_theta_v) - asin(sin_theta_l)));
 
     // Azimuthal cosine between view and light projected onto the fiber cross-section
-    float3 l_perp = l - t * sin_theta_l;
-    float3 v_perp = v - t * sin_theta_v;
+    float3 l_perp   = l - t * sin_theta_l;
+    float3 v_perp   = v - t * sin_theta_v;
     float  perp_len = sqrt(max(dot(l_perp, l_perp) * dot(v_perp, v_perp), 1e-6f));
     float  cos_phi  = clamp(dot(l_perp, v_perp) / perp_len, -1.0f, 1.0f);
 
-    float rough   = clamp(surface.roughness, 0.25f, 0.90f);
-    float beta_r  = max(rough * rough, 0.06f);
-    float beta_tr = min(beta_r * 2.1f, 0.85f);
+    float rough   = clamp(surface.roughness, 0.28f, 0.88f);
+    float beta_r  = max(rough * rough * 0.85f, 0.075f);
+    float beta_tr = min(beta_r * 2.0f, 0.70f);
 
     // Cuticle tilt shifts R toward root (-5.5 deg) and TRT toward tip (+9 deg)
     float theta_h = 0.5f * (asin(sin_theta_l) + asin(sin_theta_v));
     float m_r     = exp(-0.5f * ((theta_h + 0.096f) * (theta_h + 0.096f)) / (beta_r * beta_r)) / (sqrt(PI2) * beta_r);
     float m_trt   = exp(-0.5f * ((theta_h - 0.157f) * (theta_h - 0.157f)) / (beta_tr * beta_tr)) / (sqrt(PI2) * beta_tr);
 
-    // Keratin Fresnel (IOR = 1.55 -> F0 = 0.046)
-    float f_r     = F_Schlick(0.046f, 1.0f, saturate(cos_theta_d * sqrt(saturate(0.5f + 0.5f * cos_phi))));
-    float n_r     = 0.25f * sqrt(saturate(0.5f + 0.5f * cos_phi));
+    // Physical keratin Fresnel (IOR = 1.55 -> F0 = 0.046) normalized by INV_PI so dark strands keep silky sheen without frosting white
+    float f_r = F_Schlick(0.046f, 0.55f, saturate(cos_theta_d * sqrt(saturate(0.5f + 0.5f * cos_phi))));
+    float n_r = 0.25f * sqrt(saturate(0.5f + 0.5f * cos_phi));
 
-    // Hair melanin absorption tints the internal TRT bounce and backlit TT transmission
-    float3 melanin_tint = pow(max(surface.albedo, float3(0.015f, 0.012f, 0.010f)), 0.72f);
-    float  front_wrap   = saturate(dot(n, l) * 0.65f + 0.35f);
+    // Scale cuticle specular gently with fiber luminance so coarse dark brows/eyelashes stay rich and velvety
+    float  albedo_luma  = max(dot(hair_albedo, float3(0.2126f, 0.7152f, 0.0722f)), 0.002f);
+    float  cuticle_fade = lerp(0.45f, 1.0f, saturate(sqrt(albedo_luma) * 3.0f));
+    float3 melanin_trt  = hair_albedo * pow(max(hair_albedo, float3(0.002f, 0.0015f, 0.001f)), 0.35f) * float3(1.35f, 1.05f, 0.85f);
+    float  front_wrap   = saturate(dot(n, l) * 0.78f + 0.22f);
+    float  front_spec   = saturate(dot(n, l) * 0.90f + 0.10f);
 
-    // Primary cuticle sheen (R) + warm melanin-tinted secondary ribbon sheen (TRT)
-    float3 lobe_r   = (m_r * n_r * f_r * 0.24f) * front_wrap;
-    float3 lobe_trt = (m_trt * (1.0f - f_r) * 0.34f) * melanin_tint * front_wrap;
+    // Primary silky cuticle highlight (R) + warm melanin-absorbed secondary highlight (TRT)
+    float3 lobe_r   = (m_r * n_r * f_r * INV_PI * 0.42f * cuticle_fade) * front_spec;
+    float3 lobe_trt = (m_trt * (1.0f - f_r) * INV_PI * 0.55f) * melanin_trt * front_wrap;
 
-    // Forward-scattered backlit rim glow (TT) when light shines through edges from behind
-    float  backlit = pow(saturate(dot(-v, l)), 3.0f) * pow(saturate(0.5f - 0.5f * cos_phi), 2.0f);
-    float3 lobe_tt = sqrt(max(surface.albedo, float3(0.01f, 0.008f, 0.006f))) * float3(1.15f, 0.85f, 0.65f) * backlit * 0.45f;
+    // Subtle warm backlit rim transmission (TT) along backlit hair edges
+    float  backlit = pow(saturate(dot(-v, l)), 3.5f) * pow(saturate(0.5f - 0.5f * cos_phi), 2.0f);
+    float3 lobe_tt = hair_albedo * float3(1.45f, 0.95f, 0.62f) * (backlit * INV_PI * 0.40f);
 
-    // Cylindrical Kajiya-Kay multiple-scattering diffuse: soft, volumetric, zero plastic terminator
-    float  kajiya_sin = lerp(0.28f, 1.0f, cos_theta_l);
-    float  wrap_ndotl = saturate((dot(n, l) + 0.40f) / 1.40f);
-    float  ms_scatter = lerp(wrap_ndotl, kajiya_sin, 0.55f);
+    // Demodulated cylindrical Kajiya-Kay multiple-scattering diffuse (light_composition multiplies by albedo once)
+    float kajiya_sin = lerp(0.24f, 1.0f, cos_theta_l);
+    float wrap_ndotl = saturate((dot(n, l) + 0.32f) / 1.32f);
+    float ms_scatter = lerp(wrap_ndotl, kajiya_sin, 0.45f);
 
-    out_diffuse  = surface.albedo * (ms_scatter * INV_PI) + lobe_tt;
-    out_specular = lobe_r + lobe_trt;
+    out_diffuse  = float3(ms_scatter, ms_scatter, ms_scatter) * INV_PI;
+    out_specular = lobe_r + lobe_trt + lobe_tt;
 }
 
 /*------------------------------------------------------------------------------

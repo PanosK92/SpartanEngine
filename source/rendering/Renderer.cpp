@@ -1316,7 +1316,7 @@ namespace spartan
                     // wait once so the first presented backbuffer finishes on the gpu before showing the window and hiding the splash screen
                     if (submitted.timeline && submitted.value > 0)
                     {
-                        submitted.timeline->Wait(submitted.value);
+                        submitted.timeline->Wait(UINT64_MAX, submitted.value);
                     }
                     NotifyFirstFrameCompleted();
                 }

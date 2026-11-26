@@ -379,7 +379,7 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
     surface.emissive               = material.emissive_from_albedo()
         ? emission * albedo.rgb * photometric_to_radiometric(lighting_emissive_nits_from_albedo)
         : emission * photometric_to_radiometric(lighting_emissive_nits_texture);
-    surface.F0                     = is_glass ? float3(f0_dielectric, f0_dielectric, f0_dielectric) : lerp(0.04f, surface.albedo, surface.metallic);
+    surface.F0                     = is_glass ? float3(f0_dielectric, f0_dielectric, f0_dielectric) : lerp(float3(f0_dielectric, f0_dielectric, f0_dielectric), surface.albedo, surface.metallic);
     surface.pos                    = uint2(vertex.position.xy);
     surface.uv                     = render_uv;
     surface.depth                  = vertex.position.z;
@@ -555,8 +555,9 @@ transparent_output main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFron
     else
     {
         float2 env_brdf       = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
-        float3 spec_energy    = (surface.F0 * env_brdf.x + env_brdf.y) * compute_multiscatter_energy_split_sum(surface.F0, env_brdf);
-        float3 F_rough        = surface.F0 + (max(1.0f - surface.roughness.xxx, surface.F0) - surface.F0) * pow(saturate(1.0f - n_dot_v), 5.0f);
+        float  f90            = compute_f90(surface.F0);
+        float3 spec_energy    = (surface.F0 * env_brdf.x + f90 * env_brdf.y) * compute_multiscatter_energy_split_sum(surface.F0, env_brdf);
+        float3 F_rough        = surface.F0 + (max(1.0f - surface.roughness.xxx, surface.F0) - surface.F0) * f90 * pow(saturate(1.0f - n_dot_v), 5.0f);
         float3 diffuse_energy = compute_diffuse_energy(F_rough, surface.metallic);
 
         float3 sky_sh[9];

@@ -1202,40 +1202,16 @@ namespace spartan
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 
-            // Hair, eyebrows, eyelashes and beard strands use stochastic temporal alpha coverage and Marschner dual-lobe hair shading.
-            if (name.find("hair") != string::npos || name.find("eyebrow") != string::npos || name.find("eyelash") != string::npos || name.find("beard") != string::npos || name.find("stubble") != string::npos)
+            // Hair, eyebrows and beard strands use stochastic temporal alpha coverage and Marschner dual-lobe hair shading.
+            // Eyelashes are fine single-layer fringe cards and stay smooth alpha-blended when authored as BLEND.
+            if (name.find("hair") != string::npos || name.find("eyebrow") != string::npos || name.find("beard") != string::npos || name.find("stubble") != string::npos)
             {
                 material->SetProperty(MaterialProperty::IsHair, 1.0f);
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
-
-            // Human skin materials use physically-based Christensen-Burley 2015 screen-space subsurface scattering
-            // (shape distance d = 4.2 mm face / 2.0 mm limbs, epidermis IOR 1.40, subtle dual-lobe sebum clearcoat on face).
-            if (name == "mh_face")
+            else if (name.find("eyelash") != string::npos)
             {
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.88f);
-                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0042f);
-                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
-                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.37f);
-                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.19f);
-                material->SetProperty(MaterialProperty::Ior, 1.40f);
-                material->SetProperty(MaterialProperty::Clearcoat, 0.12f);
-                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.28f);
-            }
-            else if (name == "mh_skin" || name.find("_skin") != string::npos || name.find("skin_") != string::npos)
-            {
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.55f);
-                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0020f);
-                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
-                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.37f);
-                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.19f);
-                material->SetProperty(MaterialProperty::Ior, 1.40f);
-            }
-
-            // Human eyes use cornea IOR for crisp wet reflections.
-            if (name == "mh_eyes" || name.find("cornea") != string::npos)
-            {
-                material->SetProperty(MaterialProperty::Ior, 1.38f);
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 
             if (material->HasTextureOfType(MaterialTextureType::Color) &&
@@ -1296,7 +1272,7 @@ namespace spartan
                 material->SetProperty(MaterialProperty::AlphaBlend, 0.0f);
                 if (material->GetProperty(MaterialProperty::AlphaCutoff) <= 0.0f)
                 {
-                    material->SetProperty(MaterialProperty::AlphaCutoff, 0.12f);
+                    material->SetProperty(MaterialProperty::AlphaCutoff, 0.10f);
                 }
             }
 
@@ -1330,6 +1306,111 @@ namespace spartan
                     &clearcoat_roughness
                 );
                 material->SetProperty(MaterialProperty::Clearcoat_Roughness, clearcoat_roughness);
+            }
+
+            // Calibrated physically-based human skin (UE5 SubsurfaceProfile + DualSpecularGGX), eye (UE5 EyeBxDF),
+            // tearline, hair, lash and fabric parameters applied after glTF defaults.
+            if (name.find("mh_face") != string::npos)
+            {
+                // Preserve crisp pore micro-contrast (62% Burley hemoglobin scatter, 38% sharp core) + UE5 DualSpecularGGX (Clearcoat=0, Sheen=0)
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.62f);
+                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0018f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.28f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.13f);
+                material->SetProperty(MaterialProperty::Ior, 1.40f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material->SetProperty(MaterialProperty::Sheen, 0.0f);
+            }
+            else if (name.find("mh_skin") != string::npos || name.find("_skin") != string::npos || name.find("skin_") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.56f);
+                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0015f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.29f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.14f);
+                material->SetProperty(MaterialProperty::Ior, 1.40f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material->SetProperty(MaterialProperty::Sheen, 0.0f);
+            }
+            else if (name.find("mh_hair") != string::npos)
+            {
+                // Low stochastic alpha cutoff preserves dense crown & temple baby-hair volume so the scalp never peeks through
+                material->SetProperty(MaterialProperty::AlphaCutoff, 0.06f);
+            }
+            else if (name.find("mh_tearline") != string::npos)
+            {
+                // Whisper-subtle clear wet meniscus along eyelid margin (zero pink stripe on upper lid)
+                material->SetProperty(MaterialProperty::ColorR, 0.28f);
+                material->SetProperty(MaterialProperty::ColorG, 0.16f);
+                material->SetProperty(MaterialProperty::ColorB, 0.15f);
+                material->SetProperty(MaterialProperty::ColorA, 0.045f);
+                material->SetProperty(MaterialProperty::AlphaBlend, 1.0f);
+                material->SetProperty(MaterialProperty::AlphaCutoff, 0.0f);
+                material->SetProperty(MaterialProperty::Ior, 1.15f);
+                material->SetProperty(MaterialProperty::Roughness, 0.06f);
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.35f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.04f);
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
+            else if (name.find("mh_eyeshell") != string::npos)
+            {
+                // Smooth eyelid-socket ambient occlusion shadow shell over the upper eyeball
+                material->SetProperty(MaterialProperty::ColorA, 0.999f);
+                material->SetProperty(MaterialProperty::AlphaBlend, 1.0f);
+                material->SetProperty(MaterialProperty::AlphaCutoff, 0.0f);
+                material->SetProperty(MaterialProperty::Ior, 1.02f);
+                material->SetProperty(MaterialProperty::Roughness, 0.98f);
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+            }
+            else if (name.find("mh_eyelashes") != string::npos)
+            {
+                // Smooth forward alpha-blended dark lashes with near-zero Fresnel (Ior=1.02 -> F0~=0.0001) so strands never turn white or reflective
+                material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                material->SetProperty(MaterialProperty::ColorA, 0.999f);
+                material->SetProperty(MaterialProperty::AlphaBlend, 1.0f);
+                material->SetProperty(MaterialProperty::AlphaCutoff, 0.0f);
+                material->SetProperty(MaterialProperty::Ior, 1.02f);
+                material->SetProperty(MaterialProperty::Roughness, 0.96f);
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
+            else if (name.find("mh_eyes") != string::npos || name.find("cornea") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::Ior, 1.38f);
+                material->SetProperty(MaterialProperty::Clearcoat, 1.00f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.015f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.36f);
+                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0009f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.48f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.36f);
+            }
+            else if (name.find("mh_caruncle") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::Ior, 1.38f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.85f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.05f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.68f);
+                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0012f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.30f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.24f);
+            }
+            else if (name.find("mh_shirt") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::Ior, 1.35f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material->SetProperty(MaterialProperty::Sheen, 0.48f);
+                material->SetProperty(MaterialProperty::SheenColorR, 0.56f);
+                material->SetProperty(MaterialProperty::SheenColorG, 0.64f);
+                material->SetProperty(MaterialProperty::SheenColorB, 0.74f);
+                material->SetProperty(MaterialProperty::SheenRoughness, 0.74f);
             }
 
             aiColor4D emissive(0.0f, 0.0f, 0.0f, 0.0f);

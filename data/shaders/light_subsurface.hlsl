@@ -87,10 +87,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             continue;
         }
 
-        // the surface under the sample is rarely on the disk, the true distance decides how much arrives
+        // the surface under the sample is rarely on the disk, the true distance decides how much arrives.
+        // clamp to 0.75 * r so grazing silhouette projections never spike the radial Burley profile.
         float sample_depth    = tex_depth.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0).r;
         float3 sample_surface = get_position(sample_depth, render_uv_to_screen_uv(sample_uv));
-        float distance_true   = length(sample_surface - position);
+        float distance_true   = max(length(sample_surface - position), r * 0.75f);
         float3 weight         = subsurface_burley_profile(distance_true, radius) * rcp_pdf / float(sample_count);
 
         light_sum  += sample_light.rgb * weight;

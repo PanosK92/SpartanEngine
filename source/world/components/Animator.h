@@ -218,6 +218,105 @@ namespace spartan
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices
         );
+        struct ClothConstraint
+        {
+            uint32_t a = 0;
+            uint32_t b = 0;
+            float rest_length = 0.0f;
+        };
+
+        struct ClothCapsuleSpec
+        {
+            int32_t joint_a = -1;
+            int32_t joint_b = -1;
+            math::Vector3 offset_a = math::Vector3::Zero;
+            math::Vector3 offset_b = math::Vector3::Zero;
+            float radius = 0.08f;
+        };
+
+        struct ClothVertexBinding
+        {
+            uint16_t nodes[3] = { 0, 0, 0 };
+            float weights[3] = { 1.0f, 0.0f, 0.0f };
+        };
+
+        struct ClothSurface
+        {
+            uint32_t vertex_offset = 0;
+            uint32_t vertex_count = 0;
+            std::vector<ClothVertexBinding> vertex_bindings;
+            std::vector<uint32_t> particle_rep_vertex;
+            std::vector<math::Vector3> positions;
+            std::vector<math::Vector3> prev_positions;
+            std::vector<math::Vector3> skinned_positions;
+            std::vector<math::Vector3> skinned_normals;
+            std::vector<math::Vector3> displacements;
+            std::vector<float> inv_mass;
+            std::vector<float> max_distance;
+            std::vector<float> anim_drive;
+            std::vector<ClothConstraint> stretch_constraints;
+            std::vector<ClothConstraint> bend_constraints;
+            bool settled = false;
+        };
+
+        struct SkinnedClothState
+        {
+            const Mesh* built_mesh = nullptr;
+            std::vector<ClothSurface> surfaces;
+            std::vector<ClothCapsuleSpec> capsules;
+            math::Matrix cached_world = math::Matrix::Identity;
+            math::Matrix prev_world = math::Matrix::Identity;
+            bool has_prev_world = false;
+            float time = 0.0f;
+        };
+
+        struct EyelidVertex
+        {
+            uint32_t vertex_index = 0;
+            uint8_t eye_side = 0; // 0 = left, 1 = right
+            float upper_weight = 0.0f;
+            float lower_weight = 0.0f;
+        };
+
+        struct ProceduralEyeState
+        {
+            const Mesh* built_mesh = nullptr;
+            int32_t head_joint = -1;
+            math::Vector3 eye_center_l = math::Vector3::Zero;
+            math::Vector3 eye_center_r = math::Vector3::Zero;
+            math::Vector3 eye_right = math::Vector3::Right;
+            math::Vector3 eye_up = math::Vector3::Up;
+            math::Vector3 eye_forward = math::Vector3::Forward;
+            float eye_radius = 0.012f;
+            std::vector<uint32_t> left_eye_vertices;
+            std::vector<uint32_t> right_eye_vertices;
+            std::vector<EyelidVertex> eyelid_vertices;
+            bool valid = false;
+
+            // Live animation state (organic blink + natural human saccades)
+            float blink_timer = 1.6f;
+            float blink_phase = -1.0f; // < 0 means eyes open; [0..duration] means blinking
+            float blink_duration = 0.185f;
+            bool pending_double_blink = false;
+            float gaze_timer = 1.1f;
+            float gaze_yaw = 0.0f;
+            float gaze_pitch = 0.0f;
+            float gaze_start_yaw = 0.0f;
+            float gaze_start_pitch = 0.0f;
+            float gaze_target_yaw = 0.0f;
+            float gaze_target_pitch = 0.0f;
+            float gaze_move_t = 1.0f;
+            float gaze_move_duration = 0.075f;
+            uint32_t rng_state = 0x5A17E3u;
+            float clock = 0.0f;
+        };
+
+        void ResolveSkinnedCloth(Mesh* mesh, const Skeleton& skeleton);
+        void StepSkinnedCloth(Mesh* mesh, const Skeleton& skeleton, float delta_time);
+        void ResetSkinnedCloth();
+        void ResolveProceduralEyes(Mesh* mesh, const Skeleton& skeleton);
+        void StepProceduralEyes(Mesh* mesh, const Skeleton& skeleton, float delta_time);
+        void ResetProceduralEyes();
         bool ResolveJointGlobal(const std::string& name, math::Matrix& out_global);
         int32_t FindJointIndex(const Skeleton& skeleton, const std::string& name) const;
         Mesh* ResolveMesh();
@@ -281,5 +380,10 @@ namespace spartan
         std::vector<math::Matrix> m_ik_globals;
         animation_evaluate::PoseInertializer m_inertializer;
         bool m_external_pose_active = false;
+        SkinnedClothState m_cloth_state;
+        bool m_cloth_enabled = true;
+        float m_cloth_dt = 0.0f;
+        ProceduralEyeState m_eye_state;
+        bool m_procedural_eyes_enabled = true;
     };
 }

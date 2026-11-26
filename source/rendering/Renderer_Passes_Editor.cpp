@@ -544,6 +544,11 @@ namespace spartan
 
     void Renderer::Pass_Text(RHI_Texture* tex_out, const bool display_encoded, const bool cinematic_only)
     {
+        if (!tex_out || !tex_out->GetRhiResource())
+        {
+            return;
+        }
+
         const auto& shader_v = GetShader(Renderer_Shader::font_v);
         const auto& shader_p = GetShader(Renderer_Shader::font_p);
 
@@ -575,7 +580,7 @@ namespace spartan
         RHI_Texture* tex_blur         = GetRenderTarget(Renderer_RenderTarget::blur);
         RHI_Shader* shader_composite  = GetShader(Renderer_Shader::blur_composite_c);
         const bool backdrop_supported =
-            !cinematic_only && tex_backdrop && tex_blur && shader_composite && shader_composite->IsCompiled() &&
+            !cinematic_only && tex_backdrop && tex_backdrop->GetRhiResource() && tex_blur && tex_blur->GetRhiResource() && shader_composite && shader_composite->IsCompiled() &&
             tex_blur->GetWidth() >= tex_backdrop->GetWidth() && tex_blur->GetHeight() >= tex_backdrop->GetHeight();
         if (backdrop_supported)
         {

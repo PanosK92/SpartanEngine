@@ -61,6 +61,7 @@ For a terrain brush stroke, pass `points` as alternating world X and Z coordinat
 
 ### Working rules for agents
 
+- DirectX 12 (`d3d12`, `binaries/spartan_d3d12_development.exe`) is the primary graphics API on Windows; use it by default for building, launching, and testing unless specifically targeting Vulkan, Metal, or WebGPU.
 - Mutations require edit mode (`engine_set_mode`); camera moves also work while paused.
 - Look before and after every change: frame the area with `camera_set_view` and capture with `screenshot_take`.
 - Do not hand-edit `.world` files; use the bridge, then `world_save` only when the change should be kept.

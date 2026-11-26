@@ -63,6 +63,7 @@ export const engine_overview = [
   "The Node MCP adapter exposes stable tools over stdio for external agents and forwards commands to the engine bridge.",
   "Bridge commands carry request ids echoed in responses and debug logs.",
   "The in-editor assistant talks to assistant.mjs on 127.0.0.1:47778 and uses deterministic fast paths before escalating to Cursor.",
+  "DirectX 12 (d3d12, binaries/spartan_d3d12_development.exe) is the primary graphics API on Windows; use it by default for building, launching, and testing unless specifically targeting Vulkan, Metal, or WebGPU.",
   "",
   "Prefer context_snapshot, camera_snapshot, world_raycast, entity_resolve, component_get, and native batch tools before issuing many small commands.",
   "For explicit greyboxes, resolve or create the parent with entity_resolve/entity_create_empty, then build with entity_create_primitive_batch and entity_create_light. For normal scene-construction requests, treat the result as finished procedural content with generated geometry, semantic materials, descriptive feature names, and calibrated lighting.",

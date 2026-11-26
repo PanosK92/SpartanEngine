@@ -243,11 +243,13 @@ float3 subsurface_scattering(Surface surface, Light light)
 // light.radiance carries the unshadowed energy without n_dot_l, the result is demodulated diffuse.
 float3 subsurface_transmission(Surface surface, Light light)
 {
-    // the far side is not shaded here, its normal is taken as the reverse of this one, the
-    // offset lets the glow start a little before the terminator instead of at a hard line
-    float3 l    = -light.to_pixel;
-    float entry = saturate(0.3f - dot(surface.normal, l));
-    if (entry <= 0.0f)
+    // Gate transmission on the true geometric normal so front-lit grazing surfaces (e.g. hands,
+    // knuckles, forearms, cheeks) never self-transmit through their own front wall.
+    float3 l           = -light.to_pixel;
+    float3 geo_normal  = get_geometric_normal(surface.uv);
+    float  geo_ndotl   = dot(geo_normal, l);
+    float  back_facing = saturate((-geo_ndotl + 0.06f) / 0.26f);
+    if (back_facing <= 0.0f)
     {
         return 0.0f;
     }
@@ -261,8 +263,8 @@ float3 subsurface_transmission(Surface surface, Light light)
     }
 
     float safety = light.is_area() ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f : 0.01f;
-    return light.radiance * entry * INV_PI * rt_subsurface_transmittance(
-        surface.position, surface.normal, l, distance_max, safety, surface.subsurface_radius);
+    return light.radiance * back_facing * INV_PI * rt_subsurface_transmittance(
+        surface.position, geo_normal, l, distance_max, safety, surface.subsurface_radius);
 }
 #endif
 
@@ -496,32 +498,50 @@ void evaluate_light(
         }
 
         float3 L_specular_lobes = 0.0f;
+        const bool is_eye_surface  = !has_hair && !is_transparent && surface.clearcoat >= 0.95f && surface.clearcoat_roughness <= 0.03f && surface.subsurface_scattering > 0.20f;
+        const bool is_skin_surface = !has_hair && !is_transparent && !is_eye_surface && has_profile && surface.clearcoat <= 0.05f;
         if (has_hair)
         {
+            // Sample the real G-buffer hair albedo because light.hlsl builds Surface with replace_color_with_one=true.
+            // out_diffuse remains demodulated (light_composition multiplies by albedo once), while out_specular uses
+            // the true melanin albedo for TRT and backlit TT so dark hair/eyebrows/eyelashes never frost white.
+            float3 hair_albedo = tex_albedo.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
             float3 hair_diffuse;
             float3 hair_specular;
-            BRDF_Hair(surface, angular_info, hair_diffuse, hair_specular);
-            // Marschner hair integrates cylindrical lighting against raw radiance directly (including backlit TT)
-            float hair_occ = lerp(0.45f, 1.0f, micro_shadow);
+            BRDF_Hair(surface, angular_info, hair_albedo, hair_diffuse, hair_specular);
+            float hair_occ = lerp(0.35f, 1.0f, micro_shadow);
             out_diffuse  += hair_diffuse * light_radiance_raw * diffuse_precomputed * hair_occ;
             out_specular += hair_specular * light_radiance_raw * specular_precomputed * hair_occ;
         }
         else if (has_brdf)
         {
-            if (surface.anisotropic > 0.0f)
+            if (is_eye_surface)
             {
-                L_specular_lobes += BRDF_Specular_Anisotropic(surface, angular_info);
+                // Eye cornea owns the razor-sharp convex catchlight; suppress dull matte base specular so iris stays crystal clear
+                L_specular_lobes += BRDF_Specular_Isotropic(surface, angular_info) * 0.12f;
+                L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
             }
             else
             {
-                L_specular_lobes += BRDF_Specular_Isotropic(surface, angular_info);
-            }
+                if (surface.anisotropic > 0.0f)
+                {
+                    L_specular_lobes += BRDF_Specular_Anisotropic(surface, angular_info);
+                }
+                else if (is_skin_surface)
+                {
+                    L_specular_lobes += BRDF_Specular_DualLobe_Skin(surface, angular_info);
+                }
+                else
+                {
+                    L_specular_lobes += BRDF_Specular_Isotropic(surface, angular_info);
+                }
 
-            if (surface.clearcoat > 0.0f)
-            {
-                // the base is lit through the coat, what the coat reflects never reaches it
-                L_specular_lobes *= 1.0f - F_Schlick(0.04f, 1.0f, angular_info.v_dot_h) * surface.clearcoat;
-                L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
+                if (surface.clearcoat > 0.0f)
+                {
+                    // the base is lit through the coat, what the coat reflects never reaches it
+                    L_specular_lobes *= 1.0f - F_Schlick(0.04f, 1.0f, angular_info.v_dot_h) * surface.clearcoat;
+                    L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
+                }
             }
 
             if (surface.flake_weight > 0.0f)
@@ -558,7 +578,13 @@ void evaluate_light(
         if (has_brdf && !is_transparent && !has_hair)
         {
             float reflected_fraction = surface.is_foliage() ? 1.0f : 1.0f - scattering_fraction;
-            L_diffuse_term += BRDF_Diffuse(surface, angular_info) * reflected_fraction;
+            float3 diffuse_lobe = BRDF_Diffuse(surface, angular_info) * reflected_fraction;
+            if (is_eye_surface)
+            {
+                float3 eye_albedo = tex_albedo.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+                diffuse_lobe *= BRDF_Eye_Iris_Caustic(surface, angular_info, eye_albedo);
+            }
+            L_diffuse_term += diffuse_lobe;
         }
     }
 

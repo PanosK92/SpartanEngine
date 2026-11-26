@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../profiling/WorldWork.h"
 #include "../../profiling/Profiler.h"
 #include <cctype>
+#include <unordered_map>
 #include "Animator.h"
 #include "Camera.h"
 #include "Render.h"
@@ -239,9 +240,16 @@ namespace spartan
             const auto& skeleton = job.mesh->GetSkeleton();
             const auto* binding = job.mesh->GetSkeletalMeshBinding();
             if (skeleton && binding)
+            {
                 job.succeeded = animation_evaluate::SkinMesh(*binding, animator->m_global_matrices,
                     skeleton->bind_inverse_global_matrices, animator->m_bind_vertices,
                     animator->m_skinned_vertices, animator->m_skin_matrices);
+                if (job.succeeded)
+                {
+                    animator->StepSkinnedCloth(job.mesh.get(), *skeleton, animator->m_cloth_dt);
+                    animator->StepProceduralEyes(job.mesh.get(), *skeleton, animator->m_cloth_dt);
+                }
+            }
         };
         // A nested ParallelLoop runs inline. With only a few characters due,
         // let their vertex loops use the pool instead of serializing each mesh.
@@ -328,6 +336,8 @@ namespace spartan
             target = {};
         }
         m_limb_ik_resolved = false;
+        ResetSkinnedCloth();
+        ResetProceduralEyes();
     }
 
     Mesh* Animator::ResolveMesh()
@@ -1966,6 +1976,19 @@ namespace spartan
         }
         EnsureDynamicBlas(mesh);
 
+        if (m_cloth_enabled)
+        {
+            ResolveSkinnedCloth(mesh, skeleton);
+            if (!m_cloth_state.surfaces.empty() && GetEntity())
+            {
+                m_cloth_state.cached_world = GetEntity()->GetMatrix();
+            }
+        }
+        if (m_procedural_eyes_enabled)
+        {
+            ResolveProceduralEyes(mesh, skeleton);
+        }
+
         if (batch_skinning)
         {
             // A script may replace the pose again this frame; only publish its final pose.
@@ -1989,6 +2012,8 @@ namespace spartan
             m_skinned_vertices,
             m_skin_matrices))
         {
+            StepSkinnedCloth(mesh, skeleton, m_cloth_dt);
+            StepProceduralEyes(mesh, skeleton, m_cloth_dt);
             SP_PROFILE_CPU_END();
             SP_PROFILE_CPU_START("animation_upload");
             mesh->GetVertices() = m_skinned_vertices;
@@ -2002,6 +2027,1346 @@ namespace spartan
             PublishPoseBounds(mesh);
         }
         SP_PROFILE_CPU_END();
+    }
+
+    void Animator::ResetSkinnedCloth()
+    {
+        m_cloth_state = {};
+    }
+
+    void Animator::ResolveSkinnedCloth(Mesh* mesh, const Skeleton& skeleton)
+    {
+        if (!mesh || m_cloth_state.built_mesh == mesh)
+        {
+            return;
+        }
+
+        m_cloth_state = {};
+        m_cloth_state.built_mesh = mesh;
+
+        auto to_lower = [](string value)
+        {
+            for (char& ch : value)
+            {
+                ch = static_cast<char>(tolower(static_cast<unsigned char>(ch)));
+            }
+            return value;
+        };
+
+        auto is_cloth_garment = [&](const string& entity_name, const string& mat_name) -> bool
+        {
+            const string combined = to_lower(entity_name + " " + mat_name);
+            if (combined.find("skin") != string::npos || combined.find("face") != string::npos ||
+                combined.find("hair") != string::npos || combined.find("eye") != string::npos ||
+                combined.find("lash") != string::npos || combined.find("brow") != string::npos ||
+                combined.find("beard") != string::npos || combined.find("shoe") != string::npos ||
+                combined.find("boot") != string::npos || combined.find("pant") != string::npos ||
+                combined.find("jean") != string::npos || combined.find("trouser") != string::npos ||
+                combined.find("caruncle") != string::npos || combined.find("teeth") != string::npos)
+            {
+                return false;
+            }
+            return combined.find("shirt") != string::npos || combined.find("top") != string::npos ||
+                   combined.find("jacket") != string::npos || combined.find("coat") != string::npos ||
+                   combined.find("cape") != string::npos || combined.find("cloth") != string::npos ||
+                   combined.find("dress") != string::npos || combined.find("skirt") != string::npos ||
+                   combined.find("sweater") != string::npos || combined.find("hoodie") != string::npos ||
+                   combined.find("tunic") != string::npos;
+        };
+
+        const vector<Render*>& renders = ResolveSkinRenders(mesh);
+        const vector<uint32_t>& indices = mesh->GetIndices();
+        if (renders.empty() || indices.empty() || m_bind_vertices.empty())
+        {
+            return;
+        }
+
+        // Compute character bind-pose anatomical axes and key joint positions
+        const size_t joint_count = skeleton.bind_inverse_global_matrices.size();
+        vector<Matrix> bind_globals(joint_count, Matrix::Identity);
+        for (size_t i = 0; i < joint_count; ++i)
+        {
+            bind_globals[i] = skeleton.bind_inverse_global_matrices[i].Inverted();
+        }
+
+        auto find_any_joint = [&](initializer_list<const char*> names) -> int32_t
+        {
+            for (const char* candidate : names)
+            {
+                int32_t idx = FindJointIndex(skeleton, candidate);
+                if (idx >= 0)
+                {
+                    return idx;
+                }
+            }
+            return -1;
+        };
+
+        const int32_t j_pelvis     = find_any_joint({ "pelvis", "hips", "mixamorig:Hips" });
+        const int32_t j_spine1     = find_any_joint({ "spine_01", "spine", "mixamorig:Spine" });
+        const int32_t j_spine2     = find_any_joint({ "spine_02", "spine1", "mixamorig:Spine1" });
+        const int32_t j_spine3     = find_any_joint({ "spine_03", "spine2", "chest", "mixamorig:Spine2" });
+        const int32_t j_neck       = find_any_joint({ "neck_01", "neck", "mixamorig:Neck" });
+        const int32_t j_upperarm_l = find_any_joint({ "upperarm_l", "upperarm.l", "leftarm", "mixamorig:LeftArm" });
+        const int32_t j_lowerarm_l = find_any_joint({ "lowerarm_l", "lowerarm.l", "leftforearm", "mixamorig:LeftForeArm" });
+        const int32_t j_upperarm_r = find_any_joint({ "upperarm_r", "upperarm.r", "rightarm", "mixamorig:RightArm" });
+        const int32_t j_lowerarm_r = find_any_joint({ "lowerarm_r", "lowerarm.r", "rightforearm", "mixamorig:RightForeArm" });
+
+        Vector3 up_axis = Vector3::Up;
+        Vector3 right_axis = Vector3::Right;
+        Vector3 neck_bind = Vector3::Zero;
+        bool has_neck = false;
+        if (j_pelvis >= 0 && j_neck >= 0)
+        {
+            Vector3 p_pelvis = bind_globals[j_pelvis].GetTranslation();
+            neck_bind = bind_globals[j_neck].GetTranslation();
+            has_neck = true;
+            Vector3 spine_dir = neck_bind - p_pelvis;
+            if (spine_dir.LengthSquared() > 1e-4f)
+            {
+                up_axis = spine_dir.Normalized();
+            }
+        }
+        if (j_upperarm_l >= 0 && j_upperarm_r >= 0)
+        {
+            Vector3 span = bind_globals[j_upperarm_l].GetTranslation() - bind_globals[j_upperarm_r].GetTranslation();
+            span -= up_axis * Vector3::Dot(span, up_axis);
+            if (span.LengthSquared() > 1e-4f)
+            {
+                right_axis = span.Normalized();
+            }
+        }
+
+        // Collect all cloth surfaces
+        for (Render* render : renders)
+        {
+            if (!render || !render->GetEntity())
+            {
+                continue;
+            }
+            const string entity_name = render->GetEntity()->GetObjectName();
+            const string mat_name = render->GetMaterialName();
+            if (!is_cloth_garment(entity_name, mat_name))
+            {
+                continue;
+            }
+
+            const uint32_t sub_idx = render->GetSubMeshIndex();
+            if (sub_idx >= mesh->GetSubMeshCount())
+            {
+                continue;
+            }
+            const GeometryRange& sub_range = mesh->GetSubMesh(sub_idx).root;
+            const uint32_t v_off = sub_range.vertex_offset;
+            const uint32_t v_cnt = sub_range.vertex_count;
+            if (v_cnt == 0 || v_off + v_cnt > m_bind_vertices.size())
+            {
+                continue;
+            }
+
+            ClothSurface surf;
+            surf.vertex_offset = v_off;
+            surf.vertex_count  = v_cnt;
+
+            // Build a clean single-sheet 3.0 cm spatial proxy cage over the garment so double-walled shells
+            // (outer + inner fabric layers) and split UV seams deform together smoothly with zero tearing or poke-through.
+            struct GridKey
+            {
+                int32_t x, y, z;
+                bool operator==(const GridKey& o) const { return x == o.x && y == o.y && z == o.z; }
+            };
+            struct GridHash
+            {
+                size_t operator()(const GridKey& k) const
+                {
+                    size_t h = static_cast<size_t>(k.x) * 73856093u;
+                    h ^= static_cast<size_t>(k.y) * 19349663u;
+                    h ^= static_cast<size_t>(k.z) * 83492791u;
+                    return h;
+                }
+            };
+
+            // First compute garment bind centroid & vertical span
+            float y_min = numeric_limits<float>::max();
+            float y_max = -numeric_limits<float>::max();
+            Vector3 centroid = Vector3::Zero;
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[v_off + v];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+                const float h = Vector3::Dot(p, up_axis);
+                y_min = min(y_min, h);
+                y_max = max(y_max, h);
+                centroid += p;
+            }
+            centroid /= static_cast<float>(v_cnt);
+
+            constexpr float cell_size = 0.032f;
+            unordered_map<GridKey, uint32_t, GridHash> cell_map;
+            cell_map.reserve(512);
+            vector<float> best_outward;
+
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[v_off + v];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+                const Vector3 n = bv.get_normal();
+                Vector3 radial = p - centroid;
+                radial -= up_axis * Vector3::Dot(radial, up_axis);
+                const float outward_score = Vector3::Dot(n, radial.LengthSquared() > 1e-6f ? radial.Normalized() : n);
+
+                const GridKey key
+                {
+                    static_cast<int32_t>(floorf(p.x / cell_size)),
+                    static_cast<int32_t>(floorf(p.y / cell_size)),
+                    static_cast<int32_t>(floorf(p.z / cell_size))
+                };
+                auto it = cell_map.find(key);
+                if (it == cell_map.end())
+                {
+                    const uint32_t pid = static_cast<uint32_t>(surf.positions.size());
+                    cell_map.emplace(key, pid);
+                    surf.positions.push_back(p);
+                    surf.prev_positions.push_back(p);
+                    surf.particle_rep_vertex.push_back(v);
+                    best_outward.push_back(outward_score);
+                }
+                else
+                {
+                    // Prefer outermost wall vertex as the proxy node's reference vertex so proxy normals always face outward
+                    const uint32_t pid = it->second;
+                    if (outward_score > best_outward[pid])
+                    {
+                        best_outward[pid] = outward_score;
+                        surf.particle_rep_vertex[pid] = v;
+                        surf.positions[pid] = p;
+                        surf.prev_positions[pid] = p;
+                    }
+                }
+            }
+
+            const uint32_t p_cnt = static_cast<uint32_t>(surf.positions.size());
+            if (p_cnt < 12)
+            {
+                continue;
+            }
+
+            surf.skinned_positions.resize(p_cnt);
+            surf.skinned_normals.resize(p_cnt);
+            surf.displacements.resize(p_cnt, Vector3::Zero);
+            surf.inv_mass.resize(p_cnt, 1.0f);
+            surf.max_distance.resize(p_cnt, 0.03f);
+            surf.anim_drive.resize(p_cnt, 0.08f);
+
+            const float height_span = max(y_max - y_min, 0.10f);
+            const Vector3 neck_center = has_neck ? neck_bind : (centroid + up_axis * (y_max - Vector3::Dot(centroid, up_axis)));
+
+            for (uint32_t p = 0; p < p_cnt; ++p)
+            {
+                const Vector3& pos = surf.positions[p];
+                const Vector3 nor = m_bind_vertices[v_off + surf.particle_rep_vertex[p]].get_normal();
+                const float h_from_top = clamp((y_max - Vector3::Dot(pos, up_axis)) / height_span, 0.0f, 1.0f);
+
+                Vector3 rel_neck = pos - neck_center;
+                rel_neck -= up_axis * Vector3::Dot(rel_neck, up_axis);
+                const float neck_radial = rel_neck.Length();
+                const float lateral = fabsf(Vector3::Dot(pos - centroid, right_axis));
+                const float up_facing = Vector3::Dot(nor, up_axis);
+
+                // Collar ring & top deltoid shoulder ridge stay cleanly seated on the body so fabric never slips or opens gaps
+                if ((h_from_top < 0.11f && neck_radial < 0.165f) || (h_from_top < 0.17f && up_facing > 0.30f))
+                {
+                    surf.inv_mass[p]     = 0.0f;
+                    surf.max_distance[p] = 0.0f;
+                    surf.anim_drive[p]   = 1.0f;
+                    continue;
+                }
+
+                // Chest, ribs, waist, sleeves & bottom hem drape smoothly downward under gravity & hug body capsules
+                const float shoulder_top = clamp((up_facing - 0.15f) / 0.45f, 0.0f, 1.0f) * clamp(1.0f - h_from_top / 0.32f, 0.0f, 1.0f);
+                const float sleeve_mask  = clamp((lateral - 0.19f) / 0.08f, 0.0f, 1.0f);
+                const float drape_t      = clamp((h_from_top - 0.12f) / 0.80f, 0.0f, 1.0f);
+
+                float max_d = 0.008f + 0.036f * drape_t;
+                float drive = 0.24f - 0.19f * drape_t;
+
+                max_d = max_d * (1.0f - 0.65f * shoulder_top) * (1.0f - 0.30f * sleeve_mask);
+                drive = drive + 0.24f * shoulder_top + 0.08f * sleeve_mask;
+
+                surf.inv_mass[p]     = 1.0f;
+                surf.max_distance[p] = clamp(max_d, 0.004f, 0.044f);
+                surf.anim_drive[p]   = clamp(drive, 0.035f, 0.50f);
+            }
+
+            // Connect nearby proxy nodes into a smooth unified stretch + bending cloth cage (~300-450 nodes)
+            const float stretch_r2 = (cell_size * 1.75f) * (cell_size * 1.75f);
+            const float bend_r2    = (cell_size * 3.00f) * (cell_size * 3.00f);
+            for (uint32_t a = 0; a < p_cnt; ++a)
+            {
+                for (uint32_t b = a + 1; b < p_cnt; ++b)
+                {
+                    const float d2 = (surf.positions[b] - surf.positions[a]).LengthSquared();
+                    if (d2 <= stretch_r2 && d2 > 1e-6f)
+                    {
+                        surf.stretch_constraints.push_back({ a, b, sqrtf(d2) });
+                    }
+                    else if (d2 <= bend_r2 && d2 > stretch_r2)
+                    {
+                        surf.bend_constraints.push_back({ a, b, sqrtf(d2) });
+                    }
+                }
+            }
+
+            // Bind every high-res render vertex (outer wall, inner wall, collar, hem) smoothly to its 3 nearest proxy nodes
+            surf.vertex_bindings.resize(v_cnt);
+            const float inv_sigma2 = 1.0f / (2.0f * cell_size * cell_size);
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[v_off + v];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+
+                uint32_t best_id[3] = { 0, 0, 0 };
+                float best_d2[3] = { numeric_limits<float>::max(), numeric_limits<float>::max(), numeric_limits<float>::max() };
+                for (uint32_t k = 0; k < p_cnt; ++k)
+                {
+                    const float d2 = (p - surf.positions[k]).LengthSquared();
+                    if (d2 < best_d2[0])
+                    {
+                        best_d2[2] = best_d2[1]; best_id[2] = best_id[1];
+                        best_d2[1] = best_d2[0]; best_id[1] = best_id[0];
+                        best_d2[0] = d2;         best_id[0] = k;
+                    }
+                    else if (d2 < best_d2[1])
+                    {
+                        best_d2[2] = best_d2[1]; best_id[2] = best_id[1];
+                        best_d2[1] = d2;         best_id[1] = k;
+                    }
+                    else if (d2 < best_d2[2])
+                    {
+                        best_d2[2] = d2;         best_id[2] = k;
+                    }
+                }
+
+                float w0 = expf(-best_d2[0] * inv_sigma2);
+                float w1 = expf(-best_d2[1] * inv_sigma2);
+                float w2 = expf(-best_d2[2] * inv_sigma2);
+                const float w_sum = max(w0 + w1 + w2, 1e-6f);
+                surf.vertex_bindings[v] =
+                {
+                    { static_cast<uint16_t>(best_id[0]), static_cast<uint16_t>(best_id[1]), static_cast<uint16_t>(best_id[2]) },
+                    { w0 / w_sum, w1 / w_sum, w2 / w_sum }
+                };
+            }
+
+            m_cloth_state.surfaces.push_back(move(surf));
+        }
+
+        if (m_cloth_state.surfaces.empty())
+        {
+            return;
+        }
+
+        // Auto-calibrate skeleton body collision capsules in bind pose from the garment vertices
+        auto add_capsule = [&](int32_t ja, int32_t jb, const Vector3& off_a, const Vector3& off_b, float min_r, float max_r, float inset)
+        {
+            if (ja < 0 || jb < 0)
+            {
+                return;
+            }
+            const Vector3 pa = bind_globals[ja].GetTranslation() + off_a;
+            const Vector3 pb = bind_globals[jb].GetTranslation() + off_b;
+            const Vector3 ab = pb - pa;
+            const float ab_len_sq = ab.LengthSquared();
+            if (ab_len_sq < 1e-5f)
+            {
+                return;
+            }
+
+            float min_dist = numeric_limits<float>::max();
+            for (const ClothSurface& surf : m_cloth_state.surfaces)
+            {
+                for (const Vector3& pt : surf.positions)
+                {
+                    const float t = clamp(Vector3::Dot(pt - pa, ab) / ab_len_sq, 0.0f, 1.0f);
+                    const Vector3 closest = pa + ab * t;
+                    const float d = (pt - closest).Length();
+                    if (d < min_dist)
+                    {
+                        min_dist = d;
+                    }
+                }
+            }
+
+            const float radius = clamp(min_dist - inset, min_r, max_r);
+            // Convert offsets into each joint's local frame so they follow joint rotation accurately
+            const Vector3 local_off_a = bind_globals[ja].Inverted().GetRotation() * off_a;
+            const Vector3 local_off_b = bind_globals[jb].Inverted().GetRotation() * off_b;
+            m_cloth_state.capsules.push_back({ ja, jb, local_off_a, local_off_b, radius });
+        };
+
+        const int32_t torso_top = (j_spine3 >= 0) ? j_spine3 : ((j_spine2 >= 0) ? j_spine2 : j_neck);
+        const int32_t torso_mid = (j_spine2 >= 0) ? j_spine2 : j_spine1;
+        add_capsule(j_pelvis, torso_mid, Vector3::Zero, Vector3::Zero, 0.07f, 0.135f, 0.008f);
+        add_capsule(torso_mid, torso_top, Vector3::Zero, Vector3::Zero, 0.075f, 0.145f, 0.008f);
+        add_capsule(torso_mid, torso_top, right_axis * 0.055f, right_axis * 0.055f, 0.055f, 0.115f, 0.007f);
+        add_capsule(torso_mid, torso_top, -right_axis * 0.055f, -right_axis * 0.055f, 0.055f, 0.115f, 0.007f);
+        add_capsule(j_upperarm_l, j_lowerarm_l, Vector3::Zero, Vector3::Zero, 0.036f, 0.068f, 0.006f);
+        add_capsule(j_upperarm_r, j_lowerarm_r, Vector3::Zero, Vector3::Zero, 0.036f, 0.068f, 0.006f);
+    }
+
+    void Animator::StepSkinnedCloth(Mesh* mesh, const Skeleton& skeleton, float delta_time)
+    {
+        if (!m_cloth_enabled || m_cloth_state.surfaces.empty() || m_cloth_state.built_mesh != mesh)
+        {
+            return;
+        }
+        if (m_skinned_vertices.empty() || m_global_matrices.size() < skeleton.bind_inverse_global_matrices.size())
+        {
+            return;
+        }
+
+        // Build live body collision capsules in character-local space
+        struct LiveCapsule
+        {
+            Vector3 a;
+            Vector3 b;
+            float radius;
+        };
+        LiveCapsule live_capsules[12];
+        uint32_t capsule_count = 0;
+        for (const ClothCapsuleSpec& spec : m_cloth_state.capsules)
+        {
+            if (capsule_count >= 12)
+            {
+                break;
+            }
+            if (spec.joint_a < 0 || spec.joint_b < 0 ||
+                spec.joint_a >= static_cast<int32_t>(m_global_matrices.size()) ||
+                spec.joint_b >= static_cast<int32_t>(m_global_matrices.size()))
+            {
+                continue;
+            }
+            const Matrix& ma = m_global_matrices[spec.joint_a];
+            const Matrix& mb = m_global_matrices[spec.joint_b];
+            live_capsules[capsule_count++] =
+            {
+                ma.GetTranslation() + ma.GetRotation() * spec.offset_a,
+                mb.GetTranslation() + mb.GetRotation() * spec.offset_b,
+                spec.radius
+            };
+        }
+
+        // Transform world gravity (-9.81 Y) into character-local space and compute inertial frame carry
+        const Quaternion world_rot = m_cloth_state.cached_world.GetRotation().Normalized();
+        const Vector3 gravity_local = world_rot.Conjugate() * Vector3(0.0f, -9.81f, 0.0f);
+
+        Matrix frame_carry = Matrix::Identity;
+        bool use_carry = false;
+        if (m_cloth_state.has_prev_world)
+        {
+            frame_carry = m_cloth_state.prev_world * m_cloth_state.cached_world.Inverted();
+            const float jump_sq = frame_carry.GetTranslation().LengthSquared();
+            use_carry = jump_sq < 2.25f; // ignore teleports
+        }
+        m_cloth_state.prev_world = m_cloth_state.cached_world;
+        m_cloth_state.has_prev_world = true;
+
+        const float clamped_dt = clamp(delta_time > 0.0f ? delta_time : (1.0f / 60.0f), 1.0f / 240.0f, 1.0f / 30.0f);
+        m_cloth_state.time += clamped_dt;
+
+        for (ClothSurface& surf : m_cloth_state.surfaces)
+        {
+            const uint32_t p_cnt = static_cast<uint32_t>(surf.positions.size());
+            if (surf.vertex_offset + surf.vertex_count > m_skinned_vertices.size())
+            {
+                continue;
+            }
+
+            // Read freshly skinned target positions and normals for each welded cloth particle
+            for (uint32_t p = 0; p < p_cnt; ++p)
+            {
+                const RHI_Vertex_PosTexNorTan& sv = m_skinned_vertices[surf.vertex_offset + surf.particle_rep_vertex[p]];
+                surf.skinned_positions[p] = Vector3(sv.pos[0], sv.pos[1], sv.pos[2]);
+                surf.skinned_normals[p]   = sv.get_normal();
+            }
+
+            const bool warm_start = !surf.settled;
+            if (warm_start)
+            {
+                surf.positions      = surf.skinned_positions;
+                surf.prev_positions = surf.skinned_positions;
+                surf.settled        = true;
+            }
+            else if (use_carry)
+            {
+                // Carry simulated cloth smoothly across world rotation/translation for genuine inertial swing
+                for (uint32_t p = 0; p < p_cnt; ++p)
+                {
+                    if (surf.inv_mass[p] <= 0.0f)
+                    {
+                        continue;
+                    }
+                    const Vector3 carried_pos  = surf.positions[p] * frame_carry;
+                    const Vector3 carried_prev = surf.prev_positions[p] * frame_carry;
+                    surf.positions[p]      = Vector3::Lerp(surf.positions[p], carried_pos, 0.65f);
+                    surf.prev_positions[p] = Vector3::Lerp(surf.prev_positions[p], carried_prev, 0.65f);
+                }
+            }
+
+            const int substeps   = warm_start ? 16 : 2;
+            const int iterations = warm_start ? 4 : 4;
+            const float sub_dt   = warm_start ? (1.0f / 60.0f) : (clamped_dt / static_cast<float>(substeps));
+            const float sub_dt2  = sub_dt * sub_dt;
+            const float damping  = warm_start ? 0.78f : 0.84f;
+
+            const float alpha_stretch = 0.00025f / sub_dt2;
+            const float alpha_bend    = 0.0035f / sub_dt2;
+
+            for (int step = 0; step < substeps; ++step)
+            {
+                // 1. Predict particle positions under calm weighty gravity (zero artificial vibration/jitter!)
+                for (uint32_t p = 0; p < p_cnt; ++p)
+                {
+                    if (surf.inv_mass[p] <= 0.0f)
+                    {
+                        surf.positions[p]      = surf.skinned_positions[p];
+                        surf.prev_positions[p] = surf.skinned_positions[p];
+                        continue;
+                    }
+
+                    const Vector3 cur = surf.positions[p];
+                    Vector3 vel = (cur - surf.prev_positions[p]) * damping;
+                    surf.prev_positions[p] = cur;
+
+                    Vector3 next_pos = cur + vel + gravity_local * (0.95f * sub_dt2);
+
+                    // Smooth animation drive keeps garment following torso & breathing motion with calm gravity drape
+                    const float drive = surf.anim_drive[p] * (warm_start ? 0.28f : 0.38f);
+                    next_pos = Vector3::Lerp(next_pos, surf.skinned_positions[p], drive);
+
+                    surf.positions[p] = next_pos;
+                }
+
+                // 2. XPBD constraint & collision solver iterations (pose-relative rest lengths prevent T-pose -> idle buckling!)
+                for (int iter = 0; iter < iterations; ++iter)
+                {
+                    // Structural stretch constraints using live posed edge length (eliminates T-pose armpit crumpling)
+                    for (const ClothConstraint& c : surf.stretch_constraints)
+                    {
+                        const float wa = surf.inv_mass[c.a];
+                        const float wb = surf.inv_mass[c.b];
+                        const float w_sum = wa + wb;
+                        if (w_sum <= 0.0f)
+                        {
+                            continue;
+                        }
+                        const float posed_len = (surf.skinned_positions[c.b] - surf.skinned_positions[c.a]).Length();
+                        if (posed_len < 1e-5f)
+                        {
+                            continue;
+                        }
+                        Vector3 diff = surf.positions[c.b] - surf.positions[c.a];
+                        const float dist = diff.Length();
+                        if (dist < 1e-6f)
+                        {
+                            continue;
+                        }
+                        const float corr = (dist - posed_len) / (w_sum + alpha_stretch);
+                        const Vector3 dir = diff / dist;
+                        if (wa > 0.0f)
+                        {
+                            surf.positions[c.a] += dir * (corr * wa);
+                        }
+                        if (wb > 0.0f)
+                        {
+                            surf.positions[c.b] -= dir * (corr * wb);
+                        }
+                    }
+
+                    // Bending constraints (broad, silky cotton jersey folds without micro-kinks)
+                    for (const ClothConstraint& c : surf.bend_constraints)
+                    {
+                        const float wa = surf.inv_mass[c.a];
+                        const float wb = surf.inv_mass[c.b];
+                        const float w_sum = wa + wb;
+                        if (w_sum <= 0.0f)
+                        {
+                            continue;
+                        }
+                        const float posed_bend = (surf.skinned_positions[c.b] - surf.skinned_positions[c.a]).Length();
+                        if (posed_bend < 1e-5f)
+                        {
+                            continue;
+                        }
+                        Vector3 diff = surf.positions[c.b] - surf.positions[c.a];
+                        const float dist = diff.Length();
+                        if (dist < 1e-6f)
+                        {
+                            continue;
+                        }
+                        const float corr = (dist - posed_bend) / (w_sum + alpha_bend);
+                        const Vector3 dir = diff / dist;
+                        if (wa > 0.0f)
+                        {
+                            surf.positions[c.a] += dir * (corr * wa);
+                        }
+                        if (wb > 0.0f)
+                        {
+                            surf.positions[c.b] -= dir * (corr * wb);
+                        }
+                    }
+
+                    // Body capsule collisions + skinned backstop + max-distance tether
+                    for (uint32_t p = 0; p < p_cnt; ++p)
+                    {
+                        if (surf.inv_mass[p] <= 0.0f)
+                        {
+                            surf.positions[p] = surf.skinned_positions[p];
+                            continue;
+                        }
+
+                        Vector3 pos = surf.positions[p];
+
+                        // Skeleton body capsules
+                        for (uint32_t ci = 0; ci < capsule_count; ++ci)
+                        {
+                            const LiveCapsule& cap = live_capsules[ci];
+                            const Vector3 ab = cap.b - cap.a;
+                            const float ab_len_sq = ab.LengthSquared();
+                            const float t = (ab_len_sq > 1e-6f) ? clamp(Vector3::Dot(pos - cap.a, ab) / ab_len_sq, 0.0f, 1.0f) : 0.0f;
+                            const Vector3 closest = cap.a + ab * t;
+                            const Vector3 delta = pos - closest;
+                            const float dist_sq = delta.LengthSquared();
+                            if (dist_sq < cap.radius * cap.radius && dist_sq > 1e-10f)
+                            {
+                                const float dist = sqrtf(dist_sq);
+                                pos = closest + delta * (cap.radius / dist);
+                            }
+                        }
+
+                        // Strict outward backstop prevents fabric from ever clipping into underlying torso/arm skin
+                        const Vector3& ref_pos = surf.skinned_positions[p];
+                        const Vector3& ref_nor = surf.skinned_normals[p];
+                        const Vector3 offset = pos - ref_pos;
+                        const float signed_normal_dist = Vector3::Dot(offset, ref_nor);
+                        if (signed_normal_dist < 0.0f)
+                        {
+                            pos -= ref_nor * signed_normal_dist;
+                        }
+
+                        // Max-distance tether prevents explosive stretching during extreme motion
+                        const Vector3 final_off = pos - ref_pos;
+                        const float max_d = surf.max_distance[p];
+                        const float off_sq = final_off.LengthSquared();
+                        if (off_sq > max_d * max_d && off_sq > 1e-10f)
+                        {
+                            pos = ref_pos + final_off * (max_d / sqrtf(off_sq));
+                        }
+
+                        surf.positions[p] = pos;
+                    }
+                }
+            }
+
+            // 3. Compute C1-smooth proxy node displacements and apply seamlessly across all outer/inner render vertices
+            for (uint32_t p = 0; p < p_cnt; ++p)
+            {
+                surf.displacements[p] = surf.positions[p] - surf.skinned_positions[p];
+            }
+
+            for (uint32_t v = 0; v < surf.vertex_count; ++v)
+            {
+                const ClothVertexBinding& bind = surf.vertex_bindings[v];
+                const Vector3 disp =
+                    surf.displacements[bind.nodes[0]] * bind.weights[0] +
+                    surf.displacements[bind.nodes[1]] * bind.weights[1] +
+                    surf.displacements[bind.nodes[2]] * bind.weights[2];
+
+                RHI_Vertex_PosTexNorTan& dst = m_skinned_vertices[surf.vertex_offset + v];
+                dst.pos[0] += disp.x;
+                dst.pos[1] += disp.y;
+                dst.pos[2] += disp.z;
+            }
+        }
+    }
+
+    void Animator::ResetProceduralEyes()
+    {
+        m_eye_state = {};
+    }
+
+    void Animator::ResolveProceduralEyes(Mesh* mesh, const Skeleton& skeleton)
+    {
+        if (!mesh || m_eye_state.built_mesh == mesh)
+        {
+            return;
+        }
+
+        m_eye_state = {};
+        m_eye_state.built_mesh = mesh;
+
+        auto to_lower = [](string value)
+        {
+            for (char& ch : value)
+            {
+                ch = static_cast<char>(tolower(static_cast<unsigned char>(ch)));
+            }
+            return value;
+        };
+
+        // Resolve head joint index
+        const char* head_candidates[] = { "head", "Head", "mixamorig:Head", "neck_01" };
+        for (const char* cand : head_candidates)
+        {
+            int32_t idx = FindJointIndex(skeleton, cand);
+            if (idx >= 0)
+            {
+                m_eye_state.head_joint = idx;
+                break;
+            }
+        }
+        if (m_eye_state.head_joint < 0 || m_bind_vertices.empty())
+        {
+            return;
+        }
+
+        const vector<Render*>& renders = ResolveSkinRenders(mesh);
+        if (renders.empty())
+        {
+            return;
+        }
+
+        // Seed per-entity PRNG so multiple characters never blink or glance in robotic unison
+        uint32_t seed = 0x5A17E3u;
+        if (GetEntity())
+        {
+            uint64_t id = GetEntity()->GetObjectId();
+            seed ^= static_cast<uint32_t>(id ^ (id >> 32));
+        }
+        m_eye_state.rng_state = seed != 0u ? seed : 0x5A17E3u;
+
+        // 1. Locate eyeball submesh(es) (specifically mh_eyes / cornea — excluding tearline & eyeshell)
+        vector<Render*> eyeball_renders;
+        vector<Render*> head_skin_renders;
+        vector<Render*> upper_lash_renders;
+        vector<Render*> lower_lash_renders;
+        vector<Render*> eyeshell_renders;
+
+        for (Render* render : renders)
+        {
+            if (!render || !render->GetEntity())
+            {
+                continue;
+            }
+            const string ename = to_lower(render->GetEntity()->GetObjectName());
+            const string mname = to_lower(render->GetMaterialName());
+            const string both  = ename + " " + mname;
+
+            if (mname.find("tearline") != string::npos || mname.find("eyeedge") != string::npos)
+            {
+                continue;
+            }
+            if (mname.find("eyeshell") != string::npos)
+            {
+                eyeshell_renders.push_back(render);
+            }
+            else if (mname.find("eyelashes_upper") != string::npos || (mname.find("eyelash") != string::npos && mname.find("lower") == string::npos))
+            {
+                upper_lash_renders.push_back(render);
+            }
+            else if (mname.find("eyelashes_lower") != string::npos)
+            {
+                lower_lash_renders.push_back(render);
+            }
+            else if (mname.find("mh_eyes") != string::npos || mname.find("cornea") != string::npos || (mname.find("eye") != string::npos && mname.find("brow") == string::npos && mname.find("lash") == string::npos && mname.find("shell") == string::npos))
+            {
+                eyeball_renders.push_back(render);
+            }
+            else if (mname.find("mh_face") != string::npos || (both.find("head") != string::npos && mname.find("teeth") == string::npos && mname.find("caruncle") == string::npos && mname.find("hair") == string::npos && mname.find("brow") == string::npos && mname.find("beard") == string::npos))
+            {
+                head_skin_renders.push_back(render);
+            }
+        }
+
+        if (eyeball_renders.empty())
+        {
+            return;
+        }
+
+        // Compute exact geometric sphere centers via bounding-box midpoint (unaffected by front-heavy iris tessellation!)
+        Vector3 min_l(numeric_limits<float>::max());
+        Vector3 max_l(-numeric_limits<float>::max());
+        Vector3 min_r(numeric_limits<float>::max());
+        Vector3 max_r(-numeric_limits<float>::max());
+        uint32_t cnt_l = 0;
+        uint32_t cnt_r = 0;
+
+        auto get_submesh_range = [&](Render* r, uint32_t& out_off, uint32_t& out_cnt) -> bool
+        {
+            const uint32_t sub_idx = r->GetSubMeshIndex();
+            if (sub_idx >= mesh->GetSubMeshCount())
+            {
+                return false;
+            }
+            const GeometryRange& range = mesh->GetSubMesh(sub_idx).root;
+            out_off = range.vertex_offset;
+            out_cnt = range.vertex_count;
+            return out_cnt > 0 && out_off + out_cnt <= m_bind_vertices.size();
+        };
+
+        // First find overall eye midpoint X so left/right split works even if mesh is slightly offset
+        float mid_x = 0.0f;
+        uint32_t total_eye_verts = 0;
+        for (Render* r : eyeball_renders)
+        {
+            uint32_t v_off = 0;
+            uint32_t v_cnt = 0;
+            if (!get_submesh_range(r, v_off, v_cnt))
+            {
+                continue;
+            }
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                mid_x += m_bind_vertices[v_off + v].pos[0];
+                ++total_eye_verts;
+            }
+        }
+        if (total_eye_verts < 16)
+        {
+            return;
+        }
+        mid_x /= static_cast<float>(total_eye_verts);
+
+        for (Render* r : eyeball_renders)
+        {
+            uint32_t v_off = 0;
+            uint32_t v_cnt = 0;
+            if (!get_submesh_range(r, v_off, v_cnt))
+            {
+                continue;
+            }
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const uint32_t gidx = v_off + v;
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[gidx];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+                if (p.x >= mid_x)
+                {
+                    min_l = Vector3::Min(min_l, p);
+                    max_l = Vector3::Max(max_l, p);
+                    ++cnt_l;
+                    m_eye_state.left_eye_vertices.push_back(gidx);
+                }
+                else
+                {
+                    min_r = Vector3::Min(min_r, p);
+                    max_r = Vector3::Max(max_r, p);
+                    ++cnt_r;
+                    m_eye_state.right_eye_vertices.push_back(gidx);
+                }
+            }
+        }
+        if (cnt_l < 8 || cnt_r < 8)
+        {
+            return;
+        }
+
+        const Vector3 center_l = (min_l + max_l) * 0.5f;
+        const Vector3 center_r = (min_r + max_r) * 0.5f;
+        const Vector3 eye_mid  = (center_l + center_r) * 0.5f;
+
+        // Average eyeball radius
+        float rad_sum = 0.0f;
+        for (uint32_t gidx : m_eye_state.left_eye_vertices)
+        {
+            const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[gidx];
+            rad_sum += (Vector3(bv.pos[0], bv.pos[1], bv.pos[2]) - center_l).Length();
+        }
+        const float eye_radius = clamp(rad_sum / static_cast<float>(m_eye_state.left_eye_vertices.size()), 0.009f, 0.018f);
+
+        // Compute orthonormal anatomical eye basis (eye_right, eye_up, eye_forward) in bind pose
+        const Matrix head_bind = skeleton.bind_inverse_global_matrices[m_eye_state.head_joint].Inverted();
+        const Vector3 head_pos = head_bind.GetTranslation();
+
+        Vector3 eye_right = (center_r - center_l);
+        if (eye_right.LengthSquared() < 1e-6f)
+        {
+            return;
+        }
+        eye_right = eye_right.Normalized();
+
+        Vector3 eye_up = Vector3::Up;
+        const int32_t j_pelvis = FindJointIndex(skeleton, "pelvis");
+        if (j_pelvis >= 0)
+        {
+            const Vector3 p_pelvis = skeleton.bind_inverse_global_matrices[j_pelvis].Inverted().GetTranslation();
+            Vector3 spine = head_pos - p_pelvis;
+            spine -= eye_right * Vector3::Dot(spine, eye_right);
+            if (spine.LengthSquared() > 1e-4f)
+            {
+                eye_up = spine.Normalized();
+            }
+        }
+
+        Vector3 eye_forward = eye_mid - head_pos;
+        eye_forward -= eye_right * Vector3::Dot(eye_forward, eye_right);
+        eye_forward -= eye_up * Vector3::Dot(eye_forward, eye_up);
+        if (eye_forward.LengthSquared() < 1e-6f)
+        {
+            eye_forward = Vector3::Cross(eye_right, eye_up);
+        }
+        eye_forward = eye_forward.Normalized();
+        // Re-orthogonalize eye_up strictly orthogonal to eye_right and eye_forward
+        eye_up = (eye_up - eye_right * Vector3::Dot(eye_up, eye_right) - eye_forward * Vector3::Dot(eye_up, eye_forward)).Normalized();
+
+        m_eye_state.eye_center_l = center_l;
+        m_eye_state.eye_center_r = center_r;
+        m_eye_state.eye_right    = eye_right;
+        m_eye_state.eye_up       = eye_up;
+        m_eye_state.eye_forward  = eye_forward;
+        m_eye_state.eye_radius   = eye_radius;
+
+        // 2. Sculpt smooth anatomical eyelid weights on head skin, upper/lower eyelashes, and eyeshell
+        auto classify_eye_side = [&](const Vector3& p, uint8_t& out_side, Vector3& out_center)
+        {
+            const float dl = (p - center_l).LengthSquared();
+            const float dr = (p - center_r).LengthSquared();
+            if (dl <= dr)
+            {
+                out_side = 0;
+                out_center = center_l;
+            }
+            else
+            {
+                out_side = 1;
+                out_center = center_r;
+            }
+        };
+
+        const float pi_half = 1.57079632679f;
+
+        // Head skin eyelids (smooth cosine envelope peaking right at the upper lash margin, zero at brow & nose bridge!)
+        for (Render* r : head_skin_renders)
+        {
+            uint32_t v_off = 0;
+            uint32_t v_cnt = 0;
+            if (!get_submesh_range(r, v_off, v_cnt))
+            {
+                continue;
+            }
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const uint32_t gidx = v_off + v;
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[gidx];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+
+                uint8_t side = 0;
+                Vector3 c = center_l;
+                classify_eye_side(p, side, c);
+
+                const Vector3 rel = p - c;
+                const float dx = Vector3::Dot(rel, eye_right);
+                const float dy = Vector3::Dot(rel, eye_up);
+                const float dz = Vector3::Dot(rel, eye_forward);
+
+                // Strictly over the front eye socket (never back of socket, temple, or nose bridge)
+                if (dz < 0.20f * eye_radius || dz > 2.20f * eye_radius)
+                {
+                    continue;
+                }
+                const float ax = fabsf(dx) / (1.48f * eye_radius);
+                if (ax >= 1.0f)
+                {
+                    continue;
+                }
+
+                const float hx = powf(cosf(ax * pi_half), 0.90f);
+                const float hz = clamp((dz - 0.20f * eye_radius) / (0.65f * eye_radius), 0.0f, 1.0f);
+
+                float uw = 0.0f;
+                float lw = 0.0f;
+
+                // Upper eyelid: peaks along upper margin (dy ~ 0.15..0.48 R) and tapers cleanly to 0 before the brow (1.08 R)
+                if (dy > -0.10f * eye_radius && dy < 1.12f * eye_radius)
+                {
+                    const float ny = dy / eye_radius;
+                    float vy = 0.0f;
+                    if (ny < 0.25f)
+                    {
+                        vy = clamp((ny + 0.10f) / 0.35f, 0.0f, 1.0f);
+                    }
+                    else
+                    {
+                        const float t = clamp((ny - 0.25f) / 0.87f, 0.0f, 1.0f);
+                        vy = cosf(t * pi_half);
+                        vy = vy * vy;
+                    }
+                    uw = hx * hz * vy;
+                }
+
+                // Lower eyelid: gentle subtle lift (0.16 max) when blinking
+                if (dy < -0.08f * eye_radius && dy > -0.92f * eye_radius)
+                {
+                    const float ny = -dy / eye_radius;
+                    float vy = 0.0f;
+                    if (ny < 0.30f)
+                    {
+                        vy = clamp((ny - 0.08f) / 0.22f, 0.0f, 1.0f);
+                    }
+                    else
+                    {
+                        const float t = clamp((ny - 0.30f) / 0.62f, 0.0f, 1.0f);
+                        vy = cosf(t * pi_half);
+                        vy = vy * vy;
+                    }
+                    lw = hx * hz * vy;
+                }
+
+                if (uw > 0.015f || lw > 0.015f)
+                {
+                    m_eye_state.eyelid_vertices.push_back({ gidx, side, uw, lw });
+                }
+            }
+        }
+
+        // Upper eyelashes move in 100% lockstep with the upper eyelid margin
+        for (Render* r : upper_lash_renders)
+        {
+            uint32_t v_off = 0;
+            uint32_t v_cnt = 0;
+            if (!get_submesh_range(r, v_off, v_cnt))
+            {
+                continue;
+            }
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const uint32_t gidx = v_off + v;
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[gidx];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+                uint8_t side = 0;
+                Vector3 c = center_l;
+                classify_eye_side(p, side, c);
+                const float ax = clamp(fabsf(Vector3::Dot(p - c, eye_right)) / (1.72f * eye_radius), 0.0f, 0.96f);
+                const float hx = powf(cosf(ax * pi_half), 0.72f);
+                m_eye_state.eyelid_vertices.push_back({ gidx, side, hx, 0.0f });
+            }
+        }
+
+        // Lower eyelashes lift softly with the lower lid
+        for (Render* r : lower_lash_renders)
+        {
+            uint32_t v_off = 0;
+            uint32_t v_cnt = 0;
+            if (!get_submesh_range(r, v_off, v_cnt))
+            {
+                continue;
+            }
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const uint32_t gidx = v_off + v;
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[gidx];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+                uint8_t side = 0;
+                Vector3 c = center_l;
+                classify_eye_side(p, side, c);
+                const float ax = clamp(fabsf(Vector3::Dot(p - c, eye_right)) / (1.72f * eye_radius), 0.0f, 0.96f);
+                const float hx = powf(cosf(ax * pi_half), 0.72f);
+                m_eye_state.eyelid_vertices.push_back({ gidx, side, 0.0f, hx });
+            }
+        }
+
+        // Upper-eyelid occlusion shell follows upper lid cleanly
+        for (Render* r : eyeshell_renders)
+        {
+            uint32_t v_off = 0;
+            uint32_t v_cnt = 0;
+            if (!get_submesh_range(r, v_off, v_cnt))
+            {
+                continue;
+            }
+            for (uint32_t v = 0; v < v_cnt; ++v)
+            {
+                const uint32_t gidx = v_off + v;
+                const RHI_Vertex_PosTexNorTan& bv = m_bind_vertices[gidx];
+                const Vector3 p(bv.pos[0], bv.pos[1], bv.pos[2]);
+                uint8_t side = 0;
+                Vector3 c = center_l;
+                classify_eye_side(p, side, c);
+                const float dy = Vector3::Dot(p - c, eye_up);
+                if (dy > 0.0f)
+                {
+                    const float ax = clamp(fabsf(Vector3::Dot(p - c, eye_right)) / (1.60f * eye_radius), 0.0f, 0.96f);
+                    const float hx = powf(cosf(ax * pi_half), 0.80f);
+                    const float vy = clamp(dy / (0.65f * eye_radius), 0.0f, 1.0f);
+                    m_eye_state.eyelid_vertices.push_back({ gidx, side, hx * vy, 0.0f });
+                }
+            }
+        }
+
+        m_eye_state.valid = true;
+    }
+
+    void Animator::StepProceduralEyes(Mesh* mesh, const Skeleton& skeleton, float delta_time)
+    {
+        if (!m_procedural_eyes_enabled || !m_eye_state.valid || m_eye_state.built_mesh != mesh)
+        {
+            return;
+        }
+        if (m_eye_state.head_joint < 0 ||
+            m_eye_state.head_joint >= static_cast<int32_t>(m_global_matrices.size()) ||
+            m_eye_state.head_joint >= static_cast<int32_t>(skeleton.bind_inverse_global_matrices.size()))
+        {
+            return;
+        }
+
+        const float dt = clamp(delta_time > 0.0f ? delta_time : (1.0f / 60.0f), 0.0f, 0.05f);
+        m_eye_state.clock += dt;
+
+        // Deterministic fast xorshift32 PRNG in [0, 1]
+        auto next_rand = [&]() -> float
+        {
+            uint32_t x = m_eye_state.rng_state;
+            x ^= x << 13;
+            x ^= x >> 17;
+            x ^= x << 5;
+            m_eye_state.rng_state = x;
+            return static_cast<float>(x & 0x00FFFFFFu) / static_cast<float>(0x01000000u);
+        };
+
+        // 1. Update organic human gaze saccades (crisp ~65ms shifts + calm steady fixation + micro-saccades)
+        m_eye_state.gaze_timer -= dt;
+        if (m_eye_state.gaze_timer <= 0.0f)
+        {
+            m_eye_state.gaze_start_yaw   = m_eye_state.gaze_yaw;
+            m_eye_state.gaze_start_pitch = m_eye_state.gaze_pitch;
+            m_eye_state.gaze_move_t      = 0.0f;
+
+            const float r_type = next_rand();
+            if (r_type < 0.42f)
+            {
+                // Calm attentive forward gaze with subtle natural offset
+                m_eye_state.gaze_target_yaw   = (next_rand() * 2.0f - 1.0f) * 0.085f; // +/- 4.9 deg
+                m_eye_state.gaze_target_pitch = (next_rand() * 2.0f - 1.0f) * 0.042f; // +/- 2.4 deg
+                m_eye_state.gaze_timer        = 1.2f + next_rand() * 1.6f;
+            }
+            else
+            {
+                // Natural side/up/down glance (clearly alive, never extreme wall-eyed)
+                const float dir = (next_rand() < 0.5f) ? -1.0f : 1.0f;
+                m_eye_state.gaze_target_yaw   = dir * (0.11f + next_rand() * 0.11f); // +/- 6.3..12.6 deg
+                m_eye_state.gaze_target_pitch = (next_rand() * 2.0f - 1.0f) * 0.085f; // +/- 4.9 deg
+                m_eye_state.gaze_timer        = 1.0f + next_rand() * 1.4f;
+
+                // Humans naturally trigger a blink on ~45% of larger gaze shifts
+                const float jump = fabsf(m_eye_state.gaze_target_yaw - m_eye_state.gaze_start_yaw);
+                if (jump > 0.11f && m_eye_state.blink_phase < 0.0f && next_rand() < 0.45f)
+                {
+                    m_eye_state.blink_timer = 0.0f;
+                }
+            }
+            m_eye_state.gaze_move_duration = 0.062f + next_rand() * 0.028f;
+        }
+
+        if (m_eye_state.gaze_move_t < 1.0f)
+        {
+            m_eye_state.gaze_move_t = min(1.0f, m_eye_state.gaze_move_t + dt / max(m_eye_state.gaze_move_duration, 0.02f));
+            const float u = m_eye_state.gaze_move_t;
+            const float smooth = u * u * (3.0f - 2.0f * u);
+            m_eye_state.gaze_yaw   = m_eye_state.gaze_start_yaw + (m_eye_state.gaze_target_yaw - m_eye_state.gaze_start_yaw) * smooth;
+            m_eye_state.gaze_pitch = m_eye_state.gaze_start_pitch + (m_eye_state.gaze_target_pitch - m_eye_state.gaze_start_pitch) * smooth;
+        }
+
+        // Tiny physiological fixation micro-saccade drift so eyes feel genuinely alive even while fixating
+        const float micro_yaw   = sinf(m_eye_state.clock * 1.7f) * 0.0055f + sinf(m_eye_state.clock * 4.3f) * 0.0025f;
+        const float micro_pitch = cosf(m_eye_state.clock * 1.3f) * 0.0038f + sinf(m_eye_state.clock * 3.1f) * 0.0018f;
+        const float live_yaw    = m_eye_state.gaze_yaw + micro_yaw;
+        const float live_pitch  = m_eye_state.gaze_pitch + micro_pitch;
+
+        // 2. Update organic human eyelid blinking (fast 55ms close, 20ms hold, silky 110ms open, occasional double blink!)
+        float blink_amount = 0.0f;
+        if (m_eye_state.blink_phase < 0.0f)
+        {
+            m_eye_state.blink_timer -= dt;
+            if (m_eye_state.blink_timer <= 0.0f)
+            {
+                m_eye_state.blink_phase    = 0.0f;
+                m_eye_state.blink_duration = 0.175f + next_rand() * 0.030f;
+            }
+        }
+        else
+        {
+            m_eye_state.blink_phase += dt;
+            const float t_norm = m_eye_state.blink_phase / max(m_eye_state.blink_duration, 0.08f);
+            if (t_norm >= 1.0f)
+            {
+                m_eye_state.blink_phase = -1.0f;
+                if (m_eye_state.pending_double_blink)
+                {
+                    m_eye_state.pending_double_blink = false;
+                    m_eye_state.blink_timer = 0.14f + next_rand() * 0.08f;
+                }
+                else
+                {
+                    m_eye_state.pending_double_blink = (next_rand() < 0.16f);
+                    m_eye_state.blink_timer = 2.6f + next_rand() * 2.8f;
+                }
+            }
+            else if (t_norm < 0.30f)
+            {
+                // Crisp fast close
+                const float c = t_norm / 0.30f;
+                blink_amount = c * c * (3.0f - 2.0f * c);
+            }
+            else if (t_norm < 0.42f)
+            {
+                // Brief natural full closure
+                blink_amount = 1.0f;
+            }
+            else
+            {
+                // Smooth relaxed opening
+                const float o = (t_norm - 0.42f) / 0.58f;
+                const float inv = 1.0f - o;
+                blink_amount = inv * inv * (3.0f - 2.0f * inv);
+            }
+        }
+
+        // 3. Compute exact live posed left/right eyeball centers & orthonormal head eye basis directly from skinned vertices
+        // (100% exact across any head bone rotation or glTF inverse-bind convention, zero pivot drift or lid twitch!)
+        Vector3 min_l(numeric_limits<float>::max());
+        Vector3 max_l(-numeric_limits<float>::max());
+        Vector3 min_r(numeric_limits<float>::max());
+        Vector3 max_r(-numeric_limits<float>::max());
+        for (uint32_t gidx : m_eye_state.left_eye_vertices)
+        {
+            if (gidx < m_skinned_vertices.size())
+            {
+                const RHI_Vertex_PosTexNorTan& sv = m_skinned_vertices[gidx];
+                const Vector3 p(sv.pos[0], sv.pos[1], sv.pos[2]);
+                min_l = Vector3::Min(min_l, p);
+                max_l = Vector3::Max(max_l, p);
+            }
+        }
+        for (uint32_t gidx : m_eye_state.right_eye_vertices)
+        {
+            if (gidx < m_skinned_vertices.size())
+            {
+                const RHI_Vertex_PosTexNorTan& sv = m_skinned_vertices[gidx];
+                const Vector3 p(sv.pos[0], sv.pos[1], sv.pos[2]);
+                min_r = Vector3::Min(min_r, p);
+                max_r = Vector3::Max(max_r, p);
+            }
+        }
+
+        const Vector3 center_l = (min_l + max_l) * 0.5f;
+        const Vector3 center_r = (min_r + max_r) * 0.5f;
+        const Vector3 eye_mid  = (center_l + center_r) * 0.5f;
+
+        Vector3 e_right = center_r - center_l;
+        if (e_right.LengthSquared() < 1e-6f)
+        {
+            return;
+        }
+        e_right = e_right.Normalized();
+
+        const Matrix head_rot_delta = m_global_matrices[m_eye_state.head_joint] * skeleton.bind_inverse_global_matrices[m_eye_state.head_joint];
+        const Vector3 head_origin   = m_global_matrices[m_eye_state.head_joint].GetTranslation();
+        Vector3 e_up = (head_rot_delta.GetRotation() * m_eye_state.eye_up);
+        e_up -= e_right * Vector3::Dot(e_up, e_right);
+        e_up = (e_up.LengthSquared() > 1e-6f) ? e_up.Normalized() : Vector3::Up;
+
+        Vector3 e_fwd = eye_mid - head_origin;
+        e_fwd -= e_right * Vector3::Dot(e_fwd, e_right);
+        e_fwd -= e_up * Vector3::Dot(e_fwd, e_up);
+        if (e_fwd.LengthSquared() < 1e-6f)
+        {
+            e_fwd = head_rot_delta.GetRotation() * m_eye_state.eye_forward;
+            e_fwd -= e_right * Vector3::Dot(e_fwd, e_right);
+            e_fwd -= e_up * Vector3::Dot(e_fwd, e_up);
+        }
+        e_fwd = e_fwd.Normalized();
+        e_up  = (e_up - e_right * Vector3::Dot(e_up, e_right) - e_fwd * Vector3::Dot(e_up, e_fwd)).Normalized();
+
+        // Handedness-independent basis rotation helper (pitch downward around e_right, then yaw around e_up)
+        auto rotate_in_eye_basis = [&](const Vector3& v, float cos_p, float sin_p, float cos_y, float sin_y) -> Vector3
+        {
+            const float rx = Vector3::Dot(v, e_right);
+            const float ry = Vector3::Dot(v, e_up);
+            const float rz = Vector3::Dot(v, e_fwd);
+            const float ry1 = ry * cos_p - rz * sin_p;
+            const float rz1 = ry * sin_p + rz * cos_p;
+            const float rx2 = rx * cos_y + rz1 * sin_y;
+            const float rz2 = -rx * sin_y + rz1 * cos_y;
+            return e_right * rx2 + e_up * ry1 + e_fwd * rz2;
+        };
+
+        // 4. Rotate left and right eyeballs around their exact anatomical centers
+        const float cos_ep = cosf(live_pitch);
+        const float sin_ep = sinf(live_pitch);
+        const float cos_ey = cosf(live_yaw);
+        const float sin_ey = sinf(live_yaw);
+
+        auto apply_eyeball_rotation = [&](const vector<uint32_t>& verts, const Vector3& center)
+        {
+            for (uint32_t gidx : verts)
+            {
+                if (gidx >= m_skinned_vertices.size())
+                {
+                    continue;
+                }
+                RHI_Vertex_PosTexNorTan& v = m_skinned_vertices[gidx];
+                const Vector3 rel = Vector3(v.pos[0], v.pos[1], v.pos[2]) - center;
+                const Vector3 p_new = center + rotate_in_eye_basis(rel, cos_ep, sin_ep, cos_ey, sin_ey);
+                v.pos[0] = p_new.x;
+                v.pos[1] = p_new.y;
+                v.pos[2] = p_new.z;
+                v.set_normal(rotate_in_eye_basis(v.get_normal(), cos_ep, sin_ep, cos_ey, sin_ey).Normalized());
+                v.set_tangent(rotate_in_eye_basis(v.get_tangent(), cos_ep, sin_ep, cos_ey, sin_ey).Normalized());
+            }
+        };
+        apply_eyeball_rotation(m_eye_state.left_eye_vertices, center_l);
+        apply_eyeball_rotation(m_eye_state.right_eye_vertices, center_r);
+
+        // 5. Spherical eyelid blinking + subtle natural upper-eyelid gaze tracking (hugs eyeball curvature cleanly!)
+        const float lid_gaze_follow = clamp(live_pitch * 0.45f, -0.06f, 0.09f);
+        const float upper_angle = blink_amount * 0.78f + lid_gaze_follow * (1.0f - blink_amount);
+        const float lower_angle = -blink_amount * 0.14f;
+        const float corneal_clearance = sinf(blink_amount * 3.14159265f) * 0.00140f;
+
+        if (fabsf(upper_angle) > 1e-4f || fabsf(lower_angle) > 1e-4f)
+        {
+            for (const EyelidVertex& ev : m_eye_state.eyelid_vertices)
+            {
+                if (ev.vertex_index >= m_skinned_vertices.size())
+                {
+                    continue;
+                }
+                const float angle = upper_angle * ev.upper_weight + lower_angle * ev.lower_weight;
+                if (fabsf(angle) < 1e-5f)
+                {
+                    continue;
+                }
+
+                const Vector3& center = (ev.eye_side == 0) ? center_l : center_r;
+                RHI_Vertex_PosTexNorTan& v = m_skinned_vertices[ev.vertex_index];
+                const Vector3 rel = Vector3(v.pos[0], v.pos[1], v.pos[2]) - center;
+
+                const float cp = cosf(angle);
+                const float sp = sinf(angle);
+                Vector3 rot_rel = rotate_in_eye_basis(rel, cp, sp, 1.0f, 0.0f);
+                // Tiny outward spherical clearance over the convex cornea during mid-blink so lid skin never clips eyeball
+                if (ev.upper_weight > 0.0f && corneal_clearance > 0.0f)
+                {
+                    rot_rel += e_fwd * (corneal_clearance * ev.upper_weight);
+                }
+
+                const Vector3 p_new = center + rot_rel;
+                v.pos[0] = p_new.x;
+                v.pos[1] = p_new.y;
+                v.pos[2] = p_new.z;
+                v.set_normal(rotate_in_eye_basis(v.get_normal(), cp, sp, 1.0f, 0.0f).Normalized());
+            }
+        }
     }
 
     void Animator::Tick()
@@ -2043,6 +3408,8 @@ namespace spartan
         {
             return;
         }
+
+        m_cloth_dt = static_cast<float>(Timer::GetDeltaTimeSec());
 
         if (m_external_pose_active)
         {
