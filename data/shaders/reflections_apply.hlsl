@@ -424,6 +424,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
             // Waxy leaf cuticles catch subtle sky sheen without turning macro cards into flat mirrors
             specular_reflection *= 0.50f;
         }
+        else if (mat.is_hair())
+        {
+            // Hair strands scatter environment reflections softly instead of acting like a solid plastic shell
+            specular_reflection *= 0.22f;
+        }
         tex_uav[thread_id.xy]     += float4(specular_reflection, 0.0f);
         return;
     }
@@ -640,6 +645,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
     if (surface.is_foliage())
     {
         specular_reflection *= 0.50f;
+    }
+    else if (surface.is_hair())
+    {
+        specular_reflection *= 0.22f;
     }
 
     if (surface.is_alpha_blended())

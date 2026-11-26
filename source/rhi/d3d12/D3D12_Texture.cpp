@@ -70,16 +70,10 @@ namespace spartan
         {
             ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_rhi->GetRhiResource());
 
-            const D3D12_RESOURCE_STATES state_before = d3d12_state::GetState(texture);
-            if (state_before != D3D12_RESOURCE_STATE_COPY_DEST)
+            const D3D12_BARRIER_LAYOUT layout_before = d3d12_state::GetLayout(texture);
+            if (layout_before != D3D12_BARRIER_LAYOUT_COPY_DEST)
             {
-                D3D12_RESOURCE_BARRIER barrier = {};
-                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                barrier.Transition.pResource   = texture;
-                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                barrier.Transition.StateBefore = state_before;
-                barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-                d3d12_barriers::Submit(cmd_list, &barrier, 1);
+                d3d12_barriers::SubmitTexture(cmd_list, texture, layout_before, D3D12_BARRIER_LAYOUT_COPY_DEST);
             }
 
             D3D12_TEXTURE_COPY_LOCATION dest_location = {};
@@ -99,30 +93,23 @@ namespace spartan
 
             cmd_list->CopyTextureRegion(&dest_location, x, y, 0, &src_location, nullptr);
 
-            // back to what the tracker had, a fresh upload parks in pixel|non pixel srv so match that when unknown
-            D3D12_RESOURCE_STATES state_after = state_before;
-            if (state_after == D3D12_RESOURCE_STATE_COPY_DEST || state_after == D3D12_RESOURCE_STATE_COMMON)
+            // return to prior layout; fresh textures settle in shader_resource or unordered_access
+            D3D12_BARRIER_LAYOUT layout_after = layout_before;
+            if (layout_after == D3D12_BARRIER_LAYOUT_COPY_DEST || layout_after == D3D12_BARRIER_LAYOUT_COMMON || layout_after == D3D12_BARRIER_LAYOUT_UNDEFINED)
             {
-                state_after = (m_flags & RHI_Texture_Uav)
-                    ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-                    : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                layout_after = (m_flags & RHI_Texture_Uav)
+                    ? D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS
+                    : D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
             }
 
-            if (state_after != D3D12_RESOURCE_STATE_COPY_DEST)
+            if (layout_after != D3D12_BARRIER_LAYOUT_COPY_DEST)
             {
-                D3D12_RESOURCE_BARRIER barrier = {};
-                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                barrier.Transition.pResource   = texture;
-                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                barrier.Transition.StateAfter  = state_after;
-                d3d12_barriers::Submit(cmd_list, &barrier, 1);
+                d3d12_barriers::SubmitTexture(cmd_list, texture, D3D12_BARRIER_LAYOUT_COPY_DEST, layout_after);
             }
 
             RHI_CommandList::ImmediateExecutionEnd(cmd_list_rhi);
 
-            const D3D12_RESOURCE_STATES tracked = d3d12_state::DecaysToCommon(texture) ? D3D12_RESOURCE_STATE_COMMON : state_after;
-            d3d12_state::SetState(texture, tracked);
+            d3d12_state::SetLayout(texture, layout_after);
             copied = true;
         }
 
@@ -169,24 +156,57 @@ namespace spartan
         DXGI_FORMAT srv_format      = dxgi_format;
         DXGI_FORMAT rtv_format      = dxgi_format;
 
+        DXGI_FORMAT castable_formats[3] = {};
+        uint32_t castable_format_count  = 0;
         if (is_depth_format && (m_flags & RHI_Texture_Srv))
         {
             switch (m_format)
             {
                 case RHI_Format::D16_Unorm:
-                    resource_format = DXGI_FORMAT_R16_TYPELESS;
-                    dsv_format      = DXGI_FORMAT_D16_UNORM;
-                    srv_format      = DXGI_FORMAT_R16_UNORM;
+                    dsv_format = DXGI_FORMAT_D16_UNORM;
+                    srv_format = DXGI_FORMAT_R16_UNORM;
+                    if (d3d12_caps::IsRelaxedFormatCastingSupported())
+                    {
+                        resource_format       = dsv_format;
+                        castable_formats[0]   = dsv_format;
+                        castable_formats[1]   = srv_format;
+                        castable_format_count = 2;
+                    }
+                    else
+                    {
+                        resource_format = DXGI_FORMAT_R16_TYPELESS;
+                    }
                     break;
                 case RHI_Format::D32_Float:
-                    resource_format = DXGI_FORMAT_R32_TYPELESS;
-                    dsv_format      = DXGI_FORMAT_D32_FLOAT;
-                    srv_format      = DXGI_FORMAT_R32_FLOAT;
+                    dsv_format = DXGI_FORMAT_D32_FLOAT;
+                    srv_format = DXGI_FORMAT_R32_FLOAT;
+                    if (d3d12_caps::IsRelaxedFormatCastingSupported())
+                    {
+                        resource_format       = dsv_format;
+                        castable_formats[0]   = dsv_format;
+                        castable_formats[1]   = srv_format;
+                        castable_format_count = 2;
+                    }
+                    else
+                    {
+                        resource_format = DXGI_FORMAT_R32_TYPELESS;
+                    }
                     break;
                 case RHI_Format::D32_Float_S8X24_Uint:
-                    resource_format = DXGI_FORMAT_R32G8X24_TYPELESS;
-                    dsv_format      = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
-                    srv_format      = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                    dsv_format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+                    srv_format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                    if (d3d12_caps::IsRelaxedFormatCastingSupported())
+                    {
+                        resource_format       = dsv_format;
+                        castable_formats[0]   = dsv_format;
+                        castable_formats[1]   = srv_format;
+                        castable_formats[2]   = DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
+                        castable_format_count = 3;
+                    }
+                    else
+                    {
+                        resource_format = DXGI_FORMAT_R32G8X24_TYPELESS;
+                    }
                     break;
                 default:
                     break;
@@ -200,15 +220,15 @@ namespace spartan
         heap_props.CreationNodeMask      = 1;
         heap_props.VisibleNodeMask       = 1;
 
-        D3D12_RESOURCE_DESC resource_desc = {};
-        resource_desc.Format              = resource_format;
-        resource_desc.Width               = m_width;
-        resource_desc.Height              = m_height;
-        resource_desc.MipLevels           = static_cast<UINT16>(m_mip_count);
-        resource_desc.SampleDesc.Count    = 1;
-        resource_desc.SampleDesc.Quality  = 0;
-        resource_desc.Layout              = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        resource_desc.Flags               = D3D12_RESOURCE_FLAG_NONE;
+        D3D12_RESOURCE_DESC1 resource_desc = {};
+        resource_desc.Format               = resource_format;
+        resource_desc.Width                = m_width;
+        resource_desc.Height               = m_height;
+        resource_desc.MipLevels            = static_cast<UINT16>(m_mip_count);
+        resource_desc.SampleDesc.Count     = 1;
+        resource_desc.SampleDesc.Quality   = 0;
+        resource_desc.Layout               = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        resource_desc.Flags                = D3D12_RESOURCE_FLAG_NONE;
 
         uint32_t array_length = GetArrayLength();
         m_rhi_rtv.resize(IsRtv() ? array_length : 0, nullptr);
@@ -243,18 +263,9 @@ namespace spartan
             resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
-        // mirrors vulkan concurrent sharing, required when graphics and compute queues touch the same texture
-        // incompatible with depth stencil resources per the d3d12 spec
-        if ((m_flags & RHI_Texture_ConcurrentSharing) && !is_depth_format)
-        {
-            resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
-        }
-
-        D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
-        if (!HasData())
-        {
-            initial_state = D3D12_RESOURCE_STATE_COMMON;
-        }
+        // enhanced barriers allow Direct and Compute queues to share textures via queue-common layouts
+        // (SHADER_RESOURCE, UNORDERED_ACCESS, COPY_SOURCE, COPY_DEST) without ALLOW_SIMULTANEOUS_ACCESS,
+        // keeping full GPU color compression (DCC) and fast clears enabled
 
         D3D12_CLEAR_VALUE clear_value = {};
         D3D12_CLEAR_VALUE* clear_value_ptr = nullptr;
@@ -264,7 +275,6 @@ namespace spartan
             clear_value.DepthStencil.Depth   = 1.0f;
             clear_value.DepthStencil.Stencil = 0;
             clear_value_ptr                  = &clear_value;
-            initial_state                    = D3D12_RESOURCE_STATE_COMMON;
         }
         else if (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
         {
@@ -276,20 +286,24 @@ namespace spartan
             clear_value_ptr      = &clear_value;
         }
 
+        // create via ID3D12Device10::CreateCommittedResource3 in D3D12_BARRIER_LAYOUT_COMMON with explicit castable formats
         ID3D12Resource* texture = nullptr;
-        HRESULT hr = RHI_Context::device->CreateCommittedResource(
+        HRESULT hr = RHI_Context::device->CreateCommittedResource3(
             &heap_props,
             D3D12_HEAP_FLAG_NONE,
             &resource_desc,
-            initial_state,
+            D3D12_BARRIER_LAYOUT_COMMON,
             clear_value_ptr,
+            nullptr,
+            castable_format_count,
+            castable_format_count > 0 ? castable_formats : nullptr,
             IID_PPV_ARGS(&texture)
         );
 
         if (FAILED(hr))
         {
             if (hr == E_OUTOFMEMORY || hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
-                d3d12_utility::error::fatal(hr, "Allocate texture (CreateCommittedResource)", m_object_name.c_str());
+                d3d12_utility::error::fatal(hr, "Allocate texture (CreateCommittedResource3)", m_object_name.c_str());
             SP_LOG_ERROR("Failed to create texture resource '%s' (%dx%d, format=%d, mips=%d): %s",
                 m_object_name.c_str(), m_width, m_height, static_cast<int>(m_format), m_mip_count,
                 d3d12_utility::error::dxgi_error_to_string(hr));
@@ -325,16 +339,13 @@ namespace spartan
             detail
         );
 
-        // seed the d3d12 state tracker so future barriers know the StateBefore
-        d3d12_state::SetState(texture, initial_state);
-        // buffers and simultaneous-access textures decay to common after every executecommandlists
-        d3d12_state::SetDecaysToCommon(texture, (m_flags & RHI_Texture_ConcurrentSharing) && !is_depth_format);
+        // seed the d3d12 enhanced layout tracker
+        d3d12_state::SetLayout(texture, D3D12_BARRIER_LAYOUT_COMMON);
         d3d12_state::SetIsDepth(texture, is_depth_format);
         const D3D12_RESOURCE_FLAGS writable_flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         d3d12_state::SetReadOnly(texture, (resource_desc.Flags & writable_flags) == 0);
         d3d12_state::SetAllowsUav(texture, (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
-        // depth can't use simultaneous access, so shared depth is handed over to compute explicitly from the first frame
-        if ((m_flags & RHI_Texture_ConcurrentSharing) && is_depth_format)
+        if (m_flags & RHI_Texture_ConcurrentSharing)
         {
             d3d12_state::SetCrossQueue(texture);
         }
@@ -357,7 +368,7 @@ namespace spartan
             uint32_t subresource_count = m_mip_count * array_length;
 
             uint64_t upload_buffer_size = 0;
-            RHI_Context::device->GetCopyableFootprints(&resource_desc, 0, subresource_count, 0, nullptr, nullptr, nullptr, &upload_buffer_size);
+            RHI_Context::device->GetCopyableFootprints1(&resource_desc, 0, subresource_count, 0, nullptr, nullptr, nullptr, &upload_buffer_size);
 
             ID3D12Resource* upload_buffer = static_cast<ID3D12Resource*>(RHI_Device::StagingBufferAcquire(upload_buffer_size));
             if (upload_buffer)
@@ -371,7 +382,7 @@ namespace spartan
                     vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(subresource_count);
                     vector<UINT> num_rows(subresource_count);
                     vector<UINT64> row_sizes(subresource_count);
-                    RHI_Context::device->GetCopyableFootprints(&resource_desc, 0, subresource_count, 0,
+                    RHI_Context::device->GetCopyableFootprints1(&resource_desc, 0, subresource_count, 0,
                         layouts.data(), num_rows.data(), row_sizes.data(), nullptr);
 
                     for (uint32_t slice = 0; slice < array_length; slice++)
@@ -405,6 +416,8 @@ namespace spartan
                     if (upload)
                     {
                         auto* temp_cmd_list = static_cast<ID3D12GraphicsCommandList*>(upload->GetRhiResource());
+                        d3d12_barriers::SubmitTexture(temp_cmd_list, texture, D3D12_BARRIER_LAYOUT_COMMON, D3D12_BARRIER_LAYOUT_COPY_DEST);
+
                         for (uint32_t subresource = 0; subresource < subresource_count; subresource++)
                         {
                             D3D12_TEXTURE_COPY_LOCATION dest_location = {};
@@ -420,35 +433,20 @@ namespace spartan
                             temp_cmd_list->CopyTextureRegion(&dest_location, 0, 0, 0, &src_location, nullptr);
                         }
 
-                        // pixel|non_pixel so bindless material sampling works in pixel shaders without a per-texture settexture upgrade
-                        D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                        RHI_Image_Layout post_layout     = RHI_Image_Layout::General;
-                        if (m_flags & RHI_Texture_Uav)
-                        {
-                            post_state  = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                            post_layout = RHI_Image_Layout::General;
-                        }
-
-                        D3D12_RESOURCE_BARRIER barrier = {};
-                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                        barrier.Transition.pResource   = texture;
-                        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                        barrier.Transition.StateAfter  = post_state;
-                        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                        temp_cmd_list->ResourceBarrier(1, &barrier);
+                        // shader_resource is valid on both graphics and compute queues under enhanced barriers
+                        const D3D12_BARRIER_LAYOUT post_layout_d3d = (m_flags & RHI_Texture_Uav)
+                            ? D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS
+                            : D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+                        d3d12_barriers::SubmitTexture(temp_cmd_list, texture, D3D12_BARRIER_LAYOUT_COPY_DEST, post_layout_d3d);
 
                         upload->RetainStagingBuffer(upload_buffer);
                         RHI_CommandList::ImmediateExecutionEnd(upload, false);
                         // The staging allocation must survive the copy fence.
                         upload_buffer = nullptr;
 
-                        // reflect the queued post-copy state in both the rhi layout map and the d3d12 state tracker
-                        SetLayoutDirect(0, m_mip_count, post_layout);
-                        // simultaneous-access textures decay to common after executecommandlists
-                        const D3D12_RESOURCE_STATES tracked = (m_flags & RHI_Texture_ConcurrentSharing)
-                            ? D3D12_RESOURCE_STATE_COMMON
-                            : post_state;
-                        d3d12_state::SetState(texture, tracked);
+                        // reflect the queued post-copy layout in both the rhi layout map and the d3d12 tracker
+                        SetLayoutDirect(0, m_mip_count, RHI_Image_Layout::General);
+                        d3d12_state::SetLayout(texture, post_layout_d3d);
                     }
                 }
 

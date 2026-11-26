@@ -270,6 +270,8 @@ namespace spartan
 
         void SetPresentInRenderer(bool enabled);
         void SetFrameCompletion(RHI_SyncPrimitive* timeline, uint64_t value);
+        bool HasCompletedFirstFrame();
+        void NotifyFirstFrameCompleted();
         void EndXrFrame();
 
         // misc

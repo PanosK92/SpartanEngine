@@ -1175,7 +1175,10 @@ namespace spartan
         if (buffer)
         {
             InsertBarrier(RHI_Barrier::buffer_sync(buffer).from(RHI_Barrier_Scope::Transfer).to(RHI_Barrier_Scope::Compute));
-            FlushBarriers();
+            if (RHI_Device::GetApiType() != RHI_Api_Type::D3d12)
+            {
+                FlushBarriers();
+            }
         }
     }
 
@@ -1184,7 +1187,10 @@ namespace spartan
         if (buffer)
         {
             InsertBarrier(RHI_Barrier::buffer_sync(buffer).from(RHI_Barrier_Scope::Compute).to(RHI_Barrier_Scope::Transfer));
-            FlushBarriers();
+            if (RHI_Device::GetApiType() != RHI_Api_Type::D3d12)
+            {
+                FlushBarriers();
+            }
         }
     }
 
@@ -1193,7 +1199,10 @@ namespace spartan
         if (buffer)
         {
             InsertBarrier(RHI_Barrier::buffer_sync(buffer).from(RHI_Barrier_Scope::Compute).to(RHI_Barrier_Scope::Graphics));
-            FlushBarriers();
+            if (RHI_Device::GetApiType() != RHI_Api_Type::D3d12)
+            {
+                FlushBarriers();
+            }
         }
     }
 

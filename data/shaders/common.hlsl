@@ -1800,6 +1800,15 @@ float get_alpha_threshold(float3 position_world)
     return get_alpha_threshold(position_world, 0.6f);
 }
 
+// stochastic alpha-to-coverage for hair, eyebrows, eyelashes and beard strands:
+// taa/fsr resolves the dithered sub-pixel coverage into smooth, feathered strands with exact depth sorting
+float get_hair_alpha_threshold(float2 screen_pos, float cutoff, bool temporal)
+{
+    float dither = noise_interleaved_gradient(screen_pos, temporal);
+    float lo     = max(cutoff * 0.15f, 0.015f);
+    return lerp(lo, 0.96f, dither);
+}
+
 //= INCLUDES ===========================
 #include "common_structs.hlsl"
 #include "common_terrain.hlsl"

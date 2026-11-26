@@ -782,14 +782,14 @@ namespace ImGui::RHI
         }
     }
 
-    void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
+    bool render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
         // skip the first two frames to let the renderer fully initialize.
         // frame 0: pipeline layouts and descriptor sets are still being created.
         // frame 1: bindless draw_data buffer descriptor may not have been written yet.
         if (Renderer::GetFrameNumber() < 2)
         {
-            return;
+            return false;
         }
 
         // get resources
@@ -818,7 +818,7 @@ namespace ImGui::RHI
         // recording against a stale index would submit a write to a buffer that is not the one being presented
         if (is_main_window && !swapchain->IsImageAcquired())
         {
-            return;
+            return false;
         }
 
         // pin graphics, world load uploads otherwise steal the bound list
@@ -830,7 +830,7 @@ namespace ImGui::RHI
         // when the engine splash screen is shown, the command list is not valid as the renderer is initializing
         if (!RHI_Device::IsRecording())
         {
-            return;
+            return false;
         }
 
         // honor texture create/update/destroy requests from imgui, must run before draw command processing
@@ -1267,6 +1267,7 @@ namespace ImGui::RHI
             RHI_Texture* frame_sdr = sdr_capture ? Renderer::GetScreenshotSdrFrame() : nullptr;
 
             bool complete              = draw_index != numeric_limits<uint32_t>::max();
+            uint32_t draws_recorded    = 0;
             uint32_t global_vtx_offset = 0;
             uint32_t global_idx_offset = 0;
             RHI_Texture* texture_last  = nullptr;
@@ -1495,7 +1496,8 @@ namespace ImGui::RHI
                         }
 
                         RHI_CommandList::DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
-                        complete = complete && (!sdr_capture || RHI_CommandList::IsPipelineReady());
+                        draws_recorded++;
+                        complete = complete && RHI_CommandList::IsPipelineReady();
                     }
                 }
 
@@ -1513,7 +1515,7 @@ namespace ImGui::RHI
             }
 
             RHI_CommandList::EndPass();
-            return complete;
+            return complete && draws_recorded > 0;
         };
 
         // with a glass window up the ui goes through a texture so the backdrop can be read back, then lands in the swapchain
@@ -1525,7 +1527,7 @@ namespace ImGui::RHI
             pso.clear_color[0]                  = rhi_color_load;
         }
 
-        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false, glass_target);
+        const bool main_recorded = draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false, glass_target);
 
         if (glass_target)
         {
@@ -1607,6 +1609,8 @@ namespace ImGui::RHI
             }
             RHI_Device::Bind(static_cast<RHI_CommandList*>(nullptr));
         }
+
+        return is_main_window && main_recorded;
     }
 
     void window_create(ImGuiViewport* viewport)

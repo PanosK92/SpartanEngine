@@ -1074,6 +1074,7 @@ namespace spartan
         RHI_Texture::ShutdownCompressionPool();
 
         RHI_Device::Destroy();
+        m_first_frame_completed = false;
     }
 
     void Renderer::Tick()
@@ -1309,6 +1310,16 @@ namespace spartan
                     submitted.value;
                 m_cross_queue_sync.pending_compute_timeline       = nullptr;
                 m_cross_queue_sync.pending_compute_timeline_value = 0;
+
+                if (can_render && !m_first_frame_completed)
+                {
+                    // wait once so the first presented backbuffer finishes on the gpu before showing the window and hiding the splash screen
+                    if (submitted.timeline && submitted.value > 0)
+                    {
+                        submitted.timeline->Wait(submitted.value);
+                    }
+                    NotifyFirstFrameCompleted();
+                }
             }
             FinalizeScreenshotReadback();
             EndXrFrame();
@@ -1355,16 +1366,26 @@ namespace spartan
         if (can_render)
         {
             m_frame_num++;
-            if (m_frame_num == 1)
-            {
-                Engine::LogStartupStep("first frame");
-                SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
-            }
-
             TickLogClusterOverflowRateLimited();
         }
 
         RenderDoc::Tick();
+    }
+
+    bool Renderer::HasCompletedFirstFrame()
+    {
+        return m_first_frame_completed;
+    }
+
+    void Renderer::NotifyFirstFrameCompleted()
+    {
+        if (m_first_frame_completed)
+        {
+            return;
+        }
+        m_first_frame_completed = true;
+        Engine::LogStartupStep("first frame");
+        SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
     }
 
     void Renderer::RenderSecondaryView(Entity* camera_entity, Entity* root, const uint32_t width, const uint32_t height)
@@ -4332,6 +4353,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadPaint)               ? (1U << 23) : 0;
                 properties[count].flags |= is_pooled_emitter_material(material)                                ? (1U << 24) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::PaintPreset) > 0.0f        ? (1U << 25) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsHair)                    ? (1U << 26) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
         };
@@ -7425,17 +7447,22 @@ namespace spartan
         RHI_Texture* tex_ocean_norm = GetRenderTarget(
             Renderer_RenderTarget::ocean_normal
         );
-        if (tex_ocean_disp)
+        // while Pass_Ocean is executing on the async compute queue, opaque/shadow passes never sample ocean displacement/normal maps;
+        // skipping their binding avoids cross-queue layout transitions and data races until Graphics waits on fog_work/compute_b
+        if (!m_ocean_async_in_flight)
         {
-            RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
-        }
-        if (tex_ocean_disp_previous)
-        {
-            RHI_CommandList::SetTexture("tex_ocean_displacement_previous", tex_ocean_disp_previous);
-        }
-        if (tex_ocean_norm)
-        {
-            RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
+            if (tex_ocean_disp)
+            {
+                RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
+            }
+            if (tex_ocean_disp_previous)
+            {
+                RHI_CommandList::SetTexture("tex_ocean_displacement_previous", tex_ocean_disp_previous);
+            }
+            if (tex_ocean_norm)
+            {
+                RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
+            }
         }
     }
 
@@ -8220,6 +8247,7 @@ namespace spartan
             if (!secondary_render_root_active && ocean_prepared_async && water_visible)
             {
                 Pass_Ocean();
+                m_ocean_async_in_flight = true;
             }
             Pass_Fog(0, rhi_all_mips);
             fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
@@ -8402,6 +8430,7 @@ namespace spartan
             m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
             m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
             RHI_Device::SetFrameWait(compute_b_timeline, compute_b_value);
+            m_ocean_async_in_flight = false;
 
             const bool xr_stereo     = IsStereoView();
             const uint32_t eye_count = xr_stereo ? Xr::eye_count : 1;

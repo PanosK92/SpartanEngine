@@ -398,13 +398,6 @@ namespace spartan
         // mesh shader pipelines require a dedicated stream with an ms subobject
         if (state.HasMeshShaders())
         {
-            Microsoft::WRL::ComPtr<ID3D12Device2> device2;
-            if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device2))))
-            {
-                SP_LOG_ERROR("Mesh pipeline '%s' requires ID3D12Device2", state.name ? state.name : "?");
-                return;
-            }
-
             D3D12_VIEW_INSTANCE_LOCATION view_locations[2] = { { 0, 0 }, { 0, 1 } };
             D3D12_SHADER_BYTECODE ms_bytecode = {};
             if (state.shaders[RHI_Shader_Type::MeshShader])
@@ -447,7 +440,7 @@ namespace spartan
                 }
             }
 
-            HRESULT hr = device2->CreatePipelineState(&stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
+            HRESULT hr = RHI_Context::device->CreatePipelineState(&stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
             if (FAILED(hr))
             {
                 SP_LOG_ERROR("Failed to create mesh pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
@@ -461,8 +454,7 @@ namespace spartan
         }
 
         // stream-based creation declares view instancing, required by shaders reading sv_viewid (vulkan multiview parity)
-        Microsoft::WRL::ComPtr<ID3D12Device2> device2;
-        if (view_instancing_supported() && SUCCEEDED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device2))))
+        if (view_instancing_supported())
         {
             // view n renders to render target array slice n, mono psos declare a single view which is a no-op
             D3D12_VIEW_INSTANCE_LOCATION view_locations[2] = { { 0, 0 }, { 0, 1 } };
@@ -504,7 +496,7 @@ namespace spartan
                 }
             }
 
-            HRESULT hr = device2->CreatePipelineState(&stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
+            HRESULT hr = RHI_Context::device->CreatePipelineState(&stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
             if (FAILED(hr))
             {
                 SP_LOG_ERROR("Failed to create graphics pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
@@ -804,14 +796,6 @@ namespace spartan
     // a dxr state object needs a dxil library per shader, hit groups, shader config, pipeline config and the global root signature
     static void create_ray_tracing_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state)
     {
-        // dxr is only available on devices that expose ID3D12Device5
-        Microsoft::WRL::ComPtr<ID3D12Device5> device5;
-        if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device5))))
-        {
-            SP_LOG_ERROR("Ray tracing pipeline requires ID3D12Device5");
-            return;
-        }
-
         // global root signature, reuse the bindless one so descriptor bindings line up across pipelines
         create_root_signature_bindless(pipeline);
         if (!pipeline->GetRhiResourceLayout())
@@ -908,7 +892,7 @@ namespace spartan
         state_object_desc.pSubobjects   = subobjects;
 
         ID3D12StateObject* state_object = nullptr;
-        HRESULT hr = device5->CreateStateObject(&state_object_desc, IID_PPV_ARGS(&state_object));
+        HRESULT hr = RHI_Context::device->CreateStateObject(&state_object_desc, IID_PPV_ARGS(&state_object));
         if (FAILED(hr))
         {
             SP_LOG_ERROR("Failed to create ray tracing pipeline state object '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));

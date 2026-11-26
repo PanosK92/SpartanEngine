@@ -102,6 +102,14 @@ namespace spartan
         static uint32_t m_rhi_timeblock_count;
         static uint32_t m_rhi_pipeline_barriers;
         static uint32_t m_rhi_layout_barriers;
+        // last completed frame snapshot (retained across ClearRhiMetrics for diagnostics/MCP queries)
+        static uint32_t m_rhi_draw_last;
+        static uint32_t m_rhi_instance_count_last;
+        static uint32_t m_rhi_timeblock_count_last;
+        static uint32_t m_rhi_pipeline_barriers_last;
+        static uint32_t m_rhi_layout_barriers_last;
+        static uint32_t m_rhi_bindings_pipeline_last;
+        static uint32_t m_rhi_descriptor_set_count_last;
         static uint32_t m_rhi_bindings_buffer_index;
         static uint32_t m_rhi_bindings_buffer_vertex;
         static uint32_t m_rhi_bindings_buffer_constant;

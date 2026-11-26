@@ -24,7 +24,7 @@ namespace spartan
 #if defined(API_GRAPHICS_D3D12)
     RHI_Api_Type  RHI_Context::api_type                    = RHI_Api_Type::D3d12;
     const char*   RHI_Context::api_type_str                = "D3D12";
-    ID3D12Device* RHI_Context::device                      = nullptr;
+    ID3D12Device10* RHI_Context::device                    = nullptr;
     uint32_t      RHI_Context::sdl_window_flags            = 0;
     bool          RHI_Context::supports_imgui_multi_viewport = false;
 #elif defined(API_GRAPHICS_VULKAN)

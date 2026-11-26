@@ -1202,6 +1202,42 @@ namespace spartan
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 
+            // Hair, eyebrows, eyelashes and beard strands use stochastic temporal alpha coverage and Marschner dual-lobe hair shading.
+            if (name.find("hair") != string::npos || name.find("eyebrow") != string::npos || name.find("eyelash") != string::npos || name.find("beard") != string::npos || name.find("stubble") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::IsHair, 1.0f);
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
+
+            // Human skin materials use physically-based Christensen-Burley 2015 screen-space subsurface scattering
+            // (shape distance d = 4.2 mm face / 2.0 mm limbs, epidermis IOR 1.40, subtle dual-lobe sebum clearcoat on face).
+            if (name == "mh_face")
+            {
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.88f);
+                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0042f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.37f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.19f);
+                material->SetProperty(MaterialProperty::Ior, 1.40f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.12f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.28f);
+            }
+            else if (name == "mh_skin" || name.find("_skin") != string::npos || name.find("skin_") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.55f);
+                material->SetProperty(MaterialProperty::SubsurfaceRadius, 0.0020f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorR, 1.00f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorG, 0.37f);
+                material->SetProperty(MaterialProperty::SubsurfaceColorB, 0.19f);
+                material->SetProperty(MaterialProperty::Ior, 1.40f);
+            }
+
+            // Human eyes use cornea IOR for crisp wet reflections.
+            if (name == "mh_eyes" || name.find("cornea") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::Ior, 1.38f);
+            }
+
             if (material->HasTextureOfType(MaterialTextureType::Color) &&
                 material->HasTextureOfType(MaterialTextureType::AlphaMask))
             {
@@ -1250,6 +1286,18 @@ namespace spartan
             if (is_gltf)
             {
                 load_gltf_extensions(material, material_assimp, color_diffuse, opacity);
+            }
+
+            // Hair cards always route through the deferred G-buffer with stochastic temporal alpha-to-coverage
+            // instead of forward alpha blending, giving exact per-strand depth sorting, soft shadows and Marschner BRDF.
+            if (material->GetProperty(MaterialProperty::IsHair) > 0.0f)
+            {
+                opacity = 1.0f;
+                material->SetProperty(MaterialProperty::AlphaBlend, 0.0f);
+                if (material->GetProperty(MaterialProperty::AlphaCutoff) <= 0.0f)
+                {
+                    material->SetProperty(MaterialProperty::AlphaCutoff, 0.12f);
+                }
             }
 
             // set color and opacity

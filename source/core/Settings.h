@@ -24,7 +24,6 @@ namespace spartan
     extern TConsoleVar<bool> cvar_debug_gpu_timing;
     extern TConsoleVar<bool> cvar_debug_shader_optimization;
     extern TConsoleVar<bool> cvar_debug_steam;
-    extern TConsoleVar<bool> cvar_debug_d3d12_enhanced_barriers;
     extern TConsoleVar<bool> cvar_debug_d3d12_async_compute;
 
     class Settings

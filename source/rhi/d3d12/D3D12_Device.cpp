@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Buffer.h"
 #include "../RHI_Texture.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_AccelerationStructure.h"
 #include "../../memory/GpuMemory.h"
 #include "../RHI_Sampler.h"
 #include <wrl/client.h>
@@ -113,8 +114,9 @@ namespace spartan
                 return;
             }
 
-            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR,      TRUE);
+            const BOOL break_on_error = IsDebuggerPresent() ? TRUE : FALSE;
+            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, break_on_error);
+            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR,      break_on_error);
             info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING,    FALSE);
 
             // suppress noisy or false-positive ids that aren't actionable
@@ -696,8 +698,7 @@ namespace spartan
                 static_cast<uint32_t>(highest_root_signature) - 1,
                 static_cast<int>(resource_binding_tier));
 
-            const char* barrier_state = d3d12_barriers::IsEnabled() ? "active"
-                                      : (enhanced_barriers ? "supported but disabled" : "unsupported");
+            const char* barrier_state = d3d12_barriers::IsSupported() ? "active" : "unsupported";
 
             SP_LOG_INFO("D3D12 enhanced barriers: %s, gpu upload heap: %s, relaxed format casting: %s, mesh shader tier: %d",
                 barrier_state,
@@ -1067,6 +1068,8 @@ namespace spartan
         DeletionQueueParse();
     }
 
+    namespace dxgi_memory { void destroy(); }
+
     void RHI_Device::Destroy()
     {
         RHI_Compiler::Shaders().Flush();
@@ -1083,6 +1086,7 @@ namespace spartan
         }
 
         // force-retire any pending deletions, the gpu is guaranteed idle here
+        RHI_AccelerationStructure::DestroyCompactionResources();
         DeletionQueueParse();
 
         queues::destroy();
@@ -1097,6 +1101,7 @@ namespace spartan
 
         // release info queue before the device, since it holds a reference to it
         validation::destroy();
+        dxgi_memory::destroy();
 
         GpuMemory::Clear();
 
@@ -1833,54 +1838,105 @@ namespace spartan
         }
     }
 
-    static bool query_video_memory_info(DXGI_QUERY_VIDEO_MEMORY_INFO& out)
+    namespace dxgi_memory
     {
-        // walk back to the adapter via dxgi factory so memory budget is in sync with dxgi state
-        Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
-        if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory))))
+        IDXGIAdapter3* adapter          = nullptr;
+        uint64_t dedicated_video_memory = 0;
+        mutex query_mutex;
+
+        bool ensure_adapter()
         {
-            return false;
+            if (adapter)
+            {
+                return true;
+            }
+            if (!RHI_Context::device)
+            {
+                return false;
+            }
+
+            Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+            if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory))))
+            {
+                return false;
+            }
+
+            const LUID adapter_luid = RHI_Context::device->GetAdapterLuid();
+            Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter1;
+            if (FAILED(factory->EnumAdapterByLuid(adapter_luid, IID_PPV_ARGS(&adapter1))))
+            {
+                return false;
+            }
+
+            DXGI_ADAPTER_DESC1 desc = {};
+            if (SUCCEEDED(adapter1->GetDesc1(&desc)))
+            {
+                dedicated_video_memory = static_cast<uint64_t>(desc.DedicatedVideoMemory);
+            }
+
+            if (FAILED(adapter1->QueryInterface(IID_PPV_ARGS(&adapter))))
+            {
+                adapter = nullptr;
+                return false;
+            }
+            return true;
         }
 
-        const LUID adapter_luid = RHI_Context::device->GetAdapterLuid();
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
-        if (FAILED(factory->EnumAdapterByLuid(adapter_luid, IID_PPV_ARGS(&adapter))))
+        bool query(DXGI_QUERY_VIDEO_MEMORY_INFO& out)
         {
-            return false;
+            lock_guard<mutex> lock(query_mutex);
+            if (!ensure_adapter())
+            {
+                return false;
+            }
+            return SUCCEEDED(adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &out));
         }
 
-        Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter3;
-        if (FAILED(adapter.As(&adapter3)))
+        uint64_t get_dedicated_bytes()
         {
-            return false;
+            lock_guard<mutex> lock(query_mutex);
+            ensure_adapter();
+            return dedicated_video_memory;
         }
 
-        return SUCCEEDED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &out));
+        void destroy()
+        {
+            lock_guard<mutex> lock(query_mutex);
+            if (adapter)
+            {
+                adapter->Release();
+                adapter = nullptr;
+            }
+            dedicated_video_memory = 0;
+        }
     }
 
     uint64_t RHI_Device::MemoryGetAllocatedMb()
     {
         DXGI_QUERY_VIDEO_MEMORY_INFO memory_info = {};
-        return query_video_memory_info(memory_info) ? (memory_info.CurrentUsage / (1024ull * 1024ull)) : 0;
+        return dxgi_memory::query(memory_info) ? (memory_info.CurrentUsage / (1024ull * 1024ull)) : 0;
     }
 
     uint64_t RHI_Device::MemoryGetAvailableMb()
     {
+        // match Vulkan: return the driver budget for this process (used by texture streaming auto-budget)
         DXGI_QUERY_VIDEO_MEMORY_INFO memory_info = {};
-        if (!query_video_memory_info(memory_info))
-        {
-            return 0;
-        }
-        return (memory_info.Budget > memory_info.CurrentUsage) ? ((memory_info.Budget - memory_info.CurrentUsage) / (1024ull * 1024ull)) : 0;
+        return dxgi_memory::query(memory_info) ? (memory_info.Budget / (1024ull * 1024ull)) : 0;
     }
 
     uint64_t RHI_Device::MemoryGetTotalMb()
     {
+        // match Vulkan: return total physical device-local VRAM
+        const uint64_t dedicated = dxgi_memory::get_dedicated_bytes();
+        if (dedicated > 0)
+        {
+            return dedicated / (1024ull * 1024ull);
+        }
         DXGI_QUERY_VIDEO_MEMORY_INFO memory_info = {};
-        return query_video_memory_info(memory_info) ? (memory_info.Budget / (1024ull * 1024ull)) : 0;
+        return dxgi_memory::query(memory_info) ? (memory_info.Budget / (1024ull * 1024ull)) : 0;
     }
 
-    // staging buffer pool - simple acquire/release wrapping committed upload buffers
+    // staging buffer pool - pools small transient upload buffers, releases large ones immediately on retirement
     namespace staging
     {
         struct Entry
@@ -1889,7 +1945,10 @@ namespace spartan
             uint64_t size          = 0;
             bool in_use            = false;
         };
+        constexpr uint64_t max_pooled_buffer_size = 4ull * 1024ull * 1024ull;
+        constexpr uint64_t max_pooled_total_bytes = 32ull * 1024ull * 1024ull;
         vector<Entry> pool;
+        uint64_t free_bytes = 0;
         mutex mutex_pool;
     }
 
@@ -1897,21 +1956,32 @@ namespace spartan
     {
         lock_guard<mutex> lock(staging::mutex_pool);
 
-        // find a free entry that fits
-        for (auto& entry : staging::pool)
+        // find the smallest free entry that fits without wasting a huge buffer on a tiny upload
+        const uint64_t max_fit = max<uint64_t>(size * 2, 64ull * 1024ull);
+        size_t best_index      = staging::pool.size();
+        uint64_t best_size     = UINT64_MAX;
+        for (size_t i = 0; i < staging::pool.size(); i++)
         {
-            if (!entry.in_use && entry.size >= size)
+            const auto& entry = staging::pool[i];
+            if (!entry.in_use && entry.size >= size && entry.size <= max_fit && entry.size < best_size)
             {
-                entry.in_use = true;
-                return entry.buffer;
+                best_index = i;
+                best_size  = entry.size;
             }
         }
+        if (best_index < staging::pool.size())
+        {
+            auto& entry = staging::pool[best_index];
+            entry.in_use = true;
+            staging::free_bytes -= min(staging::free_bytes, entry.size);
+            return entry.buffer;
+        }
 
-        // create a new upload buffer
+        // create a new upload buffer via ID3D12Device10::CreateCommittedResource3 (layoutless enhanced-barrier buffer)
         D3D12_HEAP_PROPERTIES props = {};
         props.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-        D3D12_RESOURCE_DESC desc = {};
+        D3D12_RESOURCE_DESC1 desc = {};
         desc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
         desc.Width              = size;
         desc.Height             = 1;
@@ -1922,14 +1992,12 @@ namespace spartan
         desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
         ID3D12Resource* upload_buffer = nullptr;
-        if (FAILED(RHI_Context::device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload_buffer))))
+        if (FAILED(RHI_Context::device->CreateCommittedResource3(&props, D3D12_HEAP_FLAG_NONE, &desc, D3D12_BARRIER_LAYOUT_UNDEFINED, nullptr, nullptr, 0, nullptr, IID_PPV_ARGS(&upload_buffer))))
         {
             return nullptr;
         }
 
         staging::pool.push_back({ upload_buffer, size, true });
-        d3d12_state::SetState(upload_buffer, D3D12_RESOURCE_STATE_GENERIC_READ);
-        d3d12_state::SetDecaysToCommon(upload_buffer, true);
         d3d12_state::SetIsBuffer(upload_buffer, true);
         d3d12_state::SetSubresourceCount(upload_buffer, 1);
         d3d12_gpu_memory::register_resource(upload_buffer, GpuMemoryKind::Upload, "staging");
@@ -1938,12 +2006,31 @@ namespace spartan
 
     void RHI_Device::StagingBufferRelease(void* buffer)
     {
-        lock_guard<mutex> lock(staging::mutex_pool);
-        for (auto& entry : staging::pool)
+        if (!buffer)
         {
+            return;
+        }
+
+        lock_guard<mutex> lock(staging::mutex_pool);
+        for (size_t i = 0; i < staging::pool.size(); i++)
+        {
+            auto& entry = staging::pool[i];
             if (entry.buffer == buffer)
             {
-                entry.in_use = false;
+                // release large one-shot upload buffers (e.g. world geometry loads) immediately so they do not stay pinned in gpu memory
+                if (entry.size <= staging::max_pooled_buffer_size && staging::free_bytes + entry.size <= staging::max_pooled_total_bytes)
+                {
+                    entry.in_use = false;
+                    staging::free_bytes += entry.size;
+                }
+                else
+                {
+                    d3d12_state::RemoveState(entry.buffer);
+                    GpuMemory::Unregister(entry.buffer);
+                    entry.buffer->Release();
+                    staging::pool[i] = staging::pool.back();
+                    staging::pool.pop_back();
+                }
                 return;
             }
         }
@@ -1956,11 +2043,13 @@ namespace spartan
         {
             if (entry.buffer)
             {
+                d3d12_state::RemoveState(entry.buffer);
                 GpuMemory::Unregister(entry.buffer);
                 entry.buffer->Release();
             }
         }
         staging::pool.clear();
+        staging::free_bytes = 0;
     }
 
     void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
@@ -2003,12 +2092,6 @@ namespace spartan
         // create pipeline library from disk cache on first request, empty blob is valid when no cache exists
         std::call_once(pipeline_library::init_flag, []()
         {
-            Microsoft::WRL::ComPtr<ID3D12Device1> device1;
-            if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device1))))
-            {
-                return;
-            }
-
             // seeding from disk while loads are disabled makes every store collide with an existing name
             if (d3d12_pipeline_library::can_load())
             {
@@ -2028,13 +2111,13 @@ namespace spartan
 
             const void* initial_data  = pipeline_library::cache_bytes.empty() ? nullptr : pipeline_library::cache_bytes.data();
             const SIZE_T initial_size = pipeline_library::cache_bytes.size();
-            HRESULT hr = device1->CreatePipelineLibrary(initial_data, initial_size, IID_PPV_ARGS(&pipeline_library::lib));
+            HRESULT hr = RHI_Context::device->CreatePipelineLibrary(initial_data, initial_size, IID_PPV_ARGS(&pipeline_library::lib));
             if (FAILED(hr) && initial_size > 0)
             {
                 // stale cache from another driver/device, fall back to an empty library
                 pipeline_library::cache_bytes.clear();
                 pipeline_library::has_disk_cache = false;
-                hr = device1->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
+                hr = RHI_Context::device->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
             }
 
             if (FAILED(hr))
@@ -2097,9 +2180,8 @@ namespace spartan
             return;
         }
 
-        // command list 5 exposes RSSetShadingRate / RSSetShadingRateImage, query for it on first use
-        ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
-        if (!d3d_cmd_list)
+        ID3D12GraphicsCommandList7* cmd_list7 = static_cast<ID3D12GraphicsCommandList7*>(cmd_list->GetRhiResource());
+        if (!cmd_list7)
         {
             return;
         }
@@ -2108,30 +2190,26 @@ namespace spartan
             return;
         }
 
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList5> cmd_list5;
-        if (FAILED(d3d_cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list5))))
-        {
-            return;
-        }
         cmd_list->m_vrs_enabled = enabled;
         cmd_list->m_vrs_valid   = true;
 
         if (enabled)
         {
             // combiner: PASSTHROUGH for the per-draw rate (x), OVERRIDE for the per-image (y) so the image always wins
-            const D3D12_SHADING_RATE_COMBINER combiners[2] = {
+            const D3D12_SHADING_RATE_COMBINER combiners[2] =
+            {
                 D3D12_SHADING_RATE_COMBINER_PASSTHROUGH,
                 D3D12_SHADING_RATE_COMBINER_OVERRIDE
             };
-            cmd_list5->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
+            cmd_list7->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
 
             // the image binding requires a per-pso vrs input texture, set in Renderer_Passes via pso.vrs_input_texture
-            // we rely on the command list path to call cmd_list5->RSSetShadingRateImage with the texture's resource at pass-bind time
+            // we rely on the command list path to call cmd_list7->RSSetShadingRateImage with the texture's resource at pass-bind time
         }
         else
         {
-            cmd_list5->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
-            cmd_list5->RSSetShadingRateImage(nullptr);
+            cmd_list7->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
+            cmd_list7->RSSetShadingRateImage(nullptr);
         }
     }
 

@@ -155,9 +155,10 @@ void spartan::gui::render()
         spartan::ScopedTimeBlock block("ui_acquire");
         spartan::RHI_Device::AcquireSwapChainImage();
     }
+    bool ui_rendered = false;
     {
         spartan::ScopedTimeBlock block("ui_record");
-        ImGui::RHI::render(ImGui::GetDrawData());
+        ui_rendered = ImGui::RHI::render(ImGui::GetDrawData());
     }
 
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -169,4 +170,14 @@ void spartan::gui::render()
     const spartan::RHI_Work submitted = spartan::RHI_Device::EndFrame();
     spartan::Renderer::SetFrameCompletion(submitted.timeline.get(), submitted.value);
     spartan::Renderer::FinalizeScreenshotReadback();
+
+    // only dismiss the splash screen and show the main window once a real ui frame has actually been drawn, presented, and completed on the gpu
+    if (!spartan::Renderer::HasCompletedFirstFrame() && spartan::Renderer::GetFrameNumber() >= 1 && (ui_rendered || spartan::Engine::IsHeadless()))
+    {
+        if (submitted.timeline && submitted.value > 0)
+        {
+            submitted.timeline->Wait(submitted.value);
+        }
+        spartan::Renderer::NotifyFirstFrameCompleted();
+    }
 }

@@ -339,13 +339,14 @@ void evaluate_light(
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
     // cull the inverse square tail clustering cannot, skip when the exposed contribution is sub perceptual
     bool light_can_contribute       = light.can_contribute();
+    bool has_hair                   = surface.is_hair() && !is_transparent;
     bool has_brdf                   = any(light.radiance > 0.0f);
     bool has_sss                    = scattering_fraction > 0.0f && surface.metallic < 1.0f;
     // back lit thin parts measure the solid with rays, without a tlas the shadow slices of a local light stand in for them
     bool transmission_ray_traced    = is_ray_traced_shadows_enabled();
     bool has_transmission           = has_profile && !is_transparent && (transmission_ray_traced || (light.has_shadows() && !light.is_directional()));
 
-    if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss || has_transmission))
+    if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss || has_transmission || has_hair))
     {
         if (has_transmission)
         {
@@ -495,7 +496,17 @@ void evaluate_light(
         }
 
         float3 L_specular_lobes = 0.0f;
-        if (has_brdf)
+        if (has_hair)
+        {
+            float3 hair_diffuse;
+            float3 hair_specular;
+            BRDF_Hair(surface, angular_info, hair_diffuse, hair_specular);
+            // Marschner hair integrates cylindrical lighting against raw radiance directly (including backlit TT)
+            float hair_occ = lerp(0.45f, 1.0f, micro_shadow);
+            out_diffuse  += hair_diffuse * light_radiance_raw * diffuse_precomputed * hair_occ;
+            out_specular += hair_specular * light_radiance_raw * specular_precomputed * hair_occ;
+        }
+        else if (has_brdf)
         {
             if (surface.anisotropic > 0.0f)
             {
@@ -530,7 +541,7 @@ void evaluate_light(
             }
         }
 
-        if (has_sss)
+        if (has_sss && !has_hair)
         {
             // sss uses raw radiance so it can fire on back faced surfaces
             Light light_sss    = light;
@@ -544,7 +555,7 @@ void evaluate_light(
         surface.roughness_alpha = original_roughness_alpha;
 
         // a leaf transmits on top of reflecting, only solid scattering media trade one for the other
-        if (has_brdf && !is_transparent)
+        if (has_brdf && !is_transparent && !has_hair)
         {
             float reflected_fraction = surface.is_foliage() ? 1.0f : 1.0f - scattering_fraction;
             L_diffuse_term += BRDF_Diffuse(surface, angular_info) * reflected_fraction;

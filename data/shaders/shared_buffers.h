@@ -922,6 +922,7 @@ struct MaterialParameters
     bool is_skid_mark()          { return (flags & (1 << 20)) != 0; }
     // a flat color emitter the emissive triangle pool samples directly, its hits must not add emission again
     bool is_pooled_emitter()     { return (flags & (1 << 24)) != 0; }
+    bool is_hair()               { return (flags & (1u << 26)) != 0; }
 
     // terrain_flags bits, see TerrainLayer.h
     bool terrain_layer_biplanar() { return (terrain_flags & (1 << 0)) != 0; }

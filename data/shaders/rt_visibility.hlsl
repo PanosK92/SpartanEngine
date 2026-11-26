@@ -54,6 +54,11 @@ bool rt_candidate_opaque_loaded(GeometryInfo geo, MaterialParameters mat, uint p
     }
 
     float alpha = rt_candidate_albedo(geo, primitive_index, barycentrics, hit_position).a;
+    if (mat.is_hair())
+    {
+        float dither = hash(hit_position.xy * 1024.0f + hit_position.z * 512.0f);
+        return alpha > lerp(max(mat.alpha_cutoff * 0.15f, 0.015f), 0.96f, dither);
+    }
     return alpha > get_alpha_threshold(hit_position, mat.alpha_cutoff);
 }
 

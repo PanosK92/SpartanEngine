@@ -80,6 +80,7 @@ step()
 build_premake()
 {
     curl -fsSL "$premake_url" | tar -xz -C "$root/tools"
+    chmod +x "$root/tools/premake5"
     xattr -d com.apple.quarantine "$root/tools/premake5" 2>/dev/null || true
 }
 

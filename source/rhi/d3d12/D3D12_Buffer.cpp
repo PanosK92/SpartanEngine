@@ -81,16 +81,13 @@ namespace spartan
             (m_type == RHI_Buffer_Type::Instance && !m_mappable);
 
         D3D12_HEAP_TYPE heap_type = D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
         if (m_type == RHI_Buffer_Type::Readback)
         {
-            heap_type     = D3D12_HEAP_TYPE_READBACK;
-            initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
+            heap_type = D3D12_HEAP_TYPE_READBACK;
         }
         else if (m_type == RHI_Buffer_Type::Upload || (m_mappable && !force_default_heap_uav))
         {
-            heap_type     = D3D12_HEAP_TYPE_UPLOAD;
-            initial_state = D3D12_RESOURCE_STATE_GENERIC_READ;
+            heap_type = D3D12_HEAP_TYPE_UPLOAD;
         }
 
         // a gpu upload heap lives in vram but stays cpu writable over resizable bar, so the shader reads it at
@@ -114,30 +111,34 @@ namespace spartan
         heap_props.CreationNodeMask      = 1;
         heap_props.VisibleNodeMask       = 1;
 
-        D3D12_RESOURCE_DESC resource_desc = {};
-        resource_desc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resource_desc.Alignment          = 0;
-        resource_desc.Width              = size;
-        resource_desc.Height             = 1;
-        resource_desc.DepthOrArraySize   = 1;
-        resource_desc.MipLevels          = 1;
-        resource_desc.Format             = DXGI_FORMAT_UNKNOWN;
-        resource_desc.SampleDesc.Count   = 1;
-        resource_desc.SampleDesc.Quality = 0;
-        resource_desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resource_desc.Flags              = D3D12_RESOURCE_FLAG_NONE;
+        D3D12_RESOURCE_DESC1 resource_desc = {};
+        resource_desc.Dimension            = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resource_desc.Alignment            = 0;
+        resource_desc.Width                = size;
+        resource_desc.Height               = 1;
+        resource_desc.DepthOrArraySize     = 1;
+        resource_desc.MipLevels            = 1;
+        resource_desc.Format               = DXGI_FORMAT_UNKNOWN;
+        resource_desc.SampleDesc.Count     = 1;
+        resource_desc.SampleDesc.Quality   = 0;
+        resource_desc.Layout               = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        resource_desc.Flags                = D3D12_RESOURCE_FLAG_NONE;
 
         if (force_default_heap_uav)
         {
             resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
 
+        // create as a native enhanced-barrier layoutless buffer via ID3D12Device10::CreateCommittedResource3
         ID3D12Resource* buffer = nullptr;
-        HRESULT hr = RHI_Context::device->CreateCommittedResource(
+        HRESULT hr = RHI_Context::device->CreateCommittedResource3(
             &heap_props,
             D3D12_HEAP_FLAG_NONE,
             &resource_desc,
-            initial_state,
+            D3D12_BARRIER_LAYOUT_UNDEFINED,
+            nullptr,
+            nullptr,
+            0,
             nullptr,
             IID_PPV_ARGS(&buffer)
         );
@@ -149,11 +150,14 @@ namespace spartan
             heap_type       = D3D12_HEAP_TYPE_UPLOAD;
             heap_props.Type = heap_type;
 
-            hr = RHI_Context::device->CreateCommittedResource(
+            hr = RHI_Context::device->CreateCommittedResource3(
                 &heap_props,
                 D3D12_HEAP_FLAG_NONE,
                 &resource_desc,
-                initial_state,
+                D3D12_BARRIER_LAYOUT_UNDEFINED,
+                nullptr,
+                nullptr,
+                0,
                 nullptr,
                 IID_PPV_ARGS(&buffer)
             );
@@ -161,7 +165,7 @@ namespace spartan
 
         if (FAILED(hr))
         {
-            d3d12_utility::error::fatal(hr, "Allocate buffer (CreateCommittedResource)", m_object_name.c_str(), size);
+            d3d12_utility::error::fatal(hr, "Allocate buffer (CreateCommittedResource3)", m_object_name.c_str(), size);
         }
 
         m_rhi_resource   = buffer;
@@ -187,9 +191,7 @@ namespace spartan
             m_hit_offset              = m_miss_offset + m_aligned_handle_size + padding_hit;
         }
 
-        // seed the global state tracker so subsequent barrier transitions know the resource's starting state
-        d3d12_state::SetState(buffer, initial_state);
-        d3d12_state::SetDecaysToCommon(buffer, heap_type == D3D12_HEAP_TYPE_DEFAULT);
+        // buffers carry no layout under enhanced barriers; only track buffer metadata
         d3d12_state::SetIsBuffer(buffer, true);
         d3d12_state::SetAllowsUav(buffer, (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
         d3d12_state::SetSubresourceCount(buffer, 1);

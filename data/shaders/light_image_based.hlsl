@@ -119,6 +119,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Subtle sky cuticle sheen on exposed outer leaves while keeping interior crown cavities deep velvety green
         specular_ibl *= 0.42f * lerp(0.16f, 1.0f, ibl_visibility);
     }
+    else if (surface.is_hair())
+    {
+        // Soften isotropic sky specular glare on hair fibers and blend warm melanin-tinted secondary sky sheen
+        float3 melanin_tint = pow(max(surface.albedo.rgb, float3(0.015f, 0.012f, 0.010f)), 0.72f);
+        specular_ibl        = specular_ibl * 0.18f + diffuse_skysphere * INV_PI * melanin_tint * 0.07f * ibl_visibility;
+        diffuse_ibl        *= 1.15f;
+    }
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky
     // lambert layer on top reads as an opaque milky sheet, the specular sky reflection stays

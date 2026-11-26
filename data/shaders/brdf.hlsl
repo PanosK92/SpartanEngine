@@ -311,6 +311,73 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
 }
 
 /*------------------------------------------------------------------------------
+    HAIR - MARSCHNER / KAJIYA-KAY DUAL-LOBE SHADING
+------------------------------------------------------------------------------*/
+
+// Physically-based hair shading (Marschner 2003 / Karis 2016):
+// Models cylindrical keratin fibers (IOR 1.55) with tilted cuticles:
+// - R:   primary cuticle highlight shifted toward the root
+// - TRT: melanin-tinted secondary internal reflection shifted toward the tip
+// - TT:  warm forward-scattered backlit transmission glow
+// - MS:  soft cylindrical Kajiya-Kay multiple-scattering diffuse (eliminates harsh plastic terminator)
+void BRDF_Hair(Surface surface, AngularInfo angular_info, out float3 out_diffuse, out float3 out_specular)
+{
+    float3 n = surface.normal;
+    float3 v = angular_info.v;
+    float3 l = angular_info.l;
+    float3 h = angular_info.h;
+
+    // Derive natural downward strand tangent along the surface (gravity-aligned flow over scalp/jaw)
+    float3 down_ref = abs(n.y) < 0.95f ? float3(0.0f, -1.0f, 0.0f) : float3(0.0f, 0.0f, 1.0f);
+    float3 t        = normalize(down_ref - n * dot(down_ref, n));
+
+    float sin_theta_l = clamp(dot(t, l), -0.999f, 0.999f);
+    float sin_theta_v = clamp(dot(t, v), -0.999f, 0.999f);
+    float cos_theta_l = sqrt(saturate(1.0f - sin_theta_l * sin_theta_l));
+    float cos_theta_v = sqrt(saturate(1.0f - sin_theta_v * sin_theta_v));
+    float cos_theta_d = cos(0.5f * abs(asin(sin_theta_v) - asin(sin_theta_l)));
+
+    // Azimuthal cosine between view and light projected onto the fiber cross-section
+    float3 l_perp = l - t * sin_theta_l;
+    float3 v_perp = v - t * sin_theta_v;
+    float  perp_len = sqrt(max(dot(l_perp, l_perp) * dot(v_perp, v_perp), 1e-6f));
+    float  cos_phi  = clamp(dot(l_perp, v_perp) / perp_len, -1.0f, 1.0f);
+
+    float rough   = clamp(surface.roughness, 0.25f, 0.90f);
+    float beta_r  = max(rough * rough, 0.06f);
+    float beta_tr = min(beta_r * 2.1f, 0.85f);
+
+    // Cuticle tilt shifts R toward root (-5.5 deg) and TRT toward tip (+9 deg)
+    float theta_h = 0.5f * (asin(sin_theta_l) + asin(sin_theta_v));
+    float m_r     = exp(-0.5f * ((theta_h + 0.096f) * (theta_h + 0.096f)) / (beta_r * beta_r)) / (sqrt(PI2) * beta_r);
+    float m_trt   = exp(-0.5f * ((theta_h - 0.157f) * (theta_h - 0.157f)) / (beta_tr * beta_tr)) / (sqrt(PI2) * beta_tr);
+
+    // Keratin Fresnel (IOR = 1.55 -> F0 = 0.046)
+    float f_r     = F_Schlick(0.046f, 1.0f, saturate(cos_theta_d * sqrt(saturate(0.5f + 0.5f * cos_phi))));
+    float n_r     = 0.25f * sqrt(saturate(0.5f + 0.5f * cos_phi));
+
+    // Hair melanin absorption tints the internal TRT bounce and backlit TT transmission
+    float3 melanin_tint = pow(max(surface.albedo, float3(0.015f, 0.012f, 0.010f)), 0.72f);
+    float  front_wrap   = saturate(dot(n, l) * 0.65f + 0.35f);
+
+    // Primary cuticle sheen (R) + warm melanin-tinted secondary ribbon sheen (TRT)
+    float3 lobe_r   = (m_r * n_r * f_r * 0.24f) * front_wrap;
+    float3 lobe_trt = (m_trt * (1.0f - f_r) * 0.34f) * melanin_tint * front_wrap;
+
+    // Forward-scattered backlit rim glow (TT) when light shines through edges from behind
+    float  backlit = pow(saturate(dot(-v, l)), 3.0f) * pow(saturate(0.5f - 0.5f * cos_phi), 2.0f);
+    float3 lobe_tt = sqrt(max(surface.albedo, float3(0.01f, 0.008f, 0.006f))) * float3(1.15f, 0.85f, 0.65f) * backlit * 0.45f;
+
+    // Cylindrical Kajiya-Kay multiple-scattering diffuse: soft, volumetric, zero plastic terminator
+    float  kajiya_sin = lerp(0.28f, 1.0f, cos_theta_l);
+    float  wrap_ndotl = saturate((dot(n, l) + 0.40f) / 1.40f);
+    float  ms_scatter = lerp(wrap_ndotl, kajiya_sin, 0.55f);
+
+    out_diffuse  = surface.albedo * (ms_scatter * INV_PI) + lobe_tt;
+    out_specular = lobe_r + lobe_trt;
+}
+
+/*------------------------------------------------------------------------------
     SPECULAR OCCLUSION
 ------------------------------------------------------------------------------*/
 

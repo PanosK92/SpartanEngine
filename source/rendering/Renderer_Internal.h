@@ -499,6 +499,7 @@ namespace spartan
             bool m_transparents_present;
             bool m_water_present;
             bool m_non_ocean_water_present;
+            bool m_ocean_async_in_flight = false;
             std::vector<math::Vector4> m_water_visibility_boxes;
             bool m_forward_transparents_present;
             bool m_is_hiz_suppressed;
@@ -513,6 +514,7 @@ namespace spartan
             math::Vector2                 m_resolution_output;
             RHI_Viewport                  m_viewport;
             bool m_present_in_renderer = true;
+            bool m_first_frame_completed = false;
             uint64_t                      m_frame_num;
 
             ~State();
@@ -556,6 +558,7 @@ namespace spartan
         inline auto& m_transparents_present = state().m_transparents_present;
         inline auto& m_water_present = state().m_water_present;
         inline auto& m_non_ocean_water_present = state().m_non_ocean_water_present;
+        inline auto& m_ocean_async_in_flight = state().m_ocean_async_in_flight;
         inline auto& m_water_visibility_boxes = state().m_water_visibility_boxes;
         inline auto& m_forward_transparents_present = state().m_forward_transparents_present;
         inline auto& m_is_hiz_suppressed = state().m_is_hiz_suppressed;
@@ -570,6 +573,7 @@ namespace spartan
         inline auto& m_resolution_output = state().m_resolution_output;
         inline auto& m_viewport = state().m_viewport;
         inline auto& m_present_in_renderer = state().m_present_in_renderer;
+        inline auto& m_first_frame_completed = state().m_first_frame_completed;
         inline auto& m_frame_num = state().m_frame_num;
 
     }

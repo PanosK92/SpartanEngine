@@ -16,6 +16,8 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     enum class RHI_Queue_Type;
+    class RHI_CommandList;
+    class RHI_Texture;
 }
 
 // agility sdk redist, returns 0 when the build falls back to the in-box d3d12 runtime
@@ -40,13 +42,58 @@ namespace spartan::d3d12_caps
     D3D12_COMMAND_LIST_TYPE   GetComputeQueueListType();
 }
 
-// barrier submission, translates the legacy barrier descriptions the command list builds into
-// enhanced barriers when the runtime supports them, otherwise submits them as-is
+// enhanced barrier submission through ID3D12GraphicsCommandList7::Barrier
 namespace spartan::d3d12_barriers
 {
     void Initialize();
-    bool IsEnabled();
-    void Submit(ID3D12GraphicsCommandList* cmd_list, const D3D12_RESOURCE_BARRIER* barriers, uint32_t count);
+    bool IsSupported();
+
+    D3D12_BARRIER_SYNC   LayoutDefaultSync(D3D12_BARRIER_LAYOUT layout);
+    D3D12_BARRIER_ACCESS LayoutDefaultAccess(D3D12_BARRIER_LAYOUT layout);
+    bool                 IsDirectOnlyLayout(D3D12_BARRIER_LAYOUT layout);
+
+    void Submit(
+        ID3D12GraphicsCommandList*   cmd_list,
+        const D3D12_GLOBAL_BARRIER*  globals,
+        uint32_t                     global_count,
+        const D3D12_BUFFER_BARRIER*  buffers,
+        uint32_t                     buffer_count,
+        const D3D12_TEXTURE_BARRIER* textures,
+        uint32_t                     texture_count,
+        ID3D12GraphicsCommandList7*  cmd_list_7 = nullptr
+    );
+
+    void SubmitGlobal(
+        ID3D12GraphicsCommandList* cmd_list,
+        D3D12_BARRIER_SYNC         sync_before,
+        D3D12_BARRIER_SYNC         sync_after,
+        D3D12_BARRIER_ACCESS       access_before,
+        D3D12_BARRIER_ACCESS       access_after
+    );
+
+    void SubmitBuffer(
+        ID3D12GraphicsCommandList* cmd_list,
+        ID3D12Resource*            resource,
+        D3D12_BARRIER_SYNC         sync_before,
+        D3D12_BARRIER_SYNC         sync_after,
+        D3D12_BARRIER_ACCESS       access_before,
+        D3D12_BARRIER_ACCESS       access_after
+    );
+
+    void SubmitTexture(
+        ID3D12GraphicsCommandList* cmd_list,
+        ID3D12Resource*            resource,
+        D3D12_BARRIER_LAYOUT       layout_before,
+        D3D12_BARRIER_LAYOUT       layout_after,
+        UINT                       subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES
+    );
+}
+
+// enhanced <-> legacy barrier interop for prebuilt third-party libraries (e.g. NRI inside NRD) that emit legacy ResourceBarrier
+namespace spartan::d3d12_legacy_interop
+{
+    void PrepareCommonLayout(RHI_CommandList* cmd_list, RHI_Texture* texture);
+    void ReturnToCommonLayout(RHI_CommandList* cmd_list, RHI_Texture* const* textures, const D3D12_RESOURCE_STATES* states_before, uint32_t count);
 }
 
 // shared descriptor-heap + queue access used by the various D3D12_*.cpp files
@@ -132,24 +179,20 @@ namespace spartan::d3d12_root_slot
     constexpr uint32_t count              = 11;
 }
 
-// per-resource state tracker, used to compute the StateBefore field of d3d12 transition barriers
-// resources are seeded by their owners (texture creation, swapchain acquire) and freed on destroy
+// per-resource layout and metadata tracker for enhanced barriers
+// textures track their D3D12_BARRIER_LAYOUT; buffers have no layout under enhanced barriers
 namespace spartan::d3d12_state
 {
-    void SetState(ID3D12Resource* resource, D3D12_RESOURCE_STATES state);
-    D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource);
-    // buffers and simultaneous-access textures decay to common after executecommandlists
-    void SetDecaysToCommon(ID3D12Resource* resource, bool decays);
-    bool DecaysToCommon(ID3D12Resource* resource);
+    void SetLayout(ID3D12Resource* resource, D3D12_BARRIER_LAYOUT layout);
+    D3D12_BARRIER_LAYOUT GetLayout(ID3D12Resource* resource);
     void SetIsBuffer(ID3D12Resource* resource, bool is_buffer);
     bool IsBuffer(ID3D12Resource* resource);
     void SetIsDepth(ID3D12Resource* resource, bool is_depth);
-    // non-decaying textures that compute reads or writes, graphics submits hand them over in a compute legal state
+    // textures shared between graphics and compute; graphics submit hands them over out of direct-only layouts
     void SetCrossQueue(ID3D12Resource* resource);
     bool IsCrossQueue(ID3D12Resource* resource, bool* is_depth, bool* is_read_only = nullptr);
-    // textures without rtv/uav/dsv stay in a shader read state after upload, so both queues read them without barriers
     void SetReadOnly(ID3D12Resource* resource, bool read_only);
-    // created without allow_unordered_access, a barrier to the uav state is illegal and gets dropped
+    // created without allow_unordered_access, a uav layout transition is illegal and gets dropped
     void SetAllowsUav(ID3D12Resource* resource, bool allows_uav);
     bool AllowsUav(ID3D12Resource* resource);
     void SetSubresourceCount(ID3D12Resource* resource, uint32_t count);

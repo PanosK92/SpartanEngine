@@ -505,12 +505,13 @@ namespace spartan::mcp_diagnostics
             json += ",\"evictions\":" + std::to_string(pages.evictions) + "}";
 
             json += ",\"rhi\":{";
-            json += "\"draw_calls\":" + std::to_string(Profiler::m_rhi_draw);
-            json += ",\"instance_count\":" + std::to_string(Profiler::m_rhi_instance_count);
-            json += ",\"timeblock_count\":" + std::to_string(Profiler::m_rhi_timeblock_count);
-            json += ",\"pipeline_barriers\":" + std::to_string(Profiler::m_rhi_pipeline_barriers);
-            json += ",\"pipeline_bindings\":" + std::to_string(Profiler::m_rhi_bindings_pipeline);
-            json += ",\"descriptor_set_count\":" + std::to_string(Profiler::m_rhi_descriptor_set_count);
+            json += "\"draw_calls\":" + std::to_string(Profiler::m_rhi_draw_last);
+            json += ",\"instance_count\":" + std::to_string(Profiler::m_rhi_instance_count_last);
+            json += ",\"timeblock_count\":" + std::to_string(Profiler::m_rhi_timeblock_count_last);
+            json += ",\"pipeline_barriers\":" + std::to_string(Profiler::m_rhi_pipeline_barriers_last);
+            json += ",\"layout_barriers\":" + std::to_string(Profiler::m_rhi_layout_barriers_last);
+            json += ",\"pipeline_bindings\":" + std::to_string(Profiler::m_rhi_bindings_pipeline_last);
+            json += ",\"descriptor_set_count\":" + std::to_string(Profiler::m_rhi_descriptor_set_count_last);
             json += "}";
 
             json += ",\"memory\":{";

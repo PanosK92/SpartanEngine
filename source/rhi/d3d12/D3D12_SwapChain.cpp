@@ -447,7 +447,7 @@ namespace spartan
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
 
             // backbuffers come out of dxgi in present state, seed the tracker so the first transition is correct
-            d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+            d3d12_state::SetLayout(backbuffer, D3D12_BARRIER_LAYOUT_PRESENT);
             d3d12_state::SetSubresourceCount(backbuffer, 1);
 
             // store backbuffer and rtv info
@@ -555,7 +555,7 @@ namespace spartan
 
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
 
-            d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+            d3d12_state::SetLayout(backbuffer, D3D12_BARRIER_LAYOUT_PRESENT);
             d3d12_state::SetSubresourceCount(backbuffer, 1);
 
             m_rhi_rt[i] = backbuffer;
@@ -694,7 +694,7 @@ namespace spartan
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle{ reinterpret_cast<SIZE_T>(m_rhi_rtv[i]) };
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
-            d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+            d3d12_state::SetLayout(backbuffer, D3D12_BARRIER_LAYOUT_PRESENT);
             d3d12_state::SetSubresourceCount(backbuffer, 1);
             m_rhi_rt[i] = backbuffer;
         }
@@ -718,7 +718,7 @@ namespace spartan
                 {
                     D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle{ reinterpret_cast<SIZE_T>(m_rhi_rtv[i]) };
                     RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
-                    d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+                    d3d12_state::SetLayout(backbuffer, D3D12_BARRIER_LAYOUT_PRESENT);
                     d3d12_state::SetSubresourceCount(backbuffer, 1);
                     m_rhi_rt[i] = backbuffer;
                 }

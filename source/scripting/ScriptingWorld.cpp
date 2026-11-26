@@ -320,6 +320,7 @@ namespace spartan::scripting
             {"IsTerrain",                  MaterialProperty::IsTerrain},
             {"IsGrassBlade",               MaterialProperty::IsGrassBlade},
             {"IsFoliage",                  MaterialProperty::IsFoliage},
+            {"IsHair",                     MaterialProperty::IsHair},
             {"IsFlower",                   MaterialProperty::IsFlower},
             {"WindAnimation",              MaterialProperty::WindAnimation},
             {"ColorVariationFromInstance", MaterialProperty::ColorVariationFromInstance},

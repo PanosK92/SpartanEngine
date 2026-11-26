@@ -193,6 +193,8 @@ namespace spartan
             return input_range;
         }
 
+        bool create_failed = false;
+
         void context_destroy()
         {
             if (context)
@@ -200,11 +202,12 @@ namespace spartan
                 xessDestroyContext(context);
                 context = nullptr;
             }
+            input_range = {};
         }
 
         void context_create()
         {
-            if (!RHI_Device::IsSupportedXess())
+            if (!RHI_Device::IsSupportedXess() || create_failed)
             {
                 return;
             }
@@ -216,7 +219,8 @@ namespace spartan
             if (xessD3D12CreateContext(RHI_Context::device, &context) != xess_result_t::XESS_RESULT_SUCCESS)
             {
                 SP_LOG_WARNING("XeSS context creation failed, disabling XeSS");
-                context = nullptr;
+                context       = nullptr;
+                create_failed = true;
                 return;
             }
 
@@ -247,6 +251,7 @@ namespace spartan
             {
                 SP_LOG_WARNING("XeSS initialization failed, disabling XeSS");
                 context_destroy();
+                create_failed = true;
                 return;
             }
 
@@ -616,8 +621,10 @@ namespace spartan
             nrd::Resource resource = {};
             resource.d3d12.resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
             resource.d3d12.format   = static_cast<DXGIFormat>(d3d12_format[rhi_format_to_index(texture->GetFormat())]);
+            // prebuilt NRI_D3D12.lib emits legacy ResourceBarrier; inputs match NRDIntegration's GENERAL SRV state (zero barriers),
+            // while outputs enter/exit through COMMON as required by the D3D12 enhanced <-> legacy barrier interop spec
             resource.state = storage
-                ? nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::GENERAL, nri::StageBits::COMPUTE_SHADER }
+                ? nri::AccessLayoutStage{ nri::AccessBits::NONE, nri::Layout::PRESENT, nri::StageBits::NONE }
                 : nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE, nri::Layout::GENERAL, nri::StageBits::COMPUTE_SHADER };
             resource.userArg        = texture;
             return resource;
@@ -679,7 +686,7 @@ namespace spartan
             device_desc.d3d12Device                  = RHI_Context::device;
             device_desc.queueFamilies                = &queue_family;
             device_desc.queueFamilyNum               = 1;
-            device_desc.disableD3D12EnhancedBarriers = true;
+            device_desc.disableD3D12EnhancedBarriers = false;
 
             nrd::DenoiserDesc denoisers[5];
             uint32_t denoiser_count = 1;
@@ -887,7 +894,8 @@ namespace spartan
         if (base_render_changed || output_changed)
         {
             RHI_Device::QueueWaitAll();
-            intel::context_create();
+            // destroy xess on resize and recreate lazily on first XeSS use so startup/dlss users pay zero xess init stall
+            intel::context_destroy();
             dlss::feature_destroy();
             common::reset_history = true;
             nvidia::request_history_reset();
@@ -1084,6 +1092,10 @@ namespace spartan
     float RHI_VendorTechnology::XeSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _WIN32
+        if (!intel::context && common::resolution_output_width > 0 && common::resolution_render_max_width > 0)
+        {
+            intel::context_create();
+        }
         const uint32_t render_width  = static_cast<uint32_t>(resolution_render.x);
         const uint32_t render_height = static_cast<uint32_t>(resolution_render.y);
         const intel::input_range_t& range = intel::query_input_range(render_width, render_height, static_cast<uint32_t>(resolution_output.x), static_cast<uint32_t>(resolution_output.y));
@@ -1180,7 +1192,11 @@ namespace spartan
     #ifdef _WIN32
         if (!intel::context)
         {
-            return;
+            intel::context_create();
+            if (!intel::context)
+            {
+                return;
+            }
         }
 
         const intel::input_range_t& range = intel::query_input_range(
@@ -1450,8 +1466,8 @@ namespace spartan
             pool.reset_history = true;
         }
 
-        // make_resource declares these to nri as AccessBits::SHADER_RESOURCE, which nri expands to non pixel plus pixel
-        // on a direct list and to non pixel only on a compute one, so the inputs must carry whichever set matches
+        // make_resource declares read-only inputs in SHADER_RESOURCE (NRD never transitions them) and outputs in COMMON
+        // so prebuilt NRI_D3D12.lib's legacy ResourceBarrier obeys the enhanced <-> legacy COMMON handover rule
         const bool include_pixel_stage = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource())->GetType() != D3D12_COMMAND_LIST_TYPE_COMPUTE;
         if (preset == Nrd_Preset::Gi)
         {
@@ -1459,6 +1475,7 @@ namespace spartan
                 return false;
             cmd_list->EnsureComputeShaderResource(tex_specular_in, include_pixel_stage);
             cmd_list->PrepareForExternalWrite(tex_specular_out);
+            d3d12_legacy_interop::PrepareCommonLayout(cmd_list, tex_specular_out);
         }
         cmd_list->EnsureComputeShaderResource(tex_mv, include_pixel_stage);
         cmd_list->EnsureComputeShaderResource(tex_normal_roughness, include_pixel_stage);
@@ -1469,6 +1486,7 @@ namespace spartan
             cmd_list->EnsureComputeShaderResource(tex_translucency, include_pixel_stage);
         }
         cmd_list->PrepareForExternalWrite(tex_signal_out);
+        d3d12_legacy_interop::PrepareCommonLayout(cmd_list, tex_signal_out);
         cmd_list->FlushBarriers();
 
         const uint32_t engine_frame = common::cb_frame->frame;
@@ -1586,7 +1604,7 @@ namespace spartan
         const nrd::Identifier denoisers[] = { denoiser_id };
         pool.integration.DenoiseD3D12(denoisers, 1, cmd_desc, snapshot);
 
-        // restoreInitialState puts them back into the state declared above, so adopt that same set of bits
+        // inputs remained in SHADER_RESOURCE; return legacy-touched outputs back to COMMON before enhanced barriers resume
         cmd_list->AdoptComputeShaderResource(tex_mv, include_pixel_stage);
         cmd_list->AdoptComputeShaderResource(tex_normal_roughness, include_pixel_stage);
         cmd_list->AdoptComputeShaderResource(tex_view_z, include_pixel_stage);
@@ -1595,7 +1613,57 @@ namespace spartan
         {
             cmd_list->AdoptComputeShaderResource(tex_translucency, include_pixel_stage);
         }
+        if (preset == Nrd_Preset::Gi)
+        {
+            cmd_list->AdoptComputeShaderResource(tex_specular_in, include_pixel_stage);
+            cmd_list->AdoptUnorderedAccess(tex_specular_out);
+        }
         cmd_list->AdoptUnorderedAccess(tex_signal_out);
+
+        auto nri_access_to_legacy_state = [](nri::AccessBits access) -> D3D12_RESOURCE_STATES
+        {
+            if (access == nri::AccessBits::SHADER_RESOURCE_STORAGE)
+            {
+                return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            }
+            if (access == nri::AccessBits::SHADER_RESOURCE)
+            {
+                return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            }
+            return D3D12_RESOURCE_STATE_COMMON;
+        };
+
+        RHI_Texture* out_textures[2] = {};
+        D3D12_RESOURCE_STATES out_states[2] = {};
+        uint32_t out_count = 0;
+
+        auto collect_output = [&](nrd::ResourceType slot_type, RHI_Texture* tex)
+        {
+            const nrd::Resource* res = snapshot.slots[static_cast<uint32_t>(slot_type)];
+            out_textures[out_count]  = tex;
+            out_states[out_count]    = res ? nri_access_to_legacy_state(res->state.access) : D3D12_RESOURCE_STATE_COMMON;
+            out_count++;
+        };
+
+        if (preset == Nrd_Preset::Gi)
+        {
+            collect_output(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, tex_signal_out);
+            collect_output(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, tex_specular_out);
+        }
+        else if (preset == Nrd_Preset::Reference)
+        {
+            collect_output(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, tex_signal_out);
+        }
+        else if (preset == Nrd_Preset::Reflections)
+        {
+            collect_output(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, tex_signal_out);
+        }
+        else
+        {
+            collect_output(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, tex_signal_out);
+        }
+
+        d3d12_legacy_interop::ReturnToCommonLayout(cmd_list, out_textures, out_states, out_count);
         cmd_list->restore_after_external_pass();
         return true;
     #else

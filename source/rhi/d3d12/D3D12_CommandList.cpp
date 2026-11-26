@@ -47,8 +47,7 @@ namespace spartan::d3d12_state
 {
     struct TrackedResource
     {
-        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-        bool decays_to_common       = false;
+        D3D12_BARRIER_LAYOUT layout = D3D12_BARRIER_LAYOUT_COMMON;
         bool is_buffer              = false;
         bool is_depth               = false;
         bool cross_queue            = false;
@@ -57,56 +56,33 @@ namespace spartan::d3d12_state
         uint32_t subresource_count  = 0; // 0 means unknown, never call getdesc on the barrier hot path
     };
 
-    // process-wide resource state tracker, keyed on the raw d3d12 resource pointer
-    // d3d12 has no implicit transitions outside of common-promotion rules, so we maintain it explicitly
+    // process-wide enhanced layout and metadata tracker, keyed on the raw d3d12 resource pointer
     static std::unordered_map<ID3D12Resource*, TrackedResource> resource_states;
     static std::mutex resource_states_mutex;
 
-    void SetState(ID3D12Resource* resource, D3D12_RESOURCE_STATES state)
+    void SetLayout(ID3D12Resource* resource, D3D12_BARRIER_LAYOUT layout)
     {
         if (!resource)
         {
             return;
         }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
-        resource_states[resource].state = state;
+        resource_states[resource].layout = layout;
     }
 
-    D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource)
+    D3D12_BARRIER_LAYOUT GetLayout(ID3D12Resource* resource)
     {
         if (!resource)
         {
-            return D3D12_RESOURCE_STATE_COMMON;
+            return D3D12_BARRIER_LAYOUT_COMMON;
         }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
         auto it = resource_states.find(resource);
         if (it == resource_states.end())
         {
-            // unseeded resource - assume common, this matches the d3d12 promotion rules well enough for first-pixel
-            return D3D12_RESOURCE_STATE_COMMON;
+            return D3D12_BARRIER_LAYOUT_COMMON;
         }
-        return it->second.state;
-    }
-
-    void SetDecaysToCommon(ID3D12Resource* resource, bool decays)
-    {
-        if (!resource)
-        {
-            return;
-        }
-        std::lock_guard<std::mutex> lock(resource_states_mutex);
-        resource_states[resource].decays_to_common = decays;
-    }
-
-    bool DecaysToCommon(ID3D12Resource* resource)
-    {
-        if (!resource)
-        {
-            return false;
-        }
-        std::lock_guard<std::mutex> lock(resource_states_mutex);
-        auto it = resource_states.find(resource);
-        return it != resource_states.end() && it->second.decays_to_common;
+        return it->second.layout;
     }
 
     void SetIsBuffer(ID3D12Resource* resource, bool is_buffer)
@@ -148,7 +124,7 @@ namespace spartan::d3d12_state
         }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
         auto it = resource_states.find(resource);
-        if (it != resource_states.end() && !it->second.is_buffer && !it->second.decays_to_common)
+        if (it != resource_states.end() && !it->second.is_buffer)
         {
             it->second.cross_queue = true;
         }
@@ -166,7 +142,10 @@ namespace spartan::d3d12_state
         {
             return false;
         }
-        *is_depth = it->second.is_depth;
+        if (is_depth)
+        {
+            *is_depth = it->second.is_depth;
+        }
         if (is_read_only)
         {
             *is_read_only = it->second.read_only;
@@ -225,7 +204,6 @@ namespace spartan::d3d12_state
         auto it = resource_states.find(resource);
         if (it == resource_states.end() || it->second.subresource_count == 0)
         {
-            // unseeded, prefer 1 over getdesc which avs some d3d12SDKLayers builds
             return 1;
         }
         return it->second.subresource_count;
@@ -244,81 +222,120 @@ namespace spartan::d3d12_state
 
 namespace spartan
 {
-    // rhi general, one readable state that both queues can use, compute masking drops the graphics bits
-    static D3D12_RESOURCE_STATES d3d12_general_state(bool is_depth)
-    {
-        D3D12_RESOURCE_STATES state =
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        if (is_depth)
-        {
-            state |= D3D12_RESOURCE_STATE_DEPTH_READ;
-        }
-        return state;
-    }
-
-    static D3D12_RESOURCE_STATES rhi_to_d3d12_state(RHI_Image_Layout layout, bool is_depth, RHI_Resource_Usage usage, RHI_Resource_Access access, bool is_uav)
+    static D3D12_BARRIER_LAYOUT rhi_to_d3d12_layout(RHI_Image_Layout layout, bool is_depth, RHI_Resource_Usage usage, RHI_Resource_Access access, bool is_uav)
     {
         if (layout == RHI_Image_Layout::Present_Source)
         {
-            return D3D12_RESOURCE_STATE_PRESENT;
+            return D3D12_BARRIER_LAYOUT_PRESENT;
         }
         if (layout == RHI_Image_Layout::Shading_Rate_Attachment || usage == RHI_Resource_Usage::ShadingRate)
         {
-            return D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+            return D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
         }
 
         switch (usage)
         {
             case RHI_Resource_Usage::Attachment:
-                return is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET;
+                return is_depth ? D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE : D3D12_BARRIER_LAYOUT_RENDER_TARGET;
             case RHI_Resource_Usage::Transfer:
                 return (static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0
-                    ? D3D12_RESOURCE_STATE_COPY_DEST
-                    : D3D12_RESOURCE_STATE_COPY_SOURCE;
+                    ? D3D12_BARRIER_LAYOUT_COPY_DEST
+                    : D3D12_BARRIER_LAYOUT_COPY_SOURCE;
             default:
                 if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0 && is_uav)
                 {
-                    return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
                 }
                 if (is_uav && access == RHI_Resource_Access::None)
                 {
-                    return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
                 }
-                return d3d12_general_state(is_depth);
+                return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
         }
     }
 
-    // per-cmd-list pending bindings state (srv/uav slots that SetTexture/SetBuffer wrote to)
+    static D3D12_BARRIER_SYNC rhi_scope_to_d3d12_sync(RHI_Barrier_Scope scope, RHI_Resource_Usage usage)
+    {
+        switch (scope)
+        {
+            case RHI_Barrier_Scope::None:     return D3D12_BARRIER_SYNC_NONE;
+            case RHI_Barrier_Scope::Compute:  return D3D12_BARRIER_SYNC_COMPUTE_SHADING | D3D12_BARRIER_SYNC_RAYTRACING;
+            case RHI_Barrier_Scope::Transfer: return D3D12_BARRIER_SYNC_COPY;
+            case RHI_Barrier_Scope::Graphics:
+                switch (usage)
+                {
+                    case RHI_Resource_Usage::Indirect:   return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+                    case RHI_Resource_Usage::Index:      return D3D12_BARRIER_SYNC_INDEX_INPUT;
+                    case RHI_Resource_Usage::Vertex:     return D3D12_BARRIER_SYNC_VERTEX_SHADING;
+                    case RHI_Resource_Usage::Attachment: return D3D12_BARRIER_SYNC_RENDER_TARGET | D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+                    default:                             return D3D12_BARRIER_SYNC_ALL_SHADING;
+                }
+            default:                          return D3D12_BARRIER_SYNC_ALL;
+        }
+    }
+
+    static D3D12_BARRIER_ACCESS rhi_usage_to_d3d12_access(RHI_Barrier_Scope scope, RHI_Resource_Usage usage, RHI_Resource_Access access, bool is_buffer)
+    {
+        if (scope == RHI_Barrier_Scope::None)
+        {
+            return D3D12_BARRIER_ACCESS_NO_ACCESS;
+        }
+
+        // access == None with a non-None scope means "any access in this scope" (e.g. RHI_Barrier::buffer_sync(buf).from(Compute).to(Transfer))
+        const bool unspecified = (access == RHI_Resource_Access::None);
+        const bool has_read    = unspecified || (static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Read))  != 0;
+        const bool has_write   = unspecified || (static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0;
+
+        if (scope == RHI_Barrier_Scope::Transfer || usage == RHI_Resource_Usage::Transfer)
+        {
+            D3D12_BARRIER_ACCESS result = D3D12_BARRIER_ACCESS_COMMON;
+            if (has_read)  result |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
+            if (has_write) result |= D3D12_BARRIER_ACCESS_COPY_DEST;
+            return result;
+        }
+
+        if (scope == RHI_Barrier_Scope::All)
+        {
+            return D3D12_BARRIER_ACCESS_COMMON;
+        }
+
+        switch (usage)
+        {
+            case RHI_Resource_Usage::Indirect:   return D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
+            case RHI_Resource_Usage::Vertex:     return D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
+            case RHI_Resource_Usage::Index:      return D3D12_BARRIER_ACCESS_INDEX_BUFFER;
+            case RHI_Resource_Usage::Attachment:
+                return has_write
+                    ? (D3D12_BARRIER_ACCESS_RENDER_TARGET | D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE)
+                    : D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+            default:
+            {
+                D3D12_BARRIER_ACCESS result = D3D12_BARRIER_ACCESS_COMMON;
+                if (has_read)  result |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+                if (has_write) result |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+                if (is_buffer && has_read)
+                {
+                    result |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
+                    if (scope == RHI_Barrier_Scope::Graphics)
+                    {
+                        result |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
+                    }
+                }
+                return result;
+            }
+        }
+    }
+
+    // per-cmd-list pending bindings state and batched enhanced barrier accumulator
     namespace cmd_state
     {
-        // an empty per_subresource means the resource is uniform, specific-subresource transitions expand it to record divergence
-        struct ResourceStateInfo
+        // an empty per_subresource means all subresources share uniform_layout; specific-subresource transitions expand it
+        struct ResourceLayoutInfo
         {
-            D3D12_RESOURCE_STATES uniform_state = D3D12_RESOURCE_STATE_COMMON;
-            std::vector<D3D12_RESOURCE_STATES> per_subresource;
+            D3D12_BARRIER_LAYOUT uniform_layout = D3D12_BARRIER_LAYOUT_COMMON;
+            std::vector<D3D12_BARRIER_LAYOUT> per_subresource;
             bool initialized = false;
-            // implicitly promoted from common to read states, decays back to common when the list finishes
-            bool promoted = false;
-            bool explicit_barrier = false;
         };
-
-        // read states a non-simultaneous texture can be implicitly promoted to from common
-        static constexpr D3D12_RESOURCE_STATES promotable_read_states =
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE     |
-            D3D12_RESOURCE_STATE_COPY_SOURCE;
-
-        // states that aren't allowed on a compute command list barrier, transitions made on a compute queue must mask
-        // these out since the runtime rejects pixel_shader_resource, render_target and depth states on the compute queue
-        static constexpr D3D12_RESOURCE_STATES compute_invalid_states =
-            D3D12_RESOURCE_STATE_RENDER_TARGET            |
-            D3D12_RESOURCE_STATE_DEPTH_WRITE              |
-            D3D12_RESOURCE_STATE_DEPTH_READ               |
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE    |
-            D3D12_RESOURCE_STATE_STREAM_OUT               |
-            D3D12_RESOURCE_STATE_RESOLVE_DEST             |
-            D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
 
         struct PendingBindings
         {
@@ -330,7 +347,6 @@ namespace spartan
             bool uav_dirty                       = false;
             bool is_compute_bound                = false;
             bool is_bindless_pipeline            = false;
-            // recording on a compute queue, set in Begin() so push_transition can drop graphics-only state bits
             bool is_compute_queue                = false;
             // d3d12 tracks graphics and compute root signatures separately, descriptor tables require the matching root sig
             bool has_root_signature_graphics            = false;
@@ -342,11 +358,20 @@ namespace spartan
             D3D12_CPU_DESCRIPTOR_HANDLE null_uav_tex2d = {};
             // swapchain tracking for submit-time transition to present
             ID3D12Resource* swapchain_bb_transitioned = nullptr;
-            // deferred barrier batch, flushed by FlushBarriers (or before draw/dispatch/render-pass-begin)
-            std::vector<D3D12_RESOURCE_BARRIER> pending_barriers;
+            // coalesced global memory barrier + per-buffer + texture barriers, flushed in one Barrier() call
+            bool                 has_pending_global           = false;
+            D3D12_BARRIER_SYNC   pending_global_sync_before   = D3D12_BARRIER_SYNC_NONE;
+            D3D12_BARRIER_SYNC   pending_global_sync_after    = D3D12_BARRIER_SYNC_NONE;
+            D3D12_BARRIER_ACCESS pending_global_access_before = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            D3D12_BARRIER_ACCESS pending_global_access_after  = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            std::vector<D3D12_BUFFER_BARRIER>  pending_buffer_barriers;
+            std::vector<D3D12_TEXTURE_BARRIER> pending_texture_barriers;
+            std::vector<D3D12_TEXTURE_BARRIER> pending_texture_sync_barriers;
+            // buffers already read/written on this cmd list, so back-to-back UpdateBuffer on fresh buffers skips pre-copy barriers
+            std::unordered_set<ID3D12Resource*> gpu_used_buffers;
             std::vector<ID3D12Resource*> readback_scratch;
-            // snapshotted from the global tracker on first use, so concurrent recording still emits a correct StateBefore
-            std::unordered_map<ID3D12Resource*, ResourceStateInfo> resource_states;
+            // snapshotted from the global tracker on first use, so concurrent recording emits a correct LayoutBefore
+            std::unordered_map<ID3D12Resource*, ResourceLayoutInfo> resource_layouts;
         };
 
         PendingBindings& get(const RHI_CommandList* cmd)
@@ -364,26 +389,31 @@ namespace spartan
             for (auto& h : b.srv) h.ptr = 0;
             for (auto& h : b.uav) h.ptr = 0;
             b.bindless_revision[0] = b.bindless_revision[1] = 0;
-            b.srv_dirty                  = false;
-            b.uav_dirty                  = false;
-            b.is_compute_bound           = false;
-            b.is_bindless_pipeline       = false;
+            b.srv_dirty                   = false;
+            b.uav_dirty                   = false;
+            b.is_compute_bound            = false;
+            b.is_bindless_pipeline        = false;
             b.has_root_signature_graphics = false;
             b.has_root_signature_compute  = false;
             b.root_signature_graphics     = nullptr;
             b.root_signature_compute      = nullptr;
-            b.is_compute_queue           = false;
-            b.swapchain_bb_transitioned  = nullptr;
-            b.pending_barriers.clear();
-            for (auto& entry : b.resource_states)
+            b.is_compute_queue            = false;
+            b.swapchain_bb_transitioned   = nullptr;
+            b.has_pending_global           = false;
+            b.pending_global_sync_before   = D3D12_BARRIER_SYNC_NONE;
+            b.pending_global_sync_after    = D3D12_BARRIER_SYNC_NONE;
+            b.pending_global_access_before = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            b.pending_global_access_after  = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            b.pending_buffer_barriers.clear();
+            b.pending_texture_barriers.clear();
+            b.pending_texture_sync_barriers.clear();
+            b.gpu_used_buffers.clear();
+            for (auto& entry : b.resource_layouts)
             {
-                ResourceStateInfo& state = entry.second;
-                state.uniform_state =
-                    D3D12_RESOURCE_STATE_COMMON;
-                state.per_subresource.clear();
-                state.initialized = false;
-                state.promoted = false;
-                state.explicit_barrier = false;
+                ResourceLayoutInfo& info = entry.second;
+                info.uniform_layout = D3D12_BARRIER_LAYOUT_COMMON;
+                info.per_subresource.clear();
+                info.initialized = false;
             }
 
             for (ID3D12Resource* resource : b.readback_scratch)
@@ -391,148 +421,188 @@ namespace spartan
             b.readback_scratch.clear();
         }
 
-        // total subresource count from the create-time cache, never call getdesc here, it avs mismatched d3d12SDKLayers
+        // total subresource count from the create-time cache, never call getdesc on the barrier hot path
         static uint32_t get_subresource_count(ID3D12Resource* resource)
         {
             return d3d12_state::GetSubresourceCount(resource);
         }
 
-        // get or create the tracked state for a resource, lazy-initialized from the global tracker on first use
-        static ResourceStateInfo& get_or_init_state(PendingBindings& b, ID3D12Resource* resource)
+        static D3D12_BARRIER_SYNC merge_barrier_sync(D3D12_BARRIER_SYNC a, D3D12_BARRIER_SYNC b)
         {
-            ResourceStateInfo& state_info = b.resource_states[resource];
-            if (!state_info.initialized)
+            if ((a & D3D12_BARRIER_SYNC_ALL) || (b & D3D12_BARRIER_SYNC_ALL))
             {
-                state_info.uniform_state = d3d12_state::GetState(resource);
-                // compute always waits on the producer timeline before touching shared resources, by then
-                // buffers and simultaneous-access textures have decayed to common on the gpu
-                if (b.is_compute_queue && d3d12_state::DecaysToCommon(resource))
+                return D3D12_BARRIER_SYNC_ALL;
+            }
+            return a | b;
+        }
+
+        static D3D12_BARRIER_ACCESS merge_barrier_access(D3D12_BARRIER_ACCESS a, D3D12_BARRIER_ACCESS b)
+        {
+            if (a == D3D12_BARRIER_ACCESS_NO_ACCESS) return b;
+            if (b == D3D12_BARRIER_ACCESS_NO_ACCESS) return a;
+            if (a == D3D12_BARRIER_ACCESS_COMMON || b == D3D12_BARRIER_ACCESS_COMMON) return D3D12_BARRIER_ACCESS_COMMON;
+            return a | b;
+        }
+
+        void push_global(
+            PendingBindings&     b,
+            D3D12_BARRIER_SYNC   sync_before,
+            D3D12_BARRIER_SYNC   sync_after,
+            D3D12_BARRIER_ACCESS access_before,
+            D3D12_BARRIER_ACCESS access_after
+        )
+        {
+            if (sync_before == D3D12_BARRIER_SYNC_NONE) access_before = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            if (sync_after  == D3D12_BARRIER_SYNC_NONE) access_after  = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            if (sync_before & D3D12_BARRIER_SYNC_ALL)   sync_before   = D3D12_BARRIER_SYNC_ALL;
+            if (sync_after  & D3D12_BARRIER_SYNC_ALL)   sync_after    = D3D12_BARRIER_SYNC_ALL;
+
+            if (!b.has_pending_global)
+            {
+                b.has_pending_global           = true;
+                b.pending_global_sync_before   = sync_before;
+                b.pending_global_sync_after    = sync_after;
+                b.pending_global_access_before = access_before;
+                b.pending_global_access_after  = access_after;
+                return;
+            }
+
+            b.pending_global_sync_before   = merge_barrier_sync(b.pending_global_sync_before, sync_before);
+            b.pending_global_sync_after    = merge_barrier_sync(b.pending_global_sync_after,  sync_after);
+            b.pending_global_access_before = merge_barrier_access(b.pending_global_access_before, access_before);
+            b.pending_global_access_after  = merge_barrier_access(b.pending_global_access_after,  access_after);
+            if (b.pending_global_access_before == D3D12_BARRIER_ACCESS_COMMON && b.pending_global_sync_before != D3D12_BARRIER_SYNC_NONE)
+            {
+                b.pending_global_sync_before = D3D12_BARRIER_SYNC_ALL;
+            }
+            if (b.pending_global_access_after == D3D12_BARRIER_ACCESS_COMMON && b.pending_global_sync_after != D3D12_BARRIER_SYNC_NONE)
+            {
+                b.pending_global_sync_after = D3D12_BARRIER_SYNC_ALL;
+            }
+        }
+
+        // queues a targeted per-buffer memory barrier, coalescing multiple sync requests on the same buffer
+        void push_buffer_barrier(
+            PendingBindings&     b,
+            ID3D12Resource*      resource,
+            D3D12_BARRIER_SYNC   sync_before,
+            D3D12_BARRIER_SYNC   sync_after,
+            D3D12_BARRIER_ACCESS access_before,
+            D3D12_BARRIER_ACCESS access_after
+        )
+        {
+            if (!resource)
+            {
+                return;
+            }
+
+            for (D3D12_BUFFER_BARRIER& existing : b.pending_buffer_barriers)
+            {
+                if (existing.pResource == resource)
                 {
-                    state_info.uniform_state = D3D12_RESOURCE_STATE_COMMON;
+                    existing.SyncBefore   = merge_barrier_sync(existing.SyncBefore, sync_before);
+                    existing.SyncAfter    = merge_barrier_sync(existing.SyncAfter,  sync_after);
+                    existing.AccessBefore = merge_barrier_access(existing.AccessBefore, access_before);
+                    existing.AccessAfter  = merge_barrier_access(existing.AccessAfter,  access_after);
+                    return;
                 }
+            }
+
+            D3D12_BUFFER_BARRIER barrier = {};
+            barrier.SyncBefore   = sync_before;
+            barrier.SyncAfter    = sync_after;
+            barrier.AccessBefore = access_before;
+            barrier.AccessAfter  = access_after;
+            barrier.pResource    = resource;
+            barrier.Offset       = 0;
+            barrier.Size         = UINT64_MAX;
+            b.pending_buffer_barriers.push_back(barrier);
+        }
+
+        bool has_pending_buffer_barrier(const PendingBindings& b, ID3D12Resource* resource)
+        {
+            for (const D3D12_BUFFER_BARRIER& existing : b.pending_buffer_barriers)
+            {
+                if (existing.pResource == resource)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool has_pending_texture_barrier(const PendingBindings& b, ID3D12Resource* resource)
+        {
+            for (const D3D12_TEXTURE_BARRIER& existing : b.pending_texture_barriers)
+            {
+                if (existing.pResource == resource)
+                {
+                    return true;
+                }
+            }
+            for (const D3D12_TEXTURE_BARRIER& existing : b.pending_texture_sync_barriers)
+            {
+                if (existing.pResource == resource)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // get or create the tracked layout for a texture, lazy-initialized from the global tracker on first use
+        static ResourceLayoutInfo& get_or_init_layout(PendingBindings& b, ID3D12Resource* resource)
+        {
+            ResourceLayoutInfo& info = b.resource_layouts[resource];
+            if (!info.initialized)
+            {
+                info.uniform_layout = d3d12_state::GetLayout(resource);
                 if (b.is_compute_queue)
                 {
                     d3d12_state::SetCrossQueue(resource);
                 }
-                state_info.initialized = true;
+                info.initialized = true;
             }
-            return state_info;
+            return info;
         }
 
-        // publishes state to the global tracker at submit, no pixel-strip barriers here since a stale state_before avs d3d12SDKLayers
-        void commit_states_to_global(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
+        static D3D12_TEXTURE_BARRIER make_texture_barrier(ID3D12Resource* resource, D3D12_BARRIER_LAYOUT before, D3D12_BARRIER_LAYOUT after, UINT subresource)
         {
-            std::vector<D3D12_RESOURCE_BARRIER> unify;
-            for (auto& kv : b.resource_states)
-            {
-                ResourceStateInfo& state_info = kv.second;
-                if (!kv.first || !state_info.initialized)
-                {
-                    continue;
-                }
-
-                // only read through implicit promotion, the gpu decays it back to common after executecommandlists
-                if (state_info.promoted && !state_info.explicit_barrier && state_info.per_subresource.empty())
-                {
-                    d3d12_state::SetState(kv.first, D3D12_RESOURCE_STATE_COMMON);
-                    continue;
-                }
-
-                if (!state_info.per_subresource.empty())
-                {
-                    // collapse divergent mips to subresource 0's state
-                    const D3D12_RESOURCE_STATES target = state_info.per_subresource[0];
-                    const uint32_t count = static_cast<uint32_t>(state_info.per_subresource.size());
-                    for (uint32_t i = 0; i < count; i++)
-                    {
-                        if (state_info.per_subresource[i] == target)
-                        {
-                            continue;
-                        }
-
-                        D3D12_RESOURCE_BARRIER barrier = {};
-                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                        barrier.Transition.pResource   = kv.first;
-                        barrier.Transition.Subresource = i;
-                        barrier.Transition.StateBefore = state_info.per_subresource[i];
-                        barrier.Transition.StateAfter  = target;
-                        unify.push_back(barrier);
-                    }
-                    state_info.per_subresource.clear();
-                    state_info.uniform_state = target;
-                }
-
-                // the compute queue can't leave render target, depth or pixel states, so graphics leaves cross queue textures
-                // readable (depth) or common (color, which compute may also write) before the next compute list snapshots them
-                // read only textures already in a non pixel read state are left alone, a handover barrier here is a gpu write
-                // that would race with compute lists reading the same texture concurrently
-                bool is_depth     = false;
-                bool is_read_only = false;
-                if (cmd_list->GetType() == D3D12_COMMAND_LIST_TYPE_DIRECT && d3d12_state::IsCrossQueue(kv.first, &is_depth, &is_read_only))
-                {
-                    const D3D12_RESOURCE_STATES state = state_info.uniform_state;
-                    const bool readable_in_place = is_read_only && (state & D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) != 0 && (state & ~promotable_read_states) == 0;
-                    const bool handover = readable_in_place ? false : (is_depth ? (state & D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) == 0 : (state & compute_invalid_states) != 0);
-                    if (handover)
-                    {
-                        const D3D12_RESOURCE_STATES handover_state = is_depth ? d3d12_general_state(true) : D3D12_RESOURCE_STATE_COMMON;
-                        const uint32_t count = get_subresource_count(kv.first);
-                        for (uint32_t i = 0; i < count; i++)
-                        {
-                            D3D12_RESOURCE_BARRIER barrier = {};
-                            barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                            barrier.Transition.pResource   = kv.first;
-                            barrier.Transition.Subresource = i;
-                            barrier.Transition.StateBefore = state;
-                            barrier.Transition.StateAfter  = handover_state;
-                            unify.push_back(barrier);
-                        }
-                        state_info.uniform_state = handover_state;
-                    }
-                }
-
-                d3d12_state::SetState(kv.first, d3d12_state::DecaysToCommon(kv.first) ? D3D12_RESOURCE_STATE_COMMON : state_info.uniform_state);
-            }
-            if (!unify.empty())
-            {
-                for (const D3D12_RESOURCE_BARRIER& barrier : unify)
-                {
-                    if (!barrier.Transition.pResource ||
-                        barrier.Transition.StateBefore == barrier.Transition.StateAfter)
-                    {
-                        continue;
-                    }
-                    const uint32_t count = get_subresource_count(barrier.Transition.pResource);
-                    if (barrier.Transition.Subresource >= count)
-                    {
-                        continue;
-                    }
-                    d3d12_barriers::Submit(cmd_list, &barrier, 1);
-                }
-            }
+            D3D12_TEXTURE_BARRIER barrier = {};
+            barrier.SyncBefore            = d3d12_barriers::LayoutDefaultSync(before);
+            barrier.SyncAfter             = d3d12_barriers::LayoutDefaultSync(after);
+            barrier.AccessBefore          = d3d12_barriers::LayoutDefaultAccess(before);
+            barrier.AccessAfter           = d3d12_barriers::LayoutDefaultAccess(after);
+            barrier.LayoutBefore          = before;
+            barrier.LayoutAfter           = after;
+            barrier.pResource             = resource;
+            barrier.Subresources.IndexOrFirstMipLevel = subresource;
+            barrier.Subresources.NumMipLevels         = 0;
+            barrier.Flags                 = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+            return barrier;
         }
 
-        // collapses a divergent resource with per-subresource barriers, returns true if any was queued, force skips the early-out
-        bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, bool force = false)
+        // queues an enhanced texture layout transition; buffers have no layout and are ignored here
+        bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_BARRIER_LAYOUT layout_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
         {
-            if (!resource)
+            if (!resource || d3d12_state::IsBuffer(resource))
             {
                 return false;
             }
 
-            // buffers only have subresource 0, all-subresources is illegal and avs the debug layer
-            if (d3d12_state::IsBuffer(resource))
+            if (b.is_compute_queue && d3d12_barriers::IsDirectOnlyLayout(layout_after))
             {
-                subresource = 0;
+                if (layout_after == D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ)
+                {
+                    layout_after = D3D12_BARRIER_LAYOUT_GENERIC_READ;
+                }
+                else
+                {
+                    return false;
+                }
             }
 
-            // the compute queue rejects graphics-only state bits, pixel|non_pixel collapses to non_pixel there
-            if (b.is_compute_queue)
-            {
-                state_after &= ~compute_invalid_states;
-            }
-
-            if ((state_after & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) && !d3d12_state::AllowsUav(resource))
+            if (layout_after == D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS && !d3d12_state::AllowsUav(resource))
             {
                 static std::mutex logged_mutex;
                 static std::unordered_set<ID3D12Resource*> logged;
@@ -542,117 +612,54 @@ namespace spartan
                     wchar_t name[128] = {};
                     UINT size = sizeof(name) - sizeof(wchar_t);
                     resource->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name);
-                    SP_LOG_WARNING("Dropped a uav barrier on '%ls', it was created without allow_unordered_access", name);
+                    SP_LOG_WARNING("Dropped a uav layout barrier on '%ls', it was created without allow_unordered_access", name);
                 }
                 return false;
             }
 
-            ResourceStateInfo& state_info = get_or_init_state(b, resource);
-
-            // cross queue color textures parked in common are read through implicit promotion on either queue, an explicit
-            // barrier counts as a gpu write and races with the other queue reading the same texture concurrently
-            if (!force && subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES && state_info.per_subresource.empty() && !state_info.explicit_barrier &&
-                state_after != D3D12_RESOURCE_STATE_COMMON && (state_after & ~promotable_read_states) == 0 &&
-                (state_info.uniform_state == D3D12_RESOURCE_STATE_COMMON || state_info.promoted))
-            {
-                bool is_depth = false;
-                if (d3d12_state::IsCrossQueue(resource, &is_depth) && !is_depth)
-                {
-                    state_info.uniform_state |= state_after;
-                    state_info.promoted       = true;
-                    return false;
-                }
-            }
-
-            // true when the resource is already usable for state_after, even if it also has extra graphics-only bits
-            // compute cannot legally barrier away from pixel_shader_resource, so skip when the needed bits are present
-            auto already_usable = [&](D3D12_RESOURCE_STATES state_before) -> bool
-            {
-                if (force)
-                {
-                    return state_before == state_after;
-                }
-                if (state_before == state_after)
-                {
-                    return true;
-                }
-                // common/present is 0, a bitwise subset check would match every state and skip the present barrier
-                if (state_after == D3D12_RESOURCE_STATE_COMMON)
-                {
-                    return false;
-                }
-                if ((state_before & state_after) == state_after)
-                {
-                    return true;
-                }
-                return false;
-            };
+            ResourceLayoutInfo& info = get_or_init_layout(b, resource);
 
             if (subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
             {
-                if (state_info.per_subresource.empty())
+                if (info.per_subresource.empty())
                 {
-                    if (already_usable(state_info.uniform_state))
+                    if (info.uniform_layout == layout_after)
+                    {
+                        return false;
+                    }
+                    if (b.is_compute_queue && d3d12_barriers::IsDirectOnlyLayout(info.uniform_layout))
                     {
                         return false;
                     }
 
-                    // compute cannot emit a barrier whose state_before still has pixel/rt/depth bits
-                    if (b.is_compute_queue && (state_info.uniform_state & compute_invalid_states))
-                    {
-                        return false;
-                    }
-
-                    // never emit all-subresources, it is illegal for buffers and mixing it with
-                    // per-mip barriers in one ResourceBarrier call avs the d3d12 debug layer
-                    const uint32_t count = get_subresource_count(resource);
-                    for (uint32_t i = 0; i < count; i++)
-                    {
-                        D3D12_RESOURCE_BARRIER barrier = {};
-                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                        barrier.Transition.pResource   = resource;
-                        barrier.Transition.Subresource = i;
-                        barrier.Transition.StateBefore = state_info.uniform_state;
-                        barrier.Transition.StateAfter  = state_after;
-                        b.pending_barriers.push_back(barrier);
-                    }
-
-                    state_info.uniform_state    = state_after;
-                    state_info.explicit_barrier = true;
+                    // enhanced barriers handle ALL_SUBRESOURCES natively in a single barrier (all mips, slices, and planes)
+                    b.pending_texture_barriers.push_back(make_texture_barrier(resource, info.uniform_layout, layout_after, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES));
+                    info.uniform_layout = layout_after;
                     return true;
                 }
 
-                // currently divergent, emit per-subresource transitions for those that differ from the target
+                // currently divergent across subresources: transition each differing subresource and re-unify
                 bool any = false;
-                for (uint32_t i = 0; i < state_info.per_subresource.size(); i++)
+                for (uint32_t i = 0; i < info.per_subresource.size(); i++)
                 {
-                    if (already_usable(state_info.per_subresource[i]))
+                    if (info.per_subresource[i] == layout_after)
                     {
                         continue;
                     }
-                    if (b.is_compute_queue && (state_info.per_subresource[i] & compute_invalid_states))
+                    if (b.is_compute_queue && d3d12_barriers::IsDirectOnlyLayout(info.per_subresource[i]))
                     {
                         continue;
                     }
-
-                    D3D12_RESOURCE_BARRIER barrier = {};
-                    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                    barrier.Transition.pResource   = resource;
-                    barrier.Transition.Subresource = i;
-                    barrier.Transition.StateBefore = state_info.per_subresource[i];
-                    barrier.Transition.StateAfter  = state_after;
-                    b.pending_barriers.push_back(barrier);
-                    state_info.per_subresource[i] = state_after;
-                    state_info.explicit_barrier   = true;
+                    b.pending_texture_barriers.push_back(make_texture_barrier(resource, info.per_subresource[i], layout_after, i));
+                    info.per_subresource[i] = layout_after;
                     any = true;
                 }
 
-                // only collapse when every subresource actually matches, skipped compute/pixel cases must keep their gpu state
-                const D3D12_RESOURCE_STATES first = state_info.per_subresource[0];
+                const D3D12_BARRIER_LAYOUT first = info.per_subresource[0];
                 bool all_same = true;
-                for (uint32_t i = 1; i < state_info.per_subresource.size(); i++)
+                for (uint32_t i = 1; i < info.per_subresource.size(); i++)
                 {
-                    if (state_info.per_subresource[i] != first)
+                    if (info.per_subresource[i] != first)
                     {
                         all_same = false;
                         break;
@@ -660,20 +667,20 @@ namespace spartan
                 }
                 if (all_same)
                 {
-                    state_info.per_subresource.clear();
-                    state_info.uniform_state = first;
+                    info.per_subresource.clear();
+                    info.uniform_layout = first;
                 }
                 return any;
             }
 
-            // specific subresource, expand to per-subresource if currently uniform
-            if (state_info.per_subresource.empty())
+            // specific subresource: expand to per-subresource tracking if currently uniform
+            if (info.per_subresource.empty())
             {
-                if (already_usable(state_info.uniform_state))
+                if (info.uniform_layout == layout_after)
                 {
                     return false;
                 }
-                if (b.is_compute_queue && (state_info.uniform_state & compute_invalid_states))
+                if (b.is_compute_queue && d3d12_barriers::IsDirectOnlyLayout(info.uniform_layout))
                 {
                     return false;
                 }
@@ -683,214 +690,324 @@ namespace spartan
                 {
                     count = subresource + 1;
                 }
-                state_info.per_subresource.assign(count, state_info.uniform_state);
+                if (count == 1 && subresource == 0)
+                {
+                    b.pending_texture_barriers.push_back(make_texture_barrier(resource, info.uniform_layout, layout_after, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES));
+                    info.uniform_layout = layout_after;
+                    return true;
+                }
+                info.per_subresource.assign(count, info.uniform_layout);
             }
 
-            if (subresource >= state_info.per_subresource.size())
+            if (subresource >= info.per_subresource.size())
             {
                 return false;
             }
 
-            D3D12_RESOURCE_STATES state_before = state_info.per_subresource[subresource];
-            if (already_usable(state_before))
+            const D3D12_BARRIER_LAYOUT layout_before = info.per_subresource[subresource];
+            if (layout_before == layout_after)
             {
                 return false;
             }
-            if (b.is_compute_queue && (state_before & compute_invalid_states))
+            if (b.is_compute_queue && d3d12_barriers::IsDirectOnlyLayout(layout_before))
             {
                 return false;
             }
 
-            D3D12_RESOURCE_BARRIER barrier = {};
-            barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource   = resource;
-            barrier.Transition.Subresource = subresource;
-            barrier.Transition.StateBefore = state_before;
-            barrier.Transition.StateAfter  = state_after;
-            b.pending_barriers.push_back(barrier);
-
-            state_info.per_subresource[subresource] = state_after;
-            state_info.explicit_barrier             = true;
+            b.pending_texture_barriers.push_back(make_texture_barrier(resource, layout_before, layout_after, subresource));
+            info.per_subresource[subresource] = layout_after;
             return true;
         }
 
-        void push_uav_barrier(PendingBindings& b, ID3D12Resource* resource)
+        // update local and global trackers without emitting a barrier, used after external libraries leave a known layout
+        void adopt_layout(PendingBindings& b, ID3D12Resource* resource, D3D12_BARRIER_LAYOUT layout)
         {
-            if (!resource)
-            {
-                return;
-            }
-            D3D12_RESOURCE_BARRIER barrier = {};
-            barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            barrier.UAV.pResource = resource;
-            b.pending_barriers.push_back(barrier);
-        }
-
-        // set the local and global trackers without emitting a barrier, used after external libraries mutate gpu state
-        void adopt_state(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state)
-        {
-            if (!resource)
+            if (!resource || d3d12_state::IsBuffer(resource))
             {
                 return;
             }
 
-            // mirror push_transition, a compute queue can never have produced graphics only bits so recording them
-            // would leave the tracker claiming a state the resource was never actually in
-            if (b.is_compute_queue)
-            {
-                state &= ~compute_invalid_states;
-            }
-
-            ResourceStateInfo& state_info = get_or_init_state(b, resource);
-            state_info.per_subresource.clear();
-            state_info.uniform_state    = state;
-            state_info.explicit_barrier = true;
-            d3d12_state::SetState(resource, state);
+            ResourceLayoutInfo& info = get_or_init_layout(b, resource);
+            info.per_subresource.clear();
+            info.uniform_layout = layout;
+            d3d12_state::SetLayout(resource, layout);
         }
 
-        static D3D12_RESOURCE_STATES compute_shader_resource_state(bool is_depth, bool include_pixel_stage)
+        // queues a targeted same-layout texture memory barrier (e.g. UAV -> UAV) only when a layout transition is not already pending
+        void push_texture_sync(
+            PendingBindings&   b,
+            ID3D12Resource*    resource,
+            D3D12_BARRIER_SYNC sync_before,
+            D3D12_BARRIER_SYNC sync_after,
+            uint32_t           mip_index,
+            uint32_t           mip_range,
+            uint32_t           total_mips,
+            uint32_t           array_size
+        )
         {
-            if (include_pixel_stage)
+            if (!resource || d3d12_state::IsBuffer(resource))
             {
-                return d3d12_general_state(is_depth);
+                return;
             }
-            return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+            auto add_for_subresource = [&](D3D12_BARRIER_LAYOUT layout, UINT subresource)
+            {
+                // if a layout transition is already queued for this resource/subresource, it already orders memory
+                for (const D3D12_TEXTURE_BARRIER& pending : b.pending_texture_barriers)
+                {
+                    if (pending.pResource != resource)
+                    {
+                        continue;
+                    }
+                    if (pending.Subresources.IndexOrFirstMipLevel == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES ||
+                        pending.Subresources.IndexOrFirstMipLevel == subresource)
+                    {
+                        return;
+                    }
+                }
+
+                // only writable same-layout usages can have an intra-layout hazard; SRV and OM/ROP layouts are already ordered
+                D3D12_BARRIER_ACCESS access = D3D12_BARRIER_ACCESS_NO_ACCESS;
+                D3D12_BARRIER_SYNC sb       = sync_before;
+                D3D12_BARRIER_SYNC sa       = sync_after;
+                if (layout == D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS)
+                {
+                    access = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+                    sb     = merge_barrier_sync(sb, D3D12_BARRIER_SYNC_ALL_SHADING | D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW);
+                    sa     = merge_barrier_sync(sa, D3D12_BARRIER_SYNC_ALL_SHADING | D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW);
+                }
+                else if (layout == D3D12_BARRIER_LAYOUT_COPY_DEST)
+                {
+                    access = D3D12_BARRIER_ACCESS_COPY_DEST;
+                    sb     = D3D12_BARRIER_SYNC_COPY;
+                    sa     = D3D12_BARRIER_SYNC_COPY;
+                }
+                else if (layout == D3D12_BARRIER_LAYOUT_COMMON)
+                {
+                    access = D3D12_BARRIER_ACCESS_COMMON;
+                    sb     = D3D12_BARRIER_SYNC_ALL;
+                    sa     = D3D12_BARRIER_SYNC_ALL;
+                }
+                else
+                {
+                    return;
+                }
+
+                for (D3D12_TEXTURE_BARRIER& existing : b.pending_texture_sync_barriers)
+                {
+                    if (existing.pResource == resource &&
+                        (existing.Subresources.IndexOrFirstMipLevel == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES ||
+                         existing.Subresources.IndexOrFirstMipLevel == subresource))
+                    {
+                        existing.SyncBefore = merge_barrier_sync(existing.SyncBefore, sb);
+                        existing.SyncAfter  = merge_barrier_sync(existing.SyncAfter,  sa);
+                        return;
+                    }
+                }
+
+                D3D12_TEXTURE_BARRIER barrier = {};
+                barrier.SyncBefore                        = sb;
+                barrier.SyncAfter                         = sa;
+                barrier.AccessBefore                      = access;
+                barrier.AccessAfter                       = access;
+                barrier.LayoutBefore                      = layout;
+                barrier.LayoutAfter                       = layout;
+                barrier.pResource                         = resource;
+                barrier.Subresources.IndexOrFirstMipLevel = subresource;
+                barrier.Subresources.NumMipLevels         = 0;
+                barrier.Flags                             = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+                b.pending_texture_sync_barriers.push_back(barrier);
+            };
+
+            ResourceLayoutInfo& info = get_or_init_layout(b, resource);
+            if (info.per_subresource.empty())
+            {
+                add_for_subresource(info.uniform_layout, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+                return;
+            }
+
+            const uint32_t mip_first = (mip_index == rhi_all_mips) ? 0u : mip_index;
+            const uint32_t mip_count = (mip_index == rhi_all_mips) ? total_mips : (mip_range == 0 ? 1u : mip_range);
+            for (uint32_t a = 0; a < array_size; a++)
+            {
+                for (uint32_t m = mip_first; m < mip_first + mip_count && m < total_mips; m++)
+                {
+                    const uint32_t subresource = m + a * total_mips;
+                    if (subresource < info.per_subresource.size())
+                    {
+                        add_for_subresource(info.per_subresource[subresource], subresource);
+                    }
+                }
+            }
         }
 
         void flush(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
         {
-            if (b.pending_barriers.empty())
+            if (!b.has_pending_global && b.pending_buffer_barriers.empty() && b.pending_texture_barriers.empty() && b.pending_texture_sync_barriers.empty())
             {
                 return;
             }
 
-            // collapse an A to B to C chain into one A to C barrier per (resource, subresource), d3d12 warns about the chain
-            std::vector<D3D12_RESOURCE_BARRIER> deduped;
-            deduped.reserve(b.pending_barriers.size());
-            for (const auto& barrier : b.pending_barriers)
+            // deduplicate and chain A -> B -> C texture transitions on the same (resource, subresource) into A -> C
+            thread_local std::vector<D3D12_TEXTURE_BARRIER> deduped;
+            deduped.clear();
+            if (!b.pending_texture_barriers.empty())
             {
-                if (barrier.Type != D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
+                deduped.reserve(b.pending_texture_barriers.size() + b.pending_texture_sync_barriers.size());
+                for (const D3D12_TEXTURE_BARRIER& barrier : b.pending_texture_barriers)
                 {
-                    deduped.push_back(barrier);
+                    if (!barrier.pResource)
+                    {
+                        continue;
+                    }
+
+                    bool merged = false;
+                    for (D3D12_TEXTURE_BARRIER& existing : deduped)
+                    {
+                        if (existing.pResource == barrier.pResource &&
+                            existing.Subresources.IndexOrFirstMipLevel == barrier.Subresources.IndexOrFirstMipLevel &&
+                            existing.Subresources.NumMipLevels == barrier.Subresources.NumMipLevels)
+                        {
+                            existing.SyncAfter   = barrier.SyncAfter;
+                            existing.AccessAfter = barrier.AccessAfter;
+                            existing.LayoutAfter = barrier.LayoutAfter;
+                            merged = true;
+                            break;
+                        }
+                    }
+                    if (!merged)
+                    {
+                        deduped.push_back(barrier);
+                    }
+                }
+
+                // drop cancelled A -> B -> A no-ops and out-of-range subresource indices
+                deduped.erase(std::remove_if(deduped.begin(), deduped.end(),
+                    [](const D3D12_TEXTURE_BARRIER& barrier)
+                    {
+                        if (!barrier.pResource || barrier.LayoutBefore == barrier.LayoutAfter)
+                        {
+                            return true;
+                        }
+                        if (barrier.Subresources.NumMipLevels == 0 && barrier.Subresources.IndexOrFirstMipLevel != D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+                        {
+                            const uint32_t count = get_subresource_count(barrier.pResource);
+                            if (barrier.Subresources.IndexOrFirstMipLevel >= count)
+                            {
+                                SP_LOG_ERROR("dropping texture barrier with subresource %u >= count %u", barrier.Subresources.IndexOrFirstMipLevel, count);
+                                return true;
+                            }
+                        }
+                        return false;
+                    }),
+                    deduped.end());
+            }
+
+            // append same-layout texture sync barriers (e.g. UAV -> UAV) unless a surviving layout transition already covers the resource
+            if (!b.pending_texture_sync_barriers.empty())
+            {
+                const size_t layout_count = deduped.size();
+                for (const D3D12_TEXTURE_BARRIER& sync_barrier : b.pending_texture_sync_barriers)
+                {
+                    bool covered_by_layout = false;
+                    for (size_t i = 0; i < layout_count; i++)
+                    {
+                        if (deduped[i].pResource == sync_barrier.pResource &&
+                            (deduped[i].Subresources.IndexOrFirstMipLevel == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES ||
+                             deduped[i].Subresources.IndexOrFirstMipLevel == sync_barrier.Subresources.IndexOrFirstMipLevel))
+                        {
+                            covered_by_layout = true;
+                            break;
+                        }
+                    }
+                    if (!covered_by_layout)
+                    {
+                        deduped.push_back(sync_barrier);
+                    }
+                }
+            }
+
+            D3D12_GLOBAL_BARRIER global_barrier = {};
+            uint32_t global_count               = 0;
+            if (b.has_pending_global)
+            {
+                global_barrier.SyncBefore   = b.pending_global_sync_before;
+                global_barrier.SyncAfter    = b.pending_global_sync_after;
+                global_barrier.AccessBefore = b.pending_global_access_before;
+                global_barrier.AccessAfter  = b.pending_global_access_after;
+                global_count                = 1;
+            }
+
+            if (global_count > 0 || !b.pending_buffer_barriers.empty() || !deduped.empty())
+            {
+                d3d12_barriers::Submit(
+                    cmd_list,
+                    global_count ? &global_barrier : nullptr,
+                    global_count,
+                    b.pending_buffer_barriers.empty() ? nullptr : b.pending_buffer_barriers.data(),
+                    static_cast<uint32_t>(b.pending_buffer_barriers.size()),
+                    deduped.empty() ? nullptr : deduped.data(),
+                    static_cast<uint32_t>(deduped.size()),
+                    static_cast<ID3D12GraphicsCommandList7*>(cmd_list)
+                );
+            }
+
+            b.has_pending_global           = false;
+            b.pending_global_sync_before   = D3D12_BARRIER_SYNC_NONE;
+            b.pending_global_sync_after    = D3D12_BARRIER_SYNC_NONE;
+            b.pending_global_access_before = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            b.pending_global_access_after  = D3D12_BARRIER_ACCESS_NO_ACCESS;
+            b.pending_buffer_barriers.clear();
+            b.pending_texture_barriers.clear();
+            b.pending_texture_sync_barriers.clear();
+        }
+
+        // unifies divergent subresources, hands cross-queue textures out of direct-only layouts,
+        // flushes everything in one batched Barrier() call, and publishes final layouts to d3d12_state
+        void commit_states_to_global(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
+        {
+            const bool is_direct = cmd_list->GetType() == D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+            for (auto& kv : b.resource_layouts)
+            {
+                ID3D12Resource* resource = kv.first;
+                ResourceLayoutInfo& info = kv.second;
+                if (!resource || !info.initialized)
+                {
                     continue;
                 }
 
-                bool merged = false;
-                for (auto& existing : deduped)
+                // collapse divergent mip/slice layouts to subresource 0's layout so the next cmd list sees a uniform texture
+                if (!info.per_subresource.empty())
                 {
-                    if (existing.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
-                        existing.Transition.pResource   == barrier.Transition.pResource &&
-                        existing.Transition.Subresource == barrier.Transition.Subresource)
+                    const D3D12_BARRIER_LAYOUT target = info.per_subresource[0];
+                    for (uint32_t i = 0; i < info.per_subresource.size(); i++)
                     {
-                        // chain transitions, keep the original StateBefore and advance StateAfter
-                        existing.Transition.StateAfter = barrier.Transition.StateAfter;
-                        merged = true;
-                        break;
+                        if (info.per_subresource[i] != target)
+                        {
+                            b.pending_texture_barriers.push_back(make_texture_barrier(resource, info.per_subresource[i], target, i));
+                        }
+                    }
+                    info.per_subresource.clear();
+                    info.uniform_layout = target;
+                }
+
+                // compute queues cannot transition away from direct-only layouts (render_target, depth_stencil_write, etc.),
+                // so hand shared textures over to shader_resource (valid on both direct and compute) in this same submit batch
+                if (is_direct && d3d12_barriers::IsDirectOnlyLayout(info.uniform_layout))
+                {
+                    bool is_depth = false;
+                    if (d3d12_state::IsCrossQueue(resource, &is_depth))
+                    {
+                        b.pending_texture_barriers.push_back(make_texture_barrier(resource, info.uniform_layout, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES));
+                        info.uniform_layout = D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
                     }
                 }
-                if (!merged)
-                {
-                    deduped.push_back(barrier);
-                }
+
+                d3d12_state::SetLayout(resource, info.uniform_layout);
             }
 
-            // drop no-op transitions and any barrier missing its resource
-            deduped.erase(std::remove_if(deduped.begin(), deduped.end(),
-                [](const D3D12_RESOURCE_BARRIER& barrier)
-                {
-                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
-                    {
-                        return !barrier.Transition.pResource ||
-                               barrier.Transition.StateBefore == barrier.Transition.StateAfter;
-                    }
-                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_UAV)
-                    {
-                        return false;
-                    }
-                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_ALIASING)
-                    {
-                        return false;
-                    }
-                    return true;
-                }),
-                deduped.end());
-
-            if (!deduped.empty())
-            {
-                // rewrite any leftover all-subresources entries to explicit indices before submit
-                std::vector<D3D12_RESOURCE_BARRIER> fixed;
-                fixed.reserve(deduped.size());
-                for (const auto& barrier : deduped)
-                {
-                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
-                        barrier.Transition.pResource &&
-                        barrier.Transition.Subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
-                    {
-                        const uint32_t count = get_subresource_count(barrier.Transition.pResource);
-                        for (uint32_t i = 0; i < count; i++)
-                        {
-                            D3D12_RESOURCE_BARRIER per = barrier;
-                            per.Transition.Subresource = i;
-                            fixed.push_back(per);
-                        }
-                        continue;
-                    }
-                    // buffers must use subresource 0, a non-zero index or all-subresources avs the debug layer
-                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
-                        barrier.Transition.pResource &&
-                        d3d12_state::IsBuffer(barrier.Transition.pResource))
-                    {
-                        D3D12_RESOURCE_BARRIER per = barrier;
-                        per.Transition.Subresource = 0;
-                        fixed.push_back(per);
-                        continue;
-                    }
-                    fixed.push_back(barrier);
-                }
-                if (!fixed.empty())
-                {
-                    // drop the entries the driver cannot survive, then hand the whole batch to the
-                    // barrier layer which either issues one enhanced Barrier call or falls back to
-                    // one legacy ResourceBarrier per entry
-                    std::vector<D3D12_RESOURCE_BARRIER> validated;
-                    validated.reserve(fixed.size());
-                    for (const D3D12_RESOURCE_BARRIER& barrier : fixed)
-                    {
-                        if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
-                        {
-                            if (!barrier.Transition.pResource ||
-                                barrier.Transition.StateBefore == barrier.Transition.StateAfter)
-                            {
-                                continue;
-                            }
-                            // reject out-of-range subresource indices, they null-deref in the nvidia umd
-                            if (barrier.Transition.Subresource != D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
-                            {
-                                const uint32_t count = get_subresource_count(barrier.Transition.pResource);
-                                if (barrier.Transition.Subresource >= count)
-                                {
-                                    SP_LOG_ERROR("dropping barrier with subresource %u >= count %u", barrier.Transition.Subresource, count);
-                                    continue;
-                                }
-                            }
-                        }
-                        else if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_UAV)
-                        {
-                            if (!barrier.UAV.pResource)
-                            {
-                                continue;
-                            }
-                        }
-                        validated.push_back(barrier);
-                    }
-
-                    if (!validated.empty())
-                    {
-                        d3d12_barriers::Submit(cmd_list, validated.data(), static_cast<uint32_t>(validated.size()));
-                    }
-                }
-            }
-            b.pending_barriers.clear();
+            flush(cmd_list, b);
         }
 
         D3D12_CPU_DESCRIPTOR_HANDLE ensure_null_srv(PendingBindings& b)
@@ -978,21 +1095,22 @@ namespace spartan
             D3D12_HEAP_PROPERTIES heap_props = {};
             heap_props.Type = D3D12_HEAP_TYPE_READBACK;
 
-            D3D12_RESOURCE_DESC desc = {};
-            desc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
-            desc.Width              = static_cast<UINT64>(query_count) * sizeof(uint64_t);
-            desc.Height             = 1;
-            desc.DepthOrArraySize   = 1;
-            desc.MipLevels          = 1;
-            desc.Format             = DXGI_FORMAT_UNKNOWN;
-            desc.SampleDesc.Count   = 1;
-            desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            D3D12_RESOURCE_DESC1 desc = {};
+            desc.Dimension            = D3D12_RESOURCE_DIMENSION_BUFFER;
+            desc.Width                = static_cast<UINT64>(query_count) * sizeof(uint64_t);
+            desc.Height               = 1;
+            desc.DepthOrArraySize     = 1;
+            desc.MipLevels            = 1;
+            desc.Format               = DXGI_FORMAT_UNKNOWN;
+            desc.SampleDesc.Count     = 1;
+            desc.Layout               = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
             ID3D12Resource* readback_buffer = nullptr;
-            RHI_Context::device->CreateCommittedResource(
+            RHI_Context::device->CreateCommittedResource3(
                 &heap_props, D3D12_HEAP_FLAG_NONE,
-                &desc, D3D12_RESOURCE_STATE_COPY_DEST,
-                nullptr, IID_PPV_ARGS(&readback_buffer));
+                &desc, D3D12_BARRIER_LAYOUT_UNDEFINED,
+                nullptr, nullptr, 0, nullptr,
+                IID_PPV_ARGS(&readback_buffer));
             return readback_buffer;
         }
 
@@ -1241,13 +1359,12 @@ namespace spartan
             cmd_list_type = D3D12_COMMAND_LIST_TYPE_COPY;
         }
 
-        ID3D12GraphicsCommandList* cmd_list = nullptr;
-        SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandList(
-            0, cmd_list_type, static_cast<ID3D12CommandAllocator*>(cmd_pool), nullptr, IID_PPV_ARGS(&cmd_list)
+        // create closed directly via ID3D12Device4::CreateCommandList1 without binding an allocator
+        ID3D12GraphicsCommandList7* cmd_list = nullptr;
+        SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandList1(
+            0, cmd_list_type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&cmd_list)
         )), "Failed to create command list");
         m_rhi_resource = cmd_list;
-
-        cmd_list->Close();
 
         ID3D12Fence* fence = nullptr;
         SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence))),
@@ -1378,10 +1495,9 @@ namespace spartan
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
 
-        // flush deferred barriers, then publish state so the next cmd list sees the post-execution state of what this one touched
+        // unify divergent subresources, hand cross-queue textures out of direct-only layouts, flush once, and publish final layouts
         {
             auto& b = cmd_state::get(this);
-            cmd_state::flush(cmd_list, b);
             cmd_state::commit_states_to_global(cmd_list, b);
         }
         Profiler::SubmissionEnd(this);
@@ -1513,12 +1629,8 @@ namespace spartan
             // graphics and compute pipelines use the regular SetPipelineState path
             if (pso.IsRayTracing())
             {
-                Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
-                if (SUCCEEDED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
-                {
-                    cmd4->SetPipelineState1(static_cast<ID3D12StateObject*>(pipeline->GetRhiResource()));
-                    Profiler::m_rhi_bindings_pipeline++;
-                }
+                static_cast<ID3D12GraphicsCommandList7*>(cmd_list)->SetPipelineState1(static_cast<ID3D12StateObject*>(pipeline->GetRhiResource()));
+                Profiler::m_rhi_bindings_pipeline++;
             }
             else
             {
@@ -1635,6 +1747,9 @@ namespace spartan
         uint32_t height = 0;
 
         // swapchain target
+        bool any_clear = false;
+        bool cleared_target_transitioned = false;
+
         if (m_pso.render_target_swapchain)
         {
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
@@ -1643,10 +1758,20 @@ namespace spartan
             width                     = swapchain->GetWidth();
             height                    = swapchain->GetHeight();
 
+            const bool rtv_clears = !m_load_color_render_targets[0] && m_pso.clear_color[0] != rhi_color_dont_care && m_pso.clear_color[0] != rhi_color_load;
+            if (rtv_clears)
+            {
+                any_clear = true;
+            }
+
             ID3D12Resource* backbuffer = static_cast<ID3D12Resource*>(swapchain->GetRhiRt());
             if (backbuffer)
             {
-                cmd_state::push_transition(b, backbuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+                cmd_state::push_transition(b, backbuffer, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
+                if (rtv_clears && cmd_state::has_pending_texture_barrier(b, backbuffer))
+                {
+                    cleared_target_transitioned = true;
+                }
                 b.swapchain_bb_transitioned = backbuffer;
             }
         }
@@ -1670,8 +1795,18 @@ namespace spartan
                     continue;
                 }
 
+                const bool rtv_clears = !m_load_color_render_targets[i] && m_pso.clear_color[i] != rhi_color_dont_care && m_pso.clear_color[i] != rhi_color_load;
+                if (rtv_clears)
+                {
+                    any_clear = true;
+                }
+
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
-                cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
+                cmd_state::push_transition(b, resource, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
+                if (rtv_clears && cmd_state::has_pending_texture_barrier(b, resource))
+                {
+                    cleared_target_transitioned = true;
+                }
                 SetTrackedTextureLayout(rt, 0, rt->GetResidentMipCount(), RHI_Image_Layout::General);
 
                 rtv_handles[i].ptr = reinterpret_cast<SIZE_T>(rtv);
@@ -1681,7 +1816,7 @@ namespace spartan
             }
         }
 
-        // depth target, transition to depth_write before clears or draws
+        // depth target, transition to depth_stencil_write before clears or draws
         D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle = {};
         D3D12_CPU_DESCRIPTOR_HANDLE* dsv_ptr   = nullptr;
         if (m_pso.render_target_depth_texture)
@@ -1695,8 +1830,20 @@ namespace spartan
 
             if (dsv)
             {
+                const bool dsv_clears = !m_load_depth_render_target &&
+                    ((m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care) ||
+                     (m_pso.clear_stencil != rhi_stencil_load && m_pso.clear_stencil != rhi_stencil_dont_care));
+                if (dsv_clears)
+                {
+                    any_clear = true;
+                }
+
                 ID3D12Resource* depth_resource = static_cast<ID3D12Resource*>(depth->GetRhiResource());
-                cmd_state::push_transition(b, depth_resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                cmd_state::push_transition(b, depth_resource, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE);
+                if (dsv_clears && cmd_state::has_pending_texture_barrier(b, depth_resource))
+                {
+                    cleared_target_transitioned = true;
+                }
                 SetTrackedTextureLayout(depth, 0, depth->GetResidentMipCount(), RHI_Image_Layout::General);
 
                 dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv);
@@ -1709,8 +1856,22 @@ namespace spartan
             }
         }
 
-        // flush all queued transitions before binding/clearing rtv/dsv
-        cmd_state::flush(cmd_list, b);
+        // queue vrs transition so rtvs, dsv, and vrs share one Barrier() call
+        ID3D12Resource* vrs_resource = nullptr;
+        if (m_pso.vrs_input_texture && RHI_Device::IsSupportedVrs())
+        {
+            RHI_Texture* vrs = m_pso.vrs_input_texture;
+            vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
+            cmd_state::push_transition(b, vrs_resource, D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE);
+            SetTrackedTextureLayout(vrs, 0, vrs->GetResidentMipCount(), RHI_Image_Layout::General);
+        }
+
+        // only flush here when a cleared target actually transitioned or has a pending global barrier;
+        // non-clearing passes keep rtv/dsv/vrs queued so they batch with srv/uav/buffer barriers on the first draw
+        if (any_clear && (cleared_target_transitioned || b.has_pending_global))
+        {
+            cmd_state::flush(cmd_list, b);
+        }
 
         cmd_list->OMSetRenderTargets(rtv_count, rtv_count > 0 ? rtv_handles : nullptr, FALSE, dsv_ptr);
 
@@ -1762,22 +1923,10 @@ namespace spartan
         }
 
         // variable rate shading, bind the per-image shading rate texture when the pass requests it, otherwise disable
-        if (m_pso.vrs_input_texture && RHI_Device::IsSupportedVrs())
+        if (vrs_resource)
         {
-            RHI_Texture* vrs = m_pso.vrs_input_texture;
-            ID3D12Resource* vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
-
-            cmd_state::push_transition(b, vrs_resource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
-            SetTrackedTextureLayout(vrs, 0, vrs->GetResidentMipCount(), RHI_Image_Layout::General);
-            cmd_state::flush(cmd_list, b);
-
             RHI_Device::SetVariableRateShading(this, true);
-
-            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList5> cmd_list5;
-            if (SUCCEEDED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list5))))
-            {
-                cmd_list5->RSSetShadingRateImage(vrs_resource);
-            }
+            static_cast<ID3D12GraphicsCommandList7*>(cmd_list)->RSSetShadingRateImage(vrs_resource);
         }
         else if (RHI_Device::IsSupportedVrs())
         {
@@ -1794,36 +1943,9 @@ namespace spartan
             return;
         }
 
+        // leave attachments in render_target / depth_stencil_write so consecutive passes on the same targets pay 0 barriers;
+        // set_texture/blit/copy transition on demand, and commit_states_to_global hands cross-queue targets over at Submit()
         m_render_pass_active = false;
-
-        // park attachments in general so the next queue does not inherit depth_write or render_target
-        if (m_pso.render_target_swapchain)
-        {
-            return;
-        }
-
-        auto& b = cmd_state::get(this);
-        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-        {
-            RHI_Texture* rt = m_pso.render_target_color_textures[i];
-            if (!rt || !rt->GetRhiResource())
-            {
-                continue;
-            }
-
-            ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
-            cmd_state::push_transition(b, resource, d3d12_general_state(false));
-            SetTrackedTextureLayout(rt, 0, rt->GetResidentMipCount(), RHI_Image_Layout::General);
-        }
-
-        if (RHI_Texture* depth = m_pso.render_target_depth_texture)
-        {
-            if (ID3D12Resource* resource = static_cast<ID3D12Resource*>(depth->GetRhiResource()))
-            {
-                cmd_state::push_transition(b, resource, d3d12_general_state(true));
-                SetTrackedTextureLayout(depth, 0, depth->GetResidentMipCount(), RHI_Image_Layout::General);
-            }
-        }
     }
 
     static D3D12_CPU_DESCRIPTOR_HANDLE create_transient_mip_view(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, bool uav, uint32_t array_layer);
@@ -1845,7 +1967,7 @@ namespace spartan
                 return;
 
             PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
-            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmd_state::push_transition(b, resource, D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS);
             cmd_state::flush(cmd_list, b);
             const float values[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
             for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
@@ -1864,7 +1986,7 @@ namespace spartan
                     cmd_list->ClearUnorderedAccessViewFloat(d3d12_descriptors::GetCbvSrvUavGpuHandle(slot), cpu, resource, values, 0, nullptr);
                 }
             }
-            cmd_state::push_uav_barrier(b, resource);
+            // next consumer syncs against CLEAR_UNORDERED_ACCESS_VIEW via LayoutDefaultSync(UNORDERED_ACCESS) or per-texture UAV sync
             SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute, RHI_Resource_Usage::Shader);
         }
@@ -1880,8 +2002,7 @@ namespace spartan
         else if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
         {
             PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics);
-            // ClearDepthStencilView requires the resource to be in depth_write state
-            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            cmd_state::push_transition(b, resource, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE);
             SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             cmd_state::flush(cmd_list, b);
 
@@ -1896,7 +2017,6 @@ namespace spartan
                 (clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) ? 1.0f : clear_depth,
                 static_cast<UINT8>((clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care) ? 0 : clear_stencil),
                 0, nullptr);
-            cmd_state::push_transition(b, resource, d3d12_general_state(true));
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics, RHI_Resource_Usage::Attachment);
         }
         else if (texture->GetRhiRtv(0))
@@ -1907,8 +2027,7 @@ namespace spartan
             }
 
             PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics);
-            // ClearRenderTargetView requires the resource to be in render_target state
-            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            cmd_state::push_transition(b, resource, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
             SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             cmd_state::flush(cmd_list, b);
 
@@ -1916,7 +2035,6 @@ namespace spartan
             rtv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiRtvMultiview() ? texture->GetRhiRtvMultiview() : texture->GetRhiRtv(0));
             float c[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
             cmd_list->ClearRenderTargetView(rtv, c, 0, nullptr);
-            cmd_state::push_transition(b, resource, d3d12_general_state(false));
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics, RHI_Resource_Usage::Attachment);
         }
     }
@@ -1929,10 +2047,9 @@ namespace spartan
             return;
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        // always flush queued transitions, otherwise they accumulate across failed psos and diverge from the actual gpu state
-        cmd_state::flush(cmd_list, b);
         if (!b.has_root_signature_graphics)
         {
+            cmd_state::flush(cmd_list, b);
             return;
         }
         SynchronizeResources();
@@ -1949,9 +2066,9 @@ namespace spartan
             return;
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
         if (!b.has_root_signature_graphics)
         {
+            cmd_state::flush(cmd_list, b);
             return;
         }
         SynchronizeResources();
@@ -1973,15 +2090,10 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
 
-        if (!args_buffer)
+        if (!args_buffer || !b.has_root_signature_graphics)
         {
-            return;
-        }
-
-        if (!b.has_root_signature_graphics)
-        {
+            cmd_state::flush(cmd_list, b);
             return;
         }
 
@@ -2004,7 +2116,7 @@ namespace spartan
         }
 
         ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
-        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        b.gpu_used_buffers.insert(args_resource);
 
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
@@ -2025,15 +2137,10 @@ namespace spartan
         TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
 
-        if (!args_buffer || !count_buffer)
+        if (!args_buffer || !count_buffer || !b.has_root_signature_graphics)
         {
-            return;
-        }
-
-        if (!b.has_root_signature_graphics)
-        {
+            cmd_state::flush(cmd_list, b);
             return;
         }
 
@@ -2055,11 +2162,10 @@ namespace spartan
             }
         }
 
-        // executeindirect requires args and count buffers in indirect_argument state, they were likely written by a prior compute pass and left as unordered_access
         ID3D12Resource* args_resource  = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
         ID3D12Resource* count_resource = static_cast<ID3D12Resource*>(count_buffer->GetRhiResource());
-        cmd_state::push_transition(b, args_resource,  D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        cmd_state::push_transition(b, count_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        b.gpu_used_buffers.insert(args_resource);
+        b.gpu_used_buffers.insert(count_resource);
 
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
@@ -2078,9 +2184,9 @@ namespace spartan
             return;
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
         if (!b.has_root_signature_compute)
         {
+            cmd_state::flush(cmd_list, b);
             return;
         }
         SynchronizeResources();
@@ -2097,15 +2203,10 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
 
-        if (!args_buffer)
+        if (!args_buffer || !b.has_root_signature_graphics)
         {
-            return;
-        }
-
-        if (!b.has_root_signature_graphics)
-        {
+            cmd_state::flush(cmd_list, b);
             return;
         }
 
@@ -2127,9 +2228,8 @@ namespace spartan
             }
         }
 
-        // executeindirect requires the args buffer in indirect_argument state, it was likely written by a prior compute pass and left as unordered_access
         ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
-        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        b.gpu_used_buffers.insert(args_resource);
 
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
@@ -2150,15 +2250,10 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
 
-        if (!args_buffer)
+        if (!args_buffer || !b.has_root_signature_graphics)
         {
-            return;
-        }
-
-        if (!b.has_root_signature_graphics)
-        {
+            cmd_state::flush(cmd_list, b);
             return;
         }
 
@@ -2181,16 +2276,7 @@ namespace spartan
         }
 
         ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
-        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
-        // cull writes uavs on compute, mesh reads them, renderdoc serializes this path
-        {
-            D3D12_RESOURCE_BARRIER uav_barrier = {};
-            uav_barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            uav_barrier.UAV.pResource = nullptr;
-            cmd_list->ResourceBarrier(1, &uav_barrier);
-            Profiler::m_rhi_pipeline_barriers++;
-        }
+        b.gpu_used_buffers.insert(args_resource);
 
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
@@ -2210,15 +2296,10 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        cmd_state::flush(cmd_list, b);
 
-        if (!args_buffer)
+        if (!args_buffer || !b.has_root_signature_compute)
         {
-            return;
-        }
-
-        if (!b.has_root_signature_compute)
-        {
+            cmd_state::flush(cmd_list, b);
             return;
         }
 
@@ -2240,9 +2321,8 @@ namespace spartan
             }
         }
 
-        // executeindirect requires the args buffer in indirect_argument state, it was likely written by a prior compute pass and left as unordered_access
         ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
-        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        b.gpu_used_buffers.insert(args_resource);
 
         flush_pending_bindings(cmd_list, this, true);
         cmd_list->ExecuteIndirect(
@@ -2256,34 +2336,20 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         PrepareDispatch();
-        if (!m_pipeline)
-            return;
-
-        if (width == 0 || height == 0)
+        if (!m_pipeline || width == 0 || height == 0 || !m_pso.IsRayTracing())
         {
             return;
         }
 
-        if (!m_pso.IsRayTracing() || !m_pipeline)
+        ID3D12GraphicsCommandList7* cmd_list = static_cast<ID3D12GraphicsCommandList7*>(m_rhi_resource);
+        auto& b = cmd_state::get(this);
+        if (!b.has_root_signature_compute)
         {
+            cmd_state::flush(cmd_list, b);
             return;
         }
 
         SynchronizeResources();
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
-        if (FAILED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
-        {
-            return;
-        }
-
-        // flush descriptor table bindings, ray tracing uses the compute root signature path
-        auto& b = cmd_state::get(this);
-        cmd_state::flush(cmd_list, b);
-        if (!b.has_root_signature_compute)
-        {
-            return;
-        }
         flush_pending_bindings(cmd_list, this, true);
 
         // get or create an sbt for the currently bound state object
@@ -2320,7 +2386,7 @@ namespace spartan
         desc.Height                                 = height;
         desc.Depth                                  = 1;
 
-        cmd4->DispatchRays(&desc);
+        cmd_list->DispatchRays(&desc);
     }
 
     void RHI_CommandList::set_acceleration_structure(const uint32_t slot, RHI_AccelerationStructure* tlas)
@@ -2376,19 +2442,6 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
 
-        // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
-        std::array<RHI_Image_Layout, rhi_max_mip_count> src_layouts_initial = {};
-        std::array<RHI_Image_Layout, rhi_max_mip_count> dst_layouts_initial = {};
-        for (uint32_t mip = 0; mip < source->GetResidentMipCount(); mip++)
-        {
-            src_layouts_initial[mip] = GetTrackedTextureLayout(source, mip);
-        }
-        for (uint32_t mip = 0; mip < destination->GetResidentMipCount(); mip++)
-        {
-            dst_layouts_initial[mip] = GetTrackedTextureLayout(destination, mip);
-        }
-        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
-
         // copyresource requires identical resource footprints including mip and array counts
         const bool dims_match   = source->GetResidentWidth()  == destination->GetResidentWidth()
                                && source->GetResidentHeight() == destination->GetResidentHeight();
@@ -2398,11 +2451,11 @@ namespace spartan
         const bool no_scaling   = resolution_scale >= 1.0f - 1e-6f && resolution_scale <= 1.0f + 1e-6f;
 
         // same size and format with no scaling: use a gpu copy (works for uav-only destinations without rtv)
-        // always transition the whole resource so the state tracker stays uniform across mip chains
+        // always transition the whole resource so the layout tracker stays uniform across mip chains
         if (dims_match && format_match && no_scaling)
         {
-            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_COPY_SOURCE);
+            cmd_state::push_transition(b, dst, D3D12_BARRIER_LAYOUT_COPY_DEST);
             cmd_state::flush(cmd_list, b);
 
             if (mips_match && array_match)
@@ -2435,15 +2488,8 @@ namespace spartan
                 }
             }
 
-            // whole-resource copy transitions, restore every mip
-            for (uint32_t i = 0; i < source->GetResidentMipCount(); i++)
-            {
-                InsertBarrier(source, safe_layout(src_layouts_initial[i]), i, 1);
-            }
-            for (uint32_t i = 0; i < destination->GetResidentMipCount(); i++)
-            {
-                InsertBarrier(destination, safe_layout(dst_layouts_initial[i]), i, 1);
-            }
+            SetTrackedTextureLayout(source,      0, source->GetResidentMipCount(),      RHI_Image_Layout::General);
+            SetTrackedTextureLayout(destination, 0, destination->GetResidentMipCount(), RHI_Image_Layout::General);
             return;
         }
 
@@ -2459,23 +2505,13 @@ namespace spartan
             return;
         }
         const bool dst_is_depth = destination->IsDepthStencilFormat();
-        const bool src_is_depth = source->IsDepthStencilFormat();
 
-        const D3D12_RESOURCE_STATES src_read_state = d3d12_general_state(src_is_depth);
-        const D3D12_RESOURCE_STATES dst_write_state = dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET;
+        const D3D12_BARRIER_LAYOUT src_read_layout = D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+        const D3D12_BARRIER_LAYOUT dst_write_layout = dst_is_depth ? D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE : D3D12_BARRIER_LAYOUT_RENDER_TARGET;
         const uint32_t mip_count = blit_mips ? destination->GetResidentMipCount() : 1;
-        const uint32_t src_mips  = source->GetResidentMipCount();
-        const uint32_t dst_mips  = destination->GetResidentMipCount();
-        const uint32_t arrays    = std::min(source->GetArrayLength(), destination->GetArrayLength());
 
-        for (uint32_t array_index = 0; array_index < arrays; array_index++)
-        {
-            for (uint32_t mip = 0; mip < mip_count; mip++)
-            {
-                cmd_state::push_transition(b, src, src_read_state, mip + array_index * src_mips);
-                cmd_state::push_transition(b, dst, dst_write_state, mip + array_index * dst_mips);
-            }
-        }
+        cmd_state::push_transition(b, src, src_read_layout);
+        cmd_state::push_transition(b, dst, dst_write_layout);
         cmd_state::flush(cmd_list, b);
 
         // maps a typeless or float depth format to its dsv-compatible format for transient deeper-mip views
@@ -2578,23 +2614,8 @@ namespace spartan
         // the blit changed the bound root signature, pipeline and input assembler state, the next graphics call rebinds all of it
         restore_after_external_pass();
 
-        // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
-        if (blit_mips)
-        {
-            for (uint32_t i = 0; i < source->GetResidentMipCount(); i++)
-            {
-                InsertBarrier(source, safe_layout(src_layouts_initial[i]), i, 1);
-            }
-            for (uint32_t i = 0; i < destination->GetResidentMipCount(); i++)
-            {
-                InsertBarrier(destination, safe_layout(dst_layouts_initial[i]), i, 1);
-            }
-        }
-        else
-        {
-            InsertBarrier(source,      safe_layout(src_layouts_initial[0]), 0, 1);
-            InsertBarrier(destination, safe_layout(dst_layouts_initial[0]), 0, 1);
-        }
+        SetTrackedTextureLayout(source,      0, source->GetResidentMipCount(),      RHI_Image_Layout::General);
+        SetTrackedTextureLayout(destination, 0, destination->GetResidentMipCount(), RHI_Image_Layout::General);
     }
 
     void RHI_CommandList::blit(RHI_Texture* source, RHI_SwapChain* destination)
@@ -2622,8 +2643,8 @@ namespace spartan
         // fast path, identical format and size means a straight copy into the backbuffer is valid
         if (dims_match && format_match)
         {
-            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_COPY_SOURCE);
+            cmd_state::push_transition(b, dst, D3D12_BARRIER_LAYOUT_COPY_DEST);
             cmd_state::flush(cmd_list, b);
 
             cmd_list->CopyResource(dst, src);
@@ -2638,8 +2659,8 @@ namespace spartan
 
         // scaling or format-converting path, sample the source into the backbuffer through the fullscreen-triangle blit
         // copyresource can not scale or convert formats, so this mirrors the vkCmdBlitImage path the renderer expects
-        cmd_state::push_transition(b, src, d3d12_general_state(false));
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE);
+        cmd_state::push_transition(b, dst, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
 
         void* src_srv_ptr = source->GetRhiSrv();
@@ -2686,19 +2707,14 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
 
-        // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
-        const RHI_Image_Layout src_layout_initial = GetTrackedTextureLayout(source, 0);
-        const RHI_Image_Layout dst_layout_initial = GetTrackedTextureLayout(destination, 0);
-        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
-
         const bool dims_match   = source->GetResidentWidth()  == destination->GetResidentWidth()
                                && source->GetResidentHeight() == destination->GetResidentHeight();
         const bool format_match = source->GetFormat() == destination->GetFormat();
 
         if (dims_match && format_match)
         {
-            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_COPY_SOURCE);
+            cmd_state::push_transition(b, dst, D3D12_BARRIER_LAYOUT_COPY_DEST);
             cmd_state::flush(cmd_list, b);
 
             // mip 0 of array layer dst_layer in destination, mip 0 of source
@@ -2722,8 +2738,8 @@ namespace spartan
         {
             // scaling path, sample the source into the requested destination array layer through the fullscreen-triangle blit
             // copytextureregion can not scale, this mirrors the vkCmdBlitImage stereo-layer compositing path
-            cmd_state::push_transition(b, src, d3d12_general_state(false));
-            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE);
+            cmd_state::push_transition(b, dst, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
             cmd_state::flush(cmd_list, b);
 
             void* src_srv_ptr = source->GetRhiSrv();
@@ -2759,9 +2775,8 @@ namespace spartan
             }
         }
 
-        // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
-        InsertBarrier(source,      safe_layout(src_layout_initial), 0, source->GetResidentMipCount());
-        InsertBarrier(destination, safe_layout(dst_layout_initial), 0, destination->GetResidentMipCount());
+        SetTrackedTextureLayout(source,      0, source->GetResidentMipCount(),      RHI_Image_Layout::General);
+        SetTrackedTextureLayout(destination, 0, destination->GetResidentMipCount(), RHI_Image_Layout::General);
     }
 
     void RHI_CommandList::blit_to_xr_swapchain(RHI_Texture* source)
@@ -2808,28 +2823,15 @@ namespace spartan
             xr_format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
         }
 
-        // openxr guarantees the d3d12 swapchain image is in the render_target state on acquire and requires it
-        // returned in the same state, seed the tracker so the transitions resolve against the correct prior state
-        d3d12_state::SetState(xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        // openxr guarantees the d3d12 swapchain image is in the render_target layout on acquire and requires it
+        // returned in the same layout, seed the tracker so transitions resolve against the correct prior layout
+        d3d12_state::SetLayout(xr_image, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
         d3d12_state::SetSubresourceCount(xr_image, 1);
 
-        // save the source layout so it can be restored after the blit
-        RHI_Image_Layout source_layout_initial = GetTrackedTextureLayout(source, 0);
-        if (source_layout_initial == RHI_Image_Layout::Max)
-        {
-            source_layout_initial = RHI_Image_Layout::General;
-        }
-
-        // full sync after xr acquire so prior compositor access is visible, mirrors vulkan's post-wait barrier
-        {
-            D3D12_RESOURCE_BARRIER uav_barrier = {};
-            uav_barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            uav_barrier.UAV.pResource = nullptr;
-            d3d12_barriers::Submit(cmd_list, &uav_barrier, 1);
-        }
-
-        cmd_state::push_transition(b, src, d3d12_general_state(false));
-        cmd_state::push_transition(b, xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        // full sync after xr acquire so prior compositor access is visible, batched with source transition into one Barrier()
+        cmd_state::push_global(b, D3D12_BARRIER_SYNC_ALL, D3D12_BARRIER_SYNC_RENDER_TARGET, D3D12_BARRIER_ACCESS_COMMON, D3D12_BARRIER_ACCESS_RENDER_TARGET);
+        cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE);
+        cmd_state::push_transition(b, xr_image, D3D12_BARRIER_LAYOUT_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
 
         // clear the xr image to black first for letterboxing, mirrors vulkan BlitToXrSwapchain
@@ -2892,9 +2894,8 @@ namespace spartan
         // the blit swapped in its own root signature, pso and input assembler state, force the next graphics bind to restore them
         restore_after_external_pass();
 
-        // the xr image stays in render_target which is the state the runtime expects on release, restore the source
-        InsertBarrier(source, source_layout_initial, 0, source->GetResidentMipCount());
-        FlushBarriers();
+        // xr_image remains in render_target as required on release; source stays in shader_resource
+        SetTrackedTextureLayout(source, 0, source->GetResidentMipCount(), RHI_Image_Layout::General);
 
         // release after gpu submit in Renderer::Tick, ending the frame before submit caused hmd judder
     }
@@ -2921,8 +2922,8 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_COPY_SOURCE);
+        cmd_state::push_transition(b, dst, D3D12_BARRIER_LAYOUT_COPY_DEST);
         cmd_state::flush(cmd_list, b);
 
         cmd_list->CopyResource(dst, src);
@@ -3026,8 +3027,12 @@ namespace spartan
         TrackBufferRead(0, const_cast<RHI_Buffer*>(vertex), RHI_Resource_Usage::Vertex);
         TrackBufferRead(1, instance, RHI_Resource_Usage::Vertex);
 
+        auto& b = cmd_state::get(this);
+        ID3D12Resource* vertex_resource = static_cast<ID3D12Resource*>(vertex->GetRhiResource());
+        b.gpu_used_buffers.insert(vertex_resource);
+
         D3D12_VERTEX_BUFFER_VIEW views[2] = {};
-        views[0].BufferLocation = static_cast<ID3D12Resource*>(vertex->GetRhiResource())->GetGPUVirtualAddress();
+        views[0].BufferLocation = vertex_resource->GetGPUVirtualAddress();
         views[0].StrideInBytes  = static_cast<UINT>(vertex->GetStride());
         views[0].SizeInBytes    = static_cast<UINT>(vertex->GetStride() * vertex->GetElementCount());
 
@@ -3036,7 +3041,9 @@ namespace spartan
 
         if (instance && instance->GetRhiResource())
         {
-            views[1].BufferLocation = static_cast<ID3D12Resource*>(instance->GetRhiResource())->GetGPUVirtualAddress();
+            ID3D12Resource* instance_resource = static_cast<ID3D12Resource*>(instance->GetRhiResource());
+            b.gpu_used_buffers.insert(instance_resource);
+            views[1].BufferLocation = instance_resource->GetGPUVirtualAddress();
             views[1].StrideInBytes  = static_cast<UINT>(instance->GetStride());
             views[1].SizeInBytes    = static_cast<UINT>(instance->GetStride() * instance->GetElementCount());
             num_views               = 2;
@@ -3057,6 +3064,9 @@ namespace spartan
         SP_ASSERT(buffer && buffer->GetRhiResource());
         TrackBufferRead(2, const_cast<RHI_Buffer*>(buffer), RHI_Resource_Usage::Index);
 
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
+        cmd_state::get(this).gpu_used_buffers.insert(resource);
+
         if (m_buffer_id_index == buffer->GetObjectId())
         {
             return;
@@ -3065,7 +3075,7 @@ namespace spartan
         bool is_16_bit = buffer->GetStride() == sizeof(uint16_t);
 
         D3D12_INDEX_BUFFER_VIEW view = {};
-        view.BufferLocation = static_cast<ID3D12Resource*>(buffer->GetRhiResource())->GetGPUVirtualAddress();
+        view.BufferLocation = resource->GetGPUVirtualAddress();
         view.SizeInBytes    = static_cast<UINT>(buffer->GetStride() * buffer->GetElementCount());
         view.Format         = is_16_bit ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
@@ -3164,6 +3174,7 @@ namespace spartan
         }
 
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
+        b.gpu_used_buffers.insert(resource);
 
         if (access == RHI_Resource_Access::Read)
         {
@@ -3202,7 +3213,7 @@ namespace spartan
                     h
                 );
             }
-            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            b.gpu_used_buffers.insert(resource);
             if (b.srv[slot].ptr != h.ptr)
             {
                 b.srv[slot] = h;
@@ -3261,7 +3272,7 @@ namespace spartan
             );
         }
 
-        cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        b.gpu_used_buffers.insert(resource);
 
         if (b.uav[slot].ptr != h.ptr)
         {
@@ -3427,7 +3438,7 @@ namespace spartan
         const bool layer_specified = array_layer != rhi_all_mips;
         const bool covers_all_mips = !mip_specified || (mip_index == 0 && effective_mip_range >= total_mips);
         const bool covers_full     = covers_all_mips && !layer_specified;
-        auto push_transition_for_view = [&](D3D12_RESOURCE_STATES state)
+        auto push_transition_for_view = [&](D3D12_BARRIER_LAYOUT layout)
         {
             if (!covers_full)
             {
@@ -3440,13 +3451,13 @@ namespace spartan
                     for (uint32_t m = mip_first; m < mip_last && m < total_mips; m++)
                     {
                         uint32_t subresource = m + a * total_mips;
-                        cmd_state::push_transition(b, resource, state, subresource);
+                        cmd_state::push_transition(b, resource, layout, subresource);
                     }
                 }
             }
             else
             {
-                cmd_state::push_transition(b, resource, state);
+                cmd_state::push_transition(b, resource, layout);
             }
         };
 
@@ -3458,7 +3469,7 @@ namespace spartan
             }
 
             // ensure the texture is in unordered_access for both reads and writes
-            push_transition_for_view(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            push_transition_for_view(D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS);
             if (covers_full)
             {
                 SetTrackedTextureLayout(texture, 0, total_mips, RHI_Image_Layout::General);
@@ -3516,7 +3527,7 @@ namespace spartan
                 return;
             }
 
-            push_transition_for_view(d3d12_general_state(texture->IsDepthStencilFormat()));
+            push_transition_for_view(D3D12_BARRIER_LAYOUT_SHADER_RESOURCE);
             if (covers_full)
             {
                 SetTrackedTextureLayout(texture, 0, total_mips, RHI_Image_Layout::General);
@@ -3824,20 +3835,15 @@ namespace spartan
         SP_ASSERT(buffer && buffer->GetRhiResource());
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-        ID3D12Resource* resource            = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
+        ID3D12GraphicsCommandList7* cmd_list = static_cast<ID3D12GraphicsCommandList7*>(m_rhi_resource);
+        ID3D12Resource* resource             = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
 
-        ID3D12GraphicsCommandList2* cmd_list2 = nullptr;
-        if (SUCCEEDED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list2))))
-        {
-            D3D12_WRITEBUFFERIMMEDIATE_PARAMETER param = {};
-            param.Dest  = resource->GetGPUVirtualAddress() + slot * sizeof(uint32_t);
-            param.Value = value;
+        D3D12_WRITEBUFFERIMMEDIATE_PARAMETER param = {};
+        param.Dest  = resource->GetGPUVirtualAddress() + slot * sizeof(uint32_t);
+        param.Value = value;
 
-            D3D12_WRITEBUFFERIMMEDIATE_MODE mode = D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
-            cmd_list2->WriteBufferImmediate(1, &param, &mode);
-            cmd_list2->Release();
-        }
+        D3D12_WRITEBUFFERIMMEDIATE_MODE mode = D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
+        cmd_list->WriteBufferImmediate(1, &param, &mode);
     }
 
     void RHI_CommandList::update_buffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory)
@@ -3881,14 +3887,24 @@ namespace spartan
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
 
-        // transition dst to copy_dest, copy, then back to a shader-read state so subsequent srv reads work
-        // a follow-up set_buffer(uav) call pushes its own transition to unordered_access if needed
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
-        cmd_state::flush(cmd_list, b);
+        // enhanced barriers require no layout transitions for buffers: only order prior gpu reads/writes on dst if it was touched earlier
+        constexpr D3D12_BARRIER_SYNC buffer_gpu_sync =
+            D3D12_BARRIER_SYNC_DRAW | D3D12_BARRIER_SYNC_COMPUTE_SHADING | D3D12_BARRIER_SYNC_RAYTRACING | D3D12_BARRIER_SYNC_EXECUTE_INDIRECT | D3D12_BARRIER_SYNC_COPY;
+        constexpr D3D12_BARRIER_ACCESS buffer_gpu_access =
+            D3D12_BARRIER_ACCESS_VERTEX_BUFFER | D3D12_BARRIER_ACCESS_CONSTANT_BUFFER | D3D12_BARRIER_ACCESS_INDEX_BUFFER |
+            D3D12_BARRIER_ACCESS_UNORDERED_ACCESS | D3D12_BARRIER_ACCESS_SHADER_RESOURCE | D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT |
+            D3D12_BARRIER_ACCESS_COPY_SOURCE | D3D12_BARRIER_ACCESS_COPY_DEST;
+        if (b.gpu_used_buffers.count(dst) != 0 || cmd_state::has_pending_buffer_barrier(b, dst))
+        {
+            cmd_state::push_buffer_barrier(b, dst, buffer_gpu_sync, D3D12_BARRIER_SYNC_COPY, buffer_gpu_access, D3D12_BARRIER_ACCESS_COPY_DEST);
+            cmd_state::flush(cmd_list, b);
+        }
 
         cmd_list->CopyBufferRegion(dst, offset, staging, 0, size);
+        b.gpu_used_buffers.insert(dst);
 
-        cmd_state::push_transition(b, dst, d3d12_general_state(false));
+        // defer per-buffer copy visibility until the next draw/dispatch/barrier flush so back-to-back uploads emit zero barriers between copies
+        cmd_state::push_buffer_barrier(b, dst, D3D12_BARRIER_SYNC_COPY, buffer_gpu_sync, D3D12_BARRIER_ACCESS_COPY_DEST, buffer_gpu_access);
 
         // hold the staging buffer until this cmd list completes, Begin/destructor releases them back to the pool
         RetainStagingBuffer(staging_ptr);
@@ -3923,42 +3939,42 @@ namespace spartan
                 }
 
                 const bool is_uav = barrier.texture && barrier.texture->IsUav();
-                D3D12_RESOURCE_STATES state_after = rhi_to_d3d12_state(
-                    barrier.texture ? RHI_Image_Layout::General : barrier.layout,
+                const D3D12_BARRIER_LAYOUT layout_after = rhi_to_d3d12_layout(
+                    barrier.layout,
                     is_depth,
                     barrier.usage_dst,
                     barrier.access_dst,
                     is_uav
                 );
-                RHI_Image_Layout layout_tracked = barrier.texture
+                const RHI_Image_Layout layout_tracked = barrier.texture
                     ? RHI_Image_Layout::General
                     : rhi_unify_image_layout(barrier.layout);
 
-                // honor mip_index and mip_range when supplied so per-mip transitions can be requested
-                // (e.g. mipmap filtering passes that need to flip a single mip back to shader_read between dispatches)
-                if (barrier.texture && barrier.mip_index != rhi_all_mips)
+                const uint32_t total_mips = barrier.texture ? barrier.texture->GetResidentMipCount() : 1u;
+                const uint32_t mip_count  = barrier.mip_range == 0 ? 1u : barrier.mip_range;
+                const bool covers_full    = !barrier.texture || barrier.mip_index == rhi_all_mips || (barrier.mip_index == 0 && mip_count >= total_mips);
+
+                if (!covers_full)
                 {
-                    const uint32_t total_mips = barrier.texture->GetResidentMipCount();
                     const uint32_t array_size = barrier.texture->GetArrayLength();
-                    const uint32_t mip_count  = barrier.mip_range == 0 ? 1u : barrier.mip_range;
                     for (uint32_t a = 0; a < array_size; a++)
                     {
                         for (uint32_t m = barrier.mip_index; m < barrier.mip_index + mip_count && m < total_mips; m++)
                         {
                             uint32_t subresource = m + a * total_mips;
-                            cmd_state::push_transition(b, resource, state_after, subresource);
+                            cmd_state::push_transition(b, resource, layout_after, subresource);
                         }
                     }
                 }
                 else
                 {
-                    cmd_state::push_transition(b, resource, state_after);
+                    cmd_state::push_transition(b, resource, layout_after);
                 }
 
                 if (barrier.texture)
                 {
                     const uint32_t mip_index = barrier.mip_index == rhi_all_mips ? 0 : barrier.mip_index;
-                    const uint32_t mip_range = barrier.mip_index == rhi_all_mips ? barrier.texture->GetResidentMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
+                    const uint32_t mip_range = barrier.mip_index == rhi_all_mips ? total_mips : mip_count;
                     SetTrackedTextureLayout(barrier.texture, mip_index, mip_range, layout_tracked);
                 }
                 break;
@@ -3974,14 +3990,26 @@ namespace spartan
                     break;
                 }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.texture->GetRhiResource());
-                if (barrier.texture->IsUav())
+                if (!resource)
                 {
-                    cmd_state::push_uav_barrier(b, resource);
+                    return;
                 }
-                else
+                D3D12_BARRIER_SYNC sync_before = rhi_scope_to_d3d12_sync(barrier.scope_src, barrier.usage_src);
+                D3D12_BARRIER_SYNC sync_after  = rhi_scope_to_d3d12_sync(barrier.scope_dst, barrier.usage_dst);
+                if (sync_before == D3D12_BARRIER_SYNC_NONE && sync_after == D3D12_BARRIER_SYNC_NONE)
                 {
-                    cmd_state::push_transition(b, resource, d3d12_general_state(barrier.texture->IsDepthStencilFormat()));
+                    break;
                 }
+                cmd_state::push_texture_sync(
+                    b,
+                    resource,
+                    sync_before,
+                    sync_after,
+                    barrier.mip_index,
+                    barrier.mip_range,
+                    barrier.texture->GetResidentMipCount(),
+                    barrier.texture->GetArrayLength()
+                );
                 break;
             }
             case RHI_Barrier::Type::BufferSync:
@@ -3991,38 +4019,19 @@ namespace spartan
                     return;
                 }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.buffer->GetRhiResource());
-                D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                switch (barrier.usage_dst)
+                if (!resource)
                 {
-                    case RHI_Resource_Usage::Vertex:   state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER; break;
-                    case RHI_Resource_Usage::Index:    state = D3D12_RESOURCE_STATE_INDEX_BUFFER;               break;
-                    case RHI_Resource_Usage::Indirect: state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;          break;
-                    case RHI_Resource_Usage::Shader:   state = barrier.access_dst == RHI_Resource_Access::Read ? d3d12_general_state(false) : D3D12_RESOURCE_STATE_UNORDERED_ACCESS; break;
-                    default: break;
+                    return;
                 }
-
-                // a buffer without uav access is only ever written by copies, syncing it means making it readable again
-                if (state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS && !d3d12_state::AllowsUav(resource))
+                D3D12_BARRIER_SYNC sync_before     = rhi_scope_to_d3d12_sync(barrier.scope_src, barrier.usage_src);
+                D3D12_BARRIER_SYNC sync_after      = rhi_scope_to_d3d12_sync(barrier.scope_dst, barrier.usage_dst);
+                D3D12_BARRIER_ACCESS access_before = rhi_usage_to_d3d12_access(barrier.scope_src, barrier.usage_src, barrier.access_src, true);
+                D3D12_BARRIER_ACCESS access_after  = rhi_usage_to_d3d12_access(barrier.scope_dst, barrier.usage_dst, barrier.access_dst, true);
+                if (sync_before == D3D12_BARRIER_SYNC_NONE && sync_after == D3D12_BARRIER_SYNC_NONE)
                 {
-                    // upload and readback heap buffers live in one fixed state for their whole lifetime
-                    if (!d3d12_state::DecaysToCommon(resource))
-                    {
-                        break;
-                    }
-                    const D3D12_RESOURCE_STATES shader_read = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                    switch (barrier.buffer->GetType())
-                    {
-                        case RHI_Buffer_Type::Vertex:   state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | shader_read; break;
-                        case RHI_Buffer_Type::Instance: state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | shader_read; break;
-                        case RHI_Buffer_Type::Index:    state = D3D12_RESOURCE_STATE_INDEX_BUFFER | shader_read;               break;
-                        default:                        state = shader_read;                                                   break;
-                    }
+                    break;
                 }
-
-                if (!cmd_state::push_transition(b, resource, state) && barrier.buffer->GetType() == RHI_Buffer_Type::Storage)
-                {
-                    cmd_state::push_uav_barrier(b, resource);
-                }
+                cmd_state::push_buffer_barrier(b, resource, sync_before, sync_after, access_before, access_after);
                 break;
             }
         }
@@ -4035,12 +4044,10 @@ namespace spartan
         auto& b = cmd_state::get(this);
         if (m_force_memory_sync)
         {
-            D3D12_RESOURCE_BARRIER uav = {};
-            uav.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            b.pending_barriers.push_back(uav);
+            cmd_state::push_global(b, D3D12_BARRIER_SYNC_ALL, D3D12_BARRIER_SYNC_ALL, D3D12_BARRIER_ACCESS_COMMON, D3D12_BARRIER_ACCESS_COMMON);
             m_force_memory_sync = false;
         }
-        const bool had_work = !b.pending_barriers.empty();
+        const bool had_work = b.has_pending_global || !b.pending_buffer_barriers.empty() || !b.pending_texture_barriers.empty() || !b.pending_texture_sync_barriers.empty();
         cmd_state::flush(cmd_list, b);
         if (had_work)
         {
@@ -4081,8 +4088,7 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat(), include_pixel_stage);
-        cmd_state::push_transition(b, resource, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, true);
+        cmd_state::push_transition(b, resource, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE);
         SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
     }
 
@@ -4100,8 +4106,7 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat(), include_pixel_stage);
-        cmd_state::adopt_state(b, resource, state);
+        cmd_state::adopt_layout(b, resource, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE);
         SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
@@ -4120,9 +4125,80 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        cmd_state::adopt_state(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmd_state::adopt_layout(b, resource, D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS);
         SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
+    }
+
+    namespace d3d12_legacy_interop
+    {
+        void PrepareCommonLayout(RHI_CommandList* cmd_list, RHI_Texture* texture)
+        {
+            if (!cmd_list || !texture || cmd_list->GetState() != RHI_CommandListState::Recording)
+            {
+                return;
+            }
+
+            ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
+            if (!resource)
+            {
+                return;
+            }
+
+            auto& b = cmd_state::get(cmd_list);
+            cmd_state::push_transition(b, resource, D3D12_BARRIER_LAYOUT_COMMON);
+        }
+
+        void ReturnToCommonLayout(RHI_CommandList* cmd_list, RHI_Texture* const* textures, const D3D12_RESOURCE_STATES* states_before, uint32_t count)
+        {
+            if (!cmd_list || !textures || !states_before || count == 0 || cmd_list->GetState() != RHI_CommandListState::Recording)
+            {
+                return;
+            }
+
+            ID3D12GraphicsCommandList* d3d_cmd = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
+            if (!d3d_cmd)
+            {
+                return;
+            }
+
+            auto& b = cmd_state::get(cmd_list);
+            D3D12_RESOURCE_BARRIER barriers[8] = {};
+            uint32_t barrier_count = 0;
+
+            for (uint32_t i = 0; i < count && barrier_count < 8; i++)
+            {
+                RHI_Texture* texture = textures[i];
+                if (!texture)
+                {
+                    continue;
+                }
+
+                ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
+                if (!resource)
+                {
+                    continue;
+                }
+
+                if (states_before[i] != D3D12_RESOURCE_STATE_COMMON)
+                {
+                    D3D12_RESOURCE_BARRIER& barrier = barriers[barrier_count++];
+                    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                    barrier.Transition.pResource   = resource;
+                    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                    barrier.Transition.StateBefore = states_before[i];
+                    barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COMMON;
+                }
+
+                cmd_state::adopt_layout(b, resource, D3D12_BARRIER_LAYOUT_COMMON);
+            }
+
+            if (barrier_count > 0)
+            {
+                d3d_cmd->ResourceBarrier(barrier_count, barriers);
+            }
+        }
     }
 
     void RHI_CommandList::InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip, uint32_t mip_range)
@@ -4149,17 +4225,9 @@ namespace spartan
         d3d12_state::RemoveState(static_cast<ID3D12Resource*>(image));
     }
 
-    static RHI_Image_Layout d3d12_state_to_rhi_layout(D3D12_RESOURCE_STATES state)
+    static RHI_Image_Layout d3d12_layout_to_rhi_layout(D3D12_BARRIER_LAYOUT layout)
     {
-        if (state & D3D12_RESOURCE_STATE_PRESENT)
-        {
-            return RHI_Image_Layout::Present_Source;
-        }
-        if (state & D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)
-        {
-            return RHI_Image_Layout::General;
-        }
-        if (state == D3D12_RESOURCE_STATE_COMMON)
+        if (layout == D3D12_BARRIER_LAYOUT_COMMON || layout == D3D12_BARRIER_LAYOUT_UNDEFINED)
         {
             return RHI_Image_Layout::Max;
         }
@@ -4173,8 +4241,7 @@ namespace spartan
             return RHI_Image_Layout::Max;
         }
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(image);
-        D3D12_RESOURCE_STATES state = d3d12_state::GetState(resource);
-        return d3d12_state_to_rhi_layout(state);
+        return d3d12_layout_to_rhi_layout(d3d12_state::GetLayout(resource));
     }
 
     void RHI_CommandList::copy_texture_to_buffer(RHI_Texture* source, RHI_Buffer* destination)
@@ -4213,23 +4280,24 @@ namespace spartan
         SP_ASSERT(packed_bytes <= destination->GetObjectSize());
         D3D12_HEAP_PROPERTIES heap = {};
         heap.Type = D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_DESC scratch_desc = {};
-        scratch_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        scratch_desc.Width = total_bytes;
-        scratch_desc.Height = 1;
-        scratch_desc.DepthOrArraySize = 1;
-        scratch_desc.MipLevels = 1;
-        scratch_desc.SampleDesc.Count = 1;
-        scratch_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        D3D12_RESOURCE_DESC1 scratch_desc = {};
+        scratch_desc.Dimension            = D3D12_RESOURCE_DIMENSION_BUFFER;
+        scratch_desc.Width                = total_bytes;
+        scratch_desc.Height               = 1;
+        scratch_desc.DepthOrArraySize     = 1;
+        scratch_desc.MipLevels            = 1;
+        scratch_desc.SampleDesc.Count     = 1;
+        scratch_desc.Layout               = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         ID3D12Resource* scratch = nullptr;
-        if (!d3d12_utility::error::check(RHI_Context::device->CreateCommittedResource(
-            &heap, D3D12_HEAP_FLAG_NONE, &scratch_desc, D3D12_RESOURCE_STATE_COMMON,
-            nullptr, IID_PPV_ARGS(&scratch))))
+        if (!d3d12_utility::error::check(RHI_Context::device->CreateCommittedResource3(
+            &heap, D3D12_HEAP_FLAG_NONE, &scratch_desc, D3D12_BARRIER_LAYOUT_UNDEFINED,
+            nullptr, nullptr, 0, nullptr, IID_PPV_ARGS(&scratch))))
+        {
             return;
+        }
         b.readback_scratch.push_back(scratch);
 
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::push_transition(b, src, D3D12_BARRIER_LAYOUT_COPY_SOURCE);
         cmd_state::flush(cmd_list, b);
 
         for (uint32_t i = 0; i < subres_count; i++)
@@ -4247,13 +4315,14 @@ namespace spartan
             cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
         }
 
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = scratch;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        d3d12_barriers::Submit(cmd_list, &barrier, 1);
+        d3d12_barriers::SubmitBuffer(
+            cmd_list,
+            scratch,
+            D3D12_BARRIER_SYNC_COPY,
+            D3D12_BARRIER_SYNC_COPY,
+            D3D12_BARRIER_ACCESS_COPY_DEST,
+            D3D12_BARRIER_ACCESS_COPY_SOURCE
+        );
         UINT64 packed_offset = 0;
         for (uint32_t i = 0; i < subres_count; i++)
         {
@@ -4301,15 +4370,26 @@ namespace spartan
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
 
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
-        cmd_state::flush(cmd_list, b);
+        constexpr D3D12_BARRIER_SYNC buffer_gpu_sync =
+            D3D12_BARRIER_SYNC_DRAW | D3D12_BARRIER_SYNC_COMPUTE_SHADING | D3D12_BARRIER_SYNC_RAYTRACING | D3D12_BARRIER_SYNC_EXECUTE_INDIRECT | D3D12_BARRIER_SYNC_COPY;
+        constexpr D3D12_BARRIER_ACCESS buffer_gpu_access =
+            D3D12_BARRIER_ACCESS_VERTEX_BUFFER | D3D12_BARRIER_ACCESS_CONSTANT_BUFFER | D3D12_BARRIER_ACCESS_INDEX_BUFFER |
+            D3D12_BARRIER_ACCESS_UNORDERED_ACCESS | D3D12_BARRIER_ACCESS_SHADER_RESOURCE | D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT |
+            D3D12_BARRIER_ACCESS_COPY_SOURCE | D3D12_BARRIER_ACCESS_COPY_DEST;
+        if (b.gpu_used_buffers.count(dst) != 0 || cmd_state::has_pending_buffer_barrier(b, dst))
+        {
+            cmd_state::push_buffer_barrier(b, dst, buffer_gpu_sync, D3D12_BARRIER_SYNC_COPY, buffer_gpu_access, D3D12_BARRIER_ACCESS_COPY_DEST);
+            cmd_state::flush(cmd_list, b);
+        }
 
         cmd_list->CopyBufferRegion(dst, 0, staging, 0, size);
+        b.gpu_used_buffers.insert(dst);
 
-        cmd_state::push_transition(b, dst, d3d12_general_state(false));
+        cmd_state::push_buffer_barrier(b, dst, D3D12_BARRIER_SYNC_COPY, buffer_gpu_sync, D3D12_BARRIER_ACCESS_COPY_DEST, buffer_gpu_access);
 
         RetainStagingBuffer(staging_ptr);
     }
+
     void RHI_CommandList::copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         if (!source || !destination)
@@ -4325,23 +4405,48 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        // upload heaps are permanently generic_read, readback heaps are permanently copy_dest
+        constexpr D3D12_BARRIER_SYNC buffer_gpu_sync =
+            D3D12_BARRIER_SYNC_DRAW | D3D12_BARRIER_SYNC_COMPUTE_SHADING | D3D12_BARRIER_SYNC_RAYTRACING | D3D12_BARRIER_SYNC_EXECUTE_INDIRECT | D3D12_BARRIER_SYNC_COPY;
+        constexpr D3D12_BARRIER_ACCESS buffer_gpu_access =
+            D3D12_BARRIER_ACCESS_VERTEX_BUFFER | D3D12_BARRIER_ACCESS_CONSTANT_BUFFER | D3D12_BARRIER_ACCESS_INDEX_BUFFER |
+            D3D12_BARRIER_ACCESS_UNORDERED_ACCESS | D3D12_BARRIER_ACCESS_SHADER_RESOURCE | D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT |
+            D3D12_BARRIER_ACCESS_COPY_SOURCE | D3D12_BARRIER_ACCESS_COPY_DEST;
+        bool need_flush = b.has_pending_global;
         if (source->GetType() != RHI_Buffer_Type::Upload)
         {
-            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            if (cmd_state::has_pending_buffer_barrier(b, src))
+            {
+                need_flush = true;
+            }
+            else if (b.gpu_used_buffers.count(src) != 0)
+            {
+                cmd_state::push_buffer_barrier(b, src, buffer_gpu_sync, D3D12_BARRIER_SYNC_COPY, buffer_gpu_access, D3D12_BARRIER_ACCESS_COPY_SOURCE);
+                need_flush = true;
+            }
         }
         if (destination->GetType() != RHI_Buffer_Type::Readback)
         {
-            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            if (cmd_state::has_pending_buffer_barrier(b, dst))
+            {
+                need_flush = true;
+            }
+            else if (b.gpu_used_buffers.count(dst) != 0)
+            {
+                cmd_state::push_buffer_barrier(b, dst, buffer_gpu_sync, D3D12_BARRIER_SYNC_COPY, buffer_gpu_access, D3D12_BARRIER_ACCESS_COPY_DEST);
+                need_flush = true;
+            }
         }
-        cmd_state::flush(cmd_list, b);
+        if (need_flush)
+        {
+            cmd_state::flush(cmd_list, b);
+        }
 
         cmd_list->CopyBufferRegion(dst, 0, src, 0, size);
 
-        // readback heaps can only stay in copy_dest, everything else returns to shader readable
         if (destination->GetType() != RHI_Buffer_Type::Readback)
         {
-            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            b.gpu_used_buffers.insert(dst);
+            cmd_state::push_buffer_barrier(b, dst, D3D12_BARRIER_SYNC_COPY, buffer_gpu_sync, D3D12_BARRIER_ACCESS_COPY_DEST, buffer_gpu_access);
         }
     }
 

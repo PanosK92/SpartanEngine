@@ -49,6 +49,13 @@ namespace spartan
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
     uint32_t Profiler::m_rhi_layout_barriers            = 0;
+    uint32_t Profiler::m_rhi_draw_last                  = 0;
+    uint32_t Profiler::m_rhi_instance_count_last        = 0;
+    uint32_t Profiler::m_rhi_timeblock_count_last       = 0;
+    uint32_t Profiler::m_rhi_pipeline_barriers_last     = 0;
+    uint32_t Profiler::m_rhi_layout_barriers_last       = 0;
+    uint32_t Profiler::m_rhi_bindings_pipeline_last     = 0;
+    uint32_t Profiler::m_rhi_descriptor_set_count_last  = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_constant   = 0;
@@ -1813,6 +1820,13 @@ namespace spartan
             DrawPerformanceMetrics();
         }
 
+        m_rhi_draw_last                 = m_rhi_draw;
+        m_rhi_instance_count_last       = m_rhi_instance_count;
+        m_rhi_timeblock_count_last      = m_rhi_timeblock_count;
+        m_rhi_pipeline_barriers_last    = m_rhi_pipeline_barriers;
+        m_rhi_layout_barriers_last      = m_rhi_layout_barriers;
+        m_rhi_bindings_pipeline_last    = m_rhi_bindings_pipeline;
+        m_rhi_descriptor_set_count_last = m_rhi_descriptor_set_count;
         ClearRhiMetrics();
     }
 

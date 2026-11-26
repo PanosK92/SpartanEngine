@@ -122,6 +122,7 @@ namespace spartan
         CullMode,                   // face culling mode
 
         IsFoliage,                  // thin leaves/petals, allows light through the back side
+        IsHair,                     // hair, eyebrows, eyelashes and beard: stochastic temporal alpha coverage and Marschner dual-lobe shading
         IsRoadSurface,              // subtle world-space asphalt weathering
         IsRoadPaint,                // worn mineral road paint
         RoadHalfWidth,              // half the asphalt width in metres, lets the road shader find the edges

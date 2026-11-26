@@ -77,6 +77,7 @@ struct Surface
     bool is_motion_blur_radial()         { return flags & uint(1U << 19); }
     bool is_skid_mark()                  { return flags & uint(1U << 20); }
     bool is_foliage()                    { return (flags & uint(1U << 21)) || is_grass_blade() || is_flower(); }
+    bool is_hair()                       { return (flags & uint(1U << 26)) != 0u; }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
@@ -84,7 +85,7 @@ struct Surface
     bool is_glass()                      { return is_transparent() && alpha_blend <= 0.0f; }
     // the light pass leaves these a plain diffuse lobe and the subsurface pass spreads it under the surface,
     // leaves and blades are thin sheets and keep their own transmission path
-    bool has_subsurface_profile()        { return is_subsurface_diffusion_enabled() && subsurface_scattering > 0.0f && max(max(subsurface_radius.x, subsurface_radius.y), subsurface_radius.z) > 0.0f && !is_foliage(); }
+    bool has_subsurface_profile()        { return is_subsurface_diffusion_enabled() && subsurface_scattering > 0.0f && max(max(subsurface_radius.x, subsurface_radius.y), subsurface_radius.z) > 0.0f && !is_foliage() && !is_hair(); }
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {

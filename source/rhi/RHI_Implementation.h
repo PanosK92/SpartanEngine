@@ -654,7 +654,7 @@ namespace spartan
     public:
         // api specific
         #if defined(API_GRAPHICS_D3D12)
-            static ID3D12Device* device;
+            static ID3D12Device10* device;
         #elif defined(API_GRAPHICS_VULKAN)
             static VkInstance instance;
             static VkDevice device;

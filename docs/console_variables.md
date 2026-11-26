@@ -57,7 +57,6 @@ Grouped by subsystem. Each cvar's description string, shown in the console and t
 | `debug.shader_optimization` | on | Shader compiler optimizations |
 | `debug.log_to_file` | off | Write `logs/log.txt` |
 | `debug.steam` | off | Initialize Steamworks (startup) |
-| `debug.d3d12_enhanced_barriers` | off | DirectX 12 enhanced barriers |
 | `debug.d3d12_async_compute` | on | Real async compute queue on DirectX 12 |
 
 ### Renderer: lighting and global illumination

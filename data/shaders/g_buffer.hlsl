@@ -750,7 +750,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     const bool is_impostor = false;
 #endif
     if (!is_front_face && !is_impostor && !surface.is_grass_blade() && !surface.is_flower() &&
-        (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || material.subsurface_scattering > 0.0f || (vertex.draw_flags & 8u) != 0u))
+        (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || surface.is_hair() || material.subsurface_scattering > 0.0f || (vertex.draw_flags & 8u) != 0u))
     {
         vertex.normal  = -vertex.normal;
         vertex.tangent = -vertex.tangent;
@@ -1273,10 +1273,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         albedo_sample = sample_texture(vertex, material_texture_index_albedo);
 #ifndef INDIRECT_DRAW
-        // non-indirect opaque draws (including gpu-scattered understory foliage) own their depth write with no prepass
-        if (pass_is_opaque() && material.is_alpha_tested() && albedo_sample.a <= get_alpha_threshold(position_world, material.alpha_cutoff))
+        // non-indirect opaque draws (including skinned hair and gpu-scattered foliage) own their depth write with no prepass
+        if (pass_is_opaque() && material.is_alpha_tested())
         {
-            discard;
+            float alpha_threshold = material.is_hair()
+                ? get_hair_alpha_threshold(vertex.position.xy, material.alpha_cutoff, is_taa_enabled())
+                : get_alpha_threshold(position_world, material.alpha_cutoff);
+            if (albedo_sample.a <= alpha_threshold)
+            {
+                discard;
+            }
         }
 #endif
         if (material.is_albedo_srgb())
@@ -1626,6 +1632,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         !surface.is_grass_blade() &&
         !surface.is_flower()      &&
         !surface.is_foliage()     &&
+        !surface.is_hair()        &&
         !surface.is_water();
 
     if (terrain_blendable)
@@ -1800,6 +1807,12 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         roughness       = fast_sqrt(saturate(roughness * roughness + kernel));
     }
 
+    if (surface.is_hair())
+    {
+        // Prevent mirror-like plastic specular on fine hair fibers while keeping silky strand sheen.
+        roughness = max(roughness, 0.30f);
+    }
+
     // output
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
@@ -1811,7 +1824,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float previous_depth = vertex.position_previous.w > 0.0f ?
         min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;
     // the depth sign identifies cutout coverage without another mask texture.
-    if (material.is_alpha_tested() || surface.is_foliage())
+    if (material.is_alpha_tested() || surface.is_foliage() || surface.is_hair())
         previous_depth = -previous_depth;
     uint motion_id = vertex.motion_blur_id & 0x7fffffffu;
     bool radial_mask = material.is_motion_blur_radial() || (vertex.motion_blur_id & 0x80000000u) != 0;

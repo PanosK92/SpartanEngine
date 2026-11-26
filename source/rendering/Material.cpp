@@ -109,6 +109,7 @@ namespace spartan
                 case MaterialProperty::IsGrassBlade:               return "is_grass_blade";
                 case MaterialProperty::IsFlower:                   return "is_flower";
                 case MaterialProperty::IsFoliage:                   return "is_foliage";
+                case MaterialProperty::IsHair:                      return "is_hair";
                 case MaterialProperty::IsRoadSurface:               return "is_road_surface";
                 case MaterialProperty::IsRoadPaint:                 return "is_road_paint";
                 case MaterialProperty::RoadHalfWidth:               return "road_half_width";

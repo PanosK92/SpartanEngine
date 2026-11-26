@@ -674,6 +674,8 @@ namespace spartan
                 return "is_grass_blade";
             case MaterialProperty::IsFoliage:
                 return "is_foliage";
+            case MaterialProperty::IsHair:
+                return "is_hair";
             case MaterialProperty::IsFlower:
                 return "is_flower";
             case MaterialProperty::WindAnimation:
