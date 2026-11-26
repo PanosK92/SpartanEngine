@@ -65,6 +65,7 @@ For a terrain brush stroke, pass `points` as alternating world X and Z coordinat
 - Look before and after every change: frame the area with `camera_set_view` and capture with `screenshot_take`.
 - Do not hand-edit `.world` files; use the bridge, then `world_save` only when the change should be kept.
 - Never close an engine instance you did not start; another agent may be using it.
+- MCP scratch files, screenshots (`thumbnails/`), catalogs and `viewpoints.json` live in `binaries/cache/mcp/` — never create or write to `binaries/project/mcp/`. When `world_save` runs, any MCP cache mesh, material, texture or prefab referenced by the world is promoted automatically into `project/<world>_resources/` so worlds and `project.7z` never depend on MCP's cache.
 
 ## Protocol
 

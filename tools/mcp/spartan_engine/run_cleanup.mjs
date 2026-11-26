@@ -148,7 +148,7 @@ function relative_resource_path(root, value)
     );
   }
   return safe_relative_path(
-    normalized.replace(/^project\//i, ""),
+    normalized.replace(/^(?:cache|project)\//i, ""),
   );
 }
 
@@ -221,7 +221,7 @@ function references_from_text(text)
     references.add(match[1]);
   }
   const resource_pattern = new RegExp(
-    "(?:project/)?mcp/blockout/" +
+    "(?:(?:cache|project)/)?mcp/blockout/" +
       "[a-z0-9_./-]+\\." +
       "(?:prefab|mesh|material|xml|" +
       "png|jpg|jpeg|dds|tga)",
@@ -323,6 +323,7 @@ async function reachable_resources(
     const is_anchored =
       path.isAbsolute(String(value ?? "")) ||
       raw.toLowerCase().includes("mcp/blockout/") ||
+      raw.toLowerCase().startsWith("cache/") ||
       raw.toLowerCase().startsWith("project/");
     if (!is_anchored && referring_path)
     {

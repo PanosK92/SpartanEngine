@@ -53,12 +53,14 @@ The short version:
   `liminal_space_example.lua`, `liminal_space_stalker.lua` and `liminal_space_soundscape.lua`.
   Do not put Lua in this directory.
 - Do not put one world's content in shared folders, in another world's folder, in
-  `project/mcp/blockout/`, in new top-level `project/` folders or in `tools/`. `tools/` is
-  for engine and project tooling; generators of a single world's assets go in
-  `<world>_resources/sources/`.
-- MCP tools write to `project/mcp/blockout/` by default. When something made there becomes
-  part of a world, move it into that world's folder and update its references. The folder
-  a world uses is reported by `world_resource_directory_get`.
+  `project/mcp/` (which must not exist), in new top-level `project/` folders or in
+  `tools/`. `tools/` is for engine and project tooling; generators of a single world's
+  assets go in `<world>_resources/sources/`.
+- MCP tools keep their scratch cache, screenshots (`thumbnails/`), catalogs and
+  `viewpoints.json` in `binaries/cache/mcp/` (never under `binaries/project/`). When a
+  world is saved, any referenced MCP cache mesh, material, texture or prefab is
+  automatically promoted into that world's `<world>_resources/` folder. The folder a
+  world uses is reported by `world_resource_directory_get`.
 - The engine runs from `binaries/`, so references in worlds and scripts use paths such as
   `project/liminal_space_example_resources/audio/door_slam.wav` and
   `project/liminal_space_example_resources/scripts/liminal_space_example.lua`, in script components and in

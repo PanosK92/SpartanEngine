@@ -62,7 +62,7 @@ namespace spartan
         std::string resource_type_to_name(ResourceType type);
         std::string resource_to_json(IResource* resource);
         bool path_is_within(const std::filesystem::path& path, const std::filesystem::path& directory);
-        // keeps generated files inside project/mcp/blockout/<directory_name>, a path outside it keeps only its file name
+        // keeps generated files inside cache/mcp/blockout/<directory_name>, a path outside it keeps only its file name
         std::optional<std::string> resolve_mcp_output_path(const std::string& requested_path, const char* directory_name, const std::string& extension, std::string& error);
         //=================================================================================
 

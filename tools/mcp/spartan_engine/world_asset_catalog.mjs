@@ -129,8 +129,8 @@ function local_path(project_root, engine_path)
   return resolved;
 }
 
-const default_blockout_root = "project/mcp/blockout";
-const viewer_library_root = "project/mcp/library";
+const default_blockout_root = "cache/mcp/blockout";
+const viewer_library_root = "cache/mcp/library";
 
 function normalize_engine_root(value)
 {
@@ -2380,7 +2380,7 @@ export async function resolve_world_resource_directory(
     ).replace(/\/+$/g, "");
   }
 
-  return "project/mcp/blockout";
+  return "cache/mcp/blockout";
 }
 
 export async function world_asset_catalog_entries(
@@ -3356,7 +3356,7 @@ async function world_material_publish_unlocked(
     const draft_path = normalize_engine_path(args.draft_path);
     if (!draft_path.startsWith(`${paths.engine_root}/sources/`))
     {
-      throw new Error("material draft must be under mcp/blockout/sources");
+      throw new Error("material draft must be under cache/mcp/blockout/sources");
     }
     const draft = JSON.parse(
       await fs.readFile(

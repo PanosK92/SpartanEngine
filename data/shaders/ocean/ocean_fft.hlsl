@@ -10,8 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include "ocean_common.hlsl"
 
-groupshared float4 sh_a[512];
-groupshared float4 sh_b[512];
+groupshared float4 sh_a[2][512];
+groupshared float4 sh_b[2][512];
 
 // multiply a packed pair of complex numbers by the complex twiddle factor
 float4 ocean_twiddle_mul(float2 w, float4 v)
@@ -33,12 +33,15 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 #else
     uint3 coord_load = uint3(line_index, rev, cascade);
 #endif
-    sh_a[i] = tex_ocean_fft_a_uav[coord_load];
-    sh_b[i] = tex_ocean_fft_b_uav[coord_load];
+    sh_a[0][i] = tex_ocean_fft_a_uav[coord_load];
+    sh_b[0][i] = tex_ocean_fft_b_uav[coord_load];
     GroupMemoryBarrierWithGroupSync();
 
-    [loop] for (uint s = 1; s <= OCEAN_LOG2N; ++s)
+    // double-buffered groupshared eliminates the second barrier per stage (10 barriers total vs 19)
+    [unroll] for (uint s = 1; s <= OCEAN_LOG2N; ++s)
     {
+        uint ping   = (s - 1u) & 1u;
+        uint pong   = s & 1u;
         uint m      = 1u << s;
         uint half_m = m >> 1;
         uint k      = i & (half_m - 1);
@@ -46,29 +49,27 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         uint a_idx  = low ? i : i - half_m;
         uint b_idx  = low ? i + half_m : i;
 
-        float angle = 2.0 * OCEAN_PI * (float)k / (float)m; // positive sign for the inverse transform
-        float2 w    = float2(cos(angle), sin(angle));
+        float angle = (2.0 * OCEAN_PI / (float)m) * (float)k; // positive sign for the inverse transform
+        float2 w;
+        sincos(angle, w.y, w.x);
 
-        float4 ua = sh_a[a_idx];
-        float4 ta = ocean_twiddle_mul(w, sh_a[b_idx]);
-        float4 ub = sh_b[a_idx];
-        float4 tb = ocean_twiddle_mul(w, sh_b[b_idx]);
+        float4 ua = sh_a[ping][a_idx];
+        float4 ta = ocean_twiddle_mul(w, sh_a[ping][b_idx]);
+        float4 ub = sh_b[ping][a_idx];
+        float4 tb = ocean_twiddle_mul(w, sh_b[ping][b_idx]);
 
-        float4 ra = low ? ua + ta : ua - ta;
-        float4 rb = low ? ub + tb : ub - tb;
-
-        GroupMemoryBarrierWithGroupSync();
-        sh_a[i] = ra;
-        sh_b[i] = rb;
+        sh_a[pong][i] = low ? ua + ta : ua - ta;
+        sh_b[pong][i] = low ? ub + tb : ub - tb;
         GroupMemoryBarrierWithGroupSync();
     }
 
     // no 1/N^2 factor, tessendorf's height field is the plain sum over modes, the physical scale lives in the spectrum's dk term
+    uint final_buf = OCEAN_LOG2N & 1u;
 #if defined(HORIZONTAL)
     uint3 coord_store = uint3(i, line_index, cascade);
 #else
     uint3 coord_store = uint3(line_index, i, cascade);
 #endif
-    tex_ocean_fft_a_uav[coord_store] = sh_a[i];
-    tex_ocean_fft_b_uav[coord_store] = sh_b[i];
+    tex_ocean_fft_a_uav[coord_store] = sh_a[final_buf][i];
+    tex_ocean_fft_b_uav[coord_store] = sh_b[final_buf][i];
 }

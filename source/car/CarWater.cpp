@@ -273,11 +273,24 @@ namespace spartan
             const float wet_base = PxClamp((water_base - y_min) / span, 0.0f, 1.0f);
             if (wet_base > 0.0f)
             {
-                const PxVec3 bottom = low.y <= high.y ? low : high;
-                const PxVec3 top    = low.y <= high.y ? high : low;
-                const PxVec3 map    = bottom + (top - bottom) * (0.5f * wet_base) + origin;
+                const PxVec3 bottom   = low.y <= high.y ? low : high;
+                const PxVec3 top      = low.y <= high.y ? high : low;
+                const PxVec3 local_pt = bottom + (top - bottom) * (0.5f * wet_base);
+                const PxVec3 map      = local_pt + origin;
+                const PxVec3 col_vel  = PxRigidBodyExt::getVelocityAtPos(*body, local_pt);
                 const float influence = OceanWake::SurfaceInfluence(water_base - y_max, 2.0f * PxMax(state.half_x, state.half_z));
-                state.wake.push_back({ map.x, map.z, wet_base * (column.top - column.bottom) * state.column_area * sealed * influence });
+                const float col_rad   = PxMax(0.5f * sqrtf(state.column_area), 0.25f);
+                state.wake.push_back(
+                {
+                    map.x,
+                    map.z,
+                    wet_base * (column.top - column.bottom) * state.column_area * sealed * influence,
+                    col_rad,
+                    col_vel.x,
+                    col_vel.y,
+                    col_vel.z,
+                    0.0f
+                });
             }
 
             const float wet = PxClamp((water - y_min) / span, 0.0f, 1.0f);
@@ -364,10 +377,23 @@ namespace spartan
             const float chord        = 0.5f * sqrtf(cap_height * (2.0f * radius_wheel - cap_height));
             const float influence    = OceanWake::SurfaceInfluence(water_base - wheel_pose.p.y - radius_wheel, 2.0f * radius_wheel);
             const float volume_base  = circle_segment_area(radius_wheel, depth_base) * width;
+            const float wheel_rad    = PxMax(0.5f * width, 0.25f);
+            const float wheel_speed  = horizontal.magnitude();
+            const float wheel_aer    = PxClamp((wheel_speed - 2.0f) / 10.0f, 0.0f, 0.65f) * influence;
             for (int slice = -1; slice <= 1; slice++)
             {
                 const PxVec3 at = center + forward * (chord * slice);
-                state.wake.push_back({ at.x, at.z, volume_base * influence / 3.0f });
+                state.wake.push_back(
+                {
+                    at.x,
+                    at.z,
+                    volume_base * influence / 3.0f,
+                    wheel_rad,
+                    wheel_velocity.x,
+                    wheel_velocity.y,
+                    wheel_velocity.z,
+                    wheel_aer
+                });
             }
             volume_sum += volume;
         }

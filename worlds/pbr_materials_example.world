@@ -1,13 +1,16 @@
 <?xml version="1.0"?>
 <World name="pbr_materials_example" description="A walk-through gallery of surface finishes, layered materials and light transmission">
  <OwnedResources>
-  <Resource file="materials/aniso_tan_rotation.xml" />
   <Resource file="materials/aniso_tan_rotation_texture.xml" />
+  <Resource file="materials/aniso_tan_rotation.xml" />
   <Resource file="materials/aniso_tan_texture.xml" />
   <Resource file="materials/aniso_tangents.xml" />
   <Resource file="materials/anisotropy_strength_test_14.xml" />
   <Resource file="materials/anisotropy_strength_test_17.xml" />
   <Resource file="materials/anisotropy_strength_test_20.xml" />
+  <Resource file="materials/car_wash_black_plastic.xml" />
+  <Resource file="materials/car_wash_concrete.xml" />
+  <Resource file="materials/cp_paint_white.xml" />
   <Resource file="materials/emit1.xml" />
   <Resource file="materials/emit16.xml" />
   <Resource file="materials/emit4.xml" />
@@ -16,22 +19,17 @@
   <Resource file="materials/mat_91.xml" />
   <Resource file="materials/mat_94.xml" />
   <Resource file="materials/mat_bed.xml" />
-  <Resource file="textures/mat_bed_packed_slot0.tex_packed_2.texture" />
   <Resource file="materials/mat_blend.xml" />
+  <Resource file="materials/mat_cutoff_default.xml" />
   <Resource file="materials/mat_cutoff25.xml" />
   <Resource file="materials/mat_cutoff75.xml" />
-  <Resource file="materials/mat_cutoff_default.xml" />
   <Resource file="materials/mat_ior_1_0.xml" />
-  <Resource file="textures/mat_ior_1_0_packed_slot0.tex_packed_2.texture" />
   <Resource file="materials/mat_ior_1_50.xml" />
-  <Resource file="textures/mat_ior_1_50_packed_slot0.tex_packed_2.texture" />
   <Resource file="materials/mat_ior_2_42.xml" />
-  <Resource file="textures/mat_ior_2_42_packed_slot0.tex_packed_2.texture" />
   <Resource file="materials/mat_opaque.xml" />
+  <Resource file="materials/material_floor_grey.xml" />
   <Resource file="materials/material_mr.xml" />
-  <Resource file="textures/material_mr_packed_slot0.tex_packed_2.texture" />
   <Resource file="materials/normal_tangent_mirror_test_0.xml" />
-  <Resource file="textures/normal_tangent_mirror_test_0_packed_slot0.tex_packed.texture" />
   <Resource file="materials/r5_attenuation_0_25.xml" />
   <Resource file="materials/r5_attenuation_0_50.xml" />
   <Resource file="materials/r5_attenuation_2_0.xml" />
@@ -42,8 +40,15 @@
   <Resource file="materials/simple_base.xml" />
   <Resource file="materials/simple_coated.xml" />
   <Resource file="materials/simulation_via_normal.xml" />
-  <Resource file="materials/yellow_trans.xml" />
   <Resource file="materials/yellow_trans_rough.xml" />
+  <Resource file="materials/yellow_trans.xml" />
+  <Resource file="materials/zth_render_white.xml" />
+  <Resource file="textures/mat_bed_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/mat_ior_1_0_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/mat_ior_1_50_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/mat_ior_2_42_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/material_mr_packed_slot0.tex_packed_2.texture" />
+  <Resource file="textures/normal_tangent_mirror_test_0_packed_slot0.tex_packed.texture" />
   <Resource file="textures/yellow_trans_rough_packed_slot0.tex_packed.texture" />
  </OwnedResources>
  <Environment utc_days="9664.919999986887" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="0" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.25" />
@@ -67,21 +72,21 @@
   </Entity>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_floor_grey" material_path="project/mcp/blockout/materials/material_floor_grey.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_floor_grey" material_path="project/pbr_materials_example_resources/materials/material_floor_grey.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="Weathered metal" id="7008400000000000001" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000002" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="2.07 0.16 1.76">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000003" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="2.35 0.78 2">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000004" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="2.39 0.06 2.04">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Weathered metal" id="7008400000000000005" active="true" position="0 0.46 -1.018" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Weathered metal" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="damaged_helmet" id="13026811976824191597" active="true" position="0 1.64 0" rotation="-0.707107 0 0 0.707107" scale="0.71 0.71 0.71">
@@ -90,17 +95,17 @@
   </Entity>
   <Entity name="Metalness and roughness" id="7008400000000000006" active="true" position="-5 0.1 0" rotation="0 -0.366501 0 0.930418" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000007" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000008" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000009" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Metalness and roughness" id="7008400000000000010" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Metalness and roughness" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="Dielectric" id="7008400000000000011" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -115,17 +120,17 @@
   </Entity>
   <Entity name="Clear coat" id="7008400000000000014" active="true" position="5 0.1 0" rotation="0 0.366501 0 0.930418" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000015" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000016" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000017" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Clear coat" id="7008400000000000018" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Clear coat" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="Bare lacquer" id="7008400000000000019" active="true" position="-0.65 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -137,17 +142,17 @@
   </Entity>
   <Entity name="Mirrored tangents" id="7008400000000000021" active="true" position="-5 0.1 5" rotation="0 -0.461749 0 0.887011" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000022" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000023" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000024" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Mirrored tangents" id="7008400000000000025" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Mirrored tangents" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="normal_tangent_mirror_test" id="11601289930534820693" active="true" position="0 2.14 0" rotation="0 0 0 1" scale="0.95 0.95 0.95">
@@ -156,17 +161,17 @@
   </Entity>
   <Entity name="Fabric sheen" id="7008400000000000026" active="true" position="5 0.1 5" rotation="0 0.461749 0 0.887011" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000027" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000028" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000029" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Fabric sheen" id="7008400000000000030" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Fabric sheen" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="sheen_color0_sheen_rough0" id="7008400000000000031" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -181,17 +186,17 @@
   </Entity>
   <Entity name="Anisotropy strength" id="7008400000000000034" active="true" position="-5 0.1 10" rotation="0 -0.461749 0 0.887011" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000035" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000036" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000037" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Anisotropy strength" id="7008400000000000038" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Anisotropy strength" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="anisotropy_strength_test_14" id="7008400000000000039" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -206,17 +211,17 @@
   </Entity>
   <Entity name="Emission strength" id="7008400000000000042" active="true" position="5 0.1 10" rotation="0 0.461749 0 0.887011" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000043" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000044" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000045" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Emission strength" id="7008400000000000046" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Emission strength" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="emit1" id="7008400000000000047" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="1 1 1">
@@ -231,17 +236,17 @@
   </Entity>
   <Entity name="Anisotropy rotation" id="7008400000000000050" active="true" position="-5 0.1 15" rotation="0 -0.461749 0 0.887011" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000051" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000052" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000053" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Anisotropy rotation" id="7008400000000000054" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Anisotropy rotation" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="anisotropy_rotation_test" id="18355640590154194460" active="true" position="-0.19 2.26 0" rotation="0 0 0 1" scale="0.355 0.355 0.355">
@@ -282,17 +287,17 @@
   </Entity>
   <Entity name="Alpha modes" id="7008400000000000055" active="true" position="5 0.1 15" rotation="0 0.461749 0 0.887011" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000056" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="5.02 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000057" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="5.3 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000058" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="5.34 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Alpha modes" id="7008400000000000059" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Alpha modes" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="alpha_blend_mode_test" id="1783324783794708849" active="true" position="0 1.06 0" rotation="0 0 0 1" scale="0.6 0.6 0.6">
@@ -327,17 +332,17 @@
   </Entity>
   <Entity name="Volume absorption" id="7008400000000000060" active="true" position="-5.2 0.1 21" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000061" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000062" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000063" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Volume absorption" id="7008400000000000064" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Volume absorption" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="r5_attenuation_0_25" id="7008400000000000065" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -350,43 +355,43 @@
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="r5_attenuation_2_0" material_path="project/pbr_materials_example_resources/models/attenuation_test/r5_attenuation_2_0.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Optical target" id="7008400000000000068" active="true" position="0 1.65 0.76" rotation="0 0 0 1" scale="4.46 1.3 0.08">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000069" active="true" position="-1.92 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000070" active="true" position="-1.28 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000071" active="true" position="-0.64 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000072" active="true" position="0 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000073" active="true" position="0.64 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000074" active="true" position="1.28 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000075" active="true" position="1.92 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="Index of refraction" id="7008400000000000076" active="true" position="0 0.1 21" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000077" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000078" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000079" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Index of refraction" id="7008400000000000080" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Index of refraction" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="mat_ior_1_0" id="7008400000000000081" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -399,43 +404,43 @@
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="mat_ior_2_42" material_path="project/pbr_materials_example_resources/models/transmission_roughness_test/mat_ior_2_42.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Optical target" id="7008400000000000084" active="true" position="0 1.65 0.76" rotation="0 0 0 1" scale="4.46 1.3 0.08">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000085" active="true" position="-1.92 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000086" active="true" position="-1.28 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000087" active="true" position="-0.64 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000088" active="true" position="0 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000089" active="true" position="0.64 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000090" active="true" position="1.28 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000091" active="true" position="1.92 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="Transmission" id="7008400000000000092" active="true" position="5.2 0.1 21" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="Recessed footing" id="7008400000000000093" active="true" position="0 0.08 0" rotation="0 0 0 1" scale="4.32 0.16 1.56">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Display plinth" id="7008400000000000094" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="4.6 0.78 1.8">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Stone cap" id="7008400000000000095" active="true" position="0 0.97 0" rotation="0 0 0 1" scale="4.64 0.06 1.84">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Transmission" id="7008400000000000096" active="true" position="0 0.46 -0.918" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="Transmission" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.24" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
    <Entity name="yellow_trans" id="7008400000000000097" active="true" position="-1.3 1.5 0" rotation="0 0 0 1" scale="0.5 0.5 0.5">
@@ -448,54 +453,54 @@
     <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="red_trans_texture" material_path="project/pbr_materials_example_resources/models/transmission_test/red_trans_texture.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Optical target" id="7008400000000000100" active="true" position="0 1.65 0.76" rotation="0 0 0 1" scale="4.46 1.3 0.08">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000101" active="true" position="-1.92 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000102" active="true" position="-1.28 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000103" active="true" position="-0.64 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000104" active="true" position="0 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000105" active="true" position="0.64 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000106" active="true" position="1.28 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Target stripe" id="7008400000000000107" active="true" position="1.92 1.65 0.71" rotation="0 0 0 1" scale="0.2 1.3 0.02">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="Gallery court" id="7008400000000000108" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="North wall" id="7008400000000000109" active="true" position="0 2.55 22.6" rotation="0 0 0 1" scale="17.2 5.1 0.42">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="zth_render_white" material_path="project/mcp/blockout/materials/zth_render_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="zth_render_white" material_path="project/pbr_materials_example_resources/materials/zth_render_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Side wall" id="7008400000000000110" active="true" position="-8.4 1.76 10" rotation="0 0 0 1" scale="0.4 3.52 25">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="zth_render_white" material_path="project/mcp/blockout/materials/zth_render_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="zth_render_white" material_path="project/pbr_materials_example_resources/materials/zth_render_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Aisle inlay" id="7008400000000000111" active="true" position="-2.48 0.007 6" rotation="0 0 0 1" scale="0.045 0.014 29">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Side wall" id="7008400000000000112" active="true" position="8.4 1.76 10" rotation="0 0 0 1" scale="0.4 3.52 25">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="zth_render_white" material_path="project/mcp/blockout/materials/zth_render_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="zth_render_white" material_path="project/pbr_materials_example_resources/materials/zth_render_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    </Entity>
    <Entity name="Aisle inlay" id="7008400000000000113" active="true" position="2.48 0.007 6" rotation="0 0 0 1" scale="0.045 0.014 29">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/mcp/blockout/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_concrete" material_path="project/pbr_materials_example_resources/materials/car_wash_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Gallery nameplate" id="7008400000000000114" active="true" position="0 4.58 22.36" rotation="0 0 0 1" scale="6.2 0.78 0.1">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/mcp/blockout/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_wash_black_plastic" material_path="project/pbr_materials_example_resources/materials/car_wash_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="MATERIAL GALLERY" id="7008400000000000115" active="true" position="0 4.44 22.295" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/mcp/blockout/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="cp_paint_white" material_path="project/pbr_materials_example_resources/materials/cp_paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="MATERIAL GALLERY" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.39" depth="0.008" weight="0" letter_spacing="0" line_spacing="1.2" resolution="64" alignment="1" />
    </Entity>
   </Entity>

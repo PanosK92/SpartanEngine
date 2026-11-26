@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "World.h"
 #include "TerrainSystem.h"
 #include "CameraController.h"
+#include "PlayerBody.h"
 #include "components/Camera.h"
 #include "AmbientWildlife.h"
 #include "MarineLife.h"
@@ -164,13 +165,15 @@ namespace spartan::world_systems
             breakable_trees::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
             // after the world ticked and before rendering, and also during the play boot frames, so a script that
             // takes the camera on Start owns the very first frame of play
-            companion_tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+            const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+            companion_tick(dt);
+            player_body::Tick(dt);
         });
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldUnloading, [](const sp_variant&) {
             ClearCarWeather();
         });
         WorldCallbacks callbacks;
-        callbacks.before_load = [] { companion_clear(); config = {}; landscape_prepared = false; Car::RegisterPrefabs(); };
+        callbacks.before_load = [] { companion_clear(); player_body::Clear(); config = {}; landscape_prepared = false; Car::RegisterPrefabs(); };
         callbacks.prepare = [](const std::vector<Entity*>& entities, const ProgressTask& progress) {
             if (!landscape_prepared)
             {
@@ -180,7 +183,7 @@ namespace spartan::world_systems
             progress.SetDetail("Roadside details and guardrails");
             return road_details::PrepareWorld();
         };
-        callbacks.before_entities_destroyed = [] { companion_clear(); Car::ShutdownAll(); };
+        callbacks.before_entities_destroyed = [] { companion_clear(); player_body::Clear(); Car::ShutdownAll(); };
         callbacks.after_entities_destroyed = [] {
             vehicle_particle_wake::Clear();
             vehicle_particle_fluid::Clear();
@@ -194,6 +197,7 @@ namespace spartan::world_systems
             landscape_prepared = false;
         };
         callbacks.stop_play = [] {
+            player_body::Stop();
             companion_stop();
             breakable_trees::RestoreAll();
             vegetation_interaction::Clear();

@@ -907,12 +907,16 @@ struct vertex_processing
 
             // clipmap rings double their cell every 32 to 64 cells from the camera, waves shorter than a few cells alias and swim
             float2 to_camera = world_xz - (time_offset < 0.0f ? buffer_frame.camera_position_previous.xz : buffer_frame.camera_position.xz);
-            float cell       = max(0.5f, max(abs(to_camera.x), abs(to_camera.y)) / 48.0f);
+            float cell       = max(0.25f, max(abs(to_camera.x), abs(to_camera.y)) / 48.0f);
             [loop] for (uint c = 0; c < cascades; ++c)
             {
                 float L     = buffer_frame.ocean_cascade_length[c];
-                float2 uv   = world_xz / L;
                 float scale = ocean_cascade_depth_scale(depth, L) * (1.0f - smoothstep(L / 32.0f, L / 12.0f, cell));
+                if (scale <= 1e-4f)
+                {
+                    continue;
+                }
+                float2 uv = world_xz / L;
                 float3 displacement;
                 if (time_offset < 0.0f)
                 {
@@ -945,15 +949,25 @@ struct vertex_processing
                 disp   += shore.displacement;
                 floor_y = shore.floor_y;
 
-                // bow waves and wakes of whatever moves through the sea, filtered over the vertex cell since the
-                // field is finer than the clipmap, the pixel normals keep the detail
-                bool previous = time_offset < 0.0f;
-                float wake    = sample_ocean_wake(world_xz, previous).x * 0.5f;
-                wake         += sample_ocean_wake(world_xz + float2(cell, 0.0f), previous).x * 0.125f;
-                wake         += sample_ocean_wake(world_xz - float2(cell, 0.0f), previous).x * 0.125f;
-                wake         += sample_ocean_wake(world_xz + float2(0.0f, cell), previous).x * 0.125f;
-                wake         += sample_ocean_wake(world_xz - float2(0.0f, cell), previous).x * 0.125f;
-                disp.y       += wake;
+                // bow waves, splashes, and wakes of bodies moving through the sea; sampled at the displaced xz so
+                // vertex relief and pixel normals align 1:1, with cell-width filtering on outer clipmap rings
+                bool previous  = time_offset < 0.0f;
+                float4 wake_map = previous ? buffer_frame.ocean_wake_previous : buffer_frame.ocean_wake;
+                if (wake_map.w >= 0.5f && cell < 4.0f)
+                {
+                    float2 wake_xz = world_xz + disp.xz;
+                    float wake     = sample_ocean_wake_fast(wake_xz, previous).x;
+                    if (cell > 0.35f)
+                    {
+                        float tap = cell * 0.65f;
+                        wake      = wake * 0.5f;
+                        wake     += sample_ocean_wake_fast(wake_xz + float2(tap, 0.0f), previous).x * 0.125f;
+                        wake     += sample_ocean_wake_fast(wake_xz - float2(tap, 0.0f), previous).x * 0.125f;
+                        wake     += sample_ocean_wake_fast(wake_xz + float2(0.0f, tap), previous).x * 0.125f;
+                        wake     += sample_ocean_wake_fast(wake_xz - float2(0.0f, tap), previous).x * 0.125f;
+                    }
+                    disp.y += wake;
+                }
             }
 
             position_world   += disp;

@@ -77,8 +77,8 @@ float3 compose_traced_ocean(Surface surface, float3 radiance)
         float3 irradiance = sh_irradiance_l2(surface.normal, sky_sh, 1.0f)
             + get_sun_radiance() * saturate(dot(surface.normal, -light_parameters[0].direction));
         float3 whitewater = max(irradiance, 0.0f) * INV_PI;
-        float bubbles = 0.14f * churn * churn * transmission;
-        radiance = lerp(radiance, whitewater * 0.75f * exp(-get_ocean_extinction() * 0.45f), bubbles);
+        float bubbles = saturate(0.32f * churn * sqrt(churn)) * transmission;
+        radiance = lerp(radiance, whitewater * 0.80f * exp(-get_ocean_extinction() * 0.35f), bubbles);
         foam *= saturate(ocean_shore_coverage(surface, uv) * 2.5f);
         radiance = lerp(radiance, whitewater * lerp(0.55f, 0.85f, smoothstep(0.15f, 0.9f, foam)), saturate(foam));
     }

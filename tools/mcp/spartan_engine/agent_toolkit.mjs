@@ -433,8 +433,8 @@ export function register_agent_toolkit(context)
   } = context;
 
   const vector3          = z.array(z.number()).length(3);
-  const viewpoints_path  = path.join(project_root, "binaries", "project", "mcp", "viewpoints.json");
-  const thumbnails_dir   = path.join(project_root, "binaries", "project", "mcp", "blockout", "thumbnails");
+  const viewpoints_path  = path.join(binaries_directory, "cache", "mcp", "viewpoints.json");
+  const thumbnails_dir   = path.join(binaries_directory, "cache", "mcp", "blockout", "thumbnails");
   let launched_engine    = null;
 
   const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "x";
@@ -849,7 +849,7 @@ export function register_agent_toolkit(context)
 
   register_local_tool("viewpoint_save", {
     title: "viewpoint save",
-    description: "Save a named camera viewpoint for the loaded world so before/after screenshots are taken from exactly the same place, across sessions and agents (stored in binaries/project/mcp/viewpoints.json, keyed by world path). Pass position and target (world space), or omit both to store the live camera. Saving an existing name replaces it.",
+    description: "Save a named camera viewpoint for the loaded world so before/after screenshots are taken from exactly the same place, across sessions and agents (stored in binaries/cache/mcp/viewpoints.json, keyed by world path). Pass position and target (world space), or omit both to store the live camera. Saving an existing name replaces it.",
     inputSchema: {
       name: z.string().min(1).max(64),
       position: vector3.optional(),
@@ -1029,7 +1029,7 @@ export function register_agent_toolkit(context)
 
   register_local_tool("screenshot_compare", {
     title: "screenshot compare",
-    description: "Compare two PNG screenshots pixel by pixel to prove whether a change is visible (or that an optimization is pixel-identical). a is the baseline, b the new image; absolute paths or file names in the MCP thumbnails folder (binaries/project/mcp/blockout/thumbnails). Returns identical, mean_abs_diff and rmse (0-255), changed_ratio and changed_bounds [x0,y0,x1,y1] for pixels whose largest channel difference exceeds threshold, and a red-on-grey diff image (also written next to b).",
+    description: "Compare two PNG screenshots pixel by pixel to prove whether a change is visible (or that an optimization is pixel-identical). a is the baseline, b the new image; absolute paths or file names in the MCP thumbnails folder (binaries/cache/mcp/blockout/thumbnails). Returns identical, mean_abs_diff and rmse (0-255), changed_ratio and changed_bounds [x0,y0,x1,y1] for pixels whose largest channel difference exceeds threshold, and a red-on-grey diff image (also written next to b).",
     inputSchema: {
       a: z.string().min(1),
       b: z.string().min(1),

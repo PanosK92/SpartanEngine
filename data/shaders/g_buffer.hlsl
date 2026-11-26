@@ -1510,10 +1510,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
-        float foam     = 0.0f;
-        float resolved = 1.0f;
+        float foam            = 0.0f;
+        float resolved        = 1.0f;
+        float wake_turbulence = 0.0f;
         float ocean_footprint = max(length(dpdx_world), length(dpdy_world));
-        sample_ocean_surface(vertex.ocean_world_xz, position_world, distance, ocean_footprint, normal, foam, resolved);
+        sample_ocean_surface(vertex.ocean_world_xz, position_world, distance, ocean_footprint, normal, foam, resolved, wake_turbulence);
 
         // slopes the faded cascades no longer draw become microfacet width so far water reads as a glitter sheet, not a mirror
         // cox munk mean square slope for the wind, ggx alpha ~ sqrt(mss) and alpha = roughness^2
@@ -1522,6 +1523,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // partly resolved wind waves mirror-smooth over most of the middle distance.
         float base_variance = roughness * roughness * roughness * roughness;
         roughness = sqrt(sqrt(base_variance + mss * (1.0f - resolved)));
+
+        // turbulent boat slipstreams and splash churn carry sub-pixel micro-ripples that gently diffuse specular glint
+        roughness = max(roughness, saturate(wake_turbulence) * 0.16f);
 
         // foam reads as whitewater in the transparency pass, keep its roughness moderate here so its reflection stays bright enough to light the foam, a full rough surface collapses the reflection to black
         roughness  = lerp(roughness, 0.5f, foam);

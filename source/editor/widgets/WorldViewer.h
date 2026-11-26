@@ -46,6 +46,7 @@ private:
     static void ActionEntityCreateCylinder();
     static void ActionEntityCreateCone();
     static void ActionEntityCreateCamera();
+    static void ActionEntityCreateFirstPersonCamera();
     static void ActionEntityCreateTerrain();
     static void ActionEntityCreateLightPoint();
     static void ActionEntityCreateLightSpot();

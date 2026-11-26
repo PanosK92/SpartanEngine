@@ -117,7 +117,7 @@ namespace spartan
         static void Shutdown();
 
         // fft water buoyancy, runs once per fixed physics step for every dynamic body
-        static void TickBuoyancy();
+        static void TickBuoyancy(float step_dt);
         static void TickKinematics(uint32_t step_index, uint32_t step_count);
         static void ShiftOrigin(const math::Vector3& shift);
         static void PrefetchTerrainHeightfields(const class Terrain* terrain);
@@ -293,10 +293,13 @@ namespace spartan
             math::Vector3 center;       // actor space
             math::Vector3 half_extents; // actor-space enclosing box of this volume sample
             float volume;
+            float radius;               // horizontal waterline footprint radius (m)
         };
         static std::vector<BuoyancySample> BuildBuoyancySamples(void* actor);
         std::vector<std::vector<BuoyancySample>> m_buoyancy_samples;
-        void ApplyBuoyancy();
+        std::vector<bool> m_buoyancy_in_water;
+        bool m_controller_in_water = false;
+        void ApplyBuoyancy(float step_dt);
         float ComputeVolume();
 
         void Create();

@@ -17,6 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../geometry/Mesh.h"
 #include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
+#include "OceanWake.h"
 #include <array>
 #include <random>
 
@@ -60,6 +61,19 @@ namespace spartan::marine_life
 
     inline void Clear(bool remove_entities)
     {
+        for (const auto& population : groups)
+        {
+            for (const Group& group : population)
+            {
+                for (uint64_t id : group.members)
+                {
+                    if (id)
+                    {
+                        OceanWake::Displace(id, nullptr, 0);
+                    }
+                }
+            }
+        }
         if (root_id && remove_entities)
             if (Entity* root = World::GetEntityById(root_id)) World::RemoveEntity(root);
         groups = {};
@@ -283,6 +297,31 @@ namespace spartan::marine_life
                     else if (species != Water::Crab)
                         if (Entity* tail = entity->GetChildByIndex(0))
                             tail->SetRotationLocal(species == Water::Whale ? Quaternion::FromEulerAngles(18*beat,0,0) : Quaternion::FromEulerAngles(0,24*beat,0));
+
+                    // surfacing whales and sharks gently disturb the ocean surface through the same unified wake solver
+                    if (species == Water::Whale || species == Water::Shark)
+                    {
+                        const float dorsal_y    = pos.y + size * 0.14f;
+                        const float water_above = sea - dorsal_y;
+                        const float footprint   = size * 0.48f;
+                        const float influence   = OceanWake::SurfaceInfluence(std::max(water_above, 0.0f), footprint);
+                        if (influence > 0.06f && offset.LengthSquared() < 60.0f * 60.0f)
+                        {
+                            const float ang_speed   = habitat.speed / std::max(habitat.orbit, 0.5f);
+                            const float vx          = cosf(angle) * radius * ang_speed;
+                            const float vz          = -sinf(angle) * radius * ang_speed;
+                            const float vy          = -habitat.depth * vertical_travel * 2.0f * ang_speed * cosf(angle * 2.0f);
+                            const float body_radius = std::clamp(size * 0.15f, 0.45f, 1.8f);
+                            const float body_vol    = std::min(0.022f * size * size, 0.85f) * influence;
+                            const float breach_aer  = water_above < 0.08f ? std::clamp((0.08f - water_above) * 0.45f, 0.0f, 0.22f) : 0.0f;
+                            const OceanWakeColumn column = { pos.x, pos.z, body_vol, body_radius, vx, vy, vz, breach_aer };
+                            OceanWake::Displace(entity->GetObjectId(), &column, 1);
+                        }
+                        else
+                        {
+                            OceanWake::Displace(entity->GetObjectId(), nullptr, 0);
+                        }
+                    }
                 }
                 if (occupied && spawning)
                 {

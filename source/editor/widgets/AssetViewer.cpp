@@ -3463,7 +3463,7 @@ void AssetViewer::DrawAssetList(float width, float height)
             message
         );
         const char* hint = m_assets.empty()
-            ? "AI builds land in mcp/blockout. Refresh the library after a run."
+            ? "AI builds land in cache/mcp/blockout. Refresh the library after a run."
             : "Try another name or asset type.";
         const float hint_width =
             ImGui::CalcTextSize(hint).x;

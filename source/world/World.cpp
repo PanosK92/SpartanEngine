@@ -485,9 +485,9 @@ namespace spartan
         mutex resource_cleanup_mutex;
         vector<string> last_resource_cleanup;
         vector<string> last_resource_cleanup_failures;
-        // mcp ai blockout output (project/mcp/blockout), empty means none registered
+        // mcp ai blockout cache (cache/mcp/blockout), empty means none registered
         string generated_resource_directory;
-        // asset viewer curated library (project/mcp/library)
+        // asset viewer library cache (cache/mcp/library)
         string library_resource_directory;
         vector<string> world_console_variables; // cvar names overridden by this world (preserved across save/load)
         mutex entity_access_mutex;
@@ -1736,10 +1736,7 @@ namespace spartan
     {
         if (generated_resource_directory.empty())
         {
-            SetGeneratedResourceDirectory(
-                string(ResourceCache::GetProjectDirectory()) +
-                "mcp/blockout/"
-            );
+            SetGeneratedResourceDirectory("cache/mcp/blockout/");
         }
         return generated_resource_directory;
     }
@@ -1768,10 +1765,7 @@ namespace spartan
     {
         if (library_resource_directory.empty())
         {
-            SetLibraryResourceDirectory(
-                string(ResourceCache::GetProjectDirectory()) +
-                "mcp/library/"
-            );
+            SetLibraryResourceDirectory("cache/mcp/library/");
         }
         return library_resource_directory;
     }
@@ -1907,11 +1901,10 @@ namespace spartan
                     }
                 }
             }
-            // mcp raw blockout and curated library live outside the world, leave them alone
-            const string generated_directory =
-                World::GetGeneratedResourceDirectory();
-            const string library_directory =
-                World::GetLibraryResourceDirectory();
+            // mcp cache lives in binaries/cache/mcp/ (outside project/), so any mcp resource referenced by
+            // this world is promoted into this world's resources directory when saved
+            const string generated_directory = World::GetGeneratedResourceDirectory();
+            const string library_directory   = World::GetLibraryResourceDirectory();
             auto is_mcp_owned = [generated_directory, library_directory](const string& path) -> bool
             {
                 if (path.empty())
@@ -2051,6 +2044,23 @@ namespace spartan
             };
 
             vector<PendingResourceSave> pending_saves;
+            vector<pair<string, string>> pending_copies;
+            unordered_map<string, string> promoted_mcp_paths;
+            auto normalize_rel_path = [](string p)
+            {
+                replace(p.begin(), p.end(), '\\', '/');
+                while (p.size() >= 2 && p[0] == '.' && p[1] == '/')
+                {
+                    p.erase(0, 2);
+                }
+                return p;
+            };
+            auto normalize_path_key = [&normalize_rel_path](const string& p)
+            {
+                string key = normalize_rel_path(p);
+                transform(key.begin(), key.end(), key.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                return key;
+            };
             set<string> used_file_names;
             set<string> reserved_file_names;
             set<string> type_directories;
@@ -2073,10 +2083,7 @@ namespace spartan
             }
             for (shared_ptr<IResource>& resource : resources)
             {
-                if (
-                    referenced_resources.find(resource.get()) ==
-                    referenced_resources.end()
-                )
+                if (referenced_resources.find(resource.get()) == referenced_resources.end())
                 {
                     continue;
                 }
@@ -2086,16 +2093,49 @@ namespace spartan
                     continue;
                 }
 
+                const string current_path = resource->GetResourceFilePath();
+                const bool from_mcp_cache = is_mcp_owned(current_path);
+
                 string ext;
                 switch (resource->GetResourceType())
                 {
                     case ResourceType::Texture:
                     {
                         // only save textures that can be saved (compressed with data)
-                        // others will be re-imported from source path when material loads
+                        // others will be re-imported from source path when material loads,
+                        // except mcp cache source images which must be copied into this world's textures/
                         RHI_Texture* texture = static_cast<RHI_Texture*>(resource.get());
                         if (!texture->CanSaveToFile())
                         {
+                            if (from_mcp_cache && FileSystem::Exists(current_path))
+                            {
+                                string source_ext = FileSystem::GetExtensionFromFilePath(current_path);
+                                if (source_ext.empty())
+                                {
+                                    source_ext = ".png";
+                                }
+                                string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(current_path);
+                                if (name.empty())
+                                {
+                                    name = resource->GetObjectName();
+                                }
+                                const string type_directory = directory + "textures/";
+                                string unique_name = name;
+                                uint32_t suffix = 2;
+                                while (used_file_names.count(to_file_key(unique_name + source_ext)) != 0 ||
+                                       reserved_file_names.count(to_file_key(unique_name + source_ext)) != 0 ||
+                                       FileSystem::Exists(type_directory + unique_name + source_ext) ||
+                                       FileSystem::Exists(directory + unique_name + source_ext))
+                                {
+                                    unique_name = name + "_" + to_string(suffix++);
+                                }
+                                const string target_path = normalize_rel_path(type_directory + unique_name + source_ext);
+                                type_directories.insert(type_directory);
+                                used_file_names.insert(to_file_key(FileSystem::GetFileNameFromFilePath(target_path)));
+                                resource->SetResourceFilePath(target_path);
+                                promoted_mcp_paths[normalize_path_key(current_path)] = resource->GetResourceFilePath();
+                                pending_copies.emplace_back(current_path, target_path);
+                            }
                             continue;
                         }
                         ext = EXTENSION_TEXTURE;
@@ -2106,13 +2146,6 @@ namespace spartan
                     default: continue;
                 }
 
-                const string current_path =
-                    resource->GetResourceFilePath();
-                if (is_mcp_owned(current_path))
-                {
-                    continue;
-                }
-
                 // strip an embedded extension so a name that already carries one does not save with it doubled
                 string name = resource->GetObjectName();
                 if (name.size() > ext.size() && name.compare(name.size() - ext.size(), ext.size(), ext) == 0)
@@ -2121,8 +2154,9 @@ namespace spartan
                 }
 
                 // Keep existing world-local identities stable regardless of load order. New
-                // resources go into their type folder (meshes/, materials/, textures/) and
-                // must not claim a filename already owned by a saved texture/mesh.
+                // resources (including anything promoted from the mcp cache) go into their
+                // type folder (meshes/, materials/, textures/) and must not claim a filename
+                // already owned by a saved texture/mesh.
                 string target_path = current_path;
                 if (!path_is_within(current_path, directory))
                 {
@@ -2136,13 +2170,17 @@ namespace spartan
                     {
                         unique_name = name + "_" + to_string(suffix++);
                     }
-                    target_path = type_directory + unique_name + ext;
+                    target_path = normalize_rel_path(type_directory + unique_name + ext);
                     type_directories.insert(type_directory);
                 }
                 used_file_names.insert(to_file_key(FileSystem::GetFileNameFromFilePath(target_path)));
 
                 const bool path_changed  = resource->GetResourceFilePath() != FileSystem::GetRelativePath(target_path);
                 resource->SetResourceFilePath(target_path);
+                if (from_mcp_cache)
+                {
+                    promoted_mcp_paths[normalize_path_key(current_path)] = resource->GetResourceFilePath();
+                }
                 pending_saves.push_back({ resource.get(), target_path, path_changed });
                 // source files (png, glb) and authored subfolders inside the directory are referenced in place, not owned
                 const string target_name = path_below(target_path, directory);
@@ -2152,12 +2190,116 @@ namespace spartan
                 }
             }
 
+            // promote any file prefabs referenced from the mcp cache into this world's prefabs/ directory
+            struct PendingPrefabPromotion
+            {
+                string source_path;
+                string target_path;
+            };
+            vector<PendingPrefabPromotion> pending_prefabs;
+            unordered_map<string, string> promoted_prefab_targets;
+            {
+                lock_guard<mutex> lock(entity_access_mutex);
+                for (Entity* entity : entities)
+                {
+                    if (!entity || entity->IsTransient() || !entity->IsFilePrefab())
+                    {
+                        continue;
+                    }
+                    const string prefab_path = entity->GetPrefabFilePath();
+                    if (!is_mcp_owned(prefab_path) || !FileSystem::Exists(prefab_path))
+                    {
+                        continue;
+                    }
+                    const string prefab_key = normalize_path_key(prefab_path);
+                    auto existing = promoted_prefab_targets.find(prefab_key);
+                    if (existing != promoted_prefab_targets.end())
+                    {
+                        entity->SetPrefabFilePath(existing->second);
+                        continue;
+                    }
+                    const string prefabs_directory = directory + "prefabs/";
+                    string base_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(prefab_path);
+                    if (base_name.empty())
+                    {
+                        base_name = "prefab";
+                    }
+                    string unique_name = base_name;
+                    uint32_t suffix = 2;
+                    while (FileSystem::Exists(prefabs_directory + unique_name + EXTENSION_PREFAB))
+                    {
+                        unique_name = base_name + "_" + to_string(suffix++);
+                    }
+                    const string target_prefab_path = normalize_rel_path(prefabs_directory + unique_name + EXTENSION_PREFAB);
+                    type_directories.insert(prefabs_directory);
+                    promoted_prefab_targets[prefab_key] = target_prefab_path;
+                    pending_prefabs.push_back({ prefab_path, target_prefab_path });
+                    entity->SetPrefabFilePath(target_prefab_path);
+                }
+            }
+
             if (!type_directories.empty())
             {
                 writes.push_back([type_directories] {
                     for (const string& type_directory : type_directories)
                     {
                         filesystem::create_directories(type_directory);
+                    }
+                });
+            }
+
+            for (const auto& [source_path, target_path] : pending_copies)
+            {
+                writes.push_back([source_path, target_path] {
+                    error_code ec;
+                    filesystem::copy_file(source_path, target_path, filesystem::copy_options::overwrite_existing, ec);
+                    if (ec)
+                    {
+                        SP_LOG_ERROR("Failed to promote MCP resource '%s' to '%s': %s", source_path.c_str(), target_path.c_str(), ec.message().c_str());
+                    }
+                });
+            }
+
+            for (const PendingPrefabPromotion& prefab : pending_prefabs)
+            {
+                writes.push_back([prefab, promoted_mcp_paths, normalize_path_key] {
+                    pugi::xml_document prefab_doc;
+                    if (!prefab_doc.load_file(prefab.source_path.c_str()))
+                    {
+                        SP_LOG_ERROR("Failed to read MCP prefab '%s' for promotion", prefab.source_path.c_str());
+                        return;
+                    }
+                    vector<pugi::xml_node> nodes = { prefab_doc.document_element() };
+                    while (!nodes.empty())
+                    {
+                        pugi::xml_node node = nodes.back();
+                        nodes.pop_back();
+                        for (pugi::xml_node child = node.first_child(); child; child = child.next_sibling())
+                        {
+                            nodes.push_back(child);
+                        }
+                        for (const char* attr_name : { "mesh_path", "material_path", "texture_path", "file" })
+                        {
+                            pugi::xml_attribute attr = node.attribute(attr_name);
+                            if (!attr)
+                            {
+                                continue;
+                            }
+                            const string value = attr.as_string();
+                            if (value.empty())
+                            {
+                                continue;
+                            }
+                            auto it = promoted_mcp_paths.find(normalize_path_key(value));
+                            if (it != promoted_mcp_paths.end())
+                            {
+                                attr.set_value(it->second.c_str());
+                            }
+                        }
+                    }
+                    if (!prefab_doc.save_file(prefab.target_path.c_str()))
+                    {
+                        SP_LOG_ERROR("Failed to save promoted prefab '%s'", prefab.target_path.c_str());
                     }
                 });
             }

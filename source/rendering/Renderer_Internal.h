@@ -329,9 +329,11 @@ namespace spartan
                 std::vector<uint16_t> texels;
                 math::Vector4 mapping          = math::Vector4::Zero;
                 math::Vector4 mapping_previous = math::Vector4::Zero;
-                uint32_t current      = 0;
-                bool upload_pending   = false;
-                bool was_simulating   = false;
+                uint32_t current          = 0;
+                uint32_t upload_row_start = 0;
+                uint32_t upload_row_count = 0;
+                bool upload_pending       = false;
+                bool was_simulating       = false;
             } ocean_wake;
 
             bool          terrain_enabled = false;

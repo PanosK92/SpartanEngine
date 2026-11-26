@@ -2279,7 +2279,7 @@ function route_revision_resource_paths(
     {
       return normalized;
     }
-    const library_root = "project/mcp/blockout/";
+    const library_root = "cache/mcp/blockout/";
     if (normalized.startsWith(library_root))
     {
       return `${candidate_root}/work/${
@@ -3980,10 +3980,10 @@ async function dispatch_assistant_command(
           requested_path
             .toLowerCase()
             .startsWith(
-              "project/mcp/blockout/thumbnails/",
+              "cache/mcp/blockout/thumbnails/",
             )
             ? requested_path
-            : `project/mcp/blockout/thumbnails/${file_name}`,
+            : `cache/mcp/blockout/thumbnails/${file_name}`,
       },
       60000,
     );
@@ -4071,7 +4071,7 @@ async function dispatch_assistant_command(
       {
         args.name = revision.asset_name;
         args.path =
-          `project/mcp/blockout/prefabs/${
+          `cache/mcp/blockout/prefabs/${
             revision.asset_id
           }.prefab`;
       }
@@ -5313,7 +5313,7 @@ function build_prompt(
       "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
       "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints.",
       "For an environment build, reuse current library assets where they fit.",
-      "Every persistent resource created through MCP belongs under the shared project/mcp/blockout directory.",
+      "Every MCP scratch resource lands in binaries/cache/mcp/blockout (never under binaries/project/mcp/). When a world is saved, any referenced MCP asset is promoted into that world's project/<world>_resources/ directory.",
       "Use primitive-only single-area construction only when the user explicitly asks for a greybox. Normal environments require semantic planning, generated or compound geometry, materials, calibrated lighting, and correction audits.",
       ...scene_quality_prompt_lines(prompt, intent),
     );
@@ -6241,7 +6241,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           active_assistant_context?.latest_prefab_path ??
           "",
         protected_paths: [
-          "project/mcp/blockout/catalog.json",
+          "cache/mcp/blockout/catalog.json",
           active_assistant_context?.catalog_path ?? "",
         ].filter(Boolean),
         owned_paths: [

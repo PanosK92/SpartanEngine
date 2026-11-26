@@ -1,4 +1,4 @@
 <?xml version="1.0"?>
 <!-- the project package the editor installs into binaries/project, it compares this file on github with what is installed to find updates -->
 <!-- publishing a package only changes this file, see binaries/project/README.md -->
-<ProjectPackage url="https://www.dropbox.com/scl/fi/pkh7ix0qm6rd747ym21pn/project.7z?rlkey=wdqf3qzmemjzirrvrk78043vp&amp;dl=1" sha256="c72a7bc27ba5d215e29a4672cb8e34370b6fd60fd7a8b13e6369013421ec6b28"/>
+<ProjectPackage url="https://www.dropbox.com/scl/fi/pkh7ix0qm6rd747ym21pn/project.7z?rlkey=wdqf3qzmemjzirrvrk78043vp&amp;dl=1" sha256="b8625187b6e252336062e297959cc10becbeddb8553804100c38635d4f1ce987"/>

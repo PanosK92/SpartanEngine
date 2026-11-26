@@ -1144,9 +1144,18 @@ void WorldViewer::PopupContextMenu() const
     }
 
     // CAMERA
-    if (ImGui::MenuItem("Camera"))
+    if (ImGui::BeginMenu("Camera"))
     {
-        ActionEntityCreateCamera();
+        if (ImGui::MenuItem("Camera"))
+        {
+            ActionEntityCreateCamera();
+        }
+        else if (ImGui::MenuItem("First Person Camera"))
+        {
+            ActionEntityCreateFirstPersonCamera();
+        }
+
+        ImGui::EndMenu();
     }
 
     // LIGHT
@@ -1371,6 +1380,25 @@ void WorldViewer::ActionEntityCreateCamera()
     entity->AddComponent<Camera>();
     entity->SetObjectName("Camera");
     entity->SetPosition(math::Vector3(0.0f, 3.0f, -5.0f));
+}
+
+void WorldViewer::ActionEntityCreateFirstPersonCamera()
+{
+    Entity* body = ActionEntityCreateEmpty();
+    body->SetObjectName("physics_body_camera");
+    body->SetPosition(math::Vector3(0.0f, 2.0f, -5.0f));
+
+    Physics* physics = body->AddComponent<Physics>();
+    physics->SetFriction(1.0f);
+    physics->SetFrictionRolling(0.8f);
+    physics->SetRestitution(0.1f);
+    physics->SetBodyType(BodyType::Controller);
+
+    Entity* camera_entity = World::CreateEntity();
+    camera_entity->SetObjectName("component_camera");
+    camera_entity->SetParent(body);
+    camera_entity->SetPositionLocal(physics->GetControllerTopLocal());
+    camera_entity->AddComponent<Camera>();
 }
 
 void WorldViewer::ActionEntityCreateTerrain()

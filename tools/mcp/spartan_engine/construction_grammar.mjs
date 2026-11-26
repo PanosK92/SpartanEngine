@@ -1626,7 +1626,7 @@ export function build_construction_grammar(args) {
     parts: [],
     directory: String(
       args.asset_directory ??
-      "project/mcp/blockout/meshes",
+      "cache/mcp/blockout/meshes",
     ).replace(/[\\/]+$/g, ""),
     base_name: safe_name(args.name),
   };

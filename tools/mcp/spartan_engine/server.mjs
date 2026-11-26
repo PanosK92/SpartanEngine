@@ -3570,12 +3570,12 @@ register_local_tool("screenshot_take", {
   if (
     requested_path &&
     !requested_path.toLowerCase().startsWith(
-      "project/mcp/blockout/thumbnails/",
+      "cache/mcp/blockout/thumbnails/",
     )
   )
   {
     requested_path =
-      `project/mcp/blockout/thumbnails/${path.posix.basename(requested_path)}`;
+      `cache/mcp/blockout/thumbnails/${path.posix.basename(requested_path)}`;
   }
   if (
     requested_path &&
@@ -3589,7 +3589,7 @@ register_local_tool("screenshot_take", {
   {
     try
     {
-      const stat = await fs.stat(requested_path);
+      const stat = await fs.stat(path.join(binaries_directory, requested_path));
       previous_file = {
         modified_ms: stat.mtimeMs,
         size: stat.size,
@@ -4931,7 +4931,7 @@ register_local_tool(
       rotation_euler: vector3.optional(),
       scale: vector3.optional(),
       space: transform_space,
-      asset_directory: z.string().optional().describe("generated mesh directory, always constrained to project/mcp/blockout/meshes"),
+      asset_directory: z.string().optional().describe("generated mesh directory, always constrained to cache/mcp/blockout/meshes"),
       prefab_path: z.string().optional(),
       parts: z.array(
         z.object(compound_part_args),
@@ -4947,7 +4947,7 @@ register_local_tool(
     rotation_euler,
     scale,
     space,
-    asset_directory = "project/mcp/blockout/meshes",
+    asset_directory = "cache/mcp/blockout/meshes",
     prefab_path,
     parts,
   }) => {
@@ -5346,7 +5346,7 @@ register_local_tool(
     const spacing = args.spacing ?? 0.004;
     const directory = (
       args.asset_directory ??
-      "project/mcp/blockout/meshes"
+      "cache/mcp/blockout/meshes"
     ).replace(/[\\/]+$/g, "");
     const base_name = safe_asset_name(args.name);
 
@@ -5811,7 +5811,7 @@ register_tool(
 
 register_local_tool("tree_preview_capture", {
   title: "tree preview capture",
-  description: "Render the Tree Creator preview to a PNG (inside project/mcp/library/thumbnails/) and return it as image content. Optional yaw, pitch (degrees), and zoom change the preview view first.",
+  description: "Render the Tree Creator preview to a PNG (inside cache/mcp/library/thumbnails/) and return it as image content. Optional yaw, pitch (degrees), and zoom change the preview view first.",
   inputSchema: {
     path: z.string().optional().describe("png file name"),
     width: z.number().int().min(128).max(2048).optional(),
@@ -6218,7 +6218,7 @@ register_tool(
 register_tool(
   server,
   "resource_remove",
-  "Remove a cached resource by name or path. Set delete_file to also delete files inside shared project/mcp/blockout.",
+  "Remove a cached resource by name or path. Set delete_file to also delete files inside cache/mcp/blockout.",
   {
     name: z.string().optional(),
     path: z.string().optional(),
@@ -6610,7 +6610,7 @@ register_local_tool(
   },
   async ({
     theme = "cozy",
-    directory = "project/mcp/blockout/materials",
+    directory = "cache/mcp/blockout/materials",
     prefix = "palette",
     accent_ratio = 0.12,
     texture_scale = 1,
@@ -6726,7 +6726,7 @@ register_tool(
 register_tool(
   server,
   "prefab_save",
-  "Save an entity hierarchy under shared project/mcp/blockout/prefabs in edit mode.",
+  "Save an entity hierarchy under cache/mcp/blockout/prefabs in edit mode.",
   {
     id: z.string(),
     path: z.string(),

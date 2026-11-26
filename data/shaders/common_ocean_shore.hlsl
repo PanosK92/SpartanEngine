@@ -296,21 +296,25 @@ float ocean_foam_fbm(float2 q, float footprint, out float fine_froth)
 
     // macro billowing foam mats and wind streaks (stays resolved out to mid-distant swells)
     const float s0 = 2.60f;
-    float n0 = lerp(ocean_shore_noise(q / s0, 41), 0.5f, smoothstep(0.15f, 0.70f, footprint / s0));
+    float fade0 = smoothstep(0.15f, 0.70f, footprint / s0);
+    float n0 = fade0 < 1.0f ? lerp(ocean_shore_noise(q / s0, 41), 0.5f, fade0) : 0.5f;
 
     // medium turbulent curds and ragged edges, rotated to avoid axis repetition
     const float s1 = 0.68f;
+    float fade1 = smoothstep(0.15f, 0.70f, footprint / s1);
     float2 q1 = float2(q.x * 0.80f - q.y * 0.60f, q.x * 0.60f + q.y * 0.80f);
-    float n1 = lerp(ocean_shore_noise(q1 / s1, 47), 0.5f, smoothstep(0.15f, 0.70f, footprint / s1));
+    float n1 = fade1 < 1.0f ? lerp(ocean_shore_noise(q1 / s1, 47), 0.5f, fade1) : 0.5f;
 
     // fine frothy tufts and mottled sea-spray clusters
     const float s2 = 0.18f;
+    float fade2 = smoothstep(0.15f, 0.70f, footprint / s2);
     float2 q2 = float2(q.x * 0.36f + q.y * 0.93f, -q.x * 0.93f + q.y * 0.36f);
-    float n2 = lerp(ocean_shore_noise(q2 / s2, 53), 0.5f, smoothstep(0.15f, 0.70f, footprint / s2));
+    float n2 = fade2 < 1.0f ? lerp(ocean_shore_noise(q2 / s2, 53), 0.5f, fade2) : 0.5f;
 
     // crisp micro-bubble spume visible up close
     const float s3 = 0.048f;
-    float n3 = lerp(ocean_shore_noise(q1 / s3, 59), 0.5f, smoothstep(0.15f, 0.70f, footprint / s3));
+    float fade3 = smoothstep(0.15f, 0.70f, footprint / s3);
+    float n3 = fade3 < 1.0f ? lerp(ocean_shore_noise(q1 / s3, 59), 0.5f, fade3) : 0.5f;
 
     fine_froth = n2 * 0.60f + n3 * 0.40f;
     return n0 * 0.30f + n1 * 0.28f + n2 * 0.24f + n3 * 0.18f;

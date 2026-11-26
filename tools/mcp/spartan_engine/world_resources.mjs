@@ -7,8 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 import path from "node:path";
 
-// mcp ai blockout output, not the curated asset viewer library
-const shared_library_directory = "project/mcp/blockout";
+// mcp ai blockout cache under binaries/cache/mcp/ (never under binaries/project/)
+const shared_library_directory = "cache/mcp/blockout";
 
 function safe_name(value)
 {
@@ -39,11 +39,11 @@ function file_name(value, fallback, extension)
   return name;
 }
 
-// where generated resources live
+// where generated scratch resources live
 //
-// this used to derive a directory per world and refuse to answer without one. the library is shared across
-// worlds now, every path built below goes to project/mcp/blockout regardless of what is passed in, so
-// demanding a saved world only blocked work that never needed one
+// mcp scratch assets always land in binaries/cache/mcp/blockout (never binaries/project/mcp/).
+// when a world is saved, any referenced mcp cache asset is automatically promoted by the engine
+// into that world's project/<world>_resources/ directory.
 export function world_resource_directory()
 {
   return shared_library_directory;

@@ -1,14 +1,29 @@
 <?xml version="1.0"?>
 <World name="ferrari_showroom_example" description="A LaFerrari turning on a lit showroom turntable">
  <OwnedResources>
-  <Resource file="materials/apex_game_caliper.xml" />
   <Resource file="materials/apex_game_caliper_3.xml" />
-  <Resource file="materials/apex_game_rim.xml" />
+  <Resource file="materials/apex_game_caliper.xml" />
   <Resource file="materials/apex_game_rim_3.xml" />
-  <Resource file="materials/apex_game_rubber.xml" />
+  <Resource file="materials/apex_game_rim.xml" />
   <Resource file="materials/apex_game_rubber_3.xml" />
-  <Resource file="materials/ferrari_laferrari_29.xml" />
+  <Resource file="materials/apex_game_rubber.xml" />
+  <Resource file="materials/atelier_accent_amber.xml" />
+  <Resource file="materials/atelier_accent_crimson.xml" />
+  <Resource file="materials/atelier_basalt_wall.xml" />
+  <Resource file="materials/atelier_carbon_forged.xml" />
+  <Resource file="materials/atelier_floor_obsidian.xml" />
+  <Resource file="materials/atelier_fluted_walnut.xml" />
+  <Resource file="materials/atelier_leather_cuoio.xml" />
+  <Resource file="materials/atelier_metal_bronze.xml" />
+  <Resource file="materials/atelier_metal_gunmetal.xml" />
+  <Resource file="materials/atelier_monolith_obsidian.xml" />
+  <Resource file="materials/atelier_paint_rosso.xml" />
+  <Resource file="materials/atelier_rim_strip_cool.xml" />
+  <Resource file="materials/atelier_rim_strip_warm.xml" />
+  <Resource file="materials/atelier_signage_gold.xml" />
+  <Resource file="materials/atelier_softbox_strip.xml" />
   <Resource file="materials/ferrari_laferrari_29_3.xml" />
+  <Resource file="materials/ferrari_laferrari_29.xml" />
   <Resource file="materials/inside_stickers_2.xml" />
   <Resource file="materials/inside_stickers_4.xml" />
   <Resource file="materials/logos_2.xml" />
@@ -31,8 +46,94 @@
   <Resource file="materials/seets_logo_4.xml" />
   <Resource file="materials/wireframe_color_0xe0c657_2.xml" />
   <Resource file="materials/wireframe_color_0xe0c657_4.xml" />
-  <Resource file="meshes/apex_r1_wheel.mesh" />
   <Resource file="meshes/apex_r1_wheel_3.mesh" />
+  <Resource file="meshes/apex_r1_wheel.mesh" />
+  <Resource file="meshes/atelier_canopy_blades_0_canopy_blade_1_ba6ccb84.mesh" />
+  <Resource file="meshes/atelier_canopy_blades_1_canopy_blade_2_ba6ccb84.mesh" />
+  <Resource file="meshes/atelier_canopy_blades_2_canopy_blade_3_ba6ccb84.mesh" />
+  <Resource file="meshes/atelier_canopy_blades_3_canopy_blade_4_ba6ccb84.mesh" />
+  <Resource file="meshes/atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59.mesh" />
+  <Resource file="meshes/atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59.mesh" />
+  <Resource file="meshes/atelier_hero_wall_0_back_fluted_fins_a1ddf623.mesh" />
+  <Resource file="meshes/atelier_hero_wall_1_hero_marble_monolith_3f077bac.mesh" />
+  <Resource file="meshes/atelier_hero_wall_10_hero_pier_left_53aa1ece.mesh" />
+  <Resource file="meshes/atelier_hero_wall_11_hero_pier_right_53aa1ece.mesh" />
+  <Resource file="meshes/atelier_hero_wall_12_hero_pier_trim_left_921d2a11.mesh" />
+  <Resource file="meshes/atelier_hero_wall_13_hero_pier_trim_right_921d2a11.mesh" />
+  <Resource file="meshes/atelier_hero_wall_14_back_cove_strip_left_481b70b3.mesh" />
+  <Resource file="meshes/atelier_hero_wall_15_back_cove_strip_right_481b70b3.mesh" />
+  <Resource file="meshes/atelier_hero_wall_2_monolith_frame_top_530b161b.mesh" />
+  <Resource file="meshes/atelier_hero_wall_3_monolith_frame_bottom_530b161b.mesh" />
+  <Resource file="meshes/atelier_hero_wall_4_monolith_frame_left_4aaf0dbe.mesh" />
+  <Resource file="meshes/atelier_hero_wall_5_monolith_frame_right_4aaf0dbe.mesh" />
+  <Resource file="meshes/atelier_hero_wall_6_monolith_glow_left_90306d56.mesh" />
+  <Resource file="meshes/atelier_hero_wall_7_monolith_glow_right_90306d56.mesh" />
+  <Resource file="meshes/atelier_hero_wall_8_monolith_glow_top_21867fd1.mesh" />
+  <Resource file="meshes/atelier_hero_wall_9_monolith_signature_blade_ce496279.mesh" />
+  <Resource file="meshes/atelier_shell_0_wall_back_7757a676.mesh" />
+  <Resource file="meshes/atelier_shell_1_wall_front_7757a676.mesh" />
+  <Resource file="meshes/atelier_shell_10_podium_bronze_bezel_8ea466ef.mesh" />
+  <Resource file="meshes/atelier_shell_11_floor_inlay_ring_outer_53272f7b.mesh" />
+  <Resource file="meshes/atelier_shell_12_floor_inlay_strip_n_b19620e1.mesh" />
+  <Resource file="meshes/atelier_shell_13_floor_inlay_strip_s_f0d0ff6e.mesh" />
+  <Resource file="meshes/atelier_shell_14_floor_inlay_strip_w_d6262789.mesh" />
+  <Resource file="meshes/atelier_shell_15_floor_inlay_strip_e_d6262789.mesh" />
+  <Resource file="meshes/atelier_shell_2_wall_left_43a1497c.mesh" />
+  <Resource file="meshes/atelier_shell_3_wall_right_43a1497c.mesh" />
+  <Resource file="meshes/atelier_shell_4_ceiling_slab_592ec28a.mesh" />
+  <Resource file="meshes/atelier_shell_5_baseboard_back_2350a767.mesh" />
+  <Resource file="meshes/atelier_shell_6_baseboard_front_2350a767.mesh" />
+  <Resource file="meshes/atelier_shell_7_baseboard_left_4ae3e89f.mesh" />
+  <Resource file="meshes/atelier_shell_8_baseboard_right_4ae3e89f.mesh" />
+  <Resource file="meshes/atelier_shell_9_podium_outer_collar_e46fd65f.mesh" />
+  <Resource file="meshes/atelier_side_wings_0_left_rim_housing_1f28c166.mesh" />
+  <Resource file="meshes/atelier_side_wings_1_left_rim_diffuser_a8aa1294.mesh" />
+  <Resource file="meshes/atelier_side_wings_10_plinth_rosso_body_6a3806fd.mesh" />
+  <Resource file="meshes/atelier_side_wings_11_plinth_rosso_top_03cb8a1c.mesh" />
+  <Resource file="meshes/atelier_side_wings_12_plinth_rosso_glow_469bce6f.mesh" />
+  <Resource file="meshes/atelier_side_wings_13_speedform_rosso_sculpture_91807864.mesh" />
+  <Resource file="meshes/atelier_side_wings_14_plinth_carbon_body_6a3806fd.mesh" />
+  <Resource file="meshes/atelier_side_wings_15_plinth_carbon_top_03cb8a1c.mesh" />
+  <Resource file="meshes/atelier_side_wings_16_plinth_carbon_glow_469bce6f.mesh" />
+  <Resource file="meshes/atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024.mesh" />
+  <Resource file="meshes/atelier_side_wings_18_sculpture_wheel_stand_15c663eb.mesh" />
+  <Resource file="meshes/atelier_side_wings_2_left_rim_trim_top_d4e11bda.mesh" />
+  <Resource file="meshes/atelier_side_wings_3_left_rim_trim_bot_d4e11bda.mesh" />
+  <Resource file="meshes/atelier_side_wings_4_right_rim_housing_1f28c166.mesh" />
+  <Resource file="meshes/atelier_side_wings_5_right_rim_diffuser_a8aa1294.mesh" />
+  <Resource file="meshes/atelier_side_wings_6_right_rim_trim_top_d4e11bda.mesh" />
+  <Resource file="meshes/atelier_side_wings_7_right_rim_trim_bot_d4e11bda.mesh" />
+  <Resource file="meshes/atelier_side_wings_8_left_columns_9438e079.mesh" />
+  <Resource file="meshes/atelier_side_wings_9_right_columns_9438e079.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_0_lounge_platform_eb4fce5c.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_1_lounge_platform_glow_15e8a254.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_10_lounge_lamp_stem_32c1a153.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_2_sofa_base_frame_a74e0e29.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_4_sofa_backrest_3a7159cd.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_5_sofa_arm_left_1e8431ff.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_6_sofa_arm_right_1e8431ff.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_7_coffee_table_top_73ff9b5c.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_8_coffee_table_frame_2aa9df88.mesh" />
+  <Resource file="meshes/atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07.mesh" />
   <Resource file="meshes/scene_2.mesh" />
   <Resource file="meshes/scene_4.mesh" />
   <Resource file="textures/apex_game_caliper_packed_slot0.tex_packed_2_2.texture" />
@@ -43,49 +144,49 @@
   <Resource file="textures/apex_game_rotor_packed_slot0.tex_packed_2_3.texture" />
   <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed_2_2.texture" />
   <Resource file="textures/apex_game_rubber_packed_slot0.tex_packed_2_3.texture" />
-  <Resource file="textures/atelier_accent_amber_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_accent_amber_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/atelier_accent_crimson_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_accent_amber_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_accent_crimson_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/atelier_basalt_wall_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_accent_crimson_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_basalt_wall_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/atelier_fluted_walnut_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_basalt_wall_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_fluted_walnut_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/atelier_rim_strip_cool_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_fluted_walnut_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_rim_strip_cool_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/atelier_rim_strip_warm_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_rim_strip_cool_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_rim_strip_warm_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/atelier_softbox_strip_packed_slot0.tex_packed.texture" />
+  <Resource file="textures/atelier_rim_strip_warm_packed_slot0.tex_packed.texture" />
   <Resource file="textures/atelier_softbox_strip_packed_slot0.tex_packed_2.texture" />
-  <Resource file="textures/carbon_fiber_base_color.texture" />
+  <Resource file="textures/atelier_softbox_strip_packed_slot0.tex_packed.texture" />
   <Resource file="textures/carbon_fiber_base_color_3.texture" />
-  <Resource file="textures/chrome_base_color.texture" />
+  <Resource file="textures/carbon_fiber_base_color.texture" />
   <Resource file="textures/chrome_base_color_3.texture" />
-  <Resource file="textures/game_caliper_color.texture" />
+  <Resource file="textures/chrome_base_color.texture" />
   <Resource file="textures/game_caliper_color_3.texture" />
-  <Resource file="textures/game_caliper_normal.texture" />
+  <Resource file="textures/game_caliper_color.texture" />
   <Resource file="textures/game_caliper_normal_3.texture" />
-  <Resource file="textures/game_rim_color.texture" />
+  <Resource file="textures/game_caliper_normal.texture" />
   <Resource file="textures/game_rim_color_3.texture" />
-  <Resource file="textures/game_rim_normal.texture" />
+  <Resource file="textures/game_rim_color.texture" />
   <Resource file="textures/game_rim_normal_3.texture" />
-  <Resource file="textures/game_rotor_color.texture" />
+  <Resource file="textures/game_rim_normal.texture" />
   <Resource file="textures/game_rotor_color_3.texture" />
-  <Resource file="textures/game_rotor_normal.texture" />
+  <Resource file="textures/game_rotor_color.texture" />
   <Resource file="textures/game_rotor_normal_3.texture" />
-  <Resource file="textures/game_rubber_color.texture" />
+  <Resource file="textures/game_rotor_normal.texture" />
   <Resource file="textures/game_rubber_color_3.texture" />
-  <Resource file="textures/game_rubber_normal.texture" />
+  <Resource file="textures/game_rubber_color.texture" />
   <Resource file="textures/game_rubber_normal_3.texture" />
-  <Resource file="textures/inside_stickers_base_color.texture" />
+  <Resource file="textures/game_rubber_normal.texture" />
   <Resource file="textures/inside_stickers_base_color_3.texture" />
+  <Resource file="textures/inside_stickers_base_color.texture" />
   <Resource file="textures/led_ring_ferrari_red_packed_slot0.tex_packed.texture" />
-  <Resource file="textures/logo.texture" />
   <Resource file="textures/logo_3.texture" />
-  <Resource file="textures/logos_base_color.texture" />
+  <Resource file="textures/logo.texture" />
   <Resource file="textures/logos_base_color_3.texture" />
-  <Resource file="textures/paint_normal.texture" />
+  <Resource file="textures/logos_base_color.texture" />
   <Resource file="textures/paint_normal_3.texture" />
+  <Resource file="textures/paint_normal.texture" />
   <Resource file="textures/turntable_gloss_black_packed_slot0.tex_packed_2.texture" />
  </OwnedResources>
  <Environment utc_days="9665.25" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
@@ -105,7 +206,7 @@
   </Entity>
   <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="atelier_floor_obsidian" material_path="project/mcp/blockout/materials/atelier_floor_obsidian.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="atelier_floor_obsidian" material_path="project/ferrari_showroom_example_resources/materials/atelier_floor_obsidian.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="Directional" id="11601109533259598530" active="false" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
    <light flags="3" light_type="0" color_r="1" color_g="0.816754639" color_b="0.669110954" temperature="4100" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="3" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
@@ -138,294 +239,294 @@
   </Entity>
   <Entity name="atelier_hero_wall" id="8070161690777544092" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="back_fluted_fins" id="10006181916770625565" active="true" position="-10.125 3.2 -10.22" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_0_back_fluted_fins_a1ddf623" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_0_back_fluted_fins_a1ddf623.mesh" sub_mesh_index="0" material_name="atelier_fluted_walnut" material_path="project/mcp/blockout/materials/atelier_fluted_walnut.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_0_back_fluted_fins_a1ddf623" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_0_back_fluted_fins_a1ddf623.mesh" sub_mesh_index="0" material_name="atelier_fluted_walnut" material_path="project/ferrari_showroom_example_resources/materials/atelier_fluted_walnut.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hero_marble_monolith" id="10129498941744535181" active="true" position="0 3.15 -9.85" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_hero_wall_1_hero_marble_monolith_3f077bac" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_1_hero_marble_monolith_3f077bac.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/mcp/blockout/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_1_hero_marble_monolith_3f077bac" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_1_hero_marble_monolith_3f077bac.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/ferrari_showroom_example_resources/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_frame_top" id="11056243820089042281" active="true" position="0 5.93 -9.82" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_2_monolith_frame_top_530b161b" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_2_monolith_frame_top_530b161b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_2_monolith_frame_top_530b161b" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_2_monolith_frame_top_530b161b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_frame_bottom" id="11443494324614337820" active="true" position="0 0.37 -9.82" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_3_monolith_frame_bottom_530b161b" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_3_monolith_frame_bottom_530b161b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_3_monolith_frame_bottom_530b161b" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_3_monolith_frame_bottom_530b161b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_frame_left" id="11310399482176481797" active="true" position="-3.83 3.15 -9.82" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_4_monolith_frame_left_4aaf0dbe" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_4_monolith_frame_left_4aaf0dbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_4_monolith_frame_left_4aaf0dbe" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_4_monolith_frame_left_4aaf0dbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_frame_right" id="11811618593646157533" active="true" position="3.83 3.15 -9.82" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_5_monolith_frame_right_4aaf0dbe" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_5_monolith_frame_right_4aaf0dbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_5_monolith_frame_right_4aaf0dbe" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_5_monolith_frame_right_4aaf0dbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_glow_left" id="12204464481856013984" active="true" position="-3.9 3.15 -10.04" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_6_monolith_glow_left_90306d56" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_6_monolith_glow_left_90306d56.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_6_monolith_glow_left_90306d56" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_6_monolith_glow_left_90306d56.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_glow_right" id="12530376329786531425" active="true" position="3.9 3.15 -10.04" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_7_monolith_glow_right_90306d56" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_7_monolith_glow_right_90306d56.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_7_monolith_glow_right_90306d56" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_7_monolith_glow_right_90306d56.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_glow_top" id="12856475280167535699" active="true" position="0 5.98 -10.04" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_8_monolith_glow_top_21867fd1" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_8_monolith_glow_top_21867fd1.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_8_monolith_glow_top_21867fd1" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_8_monolith_glow_top_21867fd1.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="monolith_signature_blade" id="12746063801966818746" active="true" position="0 2.52 -9.66" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_9_monolith_signature_blade_ce496279" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_9_monolith_signature_blade_ce496279.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_9_monolith_signature_blade_ce496279" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_9_monolith_signature_blade_ce496279.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hero_pier_left" id="13007984557529207455" active="true" position="-7.6 3.2 -9.7" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_hero_wall_10_hero_pier_left_53aa1ece" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_10_hero_pier_left_53aa1ece.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_10_hero_pier_left_53aa1ece" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_10_hero_pier_left_53aa1ece.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hero_pier_right" id="6668549930271243806" active="true" position="7.6 3.2 -9.7" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_hero_wall_11_hero_pier_right_53aa1ece" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_11_hero_pier_right_53aa1ece.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_11_hero_pier_right_53aa1ece" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_11_hero_pier_right_53aa1ece.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hero_pier_trim_left" id="7442332975960224829" active="true" position="-7.6 3.2 -9.35" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_12_hero_pier_trim_left_921d2a11" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_12_hero_pier_trim_left_921d2a11.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_12_hero_pier_trim_left_921d2a11" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_12_hero_pier_trim_left_921d2a11.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="hero_pier_trim_right" id="7391363227529269610" active="true" position="7.6 3.2 -9.35" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_13_hero_pier_trim_right_921d2a11" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_13_hero_pier_trim_right_921d2a11.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_13_hero_pier_trim_right_921d2a11" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_13_hero_pier_trim_right_921d2a11.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="back_cove_strip_left" id="7903921080868550552" active="true" position="-5.75 0.22 -10.08" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_14_back_cove_strip_left_481b70b3" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_14_back_cove_strip_left_481b70b3.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_14_back_cove_strip_left_481b70b3" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_14_back_cove_strip_left_481b70b3.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="back_cove_strip_right" id="8204530119149532546" active="true" position="5.75 0.22 -10.08" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_hero_wall_15_back_cove_strip_right_481b70b3" mesh_path="project/mcp/blockout/meshes/atelier_hero_wall_15_back_cove_strip_right_481b70b3.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_hero_wall_15_back_cove_strip_right_481b70b3" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_hero_wall_15_back_cove_strip_right_481b70b3.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="atelier_title_ferrari" id="16146881108738163237" active="true" position="0 3.38 -9.6" rotation="0 1 -0 -6.22985e-08" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="atelier_signage_gold" material_path="project/mcp/blockout/materials/atelier_signage_gold.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="atelier_signage_gold" material_path="project/ferrari_showroom_example_resources/materials/atelier_signage_gold.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="FERRARI" font_path="data/fonts/OpenSans/OpenSans-Bold.ttf" size="0.879999995" depth="0.0450000018" weight="0" letter_spacing="0.180000007" line_spacing="1.20000005" resolution="128" alignment="1" />
    </Entity>
    <Entity name="atelier_subtitle_atelier" id="6528748605787575433" active="true" position="0 2.12 -9.6" rotation="0 1 -0 -6.22985e-08" scale="1 1 1">
-    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="atelier_signage_gold" material_path="project/mcp/blockout/materials/atelier_signage_gold.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="atelier_signage_gold" material_path="project/ferrari_showroom_example_resources/materials/atelier_signage_gold.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     <text_3d text="LAFERRARI  ·  MARANELLO ATELIER" font_path="data/fonts/OpenSans/OpenSans-Medium.ttf" size="0.219999999" depth="0.0149999997" weight="0" letter_spacing="0.0549999997" line_spacing="1.20000005" resolution="128" alignment="1" />
    </Entity>
   </Entity>
   <Entity name="atelier_ceiling_canopy" id="8086007998709491734" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="ceiling_baffle_beams" id="9976635847855734619" active="true" position="0 6.22 -9.35" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_0_ceiling_baffle_beams_e45ef78b.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_housing_outer" id="10278270785243351241" active="true" position="0 4.88 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_1_canopy_housing_outer_5f0e8496.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_trim_n" id="10614830372006996117" active="true" position="0 4.74 -3.14" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_2_canopy_trim_n_f5799bbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_trim_s" id="10977327398797744900" active="true" position="0 4.74 3.14" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_3_canopy_trim_s_f5799bbe.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_trim_w" id="11208782981203467030" active="true" position="-3.54 4.74 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_4_canopy_trim_w_f4de8f23.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_trim_e" id="11899602951938603936" active="true" position="3.54 4.74 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_5_canopy_trim_e_f4de8f23.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_diffuser_rib_1" id="12605801756123103118" active="true" position="-1.65 4.715 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_7_canopy_diffuser_rib_1_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_diffuser_rib_2" id="12392670759649716264" active="true" position="0 4.715 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_8_canopy_diffuser_rib_2_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_diffuser_rib_3" id="12636558636371553264" active="true" position="1.65 4.715 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_9_canopy_diffuser_rib_3_6ad96b59.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_upper_halo_n" id="13299112061879748382" active="true" position="0 5.03 -3.18" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_10_canopy_upper_halo_n_2e142a2a.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_upper_halo_s" id="6713040216610540208" active="true" position="0 5.03 3.18" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_11_canopy_upper_halo_s_2e142a2a.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_upper_halo_w" id="6648464845432092695" active="true" position="-3.58 5.03 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_12_canopy_upper_halo_w_546f0ed7.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_upper_halo_e" id="6996037222013092491" active="true" position="3.58 5.03 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_13_canopy_upper_halo_e_546f0ed7.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_rod_nw" id="7299738910279666708" active="true" position="-3.2 5.68 -2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_14_canopy_rod_nw_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_rod_ne" id="7822171834643484407" active="true" position="3.2 5.68 -2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_15_canopy_rod_ne_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_rod_sw" id="7760542402612927917" active="true" position="-3.2 5.68 2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_16_canopy_rod_sw_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="canopy_rod_se" id="8227012642445175707" active="true" position="3.2 5.68 2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0" mesh_path="project/mcp/blockout/meshes/atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_ceiling_canopy_17_canopy_rod_se_53daf2c0.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="atelier_canopy_blades" id="1208257405395915174" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
     <Entity name="canopy_blade_1" id="1054163073760917337" active="true" position="-2.35 4.73 0" rotation="0 0 0 1" scale="1 1 1">
-     <render mesh_name="atelier_canopy_blades_0_canopy_blade_1_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_0_canopy_blade_1_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <render mesh_name="atelier_canopy_blades_0_canopy_blade_1_ba6ccb84" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_canopy_blades_0_canopy_blade_1_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/ferrari_showroom_example_resources/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="canopy_blade_2" id="1305668316004639568" active="true" position="-0.78 4.73 0" rotation="0 0 0 1" scale="1 1 1">
-     <render mesh_name="atelier_canopy_blades_1_canopy_blade_2_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_1_canopy_blade_2_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <render mesh_name="atelier_canopy_blades_1_canopy_blade_2_ba6ccb84" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_canopy_blades_1_canopy_blade_2_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/ferrari_showroom_example_resources/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="canopy_blade_3" id="1373327557997831375" active="true" position="0.78 4.73 0" rotation="0 0 0 1" scale="1 1 1">
-     <render mesh_name="atelier_canopy_blades_2_canopy_blade_3_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_2_canopy_blade_3_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <render mesh_name="atelier_canopy_blades_2_canopy_blade_3_ba6ccb84" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_canopy_blades_2_canopy_blade_3_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/ferrari_showroom_example_resources/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="canopy_blade_4" id="1896283265450415409" active="true" position="2.35 4.73 0" rotation="0 0 0 1" scale="1 1 1">
-     <render mesh_name="atelier_canopy_blades_3_canopy_blade_4_ba6ccb84" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_3_canopy_blade_4_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/mcp/blockout/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <render mesh_name="atelier_canopy_blades_3_canopy_blade_4_ba6ccb84" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_canopy_blades_3_canopy_blade_4_ba6ccb84.mesh" sub_mesh_index="0" material_name="atelier_softbox_strip" material_path="project/ferrari_showroom_example_resources/materials/atelier_softbox_strip.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="canopy_center_pinstripe" id="2242749285380156976" active="true" position="0 4.71 0" rotation="0 0 0 1" scale="1 1 1">
-     <render mesh_name="atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2" mesh_path="project/mcp/blockout/meshes/atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/mcp/blockout/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <render mesh_name="atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_canopy_blades_4_canopy_center_pinstripe_a458f7f2.mesh" sub_mesh_index="0" material_name="atelier_accent_crimson" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_crimson.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
    </Entity>
   </Entity>
   <Entity name="atelier_shell" id="13450230561728914850" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="wall_back" id="13176278302632187897" active="true" position="0 3.2 -10.7" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_shell_0_wall_back_7757a676" mesh_path="project/mcp/blockout/meshes/atelier_shell_0_wall_back_7757a676.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_0_wall_back_7757a676" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_0_wall_back_7757a676.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/ferrari_showroom_example_resources/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="wall_front" id="13819043608027969549" active="true" position="0 3.2 11.7" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_shell_1_wall_front_7757a676" mesh_path="project/mcp/blockout/meshes/atelier_shell_1_wall_front_7757a676.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_1_wall_front_7757a676" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_1_wall_front_7757a676.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/ferrari_showroom_example_resources/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="wall_left" id="13662383713260800513" active="true" position="-11.2 3.2 0.5" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_shell_2_wall_left_43a1497c" mesh_path="project/mcp/blockout/meshes/atelier_shell_2_wall_left_43a1497c.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_2_wall_left_43a1497c" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_2_wall_left_43a1497c.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/ferrari_showroom_example_resources/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="wall_right" id="2791680726887662143" active="true" position="11.2 3.2 0.5" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_shell_3_wall_right_43a1497c" mesh_path="project/mcp/blockout/meshes/atelier_shell_3_wall_right_43a1497c.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_3_wall_right_43a1497c" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_3_wall_right_43a1497c.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/ferrari_showroom_example_resources/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="ceiling_slab" id="2604352136692120352" active="true" position="0 6.55 0.5" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_shell_4_ceiling_slab_592ec28a" mesh_path="project/mcp/blockout/meshes/atelier_shell_4_ceiling_slab_592ec28a.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/mcp/blockout/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_4_ceiling_slab_592ec28a" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_4_ceiling_slab_592ec28a.mesh" sub_mesh_index="0" material_name="atelier_basalt_wall" material_path="project/ferrari_showroom_example_resources/materials/atelier_basalt_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="baseboard_back" id="3142016444270563443" active="true" position="0 0.09 -10.42" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_5_baseboard_back_2350a767" mesh_path="project/mcp/blockout/meshes/atelier_shell_5_baseboard_back_2350a767.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_5_baseboard_back_2350a767" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_5_baseboard_back_2350a767.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="baseboard_front" id="3001737700114448500" active="true" position="0 0.09 11.42" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_6_baseboard_front_2350a767" mesh_path="project/mcp/blockout/meshes/atelier_shell_6_baseboard_front_2350a767.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_6_baseboard_front_2350a767" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_6_baseboard_front_2350a767.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="baseboard_left" id="3413558073727629515" active="true" position="-10.92 0.09 0.5" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_7_baseboard_left_4ae3e89f" mesh_path="project/mcp/blockout/meshes/atelier_shell_7_baseboard_left_4ae3e89f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_7_baseboard_left_4ae3e89f" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_7_baseboard_left_4ae3e89f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="baseboard_right" id="3475587218455402030" active="true" position="10.92 0.09 0.5" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_8_baseboard_right_4ae3e89f" mesh_path="project/mcp/blockout/meshes/atelier_shell_8_baseboard_right_4ae3e89f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_8_baseboard_right_4ae3e89f" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_8_baseboard_right_4ae3e89f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="podium_outer_collar" id="3335294407179637444" active="true" position="0 0.032 0" rotation="0 0 0 1" scale="1 0.064 1">
-    <render mesh_name="atelier_shell_9_podium_outer_collar_e46fd65f" mesh_path="project/mcp/blockout/meshes/atelier_shell_9_podium_outer_collar_e46fd65f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_9_podium_outer_collar_e46fd65f" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_9_podium_outer_collar_e46fd65f.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="podium_bronze_bezel" id="3750233682017254462" active="true" position="0 0.036 0" rotation="0 0 0 1" scale="1 0.072 1">
-    <render mesh_name="atelier_shell_10_podium_bronze_bezel_8ea466ef" mesh_path="project/mcp/blockout/meshes/atelier_shell_10_podium_bronze_bezel_8ea466ef.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_10_podium_bronze_bezel_8ea466ef" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_10_podium_bronze_bezel_8ea466ef.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="floor_inlay_ring_outer" id="3614713805315522507" active="true" position="0 0.004 0" rotation="0 0 0 1" scale="1 0.008 1">
-    <render mesh_name="atelier_shell_11_floor_inlay_ring_outer_53272f7b" mesh_path="project/mcp/blockout/meshes/atelier_shell_11_floor_inlay_ring_outer_53272f7b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_11_floor_inlay_ring_outer_53272f7b" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_11_floor_inlay_ring_outer_53272f7b.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="floor_inlay_strip_n" id="3670092453193652037" active="true" position="0 0.004 -7.5" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_12_floor_inlay_strip_n_b19620e1" mesh_path="project/mcp/blockout/meshes/atelier_shell_12_floor_inlay_strip_n_b19620e1.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_12_floor_inlay_strip_n_b19620e1" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_12_floor_inlay_strip_n_b19620e1.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="floor_inlay_strip_s" id="4266586130911826865" active="true" position="0 0.004 8.2" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_13_floor_inlay_strip_s_f0d0ff6e" mesh_path="project/mcp/blockout/meshes/atelier_shell_13_floor_inlay_strip_s_f0d0ff6e.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_13_floor_inlay_strip_s_f0d0ff6e" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_13_floor_inlay_strip_s_f0d0ff6e.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="floor_inlay_strip_w" id="3945643228496922985" active="true" position="-7.9 0.004 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_14_floor_inlay_strip_w_d6262789" mesh_path="project/mcp/blockout/meshes/atelier_shell_14_floor_inlay_strip_w_d6262789.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_14_floor_inlay_strip_w_d6262789" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_14_floor_inlay_strip_w_d6262789.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="floor_inlay_strip_e" id="4008911892867772602" active="true" position="7.9 0.004 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_shell_15_floor_inlay_strip_e_d6262789" mesh_path="project/mcp/blockout/meshes/atelier_shell_15_floor_inlay_strip_e_d6262789.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_shell_15_floor_inlay_strip_e_d6262789" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_shell_15_floor_inlay_strip_e_d6262789.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="atelier_side_wings" id="10887063047520142766" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="left_rim_housing" id="11316260879058882815" active="true" position="-10.72 1.45 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_0_left_rim_housing_1f28c166" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_0_left_rim_housing_1f28c166.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_0_left_rim_housing_1f28c166" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_0_left_rim_housing_1f28c166.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="left_rim_diffuser" id="11388985949836036732" active="true" position="-10.56 1.45 0" rotation="0 0 0 1" scale="1 0.45 1">
-    <render mesh_name="atelier_side_wings_1_left_rim_diffuser_a8aa1294" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_1_left_rim_diffuser_a8aa1294.mesh" sub_mesh_index="0" material_name="atelier_rim_strip_cool" material_path="project/mcp/blockout/materials/atelier_rim_strip_cool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_1_left_rim_diffuser_a8aa1294" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_1_left_rim_diffuser_a8aa1294.mesh" sub_mesh_index="0" material_name="atelier_rim_strip_cool" material_path="project/ferrari_showroom_example_resources/materials/atelier_rim_strip_cool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="left_rim_trim_top" id="11716776014426723106" active="true" position="-10.57 1.8 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_2_left_rim_trim_top_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_2_left_rim_trim_top_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_2_left_rim_trim_top_d4e11bda" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_2_left_rim_trim_top_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="left_rim_trim_bot" id="11651707253708155605" active="true" position="-10.57 1.1 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_3_left_rim_trim_bot_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_3_left_rim_trim_bot_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_3_left_rim_trim_bot_d4e11bda" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_3_left_rim_trim_bot_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="right_rim_housing" id="11534157175158827855" active="true" position="10.72 1.45 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_4_right_rim_housing_1f28c166" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_4_right_rim_housing_1f28c166.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_4_right_rim_housing_1f28c166" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_4_right_rim_housing_1f28c166.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="right_rim_diffuser" id="11572757877429130399" active="true" position="10.56 1.45 0" rotation="0 0 0 1" scale="1 0.45 1">
-    <render mesh_name="atelier_side_wings_5_right_rim_diffuser_a8aa1294" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_5_right_rim_diffuser_a8aa1294.mesh" sub_mesh_index="0" material_name="atelier_rim_strip_warm" material_path="project/mcp/blockout/materials/atelier_rim_strip_warm.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_5_right_rim_diffuser_a8aa1294" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_5_right_rim_diffuser_a8aa1294.mesh" sub_mesh_index="0" material_name="atelier_rim_strip_warm" material_path="project/ferrari_showroom_example_resources/materials/atelier_rim_strip_warm.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="right_rim_trim_top" id="11909355744979238055" active="true" position="10.57 1.8 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_6_right_rim_trim_top_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_6_right_rim_trim_top_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_6_right_rim_trim_top_d4e11bda" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_6_right_rim_trim_top_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="right_rim_trim_bot" id="12364266456980848201" active="true" position="10.57 1.1 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_7_right_rim_trim_bot_d4e11bda" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_7_right_rim_trim_bot_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_7_right_rim_trim_bot_d4e11bda" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_7_right_rim_trim_bot_d4e11bda.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="left_columns" id="12284939175313882402" active="true" position="-10.55 3.2 -7.6" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_8_left_columns_9438e079" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_8_left_columns_9438e079.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_8_left_columns_9438e079" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_8_left_columns_9438e079.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="right_columns" id="9882054202280457925" active="true" position="10.55 3.2 -7.6" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_9_right_columns_9438e079" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_9_right_columns_9438e079.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_9_right_columns_9438e079" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_9_right_columns_9438e079.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plinth_rosso_body" id="10279456445869967750" active="true" position="-8.6 0.56 -3.2" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_side_wings_10_plinth_rosso_body_6a3806fd" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_10_plinth_rosso_body_6a3806fd.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/mcp/blockout/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_10_plinth_rosso_body_6a3806fd" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_10_plinth_rosso_body_6a3806fd.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/ferrari_showroom_example_resources/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plinth_rosso_top" id="10567002257635125815" active="true" position="-8.6 1.09 -3.2" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_11_plinth_rosso_top_03cb8a1c" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_11_plinth_rosso_top_03cb8a1c.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_11_plinth_rosso_top_03cb8a1c" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_11_plinth_rosso_top_03cb8a1c.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plinth_rosso_glow" id="11198550137710904868" active="true" position="-8.6 0.04 -3.2" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_12_plinth_rosso_glow_469bce6f" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_12_plinth_rosso_glow_469bce6f.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_12_plinth_rosso_glow_469bce6f" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_12_plinth_rosso_glow_469bce6f.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="speedform_rosso_sculpture" id="11475110544005354953" active="true" position="-8.6 1.21 -3.2" rotation="0 0.121869 0 0.992546" scale="0.44 0.22 1.06">
-    <render mesh_name="atelier_side_wings_13_speedform_rosso_sculpture_91807864" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_13_speedform_rosso_sculpture_91807864.mesh" sub_mesh_index="0" material_name="atelier_paint_rosso" material_path="project/mcp/blockout/materials/atelier_paint_rosso.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_13_speedform_rosso_sculpture_91807864" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_13_speedform_rosso_sculpture_91807864.mesh" sub_mesh_index="0" material_name="atelier_paint_rosso" material_path="project/ferrari_showroom_example_resources/materials/atelier_paint_rosso.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plinth_carbon_body" id="11892068697631808650" active="true" position="-8.6 0.56 2.8" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_side_wings_14_plinth_carbon_body_6a3806fd" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_14_plinth_carbon_body_6a3806fd.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/mcp/blockout/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_14_plinth_carbon_body_6a3806fd" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_14_plinth_carbon_body_6a3806fd.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/ferrari_showroom_example_resources/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plinth_carbon_top" id="12234497198536477431" active="true" position="-8.6 1.09 2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_15_plinth_carbon_top_03cb8a1c" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_15_plinth_carbon_top_03cb8a1c.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_15_plinth_carbon_top_03cb8a1c" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_15_plinth_carbon_top_03cb8a1c.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="plinth_carbon_glow" id="12161227703301546913" active="true" position="-8.6 0.04 2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_16_plinth_carbon_glow_469bce6f" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_16_plinth_carbon_glow_469bce6f.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_16_plinth_carbon_glow_469bce6f" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_16_plinth_carbon_glow_469bce6f.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sculpture_carbon_wheel_ring" id="12425298504830935620" active="true" position="-8.6 1.48 2.8" rotation="0.509854 0.474954 -0.412871 0.58652" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/mcp/blockout/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_17_sculpture_carbon_wheel_ring_8b430024.mesh" sub_mesh_index="0" material_name="atelier_carbon_forged" material_path="project/ferrari_showroom_example_resources/materials/atelier_carbon_forged.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sculpture_wheel_stand" id="12881094291664674280" active="true" position="-8.6 1.16 2.8" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_side_wings_18_sculpture_wheel_stand_15c663eb" mesh_path="project/mcp/blockout/meshes/atelier_side_wings_18_sculpture_wheel_stand_15c663eb.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_side_wings_18_sculpture_wheel_stand_15c663eb" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_side_wings_18_sculpture_wheel_stand_15c663eb.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="atelier_vip_lounge" id="12007442164734884305" active="true" position="7.6 0 -1.4" rotation="0 -0.121869 0 0.992546" scale="1 1 1">
    <Entity name="lounge_platform" id="12002175870755890858" active="true" position="0 0.04 0" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_vip_lounge_0_lounge_platform_eb4fce5c" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_0_lounge_platform_eb4fce5c.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/mcp/blockout/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_0_lounge_platform_eb4fce5c" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_0_lounge_platform_eb4fce5c.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/ferrari_showroom_example_resources/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="lounge_platform_glow" id="12328667380833379637" active="true" position="-1.56 0.025 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_1_lounge_platform_glow_15e8a254" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_1_lounge_platform_glow_15e8a254.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_1_lounge_platform_glow_15e8a254" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_1_lounge_platform_glow_15e8a254.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sofa_base_frame" id="9913452367386694034" active="true" position="0.62 0.18 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_2_sofa_base_frame_a74e0e29" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_2_sofa_base_frame_a74e0e29.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_2_sofa_base_frame_a74e0e29" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_2_sofa_base_frame_a74e0e29.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sofa_seat_cushion" id="10292220731414752559" active="true" position="0.58 0.36 0" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_3_sofa_seat_cushion_3ead70c5.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/ferrari_showroom_example_resources/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sofa_backrest" id="10596879374594514808" active="true" position="0.96 0.64 0" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_vip_lounge_4_sofa_backrest_3a7159cd" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_4_sofa_backrest_3a7159cd.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_4_sofa_backrest_3a7159cd" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_4_sofa_backrest_3a7159cd.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/ferrari_showroom_example_resources/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sofa_arm_left" id="10936146417747196910" active="true" position="0.6 0.52 -1.52" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_5_sofa_arm_left_1e8431ff" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_5_sofa_arm_left_1e8431ff.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_5_sofa_arm_left_1e8431ff" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_5_sofa_arm_left_1e8431ff.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/ferrari_showroom_example_resources/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="sofa_arm_right" id="11557146808334093514" active="true" position="0.6 0.52 1.52" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_6_sofa_arm_right_1e8431ff" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_6_sofa_arm_right_1e8431ff.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/mcp/blockout/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_6_sofa_arm_right_1e8431ff" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_6_sofa_arm_right_1e8431ff.mesh" sub_mesh_index="0" material_name="atelier_leather_cuoio" material_path="project/ferrari_showroom_example_resources/materials/atelier_leather_cuoio.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="coffee_table_top" id="11810564831065454020" active="true" position="-0.62 0.38 0" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_bending="0.300000012" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" cloth_pin_mode="0" />
-    <render mesh_name="atelier_vip_lounge_7_coffee_table_top_73ff9b5c" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_7_coffee_table_top_73ff9b5c.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/mcp/blockout/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_7_coffee_table_top_73ff9b5c" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_7_coffee_table_top_73ff9b5c.mesh" sub_mesh_index="0" material_name="atelier_monolith_obsidian" material_path="project/ferrari_showroom_example_resources/materials/atelier_monolith_obsidian.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="coffee_table_frame" id="12311933043774585652" active="true" position="-0.62 0.22 0" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_8_coffee_table_frame_2aa9df88" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_8_coffee_table_frame_2aa9df88.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_8_coffee_table_frame_2aa9df88" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_8_coffee_table_frame_2aa9df88.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="lounge_lamp_base" id="12589223682571998579" active="true" position="0.75 0.14 -1.95" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/mcp/blockout/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_9_lounge_lamp_base_ff2c7d07.mesh" sub_mesh_index="0" material_name="atelier_metal_gunmetal" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_gunmetal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="lounge_lamp_stem" id="12520977028664215912" active="true" position="0.75 1.08 -1.95" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_10_lounge_lamp_stem_32c1a153" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_10_lounge_lamp_stem_32c1a153.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_10_lounge_lamp_stem_32c1a153" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_10_lounge_lamp_stem_32c1a153.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="lounge_lamp_diffuser" id="12973513031009115965" active="true" position="0.75 1.98 -1.95" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/mcp/blockout/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_11_lounge_lamp_diffuser_3085d36b.mesh" sub_mesh_index="0" material_name="atelier_accent_amber" material_path="project/ferrari_showroom_example_resources/materials/atelier_accent_amber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="lounge_lamp_cap" id="12809948319871115237" active="true" position="0.75 2.2 -1.95" rotation="0 0 0 1" scale="1 1 1">
-    <render mesh_name="atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed" mesh_path="project/mcp/blockout/meshes/atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/mcp/blockout/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed" mesh_path="project/ferrari_showroom_example_resources/meshes/atelier_vip_lounge_12_lounge_lamp_cap_5456f5ed.mesh" sub_mesh_index="0" material_name="atelier_metal_bronze" material_path="project/ferrari_showroom_example_resources/materials/atelier_metal_bronze.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="atelier_key_overhead" id="15609196131800108777" active="true" position="0 4.66 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">

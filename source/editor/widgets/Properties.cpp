@@ -3065,6 +3065,7 @@ void Properties::ShowCamera(Camera* camera) const
         uint32_t preset_index             = static_cast<uint32_t>(camera->GetPreset());
         uint32_t exposure_mode_index      = static_cast<uint32_t>(camera->GetExposureMode());
         bool first_person_control_enabled = camera->GetFlag(CameraFlags::CanBeControlled);
+        bool physical_body_enabled        = camera->GetFlag(CameraFlags::PhysicalBodyAnimation);
         //================================================================================
 
         // lens
@@ -3211,6 +3212,7 @@ void Properties::ShowCamera(Camera* camera) const
         if (layout::fold("Control", true, first_person_control_enabled ? "first person" : "fixed"))
         {
             property_toggle("First person", &first_person_control_enabled, "fly with WASD and look with the mouse while holding the right button");
+            property_toggle("Physical body", &physical_body_enabled, "animate the player body and head motion when mounted on a character controller");
         }
 
         //= MAP =======================================================================================================================================================
@@ -3245,6 +3247,10 @@ void Properties::ShowCamera(Camera* camera) const
         if (first_person_control_enabled != camera->GetFlag(CameraFlags::CanBeControlled))
         {
             camera->SetFlag(CameraFlags::CanBeControlled, first_person_control_enabled);
+        }
+        if (physical_body_enabled != camera->GetFlag(CameraFlags::PhysicalBodyAnimation))
+        {
+            camera->SetFlag(CameraFlags::PhysicalBodyAnimation, physical_body_enabled);
         }
         //=============================================================================================================================================================
     }

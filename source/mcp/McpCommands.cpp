@@ -220,8 +220,7 @@ namespace spartan
             ).lexically_normal();
             if (!path_is_within(resolved, meshes_directory))
             {
-                error =
-                    "mesh path must be inside the shared project mcp/meshes directory";
+                error = "mesh path must be inside cache/mcp/blockout/meshes";
                 return std::nullopt;
             }
 
@@ -279,8 +278,7 @@ namespace spartan
             ).lexically_normal();
             if (!path_is_within(resolved, textures_directory))
             {
-                error =
-                    "texture path must be inside the shared project mcp/textures directory";
+                error = "texture path must be inside cache/mcp/blockout/textures";
                 return std::nullopt;
             }
 
@@ -1267,9 +1265,7 @@ namespace spartan
             const std::string path = normalize_screenshot_path(get_argument(request, "path"));
             if (!is_screenshot_path_valid(path))
             {
-                return json_error(
-                    "screenshot path must be inside project/mcp/blockout/thumbnails"
-                );
+                return json_error("screenshot path must be inside cache/mcp/blockout/thumbnails");
             }
             std::string extension = std::filesystem::path(path).extension().generic_string();
             std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });

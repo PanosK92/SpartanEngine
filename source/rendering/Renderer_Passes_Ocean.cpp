@@ -1092,24 +1092,32 @@ namespace spartan
             };
 
         const float sea_level = water->GetSeaLevel();
-        Vector3 shore_displacement;
-        float shore_floor = 0.0f;
+        Vector3 shore_displacement = Vector3::Zero;
+        float shore_floor = -100000.0f;
+        const bool has_shore = ocean_shore::field_current.load(memory_order_acquire) != nullptr;
 
         // mirrors ocean_cascade_depth_scale in common.hlsl, long waves ease off in the shallows
+        // sample terrain once per query (bed depth varies negligibly over sub-metre Gerstner shift)
+        float depth_scales[renderer_ocean_max_cascades];
+        float bed = 0.0f;
         Terrain* terrain = Terrain::FindActive();
-        auto depth_scale = [&](const uint32_t cascade, const float sample_x, const float sample_z)
+        const bool has_bed = terrain && terrain->SampleHeight(x, z, bed);
+        const float water_depth = has_bed ? max(sea_level - bed, 0.0f) : 0.0f;
+        for (uint32_t cascade = 0; cascade < cascades; cascade++)
         {
-            float bed = 0.0f;
-            if (!terrain || !terrain->SampleHeight(sample_x, sample_z, bed))
+            if (!has_bed)
             {
-                return 1.0f;
+                depth_scales[cascade] = 1.0f;
             }
-            const float deep = max(lengths[cascade] * 0.12f, 8.0f);
-            return lerp(0.4f, 1.0f, ocean_shore::smoothstep(0.25f, deep, max(sea_level - bed, 0.0f)));
-        };
+            else
+            {
+                const float deep = max(lengths[cascade] * 0.12f, 8.0f);
+                depth_scales[cascade] = lerp(0.4f, 1.0f, ocean_shore::smoothstep(0.25f, deep, water_depth));
+            }
+        }
 
         Vector2 grid_position(x, z);
-        for (uint32_t iteration = 0; iteration < 3; iteration++)
+        for (uint32_t iteration = 0; iteration < 2; iteration++)
         {
             Vector2 horizontal_displacement = Vector2::Zero;
             for (uint32_t cascade = 0; cascade < cascades; cascade++)
@@ -1118,13 +1126,16 @@ namespace spartan
                     cascade,
                     grid_position.x,
                     grid_position.y
-                ) * depth_scale(cascade, grid_position.x, grid_position.y);
+                ) * depth_scales[cascade];
                 horizontal_displacement.x += displacement.x;
                 horizontal_displacement.y += displacement.z;
             }
-            ocean_shore::evaluate(grid_position.x, grid_position.y, sea_level, shore_displacement, shore_floor);
-            horizontal_displacement.x += shore_displacement.x;
-            horizontal_displacement.y += shore_displacement.z;
+            if (has_shore)
+            {
+                ocean_shore::evaluate(grid_position.x, grid_position.y, sea_level, shore_displacement, shore_floor);
+                horizontal_displacement.x += shore_displacement.x;
+                horizontal_displacement.y += shore_displacement.z;
+            }
 
             grid_position.x = x - horizontal_displacement.x;
             grid_position.y = z - horizontal_displacement.y;
@@ -1137,10 +1148,13 @@ namespace spartan
                 cascade,
                 grid_position.x,
                 grid_position.y
-            ).y * depth_scale(cascade, grid_position.x, grid_position.y);
+            ).y * depth_scales[cascade];
         }
-        ocean_shore::evaluate(grid_position.x, grid_position.y, sea_level, shore_displacement, shore_floor);
-        height = max(height + shore_displacement.y, shore_floor);
+        if (has_shore)
+        {
+            ocean_shore::evaluate(grid_position.x, grid_position.y, sea_level, shore_displacement, shore_floor);
+            height = max(height + shore_displacement.y, shore_floor);
+        }
 
         return true;
     }
@@ -1197,7 +1211,8 @@ namespace spartan
 
             // the textures swap on every upload, the one written last frame becomes the previous surface
             const Vector4 mapping  = OceanWake::GetMapping();
-            state.upload_pending   = OceanWake::CollectUpload(state.texels);
+            const uint32_t next_id = 1u - state.current;
+            state.upload_pending   = OceanWake::CollectUpload(state.texels, next_id, state.upload_row_start, state.upload_row_count);
             state.mapping_previous = state.upload_pending ? state.mapping : state.mapping_previous;
             state.mapping          = mapping;
         }
@@ -1217,26 +1232,36 @@ namespace spartan
             {
                 vector<RHI_Texture_Slice> slices(1);
                 slices[0].mips.resize(1);
-                slices[0].mips[0].bytes.assign(static_cast<size_t>(OceanWake::resolution) * OceanWake::resolution * 2 * sizeof(uint16_t), std::byte{ 0 });
+                slices[0].mips[0].bytes.assign(static_cast<size_t>(OceanWake::resolution) * OceanWake::resolution * 4 * sizeof(uint16_t), std::byte{ 0 });
                 state.textures[i] = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
                     OceanWake::resolution, OceanWake::resolution, 1, 1,
-                    RHI_Format::R16G16_Float, RHI_Texture_Srv,
+                    RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv,
                     i == 0 ? "ocean_wake_a" : "ocean_wake_b", move(slices)
                 );
             }
         }
 
-        if (!state.upload_pending || !IsOceanWakeReady())
+        if (!state.upload_pending || !IsOceanWakeReady() || state.upload_row_count == 0)
         {
             return;
         }
         state.upload_pending = false;
 
+        // release initial zero-filled cpu slices once gpu textures are ready so UpdateRegion skips redundant 2 MB cpu copies
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            if (state.textures[i]->HasData())
+            {
+                state.textures[i]->ClearData();
+            }
+        }
+
         // frame uploads record into this command list, ahead of the passes that sample the field
-        state.current = 1 - state.current;
+        state.current = 1u - state.current;
+        const size_t row_offset = static_cast<size_t>(state.upload_row_start) * OceanWake::resolution * 4;
         RHI_CommandList::BeginPass("ocean_wake");
-        state.textures[state.current]->UpdateRegion(0, 0, OceanWake::resolution, OceanWake::resolution, state.texels.data(), true);
+        state.textures[state.current]->UpdateRegion(0, state.upload_row_start, OceanWake::resolution, state.upload_row_count, state.texels.data() + row_offset, true);
         RHI_CommandList::EndPass();
     }
 }

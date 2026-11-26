@@ -29,15 +29,22 @@ float ocean_contact_foam(float3 water_position, float footprint, float wave_acti
         return 0.0f;
     }
 
-    float2 wind_axis = ocean_foam_axis();
-    float nearest    = reach;
-    [loop] for (uint i = 0; i < 20u; ++i)
+    float2 wind_axis   = ocean_foam_axis();
+    float nearest      = reach;
+    const uint tap_count = 12u;
+    float4x4 vp        = get_view_projection();
+    float4 clip_base   = mul(float4(water_position, 1.0f), vp);
+    float4 clip_dx     = vp[0] * reach;
+    float4 clip_dz     = vp[2] * reach;
+    [loop] for (uint i = 0; i < tap_count; ++i)
     {
         // golden angle spiral, even in area so a thin pile cannot hide between the taps
         float angle   = (float)i * 2.39996323f;
-        float radius  = reach * sqrt(((float)i + 0.5f) / (float)20u);
-        float3 probe  = water_position + float3(cos(angle), 0.0f, sin(angle)) * radius;
-        float2 tap_uv = world_to_uv(probe);
+        float r_norm  = sqrt(((float)i + 0.5f) / (float)tap_count);
+        float sa, ca;
+        sincos(angle, sa, ca);
+        float4 clip   = clip_base + clip_dx * (ca * r_norm) + clip_dz * (sa * r_norm);
+        float2 tap_uv = (clip.xy / clip.w) * float2(0.5f, -0.5f) + 0.5f;
         if (!is_valid_uv(tap_uv))
         {
             continue;

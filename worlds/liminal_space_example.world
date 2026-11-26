@@ -16,10 +16,10 @@
    </Entity>
   </Entity>
   <Entity name="chair_template" id="7734000000000000003" active="false" position="0 -80 0" rotation="0 0 0 1" scale="1 1 1">
-   <prefab file="project/mcp/library/prefabs/wooden_chair.prefab" />
+   <prefab file="project/liminal_space_example_resources/prefabs/wooden_chair.prefab" />
   </Entity>
   <Entity name="table_template" id="7734000000000000004" active="false" position="0 -80 0" rotation="0 0 0 1" scale="1 1 1">
-   <prefab file="project/mcp/library/prefabs/gustav_2.prefab" />
+   <prefab file="project/liminal_space_example_resources/prefabs/gustav_2.prefab" />
   </Entity>
   <Entity name="liminal_generator" id="7734000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <script file_path="project/liminal_space_example_resources/scripts/liminal_space_example.lua" district_chunks="3" />

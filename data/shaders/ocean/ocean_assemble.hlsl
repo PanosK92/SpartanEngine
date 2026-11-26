@@ -71,14 +71,12 @@ float3 ocean_strain_at(float2 world_xz, uint cascade, bool filtered)
     return lerp(lerp(s00, s10, t.x), lerp(s01, s11, t.x), t.y);
 }
 
-[numthreads(8, 8, 1)]
-void main_cs(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= OCEAN_N || id.y >= OCEAN_N)
-    {
-        return;
-    }
+// shared horizontal displacement tile (8x8 interior + 1-texel cross halo) replaces 8 global UAV reads/thread with shared-memory reads
+groupshared float2 sh_dxz[10][10];
 
+[numthreads(8, 8, 1)]
+void main_cs(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThreadID)
+{
     uint cascade     = id.z;
     float length_m   = ocean_cascade_length(cascade);
     float chop       = ocean_choppiness();
@@ -91,6 +89,25 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float height = a.x * s;
     float dx     = a.z * s;
     float dz     = b.x * s;
+
+    uint lx = group_thread_id.x + 1u;
+    uint ly = group_thread_id.y + 1u;
+    sh_dxz[ly][lx] = float2(dx, dz);
+
+    // first 32 threads load the 32 edge halo texels (top 8, bottom 8, left 8, right 8; corners are never read)
+    uint linear_id = group_thread_id.y * 8u + group_thread_id.x;
+    if (linear_id < 32u)
+    {
+        uint side = linear_id >> 3u;
+        uint pos  = (linear_id & 7u) + 1u;
+        uint hlx  = (side < 2u) ? pos : ((side == 2u) ? 0u : 9u);
+        uint hly  = (side < 2u) ? ((side == 0u) ? 0u : 9u) : pos;
+
+        uint2 base_xy = group_id.xy * 8u;
+        uint2 hc      = uint2((base_xy.x + hlx + OCEAN_N - 1u) & (OCEAN_N - 1u), (base_xy.y + hly + OCEAN_N - 1u) & (OCEAN_N - 1u));
+        float hs      = ocean_sign(hc);
+        sh_dxz[hly][hlx] = float2(tex_ocean_fft_a_uav[uint3(hc, cascade)].z, tex_ocean_fft_b_uav[uint3(hc, cascade)].x) * hs;
+    }
 
     float3 displacement            = float3(dx * chop, height, dz * chop) * disp_scale;
     tex_ocean_displacement_uav[id] = float4(displacement, 0.0);
@@ -116,34 +133,21 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float slope_x = b.z * s;
     float slope_z = b.w * s;
 
-    // wrapped neighbours for the horizontal-displacement finite differences, used for the choppiness stretch and foam jacobian
-    uint xp = (id.x + 1) % OCEAN_N;
-    uint xm = (id.x + OCEAN_N - 1) % OCEAN_N;
-    uint yp = (id.y + 1) % OCEAN_N;
-    uint ym = (id.y + OCEAN_N - 1) % OCEAN_N;
+    GroupMemoryBarrierWithGroupSync();
 
-    float s_xp = ocean_sign(uint2(xp, id.y));
-    float s_xm = ocean_sign(uint2(xm, id.y));
-    float s_yp = ocean_sign(uint2(id.x, yp));
-    float s_ym = ocean_sign(uint2(id.x, ym));
-
-    float4 a_xp = tex_ocean_fft_a_uav[uint3(xp, id.y, cascade)];
-    float4 a_xm = tex_ocean_fft_a_uav[uint3(xm, id.y, cascade)];
-    float4 a_yp = tex_ocean_fft_a_uav[uint3(id.x, yp, cascade)];
-    float4 a_ym = tex_ocean_fft_a_uav[uint3(id.x, ym, cascade)];
-    float4 b_xp = tex_ocean_fft_b_uav[uint3(xp, id.y, cascade)];
-    float4 b_xm = tex_ocean_fft_b_uav[uint3(xm, id.y, cascade)];
-    float4 b_yp = tex_ocean_fft_b_uav[uint3(id.x, yp, cascade)];
-    float4 b_ym = tex_ocean_fft_b_uav[uint3(id.x, ym, cascade)];
+    // horizontal displacement gradients from groupshared neighbours (bit-exact with wrapped UAV loads)
+    float2 d_xp = sh_dxz[ly][lx + 1u];
+    float2 d_xm = sh_dxz[ly][lx - 1u];
+    float2 d_yp = sh_dxz[ly + 1u][lx];
+    float2 d_ym = sh_dxz[ly - 1u][lx];
 
     float cell = length_m / (float)OCEAN_N; // world distance between neighbouring texels
-    float inv2 = 1.0 / (2.0 * cell);
+    float inv2 = (1.0 / (2.0 * cell)) * chop * disp_scale;
 
-    // horizontal displacement gradients of the rendered surface, the displacement map applies chop and disp_scale so both belong here
-    float dDx_dx = (((a_xp.z * s_xp) - (a_xm.z * s_xm)) * inv2) * chop * disp_scale;
-    float dDz_dz = (((b_yp.x * s_yp) - (b_ym.x * s_ym)) * inv2) * chop * disp_scale;
-    float dDx_dz = (((a_yp.z * s_yp) - (a_ym.z * s_ym)) * inv2) * chop * disp_scale;
-    float dDz_dx = (((b_xp.x * s_xp) - (b_xm.x * s_xm)) * inv2) * chop * disp_scale;
+    float dDx_dx = (d_xp.x - d_xm.x) * inv2;
+    float dDz_dz = (d_yp.y - d_ym.y) * inv2;
+    float dDx_dz = (d_yp.x - d_ym.x) * inv2;
+    float dDz_dx = (d_xp.y - d_xm.y) * inv2;
 
     // jacobian of the horizontal mapping, 1 is undeformed, below 1 is a compressed crest, 0 is a fold
     float jacobian = (1.0 + dDx_dx) * (1.0 + dDz_dz) - dDx_dz * dDz_dx;

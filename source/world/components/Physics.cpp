@@ -98,11 +98,13 @@ namespace spartan
         // fft water buoyancy, applied once per fixed physics step to every submerged dynamic body
         namespace buoyancy
         {
-            const float water_density   = 1000.0f; // kg per cubic meter
-            const float max_accel       = 30.0f;   // cap so featherweight bodies don't rocket out of the water
-            const float drag_horizontal = 2.0f;    // velocity damping per second at full submersion
-            const float drag_vertical   = 20.0f;   // near critical for the buoyancy spring, floats settle onto the surface instead of bouncing
-            const float drag_angular    = 4.0f;    // spin damping per second at full submersion
+            const float water_density   = 1025.0f; // kg per cubic meter, seawater
+            const float max_accel       = 34.0f;   // cap so featherweight bodies don't rocket out of the water
+            const float drag_lin_horiz  = 0.85f;   // linear viscous horizontal damping (s^-1) at full submersion
+            const float drag_quad_horiz = 0.14f;   // quadratic horizontal form drag factor (m^-1)
+            const float drag_lin_vert   = 3.2f;    // linear vertical damping so dropped/shot objects plunge and bob realistically
+            const float drag_quad_vert  = 0.28f;   // quadratic vertical plunge/slam drag factor (m^-1)
+            const float drag_angular    = 3.2f;    // rotational water damping per second at full submersion
             vector<Physics*> bodies;               // guarded by the physx mutex
             vector<Physics*> floating_bodies;      // created dynamic bodies eligible for buoyancy
         }
@@ -366,6 +368,19 @@ namespace spartan
 
         // release all actors
         // skip if physics world was already shut down (scene is null)
+        if (Entity* entity = GetEntity())
+        {
+            const uint64_t entity_id = entity->GetObjectId();
+            OceanWake::UnregisterObstacle(entity_id);
+            OceanWake::Displace(entity_id, nullptr, 0);
+            for (auto* body : m_actors)
+            {
+                if (body)
+                {
+                    OceanWake::Displace(entity_id ^ (reinterpret_cast<uintptr_t>(body) * 0x9e3779b97f4a7c15ull), nullptr, 0);
+                }
+            }
+        }
         for (auto* body : m_actors)
         {
             if (body && PhysicsWorld::GetScene())
@@ -377,6 +392,8 @@ namespace spartan
         }
         m_actors.clear();
         m_buoyancy_samples.clear();
+        m_buoyancy_in_water.clear();
+        m_controller_in_water = false;
         m_actors_active.clear();
 
         // release material (shared by both controller and regular bodies)
@@ -768,14 +785,14 @@ namespace spartan
                 m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
             }
 
-            // buoyancy, the fft water pushes the capsule up toward a waterline above its center, drag damps the bob
+            // buoyancy and interactive wading/swimming fluid coupling
             {
-                PxExtendedVec3 position = controller->getPosition();
+                PxExtendedVec3 position      = controller->getPosition();
                 const Vector3 world_position = PhysicsWorld::ToWorldPosition(Vector3(static_cast<float>(position.x), static_cast<float>(position.y), static_cast<float>(position.z)));
-                float water_height      = 0.0f;
+                float water_height           = 0.0f;
                 if (Renderer::GetOceanHeight(world_position.x, world_position.z, water_height))
                 {
-                    // legs wading through the sea part the water like any other body, measured without the wake they make
+                    // body wading or swimming through the sea parts the water smoothly using real velocity and torso radius
                     const float radius = controller->getRadius();
                     const float shaft  = controller->getHeight();
                     const float height = shaft + 2.0f * radius;
@@ -783,25 +800,55 @@ namespace spartan
                     const float wading = clamp(water_height - feet, 0.0f, height);
                     if (wading > 0.0f)
                     {
-                        // Integrate the two spherical caps and the straight section at the current waterline.
+                        // integrate the two spherical caps and the straight section at the current waterline
                         const auto cap = [radius](float h) { return math::pi * h * h * (radius - h / 3.0f); };
-                        const float volume = cap(min(wading, radius)) + math::pi * radius * radius * clamp(wading - radius, 0.0f, shaft)
-                            + cap(radius) - cap(clamp(height - wading, 0.0f, radius));
+                        const float volume    = cap(min(wading, radius)) + math::pi * radius * radius * clamp(wading - radius, 0.0f, shaft) + cap(radius) - cap(clamp(height - wading, 0.0f, radius));
                         const float influence = OceanWake::SurfaceInfluence(water_height - feet - height, 2.0f * radius);
-                        const OceanWakeColumn column = { world_position.x, world_position.z, volume * influence };
+                        const float horiz_spd = sqrtf(m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z);
+                        const float swim_aer  = clamp((horiz_spd - 1.2f) / 6.0f, 0.0f, 0.35f);
+                        const float body_rad  = max(radius * 1.15f, 0.42f);
+                        const OceanWakeColumn column =
+                        {
+                            world_position.x,
+                            world_position.z,
+                            volume * influence,
+                            body_rad,
+                            m_velocity.x,
+                            m_velocity.y,
+                            m_velocity.z,
+                            swim_aer
+                        };
                         OceanWake::Displace(GetEntity()->GetObjectId(), &column, 1);
+                        m_controller_in_water = true;
+                    }
+                    else if (m_controller_in_water)
+                    {
+                        OceanWake::Displace(GetEntity()->GetObjectId(), nullptr, 0);
+                        m_controller_in_water = false;
                     }
 
                     water_height += OceanWake::SampleHeight(world_position.x, world_position.z);
 
-                    const float waterline = 0.25f; // meters above the capsule center the water settles at
+                    const float waterline = 0.28f; // meters above the capsule center the water settles at
                     const float depth     = water_height - (world_position.y + waterline);
                     if (depth > 0.0f)
                     {
-                        const float buoyancy_gain = 30.0f; // upward acceleration per meter of submersion
-                        const float water_drag    = 11.0f; // near critical damping for the gain above, settles without bobbing past the waterline
+                        // buoyant lift keeps the player's eyes clear of calm water while bobbing naturally on swells and wakes
+                        const float buoyancy_gain = 30.0f;
+                        const float water_drag    = 5.5f + 0.55f * fabsf(m_velocity.y);
                         m_velocity.y += (depth * buoyancy_gain - m_velocity.y * water_drag) * delta_time;
+
+                        // passing boat wakes and wave currents gently push the swimming body
+                        const Vector2 wake_vel       = OceanWake::SampleVelocity(world_position.x, world_position.z);
+                        const float current_coupling = clamp(delta_time * 1.4f, 0.0f, 0.2f);
+                        m_velocity.x += (wake_vel.x - m_velocity.x) * current_coupling * 0.35f;
+                        m_velocity.z += (wake_vel.y - m_velocity.z) * current_coupling * 0.35f;
                     }
+                }
+                else if (m_controller_in_water)
+                {
+                    OceanWake::Displace(GetEntity()->GetObjectId(), nullptr, 0);
+                    m_controller_in_water = false;
                 }
             }
 
@@ -981,7 +1028,7 @@ namespace spartan
         }
     }
 
-    void Physics::TickBuoyancy()
+    void Physics::TickBuoyancy(float step_dt)
     {
         // Called from the fixed step loop which already holds the PhysX mutex.
         float sea_level;
@@ -990,7 +1037,7 @@ namespace spartan
 
         for (Physics* body : buoyancy::floating_bodies)
         {
-            body->ApplyBuoyancy();
+            body->ApplyBuoyancy(step_dt);
         }
     }
 
@@ -1072,16 +1119,21 @@ namespace spartan
             if (!(volume > 0.0f) || !isfinite(volume))
                 continue;
 
-            const PxVec3 size = bounds.getDimensions();
+            const PxVec3 size  = bounds.getDimensions();
             const size_t first = samples.size();
             float total_length = 0.0f;
-            constexpr int slices = 3;
-            for (int z = 0; z < slices; z++)
+            // adaptive hull sampling so boats and rafts follow their true curved footprint while small crates stay compact
+            const int slices_x   = clamp(static_cast<int>(ceilf(size.x / 0.55f)), 3, 6);
+            const int slices_z   = clamp(static_cast<int>(ceilf(size.z / 0.55f)), 3, 10);
+            const float cell_x   = size.x / static_cast<float>(slices_x);
+            const float cell_z   = size.z / static_cast<float>(slices_z);
+            const float cell_rad = max(0.5f * sqrtf(cell_x * cell_z), 0.24f);
+            for (int z = 0; z < slices_z; z++)
             {
-                for (int x = 0; x < slices; x++)
+                for (int x = 0; x < slices_x; x++)
                 {
-                    const float cx = bounds.minimum.x + size.x * ((x + 0.5f) / slices);
-                    const float cz = bounds.minimum.z + size.z * ((z + 0.5f) / slices);
+                    const float cx = bounds.minimum.x + size.x * ((x + 0.5f) / static_cast<float>(slices_x));
+                    const float cz = bounds.minimum.z + size.z * ((z + 0.5f) / static_cast<float>(slices_z));
                     const float pad = max(0.001f, size.y * 0.01f);
                     const PxVec3 above(cx, bounds.maximum.y + pad, cz);
                     const PxVec3 below(cx, bounds.minimum.y - pad, cz);
@@ -1096,7 +1148,7 @@ namespace spartan
                     if (hi > lo)
                     {
                         samples.push_back({Vector3(cx, (lo + hi) * 0.5f, cz),
-                            Vector3(size.x / slices, hi - lo, size.z / slices) * 0.5f, hi - lo});
+                            Vector3(cell_x, hi - lo, cell_z) * 0.5f, hi - lo, cell_rad});
                         total_length += hi - lo;
                     }
                 }
@@ -1116,20 +1168,23 @@ namespace spartan
             }
             else
             {
-                samples.push_back({from_px_vec3(pose.transform(properties.centerOfMass)), from_px_vec3(bounds.getExtents()), volume});
+                const float fallback_rad = max(0.5f * sqrtf(size.x * size.z), 0.28f);
+                samples.push_back({from_px_vec3(pose.transform(properties.centerOfMass)), from_px_vec3(bounds.getExtents()), volume, fallback_rad});
             }
         }
         return samples;
     }
 
-    void Physics::ApplyBuoyancy()
+    void Physics::ApplyBuoyancy(float step_dt)
     {
         if (!m_enabled || m_is_static || m_is_kinematic)
             return;
 
         const float gravity = -PhysicsWorld::GetGravity().y;
+        const float dt      = max(step_dt, 1.0f / 500.0f);
         const Vector3 origin = PhysicsWorld::GetOrigin();
         m_buoyancy_samples.resize(m_actors.size());
+        m_buoyancy_in_water.resize(m_actors.size(), false);
         for (size_t index = 0; index < m_actors.size(); index++)
         {
             PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[index]);
@@ -1141,10 +1196,10 @@ namespace spartan
             if (samples.empty())
                 samples = BuildBuoyancySamples(actor);
             const PxTransform pose = dynamic->getGlobalPose();
-            const PxVec3 vertical = pose.q.rotateInv(PxVec3(0,1,0)).abs();
-            const PxVec3 size = dynamic->getWorldBounds().getDimensions();
-            const float footprint = max(size.x, size.z);
-            const uint64_t id = GetEntity()->GetObjectId() ^ (reinterpret_cast<uintptr_t>(actor) * 0x9e3779b97f4a7c15ull);
+            const PxVec3 vertical  = pose.q.rotateInv(PxVec3(0, 1, 0)).abs();
+            const PxVec3 size      = dynamic->getWorldBounds().getDimensions();
+            const float footprint  = max(size.x, size.z);
+            const uint64_t id      = GetEntity()->GetObjectId() ^ (reinterpret_cast<uintptr_t>(actor) * 0x9e3779b97f4a7c15ull);
 
             float total = 0.0f;
             for (const BuoyancySample& sample : samples)
@@ -1152,43 +1207,148 @@ namespace spartan
             if (total <= 0.0f)
                 continue;
 
-            const float lift_per_volume = min(buoyancy::water_density * gravity, dynamic->getMass() * buoyancy::max_accel / total);
+            const float mass            = max(dynamic->getMass(), 0.5f);
+            const float lift_per_volume = min(buoyancy::water_density * gravity, mass * buoyancy::max_accel / total);
+            const PxVec3 body_vel       = dynamic->getLinearVelocity();
+            const float body_speed_h    = sqrtf(body_vel.x * body_vel.x + body_vel.z * body_vel.z);
+            const float inv_body_spd    = body_speed_h > 0.1f ? 1.0f / body_speed_h : 0.0f;
+            const PxVec3 com_world      = pose.transform(dynamic->getCMassLocalPose().p);
+
             thread_local vector<OceanWakeColumn> wake;
+            thread_local vector<PxVec3> sample_points;
+            thread_local vector<float> sample_spans;
+            thread_local vector<float> sample_depths;
+            thread_local vector<float> sample_xz;
+            thread_local vector<float> sample_wake_h;
+            thread_local vector<Vector2> sample_wake_v;
+
+            const size_t sample_count = samples.size();
             wake.clear();
+            wake.reserve(sample_count);
+            sample_points.resize(sample_count);
+            sample_spans.resize(sample_count);
+            sample_depths.resize(sample_count);
+            sample_xz.resize(sample_count * 2);
+            sample_wake_h.resize(sample_count);
+            sample_wake_v.resize(sample_count);
+
+            bool any_wet   = false;
             float immersed = 0.0f;
-            for (const BuoyancySample& sample : samples)
+            Vector2 wake_vel_sum(0.0f, 0.0f);
+
+            for (size_t s_idx = 0; s_idx < sample_count; s_idx++)
             {
-                const PxVec3 point = pose.transform(to_px_vec3(sample.center));
-                const Vector3 world = from_px_vec3(point) + origin;
+                const BuoyancySample& sample = samples[s_idx];
+                const PxVec3 point           = pose.transform(to_px_vec3(sample.center));
+                const Vector3 world          = from_px_vec3(point) + origin;
+                sample_points[s_idx]         = point;
+                sample_xz[s_idx * 2 + 0]     = world.x;
+                sample_xz[s_idx * 2 + 1]     = world.z;
+
                 float sea = 0.0f;
                 if (!Renderer::GetOceanHeight(world.x, world.z, sea))
+                {
+                    sample_spans[s_idx]  = 0.0f;
+                    sample_depths[s_idx] = -1e6f;
+                    wake.push_back({world.x, world.z, 0.0f, sample.radius, 0.0f, 0.0f, 0.0f, 0.0f});
                     continue;
+                }
 
-                const float span = max(2.0f * vertical.dot(to_px_vec3(sample.half_extents)), 0.001f);
-                const float depth = sea - world.y + 0.5f * span;
+                const float span       = max(2.0f * vertical.dot(to_px_vec3(sample.half_extents)), 0.001f);
+                const float depth      = sea - world.y + 0.5f * span;
+                sample_spans[s_idx]    = span;
+                sample_depths[s_idx]   = depth;
+                const PxVec3 point_vel = PxRigidBodyExt::getVelocityAtPos(*dynamic, point);
                 if (depth > 0.0f)
                 {
+                    any_wet = true;
                     const float influence = OceanWake::SurfaceInfluence(depth - span, footprint);
-                    wake.push_back({world.x, world.z, sample.volume * min(depth / span, 1.0f) * influence});
+                    // centerline stern prop-wash / transom eddy entrains turbulent aerated bubbles
+                    float stern_aeration = 0.0f;
+                    if (body_speed_h > 2.2f && footprint > 2.0f)
+                    {
+                        const PxVec3 rel_com  = point - com_world;
+                        const float along     = (rel_com.x * body_vel.x + rel_com.z * body_vel.z) * inv_body_spd;
+                        const float across    = fabsf(-rel_com.x * body_vel.z + rel_com.z * body_vel.x) * inv_body_spd;
+                        const float sternness = clamp((-along - footprint * 0.15f) / max(footprint * 0.30f, 0.4f), 0.0f, 1.0f);
+                        const float center    = expf(-(across * across) / max(0.32f, footprint * 0.06f));
+                        const float speed_t   = clamp((body_speed_h - 2.2f) / 10.0f, 0.0f, 1.0f);
+                        stern_aeration        = sternness * sternness * center * speed_t * influence;
+                    }
+                    wake.push_back(
+                    {
+                        world.x,
+                        world.z,
+                        sample.volume * min(depth / span, 1.0f) * influence,
+                        sample.radius,
+                        point_vel.x,
+                        point_vel.y,
+                        point_vel.z,
+                        stern_aeration
+                    });
                 }
-                const float wet = clamp((depth + OceanWake::SampleHeight(world.x, world.z)) / span, 0.0f, 1.0f);
-                if (wet > 0.0f)
+                else
                 {
-                    const float volume = sample.volume * wet;
-                    immersed += volume;
-                    PxRigidBodyExt::addForceAtPos(*dynamic, PxVec3(0.0f, lift_per_volume * volume, 0.0f), point, PxForceMode::eFORCE);
+                    // keep fixed column indexing per body so pitching/planing never shuffles column correspondence
+                    wake.push_back({world.x, world.z, 0.0f, sample.radius, point_vel.x, point_vel.y, point_vel.z, 0.0f});
                 }
             }
-            if (!wake.empty())
+
+            // single-lock batched wake height + surface current query across all hull columns
+            OceanWake::SampleBatch(sample_xz.data(), sample_wake_h.data(), sample_wake_v.data(), static_cast<uint32_t>(sample_count));
+
+            for (size_t s_idx = 0; s_idx < sample_count; s_idx++)
+            {
+                const float span = sample_spans[s_idx];
+                if (span <= 0.0f)
+                {
+                    continue;
+                }
+                const float wet = clamp((sample_depths[s_idx] + sample_wake_h[s_idx]) / span, 0.0f, 1.0f);
+                if (wet > 0.0f)
+                {
+                    const float volume = samples[s_idx].volume * wet;
+                    immersed += volume;
+                    PxRigidBodyExt::addForceAtPos(*dynamic, PxVec3(0.0f, lift_per_volume * volume, 0.0f), sample_points[s_idx], PxForceMode::eFORCE);
+
+                    const Vector2& wv = sample_wake_v[s_idx];
+                    wake_vel_sum.x   += wv.x * volume;
+                    wake_vel_sum.y   += wv.y * volume;
+                }
+            }
+
+            if (any_wet)
+            {
                 OceanWake::Displace(id, wake.data(), static_cast<uint32_t>(wake.size()));
+                m_buoyancy_in_water[index] = true;
+            }
+            else if (m_buoyancy_in_water[index])
+            {
+                OceanWake::Displace(id, nullptr, 0);
+                m_buoyancy_in_water[index] = false;
+            }
+
             if (immersed <= 0.0f)
                 continue;
 
-            const float submersion = immersed / total;
-            const PxVec3 velocity = dynamic->getLinearVelocity();
-            const PxVec3 drag = PxVec3(velocity.x * buoyancy::drag_horizontal, velocity.y * buoyancy::drag_vertical, velocity.z * buoyancy::drag_horizontal);
-            dynamic->addForce(drag * -submersion, PxForceMode::eACCELERATION);
-            dynamic->addTorque(dynamic->getAngularVelocity() * -buoyancy::drag_angular * submersion, PxForceMode::eACCELERATION);
+            // unconditionally stable exponential-form hydrodynamic drag relative to wake surface current
+            // works smoothly across every mass (1 kg shot cubes to multi-ton boats) without freezing or reversing velocity
+            const float submersion = clamp(immersed / total, 0.0f, 1.0f);
+            const Vector2 wake_vel = wake_vel_sum / immersed;
+            const PxVec3 rel_vel(body_vel.x - wake_vel.x, body_vel.y, body_vel.z - wake_vel.y);
+            const float rel_spd_h  = sqrtf(rel_vel.x * rel_vel.x + rel_vel.z * rel_vel.z);
+            const float rel_spd_v  = fabsf(rel_vel.y);
+
+            const float rate_h = (buoyancy::drag_lin_horiz + buoyancy::drag_quad_horiz * min(rel_spd_h, 30.0f)) * submersion;
+            const float rate_v = (buoyancy::drag_lin_vert  + buoyancy::drag_quad_vert  * min(rel_spd_v, 30.0f)) * submersion;
+            const float eff_h  = (1.0f - expf(-rate_h * dt)) / dt;
+            const float eff_v  = (1.0f - expf(-rate_v * dt)) / dt;
+
+            dynamic->addForce(PxVec3(-rel_vel.x * eff_h, -rel_vel.y * eff_v, -rel_vel.z * eff_h), PxForceMode::eACCELERATION);
+
+            const float rate_ang = buoyancy::drag_angular * submersion;
+            const float eff_ang  = (1.0f - expf(-rate_ang * dt)) / dt;
+            dynamic->addTorque(dynamic->getAngularVelocity() * -eff_ang, PxForceMode::eACCELERATION);
         }
     }
 
@@ -2295,6 +2455,31 @@ namespace spartan
             m_body_type != BodyType::Cloth && m_body_type != BodyType::Plane)
         {
             buoyancy::floating_bodies.push_back(this);
+        }
+
+        // register static waterline structures (pier pilings, rocks, seawalls) so interactive waves reflect off them
+        if (m_is_static && m_actors.size() == 1 && GetEntity() &&
+            m_body_type != BodyType::Heightfield && m_body_type != BodyType::Plane &&
+            m_body_type != BodyType::Cloth && m_body_type != BodyType::Controller)
+        {
+            if (PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]))
+            {
+                const PxBounds3 bounds = actor->getWorldBounds();
+                const PxVec3 dims      = bounds.getDimensions();
+                if (!bounds.isEmpty() && dims.x <= 24.0f && dims.z <= 24.0f)
+                {
+                    const Vector3 origin = PhysicsWorld::GetOrigin();
+                    OceanWakeObstacle obs;
+                    obs.min_x     = bounds.minimum.x + origin.x;
+                    obs.max_x     = bounds.maximum.x + origin.x;
+                    obs.min_z     = bounds.minimum.z + origin.z;
+                    obs.max_z     = bounds.maximum.z + origin.z;
+                    obs.min_y     = bounds.minimum.y + origin.y;
+                    obs.max_y     = bounds.maximum.y + origin.y;
+                    obs.is_circle = m_body_type == BodyType::Sphere || m_body_type == BodyType::Capsule;
+                    OceanWake::RegisterObstacle(GetEntity()->GetObjectId(), obs);
+                }
+            }
         }
     }
 

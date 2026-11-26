@@ -553,9 +553,7 @@ namespace spartan::mcp_common
         ).lexically_normal();
         if (!path_is_within(resolved, directory))
         {
-            error =
-                "resource path must be inside project/mcp/blockout/" +
-                std::string(directory_name);
+            error = "resource path must be inside cache/mcp/blockout/" + std::string(directory_name);
             return std::nullopt;
         }
         return FileSystem::GetRelativePath(

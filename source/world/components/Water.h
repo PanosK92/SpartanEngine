@@ -197,10 +197,10 @@ namespace spartan
         float m_caustics_intensity  = 1.0f; // brightness of the sun caustics on submerged geometry
 
         // clipmap geometry
-        // near levels stay fine for waves, a flat skirt past the outer ring hides the rim from altitude
+        // near levels stay fine (0.25 m) for interactive wakes and bow waves, a flat skirt past the outer ring hides the rim from altitude
         uint32_t m_clipmap_resolution = 128;
-        uint32_t m_clipmap_levels     = 8;
-        float m_clipmap_base_cell     = 0.5f; // meters at the finest ring around the camera
+        uint32_t m_clipmap_levels     = 9;
+        float m_clipmap_base_cell     = 0.25f; // meters at the finest ring around the camera
         float m_horizon_extent        = 150000.0f; // flat skirt half-extent in meters
 
         // owned resources, kept alive beyond any single frame

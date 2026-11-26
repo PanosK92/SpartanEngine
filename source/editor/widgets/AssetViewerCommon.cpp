@@ -191,18 +191,16 @@ namespace asset_viewer_common
         const string& directory
     )
     {
-        const auto engine_relative =
-            [](const string& path_value)
+        const auto engine_relative = [](const string& path_value)
         {
-            const string normalized =
-                normalized_path(path_value);
-            const size_t project = normalized.find(
-                "project/"
-            );
-            return
-                project == string::npos ?
-                normalized :
-                normalized.substr(project);
+            const string normalized = normalized_path(path_value);
+            const size_t cache_pos = normalized.find("cache/");
+            if (cache_pos != string::npos)
+            {
+                return normalized.substr(cache_pos);
+            }
+            const size_t project = normalized.find("project/");
+            return project == string::npos ? normalized : normalized.substr(project);
         };
         const string relative_value =
             engine_relative(value);
@@ -215,7 +213,7 @@ namespace asset_viewer_common
         {
             relative_directory.pop_back();
         }
-        // disk scans store absolute paths, catalogs store project/mcp/...
+        // disk scans store absolute paths, catalogs store cache/mcp/...
         // both have to match the same root
         if (
             !relative_directory.empty() &&
@@ -327,7 +325,7 @@ namespace asset_viewer_common
                 continue;
             }
             // weakly_canonical of a relative root follows cwd, so a
-            // project/mcp file opened from bin/ would be rejected
+            // cache/mcp file opened from bin/ would be rejected
             if (
                 !is_absolute ||
                 resolved_path_is_within(value, root)

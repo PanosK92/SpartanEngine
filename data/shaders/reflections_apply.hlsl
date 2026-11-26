@@ -568,12 +568,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // has to be transmitted in here, the frame only holds its analytic specular
         float3 kT = 1.0f - reflectance;
         // The volume has already integrated incident light along the refracted path.
-        // Entrained bubbles replace part of that column radiance as the breaker aerates.
-        float bubble_fraction = 0.14f * foam_churn * foam_churn;
+        // Entrained subsurface bubbles scatter sunlit aquamarine radiance beneath the rippling surface.
+        float bubble_fraction = saturate(0.32f * foam_churn * sqrt(foam_churn));
         float3 whitewater_light = 0.0f;
         if (bubble_fraction > 0.0f || foam > 0.0f)
             whitewater_light = ocean_whitewater_light(surface, thread_id.xy);
-        float3 bubble_return = whitewater_light * 0.75f * exp(-get_ocean_extinction() * 0.45f);
+        float3 bubble_return = whitewater_light * 0.80f * exp(-get_ocean_extinction() * 0.35f);
         float3 surface_color = specular_reflection + kT * lerp(refraction, bubble_return, bubble_fraction);
 
         // the swash sheet thins to nothing at its front, cut by the terrain facets it would end in straight

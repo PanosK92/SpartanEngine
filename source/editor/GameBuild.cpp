@@ -53,9 +53,10 @@ namespace game_build
         {
             static const vector<DefaultAssetRule> rules =
             {
-                { "<terrain",      { "project/materials", "project/models/forest", "project/models/rock_2", "project/models/island_biomes" } },
-                { "<pedestrians",  { "project/models/mannequiny" } },
-                { "<traffic",      { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
+                { "<terrain",       { "project/materials", "project/models/forest", "project/models/rock_2", "project/models/island_biomes" } },
+                { "<pedestrians",   { "project/models/mannequiny" } },
+                { "body_type=\"6\"", { "project/models/human_male" } },
+                { "<traffic",       { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
                 { "<race_driver",  { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
                 { "<route_driver", { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } },
                 { "<prefab",       { "project/game_resources/cars/ferrari_laferrari/ferrari_laferrari.car", "project/game_resources/cars/shared/sounds" } }
