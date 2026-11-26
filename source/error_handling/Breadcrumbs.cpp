@@ -181,9 +181,16 @@ namespace spartan
     {
         auto log = [](const char* format, auto... args)
         {
-            char line[2048];
-            snprintf(line, sizeof(line), format, args...);
-            Log::WriteFatal(line);
+            if constexpr (sizeof...(args) == 0)
+            {
+                Log::WriteFatal(format);
+            }
+            else
+            {
+                char line[2048];
+                snprintf(line, sizeof(line), format, args...);
+                Log::WriteFatal(line);
+            }
         };
         std::string report;
         report.reserve(4096);

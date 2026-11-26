@@ -688,7 +688,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
+    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "%s", "");
 
     ImGui::PopStyleColor(4);
 

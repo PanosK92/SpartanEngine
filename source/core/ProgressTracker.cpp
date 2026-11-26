@@ -18,28 +18,28 @@ using namespace std;
 
 namespace spartan
 {
+    struct ProgressRegistry
+    {
+        mutex access;
+        map<uint64_t, ProgressTaskState*> tasks;
+        array<atomic<uint32_t>, static_cast<size_t>(ProgressType::Max)> by_type{};
+        atomic<uint32_t> active_count{0};
+        uint64_t next_id = 1;
+    };
+
     namespace
     {
-        struct Registry
-        {
-            mutex access;
-            map<uint64_t, ProgressTaskState*> tasks;
-            array<atomic<uint32_t>, static_cast<size_t>(ProgressType::Max)> by_type{};
-            atomic<uint32_t> active_count{0};
-            uint64_t next_id = 1;
-        };
-
-        const shared_ptr<Registry>& registry()
+        const shared_ptr<ProgressRegistry>& registry()
         {
             // Tasks keep the registry alive even during static shutdown.
-            static const auto instance = make_shared<Registry>();
+            static const auto instance = make_shared<ProgressRegistry>();
             return instance;
         }
     }
 
     struct ProgressTaskState
     {
-        shared_ptr<Registry> owner;
+        shared_ptr<ProgressRegistry> owner;
         ProgressSnapshot info;
         chrono::steady_clock::time_point started = chrono::steady_clock::now();
         bool blocks_loading = true;

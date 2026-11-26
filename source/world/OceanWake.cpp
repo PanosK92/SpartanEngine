@@ -17,9 +17,17 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstring>
 #include <mutex>
 #include <unordered_map>
-#if defined(_M_X64) || defined(__x86_64__)
+#if defined(_M_X64) || (defined(__x86_64__) && defined(__AVX2__) && defined(__FMA__) && defined(__F16C__))
 #include <immintrin.h>
+#if defined(_MSC_VER)
 #include <intrin.h>
+#define SP_OCEAN_WAKE_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+#include <cpuid.h>
+#define SP_OCEAN_WAKE_NOINLINE __attribute__((noinline))
+#else
+#define SP_OCEAN_WAKE_NOINLINE
+#endif
 #define SP_OCEAN_WAKE_X64_SIMD 1
 #endif
 //============================================
@@ -86,6 +94,7 @@ namespace spartan
 #if defined(SP_OCEAN_WAKE_X64_SIMD)
         bool detect_avx2_f16c()
         {
+#if defined(_MSC_VER)
             int info[4] = {};
             __cpuid(info, 0);
             if (info[0] < 7)
@@ -108,11 +117,43 @@ namespace spartan
             }
             __cpuidex(info, 7, 0);
             return (info[1] & (1 << 5)) != 0; // AVX2
+#elif defined(__GNUC__) || defined(__clang__)
+            unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
+            if (!__get_cpuid(0, &eax, &ebx, &ecx, &edx) || eax < 7)
+            {
+                return false;
+            }
+            if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx))
+            {
+                return false;
+            }
+            const bool has_osxsave = (ecx & (1u << 27)) != 0;
+            const bool has_avx     = (ecx & (1u << 28)) != 0;
+            const bool has_f16c    = (ecx & (1u << 29)) != 0;
+            const bool has_fma     = (ecx & (1u << 12)) != 0;
+            if (!has_osxsave || !has_avx || !has_f16c || !has_fma)
+            {
+                return false;
+            }
+            uint32_t xcr0_lo = 0, xcr0_hi = 0;
+            __asm__ volatile("xgetbv" : "=a"(xcr0_lo), "=d"(xcr0_hi) : "c"(0));
+            if ((xcr0_lo & 0x6u) != 0x6u)
+            {
+                return false;
+            }
+            if (!__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx))
+            {
+                return false;
+            }
+            return (ebx & (1u << 5)) != 0; // AVX2
+#else
+            return false;
+#endif
         }
 
         const bool g_has_avx2_f16c = detect_avx2_f16c();
 
-        __declspec(noinline) void avx2_pass1_tile(const float* __restrict height_in, float* __restrict eta_buf, int32_t x0, int32_t z0)
+        SP_OCEAN_WAKE_NOINLINE void avx2_pass1_tile(const float* __restrict height_in, float* __restrict eta_buf, int32_t x0, int32_t z0)
         {
             const __m256 v_beta = _mm256_set1_ps(dispersion_beta);
             const __m256 v_m4   = _mm256_set1_ps(-4.0f);
@@ -134,7 +175,7 @@ namespace spartan
             }
         }
 
-        __declspec(noinline) void avx2_pass2_tile(
+        SP_OCEAN_WAKE_NOINLINE void avx2_pass2_tile(
             const float* __restrict eta_buf,
             const float* __restrict flux_x_buf,
             const float* __restrict flux_z_buf,
@@ -221,7 +262,7 @@ namespace spartan
             return _mm_cvtss_f32(m);
         }
 
-        __declspec(noinline) void avx2_pass3_wave_only_tile(
+        SP_OCEAN_WAKE_NOINLINE void avx2_pass3_wave_only_tile(
             const float* __restrict height_in,
             const float* __restrict flux_x_buf,
             const float* __restrict flux_z_buf,
@@ -349,7 +390,7 @@ namespace spartan
             return _mm256_min_ps(_mm256_max_ps(val, v_zero), v_one);
         }
 
-        __declspec(noinline) void avx2_pass3_full_tile(
+        SP_OCEAN_WAKE_NOINLINE void avx2_pass3_full_tile(
             const float* __restrict height_in,
             const float* __restrict flux_x_buf,
             const float* __restrict flux_z_buf,
@@ -506,7 +547,7 @@ namespace spartan
             out_aer_peak = hmax_avx2(v_aer_peak);
         }
 
-        __declspec(noinline) void avx2_pack_f16_tile(
+        SP_OCEAN_WAKE_NOINLINE void avx2_pack_f16_tile(
             const float* __restrict h_in,
             const float* __restrict f_in,
             const float* __restrict b_in,
