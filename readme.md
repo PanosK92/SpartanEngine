@@ -77,7 +77,7 @@ The bundled worlds show the range, from **Game**, a playable racing game across 
 
 <table>
   <tr>
-    <td colspan="2"><a href="https://panoskarabelas.com/engine/live/"><img src=".github/images/showcase_human_close.jpg" width="100%" alt="Skin close-up: Christensen-Burley subsurface scattering, dual-lobe skin specular, 4K micro-pores, 3D stubble, Marschner hair and refractive eyes. Click to run it live in your browser."/></a></td>
+    <td colspan="2"><a href="https://panoskarabelas.com/engine/live/"><img src=".github/images/showcase_metahuman_close.jpg" width="100%" alt="Skin close-up: Christensen-Burley subsurface scattering, dual-lobe skin specular, 4K micro-pores, 3D stubble, Marschner hair and refractive eyes. Click to run it live in your browser."/></a></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><sub><b>SKIN</b> &nbsp;·&nbsp; Christensen-Burley subsurface scattering, dual-lobe skin specular, 4K micro-pores, 3D stubble, Marschner hair and refractive eyes</sub><br/><b><a href="https://panoskarabelas.com/engine/live/">▶ Click to run it live in your browser</a></b> <sub>(WebGPU, recent Chrome or Edge)</sub></td>
@@ -89,7 +89,7 @@ The bundled worlds show the range, from **Game**, a playable racing game across 
     <td colspan="2" align="center"><sub><b>ZAKYNTHOS</b> &nbsp;·&nbsp; a seamless 33 × 25 km island with 7.5M+ full-3D trees (11M+ total scattered instances), 200+ spline roads, towns, live traffic, volumetric clouds and an FFT ocean — streamed at 200+ km/h at 60+ FPS with zero traversal stutters</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src=".github/images/showcase_human.jpg" alt="Human: a real-time character in a dark studio with subsurface skin, Marschner hair, procedural eye saccades/blinking and real-time XPBD cloth"/></td>
+    <td width="50%"><img src=".github/images/showcase_metahuman.jpg" alt="Human: a real-time character in a dark studio with subsurface skin, Marschner hair, procedural eye saccades/blinking and real-time XPBD cloth"/></td>
     <td width="50%"><img src=".github/images/showcase_ferrari.jpg" alt="Ferrari LaFerrari on a mirror-black turntable inside the Maranello Atelier showroom, with ray-traced reflections and custom architectural lighting"/></td>
   </tr>
   <tr>
