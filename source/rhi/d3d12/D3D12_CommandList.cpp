@@ -256,15 +256,29 @@ namespace spartan
 
     static D3D12_BARRIER_SYNC rhi_scope_to_d3d12_sync(RHI_Barrier_Scope scope, RHI_Resource_Usage usage)
     {
+        if (scope == RHI_Barrier_Scope::None)
+        {
+            return D3D12_BARRIER_SYNC_NONE;
+        }
+        if (scope == RHI_Barrier_Scope::Transfer || usage == RHI_Resource_Usage::Transfer)
+        {
+            return D3D12_BARRIER_SYNC_COPY;
+        }
+        if (scope == RHI_Barrier_Scope::All)
+        {
+            return D3D12_BARRIER_SYNC_ALL;
+        }
+        if (usage == RHI_Resource_Usage::Indirect)
+        {
+            return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+        }
+
         switch (scope)
         {
-            case RHI_Barrier_Scope::None:     return D3D12_BARRIER_SYNC_NONE;
             case RHI_Barrier_Scope::Compute:  return D3D12_BARRIER_SYNC_COMPUTE_SHADING | D3D12_BARRIER_SYNC_RAYTRACING;
-            case RHI_Barrier_Scope::Transfer: return D3D12_BARRIER_SYNC_COPY;
             case RHI_Barrier_Scope::Graphics:
                 switch (usage)
                 {
-                    case RHI_Resource_Usage::Indirect:   return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
                     case RHI_Resource_Usage::Index:      return D3D12_BARRIER_SYNC_INDEX_INPUT;
                     case RHI_Resource_Usage::Vertex:     return D3D12_BARRIER_SYNC_VERTEX_SHADING;
                     case RHI_Resource_Usage::Attachment: return D3D12_BARRIER_SYNC_RENDER_TARGET | D3D12_BARRIER_SYNC_DEPTH_STENCIL;
