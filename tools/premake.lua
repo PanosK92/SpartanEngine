@@ -199,7 +199,7 @@ function solution_configuration()
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
-            flags { "MultiProcessorCompile" }
+            multiprocessorcompile "On"
             runtime "Debug"
             optimize "Off"
             symbols "On"
@@ -208,7 +208,7 @@ function solution_configuration()
         -- optimized like release, symbols on, no lto, release crt
         filter { "configurations:development" }
             defines { "DEVELOPMENT" }
-            flags { "MultiProcessorCompile" }
+            multiprocessorcompile "On"
             runtime "Release"
             optimize "Speed"
             symbols "On"
@@ -219,7 +219,7 @@ function solution_configuration()
             linkoptions { "/DEBUG:FULL", "/IGNORE:4099" }
 
         filter { "configurations:release" }
-            flags { "MultiProcessorCompile" }
+            multiprocessorcompile "On"
             runtime "Release"
             linktimeoptimization "On"
             optimize "Speed"
@@ -293,7 +293,7 @@ function spartan_project_configuration()
                 local member = line:match('^#include "([^"]+%.cpp)"')
                 if member then
                     filter { "files:" .. path.join(path.getdirectory(batch), member) }
-                        flags { "ExcludeFromBuild" }
+                        excludefrombuild "On"
                 end
             end
         end
@@ -310,7 +310,7 @@ function spartan_project_configuration()
         filter { "system:not windows" }
             files { "../third_party/recast/**.cpp" }
         filter { "files:**/recast/**" }
-            flags { "NoPCH" }
+            enablepch "Off"
             warnings "Off"
         filter {}
         files { "../third_party/lz4/lz4.c", "../third_party/lz4/lz4.h" }
@@ -321,7 +321,7 @@ function spartan_project_configuration()
 
         -- keep identical metadata across all c translation units (lz4, astronomy, mimalloc, lzma c) so msbuild compiles them in one /MP batch
         filter { "files:**.c" }
-            flags { "NoPCH" }
+            enablepch "Off"
             warnings "Off"
             defines { "Z7_NO_CRYPTO" }
         filter { "files:**.c", "configurations:debug" }
@@ -356,7 +356,7 @@ function spartan_project_configuration()
 
         -- lzma sdk c++ units: compile into spartan, no separate solution project
         filter { "files:**/lzma_sdk/**.cpp" }
-            flags { "NoPCH" }
+            enablepch "Off"
             warnings "Off"
             exceptionhandling "On"
             rtti "On"

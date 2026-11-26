@@ -24,7 +24,7 @@ openxr_tag="release-1.1.62"
 physx_commit="b97365c6ddb32fda8469bc788ec18024862b0368" # 5.12.0, untagged on main
 lua_version="5.4.8"
 dxc_tag="v1.9.2607"
-premake_url="https://github.com/premake/premake-core/releases/download/v5.0.0-beta7/premake-5.0.0-beta7-macosx.tar.gz"
+premake_url="https://github.com/premake/premake-core/releases/download/v5.0.0/premake-5.0.0-macosx.tar.gz"
 
 mkdir -p "$out" "$work"
 

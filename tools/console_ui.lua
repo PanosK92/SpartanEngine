@@ -109,11 +109,11 @@ local function repeat_str(s, n)
 end
 
 function ui.format_bytes(bytes)
-    if not bytes or bytes < 0 then
+    if not bytes or bytes ~= bytes or bytes == math.huge or bytes < 0 then
         return "0 B"
     end
     if bytes < 1024 then
-        return string.format("%d B", bytes)
+        return string.format("%d B", math.floor(bytes + 0.5))
     elseif bytes < 1024 * 1024 then
         return string.format("%.1f KB", bytes / 1024)
     elseif bytes < 1024 * 1024 * 1024 then
@@ -124,7 +124,7 @@ function ui.format_bytes(bytes)
 end
 
 function ui.format_duration(seconds)
-    if not seconds or seconds < 0 then
+    if not seconds or seconds ~= seconds or seconds == math.huge or seconds < 0 then
         return "0ms"
     end
     if seconds < 1.0 then

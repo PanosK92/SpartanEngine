@@ -275,7 +275,7 @@ jobs:
 
       - name: Install premake
         run: |
-          curl -fsSL https://github.com/premake/premake-core/releases/download/v5.0.0-beta7/premake-5.0.0-beta7-linux.tar.gz | tar -xz -C tools
+          curl -fsSL https://github.com/premake/premake-core/releases/download/v5.0.0/premake-5.0.0-linux-glibc-2.39.tar.gz | tar -xz -C tools
           chmod +x tools/premake5
 
       - name: Generate project files
