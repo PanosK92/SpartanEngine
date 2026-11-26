@@ -35,7 +35,12 @@ namespace spartan
 
         mutex& get_mutex(RHI_Queue* queue)
         {
-            return mutexes[static_cast<uint32_t>(queue->GetType())];
+            RHI_Queue_Type type = queue->GetType();
+            if (type == RHI_Queue_Type::Present && RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Present) == RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics))
+            {
+                type = RHI_Queue_Type::Graphics;
+            }
+            return mutexes[static_cast<uint32_t>(type)];
         }
 
         uint32_t command_list_count(

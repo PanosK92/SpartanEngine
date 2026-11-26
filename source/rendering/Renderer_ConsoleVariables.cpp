@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../display/Display.h"
 #include "../profiling/Profiler.h"
 #include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_Viewport.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../rhi/RHI_VendorTechnology.h"
 #include "../rhi/RHI_FrameGeneration.h"
@@ -36,6 +37,20 @@ namespace spartan
             if (Xr::IsSessionRunning() && Xr::GetStereoMode())
             {
                 Renderer::RecreateRenderTargets();
+            }
+        }
+
+        void on_resolution_output_match_viewport_change(const CVarVariant& value)
+        {
+            if (get<float>(value) != 0.0f && Renderer::GetFrameNumber() > 1 && !Renderer::IsStereoView())
+            {
+                const RHI_Viewport& viewport = Renderer::GetViewport();
+                const uint32_t width         = static_cast<uint32_t>(viewport.width);
+                const uint32_t height        = static_cast<uint32_t>(viewport.height);
+                if (RHI_Device::IsValidResolution(width, height))
+                {
+                    Renderer::SetResolutionOutput(width, height);
+                }
             }
         }
 
@@ -216,9 +231,11 @@ namespace spartan
     TConsoleVar<float> cvar_ground_mist                    ("r.atmosphere.ground_mist",         1.0f,   "ground mist relative to mist density, strongest in sheltered valleys");
     TConsoleVar<float> cvar_mist_variation                 ("r.atmosphere.mist_variation",      0.65f,  "wind driven variation in additional mist, 0 to 1");
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,   "screen space ambient occlusion, unavailable while path tracing is enabled");
+    TConsoleVar<float> cvar_ssao_half_res                  ("r.ssao_half_res",                  -1.0f,  "half-resolution ssao (-1 = auto above 1440p, 0 = full-res, 1 = half-res)");
     TConsoleVar<float> cvar_subsurface_scattering          ("r.subsurface_scattering",          1.0f,   "screen space subsurface scattering for materials with a subsurface radius (skin, wax, marble), 0 falls back to wrapped diffuse");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections", on_ray_traced_reflections_change);
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights", on_ray_traced_shadows_change);
+    TConsoleVar<float> cvar_rt_half_res                    ("r.rt_half_res",                    -1.0f,  "half-resolution rt reflections, rt shadows and nrd denoising (-1 = auto above 1440p, 0 = full-res, 1 = half-res)");
     TConsoleVar<float> cvar_path_tracing                   ("r.path_tracing",                   0.0f,   "progressive full-frame path tracing, bypasses raster rendering (requires hardware ray tracing, mono viewport)", on_path_tracing_change);
     TConsoleVar<float> cvar_path_tracing_denoise           ("r.path_tracing_denoise",           0.0f,   "display a spatial NRD preview of completed reference samples");
     TConsoleVar<float> cvar_path_tracing_bounces           ("r.path_tracing_bounces",           8.0f,   "maximum path scattering events (1-32)");
@@ -249,6 +266,7 @@ namespace spartan
     TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,   "mesh shaders for opaque/alpha depth+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);
     TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,   "render resolution scale (0.25-1.0)", on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,   "automatic resolution scaling");
+    TConsoleVar<float> cvar_resolution_output_match_viewport("r.resolution_output_match_viewport", 1.0f, "match output resolution to the viewport size", on_resolution_output_match_viewport_change);
     // misc                                                                                             
     TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,   "hi-z occlusion culling for gpu-driven rendering");
     TConsoleVar<float> cvar_tessellation_gpu_driven        ("r.tessellation_gpu_driven",        1.0f,   "tessellated draws are culled (frustum, distance, hi-z) and given their lod on the gpu; disable for cpu visibility and lod");

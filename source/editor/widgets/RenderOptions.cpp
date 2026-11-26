@@ -419,9 +419,10 @@ namespace
     }
 
     // a display mode picker whose first entry follows another size (the viewport or the output)
-    void resolution_combo(const Vector2& current, void (*set_resolution)(uint32_t, uint32_t, bool), const char* follow_label, const Vector2& follow)
+    void resolution_combo(const Vector2& current, void (*set_resolution)(uint32_t, uint32_t, bool), const char* follow_label, const Vector2& follow, const char* follow_cvar = nullptr)
     {
-        const string preview = format_resolution(current);
+        const bool following = follow_cvar && cvar_get(follow_cvar) != 0.0f;
+        const string preview = following ? string(follow_label) + "  (" + format_resolution(current) + ")" : format_resolution(current);
         push_combo_style();
         const bool open = ImGui::BeginCombo("##resolution", preview.c_str());
         ImGui::PopStyleColor(3);
@@ -431,20 +432,33 @@ namespace
             return;
         }
 
-        const uint32_t follow_w = static_cast<uint32_t>(follow.x);
-        const uint32_t follow_h = static_cast<uint32_t>(follow.y);
-        const string follow_text = string(follow_label) + "  (" + format_resolution(follow_w, follow_h) + ")";
-        if (ImGui::Selectable(follow_text.c_str(), current == follow))
+        const uint32_t follow_w    = static_cast<uint32_t>(follow.x);
+        const uint32_t follow_h    = static_cast<uint32_t>(follow.y);
+        const string follow_text   = string(follow_label) + "  (" + format_resolution(follow_w, follow_h) + ")";
+        const bool follow_selected = follow_cvar ? following : (current == follow);
+        if (ImGui::Selectable(follow_text.c_str(), follow_selected))
         {
+            if (follow_cvar)
+            {
+                cvar_write(follow_cvar, 1.0f);
+            }
             set_resolution(follow_w, follow_h, true);
+        }
+        if (follow_selected)
+        {
+            ImGui::SetItemDefaultFocus();
         }
         ImGui::Separator();
 
         for (const DisplayMode& mode : display_modes)
         {
-            const bool selected = mode.width == current.x && mode.height == current.y;
+            const bool selected = !following && mode.width == current.x && mode.height == current.y;
             if (ImGui::Selectable(format_resolution(mode.width, mode.height).c_str(), selected))
             {
+                if (follow_cvar)
+                {
+                    cvar_write(follow_cvar, 0.0f);
+                }
                 set_resolution(mode.width, mode.height, true);
             }
             if (selected)
@@ -472,8 +486,10 @@ namespace
         char render_caption[64];
         snprintf(render_caption, sizeof(render_caption), "%s%.0f%% of output", cvar_dynamic_resolution.GetValueAs<bool>() ? "auto, " : "", percent);
         const RHI_Viewport& viewport = Renderer::GetViewport();
+        const bool match_viewport    = cvar_resolution_output_match_viewport.GetValueAs<bool>();
         const bool viewport_mismatch = fabsf(viewport.width - output.x) > 1.0f || fabsf(viewport.height - output.y) > 1.0f;
-        const char* output_caption   = viewport_mismatch ? "stretched to viewport" : "final image";
+        const bool stretched_output  = viewport_mismatch && !match_viewport;
+        const char* output_caption   = viewport_mismatch ? (match_viewport ? "matching viewport..." : "stretched to viewport") : (match_viewport ? "matches viewport" : "final image");
 
         const char* chip_text = upscaler_short_name();
         ImVec4 chip_color     = style::color_accent_1;
@@ -522,7 +538,7 @@ namespace
         const float label_w   = ui::calc_text_tracked("OUTPUT", micro * 0.12f, nullptr, micro);
         ui::draw_text_tracked(draw_list, ImVec2(right - label_w, y_micro), ui::color(style::color_text_muted), "OUTPUT", micro * 0.12f, nullptr, micro);
         draw_list->AddText(font_big, big_size, ImVec2(right - output_w, y_big), ui::color(style::color_text), output_text.c_str());
-        draw_list->AddText(ImVec2(right - caption_w, y_caption), ui::color(viewport_mismatch ? style::color_warning : style::color_text_faint), output_caption);
+        draw_list->AddText(ImVec2(right - caption_w, y_caption), ui::color(stretched_output ? style::color_warning : style::color_text_faint), output_caption);
         const float right_start = right - ImMax(output_w, caption_w);
 
         // middle, an arrow carrying the upscaler, dropped when the panel is too narrow for it
@@ -568,10 +584,10 @@ namespace
                 draw_resolution_card();
             }
 
-            if (row_begin("Output resolution", "Size of the final image, after upscaling. In the editor this should match the viewport, otherwise the image is stretched to fit it."))
+            if (row_begin("Output resolution", "Size of the final image, after upscaling. Match viewport keeps it synced to the editor viewport as it resizes; fixed resolutions stretch to fit.", "r.resolution_output_match_viewport"))
             {
                 const RHI_Viewport& viewport = Renderer::GetViewport();
-                resolution_combo(output, Renderer::SetResolutionOutput, "Match viewport", Vector2(viewport.width, viewport.height));
+                resolution_combo(output, Renderer::SetResolutionOutput, "Match viewport", Vector2(viewport.width, viewport.height), "r.resolution_output_match_viewport");
                 row_end();
             }
 

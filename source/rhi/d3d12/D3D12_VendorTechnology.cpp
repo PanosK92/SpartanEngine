@@ -413,6 +413,8 @@ namespace spartan
         uint32_t mode_ranges_output_width  = 0;
         uint32_t mode_ranges_output_height = 0;
         mode_range_t feature_mode;
+        uint32_t feature_in_width  = 0;
+        uint32_t feature_in_height = 0;
 
         void query_mode_ranges(uint32_t output_width, uint32_t output_height)
         {
@@ -521,8 +523,9 @@ namespace spartan
                 return;
             }
 
-            const uint32_t in_w = common::resolution_render_max_width;
-            const uint32_t in_h = common::resolution_render_max_height;
+            const bool dynamic_res = cvar_dynamic_resolution.GetValue();
+            const uint32_t in_w = dynamic_res ? common::resolution_render_max_width  : common::resolution_render_width;
+            const uint32_t in_h = dynamic_res ? common::resolution_render_max_height : common::resolution_render_height;
             query_mode_ranges(common::resolution_output_width, common::resolution_output_height);
             const mode_range_t* mode = select_mode(in_w, in_h, common::resolution_render_width, common::resolution_render_height);
             if (!mode)
@@ -542,8 +545,10 @@ namespace spartan
                 }
                 return;
             }
-            feature_mode = *mode;
-            quality      = mode->quality;
+            feature_mode      = *mode;
+            quality           = mode->quality;
+            feature_in_width  = in_w;
+            feature_in_height = in_h;
 
             SP_LOG_INFO(
                 "DLSS feature %ux%u -> %ux%u, quality %d, subrect %ux%u",
@@ -888,9 +893,10 @@ namespace spartan
             nvidia::request_history_reset();
             nvidia::context_destroy();
         }
-        else if (dlss::handle && !dlss::mode_accepts(dlss::feature_mode, common::resolution_render_width, common::resolution_render_height))
+        else if (dlss::handle && (!dlss::mode_accepts(dlss::feature_mode, common::resolution_render_width, common::resolution_render_height) ||
+                                  (!cvar_dynamic_resolution.GetValue() && (dlss::feature_in_width != common::resolution_render_width || dlss::feature_in_height != common::resolution_render_height))))
         {
-            // the resolution scale left the subrect range of the mode the feature was created with, recreate it in one that fits
+            // the resolution scale changed (when drs is off) or left the subrect range of the mode the feature was created with
             RHI_Device::QueueWaitAll();
             dlss::feature_destroy();
             common::reset_history = true;

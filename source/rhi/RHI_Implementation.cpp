@@ -33,6 +33,7 @@ namespace spartan
     VkInstance       RHI_Context::instance                    = nullptr;
     VkPhysicalDevice RHI_Context::device_physical             = nullptr;
     VkDevice         RHI_Context::device                      = nullptr;
+    uint64_t         RHI_Context::pipeline_cache_generation   = 1;
     uint32_t         RHI_Context::sdl_window_flags            = SDL_WINDOW_VULKAN;
     bool             RHI_Context::supports_imgui_multi_viewport = true;
 #elif defined(API_GRAPHICS_METAL)

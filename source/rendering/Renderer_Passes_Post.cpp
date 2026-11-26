@@ -583,6 +583,18 @@ namespace spartan
             return;
         }
 
+        const float reactivity_scale = std::clamp(cvar_dlss_reactivity.GetValue(), 0.0f, 1.0f);
+        if (reactivity_scale <= 0.0f)
+        {
+            if (!m_pass_state.cleared_reactivity)
+            {
+                RHI_CommandList::ClearTexture(tex_reactivity, Color::standard_black);
+                m_pass_state.cleared_reactivity = true;
+            }
+            return;
+        }
+        m_pass_state.cleared_reactivity = false;
+
         RHI_Texture* tex_velocity = GetRenderTarget(
             m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ?
             Renderer_RenderTarget::cloud_velocity :
@@ -609,7 +621,7 @@ namespace spartan
             RHI_CommandList::SetTexture(
                 Renderer_BindingsUav::tex,
                 tex_reactivity);
-            m_pcb_pass_cpu.set(pass_dlss_reactivity::scale, std::clamp(cvar_dlss_reactivity.GetValue(), 0.0f, 1.0f));
+            m_pcb_pass_cpu.set(pass_dlss_reactivity::scale, reactivity_scale);
             RHI_CommandList::Dispatch(tex_reactivity, GetResolutionScale());
         }
         RHI_CommandList::EndPass();
@@ -924,10 +936,27 @@ namespace spartan
         {
             const uint32_t width  = max(tex->GetWidth()  >> mip_start, 1u);
             const uint32_t height = max(tex->GetHeight() >> mip_start, 1u);
+            const uint32_t remaining = mip_count - (mip_start + 1);
 
-            // Conservative min/max pyramids use exact per-mip footprints.
-            // SPD's fixed 2x2 hierarchy does not cover normalized odd-size edges.
-            if (filter != Renderer_DownsampleFilter::Average || width > spd_max_size || height > spd_max_size)
+            // Conservative min/max pyramids need exact footprints on odd-sized mips.
+            // Use AMD SPD for any leading prefix of strictly-even dimensions (e.g. 3840x2088 -> 1920x1044 -> 960x522 -> 480x261 in one dispatch),
+            // then fall back to one-mip exact reduction for odd-sized tail mips.
+            uint32_t output_mip_count = min(remaining, spd_max_mips);
+            if (filter != Renderer_DownsampleFilter::Average)
+            {
+                uint32_t even_mips = 0;
+                uint32_t w = width;
+                uint32_t h = height;
+                while (even_mips < output_mip_count && (w & 1u) == 0 && (h & 1u) == 0 && w >= 2 && h >= 2)
+                {
+                    w >>= 1;
+                    h >>= 1;
+                    ++even_mips;
+                }
+                output_mip_count = even_mips;
+            }
+
+            if (output_mip_count < (filter == Renderer_DownsampleFilter::Average ? 1u : 2u) || width > spd_max_size || height > spd_max_size)
             {
                 const uint32_t dst_w = max(width  >> 1, 1u);
                 const uint32_t dst_h = max(height >> 1, 1u);
@@ -945,8 +974,6 @@ namespace spartan
                 continue;
             }
 
-            const uint32_t remaining        = mip_count - (mip_start + 1);
-            const uint32_t output_mip_count = min(remaining, spd_max_mips);
             const uint32_t thread_group_x   = (width  + 63) >> 6;
             const uint32_t thread_group_y   = (height + 63) >> 6;
 
@@ -2008,6 +2035,7 @@ namespace spartan
                     RHI_CommandList::SetColorTargets(tex_render,
                         GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity),
                         GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
+                    m_pass_state.cleared_reactivity = false;
                     RHI_CommandList::SetResolutionScale(true);
 
                     RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
@@ -2065,6 +2093,7 @@ namespace spartan
                 if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
                 {
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_reactivity);
+                    m_pass_state.cleared_reactivity = false;
                 }
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3d, s_particle_frame.tex_volume_write);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));

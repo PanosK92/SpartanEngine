@@ -608,22 +608,61 @@ namespace spartan
         m_bindless_samplers_dirty = true;
     }
 
+    namespace
+    {
+        bool should_use_half_res(const float cvar_value, const uint32_t height)
+        {
+            if (cvar_value > 0.5f)
+            {
+                return true;
+            }
+            if (cvar_value >= -0.5f)
+            {
+                return false;
+            }
+            // auto: keep 1080p/1440p at full resolution; use half resolution above 1440p (e.g. 4K -> 1080p)
+            return height > 1440;
+        }
+    }
+
     void Renderer::UpdateOptionalRenderTargets()
     {
         uint32_t width  = static_cast<uint32_t>(GetResolutionRender().x);
         uint32_t height = static_cast<uint32_t>(GetResolutionRender().y);
         uint32_t flags  = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
 
+        const bool ssao_half      = should_use_half_res(cvar_ssao_half_res.GetValue(), height);
+        const uint32_t ssao_width = ssao_half ? max(width / 2, 1u) : width;
+        const uint32_t ssao_height = ssao_half ? max(height / 2, 1u) : height;
+
         // ssao
         bool need_ssao = cvar_ssao.GetValueAs<bool>();
         if (need_ssao)
         {
+            if (auto& tex_ssao = at(view_targets(), Renderer_RenderTarget::ssao))
+            {
+                if (tex_ssao->GetWidth() != ssao_width || tex_ssao->GetHeight() != ssao_height)
+                {
+                    if (Renderer::view().frame.frame > 1)
+                    {
+                        RHI_Device::QueueWaitAll(true);
+                    }
+                    at(view_targets(), Renderer_RenderTarget::ssao)                = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::ssao_history_0)      = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::ssao_history_1)      = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::ssao_history_meta_0) = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::ssao_history_meta_1) = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::ssao_raw)            = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::ssao_packed)         = nullptr;
+                    m_pass_state.ssao_history.Reset();
+                }
+            }
             if (!at(view_targets(), Renderer_RenderTarget::ssao))
             {
                 at(view_targets(), Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     1,
                     RHI_Format::R16G16B16A16_Float,
@@ -635,8 +674,8 @@ namespace spartan
             {
                 at(view_targets(), Renderer_RenderTarget::ssao_history_0) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     1,
                     RHI_Format::R16G16B16A16_Float,
@@ -645,8 +684,8 @@ namespace spartan
                 );
                 at(view_targets(), Renderer_RenderTarget::ssao_history_1) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     1,
                     RHI_Format::R16G16B16A16_Float,
@@ -656,8 +695,8 @@ namespace spartan
                 // view depth and accumulated frame count of the history
                 at(view_targets(), Renderer_RenderTarget::ssao_history_meta_0) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     1,
                     RHI_Format::R16G16_Float,
@@ -666,8 +705,8 @@ namespace spartan
                 );
                 at(view_targets(), Renderer_RenderTarget::ssao_history_meta_1) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     1,
                     RHI_Format::R16G16_Float,
@@ -677,8 +716,8 @@ namespace spartan
                 // this frame's cortao result before temporal accumulation
                 at(view_targets(), Renderer_RenderTarget::ssao_raw) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     1,
                     RHI_Format::R16G16B16A16_Float,
@@ -691,14 +730,14 @@ namespace spartan
             {
                 // cortao packed linear depth and normal, it samples at most 8 mips
                 uint32_t mip_count = 1;
-                while (mip_count < 8 && (max(width, height) >> mip_count) > 0)
+                while (mip_count < 8 && (max(ssao_width, ssao_height) >> mip_count) > 0)
                 {
                     mip_count++;
                 }
                 at(view_targets(), Renderer_RenderTarget::ssao_packed) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
-                    width,
-                    height,
+                    ssao_width,
+                    ssao_height,
                     1,
                     mip_count,
                     RHI_Format::R32_Float,
@@ -720,16 +759,52 @@ namespace spartan
         }
         
         // a secondary view is absent from the tlas and never traces, it only needs the raster targets
-        const bool can_trace = RHI_Device::IsSupportedRayTracing() && !is_secondary_target_set();
+        const bool can_trace    = RHI_Device::IsSupportedRayTracing() && !is_secondary_target_set();
+        const bool rt_half      = should_use_half_res(cvar_rt_half_res.GetValue(), height);
+        const uint32_t rt_width = rt_half ? max(width / 2, 1u) : width;
+        const uint32_t rt_height = rt_half ? max(height / 2, 1u) : height;
+
+        // recreate rt and nrd screen targets if r.rt_half_res changed at runtime
+        if (can_trace)
+        {
+            if (auto& tex_reflections = at(view_targets(), Renderer_RenderTarget::reflections))
+            {
+                if (tex_reflections->GetWidth() != rt_width || tex_reflections->GetHeight() != rt_height)
+                {
+                    if (Renderer::view().frame.frame > 1)
+                    {
+                        RHI_Device::QueueWaitAll(true);
+                    }
+                    at(view_targets(), Renderer_RenderTarget::reflections)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "reflections");
+                    at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ray_traced_shadows");
+                    at(view_targets(), Renderer_RenderTarget::ray_traced_shadows_local)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, rt_width, rt_height, nrd_local_shadow_max, 1, RHI_Format::R16G16B16A16_Float, flags, "ray_traced_shadows_local");
+                    at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
+                    at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
+                    at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
+                    at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
+                    at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
+                    at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
+                    at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
+                    at(view_targets(), Renderer_RenderTarget::nrd_out_shadow_local)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow_local");
+                    at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position) = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)   = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_albedo)   = nullptr;
+                    at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
+                    m_pass_state.cleared_reflections    = false;
+                    m_pass_state.cleared_rt_reflections = false;
+                    m_pass_state.cleared_rt_shadows     = false;
+                }
+            }
+        }
 
         // ray traced reflections gbuffer, concurrent sharing so rt reflections can run on the compute queue
         bool need_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && can_trace;
         if (need_rt_reflections && !at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position))
         {
-            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
-            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_emissive");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_emissive");
         }
         else if (!need_rt_reflections && at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position))
         {
@@ -1111,8 +1186,9 @@ namespace spartan
             at(view_targets(), Renderer_RenderTarget::light_diffuse_scattered) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_diffuse_scattered");
 
             const bool rt_supported      = RHI_Device::IsSupportedRayTracing();
-            const uint32_t rt_width      = rt_supported ? width_render : 1;
-            const uint32_t rt_height     = rt_supported ? height_render : 1;
+            const bool rt_half           = rt_supported && !is_secondary_target_set() && should_use_half_res(cvar_rt_half_res.GetValue(), height_render);
+            const uint32_t rt_width      = rt_supported ? (rt_half ? max(width_render / 2, 1u) : width_render) : 1;
+            const uint32_t rt_height     = rt_supported ? (rt_half ? max(height_render / 2, 1u) : height_render) : 1;
             at(view_targets(), Renderer_RenderTarget::sss)                      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
             at(view_targets(), Renderer_RenderTarget::reflections)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
             at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
@@ -1122,15 +1198,15 @@ namespace spartan
             {
                 // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
                 // must share one resolution: both presets use the same nrd pool_screen
-                at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
-                at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
-                at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
-                at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
-                at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
-                at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
+                at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
+                at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
+                at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
+                at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
+                at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
+                at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
                 // sigma_shadow_translucency writes the shadow in x and the glass colour in yzw
-                at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
-                at(view_targets(), Renderer_RenderTarget::nrd_out_shadow_local)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow_local");
+                at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
+                at(view_targets(), Renderer_RenderTarget::nrd_out_shadow_local)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, rt_width, rt_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow_local");
             }
         };
 

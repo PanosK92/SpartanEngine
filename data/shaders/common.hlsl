@@ -459,9 +459,15 @@ float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprin
 {
     if (buffer_frame.ocean_enabled <= 0.5f)
         return 1.0f;
-    float wave_detail = 1.0f - smoothstep(0.5f, 2.0f, footprint);
+    // Skip expensive FFT displacement + shore lookups on dry surfaces above max wave crest
+    // and on deeply submerged surfaces where wave height perturbation is negligible.
     float water_y = buffer_frame.ocean_sea_level;
-    if (wave_detail > 0.0f)
+    float height_delta = position.y - water_y;
+    const float max_wave_margin = 6.0f;
+    if (height_delta > max_wave_margin)
+        return 1.0f;
+    float wave_detail = 1.0f - smoothstep(0.5f, 2.0f, footprint);
+    if (wave_detail > 0.0f && abs(height_delta) < max_wave_margin)
         water_y = lerp(water_y, get_ocean_height(position.xz), wave_detail);
     float depth = water_y - position.y;
     if (depth <= 0.0f)

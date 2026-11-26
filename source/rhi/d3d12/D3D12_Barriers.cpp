@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "D3D12_Internal.h"
+#include "../../profiling/Profiler.h"
 #include <wrl/client.h>
 #include <vector>
 #include <cstdint>
@@ -376,6 +377,15 @@ namespace spartan::d3d12_barriers
         if (!cmd_list || !barriers || count == 0)
         {
             return;
+        }
+
+        Profiler::m_rhi_pipeline_barriers++;
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (barriers[i].Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION && barriers[i].Transition.pResource && barriers[i].Transition.StateBefore != barriers[i].Transition.StateAfter && !d3d12_state::IsBuffer(barriers[i].Transition.pResource))
+            {
+                Profiler::m_rhi_layout_barriers++;
+            }
         }
 
         if (!enabled)

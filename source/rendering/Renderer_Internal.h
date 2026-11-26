@@ -202,6 +202,7 @@ namespace spartan
             bool cleared_reflections     = false;
             bool cleared_rt_reflections  = false;
             bool cleared_rt_shadows      = false;
+            bool cleared_reactivity      = false;
             bool skip_rt_trace           = false;
             // set by the reflections trace, shade and denoise must agree with the layout it wrote
             bool reflections_checkerboard = false;
@@ -359,6 +360,7 @@ namespace spartan
                 ssao_history.Reset();
                 fog_history.Reset();
                 particle_volume_history.Reset();
+                cleared_reactivity = false;
             }
 
             void ResetWorld()
@@ -397,6 +399,7 @@ namespace spartan
             bool cleared_reflections    = false;
             bool cleared_rt_reflections = false;
             bool cleared_rt_shadows     = false;
+            bool cleared_reactivity     = false;
             bool depth_history_cleared  = false;
             bool hiz_history_valid      = false;
             RestirState restir;

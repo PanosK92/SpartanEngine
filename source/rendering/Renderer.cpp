@@ -504,6 +504,7 @@ namespace spartan
             swap(pass.cleared_reflections,     h.cleared_reflections);
             swap(pass.cleared_rt_reflections,  h.cleared_rt_reflections);
             swap(pass.cleared_rt_shadows,      h.cleared_rt_shadows);
+            swap(pass.cleared_reactivity,      h.cleared_reactivity);
             swap(pass.depth_history_cleared,   h.depth_history_cleared);
             swap(pass.hiz_history_valid,       h.hiz_history_valid);
             swap(pass.restir,                  h.restir);
@@ -1456,7 +1457,15 @@ namespace spartan
         static uint32_t options_hash  = 0;
         static float restir_scale_old = -1.0f;
 
-        const uint32_t options_hash_new = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2) | (cvar_restir_pt_async.GetValueAs<bool>() << 3);
+        const uint32_t ssao_half_bits = cvar_ssao_half_res.GetValue() > 0.5f ? 2u : (cvar_ssao_half_res.GetValue() >= -0.5f ? 1u : 0u);
+        const uint32_t rt_half_bits   = cvar_rt_half_res.GetValue() > 0.5f ? 2u : (cvar_rt_half_res.GetValue() >= -0.5f ? 1u : 0u);
+        const uint32_t options_hash_new =
+            (cvar_ssao.GetValueAs<bool>() << 0) |
+            (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) |
+            (cvar_restir_pt.GetValueAs<bool>() << 2) |
+            (cvar_restir_pt_async.GetValueAs<bool>() << 3) |
+            (ssao_half_bits << 4) |
+            (rt_half_bits << 6);
         const float    restir_scale_new = cvar_restir_pt_scale.GetValue();
 
         if (options_hash_new != options_hash || restir_scale_new != restir_scale_old)
@@ -2289,7 +2298,10 @@ namespace spartan
     {
         if (SetResolution(m_resolution_output, width, height, recreate_resources, false, true, "Output"))
         {
-            Display::RegisterDisplayMode(width, height, Timer::GetFpsLimit(), Display::GetId());
+            if (!cvar_resolution_output_match_viewport.GetValueAs<bool>())
+            {
+                Display::RegisterDisplayMode(width, height, Timer::GetFpsLimit(), Display::GetId());
+            }
         }
     }
 

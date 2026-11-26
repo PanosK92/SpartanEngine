@@ -740,11 +740,10 @@ namespace spartan
             return;
         }
 
-        // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
-        // we know the previous presentation completed, so the semaphore is safe to signal again
+        // present on the graphics queue (or dedicated present queue if different)
         RHI_SyncPrimitive* rendering_complete_semaphore = m_rendering_complete_semaphore[m_image_index].get();
-        // the ffx present submits its interpolation work to the queue it is called on, which has to be the game queue
-        const RHI_Queue_Type queue_type = frame_generation_vk::owns(m_rhi_swapchain) ? RHI_Queue_Type::Graphics : RHI_Queue_Type::Present;
+        const bool present_on_graphics  = frame_generation_vk::owns(m_rhi_swapchain) || RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Present) == RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics);
+        const RHI_Queue_Type queue_type = present_on_graphics ? RHI_Queue_Type::Graphics : RHI_Queue_Type::Present;
         bool success = RHI_Device::GetQueue(queue_type)->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
         if (success)
         {

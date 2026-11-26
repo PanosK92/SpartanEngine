@@ -382,6 +382,21 @@ namespace spartan
             }
         }
 
+        atomic<bool> logged_drs_override = false;
+
+        void NVSDK_CONV ngx_log_callback(const char* message, NVSDK_NGX_Logging_Level level, NVSDK_NGX_Feature source)
+        {
+            if (!message || !message[0])
+            {
+                return;
+            }
+
+            if (strstr(message, "Override Reported: ModelPreset") != nullptr && !logged_drs_override.exchange(true))
+            {
+                SP_LOG_WARNING("DLSS preset is overridden by NVIDIA App / driver profile: %s", message);
+            }
+        }
+
         void sdk_init()
         {
             if (!RHI_Device::IsSupportedDlss() || sdk_ready)
@@ -393,9 +408,12 @@ namespace spartan
             library_path = (filesystem::path(FileSystem::GetExecutableDirectory()) / "third_party").wstring();
             dll_dir      = library_path.c_str();
 
-            NVSDK_NGX_FeatureCommonInfo info = {};
-            info.PathListInfo.Path           = &dll_dir;
-            info.PathListInfo.Length         = 1;
+            NVSDK_NGX_FeatureCommonInfo info          = {};
+            info.PathListInfo.Path                    = &dll_dir;
+            info.PathListInfo.Length                  = 1;
+            info.LoggingInfo.LoggingCallback          = ngx_log_callback;
+            info.LoggingInfo.MinimumLoggingLevel      = NVSDK_NGX_LOGGING_LEVEL_ON;
+            info.LoggingInfo.DisableOtherLoggingSinks = true;
 
             NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_Init_with_ProjectID(
                 RHI_VendorTechnology::dlss_project_id,
@@ -442,8 +460,26 @@ namespace spartan
             sdk_ready = true;
         }
 
+        uint32_t feature_in_width             = 0;
+        uint32_t feature_in_height            = 0;
+        int32_t active_preset                 = -1;
+        TConsoleVar<int32_t> cvar_dlss_preset("r.dlss_preset", -1, "DLSS render preset override (-1 auto, 0 default, 5 E/CNN, 10 J, 11 K, 12 L, 13 M)");
+
         void set_dlss4_presets()
         {
+            const int32_t override_preset = cvar_dlss_preset.GetValue();
+            if (override_preset >= 0)
+            {
+                const unsigned int preset = static_cast<unsigned int>(override_preset);
+                NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA,             preset);
+                NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality,          preset);
+                NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced,         preset);
+                NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality,     preset);
+                NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance,      preset);
+                NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, preset);
+                active_preset = override_preset;
+                return;
+            }
             const unsigned int preset_quality = static_cast<unsigned int>(NVSDK_NGX_DLSS_Hint_Render_Preset_K);
             const unsigned int preset_perf    = static_cast<unsigned int>(NVSDK_NGX_DLSS_Hint_Render_Preset_M);
             const unsigned int preset_ultra   = static_cast<unsigned int>(NVSDK_NGX_DLSS_Hint_Render_Preset_L);
@@ -453,6 +489,7 @@ namespace spartan
             NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality,     preset_quality);
             NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance,      preset_perf);
             NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, preset_ultra);
+            active_preset = -1;
         }
 
         // ngx reports the render subrect range each quality mode accepts, the feature is created with the full render
@@ -592,9 +629,11 @@ namespace spartan
                 return;
             }
 
-            const uint32_t in_w = common::resolution_render_max_width;
-            const uint32_t in_h = common::resolution_render_max_height;
+            const bool dynamic_res = cvar_dynamic_resolution.GetValue();
+            const uint32_t in_w = dynamic_res ? common::resolution_render_max_width  : common::resolution_render_width;
+            const uint32_t in_h = dynamic_res ? common::resolution_render_max_height : common::resolution_render_height;
             query_mode_ranges(common::resolution_output_width, common::resolution_output_height);
+            set_dlss4_presets();
             const mode_range_t* mode = select_mode(in_w, in_h, common::resolution_render_width, common::resolution_render_height);
             if (!mode)
             {
@@ -613,8 +652,10 @@ namespace spartan
                 }
                 return;
             }
-            feature_mode = *mode;
-            quality      = mode->quality;
+            feature_mode      = *mode;
+            quality           = mode->quality;
+            feature_in_width  = in_w;
+            feature_in_height = in_h;
 
             SP_LOG_INFO(
                 "DLSS feature %ux%u -> %ux%u, quality %d, subrect %ux%u",
@@ -992,9 +1033,11 @@ namespace spartan
             nvidia::request_history_reset();
             nvidia::context_destroy();
         }
-        else if (dlss::handle && !dlss::mode_accepts(dlss::feature_mode, common::resolution_render_width, common::resolution_render_height))
+        else if (dlss::handle && (dlss::active_preset != dlss::cvar_dlss_preset.GetValue() ||
+                                  !dlss::mode_accepts(dlss::feature_mode, common::resolution_render_width, common::resolution_render_height) ||
+                                  (!cvar_dynamic_resolution.GetValue() && (dlss::feature_in_width != common::resolution_render_width || dlss::feature_in_height != common::resolution_render_height))))
         {
-            // the resolution scale left the subrect range of the mode the feature was created with, recreate it in one that fits
+            // the preset changed, the resolution scale changed (when drs is off), or the subrect left the feature mode range
             RHI_Device::QueueWaitAll();
             dlss::feature_destroy();
             common::reset_history = true;

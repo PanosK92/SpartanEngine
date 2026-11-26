@@ -2719,13 +2719,18 @@ namespace spartan
                 const float column_width = (inner_width - column_gap) * 0.5f;
                 const float line_height  = font_body->GetLineHeight() + px(3.0f);
 
-                auto cell = [&](const uint32_t column, const char* label, const char* value)
+                auto cell = [&](const uint32_t column, const char* label, const char* value, const bool applicable = true)
                 {
                     const float x0  = left + static_cast<float>(column) * (column_width + column_gap);
                     const float mid = y + line_height * 0.5f;
                     text(font_small, label, x0, center_top(font_small, mid), col::muted);
-                    text_right(font_body, value, x0 + column_width, center_top(font_body, mid), col::text);
+                    text_right(font_body, applicable ? value : "N/A", x0 + column_width, center_top(font_body, mid), applicable ? col::text : col::dim);
                 };
+
+                const RHI_Api_Type api           = RHI_Device::GetApiType();
+                const bool has_barriers          = api == RHI_Api_Type::Vulkan || api == RHI_Api_Type::D3d12;
+                const bool has_pipeline_binds    = api == RHI_Api_Type::Vulkan || api == RHI_Api_Type::D3d12;
+                const bool has_descriptor_sets   = api == RHI_Api_Type::Vulkan;
 
                 format_count(buffer, sizeof(buffer), snapshot.draws);
                 cell(0, "Draws", buffer);
@@ -2734,21 +2739,21 @@ namespace spartan
                 y += line_height;
 
                 format_count(buffer, sizeof(buffer), snapshot.barriers);
-                cell(0, "Barriers", buffer);
+                cell(0, "Barriers", buffer, has_barriers);
                 format_count(buffer, sizeof(buffer), snapshot.layouts);
-                cell(1, "Layouts", buffer);
+                cell(1, "Layouts", buffer, has_barriers);
                 y += line_height;
 
                 format_count(buffer, sizeof(buffer), snapshot.pipeline_max);
                 cell(0, "Pipelines", buffer);
                 format_count(buffer, sizeof(buffer), snapshot.pipelines);
-                cell(1, "Pipeline binds", buffer);
+                cell(1, "Pipeline binds", buffer, has_pipeline_binds);
                 y += line_height;
 
                 format_count(buffer, sizeof(buffer), snapshot.vertex_binds);
                 cell(0, "Vertex binds", buffer);
                 snprintf(buffer, sizeof(buffer), "%u / %u", snapshot.descriptors, rhi_max_descriptor_set_count);
-                cell(1, "Desc. sets", buffer);
+                cell(1, "Desc. sets", buffer, has_descriptor_sets);
                 y += line_height + px(4.0f);
 
                 const Vector2& render = Renderer::GetResolutionRender();

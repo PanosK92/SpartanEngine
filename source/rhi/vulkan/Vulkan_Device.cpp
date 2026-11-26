@@ -338,7 +338,7 @@ namespace spartan
                 if (found)
                 {
                     extensions_supported.emplace_back(requested);
-                    calibrated_timestamps_supported |= strcmp(requested, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME) == 0;
+                    calibrated_timestamps_supported        |= strcmp(requested, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME) == 0;
                     memory_priority_supported              |= strcmp(requested, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0;
                     pageable_device_local_memory_supported |= strcmp(requested, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0;
                 }
@@ -432,6 +432,7 @@ namespace spartan
     namespace ngx_dlss
     {
         wstring data_path;
+        wstring library_path;
         const wchar_t* dll_dir = nullptr;
         NVSDK_NGX_FeatureCommonInfo feature_info = {};
         vector<string> instance_ext_store;
@@ -453,8 +454,9 @@ namespace spartan
         {
             if (data_path.empty())
             {
-                data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
-                dll_dir   = data_path.c_str();
+                data_path    = (filesystem::path(FileSystem::GetExecutableDirectory()) / "cache").wstring();
+                library_path = (filesystem::path(FileSystem::GetExecutableDirectory()) / "third_party").wstring();
+                dll_dir      = library_path.c_str();
                 feature_info.PathListInfo.Path   = &dll_dir;
                 feature_info.PathListInfo.Length = 1;
             }
@@ -512,7 +514,7 @@ namespace spartan
             vkGetPhysicalDeviceProperties(RHI_Context::device_physical, &properties);
 
             generated_cache::Hash hash;
-            hash.Add(string("ngx_device_extensions_v1"));
+            hash.Add(string("ngx_device_extensions_v2"));
             hash.Add(properties.vendorID);
             hash.Add(properties.deviceID);
             hash.Add(properties.driverVersion);
@@ -882,20 +884,11 @@ namespace spartan
                 SP_LOG_INFO("Copy sharing family %u.", index_copy);
             }
 
-            // present: prefer a second queue in the graphics family so present/vsync does not stall graphics
+            // present directly on the graphics queue to avoid cross-queue semaphore handoffs and frame pacing jitter
             index_present       = index_graphics;
             local_index_present = 0;
             present_dedicated   = false;
-            if (queue_families[index_graphics].queueCount >= 2)
-            {
-                local_index_present = 1;
-                present_dedicated   = true;
-                SP_LOG_INFO("Dedicated present queue: graphics family %u, queue 1.", index_graphics);
-            }
-            else
-            {
-                SP_LOG_INFO("No dedicated present queue available, presenting on graphics.");
-            }
+            SP_LOG_INFO("Presenting directly on graphics family %u, queue 0.", index_graphics);
 
             return true;
         }
@@ -1794,6 +1787,8 @@ namespace spartan
 
         void release()
         {
+            RHI_Context::pipeline_cache_generation++;
+
             sets.clear();
             layouts.clear();
             pipelines.clear();

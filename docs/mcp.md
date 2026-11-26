@@ -9,7 +9,7 @@ Spartan can be driven from outside while it runs: AI agents, scripts and tools l
 
 ```powershell
 cd binaries
-.\spartan_vulkan_development.exe --mcp-control --mcp-port=47777 --no-steam
+.\spartan_d3d12_development.exe --mcp-control --mcp-port=47777 --no-steam
 ```
 
 | Flag | Effect |

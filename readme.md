@@ -215,7 +215,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 | System               | Details                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
-| **Platforms**        | Windows (DirectX 12 and Vulkan), Linux (Vulkan) and macOS 26.0+ (Metal 4), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; WebGPU on Windows through Dawn and in the browser through WebAssembly, see **[WebGPU and the web](docs/webgpu.md)** |
+| **Platforms**        | Windows (**DirectX 12** recommended, plus Vulkan), Linux & other platforms (**Vulkan** recommended) and macOS 26.0+ (**Metal 4**), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; WebGPU on Windows through Dawn and in the browser through WebAssembly, see **[WebGPU and the web](docs/webgpu.md)** |
 | **Physics**          | PhysX with rigid bodies, character kinematics, vehicle dynamics and two-way cloth                 |
 | **Animation**        | Skeletal animation with keyframed clips, crossfade blending, four-bone skinning and two-bone IK with ground-aware foot planting |
 | **Particles**        | GPU-driven compute emission and simulation, depth-buffer collision and soft blending              |
@@ -239,14 +239,17 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 > [!TIP]
 > **Just want to try it?** Prebuilt binaries ship with every **[release](https://github.com/PanosK92/SpartanEngine/releases)**; on first launch the World Launcher downloads the project assets and the worlds. Building from source? **[Getting started](docs/getting_started.md)** has the details.
 
-#### <img src=".github/images/platforms/windows.svg" height="16" alt=""/>&nbsp; Windows
+#### <img src=".github/images/platforms/windows.svg" height="16" alt=""/>&nbsp; Windows &nbsp;<sub>DirectX 12 recommended</sub>
 
 ```powershell
-# then open spartan.slnx (use d3d12 for DirectX 12, or no arguments for a menu)
-generate_project_files.bat vs2026 vulkan
+# interactive launcher (press 1 for DirectX 12, 2 for Vulkan, 3 for WebGPU, O to open spartan.slnx)
+generate_project_files.bat
+
+# or non-interactive (d3d12 is recommended on Windows; use vulkan or webgpu for the other backends)
+generate_project_files.bat vs2026 d3d12
 ```
 
-#### <img src=".github/images/platforms/linux.svg" height="16" alt=""/>&nbsp; Linux
+#### <img src=".github/images/platforms/linux.svg" height="16" alt=""/>&nbsp; Linux &nbsp;<sub>Vulkan recommended</sub>
 
 ```bash
 tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make config=release_x64
@@ -265,9 +268,10 @@ tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
 To just try it: download `spartan_web_webgpu_*.zip` from the releases, unzip, run `python serve.py` and open the printed address in Chrome, Edge or Brave. To build it ([full guide](docs/webgpu.md)):
 
 ```powershell
-# the browser can't compile hlsl: build and run the windows webgpu backend once so it fills the shader cache
-# (setup downloads dawn, the menu option is [3] visual studio 2026 - webgpu)
+# the browser can't compile hlsl: build the windows webgpu backend and bake the WGSL shader cache once
+# (setup downloads Dawn; or press [3] in generate_project_files.bat)
 generate_project_files.bat vs2026 webgpu
+.\binaries\spartan_webgpu_development.exe --bake-shaders
 # needs emsdk (EMSDK or ~/emsdk), cmake, ninja and git, then open http://localhost:8080/spartan.html in a WebGPU browser
 python tools/web_build.py deps
 python tools/web_build.py engine --world pbr_materials_example.world
@@ -295,7 +299,7 @@ The same executable is the editor and the game: `-game` hides the editor panels,
 With dependencies already installed, regenerate without downloading them:
 
 ```powershell
-tools/premake5.exe --file=tools/premake.lua --skip-setup vs2026 vulkan
+tools/premake5.exe --file=tools/premake.lua --skip-setup vs2026 d3d12
 ```
 
 ```bash

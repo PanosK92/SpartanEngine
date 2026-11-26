@@ -43,15 +43,45 @@ uint cortao_frame_seed()
     return (word >> 22u) ^ word;
 }
 
+uint2 ssao_texture_size()
+{
+    uint2 size;
+#if defined(SSAO_PREPASS)
+    tex_uav_mips[0].GetDimensions(size.x, size.y);
+#else
+    tex_uav.GetDimensions(size.x, size.y);
+#endif
+    return size;
+}
+
+uint2 ssao_active_resolution()
+{
+    uint2 tex_size = ssao_texture_size();
+    return max(uint2(floor(float2(tex_size) * buffer_frame.resolution_scale)), uint2(1u, 1u));
+}
+
+uint2 ssao_to_gbuffer_pixel(uint2 ssao_pixel)
+{
+    uint2 ssao_size = ssao_texture_size();
+    uint2 gb_size;
+    tex_depth.GetDimensions(gb_size.x, gb_size.y);
+    if (all(ssao_size == gb_size))
+    {
+        return ssao_pixel;
+    }
+    float2 uv = (float2(ssao_pixel) + 0.5f) / float2(ssao_size);
+    return min(uint2(uv * float2(gb_size)), gb_size - 1u);
+}
+
 uint cortao_packed_resolution()
 {
-    uint2 resolution = uint2(get_render_resolution_active());
+    uint2 resolution = ssao_active_resolution();
     return resolution.x | (resolution.y << 16u);
 }
 
 float3 cortao_load_view_normal(int2 pixel)
 {
-    float3 normal = get_normal_view_space(uint2(pixel));
+    float3 normal = get_normal_view_space(ssao_to_gbuffer_pixel(uint2(pixel)));
     return float3(normal.x, normal.y, -normal.z);
 }
 
@@ -78,7 +108,7 @@ float ssao_normal_weight(float cosine)
 
 cortao_float cortao_loadDepth(cortao_int2 pixelCoords)
 {
-    return get_depth(uint2(pixelCoords));
+    return get_depth(ssao_to_gbuffer_pixel(uint2(pixelCoords)));
 }
 
 cortao_float3 cortao_loadNormal(cortao_int2 pixelCoords)
@@ -139,7 +169,7 @@ float3 camera_previous(float2 uv, float depth_raw)
 // velocity buffer as a uv offset from this frame's jittered sample to the previous frame's jittered sample
 float2 velocity_buffer_uv(uint2 pixel)
 {
-    float2 velocity_ndc = get_velocity_uv(pixel);
+    float2 velocity_ndc = get_velocity_uv(ssao_to_gbuffer_pixel(pixel));
     return (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current - velocity_ndc) * float2(0.5f, -0.5f);
 }
 
@@ -157,7 +187,7 @@ float4 moving_occluder_tap(int2 center, uint index, int2 out_size, float view_de
     const float angle     = float(index) * (PI / 4.0f) + float(ring) * (PI / 16.0f);
     const float dist      = radius_px * 0.5f * float(ring + 1u) + 4.0f;
     const int2  tap       = clamp(center + int2(round(float2(cos(angle), sin(angle)) * dist)), int2(0, 0), out_size - 1);
-    const float tap_depth = get_depth(uint2(tap));
+    const float tap_depth = get_depth(ssao_to_gbuffer_pixel(uint2(tap)));
     if (tap_depth == 0.0f)
     {
         return float4(0.0f, 0.0f, 0.0f, 4.0f);
@@ -237,7 +267,7 @@ groupshared uint   gs_tile_has_geo;
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID)
 {
-    const int2  out_size   = int2(get_render_resolution_active());
+    const int2  out_size   = int2(ssao_active_resolution());
     const uint2 group_base = thread_id.xy - group_thread_id.xy;
     const int2  tile_origin = int2(group_base) - 2;
     const uint  tile_index  = group_thread_id.y * THREAD_GROUP_COUNT_X + group_thread_id.x;
@@ -251,7 +281,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     }
     GroupMemoryBarrierWithGroupSync();
     const uint2 pixel_clamped = uint2(min(int2(thread_id.xy), out_size - 1));
-    const float depth_self    = get_depth(pixel_clamped);
+    const float depth_self    = get_depth(ssao_to_gbuffer_pixel(pixel_clamped));
     if (WaveActiveAnyTrue(depth_self > 0.0f) && WaveIsFirstLane())
     {
         InterlockedOr(gs_tile_has_geo, 1u);
@@ -268,22 +298,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     }
 #else
     const uint2 pixel_clamped = uint2(min(int2(thread_id.xy), out_size - 1));
-    const float depth_self    = get_depth(pixel_clamped);
+    const float depth_self    = get_depth(ssao_to_gbuffer_pixel(pixel_clamped));
 #endif
 
     for (uint i = tile_index; i < TILE_N; i += THREAD_GROUP_COUNT_X * THREAD_GROUP_COUNT_Y)
     {
         const int2   tile_pixel = clamp(tile_origin + int2(i % TILE_DIM, i / TILE_DIM), int2(0, 0), out_size - 1);
+        const uint2  gb_pixel   = ssao_to_gbuffer_pixel(uint2(tile_pixel));
         const float4 tile_ao    = tex.Load(int3(tile_pixel, 0));
         g_tile_visibility[i]    = tile_ao.w;
         g_tile_bent[i]          = tile_ao.xyz;
-        g_tile_depth[i]         = ssao_view_depth(get_depth(uint2(tile_pixel)));
-        g_tile_normal[i]        = get_normal(uint2(tile_pixel));
+        g_tile_depth[i]         = ssao_view_depth(get_depth(gb_pixel));
+        g_tile_normal[i]        = get_normal(gb_pixel);
     }
     if (tile_index < 32u)
     {
         const int2  mover_center = min(int2(group_base) + 4, out_size - 1);
-        const float center_depth = get_depth(uint2(mover_center));
+        const float center_depth = get_depth(ssao_to_gbuffer_pixel(uint2(mover_center)));
         const float mover_depth  = center_depth > 0.0f ? center_depth : depth_self;
         g_tile_mover[tile_index] = moving_occluder_tap(mover_center, tile_index, out_size, ssao_view_depth(mover_depth));
     }
@@ -364,7 +395,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
     const float3 prev_camera     = camera_previous(uv, depth_raw);
     // The velocity target stores the previous linear depth of this surface, including object motion.
-    const float object_prev_z = abs(tex_velocity[pixel].w);
+    const float object_prev_z = abs(tex_velocity[ssao_to_gbuffer_pixel(pixel)].w);
     const bool has_object_depth = object_prev_z > 0.0f && object_prev_z < FLT_MAX_16U;
     const float prev_expected_z = has_object_depth ? min(object_prev_z, 65000.0f) : ssao_view_depth(prev_camera.z);
     const float2 velocity_matrix = prev_camera.xy - uv;
@@ -391,7 +422,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 
     float2 texture_size;
     tex2.GetDimensions(texture_size.x, texture_size.y);
-    const float2 prev_size = max(floor(buffer_frame.resolution_render * buffer_frame.resolution_scale_previous), float2(1.0f, 1.0f));
+    const float2 prev_size = max(floor(texture_size * buffer_frame.resolution_scale_previous), float2(1.0f, 1.0f));
 
     float blend_current = 1.0f;
     float hist_vis      = cur_vis;
@@ -496,7 +527,7 @@ groupshared uint   gs_denoise_has_geo;
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint3 group_id : SV_GroupID)
 {
-    const int2 out_size   = int2(get_render_resolution_active());
+    const int2 out_size   = int2(ssao_active_resolution());
     const int2 max_coord  = out_size - 1;
     const uint thread_idx = group_thread_id.y * TILE_W + group_thread_id.x;
 
@@ -534,7 +565,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     {
         const int2 scoord     = clamp(tile_origin + int2(i % LDS_W, i / LDS_W), int2(0, 0), max_coord);
         g_lds_ao[i]           = tex.Load(int3(scoord, 0));
-        g_lds_normal_depth[i] = float4(get_normal(uint2(scoord)), tex2.Load(int3(scoord, 0)).r);
+        g_lds_normal_depth[i] = float4(get_normal(ssao_to_gbuffer_pixel(uint2(scoord))), tex2.Load(int3(scoord, 0)).r);
     }
     GroupMemoryBarrierWithGroupSync();
 
@@ -693,7 +724,7 @@ cortao_uint cortao_samplePackedData(cortao_float2 texCoords, cortao_float mipmap
     if (any(texCoords < 0.0f) || any(texCoords >= 1.0f))
         return 0u;
 
-    uint2 size = uint2(get_render_resolution_active());
+    uint2 size = ssao_active_resolution();
     uint max_mip = min(7u, uint(firstbithigh(min(size.x, size.y))));
     uint mip = uint(clamp(floor(mipmap + 0.5f), 0.0f, float(max_mip)));
     uint2 mip_size = size >> mip;
@@ -739,7 +770,7 @@ CORTAOMainPassParameters cortao_main_pass_parameters()
 {
     // spartan projection is left handed, x' = p00 x / z + p20, y' = p11 y / z + p21, uv.y points down
     float4 projection  = cortao_projection_terms();
-    float2 resolution  = get_render_resolution_active();
+    float2 resolution  = float2(ssao_active_resolution());
     float inverse_x    = 1.0f / projection.x;
     float inverse_y    = 1.0f / projection.y;
     float apparent_max = inverse_y * g_ao_screen_radius_ratio * 2.0f;
@@ -766,13 +797,13 @@ CORTAOMainPassParameters cortao_main_pass_parameters()
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     const uint2 pos = thread_id.xy;
-    if (any(pos >= uint2(get_render_resolution_active())))
+    if (any(pos >= ssao_active_resolution()))
     {
         return;
     }
 
     // sky has no receiving surface, keep open visibility for the filters
-    if (get_depth(pos) == 0.0f)
+    if (get_depth(ssao_to_gbuffer_pixel(pos)) == 0.0f)
     {
         tex_uav[pos] = float4(0, 0, 0, 1);
         return;

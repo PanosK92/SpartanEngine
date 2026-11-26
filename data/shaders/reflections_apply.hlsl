@@ -217,11 +217,110 @@ float3 ocean_whitewater_light(Surface surface, uint2 pixel)
     return tex3.Load(int3(pixel, 0)).rgb + sh_irradiance_l2(surface.normal, sky_sh, 1.0f) * INV_PI;
 }
 
+// Shared 6x6 half-res raw depth cache per 8x8 full-res thread group (36 loads instead of 256 per tile).
+groupshared float gs_half_depth[36];
+
+// Direct load when reflections match frame resolution; fast hardware bilinear on continuous surfaces (tested from LDS depth),
+// depth-and-normal-aware 2x2 bilateral upsample only on silhouette depth discontinuities when half-res.
+float3 sample_reflection_bilateral(uint2 thread_xy, float2 uv, float2 resolution_out, uint2 ref_res, int2 tile_origin, float depth, float3 normal, float3 preloaded_bilinear, bool has_preloaded)
+{
+    if (all(ref_res == uint2(resolution_out)))
+    {
+        return tex[thread_xy].rgb;
+    }
+
+    float2 fcoord  = uv * float2(ref_res) - 0.5f;
+    int2   base    = int2(floor(fcoord));
+    int2   l00     = clamp(base - tile_origin,              int2(0, 0), int2(5, 5));
+    int2   l10     = clamp(base + int2(1, 0) - tile_origin, int2(0, 0), int2(5, 5));
+    int2   l01     = clamp(base + int2(0, 1) - tile_origin, int2(0, 0), int2(5, 5));
+    int2   l11     = clamp(base + int2(1, 1) - tile_origin, int2(0, 0), int2(5, 5));
+
+    float4 tap_d = float4(
+        gs_half_depth[l00.y * 6 + l00.x],
+        gs_half_depth[l10.y * 6 + l10.x],
+        gs_half_depth[l01.y * 6 + l01.x],
+        gs_half_depth[l11.y * 6 + l11.x]
+    );
+    // In reverse-Z (d ~ near/z), |d_tap - d_center| / d_center closely matches relative linear depth error with zero divisions.
+    float4 rel_d = abs(tap_d - depth);
+    float  max_rel_d = max(max(rel_d.x, rel_d.y), max(rel_d.z, rel_d.w));
+    if (max_rel_d <= max(depth, 1e-6f) * 0.06f && min(min(tap_d.x, tap_d.y), min(tap_d.z, tap_d.w)) > 0.0f)
+    {
+        return has_preloaded ? preloaded_bilinear : tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+    }
+
+    float  center_z = linearize_depth(depth);
+    float  inv_z    = 1.0f / max(center_z, 0.1f);
+    float2 inv_rres = 1.0f / float2(ref_res);
+    int2   max_tap  = int2(ref_res) - 1;
+    int2   t00      = clamp(base,                int2(0, 0), max_tap);
+    int2   t10      = clamp(base + int2(1, 0),   int2(0, 0), max_tap);
+    int2   t01      = clamp(base + int2(0, 1),   int2(0, 0), max_tap);
+    int2   t11      = clamp(base + int2(1, 1),   int2(0, 0), max_tap);
+
+    float4 tap_z = float4(
+        linearize_depth(tap_d.x),
+        linearize_depth(tap_d.y),
+        linearize_depth(tap_d.z),
+        linearize_depth(tap_d.w)
+    );
+    float4 rel_z = abs(tap_z - center_z) * inv_z;
+    float2 frac_uv = frac(fcoord);
+    float4 w_b = float4(
+        (1.0f - frac_uv.x) * (1.0f - frac_uv.y),
+        frac_uv.x          * (1.0f - frac_uv.y),
+        (1.0f - frac_uv.x) * frac_uv.y,
+        frac_uv.x          * frac_uv.y
+    );
+    float4 w_z = 1.0f / (1.0f + rel_z * 20.0f);
+    float4 w_n = float4(
+        pow(saturate(dot(normal, get_normal((float2(t00) + 0.5f) * inv_rres))), 4.0f) + 1e-3f,
+        pow(saturate(dot(normal, get_normal((float2(t10) + 0.5f) * inv_rres))), 4.0f) + 1e-3f,
+        pow(saturate(dot(normal, get_normal((float2(t01) + 0.5f) * inv_rres))), 4.0f) + 1e-3f,
+        pow(saturate(dot(normal, get_normal((float2(t11) + 0.5f) * inv_rres))), 4.0f) + 1e-3f
+    );
+    float4 w = w_b * w_z * w_n;
+    float  w_sum = dot(w, 1.0f);
+    if (w_sum <= 1e-5f)
+    {
+        return has_preloaded ? preloaded_bilinear : tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+    }
+
+    float3 acc =
+        tex.Load(int3(t00, 0)).rgb * w.x +
+        tex.Load(int3(t10, 0)).rgb * w.y +
+        tex.Load(int3(t01, 0)).rgb * w.z +
+        tex.Load(int3(t11, 0)).rgb * w.w;
+    return acc / w_sum;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    uint2 ref_res;
+    tex.GetDimensions(ref_res.x, ref_res.y);
+
+    int2 tile_origin = int2(floor(((float2(group_id.xy * uint2(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y)) + 0.5f) / resolution_out) * float2(ref_res) - 0.5f));
+    if (any(ref_res != uint2(resolution_out)))
+    {
+        uint local_idx = group_thread_id.y * THREAD_GROUP_COUNT_X + group_thread_id.x;
+        if (local_idx < 36u)
+        {
+            int2   tap      = clamp(tile_origin + int2(local_idx % 6u, local_idx / 6u), int2(0, 0), int2(ref_res) - 1);
+            float2 tap_uv   = (float2(tap) + 0.5f) / float2(ref_res);
+            uint2  gb_coord = min(uint2(tap_uv * resolution_out), uint2(resolution_out) - 1u);
+            gs_half_depth[local_idx] = tex_depth.Load(int3(gb_coord, 0)).r;
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    if (any(thread_id.xy >= uint2(resolution_out)))
+    {
+        return;
+    }
     float2 uv = (thread_id.xy + 0.5f) / resolution_out;
 
     // cheap gbuffer probes before Surface.Build, most pixels are opaque and skip or take the add-only path
@@ -242,12 +341,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (!is_water_pixel && !is_glass_pixel)
     {
-        float3 reflection = tex[thread_id.xy].rgb;
-        float  cell_share = 0.0f;
+        float3 reflection_probe = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+        float  cell_share       = 0.0f;
 #ifdef RAY_TRACING_ENABLED
-        cell_share        = is_ray_traced_reflections_enabled() ? get_rt_reflection_cached(uv) : 0.0f;
+        cell_share              = is_ray_traced_reflections_enabled() ? get_rt_reflection_cached(uv) : 0.0f;
 #endif
-        if (cell_share <= 0.0f && dot(reflection, reflection) < 1e-8f)
+        if (cell_share <= 0.0f && dot(reflection_probe, reflection_probe) < 1e-8f)
         {
             return;
         }
@@ -257,6 +356,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 position            = get_position(depth, render_uv_to_screen_uv(uv));
         float3 camera_to_pixel     = normalize(position - get_camera_position());
         float3 normal              = gbuffer_unpack_normal(normal_packed);
+        float3 reflection          = cell_share < 1.0f ? sample_reflection_bilateral(thread_id.xy, uv, resolution_out, ref_res, tile_origin, depth, normal, reflection_probe, true) : 0.0f;
         float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
 #ifdef RAY_TRACING_ENABLED
         if (cell_share > 0.0f)
@@ -278,7 +378,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 float  visibility  = sample_material.a;
                 if (is_ssao_enabled() && alpha >= 0.999f)
                 {
-                    float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+                    float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
                     if (!any(isnan(ssao_sample.rgb)) && dot(ssao_sample.rgb, ssao_sample.rgb) > 1e-6f)
                     {
                         bent_normal = normalize(ssao_sample.rgb);
@@ -371,7 +471,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (surface.is_water())
             {
                 // point sample, bilinear blends silhouette depths into values that land anywhere
-                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], render_uv_to_screen_uv(uv), 0.0f).r);
+                float2 base_screen_uv   = render_uv_to_screen_uv(uv);
+                float  bg_depth_raw     = tex4.SampleLevel(samplers[sampler_point_clamp], base_screen_uv, 0.0f).r;
+                float  depth_background = linearize_depth(bg_depth_raw);
                 // At the beach, a foreground depth sample must not turn a
                 // centimetre of water into a ten-metre absorbing column.
                 float bed_valid;
@@ -382,49 +484,47 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 float thickness = depth_background > depth_transparent
                     ? clamp(depth_background - depth_transparent, 0.0f, 10.0f) : fallback_thickness;
 
-                // a physically bent ray shifts the whole underwater image systematically in one direction,
-                // and wherever the shifted sample is unavailable in screen space the pixel has to fall back
-                // toward the straight view, a constant shift next to its own fallback reads as two copies of
-                // the object, so distort with the zero mean wave slope instead, the image wobbles around its
-                // true position and always stays one object, the offset still grows with the water column so
-                // it vanishes at the waterline and deeper content shimmers more
                 // snell shifts the bed by about a quarter of column * slope in metres, projected by view depth so ripples never scramble it
                 float2 offset = surface.normal.xz * 0.25f * min(thickness, 4.0f) / max(depth_transparent * 1.2f, 1.0f) * get_render_uv_scale();
+                float2 offset_px = offset * resolution_out;
 
-                // the wobble can still land on geometry in front of the water, e.g. the part of a pillar
-                // above the surface, halve it until the sample is submerged, the offset is small so the
-                // collapse is invisible when it happens
-                float2 refracted_uv = uv;
-                float depth_shown   = depth_transparent + thickness;
-                float scale         = 1.0f;
-                [unroll]
-                for (int i = 0; i < 4; i++)
+                float2 refracted_uv     = uv;
+                float  background_depth = bg_depth_raw;
+                float2 screen_uv        = base_screen_uv;
+                // Distant water has sub-pixel refraction wobble (< 0.25 px); skip the 4 depth probes and 3 chromatic taps.
+                if (dot(offset_px, offset_px) >= 0.0625f)
                 {
-                    float2 uv_try   = uv + offset * scale;
-                    float depth_try = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], render_uv_to_screen_uv(uv_try), 0.0f).r);
-                    if (depth_try > depth_transparent && is_valid_render_uv(uv_try))
+                    float scale = 1.0f;
+                    [unroll]
+                    for (int i = 0; i < 4; i++)
                     {
-                        refracted_uv = uv_try;
-                        depth_shown  = depth_try;
-                        break;
+                        float2 uv_try       = uv + offset * scale;
+                        float2 try_screen   = render_uv_to_screen_uv(uv_try);
+                        float  try_raw      = tex4.SampleLevel(samplers[sampler_point_clamp], try_screen, 0.0f).r;
+                        float  depth_try    = linearize_depth(try_raw);
+                        if (depth_try > depth_transparent && is_valid_render_uv(uv_try))
+                        {
+                            refracted_uv     = uv_try;
+                            screen_uv        = try_screen;
+                            background_depth = try_raw;
+                            break;
+                        }
+                        scale *= 0.5f;
                     }
-                    scale *= 0.5f;
+
+                    // chromatic aberration along the refraction delta
+                    float2 delta = refracted_uv - uv;
+                    refraction.r = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f + chromatic_aberration), 0.0f).r;
+                    refraction.g = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).g;
+                    refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
                 }
 
-                // chromatic aberration along the refraction delta
-                float2 delta = refracted_uv - uv;
-                refraction.r = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f + chromatic_aberration), 0.0f).r;
-                refraction.g = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).g;
-                refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
-
                 // The same voxel field owns the submerged column seen from either side.
-                float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
-                float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], screen_uv, 0.0f).r;
                 float3 background_position = get_position(background_depth, screen_uv);
                 float background_distance = length(background_position - get_camera_position());
                 // Match this UV's radial ray at the transparent surface's view depth.
                 float3 view_ray = normalize(get_position(surface.depth, screen_uv) - get_camera_position());
-                float start_distance = depth_transparent / max(dot(view_ray, normalize(mul(float4(0.0f, 0.0f, 1.0f, 0.0f), get_view_inverted()).xyz)), 0.01f);
+                float start_distance = depth_transparent / max(dot(view_ray, buffer_frame.camera_forward), 0.01f);
                 refraction = fog_transmit_water_segment(refraction, screen_uv, start_distance,
                     background_depth == 0.0f ? fog_far : max(start_distance, background_distance));
             }
@@ -520,7 +620,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     
     // compute specular reflection using fresnel and brdf split sum
-    float3 reflection = tex[thread_id.xy].rgb;
+    float3 reflection = sample_reflection_bilateral(thread_id.xy, uv, resolution_out, ref_res, tile_origin, surface.depth, surface.normal, 0.0f, false);
 
     // weigh with the roughness and f0 of the lobe the tracer carried or the split sum integrates a
     // lobe that was never sampled

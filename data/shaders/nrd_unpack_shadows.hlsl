@@ -21,7 +21,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
-    if (any(thread_id.xy >= resolution))
+    uint2 active_resolution = max(uint2(floor(float2(resolution) * buffer_frame.resolution_scale)), uint2(1u, 1u));
+    if (any(thread_id.xy >= active_resolution))
     {
         return;
     }

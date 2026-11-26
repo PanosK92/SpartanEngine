@@ -118,7 +118,7 @@ namespace spartan
                 if (descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
                 {
                     SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
-                    
+
                     VkPushConstantRange push_constant_range  = {};
                     push_constant_range.size                 = descriptor.struct_size;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))        ? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
@@ -126,7 +126,7 @@ namespace spartan
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))        ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))         ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))       ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::MeshShader))          ? VK_SHADER_STAGE_MESH_BIT_EXT                 : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::MeshShader))    ? VK_SHADER_STAGE_MESH_BIT_EXT                : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration)) ? VK_SHADER_STAGE_RAYGEN_BIT_KHR              : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       ? VK_SHADER_STAGE_MISS_BIT_KHR                : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit))        ? VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR         : 0;
@@ -167,7 +167,6 @@ namespace spartan
             // pipeline layout
             VkPipelineLayoutCreateInfo pipeline_layout_info = {};
             pipeline_layout_info.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipeline_layout_info.pushConstantRangeCount     = 0;
             pipeline_layout_info.setLayoutCount             = static_cast<uint32_t>(layouts.size());
             pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
             pipeline_layout_info.pushConstantRangeCount     = static_cast<uint32_t>(push_constant_ranges.size());
@@ -554,7 +553,7 @@ namespace spartan
             m_compile_task.wait();
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Pipeline, m_rhi_resource);
         m_rhi_resource = nullptr;
-        
+
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::PipelineLayout, m_rhi_resource_layout);
         m_rhi_resource_layout = nullptr;
     }

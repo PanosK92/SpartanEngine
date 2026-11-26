@@ -1,146 +1,238 @@
 # Getting started
 
-## Requirements
+> **Just want to try Spartan?** Prebuilt binaries for Windows (DirectX 12, Vulkan, WebGPU), Linux, macOS and Web ship with every [GitHub release](https://github.com/PanosK92/SpartanEngine/releases). On first launch, the **World Launcher** downloads the project assets and starter worlds automatically. You can also try the [live WebGPU browser demo](https://panoskarabelas.com/engine/live/) with nothing installed.
 
-| Platform | Toolchain | Graphics |
-| -------- | --------- | -------- |
-| Windows 10/11 x64 | Visual Studio 2026 (2022 also generates), CPU with AVX2 | DirectX 12 or Vulkan |
-| Linux x64 | GCC or Clang with `make`, CPU with AVX2/FMA/F16C | Vulkan |
-| macOS 26.0+ on Apple silicon | Xcode 26, Homebrew `cmake` and `ninja`, [Metal Shader Converter](https://developer.apple.com/metal/shader-converter/) | Metal 4 |
-| Web | [Emscripten](https://emscripten.org/) (emsdk), CMake, Ninja, Python; a browser with WebGPU (Chrome, Edge, Brave) | WebGPU, see [WebGPU and the web](webgpu.md) |
+---
 
-Hardware ray tracing is needed for ReSTIR path tracing, ray-traced shadows and ray-traced reflections. The renderer runs without it, with those features off.
+## Supported platforms and backends
 
-## Build
+| Platform | Toolchain | CPU / GPU | Graphics backend | Output |
+| -------- | --------- | --------- | ---------------- | ------ |
+| **Windows 10/11 (x64)** | Visual Studio 2026 (`vs2022` also generates) | AVX2 CPU; D3D12 or Vulkan 1.3 GPU | **DirectX 12** *(recommended on Windows)*, **Vulkan**, **WebGPU** (Dawn) | `spartan.slnx` |
+| **Linux (x64)** | GCC or Clang + `make` | AVX2 / FMA / F16C CPU; Vulkan 1.3 GPU | **Vulkan** *(recommended on Linux & non-Windows)* | `Makefile` |
+| **macOS 26.0+ (Apple silicon)** | Xcode 26, Homebrew `cmake` & `ninja`, [Metal Shader Converter](https://developer.apple.com/metal/shader-converter/) | Apple silicon | **Metal 4** *(recommended on macOS)* | `spartan.xcworkspace` |
+| **Web (Browser)** | [Emscripten](https://emscripten.org/) (`emsdk`), CMake, Ninja, Python 3 | Chrome, Edge or Brave with WebGPU | **WebGPU** (WebAssembly), see [WebGPU and the web](webgpu.md) | `binaries/web/spartan.html` |
 
-Project generation is done by [Premake](https://premake.github.io/) through [`tools/premake.lua`](../tools/premake.lua). The first argument is the Premake action, the second the graphics API.
+Hardware ray tracing is optional. When supported, it powers ReSTIR path tracing, ray-traced shadows and ray-traced reflections; on GPUs without it, those features turn off cleanly.
+
+---
+
+## Project generator
+
+Project files are generated with [Premake](https://premake.github.io/) via [`tools/premake.lua`](../tools/premake.lua) and [`tools/setup.lua`](../tools/setup.lua). Run the launcher script for your platform with **no arguments** for the interactive menu, or pass `<action> <api>` directly for scripts and CI.
+
+### Interactive launcher
+
+Double-click **`generate_project_files.bat`** (Windows) or run **`./generate_project_files.sh`** (Linux / macOS).
+
+- **Workspace status**: shows the currently generated backend and whether the prebuilt library archive is cached locally.
+- **Single-keypress selection**: press a key directly (no Enter required):
+  - **`[1]`** — Visual Studio 2026 · **DirectX 12** *(recommended on Windows; includes D3D12 Agility SDK)*
+  - **`[2]`** — Visual Studio 2026 · **Vulkan**
+  - **`[3]`** — Visual Studio 2026 · **WebGPU** *(Windows, via Google Dawn)* or **GNU Make · Vulkan** *(recommended on Linux & non-Windows)*
+  - **`[4]`** — **Xcode · Metal** *(recommended on macOS, in `generate_project_files.sh`)*
+  - **`[S]`** — **Sync dependencies only** *(download, verify & stage SDKs without regenerating project files)*
+  - **`[F]`** — **Fast regenerate** *(toggles `--skip-setup` to skip dependency checks when SDKs are already staged)*
+  - **`[0]`** — Exit
+- **Live pipeline feedback**: step-by-step progress bars for downloads (with size, throughput and ETA), SHA-256 verification, 7-Zip extraction and runtime DLL staging.
+- **One-key open** *(Windows)*: once generation finishes, press **`[O]`** to open `spartan.slnx` in Visual Studio, **`[R]`** to return to the menu, or **`[Q]`** to exit.
+
+### Non-interactive CLI (scripts and CI)
+
+Pass the Premake action and optionally the graphics backend directly (omitting the backend defaults to `d3d12` on Visual Studio, `vulkan` on GNU Make, and `metal` on Xcode). CI environments (`CI`, `GITHUB_ACTIONS`, `NO_COLOR`, or `SPARTAN_PLAIN=1`) automatically switch to clean plain-text output without escape codes.
+
+```powershell
+# Windows: full setup + project generation (d3d12 is default; pass vulkan or webgpu for other backends)
+generate_project_files.bat vs2026 d3d12
+
+# Windows: fast regenerate without re-running dependency setup
+generate_project_files.bat vs2026 d3d12 --skip-setup
+```
+
+---
+
+## Build by platform
 
 ### Windows
 
-```powershell
-generate_project_files.bat vs2026 vulkan   # or d3d12; no arguments shows a menu
-```
+1. **Generate the solution** (interactive menu, or pick a backend directly):
 
-Open `spartan.slnx` and build. Generation also runs the setup step described below.
+   ```powershell
+   # interactive launcher (press 1 for DirectX 12, 2 for Vulkan, 3 for WebGPU)
+   generate_project_files.bat
+
+   # or non-interactive (d3d12 is default; pass vulkan or webgpu for other backends)
+   generate_project_files.bat vs2026 d3d12
+   ```
+
+2. **Build and run**:
+   - Press **`[O]`** in the launcher (or open `spartan.slnx` in Visual Studio 2026), choose **`development`** *(default)*, and build.
+   - Or build from the command line with MSBuild:
+
+   ```powershell
+   msbuild spartan.vcxproj /p:Configuration=development /p:Platform=x64 /m
+   ```
+
+3. The executable lands in `binaries/` (for example `binaries/spartan_d3d12_development.exe`).
 
 ### Linux
 
+Install the system/third-party dependencies once, generate the Makefile, and build:
+
 ```bash
-tools/linux_dependencies.sh && ./generate_project_files.sh gmake vulkan && make config=release_x64
+tools/linux_dependencies.sh
+./generate_project_files.sh gmake vulkan
+make config=development_x64 -j$(nproc)   # or config=release_x64
 ```
 
 ### macOS
 
+Requires **macOS 26.0+** on Apple silicon, **Xcode 26**, Homebrew (`brew install cmake ninja`), and Apple's [Metal Shader Converter](https://developer.apple.com/metal/shader-converter/).
+
 ```bash
-tools/macos_dependencies.sh && ./generate_project_files.sh xcode4 metal
+tools/macos_dependencies.sh
+./generate_project_files.sh xcode4 metal
 ```
 
-Then open `spartan.xcworkspace`.
+Open `spartan.xcworkspace` in Xcode and build.
 
-### Web
+### Web (WebGPU / WebAssembly)
 
-To just try it, download `spartan_web_webgpu_*.zip` from the [releases](https://github.com/PanosK92/SpartanEngine/releases), unzip it, run `python serve.py` and open the printed address in Chrome, Edge or Brave.
+**Quick try (prebuilt):** download `spartan_web_webgpu_*.zip` from [releases](https://github.com/PanosK92/SpartanEngine/releases), unzip, run `python serve.py`, and open the printed URL in Chrome, Edge or Brave.
 
-The browser build is the WebGPU backend compiled to WebAssembly by [`tools/web_build.py`](../tools/web_build.py). Generate and build the Windows WebGPU backend first (`generate_project_files.bat vs2026 webgpu`, or option `[3]` in the menu; setup downloads Dawn), then run it once so the WGSL shader cache exists:
+**Build from source:** browsers cannot run DXC at runtime, so shaders are compiled to WGSL once by the native Windows WebGPU build and cached for the browser package.
 
-```powershell
-python tools/web_build.py deps                        # once, wasm32 PhysX, Assimp, FreeImage, Lua, meshoptimizer
-python tools/web_build.py engine --world pbr_materials_example.world    # binaries/web/spartan.html, .js, .wasm, .data
-python tools/web_build.py serve                       # http://localhost:8080/spartan.html
-```
+1. **Generate and build the native Windows WebGPU backend** (setup automatically downloads and links Google Dawn):
 
-Details and limitations are in [WebGPU and the web](webgpu.md).
+   ```powershell
+   generate_project_files.bat vs2026 webgpu   # or press [3] in the interactive menu
+   msbuild spartan.vcxproj /p:Configuration=development /p:Platform=x64 /m
+   ```
 
-### Actions, APIs and configurations
+2. **Populate the WGSL shader cache** (runs headless and exits as soon as all shaders finish compiling; add `--software-gpu` if no GPU is present):
 
-| Argument | Values |
-| -------- | ------ |
-| Action | `vs2026`, `vs2022`, `gmake`, `gmake2`, `codelite`, `xcode4`, and `setup` (dependencies only) |
-| Graphics API | `d3d12` (defines `API_GRAPHICS_D3D12`), `vulkan` (`API_GRAPHICS_VULKAN`), `metal` (`API_GRAPHICS_METAL`), `webgpu` (`API_GRAPHICS_WEBGPU`, Windows through Dawn) |
-| Option | `--skip-setup` generates without downloading dependencies |
+   ```powershell
+   .\binaries\spartan_webgpu_development.exe --bake-shaders
+   ```
 
-There is one project, `spartan`, built in three configurations:
+3. **Build the WebAssembly dependencies, package a world, and serve locally** (requires `emsdk`, CMake, Ninja, Git and Python 3):
 
-| Configuration | Purpose | Windows executable (Vulkan) |
-| ------------- | ------- | --------------------------- |
-| `development` | Default. Optimized, full symbols, no LTO | `spartan_vulkan_development.exe` |
-| `debug` | Unoptimized, debug CRT | `spartan_vulkan_debug.exe` |
-| `release` | Optimized with LTO, symbols kept for crash dumps | `spartan_vulkan.exe` |
+   ```powershell
+   python tools/web_build.py deps                                        # once: wasm32 PhysX, Assimp, FreeImage, Lua, meshoptimizer
+   python tools/web_build.py engine --world pbr_materials_example.world  # outputs binaries/web/spartan.html, .js, .wasm, .data
+   python tools/web_build.py serve                                       # serves http://localhost:8080/spartan.html
+   ```
 
-Executables are written to `binaries/`; intermediates go to `binaries/build/`.
+See [WebGPU and the web](webgpu.md) for architecture details, caching rules and limitations.
+
+---
+
+## Generator reference
+
+### Actions, backends and options
+
+| Argument | Values | Notes |
+| -------- | ------ | ----- |
+| **Action** | `vs2026`, `vs2022`, `gmake`, `gmake2`, `codelite`, `xcode4`, `setup` | `setup` syncs dependencies and runtime files without generating project files |
+| **Graphics API** | `d3d12`, `vulkan`, `metal`, `webgpu` | Defines `API_GRAPHICS_<API>` and selects the matching RHI backend and vendor SDKs (defaults to `d3d12` on Visual Studio, `vulkan` on GNU Make, `metal` on Xcode) |
+| `--skip-setup` | *(flag)* | Regenerates project files using already staged dependencies (same as `[F]` in the launcher) |
+| `--build-tag=<name>` | letters, digits, `_` | Generates an isolated project under `binaries/build/<name>/` with a separate exe name so a running editor binary stays unlocked |
+
+### Build configurations
+
+Generation creates one project, `spartan`, with three configurations:
+
+| Configuration | Purpose | Optimization & symbols | Example Windows executable |
+| ------------- | ------- | ---------------------- | -------------------------- |
+| **`development`** | Default daily driver | Optimized, full PDB symbols, incremental link, no LTO | `spartan_d3d12_development.exe` |
+| **`debug`** | Stepping & diagnostics | Unoptimized, debug CRT | `spartan_d3d12_debug.exe` |
+| **`release`** | Shipping / benchmarks | Optimized with LTO, symbols kept for crash dumps | `spartan_d3d12.exe` |
+
+Executables are written to `binaries/`; compiler intermediates and symbols go to `binaries/build/`.
 
 ### What setup does
 
-[`tools/setup.lua`](../tools/setup.lua) runs during generation unless `--skip-setup` is passed. On Windows it:
+[`tools/setup.lua`](../tools/setup.lua) runs automatically during generation (unless `--skip-setup` is passed). On Windows it executes a verified, cached pipeline:
 
-1. Copies `data/` (shaders, fonts, engine textures, prefabs) to `binaries/data/`.
-2. Downloads and verifies (SHA-256) the prebuilt third-party libraries into `third_party/libraries/`.
-3. Fetches Steamworks and the runtimes for the selected backend. Vulkan and D3D12 use DLSS, XeSS and their matching FidelityFX/FSR libraries. WebGPU uses Dawn. D3D12 and WebGPU setup also stage the D3D12 Agility SDK.
-4. Stages the runtime DLLs into `binaries/third_party/` and writes `binaries/steam_appid.txt` (Spacewar, app id 480, for local development).
+1. **Sync engine data** — copies `data/` (shaders, fonts, engine textures, prefabs) into `binaries/data/`.
+2. **Core libraries archive** — downloads `libraries.7z` into `third_party/libraries/` and verifies its SHA-256 checksum (skipped automatically when cached).
+3. **Extract libraries** — extracts the archive with 7-Zip, keeping only the files needed for the selected backend.
+4. **Upscaling & frame generation SDKs** *(Vulkan / D3D12)* — verifies or fetches Intel XeSS, NVIDIA DLSS and AMD FidelityFX / FSR runtimes.
+5. **DirectX 12 Agility SDK** *(D3D12 / WebGPU)* — fetches and installs the pinned Agility SDK headers and binaries.
+6. **Steamworks SDK** — fetches the optional Steamworks redistributable headers and binaries.
+7. **Google Dawn** *(WebGPU only)* — downloads Dawn, links `webgpu_dawn.dll`, and stages `tint.exe`.
+8. **Stage runtime binaries** — copies required vendor DLLs into `binaries/third_party/`, Agility DLLs into `binaries/third_party/d3d12/`, and writes `binaries/steam_appid.txt` (Spacewar, app id `480`, for local development).
 
-On Linux and macOS the dependency scripts build the libraries and setup copies `data/` and the shader compiler libraries.
+On Linux and macOS, `tools/linux_dependencies.sh` / `tools/macos_dependencies.sh` build the native third-party libraries, and setup syncs `binaries/data/` and the shader compiler shared libraries.
 
-Shaders are the exception: when run from a source tree the engine compiles them straight from the repository's `data/shaders`. For anything else in `data/`, re-run setup so `binaries/data/` picks it up:
-
-```powershell
-tools/premake5.exe --file=tools/premake.lua setup
-```
+> **Editing shaders vs other files in `data/`:** when running from a source tree, the engine compiles shaders directly from the repository's `data/shaders/`. After editing non-shader assets in `data/`, re-run setup (`[S]` in the launcher or `generate_project_files.bat setup`) so `binaries/data/` picks up the changes.
 
 ### World assets
 
-World files live in `worlds/` and are versioned. Their assets (meshes, textures, materials, audio, Lua scripts, `.car` files) live in `binaries/project/`, which is not in Git and is downloaded as `project.7z` during setup. See [`worlds/README.md`](../worlds/README.md).
+World definitions (`.world` files) are versioned in `worlds/`. Their binary assets (meshes, textures, materials, audio, scripts and `.car` files) live in `binaries/project/`, which is excluded from Git and downloaded on first launch by the **World Launcher**. See [`worlds/README.md`](../worlds/README.md).
+
+---
 
 ## Run
 
-The engine always runs with `binaries/` as its working directory ([`source/core/main.cpp`](../source/core/main.cpp) sets it to the executable's folder), so every resource path is relative to it: `project/...`, `data/...`, `../worlds/...`.
+The engine always switches its working directory to the executable's folder (`binaries/`, see [`source/core/main.cpp`](../source/core/main.cpp)), so resource paths are relative to `binaries/` (`project/...`, `data/...`, `../worlds/...`).
 
-Launch the executable and pick a world from the **Worlds** launcher, or use **Ctrl+O**. Press **F5** to play, **F6** to pause. **Ctrl+P** lists every shortcut.
+- Launch the executable and choose a world in the **World Launcher**, or press **Ctrl+O**.
+- Press **F5** to play, **F6** to pause, and **Ctrl+P** to search every shortcut.
 
 ### Command-line arguments
 
 | Argument | Effect |
 | -------- | ------ |
-| `-game` | Starts with the editor panels hidden (the editor code stays in the binary) |
-| `--headless`, `-headless` | Hidden window, no editor UI, no Steam, does not save settings, logs to `logs/log_headless.txt` |
+| `-game` | Starts with editor panels hidden (editor code stays in the binary) |
+| `--headless`, `-headless` | Hidden window, no editor UI, no Steam, does not overwrite `spartan.xml`, logs to `binaries/logs/log_headless.txt` |
 | `--mcp-control` | Starts the [MCP bridge](mcp.md) on `127.0.0.1` |
-| `--mcp-port=<n>` | Bridge port (default `47777`) |
-| `--mcp-hidden` | With `--mcp-control`, runs headless |
+| `--mcp-port=<n>` | Sets the MCP bridge port (default `47777`) |
+| `--mcp-hidden` | Combined with `--mcp-control`, runs headless |
 | `--no-steam` | Skips Steamworks initialization |
-| `--ci-smoke-test` | CPU-only start-up test: no window or GPU, ten idle ticks, then exit (see [Testing and CI](testing_and_ci.md)) |
+| `--bake-shaders` | Compiles all renderer shaders headless and exits without rendering a frame (populates shader caches, including WebGPU WGSL) |
+| `--software-gpu` | WebGPU only: forces Dawn onto Windows WARP software rasterization |
+| `--ci-smoke-test` | CPU-only startup test: no window or GPU, ten idle ticks, then exit (see [Testing and CI](testing_and_ci.md)) |
 | `-ci_test` | Runs the GPU smoke-test suite after the first frame |
 | `--ci-exit` | Closes the window once `-ci_test` finishes |
 
-Example, as used by AI agents driving the engine:
+Example (driving a live instance through the MCP bridge):
 
 ```powershell
 cd binaries
-.\spartan_vulkan_development.exe --mcp-control --mcp-port=47777 --no-steam
+.\spartan_d3d12_development.exe --mcp-control --mcp-port=47777 --no-steam
 ```
 
-The editor does not take a world on the command line; load one through the UI, the MCP `world_load` command, or a packaged game's `game.xml`.
+The editor does not take a world path on the command line; load a world through the UI, the MCP `world_load` tool, or a packaged game's `game.xml`.
 
 ### Shipping a game
 
-A packaged game is the same executable next to a `game.xml` manifest ([`source/core/GameManifest.h`](../source/core/GameManifest.h)). When the manifest is present the editor and the MCP bridge are disabled and the start world loads and plays immediately. The **Build Game** panel (**Ctrl+Shift+B**) produces such a package; see [Editor](editor.md#game-builder).
+A packaged game is the same executable placed next to a `game.xml` manifest ([`source/core/GameManifest.h`](../source/core/GameManifest.h)). When `game.xml` is present, the editor and MCP bridge are disabled and the start world loads and plays directly. Open **Build Game** (**Ctrl+Shift+B**) in the editor to produce a distributable package; see [Editor](editor.md#game-builder).
 
-## The `binaries/` folder
+---
+
+## The `binaries/` layout
 
 | Path | Contents |
 | ---- | -------- |
-| `binaries/` | Executables and `steam_appid.txt` |
-| `binaries/third_party/` | Vendor DLLs (DXC, DLSS, XeSS, FidelityFX, Steam); `third_party/d3d12/` holds the Agility SDK. Ship this folder next to the executable |
+| `binaries/` | Executables, `tint.exe` *(WebGPU)*, and `steam_appid.txt` |
+| `binaries/third_party/` | Vendor DLLs (DXC, DLSS, XeSS, FidelityFX, Steam, Dawn); `third_party/d3d12/` holds the Agility SDK. Ship this folder next to the executable |
 | `binaries/data/` | Engine data staged from the repository's `data/` |
-| `binaries/project/` | Project and world assets (downloaded, not in Git) |
+| `binaries/project/` | Project and world assets downloaded by the World Launcher (not in Git) |
 | `binaries/settings/` | `spartan.xml` (persisted cvars), `editor.ini`, game build options |
-| `binaries/logs/` | `log.txt`, `log_headless.txt`, and the previous session's logs |
-| `binaries/cache/` | Engine-wide generated data such as pipeline caches |
+| `binaries/logs/` | `log.txt`, `log_headless.txt`, and previous session logs |
+| `binaries/cache/` | Engine-wide generated data (pipeline caches, WebGPU WGSL shader cache) |
 | `binaries/crashes/` | Crash dumps |
-| `binaries/build/` | Compiler intermediates and Windows symbols |
+| `binaries/build/` | Compiler intermediates, symbols, and `--build-tag` private builds |
 
-Older layouts that kept settings, logs and caches at the top level are migrated on first launch without overwriting existing files.
+Older layouts that kept settings, logs and caches at the top level migrate automatically on first launch without overwriting existing files.
 
-## Next
+---
 
-- [Architecture](architecture.md) for how a frame runs.
-- [Worlds, entities and components](world.md) to start building a scene.
-- [Lua scripting](scripting.md) to write gameplay.
+## Next steps
+
+- [Architecture](architecture.md) — how the engine loop, threading, events and frame graph fit together.
+- [Rendering](rendering.md) — frame pass order, bindless GPU-driven rendering, RHI backends and shaders.
+- [WebGPU and the web](webgpu.md) — native Dawn builds, WGSL caching and Emscripten browser packaging.
+- [Worlds, entities and components](world.md) — authoring scenes, prefabs and assets.
+- [Lua scripting](scripting.md) and [Visual scripting](visual_scripting.md) — writing gameplay.

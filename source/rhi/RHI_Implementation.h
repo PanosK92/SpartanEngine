@@ -659,6 +659,7 @@ namespace spartan
             static VkInstance instance;
             static VkDevice device;
             static VkPhysicalDevice device_physical;
+            static uint64_t pipeline_cache_generation;
         #elif defined(API_GRAPHICS_METAL)
             static MTL::Device* device;
         #elif defined(API_GRAPHICS_WEBGPU)

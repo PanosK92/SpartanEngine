@@ -30,6 +30,12 @@ namespace spartan
     const char* RHI_PhysicalDevice::decode_driver_version(const uint32_t version, const char* driver_info)
     {
         static char driver_version_str[128];
+
+        if (version == 0 && driver_info && driver_info[0] != '\0')
+        {
+            strncpy_s(driver_version_str, sizeof(driver_version_str), driver_info, _TRUNCATE);
+            return driver_version_str;
+        }
     
         if (IsNvidia())
         {

@@ -57,7 +57,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
-    if (any(thread_id.xy >= resolution))
+    uint2 active_resolution = max(uint2(floor(float2(resolution) * buffer_frame.resolution_scale)), uint2(1u, 1u));
+    if (any(thread_id.xy >= active_resolution))
     {
         return;
     }
@@ -66,7 +67,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // nrd reads the checkerboard signal from the left half only, the right half is left untouched
     bool checkerboard = pass_bool(pass_nrd_reflections::checkerboard);
-    if (!checkerboard || thread_id.x < (resolution.x + 1) / 2)
+    if (!checkerboard || thread_id.x < (active_resolution.x + 1u) / 2u)
     {
         uint2 pixel = checkerboard ? reflections_checkerboard_pixel(thread_id.xy) : thread_id.xy;
         tex_uav4[thread_id.xy] = pack_radiance(thread_id.xy, pixel, resolution, denoising_range);

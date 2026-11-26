@@ -28,7 +28,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
 #include "../imgui/ImGui_TransformGizmo.h"
-#include "Settings.h"
+#include "core/Timer.h"
 //========================================
 
 //= NAMESPACES =========
@@ -39,9 +39,11 @@ using namespace math;
 
 namespace
 {
-    bool first_frame         = true;
-    uint32_t width_previous  = 0;
-    uint32_t height_previous = 0;
+    bool first_frame           = true;
+    bool initial_output_synced = false;
+    uint32_t width_previous    = 0;
+    uint32_t height_previous   = 0;
+    double resize_settle_timer = 0.0;
 
     // drag preview state, the entity is tracked by id so a deletion mid-drag cannot dangle on revert
     uint64_t             preview_entity_id            = 0;
@@ -308,27 +310,47 @@ void Viewport::OnTickVisible()
     uint32_t height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 
     // update engine's viewport
-    static bool resolution_set = Settings::HasLoadedUserSettingsFromFile();
-    if (!first_frame) // during the first frame the viewport is not yet initialized (it's size will be something weird)
+    if (!first_frame && RHI_Device::IsValidResolution(width, height)) // during the first frame the viewport is not yet initialized (it's size will be something weird)
     {
-        if (width_previous != width || height_previous != height)
+        const bool size_changed = width_previous != width || height_previous != height;
+        if (size_changed)
         {
-            if (RHI_Device::IsValidResolution(width, height))
+            Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
+            width_previous      = width;
+            height_previous     = height;
+            resize_settle_timer = 0.0;
+        }
+
+        if (cvar_resolution_output_match_viewport.GetValueAs<bool>() && !Renderer::IsStereoView())
+        {
+            const Vector2& output       = Renderer::GetResolutionOutput();
+            const bool output_out_of_sync = static_cast<uint32_t>(output.x) != width || static_cast<uint32_t>(output.y) != height;
+            if (!output_out_of_sync)
             {
-                Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
-
-                if (!resolution_set)
-                {
-                    // only set the render and output resolutions once
-                    // they are expensive operations and we don't want to do it frequently
-                    Renderer::SetResolutionOutput(width, height);
-
-                    resolution_set = true;
-                }
-
-                width_previous  = width;
-                height_previous = height;
+                initial_output_synced = true;
+                resize_settle_timer   = 0.0;
             }
+            else if (!initial_output_synced)
+            {
+                Renderer::SetResolutionOutput(width, height);
+                initial_output_synced = true;
+                resize_settle_timer   = 0.0;
+            }
+            else if (!size_changed && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                // wait briefly after a resize stops so dragging window or panel borders does not stall reallocating render targets every frame
+                resize_settle_timer += Timer::GetDeltaTimeSec();
+                if (resize_settle_timer >= 0.15)
+                {
+                    Renderer::SetResolutionOutput(width, height);
+                    resize_settle_timer = 0.0;
+                }
+            }
+        }
+        else
+        {
+            initial_output_synced = true;
+            resize_settle_timer   = 0.0;
         }
     }
     first_frame = false;

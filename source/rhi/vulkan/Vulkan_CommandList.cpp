@@ -940,24 +940,27 @@ namespace spartan
             }
         }
 
-        for (size_t i = 0; i < image_barriers.size(); i++)
+        if (image_barriers.size() > 1)
         {
-            VkImageMemoryBarrier2& barrier = image_barriers[i];
-            for (size_t j = i + 1; j < image_barriers.size();)
+            for (size_t i = 0; i < image_barriers.size(); i++)
             {
-                const VkImageMemoryBarrier2& candidate = image_barriers[j];
-                const bool same_range = barrier.image == candidate.image && barrier.oldLayout == candidate.oldLayout && barrier.newLayout == candidate.newLayout && barrier.subresourceRange.aspectMask == candidate.subresourceRange.aspectMask && barrier.subresourceRange.baseMipLevel == candidate.subresourceRange.baseMipLevel && barrier.subresourceRange.levelCount == candidate.subresourceRange.levelCount && barrier.subresourceRange.baseArrayLayer == candidate.subresourceRange.baseArrayLayer && barrier.subresourceRange.layerCount == candidate.subresourceRange.layerCount;
-                if (same_range)
+                VkImageMemoryBarrier2& barrier = image_barriers[i];
+                for (size_t j = i + 1; j < image_barriers.size();)
                 {
-                    barrier.srcStageMask  |= candidate.srcStageMask;
-                    barrier.srcAccessMask |= candidate.srcAccessMask;
-                    barrier.dstStageMask  |= candidate.dstStageMask;
-                    barrier.dstAccessMask |= candidate.dstAccessMask;
-                    image_barriers.erase(image_barriers.begin() + j);
-                }
-                else
-                {
-                    j++;
+                    const VkImageMemoryBarrier2& candidate = image_barriers[j];
+                    const bool same_range = barrier.image == candidate.image && barrier.oldLayout == candidate.oldLayout && barrier.newLayout == candidate.newLayout && barrier.subresourceRange.aspectMask == candidate.subresourceRange.aspectMask && barrier.subresourceRange.baseMipLevel == candidate.subresourceRange.baseMipLevel && barrier.subresourceRange.levelCount == candidate.subresourceRange.levelCount && barrier.subresourceRange.baseArrayLayer == candidate.subresourceRange.baseArrayLayer && barrier.subresourceRange.layerCount == candidate.subresourceRange.layerCount;
+                    if (same_range)
+                    {
+                        barrier.srcStageMask  |= candidate.srcStageMask;
+                        barrier.srcAccessMask |= candidate.srcAccessMask;
+                        barrier.dstStageMask  |= candidate.dstStageMask;
+                        barrier.dstAccessMask |= candidate.dstAccessMask;
+                        image_barriers.erase(image_barriers.begin() + j);
+                    }
+                    else
+                    {
+                        j++;
+                    }
                 }
             }
         }
@@ -1131,9 +1134,9 @@ namespace spartan
             dynamic_offset_count_bound = dynamic_offset_count;
         }
 
-        void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
+        void set_bindless(const RHI_PipelineState& pso, void* resource, void* pipeline_layout)
         {
-            lock_guard<mutex> lock(RHI_Device::GetDescriptorSetMutex());
+            // bindless sets are stable for the duration of frame recording (material texture set advances only at frame start)
             array<VkDescriptorSet, static_cast<size_t>(RHI_Device_Bindless_Resource::Max)> sets;
             for (size_t i = 0; i < sets.size(); i++)
             {
@@ -1526,23 +1529,42 @@ namespace spartan
         // get (or create) a pipeline which matches the requested pipeline state
         m_pso = pso;
         m_pso_pending = pso;
-        RHI_DescriptorSetLayout* descriptor_layout_shared = nullptr;
-        RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, descriptor_layout_shared);
-        m_render_pass_pending = m_pso.IsGraphics();
-        if (!m_pipeline)
+        if (m_pipeline_cache_generation != RHI_Context::pipeline_cache_generation)
         {
-            m_descriptor_layout_current = nullptr;
-            m_pipeline_state_dirty = true;
-            return;
+            m_pipeline_cache_local.clear();
+            m_descriptor_layouts_local.clear();
+            m_pipeline_cache_generation = RHI_Context::pipeline_cache_generation;
         }
-        const uint64_t descriptor_layout_key = reinterpret_cast<uint64_t>(descriptor_layout_shared);
-        auto [layout_it, inserted] = m_descriptor_layouts_local.try_emplace(descriptor_layout_key);
-        if (inserted)
+
+        const uint64_t pso_hash = m_pso.GetHash();
+        auto cache_it = m_pipeline_cache_local.find(pso_hash);
+        if (cache_it != m_pipeline_cache_local.end())
         {
-            layout_it->second = make_unique<RHI_DescriptorSetLayout>(*descriptor_layout_shared);
+            m_pipeline                  = cache_it->second.pipeline;
+            m_descriptor_layout_current = cache_it->second.layout;
         }
-        m_descriptor_layout_current = layout_it->second.get();
+        else
+        {
+            RHI_DescriptorSetLayout* descriptor_layout_shared = nullptr;
+            RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, descriptor_layout_shared);
+            if (!m_pipeline)
+            {
+                m_render_pass_pending       = m_pso.IsGraphics();
+                m_descriptor_layout_current = nullptr;
+                m_pipeline_state_dirty      = true;
+                return;
+            }
+            const uint64_t descriptor_layout_key = reinterpret_cast<uint64_t>(descriptor_layout_shared);
+            auto [layout_it, inserted] = m_descriptor_layouts_local.try_emplace(descriptor_layout_key);
+            if (inserted)
+            {
+                layout_it->second = make_unique<RHI_DescriptorSetLayout>(*descriptor_layout_shared);
+            }
+            m_descriptor_layout_current = layout_it->second.get();
+            m_pipeline_cache_local.emplace(pso_hash, LocalPipelineEntry{ m_pipeline, m_descriptor_layout_current });
+        }
         m_descriptor_layout_current->ClearBindings();
+        m_bind_dynamic        = true;
         m_render_pass_pending = m_pso.IsGraphics();
 
         // set pipeline

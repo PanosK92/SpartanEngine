@@ -84,9 +84,11 @@ namespace spartan
     extern TConsoleVar<float> cvar_ground_mist;
     extern TConsoleVar<float> cvar_mist_variation;
     extern TConsoleVar<float> cvar_ssao;
+    extern TConsoleVar<float> cvar_ssao_half_res;
     extern TConsoleVar<float> cvar_subsurface_scattering;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_ray_traced_shadows;
+    extern TConsoleVar<float> cvar_rt_half_res;
     extern TConsoleVar<float> cvar_path_tracing;
     extern TConsoleVar<float> cvar_path_tracing_bounces;
     extern TConsoleVar<float> cvar_path_tracing_denoise;
@@ -114,6 +116,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_mesh_shaders;
     extern TConsoleVar<float> cvar_resolution_scale;
     extern TConsoleVar<float> cvar_dynamic_resolution;
+    extern TConsoleVar<float> cvar_resolution_output_match_viewport;
     extern TConsoleVar<float> cvar_hiz_occlusion;
     extern TConsoleVar<float> cvar_tessellation_gpu_driven;
     extern TConsoleVar<float> cvar_meshlet_cull_skinned;

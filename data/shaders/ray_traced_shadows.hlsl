@@ -194,11 +194,12 @@ void ray_gen()
     // Checkerboard the ray tracing
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
-    uint2 launch_id   = DispatchRaysIndex().xy;
-    bool checkerboard = any(DispatchRaysDimensions().xy < resolution);
-    uint2 phase       = uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u);
-    uint2 pixel       = checkerboard ? launch_id * 2u + min(phase, resolution - 1u) : launch_id;
-    if (any(pixel >= resolution))
+    uint2 active_resolution = max(uint2(floor(float2(resolution) * buffer_frame.resolution_scale)), uint2(1u, 1u));
+    uint2 launch_id         = DispatchRaysIndex().xy;
+    bool checkerboard       = any(DispatchRaysDimensions().xy < active_resolution);
+    uint2 phase             = uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u);
+    uint2 pixel             = checkerboard ? launch_id * 2u + min(phase, active_resolution - 1u) : launch_id;
+    if (any(pixel >= active_resolution))
     {
         return;
     }

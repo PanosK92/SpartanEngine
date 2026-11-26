@@ -20,11 +20,12 @@ void ray_gen()
     uint2 launch_id = DispatchRaysIndex().xy;
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
+    uint2 active_resolution = max(uint2(floor(float2(resolution) * buffer_frame.resolution_scale)), uint2(1u, 1u));
 
-    // a launch narrower than the targets is checkerboarded, each launch column traces one pixel of a horizontal pair
-    bool checkerboard = DispatchRaysDimensions().x < resolution.x;
+    // a launch narrower than the active rect is checkerboarded, each launch column traces one pixel of a horizontal pair
+    bool checkerboard = DispatchRaysDimensions().x < active_resolution.x;
     uint2 pixel       = checkerboard ? reflections_checkerboard_pixel(launch_id) : launch_id;
-    if (pixel.x >= resolution.x)
+    if (any(pixel >= active_resolution))
     {
         tex_uav[launch_id] = 0.0f;
         return;

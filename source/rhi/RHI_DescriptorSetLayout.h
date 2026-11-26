@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =====================
 #include "../core/SpartanObject.h"
 #include "RHI_Descriptor.h"
+#include <array>
 #include <vector>
 #include <unordered_map>
 //================================
@@ -47,8 +48,12 @@ namespace spartan
 
     private:
         void CreateRhiResource();
+        size_t FindIndex(uint32_t slot) const;
         RHI_DescriptorBinding* FindBinding(uint32_t slot);
         uint64_t ComputeBindingHash() const;
+
+        static constexpr uint32_t slot_table_size    = 512;
+        static constexpr uint16_t invalid_slot_index = 0xFFFF;
 
         // vulkan descriptor set layout
         void* m_rhi_resource = nullptr;
@@ -56,7 +61,8 @@ namespace spartan
 
         // layout info (immutable after construction)
         std::vector<RHI_Descriptor> m_descriptors;
-        std::unordered_map<uint32_t, size_t> m_slot_to_index; // slot -> index in m_descriptors
+        std::array<uint16_t, slot_table_size> m_slot_to_index = {}; // fast O(1) slot -> index in m_descriptors
+        std::unordered_map<uint32_t, size_t> m_slot_to_index_overflow;
         uint64_t m_layout_hash = 0;
 
         // binding state (mutable)

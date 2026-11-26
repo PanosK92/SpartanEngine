@@ -160,7 +160,7 @@ namespace spartan
                 { "DEBUGGING - validation, profiling, markers and tooling",
                   { } },
                 { "DISPLAY - output, resolution, upscaling and tonemapping",
-                  { "r.hdr", "r.gamma", "r.vsync", "r.tonemapping", "r.resolution_scale", "r.dynamic_resolution", "r.antialiasing_upsampling", "r.dlss_reactivity", "r.variable_rate_shading" } },
+                  { "r.hdr", "r.gamma", "r.vsync", "r.tonemapping", "r.resolution_output_match_viewport", "r.resolution_scale", "r.dynamic_resolution", "r.antialiasing_upsampling", "r.dlss_reactivity", "r.variable_rate_shading" } },
                 { "LIGHTING - ambient occlusion, ray tracing and global illumination",
                   { "r.ssao", "r.ray_traced_shadows", "r.ray_traced_reflections", "r.rt_light_culling", "r.restir_pt", "r.restir_pt_emissive_pool", "r.restir_pt_scale", "r.restir_pt_reference" } },
                 { "ATMOSPHERE - haze and mist",

@@ -48,24 +48,69 @@ float trace_local_light_visibility(Surface surface, Light light)
 }
 #endif
 
-// samples the denoised half-res ray traced shadow with bilinear upsample, rgb so glass casts its colour
-float3 sample_ray_traced_shadow(float2 uv)
+// samples the denoised ray traced shadow with depth-aware bilateral upsample when half-res, rgb so glass casts its colour
+float3 sample_ray_traced_shadow(float2 uv, float center_linear_depth)
 {
     if (!is_ray_traced_shadows_enabled())
     {
         return 1.0f;
     }
 
-    return shadow_mask_unpack(
-        tex4.SampleLevel(
-            GET_SAMPLER(sampler_bilinear_clamp),
-            uv,
-            0
-        )
+    float3 bilinear_vis = shadow_mask_unpack(tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0));
+
+    uint2 shadow_res;
+    tex4.GetDimensions(shadow_res.x, shadow_res.y);
+    uint2 depth_res;
+    tex_depth.GetDimensions(depth_res.x, depth_res.y);
+    if (all(shadow_res == depth_res) || all(bilinear_vis >= 0.999f) || all(bilinear_vis <= 0.001f))
+    {
+        return bilinear_vis;
+    }
+
+    // 2x2 depth-aware bilateral upsample only on shadow penumbra pixels (~2% of screen)
+    float2 fcoord    = uv * float2(shadow_res) - 0.5f;
+    int2   base      = int2(floor(fcoord));
+    float2 inv_sres  = 1.0f / float2(shadow_res);
+    int2   max_tap   = int2(shadow_res) - 1;
+    int2   t00       = clamp(base,                int2(0, 0), max_tap);
+    int2   t10       = clamp(base + int2(1, 0),   int2(0, 0), max_tap);
+    int2   t01       = clamp(base + int2(0, 1),   int2(0, 0), max_tap);
+    int2   t11       = clamp(base + int2(1, 1),   int2(0, 0), max_tap);
+    float4 tap_z     = float4(
+        get_linear_depth((float2(t00) + 0.5f) * inv_sres),
+        get_linear_depth((float2(t10) + 0.5f) * inv_sres),
+        get_linear_depth((float2(t01) + 0.5f) * inv_sres),
+        get_linear_depth((float2(t11) + 0.5f) * inv_sres)
     );
+    float  inv_depth = 1.0f / max(center_linear_depth, 0.1f);
+    float4 rel_z     = abs(tap_z - center_linear_depth) * inv_depth;
+    if (max(max(rel_z.x, rel_z.y), max(rel_z.z, rel_z.w)) <= 0.05f)
+    {
+        return bilinear_vis;
+    }
+
+    float2 frac_uv = frac(fcoord);
+    float4 w_b = float4(
+        (1.0f - frac_uv.x) * (1.0f - frac_uv.y),
+        frac_uv.x          * (1.0f - frac_uv.y),
+        (1.0f - frac_uv.x) * frac_uv.y,
+        frac_uv.x          * frac_uv.y
+    );
+    float4 w     = w_b / (1.0f + rel_z * 20.0f);
+    float  w_sum = dot(w, 1.0f);
+    if (w_sum <= 1e-5f)
+    {
+        return bilinear_vis;
+    }
+    float3 acc =
+        shadow_mask_unpack(tex4.Load(int3(t00, 0))) * w.x +
+        shadow_mask_unpack(tex4.Load(int3(t10, 0))) * w.y +
+        shadow_mask_unpack(tex4.Load(int3(t01, 0))) * w.z +
+        shadow_mask_unpack(tex4.Load(int3(t11, 0))) * w.w;
+    return acc / w_sum;
 }
 
-float3 sample_nrd_local_shadow(float2 uv, uint slot)
+float3 sample_nrd_local_shadow(float2 uv, uint slot, float center_linear_depth)
 {
     if (!is_ray_traced_shadows_enabled() || slot == 0u)
     {
@@ -73,13 +118,58 @@ float3 sample_nrd_local_shadow(float2 uv, uint slot)
     }
 
     uint slice = slot - 1u;
-    return shadow_mask_unpack(
-        tex_rt_shadows_local.SampleLevel(
-            GET_SAMPLER(sampler_bilinear_clamp),
-            float3(uv, slice),
-            0
-        )
+    float3 bilinear_vis = shadow_mask_unpack(tex_rt_shadows_local.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), float3(uv, slice), 0));
+
+    uint shadow_w, shadow_h, layers;
+    tex_rt_shadows_local.GetDimensions(shadow_w, shadow_h, layers);
+    uint2 depth_res;
+    tex_depth.GetDimensions(depth_res.x, depth_res.y);
+    if ((shadow_w == depth_res.x && shadow_h == depth_res.y) || all(bilinear_vis >= 0.999f) || all(bilinear_vis <= 0.001f))
+    {
+        return bilinear_vis;
+    }
+
+    uint2  shadow_res = uint2(shadow_w, shadow_h);
+    float2 fcoord     = uv * float2(shadow_res) - 0.5f;
+    int2   base       = int2(floor(fcoord));
+    float2 inv_sres   = 1.0f / float2(shadow_res);
+    int2   max_tap    = int2(shadow_res) - 1;
+    int2   t00        = clamp(base,                int2(0, 0), max_tap);
+    int2   t10        = clamp(base + int2(1, 0),   int2(0, 0), max_tap);
+    int2   t01        = clamp(base + int2(0, 1),   int2(0, 0), max_tap);
+    int2   t11        = clamp(base + int2(1, 1),   int2(0, 0), max_tap);
+    float4 tap_z      = float4(
+        get_linear_depth((float2(t00) + 0.5f) * inv_sres),
+        get_linear_depth((float2(t10) + 0.5f) * inv_sres),
+        get_linear_depth((float2(t01) + 0.5f) * inv_sres),
+        get_linear_depth((float2(t11) + 0.5f) * inv_sres)
     );
+    float  inv_depth  = 1.0f / max(center_linear_depth, 0.1f);
+    float4 rel_z      = abs(tap_z - center_linear_depth) * inv_depth;
+    if (max(max(rel_z.x, rel_z.y), max(rel_z.z, rel_z.w)) <= 0.05f)
+    {
+        return bilinear_vis;
+    }
+
+    float2 frac_uv = frac(fcoord);
+    float4 w_b = float4(
+        (1.0f - frac_uv.x) * (1.0f - frac_uv.y),
+        frac_uv.x          * (1.0f - frac_uv.y),
+        (1.0f - frac_uv.x) * frac_uv.y,
+        frac_uv.x          * frac_uv.y
+    );
+    float4 w     = w_b / (1.0f + rel_z * 20.0f);
+    float  w_sum = dot(w, 1.0f);
+    if (w_sum <= 1e-5f)
+    {
+        return bilinear_vis;
+    }
+    float3 acc =
+        shadow_mask_unpack(tex_rt_shadows_local.Load(int4(t00, slice, 0))) * w.x +
+        shadow_mask_unpack(tex_rt_shadows_local.Load(int4(t10, slice, 0))) * w.y +
+        shadow_mask_unpack(tex_rt_shadows_local.Load(int4(t01, slice, 0))) * w.z +
+        shadow_mask_unpack(tex_rt_shadows_local.Load(int4(t11, slice, 0))) * w.w;
+    return acc / w_sum;
 }
 
 // depth and normal aware blur, hides the discrete rectangle sample steps
@@ -296,7 +386,7 @@ void evaluate_light(
 
             if (use_rt_shadow_texture)
             {
-                L_shadow_primary = sample_ray_traced_shadow(surface.uv);
+                L_shadow_primary = sample_ray_traced_shadow(surface.uv, linearize_depth(surface.depth));
             }
             else if (use_nrd_local_shadow)
             {
@@ -306,7 +396,7 @@ void evaluate_light(
                 }
                 else
                 {
-                    L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot());
+                    L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot(), linearize_depth(surface.depth));
                 }
             }
             else if (use_rt_inline)

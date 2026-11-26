@@ -118,7 +118,7 @@ namespace spartan
                 }
                 m_pcb_pass_cpu.set(pass_reflections_apply::ray_traced_refraction, ray_traced_refraction);
                 m_pcb_pass_cpu.set(pass_reflections_apply::light_count, m_count_active_lights);
-                RHI_CommandList::Dispatch(tex_frame);
+                RHI_CommandList::Dispatch(tex_frame, GetResolutionScale());
             }
             RHI_CommandList::EndMarker();
         }
@@ -194,10 +194,13 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_reflections_albedo);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
 
-            // nrd fills in the untraced pixels, so checkerboard is only safe when the denoiser shaders are ready
+            // nrd fills in the untraced pixels, so checkerboard is only safe when the denoiser shaders are ready.
+            // when reflections already run at half-res (e.g. 4K -> 1080p), trace full-rate to avoid double subsampling.
             RHI_Shader* shader_pack   = GetShader(Renderer_Shader::nrd_pack_reflections_c);
             RHI_Shader* shader_unpack = GetShader(Renderer_Shader::nrd_unpack_reflections_c);
+            const bool is_half_res    = tex_reflections_position->GetWidth() < static_cast<uint32_t>(GetResolutionRender().x);
             m_pass_state.reflections_checkerboard =
+                !is_half_res &&
                 cvar_ray_traced_reflections_checkerboard.GetValueAs<bool>() &&
                 shader_pack && shader_pack->IsCompiled() &&
                 shader_unpack && shader_unpack->IsCompiled() &&
@@ -207,9 +210,9 @@ namespace spartan
                 GetRenderTarget(Renderer_RenderTarget::nrd_in_spec_radiance) &&
                 GetRenderTarget(Renderer_RenderTarget::nrd_out_spec_radiance);
 
-            // the ray generation shader detects checkerboard from a launch narrower than its targets
-            uint32_t width  = tex_reflections_position->GetWidth();
-            uint32_t height = tex_reflections_position->GetHeight();
+            // the ray generation shader detects checkerboard from a launch narrower than its active rect
+            uint32_t width  = GetScaledDimension(tex_reflections_position->GetWidth());
+            uint32_t height = GetScaledDimension(tex_reflections_position->GetHeight());
             RHI_CommandList::TraceRays(m_pass_state.reflections_checkerboard ? (width + 1) / 2 : width, height);
         }
         RHI_CommandList::EndPass();
@@ -275,12 +278,14 @@ namespace spartan
             if (m_pass_state.reflections_checkerboard)
             {
                 const uint32_t thread_group_size = 8;
-                const uint32_t packed_width      = (tex_reflections->GetWidth() + 1) / 2;
-                RHI_CommandList::Dispatch((packed_width + thread_group_size - 1) / thread_group_size, (tex_reflections->GetHeight() + thread_group_size - 1) / thread_group_size);
+                const uint32_t active_width      = GetScaledDimension(tex_reflections->GetWidth());
+                const uint32_t active_height     = GetScaledDimension(tex_reflections->GetHeight());
+                const uint32_t packed_width      = (active_width + 1) / 2;
+                RHI_CommandList::Dispatch((packed_width + thread_group_size - 1) / thread_group_size, (active_height + thread_group_size - 1) / thread_group_size);
             }
             else
             {
-                RHI_CommandList::Dispatch(tex_reflections);
+                RHI_CommandList::Dispatch(tex_reflections, GetResolutionScale());
             }
         }
         RHI_CommandList::EndPass();
@@ -334,7 +339,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
                 m_pcb_pass_cpu.set(pass_nrd_reflections::checkerboard, checkerboard);
-                RHI_CommandList::Dispatch(tex_reflections);
+                RHI_CommandList::Dispatch(tex_reflections, GetResolutionScale());
             }
             RHI_CommandList::EndMarker();
 
@@ -355,7 +360,7 @@ namespace spartan
                     RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, denoised ? tex_out : tex_in);
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_reflections);
                     m_pcb_pass_cpu.set(pass_nrd_reflections::checkerboard, !denoised);
-                    RHI_CommandList::Dispatch(tex_reflections);
+                    RHI_CommandList::Dispatch(tex_reflections, GetResolutionScale());
                 }
                 RHI_CommandList::EndMarker();
             }
@@ -468,11 +473,13 @@ namespace spartan
                 }
                 m_pcb_pass_cpu.set(pass_ray_traced_shadows::light_culling, cvar_rt_light_culling.GetValueAs<bool>());
 
-                // the ray generation shader detects checkerboard from a launch narrower than its targets
+                // the ray generation shader detects checkerboard from a launch narrower than its active rect.
+                // when shadows already run at half-res (e.g. 4K -> 1080p), trace full-rate and skip checkerboard fill.
                 RHI_Shader* shader_fill = GetShader(Renderer_Shader::ray_traced_shadows_fill_c);
-                checkerboard            = cvar_ray_traced_shadows_checkerboard.GetValueAs<bool>() && tex_shadows_local && shader_fill && shader_fill->IsCompiled();
-                uint32_t width          = tex_shadows->GetWidth();
-                uint32_t height         = tex_shadows->GetHeight();
+                const bool is_half_res  = tex_shadows->GetWidth() < static_cast<uint32_t>(GetResolutionRender().x);
+                checkerboard            = !is_half_res && cvar_ray_traced_shadows_checkerboard.GetValueAs<bool>() && tex_shadows_local && shader_fill && shader_fill->IsCompiled();
+                uint32_t width          = GetScaledDimension(tex_shadows->GetWidth());
+                uint32_t height         = GetScaledDimension(tex_shadows->GetHeight());
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::TraceRays(checkerboard ? (width + 1) / 2 : width, checkerboard ? (height + 1) / 2 : height);
             }
@@ -483,13 +490,12 @@ namespace spartan
             {
                 RHI_CommandList::BeginMarker("checkerboard_fill");
                 {
-                    const uint32_t thread_group_size = 8;
                     RHI_CommandList::SetShader(GetShader(Renderer_Shader::ray_traced_shadows_fill_c), "ray_traced_shadows_fill");
                     SetCommonTextures();
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu); // the slot table the trace used
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_shadows);
                     RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
-                    RHI_CommandList::Dispatch((tex_shadows->GetWidth() + thread_group_size - 1) / thread_group_size, (tex_shadows->GetHeight() + thread_group_size - 1) / thread_group_size);
+                    RHI_CommandList::Dispatch(tex_shadows, GetResolutionScale());
                 }
                 RHI_CommandList::EndMarker();
             }
@@ -572,7 +578,7 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex4, tex_in);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex5, tex_translucency);
-            RHI_CommandList::Dispatch(tex_shadows);
+            RHI_CommandList::Dispatch(tex_shadows, GetResolutionScale());
             RHI_CommandList::EndPass();
 
             if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, output, &direction, denoiser_index, 0, nullptr, nullptr, false, tex_translucency))
@@ -592,7 +598,7 @@ namespace spartan
             {
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::rt_shadows_local, tex_shadows_local);
             }
-            RHI_CommandList::Dispatch(tex_shadows);
+            RHI_CommandList::Dispatch(tex_shadows, GetResolutionScale());
             RHI_CommandList::EndPass();
             return true;
         };

@@ -151,7 +151,7 @@ struct Surface
         bool is_fully_opaque = sample_albedo.a >= 0.999f;
         if (is_ssao_enabled() && is_fully_opaque)
         {
-            float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+            float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
             float3 ssao_bent   = ssao_sample.rgb;
             if (!any(isnan(ssao_bent)) && dot(ssao_bent, ssao_bent) > 1e-6f)
             {

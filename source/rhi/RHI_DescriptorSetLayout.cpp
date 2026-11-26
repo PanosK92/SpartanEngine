@@ -26,13 +26,22 @@ namespace spartan
         m_object_name = name;
         m_descriptors.reserve(count);
         m_bindings.reserve(count);
+        m_slot_to_index.fill(invalid_slot_index);
 
-        // build slot -> index map for O(1) lookups
+        // build slot -> index table for O(1) lookups without hashing
         for (size_t i = 0; i < count; ++i)
         {
             m_descriptors.push_back(descriptors[i]);
             m_bindings.emplace_back(); // default binding
-            m_slot_to_index[descriptors[i].slot] = i;
+            const uint32_t slot = descriptors[i].slot;
+            if (slot < slot_table_size)
+            {
+                m_slot_to_index[slot] = static_cast<uint16_t>(i);
+            }
+            else
+            {
+                m_slot_to_index_overflow[slot] = i;
+            }
         }
 
         // compute layout hash (immutable - based on slots and stages)
@@ -51,34 +60,43 @@ namespace spartan
 
     RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_DescriptorSetLayout& source)
     {
-        m_object_name    = source.m_object_name;
-        m_rhi_resource   = source.m_rhi_resource;
-        m_owns_resource  = false;
-        m_descriptors    = source.m_descriptors;
-        m_slot_to_index  = source.m_slot_to_index;
-        m_layout_hash    = source.m_layout_hash;
+        m_object_name            = source.m_object_name;
+        m_rhi_resource           = source.m_rhi_resource;
+        m_owns_resource          = false;
+        m_descriptors            = source.m_descriptors;
+        m_slot_to_index          = source.m_slot_to_index;
+        m_slot_to_index_overflow = source.m_slot_to_index_overflow;
+        m_layout_hash            = source.m_layout_hash;
         m_bindings.resize(m_descriptors.size());
+    }
+
+    size_t RHI_DescriptorSetLayout::FindIndex(uint32_t slot) const
+    {
+        if (slot < slot_table_size)
+        {
+            const uint16_t idx = m_slot_to_index[slot];
+            return idx != invalid_slot_index ? static_cast<size_t>(idx) : numeric_limits<size_t>::max();
+        }
+        auto it = m_slot_to_index_overflow.find(slot);
+        return it != m_slot_to_index_overflow.end() ? it->second : numeric_limits<size_t>::max();
     }
 
     RHI_DescriptorBinding* RHI_DescriptorSetLayout::FindBinding(uint32_t slot)
     {
-        auto it = m_slot_to_index.find(slot);
-        if (it != m_slot_to_index.end())
-        {
-            return &m_bindings[it->second];
-        }
-        return nullptr;
+        const size_t idx = FindIndex(slot);
+        return idx < m_bindings.size() ? &m_bindings[idx] : nullptr;
     }
 
     void RHI_DescriptorSetLayout::SetConstantBuffer(uint32_t slot, RHI_Buffer* constant_buffer)
     {
-        uint32_t actual_slot = slot + rhi_shader_register_shift_b;
-        if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
+        const uint32_t actual_slot = slot + rhi_shader_register_shift_b;
+        const size_t idx           = FindIndex(actual_slot);
+        if (idx < m_bindings.size())
         {
-            // get descriptor for validation
-            const RHI_Descriptor& descriptor = m_descriptors[m_slot_to_index[actual_slot]];
-            const uint64_t range              = constant_buffer->GetStride();
-            const uint32_t dynamic_offset     = constant_buffer->GetOffset();
+            RHI_DescriptorBinding* binding   = &m_bindings[idx];
+            const RHI_Descriptor& descriptor = m_descriptors[idx];
+            const uint64_t range             = constant_buffer->GetStride();
+            const uint32_t dynamic_offset    = constant_buffer->GetOffset();
 
             if (binding->resource == constant_buffer && binding->range == range && binding->dynamic_offset == dynamic_offset)
                 return;
@@ -102,12 +120,12 @@ namespace spartan
         // a buffer at t92 and a storage texture at u92 share the slot number, only a buffer descriptor may take it
         auto find_buffer_binding = [this](uint32_t actual_slot) -> RHI_DescriptorBinding*
         {
-            auto it = m_slot_to_index.find(actual_slot);
-            if (it == m_slot_to_index.end() || m_descriptors[it->second].type != RHI_Descriptor_Type::StructuredBuffer)
+            const size_t idx = FindIndex(actual_slot);
+            if (idx >= m_descriptors.size() || m_descriptors[idx].type != RHI_Descriptor_Type::StructuredBuffer)
             {
                 return nullptr;
             }
-            return &m_bindings[it->second];
+            return &m_bindings[idx];
         };
 
         RHI_DescriptorBinding* binding = find_buffer_binding(slot + rhi_shader_register_shift_u);

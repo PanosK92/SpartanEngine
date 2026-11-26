@@ -17,11 +17,56 @@ ARG_API_GRAPHICS = _ARGS[1]
 BUILD_STAMP      = os.getenv("SPARTAN_BUILD_STAMP")
 
 local setup = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "setup.lua"))
+local ui    = setup.ui
+
+local ACTION_LABELS =
+{
+    vs2026   = "Visual Studio 2026",
+    vs2022   = "Visual Studio 2022",
+    gmake2   = "GNU Make",
+    gmake    = "GNU Make",
+    codelite = "CodeLite",
+    xcode4   = "Xcode",
+    setup    = "Dependency Setup",
+}
+
+local API_LABELS =
+{
+    vulkan = "Vulkan",
+    d3d12  = "DirectX 12",
+    metal  = "Metal",
+    webgpu = "WebGPU (Dawn)",
+}
+
+local function show_run_banner()
+    local action_name = ACTION_LABELS[_ACTION] or tostring(_ACTION)
+    local api_name    = API_LABELS[ARG_API_GRAPHICS] or (ARG_API_GRAPHICS and tostring(ARG_API_GRAPHICS) or "All native backends")
+    local host_name   = os.host():sub(1, 1):upper() .. os.host():sub(2)
+    local meta =
+    {
+        { "Generator", action_name, ui.ansi.bold .. ui.ansi.text },
+        { "Backend",   api_name,    ui.ansi.accent },
+        { "Platform",  host_name,   ui.ansi.muted },
+    }
+    if _OPTIONS["skip-setup"] then
+        table.insert(meta, { "Mode", "Fast regenerate (--skip-setup)", ui.ansi.warn })
+    end
+    if BUILD_TAG then
+        table.insert(meta, { "Build tag", BUILD_TAG .. " (binaries/build/" .. BUILD_TAG .. ")", ui.ansi.muted })
+    end
+    ui.banner("SPARTAN ENGINE", "Project Generator", meta)
+end
 
 newaction {
     trigger     = "setup",
     description = "download dependencies and stage runtime files",
-    execute     = function() setup.run() end
+    execute     = function()
+        show_run_banner()
+        setup.run()
+        ui.summary_box("Dependency setup complete", {
+            { "Elapsed", ui.format_duration(setup.elapsed), ui.ansi.ok },
+        })
+    end
 }
 
 newoption { trigger = "skip-setup", description = "Generate projects using already staged dependencies" }
@@ -39,16 +84,42 @@ if BUILD_TAG then
 end
 
 local generation_actions = { vs2026 = true, vs2022 = true, gmake2 = true, gmake = true, codelite = true, xcode4 = true }
-if generation_actions[_ACTION] and not _OPTIONS["skip-setup"] then
-    setup.run()
+local default_api_by_action =
+{
+    vs2026   = "d3d12",
+    vs2022   = "d3d12",
+    gmake2   = "vulkan",
+    gmake    = "vulkan",
+    codelite = "vulkan",
+    xcode4   = "metal",
+}
+if generation_actions[_ACTION] and (not ARG_API_GRAPHICS or ARG_API_GRAPHICS == "") then
+    ARG_API_GRAPHICS = default_api_by_action[_ACTION]
+end
+if generation_actions[_ACTION] then
+    show_run_banner()
+    if not _OPTIONS["skip-setup"] then
+        setup.run()
+    end
 end
 
 AGILITY_SDK_VERSION = setup.agility_sdk_version
 AGILITY_ENABLED     = os.isfile(setup.agility_stamp_path)
-if AGILITY_ENABLED then
-    print("d3d12 agility sdk: enabled (D3D12SDKVersion " .. AGILITY_SDK_VERSION .. ")")
-else
-    print("d3d12 agility sdk: disabled (sdk not found, falling back to the in-box d3d12 runtime)")
+if generation_actions[_ACTION] then
+    ui.section("Generate Project Files")
+    if ARG_API_GRAPHICS == "d3d12" then
+        if AGILITY_ENABLED then
+            ui.item_ok("D3D12 Agility SDK", "enabled (D3D12SDKVersion " .. AGILITY_SDK_VERSION .. ")")
+        else
+            ui.item_warn("D3D12 Agility SDK", "not found, falling back to in-box d3d12 runtime")
+        end
+    end
+    ui.item_info("Output directory", BUILD_TAG and ("binaries/build/" .. BUILD_TAG) or "repository root")
+    if setup.elapsed and setup.elapsed > 0 then
+        ui.item_ok("Setup elapsed", ui.format_duration(setup.elapsed))
+    end
+    io.write("\n")
+    io.flush()
 end
 
 function configure_graphics_api()

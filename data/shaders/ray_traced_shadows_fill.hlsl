@@ -57,10 +57,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     uint2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
+    uint2 active_resolution = max(uint2(floor(float2(resolution) * buffer_frame.resolution_scale)), uint2(1u, 1u));
 
     uint2 pixel = thread_id.xy;
-    uint2 phase = min(uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u), resolution - 1u);
-    if (any(pixel >= resolution) || all((pixel & 1u) == phase))
+    uint2 phase = min(uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u), active_resolution - 1u);
+    if (any(pixel >= active_resolution) || all((pixel & 1u) == phase))
     {
         return;
     }
@@ -90,7 +91,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Read only traced texels. Clamp on the sample lattice so odd dimensions
     // and screen edges never read values another fill thread is writing.
     int2 first = int2(phase);
-    int2 last = first + 2 * ((int2(resolution) - 1 - first) / 2);
+    int2 last = first + 2 * ((int2(active_resolution) - 1 - first) / 2);
     int2 lower = int2(pixel) - int2((pixel ^ phase) & 1u);
     int2 upper = int2(pixel) + int2((pixel ^ phase) & 1u);
     uint2  neighbours[4];

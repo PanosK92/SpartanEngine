@@ -50,7 +50,7 @@ The release web package boots the editor with an empty world. CI has no copy of 
 generate_project_files.bat vs2026 webgpu
 ```
 
-Or run `generate_project_files.bat` and pick `[3] visual studio 2026 - webgpu`. Setup ([`tools/setup.lua`](../tools/setup.lua)) only fetches Dawn when the API is `webgpu`:
+Or run `generate_project_files.bat` and press `[3]` (**Visual Studio 2026 · WebGPU**) in the interactive launcher. Setup ([`tools/setup.lua`](../tools/setup.lua)) only fetches Dawn when the API is `webgpu`:
 
 1. It downloads the pinned Dawn release from GitHub (`DAWN_VERSION`, sha256-checked, about 120 MB).
 2. It links `webgpu_dawn.dll` from Dawn's static library with the MSVC linker, using the export list in `third_party/webgpu/webgpu_dawn.def`. Dawn ships `/MD` and the engine is `/MT`, so the DLL keeps the two runtimes apart.

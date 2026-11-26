@@ -1517,11 +1517,13 @@ namespace spartan
                 if (SUCCEEDED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
                 {
                     cmd4->SetPipelineState1(static_cast<ID3D12StateObject*>(pipeline->GetRhiResource()));
+                    Profiler::m_rhi_bindings_pipeline++;
                 }
             }
             else
             {
                 cmd_list->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline->GetRhiResource()));
+                Profiler::m_rhi_bindings_pipeline++;
             }
 
             auto& b = cmd_state::get(this);
@@ -1745,6 +1747,12 @@ namespace spartan
         // go through the cached setters, writing the state directly left the cache stale and dropped the next matching imgui clip rect
         if (width > 0 && height > 0)
         {
+            if (m_pso.resolution_scale)
+            {
+                width  = RHI_Device::ScaleDimension(width);
+                height = RHI_Device::ScaleDimension(height);
+            }
+
             RHI_Viewport viewport;
             viewport.width  = static_cast<float>(width);
             viewport.height = static_cast<float>(height);
@@ -1950,6 +1958,7 @@ namespace spartan
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawIndexedInstanced(index_count, instance_count, index_offset, vertex_offset, instance_start_index);
         Profiler::m_rhi_draw++;
+        Profiler::m_rhi_instance_count += instance_count == 1 ? 0 : instance_count;
     }
 
     void RHI_CommandList::draw_indexed_indirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count)
@@ -2180,6 +2189,7 @@ namespace spartan
             uav_barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             uav_barrier.UAV.pResource = nullptr;
             cmd_list->ResourceBarrier(1, &uav_barrier);
+            Profiler::m_rhi_pipeline_barriers++;
         }
 
         flush_pending_bindings(cmd_list, this, false);
@@ -2549,10 +2559,13 @@ namespace spartan
             params.destination_width     = std::max(1u, destination->GetResidentWidth()  >> mip);
             params.destination_height    = std::max(1u, destination->GetResidentHeight() >> mip);
             params.is_depth_destination  = dst_is_depth;
-            // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
-            // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
-            params.source_uv_scale_x     = resolution_scale;
-            params.source_uv_scale_y     = resolution_scale;
+            // resolution_scale shrinks the source extent that fills the destination, matching vulkan's quantized scaled rect
+            const uint32_t src_mip_width    = std::max(1u, source->GetResidentWidth()  >> mip);
+            const uint32_t src_mip_height   = std::max(1u, source->GetResidentHeight() >> mip);
+            const uint32_t src_scale_width  = std::max(1u, RHI_Device::ScaleDimension(source->GetResidentWidth(),  resolution_scale) >> mip);
+            const uint32_t src_scale_height = std::max(1u, RHI_Device::ScaleDimension(source->GetResidentHeight(), resolution_scale) >> mip);
+            params.source_uv_scale_x        = static_cast<float>(src_scale_width)  / static_cast<float>(src_mip_width);
+            params.source_uv_scale_y        = static_cast<float>(src_scale_height) / static_cast<float>(src_mip_height);
 
             d3d12_blit::blit(cmd_list, params);
             if (mip != 0)
@@ -2991,6 +3004,7 @@ namespace spartan
         {
             ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
             cmd_list->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline->GetRhiResource()));
+            Profiler::m_rhi_bindings_pipeline++;
 
             // keep state in sync so the next SetPipelineState diff detection stays correct
             m_pso      = pso_variant;

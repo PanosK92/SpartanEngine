@@ -452,6 +452,13 @@ namespace spartan
         RHI_Pipeline* m_pipeline                             = nullptr;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::unordered_map<uint64_t, std::unique_ptr<RHI_DescriptorSetLayout>> m_descriptor_layouts_local;
+        struct LocalPipelineEntry
+        {
+            RHI_Pipeline* pipeline            = nullptr;
+            RHI_DescriptorSetLayout* layout   = nullptr;
+        };
+        std::unordered_map<uint64_t, LocalPipelineEntry> m_pipeline_cache_local;
+        uint64_t m_pipeline_cache_generation                 = 0;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         mutable float m_scissor_x                            = 0.0f;

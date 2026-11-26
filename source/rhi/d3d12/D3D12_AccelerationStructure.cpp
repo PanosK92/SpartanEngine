@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "D3D12_Internal.h"
+#include "../../profiling/Profiler.h"
 #include <wrl/client.h>
 //================================
 
@@ -182,6 +183,7 @@ namespace spartan
             barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.UAV.pResource = resource;
             cmd_list->ResourceBarrier(1, &barrier);
+            Profiler::m_rhi_pipeline_barriers++;
         }
     }
 

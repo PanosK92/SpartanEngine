@@ -190,11 +190,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    uint2 active_resolution = max(uint2(floor(resolution_out * buffer_frame.resolution_scale)), uint2(1u, 1u));
 
     // the trace targets and the output share the packed layout, only screen lookups use the unpacked pixel
     bool  checkerboard = pass_bool(pass_reflections_shade::checkerboard);
     uint2 pixel        = checkerboard ? reflections_checkerboard_pixel(thread_id.xy) : thread_id.xy;
-    if (pixel.x >= resolution_out.x || pixel.y >= resolution_out.y)
+    if (any(pixel >= active_resolution))
         return;
 
     float4 gbuffer_position = tex[thread_id.xy];

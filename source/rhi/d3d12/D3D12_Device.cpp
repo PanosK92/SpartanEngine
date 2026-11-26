@@ -548,11 +548,30 @@ namespace spartan
                     }
                 }
 
+                // query the windows umd driver version via dxgi
+                char driver_version_str[64] = {};
+                LARGE_INTEGER umd_version   = {};
+                if (SUCCEEDED(display_adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umd_version)))
+                {
+                    const uint32_t product = HIWORD(umd_version.HighPart);
+                    const uint32_t version = LOWORD(umd_version.HighPart);
+                    const uint32_t sub     = HIWORD(umd_version.LowPart);
+                    const uint32_t build   = LOWORD(umd_version.LowPart);
+                    if (adapter_desc1.VendorId == 0x10DE)
+                    {
+                        snprintf(driver_version_str, sizeof(driver_version_str), "%u.%02u", (sub % 10) * 100 + build / 100, build % 100);
+                    }
+                    else
+                    {
+                        snprintf(driver_version_str, sizeof(driver_version_str), "%u.%u.%u.%u", product, version, sub, build);
+                    }
+                }
+
                 RHI_Device::PhysicalDeviceRegister(RHI_PhysicalDevice
                 (
                     api_version,
                     0,
-                    nullptr,
+                    driver_version_str[0] != '\0' ? driver_version_str : nullptr,
                     adapter_desc1.VendorId,
                     device_type,
                     &name[0],
@@ -565,6 +584,18 @@ namespace spartan
         void select_primary()
         {
             RHI_Device::PhysicalDeviceSetPrimary(0);
+            if (const RHI_PhysicalDevice* gpu = RHI_Device::GetPrimaryPhysicalDevice())
+            {
+                static char api_version_short[32] = {};
+                strncpy_s(api_version_short, sizeof(api_version_short), gpu->GetApiVersion(), _TRUNCATE);
+                // trim trailing ".0" patch so feature level 12.2.0 displays as 12.2
+                const size_t len = strlen(api_version_short);
+                if (len > 2 && strcmp(api_version_short + len - 2, ".0") == 0)
+                {
+                    api_version_short[len - 2] = '\0';
+                }
+                RHI_Context::api_version_cstr = api_version_short;
+            }
         }
     }
 
@@ -805,13 +836,9 @@ namespace spartan
                 }
             }
 
-            // SV_InstanceID is draw-local in DXIL. Batched depth draws need the
-            // optional SM 6.8 start-instance semantic to recover their draw-data index.
-            D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21 = {};
-            m_is_shader_base_instance_supported =
-                caps::highest_shader_model >= D3D_SHADER_MODEL_6_8 &&
-                SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21))) &&
-                options21.ExtendedCommandInfoSupported;
+            // SV_StartInstanceLocation evaluates to 0 under ExecuteIndirect even when D3D12_OPTIONS21::ExtendedCommandInfoSupported
+            // reports true, which breaks indirect shadow-map draw indexing; keep base-instance batching disabled on D3D12
+            m_is_shader_base_instance_supported = false;
 
             // xess requires shader model 6.4 or newer
             m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;

@@ -4,6 +4,7 @@
 -- Commercial use requires written permission and negotiated payment terms.
 
 local setup = {}
+local ui    = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "console_ui.lua"))
 
 local PROJECT_ROOT     = path.getabsolute(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, ".."))
 local BINARIES_DIR     = path.join(PROJECT_ROOT, "binaries")
@@ -131,6 +132,14 @@ local function file_exists(p)
     return false
 end
 
+local function file_size(p)
+    local f = io.open(p, "rb")
+    if not f then return 0 end
+    local sz = f:seek("end") or 0
+    f:close()
+    return sz
+end
+
 local function shell_path(p)
     if is_windows() then
         return path.translate(p, "\\")
@@ -157,21 +166,41 @@ local function read_text(p)
     return (contents:gsub("%s+", ""))
 end
 
-local function download_with_progress(url, destination)
-    local last_percent = -1
+local function download_with_progress(url, destination, label)
+    local display_label = label or path.getname(destination)
+    local prog          = ui.create_progress(display_label)
+    local started       = os.clock()
+    local total_bytes   = 0
+
+    prog:update(0, "connecting...")
+
     local result, code = http.download(url, destination, {
         progress = function(total, current)
             if total and total > 0 then
-                local percent = math.floor((current / total) * 100)
-                if percent ~= last_percent and percent % 5 == 0 then
-                    io.write(string.format("\r  progress: %3d%%", percent))
-                    io.flush()
-                    last_percent = percent
+                total_bytes   = total
+                local percent = (current / total) * 100
+                local elapsed = math.max(os.clock() - started, 0.001)
+                local rate    = current / elapsed
+                local eta     = rate > 0 and ((total - current) / rate) or 0
+                local detail  = string.format("%s / %s  %s  %s/s", ui.format_bytes(current), ui.format_bytes(total), ui.glyph.dot, ui.format_bytes(rate))
+                if eta >= 1.0 and current < total then
+                    detail = detail .. "  " .. ui.glyph.dot .. "  ETA " .. ui.format_duration(eta)
                 end
+                prog:update(percent, detail)
+            elseif current and current > 0 then
+                prog:update(0, ui.format_bytes(current))
             end
         end
     })
-    io.write("\n")
+
+    if result == "OK" then
+        local sz = total_bytes > 0 and total_bytes or file_size(destination)
+        prog:finish("downloaded (" .. ui.format_bytes(sz) .. ")", "ok")
+    else
+        ui.activity_clear()
+        ui.item_err(display_label, string.format("download failed: %s (http %s)", tostring(result), tostring(code)))
+    end
+
     return result, code
 end
 
@@ -243,7 +272,7 @@ end
 local function copy_file(src, dst)
     -- a running engine locks its dlls, so leave identical copies alone
     if files_identical(src, dst) then
-        return
+        return false
     end
 
     os.mkdir(path.getdirectory(dst))
@@ -253,6 +282,7 @@ local function copy_file(src, dst)
     if not ok then
         error(string.format("failed to copy %s -> %s: %s", src, dst, tostring(err)))
     end
+    return true
 end
 
 local function copy_dir(src, dst)
@@ -281,10 +311,7 @@ end
 local function download_archive()
     os.mkdir(LIBRARIES_DIR)
 
-    print("downloading " .. LIBRARY_URL)
-    print("  -> " .. ARCHIVE_PATH)
-
-    local result, code = download_with_progress(LIBRARY_URL, ARCHIVE_PATH)
+    local result, code = download_with_progress(LIBRARY_URL, ARCHIVE_PATH, "libraries.7z")
 
     if result ~= "OK" then
         error(string.format("download failed: %s (http %s)", tostring(result), tostring(code)))
@@ -326,24 +353,27 @@ local function ensure_7zr()
         error("7zr/7z not found on PATH, needed to extract libraries.7z")
     end
 
-    print("fetching portable 7zr for libraries.7z...")
     os.mkdir(path.getdirectory(SEVEN_ZIP_CACHE))
-    local result, code = download_with_progress(SEVEN_ZIP_URL, SEVEN_ZIP_CACHE)
+    local result, code = download_with_progress(SEVEN_ZIP_URL, SEVEN_ZIP_CACHE, "7zr.exe (portable)")
     if result ~= "OK" or not file_exists(SEVEN_ZIP_CACHE) then
         error(string.format("failed to download 7zr.exe: %s (http %s)", tostring(result), tostring(code)))
     end
     return SEVEN_ZIP_CACHE
 end
 
-local function extract_zip(archive, destination)
+local function extract_zip(archive, destination, label)
     os.mkdir(destination)
+    local name    = label or path.getname(archive)
+    local started = os.clock()
+    ui.activity_start(name, "extracting...")
     -- windows 10+ and linux both ship a tar that can read zip
     local cmd = string.format('tar -xf %s -C %s', quote(archive), quote(destination))
-    print("extracting " .. path.getname(archive) .. "...")
-    local ok = run(cmd)
+    local ok  = run(cmd)
     if ok ~= true and ok ~= 0 then
+        ui.activity_done("err", name, "extraction failed")
         error("zip extraction failed (cmd: " .. cmd .. ")")
     end
+    ui.activity_done("ok", name, "extracted " .. ui.glyph.dot .. " " .. ui.format_duration(os.clock() - started))
 end
 
 local function extract_archive()
@@ -360,48 +390,90 @@ local function extract_archive()
         cmd = cmd .. " -x!libxess.lib -x!nvsdk_ngx_s.lib -x!nvsdk_ngx_s_dbg.lib"
     end
 
-    print("extracting libraries.7z...")
+    local prog = ui.create_progress("libraries.7z")
+    prog:update(0, "extracting...")
+
+    local popen_cmd = is_windows() and ('"' .. cmd .. ' 2>&1"') or (cmd .. " 2>&1")
+    local handle    = io.popen(popen_cmd, "r")
+    if handle then
+        local digits = ""
+        while true do
+            local ch = handle:read(1)
+            if not ch then
+                break
+            end
+            if ch >= "0" and ch <= "9" then
+                digits = digits .. ch
+            elseif ch == "%" and #digits > 0 then
+                local pct = tonumber(digits)
+                if pct and pct >= 0 and pct <= 100 then
+                    prog:update(pct, "extracting into third_party/libraries/")
+                end
+                digits = ""
+            else
+                digits = ""
+            end
+        end
+        local ok, _, code = handle:close()
+        if ok ~= true and ok ~= 0 and code ~= 0 then
+            ui.activity_clear()
+            ui.item_err("libraries.7z", "extraction failed")
+            error("extraction failed (cmd: " .. cmd .. ")")
+        end
+        prog:update(100, "extracting into third_party/libraries/")
+        prog:finish("extracted into third_party/libraries/", "ok")
+        return
+    end
+
     local ok = run(cmd)
     if ok ~= true and ok ~= 0 then
+        ui.activity_clear()
+        ui.item_err("libraries.7z", "extraction failed")
         error("extraction failed (cmd: " .. cmd .. ")")
     end
+    prog:finish("extracted into third_party/libraries/", "ok")
 end
 
 local function ensure_archive()
     if file_exists(ARCHIVE_PATH) then
+        local started = os.clock()
+        ui.activity_start("libraries.7z", "verifying SHA-256...")
         local hash = compute_sha256(ARCHIVE_PATH)
         if hash == LIBRARY_HASH then
-            print("libraries.7z present and hash matches, skipping download")
+            local info = ui.format_bytes(file_size(ARCHIVE_PATH)) .. " " .. ui.glyph.dot .. " SHA-256 ok (" .. ui.format_duration(os.clock() - started) .. ")"
+            ui.activity_done("cached", "libraries.7z", info)
             return
         end
-        print("libraries.7z hash mismatch, redownloading")
+        ui.activity_done("warn", "libraries.7z", "hash mismatch, redownloading")
         os.remove(ARCHIVE_PATH)
     end
 
     download_archive()
 
+    ui.activity_start("libraries.7z", "verifying SHA-256...")
     local hash = compute_sha256(ARCHIVE_PATH)
     if hash ~= LIBRARY_HASH then
+        ui.activity_done("err", "libraries.7z", "SHA-256 mismatch after download")
         error(string.format("hash mismatch after download (expected %s, got %s)",
             LIBRARY_HASH, tostring(hash)))
     end
+    ui.activity_done("ok", "libraries.7z", "SHA-256 verified")
 end
 
 local function ensure_agility_sdk()
     if not is_windows() then
-        print("  not windows, skipping agility sdk")
+        ui.item_skip("D3D12 Agility SDK", "Windows only")
         return
     end
 
     if read_text(AGILITY_STAMP) == AGILITY_VERSION and file_exists(path.join(AGILITY_BIN_DIR, "D3D12Core.dll")) then
-        print("agility sdk " .. AGILITY_VERSION .. " present, skipping download")
+        ui.item_cached("D3D12 Agility SDK " .. AGILITY_VERSION, "D3D12SDKVersion " .. AGILITY_SDK_VERSION)
         return
     end
 
-    print("downloading agility sdk " .. AGILITY_VERSION .. "...")
     os.mkdir(path.getdirectory(AGILITY_NUPKG))
 
-    local result, code = download_with_progress(AGILITY_URL, AGILITY_NUPKG)
+    local result, code = download_with_progress(AGILITY_URL, AGILITY_NUPKG, "D3D12 Agility " .. AGILITY_VERSION)
     if result ~= "OK" then
         error(string.format("agility sdk download failed: %s (http %s)", tostring(result), tostring(code)))
     end
@@ -412,7 +484,7 @@ local function ensure_agility_sdk()
     end
 
     -- the nupkg is a plain zip
-    extract_zip(AGILITY_NUPKG, extract_root)
+    extract_zip(AGILITY_NUPKG, extract_root, "D3D12 Agility package")
 
     local native_root = path.join(extract_root, "build", "native")
     if not os.isdir(native_root) then
@@ -435,29 +507,34 @@ local function ensure_agility_sdk()
     f:write(AGILITY_VERSION)
     f:close()
 
-    print("agility sdk " .. AGILITY_VERSION .. " installed (D3D12SDKVersion " .. AGILITY_SDK_VERSION .. ")")
+    ui.item_ok("D3D12 Agility SDK " .. AGILITY_VERSION, "installed (D3D12SDKVersion " .. AGILITY_SDK_VERSION .. ")")
 end
 
 local function stage_agility_runtime()
     if not is_windows() then
-        return
+        return 0
     end
 
-    local staged = 0
+    local staged  = 0
+    local updated = 0
 
     for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
         local source = path.join(AGILITY_BIN_DIR, dll)
         if file_exists(source) then
-            copy_file(source, path.join(RUNTIME_DIR, "d3d12", dll))
+            if copy_file(source, path.join(RUNTIME_DIR, "d3d12", dll)) then
+                updated = updated + 1
+            end
             staged = staged + 1
         end
     end
 
     if staged > 0 then
-        print(string.format("  staged %d agility dll(s) into binaries/third_party/d3d12/", staged))
+        local state = updated > 0 and string.format("%d copied, %d up to date", updated, staged - updated) or "up to date"
+        ui.item_ok("D3D12 Agility runtime", string.format("%d dlls in binaries/third_party/d3d12/ (%s)", staged, state))
     else
-        print("  agility sdk not found, skipping agility staging")
+        ui.item_warn("D3D12 Agility runtime", "sdk not found, using in-box d3d12")
     end
+    return staged
 end
 
 local function find_vcvars()
@@ -482,20 +559,22 @@ local function ensure_dawn()
 
     local present = read_text(DAWN_STAMP) == DAWN_VERSION and file_exists(dll) and file_exists(lib) and file_exists(tint)
     if present then
-        print("dawn " .. DAWN_VERSION .. " present, skipping download")
+        ui.item_cached("Google Dawn " .. DAWN_VERSION, "webgpu_dawn.dll + tint.exe")
     else
         if compute_sha256(DAWN_ARCHIVE) ~= DAWN_HASH then
-            print("downloading dawn " .. DAWN_VERSION .. "...")
             os.mkdir(LIBRARIES_DIR)
             os.remove(DAWN_ARCHIVE)
-            local result, code = download_with_progress(DAWN_URL, DAWN_ARCHIVE)
+            local result, code = download_with_progress(DAWN_URL, DAWN_ARCHIVE, "Google Dawn " .. DAWN_VERSION)
             if result ~= "OK" then
                 error(string.format("dawn download failed: %s (http %s)", tostring(result), tostring(code)))
             end
+            ui.activity_start("Google Dawn", "verifying SHA-256...")
             local hash = compute_sha256(DAWN_ARCHIVE)
             if hash ~= DAWN_HASH then
+                ui.activity_done("err", "Google Dawn", "SHA-256 mismatch")
                 error(string.format("dawn hash mismatch (expected %s, got %s)", DAWN_HASH, tostring(hash)))
             end
+            ui.activity_done("ok", "Google Dawn", "SHA-256 verified")
         end
 
         local extract_root = path.join(LIBRARIES_DIR, "dawn_extract")
@@ -503,12 +582,15 @@ local function ensure_dawn()
             os.rmdir(extract_root)
         end
         os.mkdir(extract_root)
-        print("extracting dawn...")
+        local t_extract = os.clock()
+        ui.activity_start("Google Dawn", "extracting archive...")
         local cmd = string.format('tar -xzf %s -C %s --strip-components=2 %s/bin/tint.exe %s/lib/webgpu_dawn.lib', quote(DAWN_ARCHIVE), quote(extract_root), DAWN_FOLDER, DAWN_FOLDER)
         local ok = run(cmd)
         if ok ~= true and ok ~= 0 then
+            ui.activity_done("err", "Google Dawn", "extraction failed")
             error("dawn extraction failed (cmd: " .. cmd .. ")")
         end
+        ui.activity_done("ok", "Google Dawn", "extracted " .. ui.glyph.dot .. " " .. ui.format_duration(os.clock() - t_extract))
 
         local vcvars = find_vcvars()
         if not vcvars then
@@ -523,9 +605,11 @@ local function ensure_dawn()
         f:write("call " .. quote(vcvars) .. " >nul || exit /b 1\r\n")
         f:write(string.format("link /nologo /DLL /DEF:%s /OUT:%s /IMPLIB:%s /MACHINE:X64 %s %s\r\n", quote(DAWN_DEF), quote(dll), quote(lib), quote(path.join(extract_root, "webgpu_dawn.lib")), DAWN_SYSTEM_LIBS))
         f:close()
-        print("linking webgpu_dawn.dll...")
+        local t_link = os.clock()
+        ui.activity_start("webgpu_dawn.dll", "linking with MSVC...")
         ok = run(quote(script))
         if (ok ~= true and ok ~= 0) or not file_exists(dll) then
+            ui.activity_done("err", "webgpu_dawn.dll", "link failed")
             error("linking webgpu_dawn.dll failed")
         end
         copy_file(path.join(extract_root, "tint.exe"), tint)
@@ -535,18 +619,19 @@ local function ensure_dawn()
         f = io.open(DAWN_STAMP, "wb")
         f:write(DAWN_VERSION)
         f:close()
-        print("dawn " .. DAWN_VERSION .. " installed")
+        ui.activity_done("ok", "webgpu_dawn.dll", "linked " .. ui.glyph.dot .. " " .. ui.format_duration(os.clock() - t_link))
     end
 
     -- the shader compiler runs tint next to the executable
-    copy_file(dll, path.join(RUNTIME_DIR, "webgpu_dawn.dll"))
-    copy_file(tint, path.join(BINARIES_DIR, "tint.exe"))
-    print("  staged webgpu_dawn.dll and tint.exe")
+    local c1 = copy_file(dll, path.join(RUNTIME_DIR, "webgpu_dawn.dll"))
+    local c2 = copy_file(tint, path.join(BINARIES_DIR, "tint.exe"))
+    local state = (c1 or c2) and "staged" or "up to date"
+    ui.item_ok("WebGPU runtime", "webgpu_dawn.dll + tint.exe (" .. state .. ")")
 end
 
 local function ensure_xess_sdk()
     if not is_windows() then
-        print("  not windows, skipping xess sdk")
+        ui.item_skip("Intel XeSS SDK", "Windows only")
         return
     end
 
@@ -569,14 +654,13 @@ local function ensure_xess_sdk()
     end
 
     if present then
-        print("xess sdk " .. XESS_VERSION .. " present, skipping download")
+        ui.item_cached("Intel XeSS SDK " .. XESS_VERSION, "SHA-256 verified")
         return
     end
 
-    print("downloading xess sdk " .. XESS_VERSION .. "...")
     os.mkdir(path.getdirectory(XESS_ZIP))
 
-    local result, code = download_with_progress(XESS_URL, XESS_ZIP)
+    local result, code = download_with_progress(XESS_URL, XESS_ZIP, "Intel XeSS " .. XESS_VERSION)
     if result ~= "OK" then
         error(string.format("xess sdk download failed: %s (http %s)", tostring(result), tostring(code)))
     end
@@ -586,7 +670,7 @@ local function ensure_xess_sdk()
         os.rmdir(extract_root)
     end
 
-    extract_zip(XESS_ZIP, extract_root)
+    extract_zip(XESS_ZIP, extract_root, "Intel XeSS archive")
 
     local sdk_root = extract_root
     if not os.isdir(path.join(sdk_root, "inc")) then
@@ -615,73 +699,87 @@ local function ensure_xess_sdk()
     os.rmdir(extract_root)
     os.remove(XESS_ZIP)
 
-    print("xess sdk " .. XESS_VERSION .. " installed")
+    ui.item_ok("Intel XeSS SDK " .. XESS_VERSION, "installed")
 end
 
 local function ensure_dlss_sdk()
     if not is_windows() then
-        print("  not windows, skipping dlss sdk")
+        ui.item_skip("NVIDIA DLSS SDK", "Windows only")
         return
     end
 
     -- Check actual files: extracting libraries.7z can overwrite a newer SDK.
+    local downloaded = 0
     for _, entry in ipairs(DLSS_FILES) do
         local destination = path.join(LIBRARIES_DIR, entry.destination)
         if compute_sha256(destination) ~= entry.sha256 then
             local temporary = destination .. ".tmp"
-            print("downloading dlss " .. DLSS_VERSION .. ": " .. entry.destination)
-            local result, code = download_with_progress(DLSS_URL .. entry.source, temporary)
+            local result, code = download_with_progress(DLSS_URL .. entry.source, temporary, "DLSS " .. entry.destination)
             if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
                 os.remove(temporary)
                 error(string.format("dlss download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
             end
             copy_file(temporary, destination)
             os.remove(temporary)
+            downloaded = downloaded + 1
         end
     end
-    print("dlss sdk " .. DLSS_VERSION .. " verified")
+    if downloaded > 0 then
+        ui.item_ok("NVIDIA DLSS " .. DLSS_VERSION, string.format("%d/%d files updated", downloaded, #DLSS_FILES))
+    else
+        ui.item_cached("NVIDIA DLSS " .. DLSS_VERSION, string.format("%d files verified", #DLSS_FILES))
+    end
 end
 
 local function ensure_fidelityfx_sdk()
     if not is_windows() then
-        print("  not windows, skipping fidelityfx sdk")
+        ui.item_skip("AMD FidelityFX SDK", "Windows only")
         return
     end
 
-    local function ensure_runtime(version, url, files)
+    local function ensure_runtime(label, version, url, files)
+        local checked    = 0
+        local downloaded = 0
         for _, entry in ipairs(files) do
             local destination = path.join(LIBRARIES_DIR, entry.name)
-            if needs_vendor_file(entry.name) and compute_sha256(destination) ~= entry.sha256 then
-                local temporary = destination .. ".tmp"
-                print("downloading fidelityfx " .. version .. ": " .. entry.name)
-                local result, code = download_with_progress(url .. entry.name, temporary)
-                if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
+            if needs_vendor_file(entry.name) then
+                checked = checked + 1
+                if compute_sha256(destination) ~= entry.sha256 then
+                    local temporary = destination .. ".tmp"
+                    local result, code = download_with_progress(url .. entry.name, temporary, entry.name)
+                    if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
+                        os.remove(temporary)
+                        error(string.format("fidelityfx download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
+                    end
+                    copy_file(temporary, destination)
                     os.remove(temporary)
-                    error(string.format("fidelityfx download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
+                    downloaded = downloaded + 1
                 end
-                copy_file(temporary, destination)
-                os.remove(temporary)
             end
         end
-        print("fidelityfx sdk " .. version .. " verified")
+        local noun = checked == 1 and "file" or "files"
+        if downloaded > 0 then
+            ui.item_ok(label .. " " .. version, string.format("%d/%d %s updated", downloaded, checked, noun))
+        else
+            ui.item_cached(label .. " " .. version, string.format("%d %s verified", checked, noun))
+        end
     end
-    ensure_runtime(FIDELITYFX_VERSION, FIDELITYFX_URL, FIDELITYFX_FILES)
-    ensure_runtime(FSR_UPSCALING_VERSION, FSR_UPSCALING_URL, FSR_UPSCALING_FILES)
+    ensure_runtime("AMD FidelityFX FG", FIDELITYFX_VERSION, FIDELITYFX_URL, FIDELITYFX_FILES)
+    ensure_runtime("AMD FSR Upscaler", FSR_UPSCALING_VERSION, FSR_UPSCALING_URL, FSR_UPSCALING_FILES)
 end
 
 local function ensure_steamworks()
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
-        print("steamworks sdk present, skipping download")
+        ui.item_cached("Steamworks SDK", "win64 lib + dll ready")
         return
     end
 
-    print("downloading steamworks sdk...")
     os.mkdir(path.getdirectory(STEAMWORKS_ZIP))
 
-    local result, code = download_with_progress(STEAMWORKS_URL, STEAMWORKS_ZIP)
+    local result, code = download_with_progress(STEAMWORKS_URL, STEAMWORKS_ZIP, "Steamworks SDK")
 
     if result ~= "OK" then
-        print(string.format("  steamworks download failed: %s (http %s)", tostring(result), tostring(code)))
+        ui.item_warn("Steamworks SDK", string.format("optional download failed (%s, http %s)", tostring(result), tostring(code)))
         return
     end
 
@@ -690,15 +788,15 @@ local function ensure_steamworks()
         os.rmdir(extract_root)
     end
 
-    local ok, err = pcall(extract_zip, STEAMWORKS_ZIP, extract_root)
+    local ok, err = pcall(extract_zip, STEAMWORKS_ZIP, extract_root, "Steamworks archive")
     if not ok then
-        print("  steamworks extraction failed: " .. tostring(err))
+        ui.item_warn("Steamworks SDK", "extraction failed: " .. tostring(err))
         return
     end
 
     local sdk_root = path.join(extract_root, "SteamworksSDK-main")
     if not os.isdir(sdk_root) then
-        print("  unexpected steamworks archive layout")
+        ui.item_warn("Steamworks SDK", "unexpected archive layout")
         return
     end
 
@@ -714,9 +812,9 @@ local function ensure_steamworks()
     os.remove(STEAMWORKS_ZIP)
 
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
-        print("steamworks sdk installed")
+        ui.item_ok("Steamworks SDK", "installed")
     else
-        print("  steamworks sdk install incomplete")
+        ui.item_warn("Steamworks SDK", "install incomplete")
     end
 end
 
@@ -727,67 +825,110 @@ local function run_linux()
     local libraries    = is_macos and MACOS_RUNTIME_LIBRARIES or LINUX_RUNTIME_LIBRARIES
     local dependencies = is_macos and "tools/macos_dependencies.sh" or "tools/linux_dependencies.sh"
 
-    print("\n[1/2] copying data files into binaries...")
+    ui.step_begin(1, 2, "Sync Engine Data")
+    local t_data = os.clock()
+    ui.activity_start("data/", "copying into binaries/data/...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
+    ui.activity_done("ok", "Engine data", "synced into binaries/data/ (" .. ui.format_duration(os.clock() - t_data) .. ")")
 
-    print("\n[2/2] copying runtime libraries into binaries...")
+    ui.step_begin(2, 2, "Stage Runtime Libraries")
     for _, so in ipairs(libraries) do
         local source = path.join(library_dir, so)
         if file_exists(source) then
-            copy_file(source, path.join(BINARIES_DIR, so))
+            local copied = copy_file(source, path.join(BINARIES_DIR, so))
+            if copied then
+                ui.item_ok(so, "copied to binaries/")
+            else
+                ui.item_cached(so, "up to date in binaries/")
+            end
         else
-            print("  missing " .. so .. ", run " .. dependencies .. " first")
+            ui.item_warn(so, "missing — run " .. dependencies .. " first")
         end
     end
-
-    print("\nsetup complete")
 end
 
 function setup.run()
+    local started = os.clock()
+
     if not is_windows() then
         run_linux()
+        setup.elapsed = os.clock() - started
         return
     end
 
-    print("\n[1/7] copying data files into binaries...")
-    copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
+    local is_webgpu   = ARG_API_GRAPHICS == "webgpu"
+    local total_steps = is_webgpu and 8 or 7
+    local step        = 0
 
-    print("\n[2/7] ensuring libraries archive is present...")
+    local function next_step(title)
+        step = step + 1
+        ui.step_begin(step, total_steps, title)
+    end
+
+    next_step("Sync Engine Data")
+    local t_data = os.clock()
+    ui.activity_start("data/", "copying into binaries/data/...")
+    copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
+    ui.activity_done("ok", "Engine data", "synced into binaries/data/ (" .. ui.format_duration(os.clock() - t_data) .. ")")
+
+    next_step("Core Libraries Archive")
     ensure_archive()
 
-    print("\n[3/7] extracting archive...")
+    next_step("Extract Libraries")
     extract_archive()
 
-    print("\n[4/7] ensuring upscaler and frame generation sdks...")
-    if ARG_API_GRAPHICS ~= "webgpu" then
+    next_step("Upscaling & Frame Generation SDKs")
+    if is_webgpu then
+        ui.item_skip("XeSS / DLSS / FidelityFX", "not used by WebGPU backend")
+    else
         ensure_xess_sdk()
         ensure_dlss_sdk()
         ensure_fidelityfx_sdk()
     end
 
-    print("\n[5/7] ensuring d3d12 agility sdk...")
-    if ARG_API_GRAPHICS ~= "vulkan" then
+    next_step("DirectX 12 Agility SDK")
+    if ARG_API_GRAPHICS == "vulkan" then
+        ui.item_skip("D3D12 Agility SDK " .. AGILITY_VERSION, "not used by Vulkan backend")
+    else
         ensure_agility_sdk()
     end
 
-    print("\n[6/7] ensuring steamworks sdk...")
+    next_step("Steamworks SDK")
     ensure_steamworks()
 
-    if ARG_API_GRAPHICS == "webgpu" then
-        print("ensuring dawn (webgpu)...")
+    if is_webgpu then
+        next_step("Google Dawn (WebGPU)")
         ensure_dawn()
     end
 
-    print("\n[7/7] copying runtime dlls into binaries/third_party...")
+    next_step("Stage Runtime Binaries")
+    local needed_dlls = {}
     for _, dll in ipairs(RUNTIME_DLLS) do
-        local name = path.getname(dll)
-        if needs_vendor_file(name) then
-            if file_exists(dll) then
-                copy_file(dll, path.join(RUNTIME_DIR, name))
-            else
-                print("  missing runtime dll: " .. name)
-            end
+        if needs_vendor_file(path.getname(dll)) then
+            table.insert(needed_dlls, dll)
         end
+    end
+
+    local prog    = ui.create_progress("Vendor runtimes")
+    local ready   = 0
+    local copied  = 0
+    local missing = {}
+    for i, dll in ipairs(needed_dlls) do
+        local name = path.getname(dll)
+        prog:update((i / math.max(#needed_dlls, 1)) * 100, name)
+        if file_exists(dll) then
+            if copy_file(dll, path.join(RUNTIME_DIR, name)) then
+                copied = copied + 1
+            end
+            ready = ready + 1
+        else
+            table.insert(missing, name)
+        end
+    end
+    local state_text = copied > 0 and string.format("%d copied, %d up to date", copied, ready - copied) or "up to date"
+    prog:finish(string.format("%d/%d dlls ready (%s)", ready, #needed_dlls, state_text), #missing > 0 and "warn" or "ok")
+    for _, name in ipairs(missing) do
+        ui.item_warn(name, "missing runtime dll")
     end
 
     if ARG_API_GRAPHICS ~= "vulkan" then
@@ -795,23 +936,26 @@ function setup.run()
     end
 
     if file_exists(STEAM_DLL) then
-        copy_file(STEAM_DLL, path.join(RUNTIME_DIR, path.getname(STEAM_DLL)))
+        local steam_copied = copy_file(STEAM_DLL, path.join(RUNTIME_DIR, path.getname(STEAM_DLL)))
 
         local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
         if not file_exists(appid_path) then
             local f = io.open(appid_path, "wb")
             f:write(STEAM_APP_ID)
             f:close()
+            steam_copied = true
         end
-        print("  staged steam_api64.dll and steam_appid.txt")
+        ui.item_ok("Steamworks runtime", "steam_api64.dll + steam_appid.txt (" .. (steam_copied and "staged" or "up to date") .. ")")
     else
-        print("  steamworks sdk not found, skipping steam staging")
+        ui.item_skip("Steamworks runtime", "sdk not found")
     end
 
-    print("\nsetup complete")
+    setup.elapsed = os.clock() - started
 end
 
 setup.agility_sdk_version = AGILITY_SDK_VERSION
 setup.agility_stamp_path  = AGILITY_STAMP
+setup.ui                  = ui
+setup.elapsed             = 0
 
 return setup
