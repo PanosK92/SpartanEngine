@@ -851,25 +851,24 @@ void GeneralWindows::Tick()
     WorldPreviews::Tick();
     AssetThumbnails::Tick(editor);
 
-    // show the world selector after the welcome window has been dismissed
+    // if content needs downloading, prompt once the welcome window has been dismissed (or on first tick)
     static bool welcome_was_visible = welcome::visible;
     if (welcome_was_visible && !welcome::visible)
     {
         welcome_was_visible = false;
-        if (!WorldSelector::GetVisible())
+        if (!startup_world_requested)
         {
-            WorldSelector::SetVisible(true);
+            WorldSelector::ShowDownloadPromptIfNeeded();
         }
     }
 
-    // if there was no welcome window at all, show the world selector on the first tick
     static bool first_tick = true;
     if (first_tick)
     {
         first_tick = false;
-        if (!welcome::visible && !WorldSelector::GetVisible() && !startup_world_requested)
+        if (!welcome::visible && !startup_world_requested)
         {
-            WorldSelector::SetVisible(true);
+            WorldSelector::ShowDownloadPromptIfNeeded();
         }
     }
 

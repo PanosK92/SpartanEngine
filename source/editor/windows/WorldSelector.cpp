@@ -2118,3 +2118,44 @@ void WorldSelector::SetVisible(bool visibility)
     last_click_time        = -1.0f;
     scroll_to_selection    = true;
 }
+
+void WorldSelector::ShowDownloadPromptIfNeeded()
+{
+    const bool installing = Updates::IsBusy();
+    if (installing)
+    {
+        return;
+    }
+
+    download_failed            = false;
+    downloaded_and_extracted   = Updates::IsProjectInstalled();
+    const bool worlds_missing  = !worlds_prompt_declined && !has_worlds_on_disk();
+    prompt_missing_worlds_only = downloaded_and_extracted && worlds_missing;
+    if (!downloaded_and_extracted || worlds_missing)
+    {
+        visible_download_prompt = true;
+    }
+}
+
+const vector<spartan::WorldMetadata>& WorldSelector::GetWorlds()
+{
+    return world_files;
+}
+
+bool WorldSelector::IsRecent(const string& file_path)
+{
+    return world_last_opened.find(normalize_world_path(file_path)) != world_last_opened.end();
+}
+
+bool WorldSelector::OpenWorld(const string& file_path)
+{
+    if (file_path.empty() || !spartan::World::LoadFromFile(file_path))
+    {
+        return false;
+    }
+
+    record_world_opened(file_path);
+    WorldPreviews::RequestGeneration(file_path);
+    visible_world_list = false;
+    return true;
+}
