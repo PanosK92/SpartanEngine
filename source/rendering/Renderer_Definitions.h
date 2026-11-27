@@ -454,6 +454,7 @@ namespace spartan
         blur_gaussian_c,
         blur_gaussian_bilateral_c,
         blur_composite_c,
+        blur_downsample_c,
         variable_rate_shading_c,
         ffx_cas_c,
         ffx_spd_average_c,

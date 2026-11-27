@@ -308,6 +308,15 @@ namespace spartan
         if (headless)
         {
             flags |= SDL_WINDOW_HIDDEN;
+            if (Engine::HasArgument("--headless-ui"))
+            {
+                SDL_Rect usable_bounds = {};
+                if (SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &usable_bounds) && usable_bounds.w > 0 && usable_bounds.h > 0)
+                {
+                    width  = static_cast<uint32_t>(usable_bounds.w);
+                    height = static_cast<uint32_t>(usable_bounds.h);
+                }
+            }
         }
         else if (!packaged || game.window_mode != GameWindowMode::Windowed)
         {

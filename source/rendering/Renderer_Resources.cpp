@@ -1568,6 +1568,7 @@ namespace spartan
             { Renderer_Shader::blur_gaussian_c,                       RHI_Shader_Type::Compute, "blur.hlsl"                                                                  },
             { Renderer_Shader::blur_gaussian_bilateral_c,             RHI_Shader_Type::Compute, "blur.hlsl",                                  RHI_Vertex_Type::Max, "PASS_BLUR_GAUSSIAN_BILATERAL" },
             { Renderer_Shader::blur_composite_c,                      RHI_Shader_Type::Compute, "blur.hlsl",                                  RHI_Vertex_Type::Max, "PASS_BLUR_COMPOSITE" },
+            { Renderer_Shader::blur_downsample_c,                     RHI_Shader_Type::Compute, "blur.hlsl",                                  RHI_Vertex_Type::Max, "PASS_BLUR_DOWNSAMPLE" },
 
             // bloom
             { Renderer_Shader::bloom_prefilter_c,                     RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "PREFILTER"           },

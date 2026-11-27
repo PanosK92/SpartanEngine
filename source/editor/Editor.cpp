@@ -247,9 +247,7 @@ void Editor::Tick()
 
         spartan::World::ProcessPendingLoad();
 
-        const bool render_editor = spartan::Engine::IsFlagSet(
-            spartan::EngineMode::EditorVisible
-        ) && !spartan::Engine::IsHeadless();
+        const bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible) && (!spartan::Engine::IsHeadless() || spartan::Engine::HasArgument("--headless-ui"));
         // Runtime HUDs also use ImGui. Keep its frame and presentation alive
         // when the editor panels are hidden.
         spartan::Renderer::SetPresentInRenderer(false);
@@ -294,7 +292,7 @@ void Editor::Tick()
             spartan::Profiler::TimeBlockStart("frame_active", spartan::TimeBlockType::Cpu);
             spartan::World::ProcessPendingLoad();
 
-            const bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible) && !spartan::Engine::IsHeadless();
+            const bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible) && (!spartan::Engine::IsHeadless() || spartan::Engine::HasArgument("--headless-ui"));
             spartan::Renderer::SetPresentInRenderer(false);
             editor_imgui::begin_frame();
             if (!render_editor)

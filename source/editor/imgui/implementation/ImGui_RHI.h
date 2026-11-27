@@ -105,10 +105,11 @@ namespace ImGui::RHI
         TConsoleVar<bool> cvar_editor_glass_panels("editor.glass_panels", true, "docked panels are frosted glass over a blurred copy of the scene");
         TConsoleVar<float> cvar_editor_glass_opacity("editor.glass_opacity", 0.6f, "how much of a floating glass window's background color covers the blurred backdrop, 0 to 1");
         TConsoleVar<float> cvar_editor_glass_panel_opacity("editor.glass_panel_opacity", 0.5f, "how much of a docked panel's background color covers the blurred scene behind it, 0 to 1");
-        TConsoleVar<float> cvar_editor_glass_blur("editor.glass_blur", 10.0f, "glass blur radius in quarter resolution pixels, 1 to 32");
+        TConsoleVar<float> cvar_editor_glass_blur("editor.glass_blur", 10.0f, "glass blur radius in eighth resolution pixels, 1 to 32");
 
         // the main window ui is drawn into glass_target when a glass window is up, so what lies under a window can be read back
         shared_ptr<RHI_Texture> g_glass_target;
+        shared_ptr<RHI_Texture> g_glass_quarter;
         array<shared_ptr<RHI_Texture>, 2> g_glass_backdrop;
         ImDrawList* g_glass_draw_list = nullptr;
         Pcb_Pass g_glass_push_constants;
@@ -474,57 +475,77 @@ namespace ImGui::RHI
                 g_glass_target = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, format, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "imgui_glass_target");
             }
 
-            // a quarter resolution backdrop, the blur hides the downsample and stays cheap at any window size
-            const uint32_t backdrop_width  = std::max(width / 4, 1u);
-            const uint32_t backdrop_height = std::max(height / 4, 1u);
+            // progressive downsample to eighth resolution (4x4 box -> quarter, 5-tap kawase -> eighth) so a single wide
+            // separable gaussian produces twice the blur radius at a fraction of the quarter-res cost and memory footprint
+            const uint32_t quarter_width  = std::max(width / 4, 1u);
+            const uint32_t quarter_height = std::max(height / 4, 1u);
+            if (!g_glass_quarter || g_glass_quarter->GetWidth() != quarter_width || g_glass_quarter->GetHeight() != quarter_height)
+            {
+                g_glass_quarter = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, quarter_width, quarter_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "imgui_glass_quarter");
+            }
+
+            const uint32_t backdrop_width  = std::max(quarter_width / 2, 1u);
+            const uint32_t backdrop_height = std::max(quarter_height / 2, 1u);
             for (shared_ptr<RHI_Texture>& backdrop : g_glass_backdrop)
             {
                 if (!backdrop || backdrop->GetWidth() != backdrop_width || backdrop->GetHeight() != backdrop_height)
                 {
-                    backdrop = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, backdrop_width, backdrop_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "imgui_glass_backdrop");
+                    backdrop = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, backdrop_width, backdrop_height, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "imgui_glass_backdrop");
                 }
             }
 
-            const bool ready = g_glass_target->GetRhiResource() && g_glass_backdrop[0]->GetRhiResource() && g_glass_backdrop[1]->GetRhiResource();
+            const bool ready = g_glass_target->GetRhiResource() && g_glass_quarter->GetRhiResource() && g_glass_backdrop[0]->GetRhiResource() && g_glass_backdrop[1]->GetRhiResource();
             return ready ? g_glass_target.get() : nullptr;
         }
 
         // copies what has been drawn into the target so far and blurs it, the result lands in g_glass_backdrop[0]
-        void glass_capture_backdrop(RHI_Texture* target)
+        void glass_capture_backdrop(RHI_Texture* target, const bool gpu_timing)
         {
-            RHI_Texture* backdrop = g_glass_backdrop[0].get();
-            RHI_Texture* scratch  = g_glass_backdrop[1].get();
-            RHI_CommandList::Blit(target, backdrop, false);
-
-            RHI_Shader* shader = Renderer::GetShader(Renderer_Shader::blur_gaussian_c);
-            if (!shader || !shader->IsCompiled())
+            RHI_Shader* shader_downsample = Renderer::GetShader(Renderer_Shader::blur_downsample_c);
+            RHI_Shader* shader_blur       = Renderer::GetShader(Renderer_Shader::blur_gaussian_c);
+            if (!shader_downsample || !shader_downsample->IsCompiled() || !shader_blur || !shader_blur->IsCompiled())
             {
                 return;
             }
 
-            const float radius           = std::clamp(cvar_editor_glass_blur.GetValue(), 1.0f, 32.0f);
-            const uint32_t group_count_x = (backdrop->GetWidth() + 7) / 8;
-            const uint32_t group_count_y = (backdrop->GetHeight() + 7) / 8;
+            RHI_Texture* quarter  = g_glass_quarter.get();
+            RHI_Texture* backdrop = g_glass_backdrop[0].get();
+            RHI_Texture* scratch  = g_glass_backdrop[1].get();
 
-            RHI_CommandList::BeginPass("imgui_glass_blur", false);
-            RHI_CommandList::SetShader(shader);
+            // two passes of radius r at eighth resolution have sigma = 8 * sqrt(2) * (r / 3) screen pixels (twice the old
+            // quarter-res blur); a single pass with radius * sqrt(2) produces the exact same gaussian in half the dispatches
+            const float radius_eighth  = std::clamp(cvar_editor_glass_blur.GetValue(), 1.0f, 32.0f) * 1.41421356f;
+            const uint32_t quarter_gx  = (quarter->GetWidth() + 7) / 8;
+            const uint32_t quarter_gy  = (quarter->GetHeight() + 7) / 8;
+            const uint32_t backdrop_gx = (backdrop->GetWidth() + 7) / 8;
+            const uint32_t backdrop_gy = (backdrop->GetHeight() + 7) / 8;
 
-            // two separable passes, a single wide gaussian at quarter resolution still shows the downsample blocks
-            for (uint32_t i = 0; i < 2; i++)
-            {
-                g_glass_push_constants.set(pass_blur::radius, radius);
-                g_glass_push_constants.set(pass_blur::vertical, false);
-                RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), backdrop);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), scratch, rhi_all_mips, 0, true);
-                RHI_CommandList::Dispatch(group_count_x, group_count_y);
+            RHI_CommandList::BeginPass("imgui_glass_blur", gpu_timing);
 
-                g_glass_push_constants.set(pass_blur::vertical, true);
-                RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), scratch);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), backdrop, rhi_all_mips, 0, true);
-                RHI_CommandList::Dispatch(group_count_x, group_count_y);
-            }
+            // antialiased 4x4 box downsample to quarter resolution, then 5-tap kawase downsample to eighth resolution
+            RHI_CommandList::SetShader(shader_downsample);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), target);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), quarter, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(quarter_gx, quarter_gy);
+
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), quarter);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), backdrop, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(backdrop_gx, backdrop_gy);
+
+            // single separable gaussian at eighth resolution: 4x fewer pixels and half the passes
+            RHI_CommandList::SetShader(shader_blur);
+            g_glass_push_constants.set(pass_blur::radius, radius_eighth);
+            g_glass_push_constants.set(pass_blur::vertical, false);
+            RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), backdrop);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), scratch, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(backdrop_gx, backdrop_gy);
+
+            g_glass_push_constants.set(pass_blur::vertical, true);
+            RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &g_glass_push_constants);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), scratch);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), backdrop, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(backdrop_gx, backdrop_gy);
 
             RHI_CommandList::EndPass();
         }
@@ -627,6 +648,7 @@ namespace ImGui::RHI
         g_shader_vertex = nullptr;
         g_shader_pixel        = nullptr;
         g_glass_target        = nullptr;
+        g_glass_quarter       = nullptr;
         g_glass_backdrop.fill(nullptr);
 
         for (auto& ptr : g_viewport_data.index_buffers)
@@ -1257,7 +1279,7 @@ namespace ImGui::RHI
             // what has been drawn since the backdrop was last blurred, panes that do not overlap it can share that blur
             bool glass_captured = false;
             ImRect glass_dirty(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
-            const float glass_reach = std::clamp(cvar_editor_glass_blur.GetValue(), 1.0f, 32.0f) * 8.0f;
+            const float glass_reach = std::clamp(cvar_editor_glass_blur.GetValue(), 1.0f, 32.0f) * 16.0f;
             size_t glass_cursor     = 0;
 
             auto draw_glass = [&](const GlassSegment& segment)
@@ -1273,7 +1295,7 @@ namespace ImGui::RHI
                     }
 
                     RHI_CommandList::EndPass();
-                    glass_capture_backdrop(glass);
+                    glass_capture_backdrop(glass, gpu_timing);
                     RHI_CommandList::BeginPass(name, gpu_timing);
                     RHI_CommandList::RestoreAfterExternalPass();
                     setup_render_state(target_texture, rhi_color_load);

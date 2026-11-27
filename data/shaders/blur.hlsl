@@ -16,7 +16,7 @@ float compute_gaussian_weight(int sample_distance, const float sigma2)
 }
 
 // A linear fetch at the weighted centroid integrates two adjacent Gaussian taps.
-static const uint max_pairs = 32u;
+static const uint max_pairs = 64u;
 groupshared float2 gs_pairs[max_pairs];
 
 float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_out, const float2 uv, const float radius, const float sigma2, const float2 direction)
@@ -32,9 +32,9 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
     float3 color  = 0.0f;
     float weights = 0.0f;
 #if !PASS_BLUR_GAUSSIAN_BILATERAL
-    if (radius > 0.0f && radius <= float(max_pairs))
+    const uint pairs = uint(max(1, int(ceil(radius)))) + 1u;
+    if (radius > 0.0f && pairs <= max_pairs)
     {
-        uint pairs = uint(ceil(radius));
         float2 source_size = direction.y != 0.0f ? resolution_out : resolution_in;
         for (uint pair = 0u; pair < pairs; ++pair)
         {
@@ -72,7 +72,44 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
     return color / (weights + FLT_MIN);
 }
 
-#if PASS_BLUR_COMPOSITE
+#if PASS_BLUR_DOWNSAMPLE
+// antialiased downsample for frosted glass backdrops: four bilinear taps average an entire 4x4 block for a 4x shrink,
+// and a five-tap kawase tent pre-filters a 2x step so the blurred backdrop never shimmers or shows blocks
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(thread_id.xy >= uint2(resolution_out)))
+        return;
+
+    float2 resolution_in;
+    tex.GetDimensions(resolution_in.x, resolution_in.y);
+
+    const float2 uv    = (float2(thread_id.xy) + 0.5f) / resolution_out;
+    const float2 texel = 1.0f / resolution_in;
+    const float  scale = resolution_in.x / resolution_out.x;
+
+    float3 corners = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-texel.x, -texel.y), 0).rgb
+                   + tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( texel.x, -texel.y), 0).rgb
+                   + tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-texel.x,  texel.y), 0).rgb
+                   + tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( texel.x,  texel.y), 0).rgb;
+
+    float3 color;
+    [branch]
+    if (scale > 2.5f)
+    {
+        color = corners * 0.25f;
+    }
+    else
+    {
+        float3 center = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+        color = center * 0.5f + corners * 0.125f;
+    }
+
+    tex_uav[thread_id.xy] = float4(color, 1.0f);
+}
+#elif PASS_BLUR_COMPOSITE
 // copies a blurred low resolution backdrop into a rectangle of the target, the frosted glass behind overlay panels
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
@@ -111,13 +148,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint lane : SV_GroupIndex)
         resolution_out = temp;
     }
 #if !PASS_BLUR_GAUSSIAN_BILATERAL
-    if (radius > 0.0f && radius <= float(max_pairs))
+    const int  extent = max(1, int(ceil(radius)));
+    const uint pairs  = uint(extent) + 1u;
+    if (radius > 0.0f && pairs <= max_pairs)
     {
-        if (lane < uint(ceil(radius)))
+        if (lane < pairs)
         {
-            int offset = -int(radius) + int(lane) * 2;
-            float w0 = exp(-float(offset * offset) / (2.0f * sigma * sigma));
-            float w1 = offset + 1 < radius ? exp(-float((offset + 1) * (offset + 1)) / (2.0f * sigma * sigma)) : 0.0f;
+            int offset = -extent + int(lane) * 2;
+            float w0   = exp(-float(offset * offset) / (2.0f * sigma * sigma));
+            float w1   = (offset + 1 <= extent) ? exp(-float((offset + 1) * (offset + 1)) / (2.0f * sigma * sigma)) : 0.0f;
             gs_pairs[lane] = float2(float(offset) + w1 / (w0 + w1), w0 + w1);
         }
         GroupMemoryBarrierWithGroupSync();

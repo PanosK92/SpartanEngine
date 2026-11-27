@@ -43,7 +43,7 @@ void spartan::gui::initialize(bool editor)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     if (editor) io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    if (editor && spartan::RHI_Device::SupportsImGuiMultiViewport())
+    if (editor && spartan::RHI_Device::SupportsImGuiMultiViewport() && !Engine::IsHeadless())
     {
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
@@ -125,6 +125,11 @@ void spartan::gui::begin_frame()
     ImGui::RHI::clear_glass_panes();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+
+    if (spartan::Engine::IsHeadless())
+    {
+        ImGui::GetIO().WantSaveIniSettings = false;
+    }
 
     const ImGuiIO& io = ImGui::GetIO();
     spartan::Input::SetBlockedByUi(io.WantTextInput);
