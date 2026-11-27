@@ -272,6 +272,257 @@ namespace
         return clicked;
     }
 
+    void draw_radial_glow(ImDrawList* draw, const ImVec2& center, float radius_x, float radius_y, const ImVec4& color, float center_alpha, int segments = 48)
+    {
+        if (center_alpha <= 0.001f || radius_x <= 1.0f || radius_y <= 1.0f)
+        {
+            return;
+        }
+
+        const ImU32 col_center = ImGui::EditorUi::color(ImGui::EditorUi::alpha(color, center_alpha));
+        const ImU32 col_edge   = ImGui::EditorUi::color(ImGui::EditorUi::alpha(color, 0.0f));
+        const ImVec2 uv_white  = ImGui::GetFontTexUvWhitePixel();
+
+        draw->PrimReserve(segments * 3, segments + 1);
+        const ImDrawIdx center_idx = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
+        draw->PrimWriteVtx(center, uv_white, col_center);
+        for (int i = 0; i < segments; ++i)
+        {
+            const float angle = (static_cast<float>(i) / static_cast<float>(segments)) * 6.2831853f;
+            draw->PrimWriteVtx(ImVec2(center.x + cosf(angle) * radius_x, center.y + sinf(angle) * radius_y), uv_white, col_edge);
+        }
+        for (int i = 0; i < segments; ++i)
+        {
+            const ImDrawIdx a = static_cast<ImDrawIdx>(center_idx + 1 + i);
+            const ImDrawIdx b = static_cast<ImDrawIdx>(center_idx + 1 + ((i + 1) % segments));
+            draw->PrimWriteIdx(center_idx);
+            draw->PrimWriteIdx(a);
+            draw->PrimWriteIdx(b);
+        }
+    }
+
+    struct SilkRibbonSpec
+    {
+        float y_ratio;
+        float amp_a;
+        float freq_a;
+        float speed_a;
+        float amp_b;
+        float freq_b;
+        float speed_b;
+        float base_thickness;
+        float twist_freq;
+        float twist_speed;
+        float phase;
+        float parallax_depth;
+        ImVec4 crest_color;
+        ImVec4 body_color;
+        float crest_alpha;
+        float body_alpha;
+        bool  draw_filament;
+    };
+
+    void draw_silk_ribbon(ImDrawList* draw, const ImVec2& rect_min, float avail_w, float avail_h, float time, const ImVec2& parallax, const SilkRibbonSpec& s)
+    {
+        constexpr int cols = 80;
+        const int verts_per_col = 4;
+        const ImVec2 uv_white = ImGui::GetFontTexUvWhitePixel();
+
+        const float base_y = rect_min.y + avail_h * s.y_ratio + parallax.y * s.parallax_depth;
+        const float px_off = parallax.x * s.parallax_depth;
+
+        ImVec2 crest_pts[cols + 1];
+        float  crest_alphas[cols + 1];
+
+        draw->PrimReserve(cols * 3 * 6, (cols + 1) * verts_per_col);
+        const ImDrawIdx base_idx = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
+
+        for (int i = 0; i <= cols; ++i)
+        {
+            const float u = static_cast<float>(i) / static_cast<float>(cols);
+            const float x = rect_min.x + u * avail_w;
+            const float ux = u + px_off / max(avail_w, 1.0f);
+
+            // multi-octave organic silk wave motion
+            const float wave_a = sinf(ux * s.freq_a + time * s.speed_a + s.phase);
+            const float wave_b = sinf(ux * s.freq_b - time * s.speed_b + s.phase * 1.73f);
+            const float wave_c = cosf(ux * (s.freq_a * 0.55f) + time * (s.speed_a * 0.65f) - s.phase * 0.6f);
+            const float cy     = base_y + (wave_a * s.amp_a + wave_b * s.amp_b + wave_c * s.amp_b * 0.45f) * avail_h;
+
+            // ribbon twists in 3d space: narrows where edge-on, billows where facing viewer
+            const float twist     = 0.5f + 0.5f * sinf(ux * s.twist_freq + time * s.twist_speed + s.phase * 2.1f);
+            const float half_h    = s.base_thickness * avail_h * (0.28f + 0.72f * twist);
+            const float pinch_lit = 1.0f + 0.55f * (1.0f - twist); // edge-on silk catches brighter specular glint
+
+            // gentle fade at extreme left/right borders
+            const float edge_fade = clamp(min(u, 1.0f - u) * 7.5f, 0.0f, 1.0f);
+            const float c_alpha   = clamp(s.crest_alpha * pinch_lit * edge_fade, 0.0f, 0.45f);
+            const float b_alpha   = clamp(s.body_alpha * (0.65f + 0.35f * twist) * edge_fade, 0.0f, 0.35f);
+
+            const float y0 = cy - half_h;
+            const float y1 = cy - half_h * 0.24f;
+            const float y2 = cy + half_h * 0.32f;
+            const float y3 = cy + half_h;
+
+            crest_pts[i]    = ImVec2(x, y1);
+            crest_alphas[i] = c_alpha;
+
+            draw->PrimWriteVtx(ImVec2(x, y0), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.crest_color, 0.0f)));
+            draw->PrimWriteVtx(ImVec2(x, y1), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.crest_color, c_alpha)));
+            draw->PrimWriteVtx(ImVec2(x, y2), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.body_color,  b_alpha)));
+            draw->PrimWriteVtx(ImVec2(x, y3), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.body_color,  0.0f)));
+        }
+
+        for (int i = 0; i < cols; ++i)
+        {
+            const ImDrawIdx c0 = static_cast<ImDrawIdx>(base_idx + i * verts_per_col);
+            const ImDrawIdx c1 = static_cast<ImDrawIdx>(base_idx + (i + 1) * verts_per_col);
+            for (int r = 0; r < 3; ++r)
+            {
+                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c0 + r));
+                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c1 + r));
+                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c1 + r + 1));
+                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c0 + r));
+                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c1 + r + 1));
+                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c0 + r + 1));
+            }
+        }
+
+        // delicate luminous silk crest filament along the primary ribbons
+        if (s.draw_filament)
+        {
+            const float line_w = max(1.0f, ImGui::EditorUi::scaled(1.15f));
+            for (int i = 0; i < cols; ++i)
+            {
+                const float seg_a = (crest_alphas[i] + crest_alphas[i + 1]) * 0.5f * 1.45f;
+                if (seg_a > 0.01f)
+                {
+                    const ImU32 col = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::lerp(s.crest_color, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.35f), clamp(seg_a, 0.0f, 0.34f)));
+                    draw->AddLine(crest_pts[i], crest_pts[i + 1], col, line_w);
+                }
+            }
+        }
+    }
+
+    void draw_welcome_atmosphere(ImDrawList* draw, const ImVec2& rect_min, const ImVec2& rect_max, float scale)
+    {
+        const float avail_w = rect_max.x - rect_min.x;
+        const float avail_h = rect_max.y - rect_min.y;
+        const float time    = static_cast<float>(ImGui::GetTime());
+
+        // gentle damped mouse parallax so the layered ribbons feel subtly 3d
+        static ImVec2 smoothed_parallax(0.0f, 0.0f);
+        ImVec2 target_parallax(0.0f, 0.0f);
+        if (ImGui::IsMouseHoveringRect(rect_min, rect_max, false))
+        {
+            const ImVec2 mp = ImGui::GetIO().MousePos;
+            const float nx  = clamp((mp.x - (rect_min.x + avail_w * 0.5f)) / max(avail_w * 0.5f, 1.0f), -1.0f, 1.0f);
+            const float ny  = clamp((mp.y - (rect_min.y + avail_h * 0.5f)) / max(avail_h * 0.5f, 1.0f), -1.0f, 1.0f);
+            target_parallax = ImVec2(-nx * ImGui::EditorUi::scaled(22.0f), -ny * ImGui::EditorUi::scaled(14.0f));
+        }
+        const float dt     = clamp(ImGui::GetIO().DeltaTime, 0.0f, 0.05f);
+        const float p_ease = 1.0f - expf(-4.0f * dt);
+        smoothed_parallax.x += (target_parallax.x - smoothed_parallax.x) * p_ease;
+        smoothed_parallax.y += (target_parallax.y - smoothed_parallax.y) * p_ease;
+
+        // 1. deep PlayStation midnight-navy / obsidian gradient canvas
+        const ImVec4 col_top_l   = ImVec4(0.018f, 0.028f, 0.054f, 1.0f);
+        const ImVec4 col_top_r   = ImVec4(0.028f, 0.056f, 0.098f, 1.0f);
+        const ImVec4 col_mid_l   = ImVec4(0.025f, 0.052f, 0.095f, 1.0f);
+        const ImVec4 col_mid_r   = ImVec4(0.036f, 0.088f, 0.145f, 1.0f);
+        const ImVec4 col_bot_l   = ImVec4(0.016f, 0.022f, 0.038f, 1.0f);
+        const ImVec4 col_bot_r   = ImVec4(0.020f, 0.034f, 0.058f, 1.0f);
+        const float split_y      = rect_min.y + avail_h * 0.46f;
+
+        draw->AddRectFilledMultiColor(rect_min, ImVec2(rect_max.x, split_y), ImGui::EditorUi::color(col_top_l), ImGui::EditorUi::color(col_top_r), ImGui::EditorUi::color(col_mid_r), ImGui::EditorUi::color(col_mid_l));
+        draw->AddRectFilledMultiColor(ImVec2(rect_min.x, split_y), rect_max, ImGui::EditorUi::color(col_mid_l), ImGui::EditorUi::color(col_mid_r), ImGui::EditorUi::color(col_bot_r), ImGui::EditorUi::color(col_bot_l));
+
+        // 2. drifting volumetric aurora orbs (hardware-interpolated radial fans, zero banding)
+        const ImVec4 cyan_accent  = ImGui::Style::color_accent_1;
+        const ImVec4 cobalt_glow  = ImVec4(0.14f, 0.38f, 0.96f, 1.0f);
+        const ImVec4 teal_glow    = ImVec4(0.09f, 0.72f, 0.86f, 1.0f);
+        const ImVec4 indigo_glow  = ImVec4(0.28f, 0.24f, 0.85f, 1.0f);
+
+        const ImVec2 orb1(
+            rect_min.x + avail_w * (0.52f + 0.14f * sinf(time * 0.16f)) + smoothed_parallax.x * 0.25f,
+            rect_min.y + avail_h * (0.30f + 0.07f * cosf(time * 0.21f)) + smoothed_parallax.y * 0.25f
+        );
+        draw_radial_glow(draw, orb1, avail_w * 0.44f, avail_h * 0.48f, cyan_accent, 0.105f);
+
+        const ImVec2 orb2(
+            rect_min.x + avail_w * (0.20f + 0.10f * cosf(time * 0.13f + 1.2f)) + smoothed_parallax.x * 0.40f,
+            rect_min.y + avail_h * (0.64f + 0.09f * sinf(time * 0.17f + 0.5f)) + smoothed_parallax.y * 0.40f
+        );
+        draw_radial_glow(draw, orb2, avail_w * 0.46f, avail_h * 0.48f, cobalt_glow, 0.115f);
+
+        const ImVec2 orb3(
+            rect_min.x + avail_w * (0.82f + 0.08f * sinf(time * 0.19f + 2.4f)) + smoothed_parallax.x * 0.35f,
+            rect_min.y + avail_h * (0.56f + 0.10f * cosf(time * 0.15f + 1.8f)) + smoothed_parallax.y * 0.35f
+        );
+        draw_radial_glow(draw, orb3, avail_w * 0.40f, avail_h * 0.44f, indigo_glow, 0.085f);
+
+        // 3. layered PlayStation XMB flowing translucent silk wave ribbons
+        const SilkRibbonSpec ribbons[] =
+        {
+            // deep background cobalt-indigo swell
+            { 0.54f, 0.095f, 3.6f, 0.22f, 0.045f, 6.2f, 0.16f, 0.155f, 2.8f, 0.19f, 0.4f, 0.35f, cobalt_glow, indigo_glow, 0.075f, 0.055f, false },
+            // wide sweeping teal ribbon behind the showcase cards
+            { 0.49f, 0.085f, 4.4f, 0.28f, 0.038f, 7.8f, 0.22f, 0.120f, 3.4f, 0.25f, 1.9f, 0.58f, teal_glow, cobalt_glow, 0.115f, 0.070f, true },
+            // signature luminous electric-cyan XMB hero silk ribbon
+            { 0.44f, 0.075f, 5.1f, 0.34f, 0.032f, 8.9f, 0.26f, 0.085f, 4.1f, 0.31f, 3.3f, 0.82f, ImGui::Style::lerp(cyan_accent, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f), cyan_accent, 0.145f, 0.075f, true },
+            // delicate counter-phase gossamer filament
+            { 0.60f, 0.068f, 4.8f, -0.26f, 0.028f, 9.4f, 0.30f, 0.052f, 4.6f, -0.24f, 5.1f, 1.00f, ImVec4(0.60f, 0.92f, 1.0f, 1.0f), teal_glow, 0.105f, 0.045f, true },
+        };
+
+        for (const SilkRibbonSpec& ribbon : ribbons)
+        {
+            draw_silk_ribbon(draw, rect_min, avail_w, avail_h, time, smoothed_parallax, ribbon);
+        }
+
+        // 4. subtle floating PlayStation ambient light motes / micro-bokeh
+        constexpr int mote_count = 30;
+        for (int i = 0; i < mote_count; ++i)
+        {
+            const float fi     = static_cast<float>(i);
+            const float h1     = fmodf(fi * 0.61803399f + 0.13f, 1.0f);
+            const float h2     = fmodf(fi * 0.38196601f + 0.47f, 1.0f);
+            const float h3     = fmodf(fi * 0.75487767f + 0.29f, 1.0f);
+            const float depth  = 0.35f + 0.65f * h3;
+            const float drift  = time * (0.012f + 0.018f * depth);
+            const float u      = fmodf(h1 + drift * (i % 2 == 0 ? 1.0f : 0.6f) + 0.025f * sinf(time * 0.4f + fi), 1.0f);
+            const float v      = fmodf(h2 - drift * 0.55f + 10.0f, 1.0f);
+
+            const float px = rect_min.x + u * avail_w + smoothed_parallax.x * depth * 0.9f;
+            const float py = rect_min.y + (0.14f + v * 0.72f) * avail_h + smoothed_parallax.y * depth * 0.9f;
+
+            const float twinkle    = 0.35f + 0.65f * (0.5f + 0.5f * sinf(time * (0.8f + h3 * 1.4f) + fi * 2.3f));
+            const float edge_mask  = clamp(min(min(u, 1.0f - u), min(v, 1.0f - v)) * 6.0f, 0.0f, 1.0f);
+            const float base_alpha = (0.12f + 0.28f * depth) * twinkle * edge_mask;
+            if (base_alpha <= 0.01f)
+            {
+                continue;
+            }
+
+            const float core_r = (0.9f + 1.7f * depth) * scale;
+            const ImVec4 mote_col = (i % 3 == 0)
+                ? ImVec4(0.75f, 0.95f, 1.0f, 1.0f)
+                : ImGui::Style::lerp(cyan_accent, ImVec4(0.72f, 0.85f, 1.0f, 1.0f), h1);
+
+            if (depth > 0.62f)
+            {
+                draw_radial_glow(draw, ImVec2(px, py), core_r * 4.5f, core_r * 4.5f, mote_col, base_alpha * 0.35f, 16);
+            }
+            draw->AddCircleFilled(ImVec2(px, py), core_r, ImGui::EditorUi::color(ImGui::EditorUi::alpha(mote_col, base_alpha)), 12);
+        }
+
+        // 5. gentle perimeter vignette so the luminous center frames the hero & cards cleanly
+        const float vig_h  = avail_h * 0.18f;
+        const ImU32 vig_hi = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.72f));
+        const ImU32 vig_lo = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.0f));
+        draw->AddRectFilledMultiColor(rect_min, ImVec2(rect_max.x, rect_min.y + vig_h), vig_hi, vig_hi, vig_lo, vig_lo);
+        draw->AddRectFilledMultiColor(ImVec2(rect_min.x, rect_max.y - vig_h), rect_max, vig_lo, vig_lo, vig_hi, vig_hi);
+    }
+
     void draw_empty_viewport_welcome(const ImVec2& rect_min, const ImVec2& rect_max)
     {
         const float avail_w = rect_max.x - rect_min.x;
@@ -284,36 +535,10 @@ namespace
         ImDrawList* draw = ImGui::GetWindowDrawList();
         draw->PushClipRect(rect_min, rect_max, true);
 
-        // deep obsidian canvas
-        draw->AddRectFilled(rect_min, rect_max, ImGui::EditorUi::color(ImGui::Style::color_void));
+        const float scale = ImGui::EditorUi::scaled(1.0f);
 
-        const float scale      = ImGui::EditorUi::scaled(1.0f);
-        const ImVec2 accent_c  = ImVec2((rect_min.x + rect_max.x) * 0.5f, rect_min.y + avail_h * 0.34f);
-
-        // smooth gpu-interpolated radial spotlight behind the wordmark (zero concentric banding)
-        {
-            const float glow_r = min(avail_w, avail_h) * 0.44f;
-            const int segments = 48;
-            const ImU32 col_center = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_accent_1, 0.055f));
-            const ImU32 col_edge   = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_accent_1, 0.0f));
-            const ImVec2 uv_white  = ImGui::GetFontTexUvWhitePixel();
-            draw->PrimReserve(segments * 3, segments + 1);
-            const ImDrawIdx center_idx = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
-            draw->PrimWriteVtx(accent_c, uv_white, col_center);
-            for (int i = 0; i < segments; ++i)
-            {
-                const float angle = (static_cast<float>(i) / static_cast<float>(segments)) * 6.2831853f;
-                draw->PrimWriteVtx(ImVec2(accent_c.x + cosf(angle) * glow_r, accent_c.y + sinf(angle) * glow_r), uv_white, col_edge);
-            }
-            for (int i = 0; i < segments; ++i)
-            {
-                const ImDrawIdx a = static_cast<ImDrawIdx>(center_idx + 1 + i);
-                const ImDrawIdx b = static_cast<ImDrawIdx>(center_idx + 1 + ((i + 1) % segments));
-                draw->PrimWriteIdx(center_idx);
-                draw->PrimWriteIdx(a);
-                draw->PrimWriteIdx(b);
-            }
-        }
+        // PlayStation-inspired flowing silk waves, drifting aurora gradients, and ambient light motes
+        draw_welcome_atmosphere(draw, rect_min, rect_max, scale);
 
         const auto& worlds         = WorldSelector::GetWorlds();
         const float title_size     = ImGui::EditorUi::scaled(36.0f);
