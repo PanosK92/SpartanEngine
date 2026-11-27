@@ -8,16 +8,25 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "WorldPreviews.h"
 #include <algorithm>
+#include <atomic>
 #include <cctype>
+#include <chrono>
+#include <deque>
+#include <filesystem>
+#include <future>
 #include <iomanip>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <unordered_map>
+#include <vector>
 #include "core/ProgressTracker.h"
+#include "core/ThreadPool.h"
 #include "core/Timer.h"
 #include "file_system/FileSystem.h"
 #include "rendering/Renderer.h"
 #include "resource/ResourceCache.h"
+#include "resource/import/ImageImporter.h"
 #include "rhi/RHI_Device.h"
 #include "rhi/RHI_Texture.h"
 #include "world/World.h"
@@ -42,10 +51,48 @@ namespace
         double capture_delay_remaining_sec = 0.0;
     };
 
+    enum class preview_entry_state
+    {
+        loading,
+        ready,
+        failed
+    };
+
+    struct preview_entry
+    {
+        preview_entry_state state = preview_entry_state::loading;
+        bool allow_delete         = false;
+        shared_ptr<spartan::RHI_Texture> texture;
+    };
+
+    struct queued_load
+    {
+        string preview_path;
+        bool allow_delete = false;
+    };
+
+    struct decoded_preview
+    {
+        string preview_path;
+        bool allow_delete = false;
+        bool invalid      = false;
+        shared_ptr<spartan::RHI_Texture> texture;
+    };
+
     preview_request_state preview_request;
-    unordered_map<string, shared_ptr<spartan::RHI_Texture>> preview_textures;
-    constexpr uint32_t preview_max_dimension = 512;
-    constexpr double preview_capture_delay_sec = 1.0;
+    unordered_map<string, preview_entry> preview_entries;
+    unordered_map<string, string> resolved_preview_paths;
+    deque<queued_load> pending_loads;
+    vector<future<void>> active_loads;
+    mutex decoded_mutex;
+    deque<decoded_preview> decoded_previews;
+    atomic<bool> shutting_down = false;
+
+    constexpr uint32_t preview_max_dimension      = 512;
+    constexpr double preview_capture_delay_sec    = 1.0;
+    constexpr uint32_t max_concurrent_loads       = 8;
+    constexpr uint32_t max_gpu_uploads_per_frame  = 4;
+    constexpr const char* preview_cache_directory = "cache/generated_cache/world_previews";
 
     void downscale_preview(spartan::RHI_Texture* texture)
     {
@@ -239,68 +286,255 @@ namespace
         }
     }
 
-    spartan::RHI_Texture* get_texture(const string& preview_path, bool allow_delete)
+    string get_thumbnail_cache_path(const string& preview_path)
     {
-        if (!spartan::FileSystem::Exists(preview_path))
+        error_code ec_size;
+        error_code ec_time;
+        const uint64_t file_size = filesystem::file_size(preview_path, ec_size);
+        const auto write_time    = filesystem::last_write_time(preview_path, ec_time);
+        if (ec_size || ec_time || file_size == 0)
         {
-            return nullptr;
+            return {};
         }
 
-        // a kept file that failed is remembered as null so it is not decoded again every frame
-        auto invalidate_preview = [&](const string& path)
+        const int64_t ticks = write_time.time_since_epoch().count();
+        const string key    = normalize_path(preview_path) + "|" + to_string(file_size) + "|" + to_string(ticks) + "|" + to_string(preview_max_dimension);
+        return string(preview_cache_directory) + "/thumb_" + to_hex_string(compute_hash_fnv1a(key)) + ".png";
+    }
+
+    void save_thumbnail_cache(const string& cache_path, spartan::RHI_Texture* texture)
+    {
+        if (cache_path.empty() || !texture || texture->GetChannelCount() != 4 || texture->GetBitsPerChannel() != 8)
         {
-            if (allow_delete)
+            return;
+        }
+
+        spartan::RHI_Texture_Mip* mip = texture->GetMip(0, 0);
+        if (!mip || mip->bytes.empty())
+        {
+            return;
+        }
+
+        error_code ec;
+        filesystem::create_directories(preview_cache_directory, ec);
+        if (ec)
+        {
+            return;
+        }
+
+        // write to a unique temp file then rename so concurrent instances never read a partial png
+        const string temp_path = cache_path + "." + to_hex_string(compute_hash_fnv1a(cache_path) ^ static_cast<uint64_t>(chrono::steady_clock::now().time_since_epoch().count())) + ".tmp";
+        spartan::ImageImporter::SaveSdrRgba8(temp_path, texture->GetWidth(), texture->GetHeight(), mip->bytes.data());
+        if (spartan::FileSystem::Exists(temp_path))
+        {
+            filesystem::rename(temp_path, cache_path, ec);
+            if (ec)
             {
-                preview_textures.erase(path);
-                spartan::FileSystem::Delete(path);
+                filesystem::remove(temp_path, ec);
+            }
+        }
+    }
+
+    void reap_finished_loads()
+    {
+        active_loads.erase(
+            remove_if(active_loads.begin(), active_loads.end(), [](const future<void>& task)
+            {
+                return !task.valid() || task.wait_for(chrono::seconds(0)) == future_status::ready;
+            }),
+            active_loads.end()
+        );
+    }
+
+    void dispatch_pending_loads()
+    {
+        if (shutting_down.load())
+        {
+            return;
+        }
+
+        reap_finished_loads();
+
+        while (!pending_loads.empty() && active_loads.size() < max_concurrent_loads)
+        {
+            queued_load request = move(pending_loads.front());
+            pending_loads.pop_front();
+
+            active_loads.emplace_back(spartan::ThreadPool::AddTask([request = move(request)]()
+            {
+                if (shutting_down.load())
+                {
+                    return;
+                }
+
+                decoded_preview result;
+                result.preview_path = request.preview_path;
+                result.allow_delete = request.allow_delete;
+
+                if (!spartan::FileSystem::Exists(request.preview_path))
+                {
+                    lock_guard<mutex> lock(decoded_mutex);
+                    decoded_previews.push_back(move(result));
+                    return;
+                }
+
+                const string cache_path = get_thumbnail_cache_path(request.preview_path);
+                shared_ptr<spartan::RHI_Texture> texture = make_shared<spartan::RHI_Texture>();
+                texture->SetFlag(spartan::RHI_Texture_DeferUpload);
+
+                bool loaded_from_cache = false;
+                if (!cache_path.empty() && spartan::FileSystem::Exists(cache_path))
+                {
+                    texture->LoadFromFile(cache_path);
+                    loaded_from_cache = texture->GetWidth() > 0 && texture->GetHeight() > 0;
+                    if (!loaded_from_cache)
+                    {
+                        error_code ec;
+                        filesystem::remove(cache_path, ec);
+                    }
+                }
+
+                if (!loaded_from_cache)
+                {
+                    texture = make_shared<spartan::RHI_Texture>();
+                    texture->SetFlag(spartan::RHI_Texture_DeferUpload);
+                    texture->LoadFromFile(request.preview_path);
+                    if (texture->GetWidth() == 0 || texture->GetHeight() == 0 || is_blank_preview(texture.get()))
+                    {
+                        result.invalid = true;
+                        lock_guard<mutex> lock(decoded_mutex);
+                        decoded_previews.push_back(move(result));
+                        return;
+                    }
+
+                    downscale_preview(texture.get());
+                    save_thumbnail_cache(cache_path, texture.get());
+                }
+
+                result.texture = move(texture);
+                lock_guard<mutex> lock(decoded_mutex);
+                decoded_previews.push_back(move(result));
+            }));
+        }
+    }
+
+    void process_decoded_previews()
+    {
+        uint32_t uploaded = 0;
+        while (uploaded < max_gpu_uploads_per_frame)
+        {
+            decoded_preview result;
+            {
+                lock_guard<mutex> lock(decoded_mutex);
+                if (decoded_previews.empty())
+                {
+                    break;
+                }
+                result = move(decoded_previews.front());
+                decoded_previews.pop_front();
+            }
+
+            auto it = preview_entries.find(result.preview_path);
+            if (it == preview_entries.end())
+            {
+                continue;
+            }
+
+            if (result.invalid || !result.texture)
+            {
+                if (result.invalid && result.allow_delete)
+                {
+                    spartan::FileSystem::Delete(result.preview_path);
+                    preview_entries.erase(it);
+                }
+                else
+                {
+                    it->second.state = preview_entry_state::failed;
+                    it->second.texture.reset();
+                }
+                continue;
+            }
+
+            result.texture->PrepareForGpu();
+            if (result.texture->GetResourceState() == spartan::ResourceState::PreparedForGpu && result.texture->GetRhiResource() != nullptr)
+            {
+                it->second.texture = move(result.texture);
+                it->second.state   = preview_entry_state::ready;
+                uploaded++;
             }
             else
             {
-                preview_textures[path] = nullptr;
+                it->second.state = preview_entry_state::failed;
+                it->second.texture.reset();
             }
-        };
+        }
+    }
 
-        auto it = preview_textures.find(preview_path);
-        if (it != preview_textures.end())
+    string resolve_preview_path_cached(const string& world_file_path)
+    {
+        auto it = resolved_preview_paths.find(world_file_path);
+        if (it != resolved_preview_paths.end())
         {
-            shared_ptr<spartan::RHI_Texture> texture = it->second;
-            if (!texture)
-            {
-                return nullptr;
-            }
-
-            if (texture->GetWidth() == 0 || texture->GetHeight() == 0)
-            {
-                invalidate_preview(preview_path);
-                return nullptr;
-            }
-
-            if (texture->GetResourceState() == spartan::ResourceState::Max || texture->GetRhiResource() == nullptr)
-            {
-                texture->PrepareForGpu();
-            }
-
-            if (texture->GetResourceState() != spartan::ResourceState::PreparedForGpu || texture->GetRhiResource() == nullptr)
-            {
-                return nullptr;
-            }
-
-            return texture.get();
+            return it->second;
         }
 
-        shared_ptr<spartan::RHI_Texture> texture = make_shared<spartan::RHI_Texture>();
-        texture->SetFlag(spartan::RHI_Texture_DeferUpload);
-        texture->LoadFromFile(preview_path);
-        if (texture->GetWidth() == 0 || texture->GetHeight() == 0 || is_blank_preview(texture.get()))
+        string resolved = WorldPreviews::GetPreviewPath(world_file_path);
+        resolved_preview_paths[world_file_path] = resolved;
+        return resolved;
+    }
+
+    void request_async_load(const string& preview_path, bool allow_delete)
+    {
+        auto it = preview_entries.find(preview_path);
+        if (it != preview_entries.end())
         {
-            invalidate_preview(preview_path);
+            return;
+        }
+
+        preview_entry entry;
+        entry.state        = preview_entry_state::loading;
+        entry.allow_delete = allow_delete;
+        preview_entries[preview_path] = move(entry);
+
+        pending_loads.push_back({ preview_path, allow_delete });
+        dispatch_pending_loads();
+    }
+
+    spartan::RHI_Texture* get_texture(const string& preview_path, bool allow_delete)
+    {
+        auto it = preview_entries.find(preview_path);
+        if (it == preview_entries.end())
+        {
+            request_async_load(preview_path, allow_delete);
             return nullptr;
         }
 
-        downscale_preview(texture.get());
-        texture->PrepareForGpu();
+        if (it->second.state != preview_entry_state::ready || !it->second.texture)
+        {
+            return nullptr;
+        }
 
-        preview_textures[preview_path] = texture;
+        shared_ptr<spartan::RHI_Texture>& texture = it->second.texture;
+        if (texture->GetWidth() == 0 || texture->GetHeight() == 0)
+        {
+            if (allow_delete)
+            {
+                preview_entries.erase(it);
+                spartan::FileSystem::Delete(preview_path);
+            }
+            else
+            {
+                it->second.state = preview_entry_state::failed;
+                it->second.texture.reset();
+            }
+            return nullptr;
+        }
+
+        if (texture->GetResourceState() == spartan::ResourceState::Max || texture->GetRhiResource() == nullptr)
+        {
+            texture->PrepareForGpu();
+        }
+
         if (texture->GetResourceState() != spartan::ResourceState::PreparedForGpu || texture->GetRhiResource() == nullptr)
         {
             return nullptr;
@@ -334,6 +568,9 @@ namespace
 
 void WorldPreviews::Tick()
 {
+    process_decoded_previews();
+    dispatch_pending_loads();
+
     if (preview_request.type == preview_request_type::none)
     {
         return;
@@ -412,6 +649,8 @@ void WorldPreviews::Tick()
     if (ensure_preview_directory_exists())
     {
         spartan::Renderer::Screenshot(preview_request.preview_path);
+        preview_entries.erase(preview_request.preview_path);
+        resolved_preview_paths.erase(preview_request.world_file_path);
     }
 
     clear_request();
@@ -419,22 +658,74 @@ void WorldPreviews::Tick()
 
 void WorldPreviews::Shutdown()
 {
+    shutting_down.store(true);
     clear_request();
+    pending_loads.clear();
+
+    for (future<void>& task : active_loads)
+    {
+        if (task.valid())
+        {
+            task.wait();
+        }
+    }
+    active_loads.clear();
+
+    {
+        lock_guard<mutex> lock(decoded_mutex);
+        decoded_previews.clear();
+    }
 
     spartan::RHI_Device::QueueWaitAll();
-    for (auto& [path, texture] : preview_textures)
+    for (auto& [path, entry] : preview_entries)
     {
-        if (texture)
+        if (entry.texture)
         {
-            texture->ReleaseGpuResources();
+            entry.texture->ReleaseGpuResources();
         }
     }
 
-    preview_textures.clear();
+    preview_entries.clear();
+    resolved_preview_paths.clear();
+    shutting_down.store(false);
+}
+
+void WorldPreviews::Prefetch(const string& world_file_path)
+{
+    const string preview_path = resolve_preview_path_cached(world_file_path);
+    request_async_load(preview_path, preview_path != get_authored_preview_path(world_file_path));
+}
+
+void WorldPreviews::Invalidate(const string& world_file_path)
+{
+    auto it = resolved_preview_paths.find(world_file_path);
+    if (it != resolved_preview_paths.end())
+    {
+        preview_entries.erase(it->second);
+        resolved_preview_paths.erase(it);
+    }
+    preview_entries.erase(GetPreviewPath(world_file_path));
+}
+
+void WorldPreviews::InvalidateAll()
+{
+    resolved_preview_paths.clear();
+    for (auto it = preview_entries.begin(); it != preview_entries.end(); )
+    {
+        if (it->second.state == preview_entry_state::failed)
+        {
+            it = preview_entries.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void WorldPreviews::RequestGeneration(const string& world_file_path)
 {
+    Invalidate(world_file_path);
     begin_request(preview_request_type::world_file, GetPreviewPath(world_file_path), normalize_path(world_file_path));
 }
 
@@ -455,7 +746,7 @@ string WorldPreviews::GetPreviewPath(const string& world_file_path)
 
 spartan::RHI_Texture* WorldPreviews::GetTexture(const string& world_file_path)
 {
-    const string preview_path = GetPreviewPath(world_file_path);
+    const string preview_path = resolve_preview_path_cached(world_file_path);
     // A corrupt generated cache entry can be rebuilt; never delete authored assets.
     return get_texture(preview_path, preview_path != get_authored_preview_path(world_file_path));
 }

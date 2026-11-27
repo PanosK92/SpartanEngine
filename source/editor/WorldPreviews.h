@@ -20,6 +20,9 @@ public:
     static void Shutdown();
     static void Tick();
 
+    static void Prefetch(const std::string& world_file_path);
+    static void Invalidate(const std::string& world_file_path);
+    static void InvalidateAll();
     static void RequestGeneration(const std::string& world_file_path);
     static std::string GetPreviewPath(const std::string& world_file_path);
     static spartan::RHI_Texture* GetTexture(const std::string& world_file_path);

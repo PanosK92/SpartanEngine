@@ -478,36 +478,87 @@ namespace
         return nullptr;
     }
 
+    bool is_asset_only_directory(const string& directory_name)
+    {
+        string lower = directory_name;
+        transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c)
+        {
+            return static_cast<char>(tolower(c));
+        });
+
+        constexpr const char* resources_suffix = "_resources";
+        constexpr size_t suffix_len            = 10;
+        if (lower.size() >= suffix_len && lower.compare(lower.size() - suffix_len, suffix_len, resources_suffix) == 0)
+        {
+            return true;
+        }
+
+        static const unordered_set<string> skipped =
+        {
+            ".git",
+            "audio",
+            "cache",
+            "fonts",
+            "materials",
+            "meshes",
+            "models",
+            "music",
+            "prefabs",
+            "previews",
+            "scripts",
+            "shaders",
+            "terrain",
+            "textures"
+        };
+
+        return skipped.find(lower) != skipped.end();
+    }
+
     void scan_directory_recursive(const string& directory, unordered_set<string>& visited, vector<spartan::WorldMetadata>& found)
     {
-        if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+        error_code error;
+        if (!filesystem::is_directory(directory, error) || error)
         {
             return;
         }
 
-        // Runtime asset junctions can point back into the project. Resolve them
-        // before descending so a cycle cannot grow paths until filesystem throws.
-        error_code error;
+        // runtime asset junctions can point back into the project, resolve before descending to avoid cycles
         const auto canonical = filesystem::canonical(directory, error);
-        if (error || !visited.insert(canonical.generic_string()).second) return;
-
-        vector<string> files = spartan::FileSystem::GetFilesInDirectory(directory);
-        for (const string& file : files)
+        if (error || !visited.insert(canonical.generic_string()).second)
         {
-            if (spartan::FileSystem::IsEngineWorldFile(file))
-            {
-                string normalized_path = file;
-                replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
+            return;
+        }
 
-                spartan::WorldMetadata metadata;
-                if (spartan::World::ReadMetadata(normalized_path, metadata))
+        vector<string> subdirectories;
+        for (const auto& entry : filesystem::directory_iterator(directory, filesystem::directory_options::skip_permission_denied, error))
+        {
+            if (error)
+            {
+                break;
+            }
+
+            error_code entry_error;
+            if (entry.is_directory(entry_error))
+            {
+                if (!entry_error && !is_asset_only_directory(entry.path().filename().string()))
                 {
-                    found.push_back(metadata);
+                    subdirectories.push_back(entry.path().generic_string());
+                }
+            }
+            else if (entry.is_regular_file(entry_error) && !entry_error)
+            {
+                string file_path = entry.path().generic_string();
+                if (spartan::FileSystem::IsEngineWorldFile(file_path))
+                {
+                    spartan::WorldMetadata metadata;
+                    if (spartan::World::ReadMetadata(file_path, metadata))
+                    {
+                        found.push_back(metadata);
+                    }
                 }
             }
         }
 
-        vector<string> subdirectories = spartan::FileSystem::GetDirectoriesInDirectory(directory);
         for (const string& subdir : subdirectories)
         {
             scan_directory_recursive(subdir, visited, found);
@@ -519,9 +570,6 @@ namespace
     {
         vector<spartan::WorldMetadata> found;
         unordered_set<string> visited;
-
-        string project_dir = spartan::ResourceCache::GetProjectDirectory();
-        scan_directory_recursive(project_dir, visited, found);
 
         vector<string> worlds_dirs = { "worlds", "../worlds" };
         // an empty worlds/ next to the executable must not hide ../worlds, where downloads install
@@ -535,10 +583,13 @@ namespace
             }
         }
 
+        string project_dir = spartan::ResourceCache::GetProjectDirectory();
+        scan_directory_recursive(project_dir, visited, found);
+
         return found;
     }
 
-    // walking the project tree takes hundreds of milliseconds, too long to hold the first frame
+    // walking directories runs off the ui thread so the first frame never stalls
     future<vector<spartan::WorldMetadata>> initial_scan;
 
     void apply_world_files(vector<spartan::WorldMetadata>&& found)
@@ -551,6 +602,11 @@ namespace
 
         world_files = move(found);
         sort_world_files();
+
+        for (const spartan::WorldMetadata& world : world_files)
+        {
+            WorldPreviews::Prefetch(world.file_path);
+        }
 
         if (!selected_path.empty())
         {
@@ -905,6 +961,8 @@ namespace
             spartan::World::SetFilePath(new_path);
         }
 
+        WorldPreviews::Invalidate(old_path);
+        WorldPreviews::Invalidate(new_path);
         refresh_world_list(new_path);
     }
 
@@ -941,6 +999,7 @@ namespace
             spartan::FileSystem::Delete(generated_preview);
         }
 
+        WorldPreviews::Invalidate(path);
         relocate_world_recency(path, "");
         refresh_world_list("");
     }
@@ -1137,27 +1196,44 @@ namespace
     // recursive like the launcher scan, so worlds the launcher can list are never reported as missing
     bool directory_has_world_file(const string& directory, unordered_set<string>& visited)
     {
-        if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+        error_code error;
+        if (!filesystem::is_directory(directory, error) || error)
         {
             return false;
         }
 
-        error_code error;
         const auto canonical = filesystem::canonical(directory, error);
         if (error || !visited.insert(canonical.generic_string()).second)
         {
             return false;
         }
 
-        for (const string& file : spartan::FileSystem::GetFilesInDirectory(directory))
+        vector<string> subdirectories;
+        for (const auto& entry : filesystem::directory_iterator(directory, filesystem::directory_options::skip_permission_denied, error))
         {
-            if (spartan::FileSystem::IsEngineWorldFile(file))
+            if (error)
             {
-                return true;
+                break;
+            }
+
+            error_code entry_error;
+            if (entry.is_regular_file(entry_error) && !entry_error)
+            {
+                if (spartan::FileSystem::IsEngineWorldFile(entry.path().generic_string()))
+                {
+                    return true;
+                }
+            }
+            else if (entry.is_directory(entry_error) && !entry_error)
+            {
+                if (!is_asset_only_directory(entry.path().filename().string()))
+                {
+                    subdirectories.push_back(entry.path().generic_string());
+                }
             }
         }
 
-        for (const string& subdirectory : spartan::FileSystem::GetDirectoriesInDirectory(directory))
+        for (const string& subdirectory : subdirectories)
         {
             if (directory_has_world_file(subdirectory, visited))
             {
@@ -1617,10 +1693,23 @@ namespace
         ImGui::TextDisabled("Double click a world to open it. New here? Press F1 for the documentation.");
         const float after_y = ImGui::GetCursorPosY();
 
-        // top right, level with the title, the first thing a newcomer should find
-        const char* docs_label = "Documentation (F1)";
-        const float docs_w     = ImGui::CalcTextSize(docs_label).x + scaled(36.0f);
-        ImGui::SetCursorPos(ImVec2(start_x + content_w - docs_w, start_y + scaled(6.0f)));
+        // top right utility cluster, level with the title: controls and documentation live together
+        const char* controls_label = "Controls";
+        const char* docs_label     = "Documentation (F1)";
+        const float controls_w     = ImGui::CalcTextSize(controls_label).x + scaled(32.0f);
+        const float docs_w         = ImGui::CalcTextSize(docs_label).x + scaled(36.0f);
+        const float cluster_gap    = scaled(8.0f);
+        const float cluster_w      = controls_w + cluster_gap + docs_w;
+        ImGui::SetCursorPos(ImVec2(start_x + content_w - cluster_w, start_y + scaled(6.0f)));
+        if (launcher_button(controls_label, ImVec2(controls_w, 0.0f)))
+        {
+            *GeneralWindows::GetVisibilityWindowControls() = true;
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Editor, camera and vehicle shortcuts (Ctrl+P).");
+        }
+        ImGui::SameLine(0.0f, cluster_gap);
         if (launcher_button(docs_label, ImVec2(docs_w, 0.0f)))
         {
             open_documentation();
@@ -1652,6 +1741,7 @@ namespace
         ImGui::SameLine(0.0f, scaled(8.0f));
         if (launcher_button("Refresh", ImVec2(button_w, 0.0f)))
         {
+            WorldPreviews::InvalidateAll();
             scan_for_world_files();
             rebuild_visible_indices();
         }
@@ -1697,28 +1787,11 @@ namespace
         if (!world)
         {
             ImGui::TextDisabled("Select a world to see details.");
-            float footer_y = height - scaled(54.0f);
-            if (ImGui::GetCursorPosY() < footer_y)
-            {
-                ImGui::SetCursorPosY(footer_y);
-            }
-
-            float width_available = width - scaled(28.0f);
-            float button_w = (width_available - scaled(8.0f)) * 0.5f;
-            if (launcher_button("Cancel", ImVec2(button_w, 0.0f)))
-            {
-                visible_world_list = false;
-            }
-            ImGui::SameLine(0.0f, scaled(8.0f));
-            if (launcher_button("Controls", ImVec2(button_w, 0.0f)))
-            {
-                *GeneralWindows::GetVisibilityWindowControls() = true;
-            }
             end_panel();
             return;
         }
 
-        float content_height = max(scaled(120.0f), height - scaled(104.0f));
+        float content_height = max(scaled(120.0f), height - scaled(66.0f));
         ImGui::BeginChild("##world_details_content", ImVec2(width - scaled(28.0f), content_height), false);
 
         ImVec2 preview_min = ImGui::GetCursorScreenPos();
@@ -1779,18 +1852,6 @@ namespace
         if (launcher_button("Open World", ImVec2(footer_w, 0.0f), true))
         {
             load_selected_world();
-        }
-
-        float button_w = (footer_w - scaled(8.0f)) * 0.5f;
-        ImGui::SetCursorPosX(scaled(14.0f));
-        if (launcher_button("Cancel", ImVec2(button_w, 0.0f)))
-        {
-            visible_world_list = false;
-        }
-        ImGui::SameLine(0.0f, scaled(8.0f));
-        if (launcher_button("Controls", ImVec2(button_w, 0.0f)))
-        {
-            *GeneralWindows::GetVisibilityWindowControls() = true;
         }
 
         end_panel();
