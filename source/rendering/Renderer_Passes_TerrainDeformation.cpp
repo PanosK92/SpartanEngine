@@ -111,11 +111,10 @@ namespace spartan
         }
 
         // frame uploads record into this command list, ahead of the passes that sample the field
-        RHI_CommandList::BeginPass("terrain_deformation");
+        RenderPass pass("terrain_deformation");
         for (const TerrainDeformationUpload& upload : state.uploads)
         {
             state.texture->UpdateRegion(upload.x, upload.y, upload.width, upload.height, upload.texels.data(), true);
         }
-        RHI_CommandList::EndPass();
     }
 }

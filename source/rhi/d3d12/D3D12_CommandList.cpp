@@ -356,6 +356,8 @@ namespace spartan
             D3D12_CPU_DESCRIPTOR_HANDLE srv[d3d12_root_slot::srv_space0_count] = {};
             D3D12_CPU_DESCRIPTOR_HANDLE uav[d3d12_root_slot::uav_space0_count] = {};
             uint64_t bindless_revision[2]         = {};
+            uint32_t srv_copied_count             = 0;
+            uint32_t uav_copied_count             = 0;
             bool srv_dirty                       = false;
             bool uav_dirty                       = false;
             bool is_compute_bound                = false;
@@ -402,6 +404,8 @@ namespace spartan
             for (auto& h : b.srv) h.ptr = 0;
             for (auto& h : b.uav) h.ptr = 0;
             b.bindless_revision[0] = b.bindless_revision[1] = 0;
+            b.srv_copied_count            = 0;
+            b.uav_copied_count            = 0;
             b.srv_dirty                   = false;
             b.uav_dirty                   = false;
             b.is_compute_bound            = false;
@@ -1251,21 +1255,18 @@ namespace spartan
         if (b.bindless_revision[is_compute] != d3d12_descriptors::GetBindlessRevision())
             bind_bindless_tables(cmd_list, cmd, is_compute);
 
-        if (b.srv_dirty)
+        const uint32_t srv_needed = min(cmd->GetMaxSrvSlots(), d3d12_root_slot::srv_space0_count);
+        if (srv_needed > 0 && (b.srv_dirty || srv_needed > b.srv_copied_count))
         {
             uint32_t base = d3d12_descriptors::AllocateRing(cmd_list, d3d12_root_slot::srv_space0_count);
-            array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::srv_space0_count> sources = {};
-            for (uint32_t i = 0; i < d3d12_root_slot::srv_space0_count; i++)
+            D3D12_CPU_DESCRIPTOR_HANDLE null_srv = cmd_state::ensure_null_srv(b);
+            array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::srv_space0_count> sources;
+            for (uint32_t i = 0; i < srv_needed; i++)
             {
-                sources[i] =
-                    b.srv[i].ptr != 0
-                        ? b.srv[i]
-                        : cmd_state::ensure_null_srv(b);
+                sources[i] = b.srv[i].ptr != 0 ? b.srv[i] : null_srv;
             }
-            D3D12_CPU_DESCRIPTOR_HANDLE destination =
-                d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base);
-            uint32_t descriptor_count =
-                d3d12_root_slot::srv_space0_count;
+            D3D12_CPU_DESCRIPTOR_HANDLE destination = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base);
+            uint32_t descriptor_count               = srv_needed;
             RHI_Context::device->CopyDescriptors(
                 1,
                 &destination,
@@ -1284,24 +1285,22 @@ namespace spartan
             {
                 cmd_list->SetGraphicsRootDescriptorTable(d3d12_root_slot::srv_table_space0, gpu);
             }
-            b.srv_dirty = false;
+            b.srv_copied_count = srv_needed;
+            b.srv_dirty        = false;
         }
 
-        if (b.uav_dirty)
+        const uint32_t uav_needed = min(cmd->GetMaxUavSlots(), d3d12_root_slot::uav_space0_count);
+        if (uav_needed > 0 && (b.uav_dirty || uav_needed > b.uav_copied_count))
         {
             uint32_t base = d3d12_descriptors::AllocateRing(cmd_list, d3d12_root_slot::uav_space0_count);
-            array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::uav_space0_count> sources = {};
-            for (uint32_t i = 0; i < d3d12_root_slot::uav_space0_count; i++)
+            D3D12_CPU_DESCRIPTOR_HANDLE null_uav = cmd_state::ensure_null_uav(b);
+            array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::uav_space0_count> sources;
+            for (uint32_t i = 0; i < uav_needed; i++)
             {
-                sources[i] =
-                    b.uav[i].ptr != 0
-                        ? b.uav[i]
-                        : cmd_state::ensure_null_uav(b);
+                sources[i] = b.uav[i].ptr != 0 ? b.uav[i] : null_uav;
             }
-            D3D12_CPU_DESCRIPTOR_HANDLE destination =
-                d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base);
-            uint32_t descriptor_count =
-                d3d12_root_slot::uav_space0_count;
+            D3D12_CPU_DESCRIPTOR_HANDLE destination = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base);
+            uint32_t descriptor_count               = uav_needed;
             RHI_Context::device->CopyDescriptors(
                 1,
                 &destination,
@@ -1320,7 +1319,8 @@ namespace spartan
             {
                 cmd_list->SetGraphicsRootDescriptorTable(d3d12_root_slot::uav_table_space0, gpu);
             }
-            b.uav_dirty = false;
+            b.uav_copied_count = uav_needed;
+            b.uav_dirty        = false;
         }
     }
 
@@ -1595,8 +1595,10 @@ namespace spartan
             b.is_bindless_pipeline = true;
             if (binding_route_changed)
             {
-                b.srv_dirty = true;
-                b.uav_dirty = true;
+                b.srv_dirty        = true;
+                b.uav_dirty        = true;
+                b.srv_copied_count = 0;
+                b.uav_copied_count = 0;
             }
         }
 

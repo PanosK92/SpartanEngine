@@ -17,6 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 #endif
 #include "RHI_Descriptor.h"
 #include "RHI_Device.h"
+#include <bit>
 #include <stack>
 #include <unordered_set>
 //============================
@@ -48,6 +49,34 @@ namespace spartan
         {
             return static_cast<RHI_Resource_Access>(static_cast<uint8_t>(first) | static_cast<uint8_t>(second));
         }
+
+        void set_slot_bit(array<uint64_t, 2>& mask, uint32_t slot, bool occupied)
+        {
+            const uint64_t bit = 1ull << (slot & 63u);
+            if (occupied)
+            {
+                mask[slot >> 6u] |= bit;
+            }
+            else
+            {
+                mask[slot >> 6u] &= ~bit;
+            }
+        }
+
+        template<typename Fn>
+        void for_each_slot(const array<uint64_t, 2>& mask, Fn&& fn)
+        {
+            for (uint32_t word_idx = 0; word_idx < 2; word_idx++)
+            {
+                uint64_t word = mask[word_idx];
+                while (word != 0)
+                {
+                    const uint32_t bit = static_cast<uint32_t>(std::countr_zero(word));
+                    fn((word_idx << 6u) + bit);
+                    word &= word - 1;
+                }
+            }
+        }
     }
 
     void RHI_CommandList::TrackTextureUsage(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_layer, const bool uav)
@@ -78,9 +107,11 @@ namespace spartan
         binding = {};
         if (!texture)
         {
+            resource_tracker::set_slot_bit(uav ? m_tracked_uav_mask : m_tracked_srv_mask, slot, false);
             return;
         }
         m_resources_have_write_bindings |= uav;
+        resource_tracker::set_slot_bit(uav ? m_tracked_uav_mask : m_tracked_srv_mask, slot, true);
 
         binding.texture     = texture;
         binding.mip_index   = resolved_mip;
@@ -88,25 +119,6 @@ namespace spartan
         binding.array_layer = array_layer;
         binding.access      = resolved_access;
         binding.layout      = RHI_Image_Layout::General;
-
-        auto& opposite_bindings = uav ? m_tracked_textures_srv : m_tracked_textures_uav;
-        for (RHI_Tracked_Texture_Binding& opposite : opposite_bindings)
-        {
-            if (opposite.texture != texture)
-            {
-                continue;
-            }
-
-            const uint32_t binding_mip_end  = binding.mip_index + binding.mip_range;
-            const uint32_t opposite_mip_end = opposite.mip_index + opposite.mip_range;
-            const bool mip_overlap          = binding.mip_index < opposite_mip_end && opposite.mip_index < binding_mip_end;
-            const bool layer_overlap        = binding.array_layer == rhi_all_mips || opposite.array_layer == rhi_all_mips || binding.array_layer == opposite.array_layer;
-            if (mip_overlap && layer_overlap)
-            {
-                binding.layout  = RHI_Image_Layout::General;
-                opposite.layout = RHI_Image_Layout::General;
-            }
-        }
     }
 
     void RHI_CommandList::TrackBufferUsage(const uint32_t slot, RHI_Buffer* buffer, const RHI_Resource_Access access)
@@ -132,6 +144,7 @@ namespace spartan
             m_tracked_buffers[slot].buffer = buffer;
             m_tracked_buffers[slot].access = buffer ? access : RHI_Resource_Access::None;
             m_tracked_buffers[slot].usage  = buffer ? RHI_Resource_Usage::Shader : RHI_Resource_Usage::None;
+            resource_tracker::set_slot_bit(m_tracked_buf_mask, slot, buffer != nullptr);
             m_resources_have_write_bindings |=
                 buffer &&
                 resource_tracker::writes(access);
@@ -278,10 +291,13 @@ namespace spartan
     {
         m_resources_dirty = true;
         m_resources_have_write_bindings = false;
-        m_tracked_textures_srv.fill(RHI_Tracked_Texture_Binding{});
-        m_tracked_textures_uav.fill(RHI_Tracked_Texture_Binding{});
+        resource_tracker::for_each_slot(m_tracked_srv_mask, [&](uint32_t slot) { m_tracked_textures_srv[slot] = {}; });
+        resource_tracker::for_each_slot(m_tracked_uav_mask, [&](uint32_t slot) { m_tracked_textures_uav[slot] = {}; });
+        resource_tracker::for_each_slot(m_tracked_buf_mask, [&](uint32_t slot) { m_tracked_buffers[slot] = {}; });
+        m_tracked_srv_mask = {};
+        m_tracked_uav_mask = {};
+        m_tracked_buf_mask = {};
         m_tracked_attachments.fill(RHI_Tracked_Texture_Binding{});
-        m_tracked_buffers.fill(RHI_Tracked_Buffer_Binding{});
         m_tracked_buffers_read.fill(RHI_Tracked_Buffer_Binding{});
         m_constant_buffer_bound = false;
     }
@@ -386,20 +402,20 @@ namespace spartan
         for (auto& [resource_id, usages] : m_tracked_texture_history)
             for (RHI_Tracked_Usage& usage : usages)
                 usage.unsynced = false;
-        for (const auto& [texture, current] : m_current_texture_usage)
+        for (const TrackedTextureCurrent& entry : m_current_texture_usage)
         {
-            auto history = m_tracked_texture_history.find(texture->GetObjectId());
+            auto history = m_tracked_texture_history.find(entry.texture->GetObjectId());
             if (history == m_tracked_texture_history.end()) continue;
-            for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); ++mip)
-                history->second[mip].unsynced = resource_tracker::writes(current[mip].access);
+            for (uint32_t mip = 0; mip < entry.texture->GetResidentMipCount(); ++mip)
+                history->second[mip].unsynced = resource_tracker::writes(entry.usages[mip].access);
         }
         for (auto& [resource_id, usage] : m_tracked_buffer_history)
             usage.unsynced = false;
-        for (const auto& [buffer, current] : m_current_buffer_usage)
+        for (const TrackedBufferCurrent& entry : m_current_buffer_usage)
         {
-            auto history = m_tracked_buffer_history.find(buffer->GetObjectId());
+            auto history = m_tracked_buffer_history.find(entry.buffer->GetObjectId());
             if (history != m_tracked_buffer_history.end())
-                history->second.unsynced = resource_tracker::writes(current.access);
+                history->second.unsynced = resource_tracker::writes(entry.usage.access);
         }
     }
 
@@ -439,6 +455,9 @@ namespace spartan
             m_texture_bindings_uav  = 0;
             m_buffer_bindings_srv   = 0;
             m_buffer_bindings_uav   = 0;
+            uint32_t max_srv        = 0;
+            uint32_t max_uav        = 0;
+            bool fallback_full      = false;
 
             for (RHI_Shader* shader : m_pso.shaders)
             {
@@ -447,59 +466,68 @@ namespace spartan
                     continue;
                 }
 
-                for (
-                    const RHI_Descriptor& descriptor :
-                    shader->GetDescriptors()
-                )
+                const vector<RHI_Descriptor>& descriptors = shader->GetDescriptors();
+                if (descriptors.empty())
                 {
+                    fallback_full = true;
+                    continue;
+                }
+
+                for (const RHI_Descriptor& descriptor : descriptors)
+                {
+                    if (descriptor.IsBindless())
+                    {
+                        continue;
+                    }
+
+                    const uint32_t count = max(descriptor.array_length, 1u);
                     if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
                     {
                         const uint32_t srv = descriptor.slot - rhi_shader_register_shift_t;
                         const uint32_t uav = descriptor.slot - rhi_shader_register_shift_u;
-                        if (srv < rhi_max_resource_slots) m_buffer_bindings_srv.set(srv);
-                        if (uav < rhi_max_resource_slots) m_buffer_bindings_uav.set(uav);
+                        if (srv < rhi_max_resource_slots)
+                        {
+                            m_buffer_bindings_srv.set(srv);
+                            max_srv = max(max_srv, min(srv + count, rhi_max_resource_slots));
+                        }
+                        if (uav < rhi_max_resource_slots)
+                        {
+                            m_buffer_bindings_uav.set(uav);
+                            max_uav = max(max_uav, min(uav + count, rhi_max_resource_slots));
+                        }
                     }
-                    uint32_t binding_slot = 0;
-                    std::bitset<rhi_max_resource_slots>* binding_mask = nullptr;
-                    if (
-                        descriptor.IsBindless()
-                    )
+                    else if (descriptor.type == RHI_Descriptor_Type::Image)
                     {
-                        continue;
+                        const uint32_t binding_slot = descriptor.slot - rhi_shader_register_shift_t;
+                        if (binding_slot < m_max_tracked_resource_slots)
+                        {
+                            m_texture_bindings_srv.set(binding_slot);
+                            max_srv = max(max_srv, min(binding_slot + count, rhi_max_resource_slots));
+                        }
                     }
-                    if (
-                        descriptor.type ==
-                        RHI_Descriptor_Type::Image
-                    )
+                    else if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
                     {
-                        binding_slot =
-                            descriptor.slot -
-                            rhi_shader_register_shift_t;
-                        binding_mask = &m_texture_bindings_srv;
+                        const uint32_t binding_slot = descriptor.slot - rhi_shader_register_shift_t;
+                        if (binding_slot < rhi_max_resource_slots)
+                        {
+                            max_srv = max(max_srv, min(binding_slot + count, rhi_max_resource_slots));
+                        }
                     }
-                    else if (
-                        descriptor.type ==
-                        RHI_Descriptor_Type::TextureStorage
-                    )
+                    else if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
                     {
-                        binding_slot =
-                            descriptor.slot -
-                            rhi_shader_register_shift_u;
-                        binding_mask = &m_texture_bindings_uav;
-                    }
-
-                    if (
-                        binding_mask &&
-                        binding_slot <
-                            m_max_tracked_resource_slots
-                    )
-                    {
-                        binding_mask->set(binding_slot);
+                        const uint32_t binding_slot = descriptor.slot - rhi_shader_register_shift_u;
+                        if (binding_slot < m_max_tracked_resource_slots)
+                        {
+                            m_texture_bindings_uav.set(binding_slot);
+                            max_uav = max(max_uav, min(binding_slot + count, rhi_max_resource_slots));
+                        }
                     }
                 }
             }
-        }
 
+            m_max_srv_slots = fallback_full ? rhi_max_resource_slots : max_srv;
+            m_max_uav_slots = fallback_full ? rhi_max_resource_slots : max_uav;
+        }
     }
 
     bool RHI_CommandList::IsTextureBindingUsed(uint32_t slot, bool storage) const
@@ -859,6 +887,10 @@ namespace spartan
 
         m_batch_barrier_flush = true;
         m_current_texture_usage.clear();
+        const RHI_Barrier_Scope current_scope = GetResourceScope();
+        const RHI_Queue_Type current_queue    = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+        const bool vulkan                     = RHI_Device::GetApiType() == RHI_Api_Type::Vulkan;
+
         auto collect_texture = [&](const RHI_Tracked_Texture_Binding& binding)
         {
             if (!binding.texture)
@@ -866,36 +898,48 @@ namespace spartan
                 return;
             }
 
-            auto& usages = m_current_texture_usage[binding.texture];
+            TrackedTextureCurrent* found = nullptr;
+            for (TrackedTextureCurrent& entry : m_current_texture_usage)
+            {
+                if (entry.texture == binding.texture)
+                {
+                    found = &entry;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                m_current_texture_usage.emplace_back();
+                found = &m_current_texture_usage.back();
+                found->texture = binding.texture;
+            }
+
+            auto& usages           = found->usages;
             const uint32_t mip_end = min(binding.mip_index + binding.mip_range, binding.texture->GetResidentMipCount());
             for (uint32_t mip = binding.mip_index; mip < mip_end; mip++)
             {
                 usages[mip].access = resource_tracker::merge(usages[mip].access, binding.access);
                 usages[mip].usage  = binding.usage;
-                usages[mip].scope  = GetResourceScope();
-                usages[mip].queue  = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+                usages[mip].scope  = current_scope;
+                usages[mip].queue  = current_queue;
                 usages[mip].layout = binding.layout;
             }
         };
 
         if (include_bindings)
         {
-            for (const RHI_Tracked_Texture_Binding& binding : m_tracked_textures_srv)
-            {
-                collect_texture(binding);
-            }
-            for (const RHI_Tracked_Texture_Binding& binding : m_tracked_textures_uav)
-            {
-                collect_texture(binding);
-            }
+            resource_tracker::for_each_slot(m_tracked_srv_mask, [&](uint32_t slot) { collect_texture(m_tracked_textures_srv[slot]); });
+            resource_tracker::for_each_slot(m_tracked_uav_mask, [&](uint32_t slot) { collect_texture(m_tracked_textures_uav[slot]); });
         }
         for (const RHI_Tracked_Texture_Binding& binding : m_tracked_attachments)
         {
             collect_texture(binding);
         }
 
-        for (auto& [texture, current_usages] : m_current_texture_usage)
+        for (TrackedTextureCurrent& entry : m_current_texture_usage)
         {
+            RHI_Texture* texture  = entry.texture;
+            auto& current_usages  = entry.usages;
             const uint64_t resource_id = texture->GetObjectId();
             auto [history_it, inserted] = m_tracked_texture_history.try_emplace(resource_id);
             if (inserted)
@@ -914,23 +958,21 @@ namespace spartan
 
             auto& previous_usages = history_it->second;
             bool mip_chain = false;
-            if (include_bindings)
+            if (vulkan && include_bindings)
             {
-                for (const RHI_Tracked_Texture_Binding& binding : m_tracked_textures_srv)
+                resource_tracker::for_each_slot(m_tracked_srv_mask, [&](uint32_t srv_slot)
                 {
-                    if (binding.texture == texture)
+                    if (!mip_chain && m_tracked_textures_srv[srv_slot].texture == texture)
                     {
-                        for (const RHI_Tracked_Texture_Binding& uav : m_tracked_textures_uav)
+                        resource_tracker::for_each_slot(m_tracked_uav_mask, [&](uint32_t uav_slot)
                         {
-                            if (uav.texture == texture)
+                            if (m_tracked_textures_uav[uav_slot].texture == texture)
                             {
                                 mip_chain = true;
-                                break;
                             }
-                        }
-                        break;
+                        });
                     }
-                }
+                });
             }
             uint32_t barrier_start = rhi_all_mips;
             RHI_Tracked_Usage barrier_previous;
@@ -952,7 +994,8 @@ namespace spartan
                 barrier_start = rhi_all_mips;
             };
 
-            for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
+            const uint32_t resident_mips = texture->GetResidentMipCount();
+            for (uint32_t mip = 0; mip < resident_mips; mip++)
             {
                 RHI_Tracked_Usage& previous = previous_usages[mip];
                 RHI_Tracked_Usage& current  = current_usages[mip];
@@ -974,7 +1017,6 @@ namespace spartan
                 const bool hazard = previous.access != RHI_Resource_Access::None && current.access != RHI_Resource_Access::None && (resource_tracker::writes(previous.access) || resource_tracker::writes(current.access));
                 const bool scope_change = previous.scope != current.scope && previous.scope != RHI_Barrier_Scope::None && current.scope != RHI_Barrier_Scope::None;
                 const bool attachment_release = previous.usage == RHI_Resource_Usage::Attachment && current.usage != RHI_Resource_Usage::Attachment;
-                const bool vulkan = RHI_Device::GetApiType() == RHI_Api_Type::Vulkan;
                 const bool needs_barrier = hazard && !layout_transition && !same_rp_attachment &&
                     (
                         cross_queue_mip ||
@@ -1015,7 +1057,7 @@ namespace spartan
                     previous = current;
                 }
             }
-            flush_range(texture->GetResidentMipCount());
+            flush_range(resident_mips);
         }
 
         if (!include_bindings)
@@ -1032,7 +1074,23 @@ namespace spartan
                 return;
             }
 
-            RHI_Tracked_Usage& usage = m_current_buffer_usage[binding.buffer];
+            TrackedBufferCurrent* found = nullptr;
+            for (TrackedBufferCurrent& entry : m_current_buffer_usage)
+            {
+                if (entry.buffer == binding.buffer)
+                {
+                    found = &entry;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                m_current_buffer_usage.emplace_back();
+                found = &m_current_buffer_usage.back();
+                found->buffer = binding.buffer;
+            }
+
+            RHI_Tracked_Usage& usage = found->usage;
             usage.access = resource_tracker::merge(usage.access, binding.access);
             if (
                 usage.usage == RHI_Resource_Usage::None ||
@@ -1042,20 +1100,19 @@ namespace spartan
             {
                 usage.usage = binding.usage;
             }
-            usage.scope = GetResourceScope();
-            usage.queue = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+            usage.scope = current_scope;
+            usage.queue = current_queue;
         };
-        for (const RHI_Tracked_Buffer_Binding& binding : m_tracked_buffers)
-        {
-            collect_buffer(binding);
-        }
+        resource_tracker::for_each_slot(m_tracked_buf_mask, [&](uint32_t slot) { collect_buffer(m_tracked_buffers[slot]); });
         for (const RHI_Tracked_Buffer_Binding& binding : m_tracked_buffers_read)
         {
             collect_buffer(binding);
         }
 
-        for (auto& [buffer, current] : m_current_buffer_usage)
+        for (TrackedBufferCurrent& entry : m_current_buffer_usage)
         {
+            RHI_Buffer* buffer         = entry.buffer;
+            RHI_Tracked_Usage& current = entry.usage;
             const uint64_t resource_id = buffer->GetObjectId();
             auto [history_it, inserted] = m_tracked_buffer_history.try_emplace(resource_id);
             if (inserted)
@@ -1261,25 +1318,8 @@ namespace spartan
 
             for (RHI_Shader* shader : pso.shaders)
             {
-                if (!shader)
+                if (shader && shader->FindDescriptor(name, slot, type))
                 {
-                    continue;
-                }
-
-                for (const RHI_Descriptor& descriptor : shader->GetDescriptors())
-                {
-                    if (descriptor.IsBindless())
-                    {
-                        continue;
-                    }
-
-                    if (descriptor.name != name)
-                    {
-                        continue;
-                    }
-
-                    slot = descriptor_slot_unshifted(descriptor);
-                    type = descriptor.type;
                     return true;
                 }
             }

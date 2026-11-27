@@ -137,13 +137,13 @@ namespace spartan
             return true;
         }
 
-        bool draw_view_clusters(Render* render, const Renderer_DrawCall& draw, Camera* camera, float height,
+        bool draw_view_clusters(RenderPass& pass, Render* render, const Renderer_DrawCall& draw, Camera* camera, float height,
             vector<ClusterDrawRange>& ranges)
         {
             return visit_view_clusters(render, draw, camera, height, ranges,
-                [](const ClusterDrawRange& range, uint32_t first_instance)
+                [&](const ClusterDrawRange& range, uint32_t first_instance)
                 {
-                    RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset, first_instance, 1);
+                    pass.DrawIndexed(range.index_count, range.first_index, range.vertex_offset, first_instance, 1);
                 });
         }
 
@@ -682,33 +682,32 @@ namespace spartan
         }
 
 
-        void bind_mesh_shader_geometry()
+        void bind_mesh_shader_geometry(RenderPass& pass)
         {
-            Renderer::BindBuffer(Renderer_BindingsUav::tree_wind_cache, Renderer::GetBuffer(Renderer_Buffer::TreeWindCache));
-            Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_data, Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_instances, Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_vertices, GeometryBuffer::GetMeshletVertexBuffer());
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_micro_indices, GeometryBuffer::GetMeshletMicroIndexBuffer());
-            Renderer::BindBuffer(Renderer_BindingsUav::cull_phase, Renderer::GetBuffer(Renderer_Buffer::CullPhase));
+            pass.Bind(Renderer_BindingsUav::tree_wind_cache, Renderer_Buffer::TreeWindCache);
+            pass.Bind(Renderer_BindingsUav::indirect_draw_data, Renderer_Buffer::IndirectDrawData);
+            pass.Bind(Renderer_BindingsUav::meshlet_instances, Renderer_Buffer::MeshletInstances);
+            pass.Bind(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+            pass.Bind(Renderer_BindingsUav::meshlet_vertices, GeometryBuffer::GetMeshletVertexBuffer());
+            pass.Bind(Renderer_BindingsUav::meshlet_micro_indices, GeometryBuffer::GetMeshletMicroIndexBuffer());
+            pass.Bind(Renderer_BindingsUav::cull_phase, Renderer_Buffer::CullPhase);
         }
 
-        void bind_visible_triangle_geometry()
+        void bind_visible_triangle_geometry(RenderPass& pass)
         {
-            Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_data, Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_instances, Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
-            Renderer::BindBuffer(Renderer_BindingsUav::visible_triangles, Renderer::GetBuffer(Renderer_Buffer::VisibleTriangles));
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
-            Renderer::BindBuffer(Renderer_BindingsUav::cull_phase, Renderer::GetBuffer(Renderer_Buffer::CullPhase));
+            pass.Bind(Renderer_BindingsUav::indirect_draw_data, Renderer_Buffer::IndirectDrawData);
+            pass.Bind(Renderer_BindingsUav::meshlet_instances, Renderer_Buffer::MeshletInstances);
+            pass.Bind(Renderer_BindingsUav::visible_triangles, Renderer_Buffer::VisibleTriangles);
+            pass.Bind(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+            pass.Bind(Renderer_BindingsUav::cull_phase, Renderer_Buffer::CullPhase);
         }
 
-        void push_mesh_draw_constants(Pcb_Pass& pcb)
+        void set_mesh_draw_constants(RenderPass& pass)
         {
             // the opaque/alpha split is a shader variant now, the region base is unused by the mesh path
-            // the push still runs because the alpha pixel shaders read the other pass fields
-            pcb.set(pass_visible_triangles::region_base, 0u);
-            pcb.set(pass_visible_triangles::late, false);
-            RHI_CommandList::PushConstants(pcb);
+            // the constants still flush because the alpha pixel shaders read the other pass fields
+            pass.Set(pass_visible_triangles::region_base, 0u);
+            pass.Set(pass_visible_triangles::late, false);
         }
     }
 
@@ -881,170 +880,164 @@ namespace spartan
         RHI_Shader* current_ps             = nullptr;
         RHI_RasterizerMode current_raster  = RHI_RasterizerMode::SolidNoDepthClip;
 
-        RHI_CommandList::BeginPass("shadow_maps");
+        RenderPass pass("shadow_maps", current_vs);
+        pass.Blend(RHI_BlendMode::Off);
+        pass.Depth(RHI_DepthMode::ReadWrite);
+        pass.Rasterizer(current_raster);
+        pass.DepthTarget(Renderer_RenderTarget::shadow_atlas, 0.0f);
+
+        for (ShadowSlice& slice : slices)
         {
-            RHI_CommandList::SetShaders(current_vs);
-            RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-            RHI_CommandList::SetDepth(RHI_DepthMode::ReadWrite);
-            RHI_CommandList::SetRasterizer(current_raster);
-            RHI_CommandList::SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::shadow_atlas), 0.0f);
+            Light* light = slice.light;
+            const RHI_RasterizerMode raster_mode = light->GetLightType() == LightType::Directional ? RHI_RasterizerMode::SolidNoDepthClip : RHI_RasterizerMode::Solid;
+            RHI_Viewport viewport;
+            viewport.x      = slice.rect.x;
+            viewport.y      = slice.rect.y;
+            viewport.width  = slice.rect.width;
+            viewport.height = slice.rect.height;
+            pass.Viewport(viewport);
+            pass.Scissor(slice.rect);
 
-            for (ShadowSlice& slice : slices)
+            if (use_batches)
             {
-                Light* light = slice.light;
-                const RHI_RasterizerMode raster_mode = light->GetLightType() == LightType::Directional ? RHI_RasterizerMode::SolidNoDepthClip : RHI_RasterizerMode::Solid;
-                RHI_Viewport viewport;
-                viewport.x      = slice.rect.x;
-                viewport.y      = slice.rect.y;
-                viewport.width  = slice.rect.width;
-                viewport.height = slice.rect.height;
-                RHI_CommandList::SetViewport(viewport);
-                RHI_CommandList::SetScissorRectangle(slice.rect);
-
-                if (use_batches)
+                for (ShadowBatch& batch : slice.batches)
                 {
-                    for (ShadowBatch& batch : slice.batches)
-                    {
-                        RHI_Shader* vertex_shader = multi_vertex_shader;
-                        RHI_Shader* pixel_shader  = batch.alpha_tested ? multi_pixel_shader : nullptr;
-                        if (current_vs != vertex_shader || current_ps != pixel_shader || current_raster != raster_mode)
-                        {
-                            current_vs     = vertex_shader;
-                            current_ps     = pixel_shader;
-                            current_raster = raster_mode;
-                            RHI_CommandList::SetShaders(current_vs, current_ps);
-                            RHI_CommandList::SetRasterizer(current_raster);
-                            RHI_CommandList::SetViewport(viewport);
-                            RHI_CommandList::SetScissorRectangle(slice.rect);
-                        }
-
-                        m_pcb_pass_cpu.draw_index     = numeric_limits<uint32_t>::max();
-                        m_pcb_pass_cpu.is_transparent = 0;
-                        m_pcb_pass_cpu.set(pass_depth_light::light_index, static_cast<uint32_t>(light->GetIndex()));
-                        m_pcb_pass_cpu.set(pass_depth_light::array_index, static_cast<uint32_t>(slice.array_index));
-                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                        RHI_CommandList::SetCullMode(batch.cull_mode);
-                        RHI_CommandList::SetBufferVertex(batch.vertex_buffer);
-                        RHI_CommandList::SetBufferIndex(batch.index_buffer);
-                        RHI_CommandList::DrawIndexedIndirect(argument_buffer, batch.argument_offset, static_cast<uint32_t>(batch.arguments.size()));
-                    }
-                }
-
-                auto draw_direct = [&](const Renderer_DrawCall& draw_call)
-                {
-                    Render* render = draw_call.render;
-                    Material* material = render->GetMaterial();
-                    RHI_Shader* vertex_shader = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_light_v);
-                    RHI_Shader* pixel_shader  = material->IsAlphaTested() ? (use_batches ? multi_pixel_shader : GetShader(Renderer_Shader::depth_light_alpha_color_p)) : nullptr;
+                    RHI_Shader* vertex_shader = multi_vertex_shader;
+                    RHI_Shader* pixel_shader  = batch.alpha_tested ? multi_pixel_shader : nullptr;
                     if (current_vs != vertex_shader || current_ps != pixel_shader || current_raster != raster_mode)
                     {
                         current_vs     = vertex_shader;
                         current_ps     = pixel_shader;
                         current_raster = raster_mode;
-                        RHI_CommandList::SetShaders(current_vs, current_ps);
-                        RHI_CommandList::SetRasterizer(current_raster);
-                        RHI_CommandList::SetViewport(viewport);
-                        RHI_CommandList::SetScissorRectangle(slice.rect);
+                        pass.Shaders(current_vs, current_ps);
+                        pass.Rasterizer(current_raster);
+                        pass.Viewport(viewport);
+                        pass.Scissor(slice.rect);
                     }
 
-                    m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
-                    m_pcb_pass_cpu.is_transparent = 0;
-                    m_pcb_pass_cpu.material_index = material->GetIndex();
-                    m_pcb_pass_cpu.set(pass_depth_light::has_albedo, material->HasTextureOfType(MaterialTextureType::Color));
-                    m_pcb_pass_cpu.set(pass_depth_light::light_index, static_cast<uint32_t>(light->GetIndex()));
-                    m_pcb_pass_cpu.set(pass_depth_light::array_index, static_cast<uint32_t>(slice.array_index));
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                    RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-                    RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
-                    RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
-
-                    if (render->HasInstancing() && !render->HasBoundingBoxOverride())
-                    {
-                        // A tile may contain thousands of trees outside this
-                        // light slice. Cull instances before submitting vertices,
-                        // retaining their original indices, alpha and mesh LOD.
-                        const Vector3 camera = Renderer::view().frame.camera_position;
-                        const float max_distance = render->GetMaxShadowDistance();
-                        const bool wind = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f;
-                        const uint32_t end = draw_call.instance_index + draw_call.instance_count;
-                        uint32_t run_start = draw_call.instance_index;
-                        uint32_t run_count = 0;
-                        const auto flush_run = [&]()
-                        {
-                            if (run_count == 0) return;
-                            RHI_CommandList::DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(),
-                                render->GetVertexOffset(), render->GetGlobalInstanceOffset() + run_start, run_count);
-                            run_count = 0;
-                        };
-                        vector<uint32_t> visible_instances;
-                        for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
-                        {
-                            if (Vector3::DistanceSquared(camera, group.bounds.GetClosestPoint(camera)) > max_distance * max_distance ||
-                                !light->IsBoundsInViewFrustum(group.bounds, slice.array_index))
-                            {
-                                continue;
-                            }
-                            for (uint32_t j = group.offset; j < group.offset + group.count; ++j)
-                            {
-                                const uint32_t instance = render->GetGroupedInstanceIndex(j);
-                                if (instance < draw_call.instance_index || instance >= end) continue;
-                                BoundingBox bounds = render->GetInstanceBounds(instance);
-                                if (wind)
-                                {
-                                    const float padding = render->GetInstanceWindPadding(instance);
-                                    const Vector3 extent(padding, padding, padding);
-                                    bounds = BoundingBox(bounds.GetMin() - extent, bounds.GetMax() + extent);
-                                }
-                                if (Vector3::DistanceSquared(camera, bounds.GetClosestPoint(camera)) <= max_distance * max_distance &&
-                                    light->IsBoundsInViewFrustum(bounds, slice.array_index))
-                                {
-                                    visible_instances.push_back(instance);
-                                }
-                            }
-                        }
-                        // Preserve the original submission order and contiguous instance runs.
-                        sort(visible_instances.begin(), visible_instances.end());
-                        for (const uint32_t instance : visible_instances)
-                        {
-                            const auto& sub = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex());
-                            if (!sub.clusters.empty() && !sub.HasResidentRootOnly() &&
-                                cluster_draw_ranges(render, render->GetSceneData().instances[instance].GetMatrix() *
-                                    render->GetEntity()->GetMatrix(),
-                                    [&](const BoundingBox& box) { return shadow_texel_density(light, slice.array_index, box); }, cluster_ranges))
-                            {
-                                flush_run();
-                                for (const auto& range : cluster_ranges)
-                                    RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset,
-                                        render->GetGlobalInstanceOffset() + instance, 1);
-                                continue;
-                            }
-                            if (run_count && instance != run_start + run_count) flush_run();
-                            if (!run_count) run_start = instance;
-                            ++run_count;
-                        }
-                        flush_run();
-                    }
-                    else
-                    {
-                        if (cluster_shadow_ranges(render, [&](const BoundingBox& bounds) { return shadow_texel_density(light, slice.array_index, bounds); }, cluster_ranges))
-                        {
-                            for (const auto& range : cluster_ranges)
-                                RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset);
-                            return;
-                        }
-                        RHI_CommandList::DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset(), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
-                    }
-                };
-
-                const vector<const Renderer_DrawCall*>& draws = use_batches ? slice.direct_draws : slice.visible_draws;
-                for (const Renderer_DrawCall* draw_call : draws)
-                {
-                    draw_direct(*draw_call);
+                    pass.DrawIndex(numeric_limits<uint32_t>::max());
+                    pass.Transparent(false);
+                    pass.Set(pass_depth_light::light_index, static_cast<uint32_t>(light->GetIndex()));
+                    pass.Set(pass_depth_light::array_index, static_cast<uint32_t>(slice.array_index));
+                    pass.CullMode(batch.cull_mode);
+                    pass.VertexBuffer(batch.vertex_buffer);
+                    pass.IndexBuffer(batch.index_buffer);
+                    pass.DrawIndexedIndirect(argument_buffer, batch.argument_offset, static_cast<uint32_t>(batch.arguments.size()));
                 }
             }
+
+            auto draw_direct = [&](const Renderer_DrawCall& draw_call)
+            {
+                Render* render = draw_call.render;
+                Material* material = render->GetMaterial();
+                RHI_Shader* vertex_shader = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_light_v);
+                RHI_Shader* pixel_shader  = material->IsAlphaTested() ? (use_batches ? multi_pixel_shader : GetShader(Renderer_Shader::depth_light_alpha_color_p)) : nullptr;
+                if (current_vs != vertex_shader || current_ps != pixel_shader || current_raster != raster_mode)
+                {
+                    current_vs     = vertex_shader;
+                    current_ps     = pixel_shader;
+                    current_raster = raster_mode;
+                    pass.Shaders(current_vs, current_ps);
+                    pass.Rasterizer(current_raster);
+                    pass.Viewport(viewport);
+                    pass.Scissor(slice.rect);
+                }
+
+                pass.DrawIndex(draw_call.draw_data_index);
+                pass.Transparent(false);
+                pass.MaterialIndex(material->GetIndex());
+                pass.Set(pass_depth_light::has_albedo, material->HasTextureOfType(MaterialTextureType::Color));
+                pass.Set(pass_depth_light::light_index, static_cast<uint32_t>(light->GetIndex()));
+                pass.Set(pass_depth_light::array_index, static_cast<uint32_t>(slice.array_index));
+                pass.CullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+                pass.VertexBuffer(render->GetVertexBuffer(), instance_buffer);
+                pass.IndexBuffer(render->GetIndexBuffer());
+
+                if (render->HasInstancing() && !render->HasBoundingBoxOverride())
+                {
+                    // A tile may contain thousands of trees outside this
+                    // light slice. Cull instances before submitting vertices,
+                    // retaining their original indices, alpha and mesh LOD.
+                    const Vector3 camera = Renderer::view().frame.camera_position;
+                    const float max_distance = render->GetMaxShadowDistance();
+                    const bool wind = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f;
+                    const uint32_t end = draw_call.instance_index + draw_call.instance_count;
+                    uint32_t run_start = draw_call.instance_index;
+                    uint32_t run_count = 0;
+                    const auto flush_run = [&]()
+                    {
+                        if (run_count == 0) return;
+                        pass.DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(),
+                            render->GetVertexOffset(), render->GetGlobalInstanceOffset() + run_start, run_count);
+                        run_count = 0;
+                    };
+                    vector<uint32_t> visible_instances;
+                    for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
+                    {
+                        if (Vector3::DistanceSquared(camera, group.bounds.GetClosestPoint(camera)) > max_distance * max_distance ||
+                            !light->IsBoundsInViewFrustum(group.bounds, slice.array_index))
+                        {
+                            continue;
+                        }
+                        for (uint32_t j = group.offset; j < group.offset + group.count; ++j)
+                        {
+                            const uint32_t instance = render->GetGroupedInstanceIndex(j);
+                            if (instance < draw_call.instance_index || instance >= end) continue;
+                            BoundingBox bounds = render->GetInstanceBounds(instance);
+                            if (wind)
+                            {
+                                const float padding = render->GetInstanceWindPadding(instance);
+                                const Vector3 extent(padding, padding, padding);
+                                bounds = BoundingBox(bounds.GetMin() - extent, bounds.GetMax() + extent);
+                            }
+                            if (Vector3::DistanceSquared(camera, bounds.GetClosestPoint(camera)) <= max_distance * max_distance &&
+                                light->IsBoundsInViewFrustum(bounds, slice.array_index))
+                            {
+                                visible_instances.push_back(instance);
+                            }
+                        }
+                    }
+                    // Preserve the original submission order and contiguous instance runs.
+                    sort(visible_instances.begin(), visible_instances.end());
+                    for (const uint32_t instance : visible_instances)
+                    {
+                        const auto& sub = render->GetMesh()->GetSubMesh(render->GetSubMeshIndex());
+                        if (!sub.clusters.empty() && !sub.HasResidentRootOnly() &&
+                            cluster_draw_ranges(render, render->GetSceneData().instances[instance].GetMatrix() *
+                                render->GetEntity()->GetMatrix(),
+                                [&](const BoundingBox& box) { return shadow_texel_density(light, slice.array_index, box); }, cluster_ranges))
+                        {
+                            flush_run();
+                            for (const auto& range : cluster_ranges)
+                                pass.DrawIndexed(range.index_count, range.first_index, range.vertex_offset,
+                                    render->GetGlobalInstanceOffset() + instance, 1);
+                            continue;
+                        }
+                        if (run_count && instance != run_start + run_count) flush_run();
+                        if (!run_count) run_start = instance;
+                        ++run_count;
+                    }
+                    flush_run();
+                }
+                else
+                {
+                    if (cluster_shadow_ranges(render, [&](const BoundingBox& bounds) { return shadow_texel_density(light, slice.array_index, bounds); }, cluster_ranges))
+                    {
+                        for (const auto& range : cluster_ranges)
+                            pass.DrawIndexed(range.index_count, range.first_index, range.vertex_offset);
+                        return;
+                    }
+                    pass.DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset(), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
+                }
+            };
+
+            const vector<const Renderer_DrawCall*>& draws = use_batches ? slice.direct_draws : slice.visible_draws;
+            for (const Renderer_DrawCall* draw_call : draws)
+            {
+                draw_direct(*draw_call);
+            }
         }
-        RHI_CommandList::EndPass();
     }
 
     bool Renderer::Pass_ShadowMaps_GpuDriven()
@@ -1263,66 +1256,59 @@ namespace spartan
             buffer_args                = EnsureBufferCapacity(Renderer_Buffer::ShadowArgs, sizeof(Sb_IndirectDrawArgs), pair_count, "shadow_args");
             buffer_visible             = EnsureBufferCapacity(Renderer_Buffer::ShadowVisible, sizeof(uint32_t) * 2, visible_count, "shadow_visible");
 
-            RHI_CommandList::BeginPass("shadow_cull");
             {
+                RenderPass pass("shadow_cull");
                 RHI_CommandList::UpdateBuffer(buffer_casters, 0, caster_count * sizeof(Sb_ShadowCaster), casters.data(), false);
                 RHI_CommandList::UpdateBuffer(buffer_tasks, 0, task_count * sizeof(uint32_t) * 2, tasks.data(), false);
                 RHI_CommandList::UpdateBuffer(buffer_slices, 0, slice_count * sizeof(uint32_t) * 4, slice_data.data(), false);
 
-                m_pcb_pass_cpu = {};
-                m_pcb_pass_cpu.set(pass_shadow_cull::slice_count, slice_count);
-                m_pcb_pass_cpu.set(pass_shadow_cull::caster_count, caster_count);
-                m_pcb_pass_cpu.set(pass_shadow_cull::task_count, task_count);
-                m_pcb_pass_cpu.set(pass_shadow_cull::visible_capacity, buffer_visible->GetElementCount());
+                pass.Set(pass_shadow_cull::slice_count, slice_count);
+                pass.Set(pass_shadow_cull::caster_count, caster_count);
+                pass.Set(pass_shadow_cull::task_count, task_count);
+                pass.Set(pass_shadow_cull::visible_capacity, buffer_visible->GetElementCount());
 
                 auto bind = [&]()
                 {
-                    RHI_CommandList::SetBuffer("shadow_casters", buffer_casters);
-                    RHI_CommandList::SetBuffer("shadow_tasks", buffer_tasks);
-                    RHI_CommandList::SetBuffer("shadow_slices", buffer_slices);
-                    RHI_CommandList::SetBuffer("shadow_counts", buffer_counts);
-                    RHI_CommandList::SetBuffer("shadow_args", buffer_args);
-                    RHI_CommandList::SetBuffer("shadow_visible", buffer_visible);
+                    pass.Bind("shadow_casters", buffer_casters);
+                    pass.Bind("shadow_tasks", buffer_tasks);
+                    pass.Bind("shadow_slices", buffer_slices);
+                    pass.Bind("shadow_counts", buffer_counts);
+                    pass.Bind("shadow_args", buffer_args);
+                    pass.Bind("shadow_visible", buffer_visible);
                 };
 
-                RHI_CommandList::SetShader(shader_clear);
+                pass.Shader(shader_clear);
                 bind();
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch((pair_count + 1 + 63) / 64, 1, 1);
+                pass.Dispatch((pair_count + 1 + 63) / 64, 1, 1);
 
                 const uint32_t groups_x = min(task_count, INSTANCE_CULL_DISPATCH_WIDTH);
                 const uint32_t groups_y = (task_count + INSTANCE_CULL_DISPATCH_WIDTH - 1) / INSTANCE_CULL_DISPATCH_WIDTH;
-                RHI_CommandList::SetShader(shader_cull);
+                pass.Shader(shader_cull);
                 bind();
-                m_pcb_pass_cpu.set(pass_shadow_cull::write, false);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch(groups_x, groups_y, slice_count);
+                pass.Set(pass_shadow_cull::write, false);
+                pass.Dispatch(groups_x, groups_y, slice_count);
 
-                RHI_CommandList::SetShader(shader_args);
+                pass.Shader(shader_args);
                 bind();
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch((pair_count + 63) / 64, 1, 1);
+                pass.Dispatch((pair_count + 63) / 64, 1, 1);
 
-                RHI_CommandList::SetShader(shader_cull);
+                pass.Shader(shader_cull);
                 bind();
-                m_pcb_pass_cpu.set(pass_shadow_cull::write, true);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::Dispatch(groups_x, groups_y, slice_count);
+                pass.Set(pass_shadow_cull::write, true);
+                pass.Dispatch(groups_x, groups_y, slice_count);
             }
-            RHI_CommandList::EndPass();
         }
 
         // the pass always runs so the atlas clears even when nothing casts
         RHI_Shader* current_ps            = nullptr;
         RHI_RasterizerMode current_raster = RHI_RasterizerMode::SolidNoDepthClip;
 
-        RHI_CommandList::BeginPass("shadow_maps");
         {
-            RHI_CommandList::SetShaders(shader_vertex);
-            RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-            RHI_CommandList::SetDepth(RHI_DepthMode::ReadWrite);
-            RHI_CommandList::SetRasterizer(current_raster);
-            RHI_CommandList::SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::shadow_atlas), 0.0f);
+            RenderPass pass("shadow_maps", shader_vertex);
+            pass.Blend(RHI_BlendMode::Off);
+            pass.Depth(RHI_DepthMode::ReadWrite);
+            pass.Rasterizer(current_raster);
+            pass.DepthTarget(Renderer_RenderTarget::shadow_atlas, 0.0f);
 
             const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
             for (uint32_t slice_index = 0; pair_count != 0 && slice_index < slice_count; slice_index++)
@@ -1343,32 +1329,30 @@ namespace spartan
                     {
                         current_ps     = pixel_shader;
                         current_raster = raster_mode;
-                        RHI_CommandList::SetShaders(shader_vertex, current_ps);
-                        RHI_CommandList::SetRasterizer(current_raster);
+                        pass.Shaders(shader_vertex, current_ps);
+                        pass.Rasterizer(current_raster);
                         state_dirty = true;
                     }
 
                     if (state_dirty)
                     {
-                        RHI_CommandList::SetViewport(viewport);
-                        RHI_CommandList::SetScissorRectangle(slice.rect);
-                        RHI_CommandList::SetBuffer("shadow_visible", buffer_visible);
+                        pass.Viewport(viewport);
+                        pass.Scissor(slice.rect);
+                        pass.Bind("shadow_visible", buffer_visible);
                         state_dirty = false;
                     }
 
-                    m_pcb_pass_cpu.draw_index     = numeric_limits<uint32_t>::max();
-                    m_pcb_pass_cpu.is_transparent = 0;
-                    m_pcb_pass_cpu.set(pass_depth_light::light_index, static_cast<uint32_t>(slice.light->GetIndex()));
-                    m_pcb_pass_cpu.set(pass_depth_light::array_index, slice.array_index);
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::SetCullMode(group.cull_mode);
-                    RHI_CommandList::SetBufferVertex(group.vertex_buffer);
-                    RHI_CommandList::SetBufferIndex(group.index_buffer);
-                    RHI_CommandList::DrawIndexedIndirect(buffer_args, (slice_index * caster_count + group.first) * arg_stride, static_cast<uint32_t>(group.casters.size()));
+                    pass.DrawIndex(numeric_limits<uint32_t>::max());
+                    pass.Transparent(false);
+                    pass.Set(pass_depth_light::light_index, static_cast<uint32_t>(slice.light->GetIndex()));
+                    pass.Set(pass_depth_light::array_index, slice.array_index);
+                    pass.CullMode(group.cull_mode);
+                    pass.VertexBuffer(group.vertex_buffer);
+                    pass.IndexBuffer(group.index_buffer);
+                    pass.DrawIndexedIndirect(buffer_args, (slice_index * caster_count + group.first) * arg_stride, static_cast<uint32_t>(group.casters.size()));
                 }
             }
         }
-        RHI_CommandList::EndPass();
 
         return true;
     }
@@ -1417,25 +1401,21 @@ namespace spartan
             RHI_CommandList::UpdateBuffer(buf_boxes, 0, static_cast<uint64_t>(box_count) * 2ull * sizeof(Vector4), m_water_visibility_boxes.data(), false);
         }
 
-        RHI_CommandList::BeginPass("water_visibility");
-        {
-            RHI_CommandList::SetShader(shader, "water_visibility");
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_hiz);
-            RHI_CommandList::SetBuffer("water_visibility", buf_vis);
-            RHI_CommandList::SetBuffer("water_visibility_boxes", buf_boxes);
-            m_pcb_pass_cpu.set(0, mip_level);
-            m_pcb_pass_cpu.set(1, mip_width);
-            m_pcb_pass_cpu.set(2, mip_height);
-            m_pcb_pass_cpu.set(3, Renderer::view().frame.ocean_sea_level);
-            m_pcb_pass_cpu.set(4, box_count);
-            m_pcb_pass_cpu.set(5, max_hiz_mip);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::Dispatch((mip_width + 7u) / 8u, (mip_height + 7u) / 8u, 1u);
+        RenderPass pass("water_visibility");
+        pass.Shader(shader, "water_visibility");
+        pass.Bind(Renderer_BindingsSrv::tex, tex_hiz);
+        pass.Bind("water_visibility", buf_vis);
+        pass.Bind("water_visibility_boxes", buf_boxes);
+        pass.Set(0, mip_level);
+        pass.Set(1, mip_width);
+        pass.Set(2, mip_height);
+        pass.Set(3, Renderer::view().frame.ocean_sea_level);
+        pass.Set(4, box_count);
+        pass.Set(5, max_hiz_mip);
+        pass.Dispatch((mip_width + 7u) / 8u, (mip_height + 7u) / 8u, 1u);
 
-            RHI_CommandList::PrepareBufferForReadback(buf_vis);
-            RHI_CommandList::CopyBuffer(buf_vis, buf_readback, sizeof(uint32_t));
-        }
-        RHI_CommandList::EndPass();
+        RHI_CommandList::PrepareBufferForReadback(buf_vis);
+        RHI_CommandList::CopyBuffer(buf_vis, buf_readback, sizeof(uint32_t));
     }
 
     void Renderer::Pass_TessellatedCull(bool late)
@@ -1522,28 +1502,23 @@ namespace spartan
         RHI_Texture* tex_hiz      = GetRenderTarget(late ? Renderer_RenderTarget::gbuffer_depth_hiz_early : Renderer_RenderTarget::gbuffer_depth_hiz);
         const bool history_hiz    = m_pass_state.hiz_history_valid && cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
 
-        RHI_CommandList::BeginPass(late ? "tessellated_cull_late" : "tessellated_cull");
         {
+            RenderPass pass(late ? "tessellated_cull_late" : "tessellated_cull", shader);
             if (!late)
             {
                 RHI_CommandList::UpdateBuffer(buffer_draws, 0, draw_count * sizeof(Sb_TessellatedDraw), draws.data(), false);
             }
 
-            RHI_CommandList::SetShader(shader);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_hiz);
-            RHI_CommandList::SetBuffer("tessellated_draws", buffer_draws);
-            RHI_CommandList::SetBuffer("tessellated_args", buffer_args);
-
-            m_pcb_pass_cpu = {};
-            m_pcb_pass_cpu.set(pass_tessellated_cull::draw_count, draw_count);
-            m_pcb_pass_cpu.set(pass_tessellated_cull::max_hiz_mip, static_cast<float>(tex_hiz->GetMipCount() - 1));
-            m_pcb_pass_cpu.set(pass_tessellated_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
-            m_pcb_pass_cpu.set(pass_tessellated_cull::history_hiz, history_hiz);
-            m_pcb_pass_cpu.set(pass_tessellated_cull::late, late);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::Dispatch((draw_count + 63u) / 64u, 1, 1);
+            pass.Bind(Renderer_BindingsSrv::tex, tex_hiz);
+            pass.Bind("tessellated_draws", buffer_draws);
+            pass.Bind("tessellated_args", buffer_args);
+            pass.Set(pass_tessellated_cull::draw_count, draw_count);
+            pass.Set(pass_tessellated_cull::max_hiz_mip, static_cast<float>(tex_hiz->GetMipCount() - 1));
+            pass.Set(pass_tessellated_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
+            pass.Set(pass_tessellated_cull::history_hiz, history_hiz);
+            pass.Set(pass_tessellated_cull::late, late);
+            pass.Dispatch((draw_count + 63u) / 64u, 1, 1);
         }
-        RHI_CommandList::EndPass();
 
         m_tessellated_gpu_culled = true;
     }
@@ -1567,35 +1542,30 @@ namespace spartan
         }
 
         // phase a, per-instance distance + side-frustum + hi-z, survivors land in surviving_instances and bump instance_dispatch_args.group_count_x
-        RHI_CommandList::BeginPass(late ? "instance_cull_late" : "instance_cull");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::instance_cull_c));
-            RHI_CommandList::SetBuffer("instance_visibility", EnsureBufferCapacity(Renderer_Buffer::InstanceVisibility, sizeof(uint32_t), m_cull_task_count * (INSTANCE_CULL_BATCH_SIZE / 16u), "instance_visibility"));
-
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_hiz);
-
-            Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-            Renderer::BindBuffer(Renderer_BindingsUav::cull_tasks, GetBuffer(Renderer_Buffer::CullTasks));
-            Renderer::BindBuffer(Renderer_BindingsUav::surviving_instances, GetBuffer(Renderer_Buffer::SurvivingInstances));
-            Renderer::BindBuffer(Renderer_BindingsUav::instance_dispatch_args, GetBuffer(Renderer_Buffer::InstanceDispatchArgs));
-            Renderer::BindBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
-            RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
+            RenderPass pass(late ? "instance_cull_late" : "instance_cull", Renderer_Shader::instance_cull_c);
+            pass.Bind("instance_visibility", EnsureBufferCapacity(Renderer_Buffer::InstanceVisibility, sizeof(uint32_t), m_cull_task_count * (INSTANCE_CULL_BATCH_SIZE / 16u), "instance_visibility"));
+            pass.Bind(Renderer_BindingsSrv::tex, tex_hiz);
+            pass.Bind(Renderer_BindingsUav::indirect_draw_data, Renderer_Buffer::IndirectDrawData);
+            pass.Bind(Renderer_BindingsUav::cull_tasks, Renderer_Buffer::CullTasks);
+            pass.Bind(Renderer_BindingsUav::surviving_instances, Renderer_Buffer::SurvivingInstances);
+            pass.Bind(Renderer_BindingsUav::instance_dispatch_args, Renderer_Buffer::InstanceDispatchArgs);
+            pass.Bind(Renderer_BindingsUav::triangle_dispatch_args, Renderer_Buffer::TriangleDispatchArgs);
+            pass.Bind("impostor_instances", Renderer_Buffer::ImpostorInstances);
 
             // survivors past max_instances are dropped
-            m_pcb_pass_cpu.set(pass_instance_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
-            m_pcb_pass_cpu.set(pass_instance_cull::task_count, m_cull_task_count);
-            m_pcb_pass_cpu.set(pass_instance_cull::max_hiz_mip, max_hiz_mip);
-            m_pcb_pass_cpu.set(pass_instance_cull::max_instances, GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount());
-            m_pcb_pass_cpu.set(pass_instance_cull::late, late);
-            m_pcb_pass_cpu.set(pass_instance_cull::history_hiz, history_hiz);
-            m_pcb_pass_cpu.set(pass_instance_cull::max_impostors, use_mesh_shaders() ? GetBuffer(Renderer_Buffer::ImpostorInstances)->GetElementCount() : 0u);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            pass.Set(pass_instance_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
+            pass.Set(pass_instance_cull::task_count, m_cull_task_count);
+            pass.Set(pass_instance_cull::max_hiz_mip, max_hiz_mip);
+            pass.Set(pass_instance_cull::max_instances, GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount());
+            pass.Set(pass_instance_cull::late, late);
+            pass.Set(pass_instance_cull::history_hiz, history_hiz);
+            pass.Set(pass_instance_cull::max_impostors, use_mesh_shaders() ? GetBuffer(Renderer_Buffer::ImpostorInstances)->GetElementCount() : 0u);
 
             const uint32_t groups_x = min(m_cull_task_count, INSTANCE_CULL_DISPATCH_WIDTH);
             const uint32_t groups_y = (m_cull_task_count + INSTANCE_CULL_DISPATCH_WIDTH - 1u) / INSTANCE_CULL_DISPATCH_WIDTH;
-            RHI_CommandList::Dispatch(groups_x, groups_y, 1);
+            pass.Dispatch(groups_x, groups_y, 1);
         }
-        RHI_CommandList::EndPass();
 
         Pass_IndirectCull_Meshlets(late);
     }
@@ -1618,33 +1588,27 @@ namespace spartan
         const bool history_hiz   = m_pass_state.hiz_history_valid && cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
 
         // phase b, expand the meshlets of the surviving instances, per-meshlet cone + frustum + hi-z, one workgroup per survivor
-        RHI_CommandList::BeginPass(late ? "indirect_cull_meshlet_late" : "indirect_cull_meshlet");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::indirect_cull_c));
+            RenderPass pass(late ? "indirect_cull_meshlet_late" : "indirect_cull_meshlet", Renderer_Shader::indirect_cull_c);
+            pass.Bind(Renderer_BindingsSrv::tex, tex_hiz);
+            pass.Bind(Renderer_BindingsSrv::tex2, tex_history);
+            pass.Bind(Renderer_BindingsUav::indirect_draw_data, Renderer_Buffer::IndirectDrawData);
+            pass.Bind(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+            pass.Bind(Renderer_BindingsUav::surviving_instances, Renderer_Buffer::SurvivingInstances);
+            pass.Bind(Renderer_BindingsUav::meshlet_instances, Renderer_Buffer::MeshletInstances);
+            pass.Bind(Renderer_BindingsUav::triangle_dispatch_args, Renderer_Buffer::TriangleDispatchArgs);
+            pass.Bind(Renderer_BindingsUav::tree_wind_cache, Renderer_Buffer::TreeWindCache);
 
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_hiz);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_history);
+            pass.Set(pass_indirect_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
+            pass.Set(pass_indirect_cull::max_hiz_mip, max_hiz_mip);
+            pass.Set(pass_indirect_cull::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u));
+            pass.Set(pass_indirect_cull::split_opaque_alpha, use_mesh_shaders());
+            pass.Set(pass_indirect_cull::wind_cache_limit, static_cast<uint32_t>(clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(GetBuffer(Renderer_Buffer::TreeWindCache)->GetElementCount()))));
+            pass.Set(pass_indirect_cull::late, late);
+            pass.Set(pass_indirect_cull::history_hiz, history_hiz);
 
-            Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
-            Renderer::BindBuffer(Renderer_BindingsUav::surviving_instances, GetBuffer(Renderer_Buffer::SurvivingInstances));
-            Renderer::BindBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
-            Renderer::BindBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
-
-            Renderer::BindBuffer(Renderer_BindingsUav::tree_wind_cache, GetBuffer(Renderer_Buffer::TreeWindCache));
-
-            m_pcb_pass_cpu.set(pass_indirect_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
-            m_pcb_pass_cpu.set(pass_indirect_cull::max_hiz_mip, max_hiz_mip);
-            m_pcb_pass_cpu.set(pass_indirect_cull::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u));
-            m_pcb_pass_cpu.set(pass_indirect_cull::split_opaque_alpha, use_mesh_shaders());
-            m_pcb_pass_cpu.set(pass_indirect_cull::wind_cache_limit, static_cast<uint32_t>(clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(GetBuffer(Renderer_Buffer::TreeWindCache)->GetElementCount()))));
-            m_pcb_pass_cpu.set(pass_indirect_cull::late, late);
-            m_pcb_pass_cpu.set(pass_indirect_cull::history_hiz, history_hiz);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-            RHI_CommandList::DispatchIndirect(GetBuffer(Renderer_Buffer::InstanceDispatchArgs), 0);
+            pass.DispatchIndirect(Renderer_Buffer::InstanceDispatchArgs);
         }
-        RHI_CommandList::EndPass();
 
         // the late meshlets the late cull appended get their own dispatch args in slots 2 and 3
         if (late)
@@ -1666,26 +1630,22 @@ namespace spartan
                     nullptr, false, (string("visible_triangles_") + to_string(m_frame_resource_index)).c_str());
                 BindFrameResource(m_frame_resource_index);
             }
-            RHI_CommandList::BeginPass(late ? "indirect_cull_triangle_late" : "indirect_cull_triangle");
             {
-                RHI_CommandList::SetShader(GetShader(Renderer_Shader::indirect_cull_triangle_c));
-
-                Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_args, GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-                Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-                Renderer::BindBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
-                Renderer::BindBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
-                Renderer::BindBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
-                Renderer::BindBuffer(Renderer_BindingsUav::cull_phase, GetBuffer(Renderer_Buffer::CullPhase));
+                RenderPass pass(late ? "indirect_cull_triangle_late" : "indirect_cull_triangle", Renderer_Shader::indirect_cull_triangle_c);
+                pass.Bind(Renderer_BindingsUav::indirect_draw_args, Renderer_Buffer::IndirectDrawArgs);
+                pass.Bind(Renderer_BindingsUav::indirect_draw_data, Renderer_Buffer::IndirectDrawData);
+                pass.Bind(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+                pass.Bind(Renderer_BindingsUav::meshlet_instances, Renderer_Buffer::MeshletInstances);
+                pass.Bind(Renderer_BindingsUav::visible_triangles, Renderer_Buffer::VisibleTriangles);
+                pass.Bind(Renderer_BindingsUav::cull_phase, Renderer_Buffer::CullPhase);
 
                 // survivors past the per half cap are dropped
-                m_pcb_pass_cpu.set(pass_indirect_cull_triangle::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount());
-                m_pcb_pass_cpu.set(pass_indirect_cull_triangle::region_cap, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
-                m_pcb_pass_cpu.set(pass_indirect_cull_triangle::late, late);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                pass.Set(pass_indirect_cull_triangle::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount());
+                pass.Set(pass_indirect_cull_triangle::region_cap, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
+                pass.Set(pass_indirect_cull_triangle::late, late);
 
-                RHI_CommandList::DispatchIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), late ? 2u * static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)) : 0u);
+                pass.DispatchIndirect(Renderer_Buffer::TriangleDispatchArgs, late ? 2u * static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)) : 0u);
             }
-            RHI_CommandList::EndPass();
 
             if (late)
             {
@@ -1702,17 +1662,12 @@ namespace spartan
 
     void Renderer::Pass_CullPhase(uint32_t mode)
     {
-        RHI_CommandList::BeginPass("cull_phase");
-        {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::cull_phase_c));
-            Renderer::BindBuffer(Renderer_BindingsUav::cull_phase, GetBuffer(Renderer_Buffer::CullPhase));
-            Renderer::BindBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
-            Renderer::BindBuffer(Renderer_BindingsUav::indirect_draw_args, GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-            m_pcb_pass_cpu.set(pass_cull_phase::mode, mode);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::Dispatch(1, 1, 1);
-        }
-        RHI_CommandList::EndPass();
+        RenderPass pass("cull_phase", Renderer_Shader::cull_phase_c);
+        pass.Bind(Renderer_BindingsUav::cull_phase, Renderer_Buffer::CullPhase);
+        pass.Bind(Renderer_BindingsUav::triangle_dispatch_args, Renderer_Buffer::TriangleDispatchArgs);
+        pass.Bind(Renderer_BindingsUav::indirect_draw_args, Renderer_Buffer::IndirectDrawArgs);
+        pass.Set(pass_cull_phase::mode, mode);
+        pass.Dispatch(1, 1, 1);
     }
 
     void Renderer::Pass_Cull_Early()
@@ -1720,7 +1675,7 @@ namespace spartan
         // test against last frame's complete depth, draw the survivors, then build the hi-z the late cull tests against
         m_pass_state.cull_late_active = false;
 
-        RHI_CommandList::BeginPass("cull_early");
+        RenderPass pass("cull_early");
         Pass_IndirectCull(false);
         Pass_TessellatedCull(false);
         Pass_Visibility(false);
@@ -1728,7 +1683,6 @@ namespace spartan
         {
             Pass_HiZ_BuildFromDepth(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz_early));
         }
-        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Cull_Late()
@@ -1740,14 +1694,13 @@ namespace spartan
             return;
         }
 
-        RHI_CommandList::BeginPass("cull_late");
+        RenderPass pass("cull_late");
         m_pass_state.cull_late_active = true;
         Pass_IndirectCull(true);
         Pass_TessellatedCull(true);
         Pass_Visibility(true);
         Pass_HiZ_BuildFromDepth(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz));
         m_pass_state.hiz_history_valid = true;
-        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Visibility(bool late)
@@ -1775,44 +1728,45 @@ namespace spartan
         const bool vis_path                   = use_visibility_buffer();
         const RHI_RasterizerMode raster_mode  = is_wireframe ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid;
 
-        RHI_CommandList::BeginPass(vis_path ? (late ? "visibility_pass_late" : "visibility_pass") : (late ? "depth_prepass_late" : "depth_prepass"));
+        RenderPass outer_pass(vis_path ? (late ? "visibility_pass_late" : "visibility_pass") : (late ? "depth_prepass_late" : "depth_prepass"));
+
+        // two draws over the split survivor list: opaque and alpha-tested (plus batched impostors on the mesh path)
+        // visibility path writes both depth and the 32-bit visibility_buffer id once so material_resolve skips re-rasterization
+        // legacy fallback writes depth only and lets Pass_GBuffer_Indirect shade geometry in a second raster pass
         {
-            // two draws over the split survivor list: opaque and alpha-tested (plus batched impostors on the mesh path)
-            // visibility path writes both depth and the 32-bit visibility_buffer id once so material_resolve skips re-rasterization
-            // legacy fallback writes depth only and lets Pass_GBuffer_Indirect shade geometry in a second raster pass
+            const bool mesh_path           = use_mesh_shaders();
+            const uint32_t arg_stride      = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
+            const uint32_t dispatch_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs));
+            const uint32_t slot_opaque     = late ? 2u : 0u;
+            const uint32_t slot_alpha      = late ? 3u : 1u;
+
+            const RHI_PrimitiveTopology topology = GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList;
+            RHI_Texture* vrs_texture             = (!vis_path && cvar_variable_rate_shading.GetValueAs<bool>() && !cvar_restir_pt.GetValueAs<bool>() && !IsSecondaryViewActive())
+                                                   ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
+                                                   : nullptr;
+
+            auto configure_pass = [&](RenderPass& pass, const char* pass_name, RHI_Shader* primary_shader, RHI_Shader* pixel_shader, const Color& clear_vis, const float clear_depth)
             {
-                const bool mesh_path           = use_mesh_shaders();
-                const uint32_t arg_stride      = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
-                const uint32_t dispatch_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs));
-                const uint32_t slot_opaque     = late ? 2u : 0u;
-                const uint32_t slot_alpha      = late ? 3u : 1u;
-
-                const RHI_PrimitiveTopology topology = GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList;
-                RHI_Texture* vrs_texture             = (!vis_path && cvar_variable_rate_shading.GetValueAs<bool>() && !cvar_restir_pt.GetValueAs<bool>() && !IsSecondaryViewActive())
-                                                       ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
-                                                       : nullptr;
-
-                auto configure_pass = [&](const char* pass_name, RHI_Shader* primary_shader, RHI_Shader* pixel_shader, const Color& clear_vis, const float clear_depth)
+                pass.Name(pass_name);
+                pass.Shaders(primary_shader, pixel_shader);
+                pass.Rasterizer(raster_mode);
+                pass.Topology(topology);
+                pass.Blend(RHI_BlendMode::Off);
+                pass.Depth(RHI_DepthMode::ReadWrite);
+                pass.Vrs(vrs_texture);
+                if (vis_path)
                 {
-                    RHI_CommandList::SetPassName(pass_name);
-                    RHI_CommandList::SetShaders(primary_shader, pixel_shader);
-                    RHI_CommandList::SetRasterizer(raster_mode);
-                    RHI_CommandList::SetPrimitiveTopology(topology);
-                    RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-                    RHI_CommandList::SetDepth(RHI_DepthMode::ReadWrite);
-                    RHI_CommandList::SetVrsTexture(vrs_texture);
-                    if (vis_path)
-                    {
-                        RHI_CommandList::SetColorTarget(tex_visibility, clear_vis);
-                    }
-                    RHI_CommandList::SetDepthTarget(tex_depth, clear_depth);
-                    RHI_CommandList::SetResolutionScale(true);
-                    RHI_CommandList::SetMultiview(xr_multiview);
-                };
+                    pass.ColorTarget(tex_visibility, clear_vis);
+                }
+                pass.DepthTarget(tex_depth, clear_depth);
+                pass.ResolutionScale(true);
+                pass.Multiview(xr_multiview);
+            };
 
-                // the early pass clears depth (and visibility_buffer on the visibility path) unconditionally so
-                // downstream passes still see fresh targets when no opaque geometry is visible
-                RHI_CommandList::BeginPass(vis_path ? "visibility_opaque" : "depth_prepass_opaque");
+            // the early pass clears depth (and visibility_buffer on the visibility path) unconditionally so
+            // downstream passes still see fresh targets when no opaque geometry is visible
+            {
+                RenderPass pass(vis_path ? "visibility_opaque" : "depth_prepass_opaque");
                 RHI_Shader* opaque_primary = vis_path
                     ? GetShader(late ? Renderer_Shader::meshlet_mesh_visibility_late_m : Renderer_Shader::meshlet_mesh_visibility_m)
                     : (mesh_path
@@ -1820,6 +1774,7 @@ namespace spartan
                         : GetShader(Renderer_Shader::depth_prepass_indirect_v));
                 RHI_Shader* opaque_pixel = vis_path ? GetShader(Renderer_Shader::visibility_opaque_p) : nullptr;
                 configure_pass(
+                    pass,
                     vis_path ? "visibility_mesh" : (mesh_path ? "depth_prepass_mesh" : "depth_prepass_indirect"),
                     opaque_primary,
                     opaque_pixel,
@@ -1829,157 +1784,159 @@ namespace spartan
 
                 if (m_indirect_draw_count > 0)
                 {
-                    RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                    pass.CullMode(RHI_CullMode::None);
                     if (mesh_path)
                     {
-                        bind_mesh_shader_geometry();
-                        push_mesh_draw_constants(m_pcb_pass_cpu);
-                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + slot_opaque) * dispatch_stride);
+                        bind_mesh_shader_geometry(pass);
+                        set_mesh_draw_constants(pass);
+                        pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, (MESH_GRID_ARGS_SLOT + slot_opaque) * dispatch_stride);
                     }
                     else
                     {
-                        bind_visible_triangle_geometry();
-                        m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
-                        m_pcb_pass_cpu.set(pass_visible_triangles::late, late);
-                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                        RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), slot_opaque * arg_stride);
-                    }
-
-                    // alpha-tested half, alpha-test pixel shader discards cutout texels, depth/visibility already cleared so load them
-                    RHI_CommandList::EndPass();
-                    RHI_CommandList::BeginPass(vis_path ? "visibility_alpha" : "depth_prepass_alpha");
-                    RHI_Shader* alpha_primary = vis_path
-                        ? GetShader(late ? Renderer_Shader::meshlet_mesh_visibility_alpha_late_m : Renderer_Shader::meshlet_mesh_visibility_alpha_m)
-                        : (mesh_path
-                            ? GetShader(late ? Renderer_Shader::meshlet_mesh_depth_alpha_late_m : Renderer_Shader::meshlet_mesh_depth_alpha_m)
-                            : GetShader(Renderer_Shader::depth_prepass_indirect_v));
-                    RHI_Shader* alpha_pixel = vis_path
-                        ? GetShader(Renderer_Shader::visibility_alpha_p)
-                        : (mesh_path
-                            ? GetShader(Renderer_Shader::depth_prepass_mesh_alpha_p)
-                            : GetShader(Renderer_Shader::depth_prepass_indirect_alpha_test_p));
-                    configure_pass(
-                        vis_path ? "visibility_mesh" : (mesh_path ? "depth_prepass_mesh" : "depth_prepass_indirect"),
-                        alpha_primary,
-                        alpha_pixel,
-                        rhi_color_load,
-                        rhi_depth_load
-                    );
-                    RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                    if (mesh_path)
-                    {
-                        bind_mesh_shader_geometry();
-                        push_mesh_draw_constants(m_pcb_pass_cpu);
-                        // Alpha work is compacted separately, with the original capacity for each category.
-                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + slot_alpha) * dispatch_stride);
-
-                        // Batched impostor quads: 16 quads per 64-thread workgroup, written directly by Phase A
-                        RHI_CommandList::EndPass();
-                        RHI_CommandList::BeginPass(vis_path ? "visibility_impostor" : "depth_prepass_impostor");
-                        RHI_Shader* impostor_mesh = GetShader(vis_path
-                            ? (late ? Renderer_Shader::impostor_mesh_visibility_late_m : Renderer_Shader::impostor_mesh_visibility_m)
-                            : (late ? Renderer_Shader::impostor_mesh_depth_late_m : Renderer_Shader::impostor_mesh_depth_m));
-                        configure_pass(
-                            vis_path ? "visibility_impostor_mesh" : "depth_prepass_impostor_mesh",
-                            impostor_mesh,
-                            alpha_pixel,
-                            rhi_color_load,
-                            rhi_depth_load
-                        );
-                        RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                        bind_mesh_shader_geometry();
-                        RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
-                        push_mesh_draw_constants(m_pcb_pass_cpu);
-                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (IMPOSTOR_GRID_ARGS_SLOT + (late ? 1u : 0u)) * dispatch_stride);
-                    }
-                    else
-                    {
-                        bind_visible_triangle_geometry();
-                        m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
-                        m_pcb_pass_cpu.set(pass_visible_triangles::late, late);
-                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                        RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), slot_alpha * arg_stride);
+                        bind_visible_triangle_geometry(pass);
+                        pass.Set(pass_visible_triangles::region_base, 0u);
+                        pass.Set(pass_visible_triangles::late, late);
+                        pass.DrawIndirect(Renderer_Buffer::IndirectDrawArgs, slot_opaque * arg_stride);
                     }
                 }
-                RHI_CommandList::EndPass();
             }
 
-            // cpu-driven tessellated path (only tessellated still uses cpu draws, indirect path covers everything else)
-            // the cpu fallback has no late half, the early pass drew all of it
-            if (!late || m_tessellated_gpu_culled)
+            // alpha-tested half, alpha-test pixel shader discards cutout texels, depth/visibility already cleared so load them
+            if (m_indirect_draw_count > 0 && m_has_alpha_indirect)
             {
-                RHI_Texture* vrs_texture = (cvar_variable_rate_shading.GetValueAs<bool>() && !cvar_restir_pt.GetValueAs<bool>() && !IsSecondaryViewActive())
-                                           ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
-                                           : nullptr;
-                bool pipeline_set = false;
-
-                // the gpu culled list holds every tessellated draw, its args carry the visibility and the lod
-                vector<ClusterDrawRange> cluster_ranges;
-                const uint32_t tessellated_count = m_tessellated_gpu_culled ? static_cast<uint32_t>(m_tessellated_draws.size()) : m_draw_calls_prepass_count;
-                const uint32_t args_base         = late ? tessellated_count : 0u;
-                for (uint32_t i = 0; i < tessellated_count; i++)
+                RenderPass pass(vis_path ? "visibility_alpha" : "depth_prepass_alpha");
+                RHI_Shader* alpha_primary = vis_path
+                    ? GetShader(late ? Renderer_Shader::meshlet_mesh_visibility_alpha_late_m : Renderer_Shader::meshlet_mesh_visibility_alpha_m)
+                    : (mesh_path
+                        ? GetShader(late ? Renderer_Shader::meshlet_mesh_depth_alpha_late_m : Renderer_Shader::meshlet_mesh_depth_alpha_m)
+                        : GetShader(Renderer_Shader::depth_prepass_indirect_v));
+                RHI_Shader* alpha_pixel = vis_path
+                    ? GetShader(Renderer_Shader::visibility_alpha_p)
+                    : (mesh_path
+                        ? GetShader(Renderer_Shader::depth_prepass_mesh_alpha_p)
+                        : GetShader(Renderer_Shader::depth_prepass_indirect_alpha_test_p));
+                configure_pass(
+                    pass,
+                    vis_path ? "visibility_mesh" : (mesh_path ? "depth_prepass_mesh" : "depth_prepass_indirect"),
+                    alpha_primary,
+                    alpha_pixel,
+                    rhi_color_load,
+                    rhi_depth_load
+                );
+                pass.CullMode(RHI_CullMode::None);
+                if (mesh_path)
                 {
-                    const Renderer_DrawCall& draw_call = m_tessellated_gpu_culled ? m_draw_calls[m_tessellated_draws[i]] : m_draw_calls_prepass[i];
-                    Render* render                     = draw_call.render;
-                    Material* material                 = render->GetMaterial();
-                    if (!m_tessellated_gpu_culled)
-                    {
-                        if (!material || material->IsTransparent() || !draw_call.camera_visible)
-                        {
-                            continue;
-                        }
-                        if (!material->IsTessellated())
-                        {
-                            continue;
-                        }
-                    }
-
-                    if (!pipeline_set)
-                    {
-                        RHI_CommandList::SetPassName(vis_path ? "visibility_tessellated" : "depth_prepass_tessellated");
-                        RHI_CommandList::SetShaders(GetShader(Renderer_Shader::depth_prepass_v), GetShader(Renderer_Shader::tessellation_h), GetShader(Renderer_Shader::tessellation_d));
-                        RHI_CommandList::SetRasterizer(raster_mode);
-                        RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-                        RHI_CommandList::SetDepth(RHI_DepthMode::ReadWrite);
-                        RHI_CommandList::SetVrsTexture(vrs_texture);
-                        RHI_CommandList::SetDepthTarget(tex_depth, rhi_depth_load);
-                        RHI_CommandList::SetResolutionScale(true);
-                        RHI_CommandList::SetMultiview(xr_multiview);
-                        pipeline_set = true;
-                    }
-
-                    bool has_color_texture        = material->HasTextureOfType(MaterialTextureType::Color);
-                    m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
-                    m_pcb_pass_cpu.is_transparent = 0;
-                    m_pcb_pass_cpu.material_index = material->GetIndex();
-                    m_pcb_pass_cpu.set(pass_depth_prepass::has_albedo, has_color_texture);
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-                    RHI_CullMode cull_mode = is_wireframe ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-                    RHI_CommandList::SetCullMode(cull_mode);
-                    RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-                    RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
-                    RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
-
-                    if (m_tessellated_gpu_culled)
-                    {
-                        RHI_CommandList::DrawIndexedIndirect(GetBuffer(Renderer_Buffer::TessellatedArgs), (args_base + i) * sizeof(Sb_IndirectDrawArgs));
-                    }
-                    else if (!draw_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
-                    {
-                        RHI_CommandList::DrawIndexed(
-                            render->GetIndexCount(),
-                            render->GetIndexOffset(),
-                            render->GetVertexOffset(),
-                            render->GetGlobalInstanceOffset() + draw_call.instance_index,
-                            draw_call.instance_count
-                        );
-                    }
+                    bind_mesh_shader_geometry(pass);
+                    set_mesh_draw_constants(pass);
+                    // Alpha work is compacted separately, with the original capacity for each category.
+                    pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, (MESH_GRID_ARGS_SLOT + slot_alpha) * dispatch_stride);
+                }
+                else
+                {
+                    bind_visible_triangle_geometry(pass);
+                    pass.Set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
+                    pass.Set(pass_visible_triangles::late, late);
+                    pass.DrawIndirect(Renderer_Buffer::IndirectDrawArgs, slot_alpha * arg_stride);
                 }
             }
 
+            // Batched impostor quads: 16 quads per 64-thread workgroup, written directly by Phase A
+            if (m_indirect_draw_count > 0 && mesh_path && m_has_impostor_indirect)
+            {
+                RenderPass pass(vis_path ? "visibility_impostor" : "depth_prepass_impostor");
+                RHI_Shader* impostor_mesh = GetShader(vis_path
+                    ? (late ? Renderer_Shader::impostor_mesh_visibility_late_m : Renderer_Shader::impostor_mesh_visibility_m)
+                    : (late ? Renderer_Shader::impostor_mesh_depth_late_m : Renderer_Shader::impostor_mesh_depth_m));
+                RHI_Shader* impostor_pixel = vis_path
+                    ? GetShader(Renderer_Shader::visibility_alpha_p)
+                    : GetShader(Renderer_Shader::depth_prepass_mesh_alpha_p);
+                configure_pass(
+                    pass,
+                    vis_path ? "visibility_impostor_mesh" : "depth_prepass_impostor_mesh",
+                    impostor_mesh,
+                    impostor_pixel,
+                    rhi_color_load,
+                    rhi_depth_load
+                );
+                pass.CullMode(RHI_CullMode::None);
+                bind_mesh_shader_geometry(pass);
+                pass.Bind(98u, GetBuffer(Renderer_Buffer::ImpostorInstances));
+                set_mesh_draw_constants(pass);
+                pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, (IMPOSTOR_GRID_ARGS_SLOT + (late ? 1u : 0u)) * dispatch_stride);
+            }
         }
-        RHI_CommandList::EndPass();
+
+        // cpu-driven tessellated path (only tessellated still uses cpu draws, indirect path covers everything else)
+        // the cpu fallback has no late half, the early pass drew all of it
+        if (!late || m_tessellated_gpu_culled)
+        {
+            RHI_Texture* vrs_texture = (cvar_variable_rate_shading.GetValueAs<bool>() && !cvar_restir_pt.GetValueAs<bool>() && !IsSecondaryViewActive())
+                                       ? GetRenderTarget(Renderer_RenderTarget::shading_rate)
+                                       : nullptr;
+            bool pipeline_set = false;
+
+            // the gpu culled list holds every tessellated draw, its args carry the visibility and the lod
+            vector<ClusterDrawRange> cluster_ranges;
+            const uint32_t tessellated_count = m_tessellated_gpu_culled ? static_cast<uint32_t>(m_tessellated_draws.size()) : m_draw_calls_prepass_count;
+            const uint32_t args_base         = late ? tessellated_count : 0u;
+            for (uint32_t i = 0; i < tessellated_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_tessellated_gpu_culled ? m_draw_calls[m_tessellated_draws[i]] : m_draw_calls_prepass[i];
+                Render* render                     = draw_call.render;
+                Material* material                 = render->GetMaterial();
+                if (!m_tessellated_gpu_culled)
+                {
+                    if (!material || material->IsTransparent() || !draw_call.camera_visible)
+                    {
+                        continue;
+                    }
+                    if (!material->IsTessellated())
+                    {
+                        continue;
+                    }
+                }
+
+                if (!pipeline_set)
+                {
+                    outer_pass.Name(vis_path ? "visibility_tessellated" : "depth_prepass_tessellated");
+                    outer_pass.Shaders(Renderer_Shader::depth_prepass_v, Renderer_Shader::tessellation_h, Renderer_Shader::tessellation_d);
+                    outer_pass.Rasterizer(raster_mode);
+                    outer_pass.Blend(RHI_BlendMode::Off);
+                    outer_pass.Depth(RHI_DepthMode::ReadWrite);
+                    outer_pass.Vrs(vrs_texture);
+                    outer_pass.DepthTarget(tex_depth, rhi_depth_load);
+                    outer_pass.ResolutionScale(true);
+                    outer_pass.Multiview(xr_multiview);
+                    pipeline_set = true;
+                }
+
+                outer_pass.DrawIndex(draw_call.draw_data_index);
+                outer_pass.Transparent(false);
+                outer_pass.MaterialIndex(material->GetIndex());
+                outer_pass.Set(pass_depth_prepass::has_albedo, material->HasTextureOfType(MaterialTextureType::Color));
+
+                RHI_CullMode cull_mode = is_wireframe ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                outer_pass.CullMode(cull_mode);
+                RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+                outer_pass.VertexBuffer(render->GetVertexBuffer(), instance_buffer);
+                outer_pass.IndexBuffer(render->GetIndexBuffer());
+
+                if (m_tessellated_gpu_culled)
+                {
+                    outer_pass.DrawIndexedIndirect(Renderer_Buffer::TessellatedArgs, (args_base + i) * sizeof(Sb_IndirectDrawArgs));
+                }
+                else if (!draw_view_clusters(outer_pass, render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
+                {
+                    outer_pass.DrawIndexed(
+                        render->GetIndexCount(),
+                        render->GetIndexOffset(),
+                        render->GetVertexOffset(),
+                        render->GetGlobalInstanceOffset() + draw_call.instance_index,
+                        draw_call.instance_count
+                    );
+                }
+            }
+        }
     }
 
     void Renderer::Pass_Material_Resolve(const bool clear_targets, const bool scatter_cleared)
@@ -2016,81 +1973,79 @@ namespace spartan
         };
         RHI_CommandList::UpdateBuffer(buf_tile_args, 0, sizeof(zero_args), zero_args, false);
 
-        RHI_CommandList::BeginPass("material_resolve");
+        const uint32_t meshlet_half_cap = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() >> 1u;
+        RenderPass outer_pass("material_resolve");
+
+        // 1) Classify 8x8 tiles into opaque / alpha / impostor compact lists, mask scatter_first pixels,
+        //    and clear sky/empty G-buffer pixels when no earlier pass cleared them.
         {
-            // 1) Classify 8x8 tiles into opaque / alpha / impostor compact lists, mask scatter_first pixels,
-            //    and clear sky/empty G-buffer pixels when no earlier pass cleared them.
-            {
-                RHI_CommandList::BeginPass("visibility_classify");
-                RHI_CommandList::SetShader(GetShader(Renderer_Shader::visibility_classify_c));
-
-                RHI_CommandList::SetTexture("rw_gbuffer_albedo",   tex_albedo);
-                RHI_CommandList::SetTexture("rw_gbuffer_normal",   tex_normal);
-                RHI_CommandList::SetTexture("rw_gbuffer_material", tex_material);
-                RHI_CommandList::SetTexture("rw_gbuffer_velocity", tex_velocity);
-                RHI_CommandList::SetTexture("rw_gbuffer_emissive", tex_emissive);
-                RHI_CommandList::SetTexture("rw_visibility",       tex_visibility);
-                RHI_CommandList::SetBuffer("visibility_tile_args", buf_tile_args);
-                RHI_CommandList::SetBuffer("visibility_tiles",     buf_tiles);
-                Renderer::BindBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
-
-                m_pcb_pass_cpu.set(pass_visibility::tile_stride,     tile_stride);
-                m_pcb_pass_cpu.set(pass_visibility::clear_gbuffer,   clear_targets ? 1u : 0u);
-                m_pcb_pass_cpu.set(pass_visibility::scatter_cleared, scatter_cleared ? 1u : 0u);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-                RHI_CommandList::Dispatch(tiles_x, tiles_y, 1u);
-                RHI_CommandList::EndPass();
-            }
-
-            // 2) Specialized per-category material resolve dispatches over only the tiles that contain that category.
-            const Renderer_Shader resolve_shaders[VIS_CATEGORY_COUNT] =
-            {
-                Renderer_Shader::visibility_resolve_opaque_c,
-                Renderer_Shader::visibility_resolve_alpha_c,
-                Renderer_Shader::visibility_resolve_impostor_c
-            };
-            const char* resolve_names[VIS_CATEGORY_COUNT] =
-            {
-                "material_resolve_opaque",
-                "material_resolve_alpha",
-                "material_resolve_impostor"
-            };
-
-            m_pcb_pass_cpu.is_transparent = 0;
-            for (uint32_t cat = 0u; cat < VIS_CATEGORY_COUNT; cat++)
-            {
-                RHI_CommandList::BeginPass(resolve_names[cat]);
-                RHI_CommandList::SetShader(GetShader(resolve_shaders[cat]));
-
-                RHI_CommandList::SetTexture("tex_visibility",      tex_visibility);
-                RHI_CommandList::SetTexture("tex_depth",           GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-                RHI_CommandList::SetTexture("rw_gbuffer_albedo",   tex_albedo);
-                RHI_CommandList::SetTexture("rw_gbuffer_normal",   tex_normal);
-                RHI_CommandList::SetTexture("rw_gbuffer_material", tex_material);
-                RHI_CommandList::SetTexture("rw_gbuffer_velocity", tex_velocity);
-                RHI_CommandList::SetTexture("rw_gbuffer_emissive", tex_emissive);
-                RHI_CommandList::SetBuffer("visibility_tiles",     buf_tiles);
-                bind_mesh_shader_geometry();
-                if (cat == VIS_CATEGORY_IMPOSTOR)
-                {
-                    RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
-                }
-
-                m_pcb_pass_cpu.set(pass_visibility::tile_stride, tile_stride);
-                m_pcb_pass_cpu.set(pass_visibility::category,    cat);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-                RHI_CommandList::DispatchIndirect(buf_tile_args, cat * sizeof(Sb_IndirectDispatchArgs));
-                RHI_CommandList::EndPass();
-            }
+            RenderPass pass("visibility_classify", Renderer_Shader::visibility_classify_c);
+            pass.Write(80u, tex_albedo);
+            pass.Write(81u, tex_normal);
+            pass.Write(82u, tex_material);
+            pass.Write(83u, tex_velocity);
+            pass.Write(84u, tex_emissive);
+            pass.Write(85u, tex_visibility);
+            pass.Bind(86u, buf_tile_args);
+            pass.Bind(87u, buf_tiles);
+            pass.Set(pass_visibility::tile_stride,           tile_stride);
+            pass.Set(pass_visibility::clear_gbuffer,         clear_targets ? 1u : 0u);
+            pass.Set(pass_visibility::scatter_cleared,       scatter_cleared ? 1u : 0u);
+            pass.Set(pass_visibility::meshlet_half_capacity, meshlet_half_cap);
+            pass.Dispatch(tiles_x, tiles_y, 1u);
         }
-        RHI_CommandList::EndPass();
+
+        // 2) Specialized per-category material resolve dispatches over only the tiles that contain that category.
+        const Renderer_Shader resolve_shaders[VIS_CATEGORY_COUNT] =
+        {
+            Renderer_Shader::visibility_resolve_opaque_c,
+            Renderer_Shader::visibility_resolve_alpha_c,
+            Renderer_Shader::visibility_resolve_impostor_c
+        };
+        const char* resolve_names[VIS_CATEGORY_COUNT] =
+        {
+            "material_resolve_opaque",
+            "material_resolve_alpha",
+            "material_resolve_impostor"
+        };
+        const bool category_active[VIS_CATEGORY_COUNT] =
+        {
+            m_indirect_draw_count > 0,
+            m_has_alpha_indirect,
+            m_has_impostor_indirect
+        };
+
+        for (uint32_t cat = 0u; cat < VIS_CATEGORY_COUNT; cat++)
+        {
+            if (!category_active[cat])
+            {
+                continue;
+            }
+            RenderPass pass(resolve_names[cat], resolve_shaders[cat]);
+            pass.Transparent(false);
+            pass.Read(97u, tex_visibility);
+            pass.Bind(Renderer_BindingsSrv::gbuffer_depth, Renderer_RenderTarget::gbuffer_depth);
+            pass.Write(80u, tex_albedo);
+            pass.Write(81u, tex_normal);
+            pass.Write(82u, tex_material);
+            pass.Write(83u, tex_velocity);
+            pass.Write(84u, tex_emissive);
+            pass.Bind(96u, buf_tiles);
+            bind_mesh_shader_geometry(pass);
+            if (cat == VIS_CATEGORY_IMPOSTOR)
+            {
+                pass.Bind(98u, GetBuffer(Renderer_Buffer::ImpostorInstances));
+            }
+            pass.Set(pass_visibility::tile_stride,           tile_stride);
+            pass.Set(pass_visibility::category,              cat);
+            pass.Set(pass_visibility::meshlet_half_capacity, meshlet_half_cap);
+            pass.DispatchIndirect(buf_tile_args, cat * sizeof(Sb_IndirectDispatchArgs));
+        }
     }
 
     void Renderer::Pass_GBuffer_Indirect(const bool clear_targets)
     {
-        RHI_CommandList::BeginPass("g_buffer_indirect");
+        RenderPass outer_pass("g_buffer_indirect");
 
         const bool xr_multiview              = IsStereoView();
         const bool mesh_path                 = use_mesh_shaders();
@@ -2101,66 +2056,70 @@ namespace spartan
                                                : nullptr;
         const Color clear_color              = clear_targets ? Color::standard_transparent : rhi_color_load;
 
-        auto configure_gbuffer_pass = [&](const char* pass_name, RHI_Shader* primary_shader, RHI_Shader* pixel_shader, const RHI_DepthMode depth_mode, const Color& color_clear)
+        auto configure_gbuffer_pass = [&](RenderPass& pass, const char* pass_name, RHI_Shader* primary_shader, RHI_Shader* pixel_shader, const RHI_DepthMode depth_mode, const Color& color_clear)
         {
-            RHI_CommandList::SetPassName(pass_name);
-            RHI_CommandList::SetShaders(primary_shader, pixel_shader);
-            RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-            RHI_CommandList::SetRasterizer(raster_mode);
-            RHI_CommandList::SetPrimitiveTopology(topology);
-            RHI_CommandList::SetDepth(depth_mode);
-            RHI_CommandList::SetVrsTexture(vrs_texture);
-            RHI_CommandList::SetResolutionScale(true);
-            RHI_CommandList::SetColorTargets(
+            pass.Name(pass_name);
+            pass.Shaders(primary_shader, pixel_shader);
+            pass.Blend(RHI_BlendMode::Off);
+            pass.Rasterizer(raster_mode);
+            pass.Topology(topology);
+            pass.Depth(depth_mode);
+            pass.Vrs(vrs_texture);
+            pass.ResolutionScale(true);
+            pass.ColorTargets(
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_color),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)
             );
-            RHI_CommandList::SetClearColor(color_clear);
-            RHI_CommandList::SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_depth_load);
-            RHI_CommandList::SetMultiview(xr_multiview);
+            pass.ClearColor(color_clear);
+            pass.DepthTarget(Renderer_RenderTarget::gbuffer_depth, rhi_depth_load);
+            pass.Multiview(xr_multiview);
+            pass.Transparent(false);
         };
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
-        m_pcb_pass_cpu.is_transparent = 0;
 
-        RHI_CommandList::BeginPass("g_buffer_indirect_opaque");
         // opaque uses greater-equal, an equality test demands bit identical depth from two different mesh
         // shaders, the prepass runs meshlet_mesh_depth_m and this pass runs meshlet_mesh_m, so a one bit
         // disagreement leaves the pixel unshaded, which reads as a hole through the terrain that flickers
         // as taa rejitters the projection, the alpha half below restores equal, it needs it for cutouts
         // the clear runs unconditionally so the transparent ocean composites over a fresh g-buffer when no opaque geometry is visible
-        configure_gbuffer_pass(
-            mesh_path ? "g_buffer_mesh" : "g_buffer_indirect",
-            mesh_path ? GetShader(Renderer_Shader::meshlet_mesh_m) : GetShader(Renderer_Shader::gbuffer_indirect_v),
-            GetShader(Renderer_Shader::gbuffer_indirect_p),
-            RHI_DepthMode::ReadWrite,
-            clear_color
-        );
-
-        if (m_indirect_draw_count > 0)
         {
-            RHI_CommandList::SetCullMode(RHI_CullMode::None);
-            if (mesh_path)
-            {
-                bind_mesh_shader_geometry();
-                push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), MESH_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
-            }
-            else
-            {
-                // slots 0 and 1 span the early and the late survivors together
-                bind_visible_triangle_geometry();
-                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
-                m_pcb_pass_cpu.set(pass_visible_triangles::late, false);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
-            }
+            RenderPass pass("g_buffer_indirect_opaque");
+            configure_gbuffer_pass(
+                pass,
+                mesh_path ? "g_buffer_mesh" : "g_buffer_indirect",
+                mesh_path ? GetShader(Renderer_Shader::meshlet_mesh_m) : GetShader(Renderer_Shader::gbuffer_indirect_v),
+                GetShader(Renderer_Shader::gbuffer_indirect_p),
+                RHI_DepthMode::ReadWrite,
+                clear_color
+            );
 
-            RHI_CommandList::EndPass();
-            RHI_CommandList::BeginPass("g_buffer_indirect_alpha");
+            if (m_indirect_draw_count > 0)
+            {
+                pass.CullMode(RHI_CullMode::None);
+                if (mesh_path)
+                {
+                    bind_mesh_shader_geometry(pass);
+                    set_mesh_draw_constants(pass);
+                    pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, MESH_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
+                }
+                else
+                {
+                    // slots 0 and 1 span the early and the late survivors together
+                    bind_visible_triangle_geometry(pass);
+                    pass.Set(pass_visible_triangles::region_base, 0u);
+                    pass.Set(pass_visible_triangles::late, false);
+                    pass.DrawIndirect(Renderer_Buffer::IndirectDrawArgs, 0);
+                }
+            }
+        }
+
+        if (m_indirect_draw_count > 0 && m_has_alpha_indirect)
+        {
+            RenderPass pass("g_buffer_indirect_alpha");
             // equal, not greater-equal, so only prepass survivors draw, otherwise cutouts render as solid quads
             RHI_Shader* alpha_primary = mesh_path ? GetShader(Renderer_Shader::meshlet_mesh_alpha_m) : GetShader(Renderer_Shader::gbuffer_indirect_v);
             RHI_Shader* alpha_pixel   = GetShader(Renderer_Shader::gbuffer_indirect_p);
@@ -2172,50 +2131,61 @@ namespace spartan
                 }
             }
             configure_gbuffer_pass(
+                pass,
                 mesh_path ? "g_buffer_mesh" : "g_buffer_indirect",
                 alpha_primary,
                 alpha_pixel,
                 RHI_DepthMode::ReadEqual,
                 rhi_color_load
             );
-            RHI_CommandList::SetCullMode(RHI_CullMode::None);
+            pass.CullMode(RHI_CullMode::None);
             if (mesh_path)
             {
-                bind_mesh_shader_geometry();
-                push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
-
-                // Batched impostor quads: 16 quads per 64-thread workgroup, ReadEqual matches depth_prepass_impostor_mesh
-                RHI_Shader* impostor_pixel = alpha_pixel;
-                if (RHI_Shader* impostor_ps = GetShader(Renderer_Shader::gbuffer_impostor_p); impostor_ps && impostor_ps->IsCompiled())
-                {
-                    impostor_pixel = impostor_ps;
-                }
-                RHI_CommandList::SetPassName("g_buffer_impostor_mesh");
-                RHI_CommandList::SetShaders(GetShader(Renderer_Shader::impostor_mesh_m), impostor_pixel);
-                RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                bind_mesh_shader_geometry();
-                RHI_CommandList::SetBuffer("impostor_instances", GetBuffer(Renderer_Buffer::ImpostorInstances));
-                push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), IMPOSTOR_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
+                bind_mesh_shader_geometry(pass);
+                set_mesh_draw_constants(pass);
+                pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
             }
             else
             {
-                bind_visible_triangle_geometry();
-                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
-                m_pcb_pass_cpu.set(pass_visible_triangles::late, false);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+                bind_visible_triangle_geometry(pass);
+                pass.Set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
+                pass.Set(pass_visible_triangles::late, false);
+                pass.DrawIndirect(Renderer_Buffer::IndirectDrawArgs, arg_stride);
             }
         }
 
-        RHI_CommandList::EndPass();
-        RHI_CommandList::EndPass();
+        if (m_indirect_draw_count > 0 && mesh_path && m_has_impostor_indirect)
+        {
+            RenderPass pass("g_buffer_indirect_impostor");
+            // Batched impostor quads: 16 quads per 64-thread workgroup, ReadEqual matches depth_prepass_impostor_mesh
+            RHI_Shader* impostor_pixel = GetShader(Renderer_Shader::gbuffer_indirect_p);
+            if (RHI_Shader* impostor_ps = GetShader(Renderer_Shader::gbuffer_impostor_p); impostor_ps && impostor_ps->IsCompiled())
+            {
+                impostor_pixel = impostor_ps;
+            }
+            else if (RHI_Shader* alpha_ps = GetShader(Renderer_Shader::gbuffer_alpha_p); alpha_ps && alpha_ps->IsCompiled())
+            {
+                impostor_pixel = alpha_ps;
+            }
+            configure_gbuffer_pass(
+                pass,
+                "g_buffer_impostor_mesh",
+                GetShader(Renderer_Shader::impostor_mesh_m),
+                impostor_pixel,
+                RHI_DepthMode::ReadEqual,
+                rhi_color_load
+            );
+            pass.CullMode(RHI_CullMode::None);
+            bind_mesh_shader_geometry(pass);
+            pass.Bind(98u, GetBuffer(Renderer_Buffer::ImpostorInstances));
+            set_mesh_draw_constants(pass);
+            pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, IMPOSTOR_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
+        }
     }
 
     void Renderer::Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass)
     {
-        RHI_CommandList::BeginPass(is_transparent_pass ? "g_buffer_transparent_draw" : "g_buffer_tessellated");
+        RenderPass pass(is_transparent_pass ? "g_buffer_transparent_draw" : "g_buffer_tessellated");
 
         const bool xr_multiview              = IsStereoView();
         RHI_Shader* gbuffer_v                = GetShader(Renderer_Shader::gbuffer_v);
@@ -2234,22 +2204,22 @@ namespace spartan
         // it is driven by two separately compiled vertex shaders, depth_prepass_v in the prepass and
         // gbuffer_v here. those agree only to the last bit, and equal-z rejects anything inexact, so a
         // disagreement costs the whole patch its shading
-        RHI_CommandList::SetPassName(is_transparent_pass ? "g_buffer_transparent" : "g_buffer_tessellated");
-        RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-        RHI_CommandList::SetRasterizer(raster_mode);
-        RHI_CommandList::SetPrimitiveTopology(topology);
-        RHI_CommandList::SetDepth(RHI_DepthMode::ReadWrite);
-        RHI_CommandList::SetVrsTexture(vrs_texture);
-        RHI_CommandList::SetResolutionScale(true);
-        RHI_CommandList::SetColorTargets(
+        pass.Name(is_transparent_pass ? "g_buffer_transparent" : "g_buffer_tessellated");
+        pass.Blend(RHI_BlendMode::Off);
+        pass.Rasterizer(raster_mode);
+        pass.Topology(topology);
+        pass.Depth(RHI_DepthMode::ReadWrite);
+        pass.Vrs(vrs_texture);
+        pass.ResolutionScale(true);
+        pass.ColorTargets(
             GetRenderTarget(Renderer_RenderTarget::gbuffer_color),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)
         );
-        RHI_CommandList::SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_depth_load);
-        RHI_CommandList::SetMultiview(xr_multiview);
+        pass.DepthTarget(Renderer_RenderTarget::gbuffer_depth, rhi_depth_load);
+        pass.Multiview(xr_multiview);
 
         bool pipeline_set         = false;
         RHI_Shader* current_hull  = nullptr;
@@ -2300,36 +2270,34 @@ namespace spartan
             {
                 current_hull = hull;
                 current_dom  = domain;
-                RHI_CommandList::SetShaders(gbuffer_v, gbuffer_p, hull, domain);
+                pass.Shaders(gbuffer_v, gbuffer_p, hull, domain);
                 pipeline_set = true;
             }
 
-            m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
-            m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            m_pcb_pass_cpu.material_index = material->GetIndex();
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-            RHI_CommandList::SetCullMode(IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+            pass.DrawIndex(draw_call.draw_data_index);
+            pass.Transparent(is_transparent_pass);
+            pass.MaterialIndex(material->GetIndex());
+            pass.CullMode(IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
             RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-            RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
-            RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
+            pass.VertexBuffer(render->GetVertexBuffer(), instance_buffer);
+            pass.IndexBuffer(render->GetIndexBuffer());
 
-            if (!gpu_tessellated && draw_view_clusters(render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
+            if (!gpu_tessellated && draw_view_clusters(pass, render, draw_call, GetViewCamera(), GetResolutionRender().y, cluster_ranges))
             {
                 continue;
             }
             if (gpu_tessellated)
             {
                 // a draw lands in at most one of the early and late halves, the other holds zero instances
-                RHI_CommandList::DrawIndexedIndirect(GetBuffer(Renderer_Buffer::TessellatedArgs), i * sizeof(Sb_IndirectDrawArgs));
+                pass.DrawIndexedIndirect(Renderer_Buffer::TessellatedArgs, i * sizeof(Sb_IndirectDrawArgs));
                 if (m_pass_state.cull_late_active)
                 {
-                    RHI_CommandList::DrawIndexedIndirect(GetBuffer(Renderer_Buffer::TessellatedArgs), (draw_count + i) * sizeof(Sb_IndirectDrawArgs));
+                    pass.DrawIndexedIndirect(Renderer_Buffer::TessellatedArgs, (draw_count + i) * sizeof(Sb_IndirectDrawArgs));
                 }
             }
             else
             {
-                RHI_CommandList::DrawIndexed(
+                pass.DrawIndexed(
                     render->GetIndexCount(),
                     render->GetIndexOffset(),
                     render->GetVertexOffset(),
@@ -2338,8 +2306,6 @@ namespace spartan
                 );
             }
         }
-
-        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Transparent(uint32_t eye, uint32_t eye_layer /*= rhi_all_mips*/)
@@ -2444,173 +2410,169 @@ namespace spartan
             RHI_CommandList::Blit(tex_frame, tex_refraction, false);
         }
 
-        RHI_CommandList::BeginPass("transparent_forward");
+        RenderPass pass("transparent_forward");
+        pass.Blend(RHI_BlendMode::DualSourceTransmittance);
+        pass.Rasterizer(IsViewWireframe() ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid);
+        pass.Topology(GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList);
+        pass.Depth(RHI_DepthMode::ReadGreaterEqual);
+        pass.ResolutionScale(true);
+        pass.ColorTarget(tex_frame, rhi_color_load);
+        pass.DepthTarget(tex_depth, rhi_depth_load);
+        pass.ArrayIndex(eye_layer == rhi_all_mips ? 0 : eye_layer);
+        pass.Multiview(false);
+
+        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_sky_sh    = GetRenderTarget(Renderer_RenderTarget::sky_sh);
+        RHI_Texture* tex_black     = GetStandardTexture(Renderer_StandardTexture::Black);
+
+        pass.Bind(Renderer_BindingsSrv::tex,  (needs_refraction_source && tex_refraction) ? tex_refraction : tex_black);
+        pass.Bind(Renderer_BindingsSrv::tex2, Renderer_RenderTarget::shadow_atlas);
+        pass.Bind(Renderer_BindingsSrv::tex3, Renderer_RenderTarget::lut_brdf_specular);
+        pass.Bind(Renderer_BindingsSrv::tex4, Renderer_RenderTarget::gbuffer_depth_opaque_output);
+        pass.Bind(Renderer_BindingsSrv::tex5, tex_skysphere);
+        pass.Bind(Renderer_BindingsSrv::tex6, Renderer_RenderTarget::cloud_shadow);
+        pass.Bind("tex_transparent_sky_sh", tex_sky_sh ? tex_sky_sh : tex_black);
+        pass.Bind("tex_fog_extinction", Renderer_RenderTarget::fog_extinction);
+        pass.Bind("tex_fog_air_source", m_pass_state.fog_source);
+        pass.Bind("tex_fog_water_source", m_pass_state.fog_water_source);
+        pass.Bind("tex_fog_scattering", Renderer_RenderTarget::fog_integrated);
+        pass.Bind("tex_fog_transmittance", Renderer_RenderTarget::fog_transmittance);
+        pass.Bind("tex_car_rain_surface", Renderer_RenderTarget::car_rain_surface);
+        pass.Bind("tex_car_rain_micro", Renderer_RenderTarget::car_rain_micro);
+        pass.Bind("tex_car_rain_ids", Renderer_RenderTarget::car_rain_ids);
+        pass.Bind("car_rain_drops", Renderer_Buffer::CarRainDrops);
+        pass.Bind(Renderer_BindingsUav::cluster_light_grid, Renderer_Buffer::ClusterLightGrid);
+        pass.Bind(Renderer_BindingsUav::cluster_light_indices, Renderer_Buffer::ClusterLightIndices);
+
+        bool use_rt_reflections = false;
+        if (RHI_Device::Caps().ray_tracing)
         {
-            RHI_CommandList::SetBlend(RHI_BlendMode::DualSourceTransmittance);
-            RHI_CommandList::SetRasterizer(IsViewWireframe() ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid);
-            RHI_CommandList::SetPrimitiveTopology(GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList);
-            RHI_CommandList::SetDepth(RHI_DepthMode::ReadGreaterEqual);
-            RHI_CommandList::SetResolutionScale(true);
-            RHI_CommandList::SetColorTarget(tex_frame, rhi_color_load);
-            RHI_CommandList::SetDepthTarget(tex_depth, rhi_depth_load);
-            RHI_CommandList::SetArrayIndex(eye_layer == rhi_all_mips ? 0 : eye_layer);
-            RHI_CommandList::SetMultiview(false);
-
-            RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-            RHI_Texture* tex_sky_sh    = GetRenderTarget(Renderer_RenderTarget::sky_sh);
-            RHI_Texture* tex_black     = GetStandardTexture(Renderer_StandardTexture::Black);
-
-            Renderer::BindTexture(Renderer_BindingsSrv::tex,  (needs_refraction_source && tex_refraction) ? tex_refraction : tex_black);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
-            Renderer::BindTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
-            Renderer::BindTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
-            RHI_CommandList::SetTexture("tex_transparent_sky_sh", tex_sky_sh ? tex_sky_sh : tex_black);
-            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
-            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
-            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
-            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
-            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
-            RHI_CommandList::SetTexture("tex_car_rain_surface", GetRenderTarget(Renderer_RenderTarget::car_rain_surface));
-            RHI_CommandList::SetTexture("tex_car_rain_micro", GetRenderTarget(Renderer_RenderTarget::car_rain_micro));
-            RHI_CommandList::SetTexture("tex_car_rain_ids", GetRenderTarget(Renderer_RenderTarget::car_rain_ids));
-            RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
-            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            Renderer::BindBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-
-            bool use_rt_reflections = false;
-            if (RHI_Device::Caps().ray_tracing)
+            pass.Bind("radiance_cache", Renderer_Buffer::RadianceCache);
+            if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
             {
-                RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
-                if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
+                if (tlas->GetRhiResource())
                 {
-                    if (tlas->GetRhiResource())
-                    {
-                        Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-                        Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-                        use_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && !IsSecondaryViewActive() && !m_pass_state.skip_rt_trace;
-                    }
-                }
-            }
-
-            m_pcb_pass_cpu.eye_index      = IsStereoView() ? eye : 0;
-            m_pcb_pass_cpu.is_transparent = 1;
-            m_pcb_pass_cpu.set(pass_transparent::mip_count, tex_skysphere ? static_cast<float>(tex_skysphere->GetMipCount()) : 1.0f);
-            m_pcb_pass_cpu.set(pass_transparent::light_count, m_count_shading_lights);
-            m_pcb_pass_cpu.set(pass_transparent::ray_traced_reflections, use_rt_reflections);
-            m_pcb_pass_cpu.set(pass_transparent::has_refraction_source, needs_refraction_source && tex_refraction != nullptr);
-            m_pcb_pass_cpu.set(pass_transparent::apply_fog, !IsSecondaryViewActive());
-
-            bool pipeline_set        = false;
-            RHI_Shader* current_hull = nullptr;
-            RHI_Shader* current_dom  = nullptr;
-            static vector<ClusterDrawRange> cluster_ranges;
-            RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-            RHI_Buffer* last_vb = nullptr;
-            RHI_Buffer* last_ib = nullptr;
-            RHI_CullMode last_cull_mode = RHI_CullMode::Max;
-
-            auto issue_draw = [&](Render* render, const Renderer_DrawCall& draw_call, bool has_clusters)
-            {
-                if (has_clusters)
-                {
-                    const uint32_t instance_offset = render->GetGlobalInstanceOffset() + draw_call.instance_index;
-                    for (const ClusterDrawRange& range : cluster_ranges)
-                    {
-                        RHI_CommandList::DrawIndexed(range.index_count, range.first_index, range.vertex_offset, instance_offset, draw_call.instance_count);
-                    }
-                    return;
-                }
-                RHI_CommandList::DrawIndexed(
-                    render->GetIndexCount(),
-                    render->GetIndexOffset(),
-                    render->GetVertexOffset(),
-                    render->GetGlobalInstanceOffset() + draw_call.instance_index,
-                    draw_call.instance_count
-                );
-            };
-
-            for (const TransparentDrawEntry& entry : visible_transparent_draws)
-            {
-                const Renderer_DrawCall& draw_call = m_draw_calls[entry.draw_index];
-                Render* render     = draw_call.render;
-                Material* material = render->GetMaterial();
-                const float dist_sq = entry.dist_sq;
-
-                const bool is_tessellated = material->IsTessellated();
-                RHI_Shader* hull          = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                RHI_Shader* domain        = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
-                if (!pipeline_set || current_hull != hull || current_dom != domain)
-                {
-                    current_hull = hull;
-                    current_dom  = domain;
-                    RHI_CommandList::SetShaders(shader_v, shader_p, hull, domain);
-                    pipeline_set   = true;
-                    last_vb        = nullptr;
-                    last_ib        = nullptr;
-                    last_cull_mode = RHI_CullMode::Max;
-                }
-
-                m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
-                m_pcb_pass_cpu.material_index = material->GetIndex();
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-                RHI_Buffer* vb = render->GetVertexBuffer();
-                RHI_Buffer* ib = render->GetIndexBuffer();
-                if (vb != last_vb)
-                {
-                    RHI_CommandList::SetBufferVertex(vb, instance_buffer);
-                    last_vb = vb;
-                }
-                if (ib != last_ib)
-                {
-                    RHI_CommandList::SetBufferIndex(ib);
-                    last_ib = ib;
-                }
-
-                // Resolve virtual geometry cluster ranges once per draw (skip past 10 m where root LOD suffices for glass).
-                bool has_clusters = false;
-                if (dist_sq < 10.0f * 10.0f)
-                {
-                    if (Mesh* mesh = render->GetMesh(); mesh && !mesh->GetSubMesh(render->GetSubMeshIndex()).HasResidentRootOnly() && !mesh->GetSubMesh(render->GetSubMeshIndex()).clusters.empty())
-                    {
-                        has_clusters = cluster_draw_ranges(*mesh, render->GetSubMeshIndex(), render->GetEntity()->GetMatrix(),
-                            [&](const BoundingBox& world)
-                            {
-                                const float depth = is_persp
-                                    ? max(near_plane, Vector3::Dot(world.GetCenter() - cam_pos, cam_fwd) - world.GetExtents().Length())
-                                    : 1.0f;
-                                return focal / depth;
-                            }, cluster_ranges);
-                    }
-                }
-
-                const RHI_CullMode cull_mode = IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-                if (cull_mode == RHI_CullMode::None && !IsViewWireframe() && dist_sq < 20.0f * 20.0f)
-                {
-                    // draw backfaces before frontfaces so nearby curved/enclosed glass shells layer far walls behind near walls
-                    if (last_cull_mode != RHI_CullMode::Front)
-                    {
-                        RHI_CommandList::SetCullMode(RHI_CullMode::Front);
-                    }
-                    issue_draw(render, draw_call, has_clusters);
-                    RHI_CommandList::SetCullMode(RHI_CullMode::Back);
-                    last_cull_mode = RHI_CullMode::Back;
-                    issue_draw(render, draw_call, has_clusters);
-                }
-                else
-                {
-                    if (last_cull_mode != cull_mode)
-                    {
-                        RHI_CommandList::SetCullMode(cull_mode);
-                        last_cull_mode = cull_mode;
-                    }
-                    issue_draw(render, draw_call, has_clusters);
+                    pass.Bind(Renderer_BindingsSrv::tlas, tlas);
+                    pass.Bind(Renderer_BindingsUav::geometry_info, Renderer_Buffer::GeometryInfo);
+                    use_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && !IsSecondaryViewActive() && !m_pass_state.skip_rt_trace;
                 }
             }
         }
-        RHI_CommandList::EndPass();
+
+        pass.Eye(IsStereoView() ? eye : 0);
+        pass.Transparent(true);
+        pass.Set(pass_transparent::mip_count, tex_skysphere ? static_cast<float>(tex_skysphere->GetMipCount()) : 1.0f);
+        pass.Set(pass_transparent::light_count, m_count_shading_lights);
+        pass.Set(pass_transparent::ray_traced_reflections, use_rt_reflections);
+        pass.Set(pass_transparent::has_refraction_source, needs_refraction_source && tex_refraction != nullptr);
+        pass.Set(pass_transparent::apply_fog, !IsSecondaryViewActive());
+
+        bool pipeline_set        = false;
+        RHI_Shader* current_hull = nullptr;
+        RHI_Shader* current_dom  = nullptr;
+        static vector<ClusterDrawRange> cluster_ranges;
+        RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+        RHI_Buffer* last_vb = nullptr;
+        RHI_Buffer* last_ib = nullptr;
+        RHI_CullMode last_cull_mode = RHI_CullMode::Max;
+
+        auto issue_draw = [&](Render* render, const Renderer_DrawCall& draw_call, bool has_clusters)
+        {
+            if (has_clusters)
+            {
+                const uint32_t instance_offset = render->GetGlobalInstanceOffset() + draw_call.instance_index;
+                for (const ClusterDrawRange& range : cluster_ranges)
+                {
+                    pass.DrawIndexed(range.index_count, range.first_index, range.vertex_offset, instance_offset, draw_call.instance_count);
+                }
+                return;
+            }
+            pass.DrawIndexed(
+                render->GetIndexCount(),
+                render->GetIndexOffset(),
+                render->GetVertexOffset(),
+                render->GetGlobalInstanceOffset() + draw_call.instance_index,
+                draw_call.instance_count
+            );
+        };
+
+        for (const TransparentDrawEntry& entry : visible_transparent_draws)
+        {
+            const Renderer_DrawCall& draw_call = m_draw_calls[entry.draw_index];
+            Render* render     = draw_call.render;
+            Material* material = render->GetMaterial();
+            const float dist_sq = entry.dist_sq;
+
+            const bool is_tessellated = material->IsTessellated();
+            RHI_Shader* hull          = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+            RHI_Shader* domain        = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+            if (!pipeline_set || current_hull != hull || current_dom != domain)
+            {
+                current_hull = hull;
+                current_dom  = domain;
+                pass.Shaders(shader_v, shader_p, hull, domain);
+                pipeline_set   = true;
+                last_vb        = nullptr;
+                last_ib        = nullptr;
+                last_cull_mode = RHI_CullMode::Max;
+            }
+
+            pass.DrawIndex(draw_call.draw_data_index);
+            pass.MaterialIndex(material->GetIndex());
+
+            RHI_Buffer* vb = render->GetVertexBuffer();
+            RHI_Buffer* ib = render->GetIndexBuffer();
+            if (vb != last_vb)
+            {
+                pass.VertexBuffer(vb, instance_buffer);
+                last_vb = vb;
+            }
+            if (ib != last_ib)
+            {
+                pass.IndexBuffer(ib);
+                last_ib = ib;
+            }
+
+            // Resolve virtual geometry cluster ranges once per draw (skip past 10 m where root LOD suffices for glass).
+            bool has_clusters = false;
+            if (dist_sq < 10.0f * 10.0f)
+            {
+                if (Mesh* mesh = render->GetMesh(); mesh && !mesh->GetSubMesh(render->GetSubMeshIndex()).HasResidentRootOnly() && !mesh->GetSubMesh(render->GetSubMeshIndex()).clusters.empty())
+                {
+                    has_clusters = cluster_draw_ranges(*mesh, render->GetSubMeshIndex(), render->GetEntity()->GetMatrix(),
+                        [&](const BoundingBox& world)
+                        {
+                            const float depth = is_persp
+                                ? max(near_plane, Vector3::Dot(world.GetCenter() - cam_pos, cam_fwd) - world.GetExtents().Length())
+                                : 1.0f;
+                            return focal / depth;
+                        }, cluster_ranges);
+                }
+            }
+
+            const RHI_CullMode cull_mode = IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+            if (cull_mode == RHI_CullMode::None && !IsViewWireframe() && dist_sq < 20.0f * 20.0f)
+            {
+                // draw backfaces before frontfaces so nearby curved/enclosed glass shells layer far walls behind near walls
+                if (last_cull_mode != RHI_CullMode::Front)
+                {
+                    pass.CullMode(RHI_CullMode::Front);
+                }
+                issue_draw(render, draw_call, has_clusters);
+                pass.CullMode(RHI_CullMode::Back);
+                last_cull_mode = RHI_CullMode::Back;
+                issue_draw(render, draw_call, has_clusters);
+            }
+            else
+            {
+                if (last_cull_mode != cull_mode)
+                {
+                    pass.CullMode(cull_mode);
+                    last_cull_mode = cull_mode;
+                }
+                issue_draw(render, draw_call, has_clusters);
+            }
+        }
     }
 
     void Renderer::Pass_SkidMarks()
@@ -2647,7 +2609,7 @@ namespace spartan
             warmed_hash = pso.GetHash();
         }
 
-        bool pipeline_set = false;
+        std::optional<RenderPass> pass;
         for (uint32_t i = 0; i < m_draw_call_count; ++i)
         {
             const Renderer_DrawCall& draw = m_draw_calls[i];
@@ -2656,39 +2618,36 @@ namespace spartan
             if (!material || !draw.camera_visible || material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
                 continue;
 
-            if (!pipeline_set)
+            if (!pass)
             {
-                RHI_CommandList::BeginPass("skid_marks");
-                RHI_CommandList::SetShaders(vertex_shader, pixel_shader);
-                RHI_CommandList::SetBlend(RHI_BlendMode::SurfaceAlpha);
-                RHI_CommandList::SetRasterizer(RHI_RasterizerMode::Solid);
-                RHI_CommandList::SetDepth(RHI_DepthMode::ReadGreaterEqual);
-                RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology::TriangleList);
-                RHI_CommandList::SetColorTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_color), rhi_color_load);
-                RHI_CommandList::SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_depth_load);
-                RHI_CommandList::SetResolutionScale(true);
-                RHI_CommandList::SetMultiview(IsStereoView());
-                RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                pipeline_set = true;
+                pass.emplace("skid_marks", vertex_shader, pixel_shader);
+                pass->Blend(RHI_BlendMode::SurfaceAlpha);
+                pass->Rasterizer(RHI_RasterizerMode::Solid);
+                pass->Depth(RHI_DepthMode::ReadGreaterEqual);
+                pass->Topology(RHI_PrimitiveTopology::TriangleList);
+                pass->ColorTarget(Renderer_RenderTarget::gbuffer_color, rhi_color_load);
+                pass->DepthTarget(Renderer_RenderTarget::gbuffer_depth, rhi_depth_load);
+                pass->ResolutionScale(true);
+                pass->Multiview(IsStereoView());
+                pass->CullMode(RHI_CullMode::None);
             }
-            m_pcb_pass_cpu.draw_index = draw.draw_data_index;
-            m_pcb_pass_cpu.material_index = material->GetIndex();
-            m_pcb_pass_cpu.is_transparent = 0;
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            pass->DrawIndex(draw.draw_data_index);
+            pass->MaterialIndex(material->GetIndex());
+            pass->Transparent(false);
             RHI_Buffer* instances = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-            RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instances);
-            RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
-            RHI_CommandList::DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(),
+            pass->VertexBuffer(render->GetVertexBuffer(), instances);
+            pass->IndexBuffer(render->GetIndexBuffer());
+            pass->DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(),
                 render->GetVertexOffset(), render->GetGlobalInstanceOffset() + draw.instance_index, draw.instance_count);
         }
-        if (pipeline_set)
-            RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter)
     {
-        RHI_CommandList::BeginPass(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
         {
+            std::optional<RenderPass> pass;
+            pass.emplace(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
+
             if (!is_transparent_pass)
             {
                 // scatter that is already populated rasterizes first, it tests against the prepass depth and writes its own,
@@ -2701,10 +2660,10 @@ namespace spartan
                 {
                     // the meshlet g-buffer never reads procedural scatter, submitting it here lets it overlap the
                     // populate compute, only the grass draw and what follows waits for the scatter queue
-                    RHI_CommandList::EndPass();
+                    pass.reset();
                     RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
                     RHI_Device::Bind(RHI_Frame_List::Graphics);
-                    RHI_CommandList::BeginPass("g_buffer_scatter");
+                    pass.emplace("g_buffer_scatter");
                 }
                 if (!scatter_first)
                 {
@@ -2722,15 +2681,12 @@ namespace spartan
             {
                 // opaque depth blit moved here from the prepass, all opaque geometry including grass has rasterized so the
                 // opaque output carries grass occlusion, batch b consumers run after phase 1 so this write is visible to them
-                RHI_CommandList::BeginPass("g_buffer_depth_blit");
+                RenderPass blit_pass("g_buffer_depth_blit");
                 RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
                 RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
                 RHI_CommandList::Blit(tex_depth, tex_depth_output, false, Renderer::GetResolutionScale());
-                RHI_CommandList::EndPass();
             }
-
         }
-        RHI_CommandList::EndPass();
 
         if (!is_transparent_pass && !IsSecondaryViewActive())
         {
@@ -2738,6 +2694,22 @@ namespace spartan
             Entity::CommitTransformHistory();
             SP_PROFILE_CPU_END();
         }
+    }
+
+    bool Renderer::HasActiveGpuScatter()
+    {
+        if (IsSecondaryViewActive() || !Terrain::FindActive())
+        {
+            return false;
+        }
+        for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
+        {
+            if (gpu_scatter_ready(slot))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     void Renderer::Pass_Grass_Populate()
@@ -2920,111 +2892,285 @@ namespace spartan
 
         RHI_Buffer* detail_buffer = GetBuffer(Renderer_Buffer::GrassLodParameters);
         RHI_CommandList::UpdateBuffer(detail_buffer, 0, sizeof(detail_parameters), detail_parameters.data(), false);
-        RHI_CommandList::BeginPass("gpu_scatter_populate");
+        RenderPass pass("gpu_scatter_populate");
+        RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
+        RHI_Buffer* buf_count     = GetBuffer(Renderer_Buffer::GrassCount);
+        RHI_Buffer* buf_args      = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
+
+        const bool hiz_active        = cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
+        RHI_Texture* tex_scatter_hiz = !hiz_active
+            ? GetStandardTexture(Renderer_StandardTexture::Black)
+            : GetRenderTarget(m_pass_state.cull_late_active ? Renderer_RenderTarget::gbuffer_depth_hiz : Renderer_RenderTarget::gbuffer_depth_hiz_early);
+
+        vector<Sb_IndirectDrawArgs> cluster_args;
+        vector<ClusterDrawRange> cluster_ranges;
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
         {
-            RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
-            RHI_Buffer* buf_count     = GetBuffer(Renderer_Buffer::GrassCount);
-            RHI_Buffer* buf_args      = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
-
-            const bool hiz_active        = cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
-            RHI_Texture* tex_scatter_hiz = !hiz_active
-                ? GetStandardTexture(Renderer_StandardTexture::Black)
-                : GetRenderTarget(m_pass_state.cull_late_active ? Renderer_RenderTarget::gbuffer_depth_hiz : Renderer_RenderTarget::gbuffer_depth_hiz_early);
-
-            vector<Sb_IndirectDrawArgs> cluster_args;
-            vector<ClusterDrawRange> cluster_ranges;
-            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+            PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+            if (!gpu_scatter_ready(state)) continue;
+            const auto& sub = state.mesh->GetSubMesh(0);
+            const auto& root = sub.root;
+            const float focal = abs(camera->GetProjectionMatrix().m11) * GetResolutionRender().y * 0.5f;
+            state.cluster_counts.fill(0);
+            if (!sub.HasResidentRootOnly() && !sub.clusters.empty())
             {
-                PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
-                if (!gpu_scatter_ready(state)) continue;
-                const auto& sub = state.mesh->GetSubMesh(0);
-                const auto& root = sub.root;
-                const float focal = abs(camera->GetProjectionMatrix().m11) * GetResolutionRender().y * 0.5f;
-                state.cluster_counts.fill(0);
-                if (!sub.HasResidentRootOnly() && !sub.clusters.empty())
+                for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
                 {
-                    for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
+                    const float inner = ring ? gpu_scatter_ring_radius(state, ring - 1) : camera->GetNearPlane();
+                    const float density = focal * max(state.params.size_min, state.params.size_max) /
+                        (camera->GetProjectionType() == Projection_Perspective ? max(camera->GetNearPlane(), inner) : 1.0f);
+                    if (sub.clusters.size() > 1)
                     {
-                        const float inner = ring ? gpu_scatter_ring_radius(state, ring - 1) : camera->GetNearPlane();
-                        const float density = focal * max(state.params.size_min, state.params.size_max) /
-                            (camera->GetProjectionType() == Projection_Perspective ? max(camera->GetNearPlane(), inner) : 1.0f);
-                        if (sub.clusters.size() > 1)
+                        if (cluster_draw_ranges(*state.mesh, 0, Matrix::Identity, [&](const BoundingBox&) { return density; }, cluster_ranges))
                         {
-                            if (cluster_draw_ranges(*state.mesh, 0, Matrix::Identity, [&](const BoundingBox&) { return density; }, cluster_ranges))
-                            {
-                                state.cluster_offsets[ring] = static_cast<uint32_t>(cluster_args.size());
-                                state.cluster_counts[ring] = static_cast<uint32_t>(cluster_ranges.size());
-                                for (const auto& range : cluster_ranges)
-                                    cluster_args.push_back({range.index_count, 0, range.first_index, static_cast<int32_t>(range.vertex_offset), 0});
-                            }
-                            continue;
+                            state.cluster_offsets[ring] = static_cast<uint32_t>(cluster_args.size());
+                            state.cluster_counts[ring] = static_cast<uint32_t>(cluster_ranges.size());
+                            for (const auto& range : cluster_ranges)
+                                cluster_args.push_back({range.index_count, 0, range.first_index, static_cast<int32_t>(range.vertex_offset), 0});
                         }
-                        ResidentGeometryPage page = {};
-                        const bool ready = GeometryBuffer::SelectPage(sub.clusters.front(), density, page);
-                        auto& args = state.indirect_args_static[ring];
-                        const uint32_t first = ready ? page.indices : state.mesh->GetGlobalIndexOffset() + root.index_offset;
-                        const uint32_t base = ready ? page.vertices : state.mesh->GetGlobalVertexOffset() + root.vertex_offset;
-                        const uint32_t count = ready ? page.index_count : root.index_count;
-                        const uint32_t vertices = ready ? page.vertex_count : root.vertex_count;
-                        if (args.first_index != first || args.vertex_offset != static_cast<int32_t>(base) ||
-                            args.index_count != count || state.vertex_counts[ring] != vertices)
-                        {
-                            args.first_index = first;
-                            args.vertex_offset = static_cast<int32_t>(base);
-                            args.index_count = count;
-                            state.vertex_counts[ring] = vertices;
-                            state.args_baked = false;
-                        }
+                        continue;
+                    }
+                    ResidentGeometryPage page = {};
+                    const bool ready = GeometryBuffer::SelectPage(sub.clusters.front(), density, page);
+                    auto& args = state.indirect_args_static[ring];
+                    const uint32_t first = ready ? page.indices : state.mesh->GetGlobalIndexOffset() + root.index_offset;
+                    const uint32_t base = ready ? page.vertices : state.mesh->GetGlobalVertexOffset() + root.vertex_offset;
+                    const uint32_t count = ready ? page.index_count : root.index_count;
+                    const uint32_t vertices = ready ? page.vertex_count : root.vertex_count;
+                    if (args.first_index != first || args.vertex_offset != static_cast<int32_t>(base) ||
+                        args.index_count != count || state.vertex_counts[ring] != vertices)
+                    {
+                        args.first_index = first;
+                        args.vertex_offset = static_cast<int32_t>(base);
+                        args.index_count = count;
+                        state.vertex_counts[ring] = vertices;
+                        state.args_baked = false;
                     }
                 }
-                if (state.args_baked) continue;
-
-                RHI_CommandList::UpdateBuffer(
-                    buf_args,
-                    renderer_gpu_scatter_arg_index(slot, 0) * static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-                    static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_gpu_scatter_lods),
-                    &state.indirect_args_static[0],
-                    false
-                );
-                // the same draw lists for the mesh shader path, which also needs each blade lod's vertex count
-                auto mesh_geometry          = [&](const Sb_IndirectDrawArgs& arguments, const uint32_t lod)
-                {
-                    return std::array<uint32_t, 4>{ arguments.first_index, arguments.index_count, static_cast<uint32_t>(arguments.vertex_offset), state.vertex_counts[lod] };
-                };
-                std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> ring_geometry;
-                for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
-                {
-                    ring_geometry[lod]   = mesh_geometry(state.indirect_args_static[lod], lod);
-                }
-                RHI_Buffer* buf_mesh_geometry = GetBuffer(Renderer_Buffer::GrassMeshGeometry);
-                RHI_CommandList::UpdateBuffer(buf_mesh_geometry,
-                    renderer_gpu_scatter_arg_index(slot, 0) * sizeof(ring_geometry[0]),
-                    sizeof(ring_geometry), ring_geometry.data(), false);
-                state.args_baked = true;
             }
+            if (state.args_baked) continue;
 
-            RHI_Buffer* cluster_buffer = nullptr;
-            if (!cluster_args.empty())
+            RHI_CommandList::UpdateBuffer(
+                buf_args,
+                renderer_gpu_scatter_arg_index(slot, 0) * static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
+                static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_gpu_scatter_lods),
+                &state.indirect_args_static[0],
+                false
+            );
+            // the same draw lists for the mesh shader path, which also needs each blade lod's vertex count
+            auto mesh_geometry          = [&](const Sb_IndirectDrawArgs& arguments, const uint32_t lod)
             {
-                cluster_buffer = EnsureBufferCapacity(Renderer_Buffer::GrassClusterArgs, sizeof(Sb_IndirectDrawArgs),
-                    static_cast<uint32_t>(cluster_args.size()), "grass_cluster_args");
-                RHI_CommandList::UpdateBuffer(cluster_buffer, 0, cluster_args.size() * sizeof(Sb_IndirectDrawArgs), cluster_args.data(), false);
+                return std::array<uint32_t, 4>{ arguments.first_index, arguments.index_count, static_cast<uint32_t>(arguments.vertex_offset), state.vertex_counts[lod] };
+            };
+            std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_lods> ring_geometry;
+            for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+            {
+                ring_geometry[lod]   = mesh_geometry(state.indirect_args_static[lod], lod);
+            }
+            RHI_Buffer* buf_mesh_geometry = GetBuffer(Renderer_Buffer::GrassMeshGeometry);
+            RHI_CommandList::UpdateBuffer(buf_mesh_geometry,
+                renderer_gpu_scatter_arg_index(slot, 0) * sizeof(ring_geometry[0]),
+                sizeof(ring_geometry), ring_geometry.data(), false);
+            state.args_baked = true;
+        }
+
+        RHI_Buffer* cluster_buffer = nullptr;
+        if (!cluster_args.empty())
+        {
+            cluster_buffer = EnsureBufferCapacity(Renderer_Buffer::GrassClusterArgs, sizeof(Sb_IndirectDrawArgs),
+                static_cast<uint32_t>(cluster_args.size()), "grass_cluster_args");
+            RHI_CommandList::UpdateBuffer(cluster_buffer, 0, cluster_args.size() * sizeof(Sb_IndirectDrawArgs), cluster_args.data(), false);
+        }
+
+        // clear every counter on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops a frame of scatter
+        uint32_t zero_counts[renderer_max_gpu_scatter_args] = {};
+        RHI_CommandList::UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0], false);
+
+        // the terrain frame is shared, every slot scatters onto the same surface
+        Vector3 terrain_offset;
+        Vector4 terrain_mapping_live;
+        get_grass_terrain_frame_state(terrain_offset, terrain_mapping_live);
+        const float terrain_entity_y = terrain_offset.y;
+
+        // populate dispatches, one per slot per lod ring, each fills its own range of grass_instances
+        pass.Shader(Renderer_Shader::grass_populate_c);
+        pass.Bind("grass_lod_parameters", detail_buffer);
+        pass.Bind("terrain_road_exclusions", road_exclusions);
+
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+        {
+            const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+            if (!gpu_scatter_ready(state))
+            {
+                continue;
             }
 
-            // clear every counter on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops a frame of scatter
-            uint32_t zero_counts[renderer_max_gpu_scatter_args] = {};
-            RHI_CommandList::UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0], false);
+            pass.Bind(Renderer_BindingsUav::grass_instances, buf_instances);
+            pass.Bind(Renderer_BindingsUav::grass_count, buf_count);
+            // the populate shader samples the terrain heightmap through the tex slot
+            pass.Bind(Renderer_BindingsSrv::tex, state.heightmap);
+            // hi-z on tex2 drives the per-instance frustum + occlusion cull, this frame's early depth when populate runs before
+            // the late cull, the complete depth after it, black (far) culls nothing when occlusion culling is off
+            pass.Bind(Renderer_BindingsSrv::tex2, tex_scatter_hiz);
+            // biome prop mask on tex3, the slot picks the channel, black means nothing is suitable
+            pass.Bind(Renderer_BindingsSrv::tex3, state.prop_mask ?
+                    state.prop_mask :
+                    GetStandardTexture(Renderer_StandardTexture::Black));
 
-            // the terrain frame is shared, every slot scatters onto the same surface
-            Vector3 terrain_offset;
-            Vector4 terrain_mapping_live;
-            get_grass_terrain_frame_state(terrain_offset, terrain_mapping_live);
-            const float terrain_entity_y = terrain_offset.y;
+            const float max_slope_cos = cosf(state.params.max_slope_deg * (math::pi / 180.0f));
+            // the floor can never sit above the ceiling, the shader divides by the gap between them
+            const float min_slope_cos = cosf(
+                std::min(state.params.min_slope_deg, state.params.max_slope_deg) * (math::pi / 180.0f)
+            );
+            // a negative weight is the slot saying it wants no biome gate at all, which is what micro
+            // detail asks for. a slot that does want one and has no mask fails closed instead of
+            // filling the world
+            const float biome_min = state.params.biome_min_weight < 0.0f ?
+                -1.0f :
+                (state.prop_mask ? state.params.biome_min_weight : 2.0f);
 
-            // populate dispatches, one per slot per lod ring, each fills its own range of grass_instances
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::grass_populate_c));
-            RHI_CommandList::SetBuffer("grass_lod_parameters", detail_buffer);
-            RHI_CommandList::SetBuffer("terrain_road_exclusions", road_exclusions);
+            // the seating offset rides along with the terrain entity y, the populate shader adds
+            // that single float to every sampled height so no push constant slot is needed
+            const float seat_y = terrain_entity_y + state.params.surface_offset;
+
+            Vector4 terrain_mapping = terrain_mapping_live;
+            if (terrain_mapping.z == 0.0f && terrain_mapping.w == 0.0f)
+            {
+                terrain_mapping = state.params.terrain_world_mapping;
+                terrain_mapping.x += terrain_offset.x;
+                terrain_mapping.y += terrain_offset.z;
+            }
+
+            // the populate shader has no push constant floats left, so the slot, the mask channel,
+            // the two ends of the size range and the lean travel in the bits of draw_index
+            const uint32_t mask_channel = std::min(state.params.mask_channel, 3u);
+            const uint32_t scale_min    = pack_instance_scale(std::min(state.params.size_min, state.params.size_max));
+            const uint32_t scale_max    = pack_instance_scale(std::max(state.params.size_min, state.params.size_max));
+            // four bits left, enough for the lean, one degree of resolution is beyond what a chip
+            // a few centimetres across can show
+            const uint32_t tilt         = static_cast<uint32_t>(
+                clamp(state.params.tilt_deg, 0.0f, 45.0f) * (15.0f / 45.0f) + 0.5f
+            );
+
+            // the sign of the size carries the inversion, a slot that inverts takes the ground the
+            // slot it mirrors left bare, so the two have to be authored at the same size to interlock
+            const float patch_size  = max(state.params.patch_size_m, 0.0f);
+            const float patch_push  = state.params.patch_invert ? -patch_size : patch_size;
+            const float patch_boost = gpu_scatter_patch_boost(patch_size, state.params.patch_coverage);
+
+            // the same argument applies to the part of the circle the camera cannot see, and the
+            // two multiply, this has to track grass_max_boost in grass_populate.hlsl
+            const float total_boost = std::min(
+                patch_boost * gpu_scatter_frustum_boost(camera->GetFovHorizontalRad()),
+                gpu_scatter_max_boost
+            );
+
+            for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+            {
+                const float cell_size   = state.params.cell_size_m[lod];
+                const float ring_radius = gpu_scatter_ring_radius(state, lod);
+                if (cell_size <= 0.0f || ring_radius <= 0.0f)
+                {
+                    continue;
+                }
+
+                const float inner_radius = lod == 0 ?
+                    0.0f :
+                    std::min(
+                        gpu_scatter_ring_radius(state, lod - 1),
+                        ring_radius
+                    );
+                // grass_instances is partitioned by slot and lod, the base is the cumulative prefix
+                // sum of every cap before it so each ring writes into its own contiguous range
+                const uint32_t lod_base   = renderer_gpu_scatter_base(slot, lod);
+                const uint32_t lod_cap    = gpu_scatter_slot_cap(state, slot, lod);
+
+                // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
+                // seating offset
+                // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
+                pass.TransparentRaw(*reinterpret_cast<const uint32_t*>(&biome_min));
+                pass.DrawIndex(lod                 |
+                               (slot         << 4)  |
+                               (mask_channel << 8)  |
+                               (scale_min    << 12) |
+                               (scale_max    << 20) |
+                               (tilt         << 28));
+                pass.MaterialIndex(*reinterpret_cast<const uint32_t*>(&seat_y));
+                pass.Set(pass_grass_populate::cell_size, cell_size);
+                pass.Set(pass_grass_populate::ring_radius, ring_radius);
+                pass.Set(pass_grass_populate::lod_base, lod_base);
+                pass.Set(pass_grass_populate::max_instances_per_lod, lod_cap);
+                pass.Set(pass_grass_populate::height_min, state.params.height_min);
+                pass.Set(pass_grass_populate::height_max, state.params.height_max);
+                pass.Set(pass_grass_populate::max_slope_cos, max_slope_cos);
+                pass.Set(pass_grass_populate::inner_radius, inner_radius);
+                pass.Set(pass_grass_populate::terrain_mapping, terrain_mapping);
+                pass.Set(pass_grass_populate::patch_size, patch_push);
+                pass.Set(pass_grass_populate::patch_coverage, state.params.patch_coverage);
+                pass.Set(pass_grass_populate::patch_edge, state.params.patch_edge);
+                pass.Set(pass_grass_populate::ground_mask, state.params.ground_mask);
+                pass.Set(pass_grass_populate::min_slope_cos, min_slope_cos);
+                pass.Set(pass_grass_populate::slope_bias, state.params.slope_bias);
+                pass.Set(pass_grass_populate::height_fade, state.params.height_fade);
+                pass.Set(pass_grass_populate::root_radius, 0.0f);
+                if (cvar_grass_specialized.GetValue() && state.material &&
+                    state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
+                {
+                    // Every grass deformation preserves distance from the root, including
+                    // tire and chassis bending. Bound any rotation of the actual mesh;
+                    // the shader applies the maximum packed instance scale separately.
+                    const auto& bounds = state.mesh->GetSubMesh(0).root.aabb;
+                    pass.Set(pass_grass_populate::root_radius, bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f);
+                }
+
+                // one cell per thread, dispatch z carries the instance index inside the cell, the
+                // shader recomputes instances_per_cell so both formulas must match
+                const uint32_t cells_per_axis =
+                    2u *
+                    static_cast<uint32_t>(
+                        ceilf(ring_radius / cell_size)
+                    ) +
+                    2u;
+                const std::array<uint32_t, 4>& window = cell_windows[renderer_gpu_scatter_arg_index(slot, lod)];
+                const uint32_t groups_x = (min(window[2], cells_per_axis) + 7u) / 8u;
+                const uint32_t groups_z = (min(window[3], cells_per_axis) + 7u) / 8u;
+                if (groups_x == 0 || groups_z == 0)
+                {
+                    continue;
+                }
+                const float ring_area = math::pi * (
+                    (ring_radius * ring_radius) -
+                    (inner_radius * inner_radius)
+                );
+                const float cells_in_ring =
+                    ring_area /
+                    (cell_size * cell_size);
+                // mirrors grass_populate.hlsl, the fraction it drops here it carries as a keep
+                // probability instead, so this only decides how many threads a cell gets
+                const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin *
+                                       total_boost /
+                                       std::max(cells_in_ring, 1.0f);
+                const uint32_t blades_per_cell = std::max(
+                    1u,
+                    static_cast<uint32_t>(std::ceil(per_cell))
+                );
+                pass.Dispatch(groups_x, groups_z, (blades_per_cell + gpu_scatter_blades_per_thread - 1) / gpu_scatter_blades_per_thread);
+            }
+        }
+
+        // args build, reads grass_count and writes the instance_count of this slot's three entries
+        {
+            pass.Shader(Renderer_Shader::grass_indirect_args_c, "grass_indirect_args");
+            pass.Bind(Renderer_BindingsUav::grass_count, buf_count);
+            pass.Bind(Renderer_BindingsUav::grass_indirect_args, buf_args);
+            pass.Bind("grass_mesh_geometry", Renderer_Buffer::GrassMeshGeometry);
+            pass.Bind("grass_mesh_args", Renderer_Buffer::GrassMeshArgs);
+
+            // the args shader clamps each atomic counter against its own lod cap, draw_index is
+            // the first args entry of the slot
+            static_assert(renderer_max_gpu_scatter_lods == 3, "grass_indirect_args push constant layout assumes 3 lods");
 
             for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
@@ -3034,214 +3180,30 @@ namespace spartan
                     continue;
                 }
 
-                Renderer::BindBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
-                Renderer::BindBuffer(Renderer_BindingsUav::grass_count, buf_count);
-                // the populate shader samples the terrain heightmap through the tex slot
-                Renderer::BindTexture(Renderer_BindingsSrv::tex, state.heightmap);
-                // hi-z on tex2 drives the per-instance frustum + occlusion cull, this frame's early depth when populate runs before
-                // the late cull, the complete depth after it, black (far) culls nothing when occlusion culling is off
-                Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_scatter_hiz);
-                // biome prop mask on tex3, the slot picks the channel, black means nothing is suitable
-                Renderer::BindTexture(Renderer_BindingsSrv::tex3, state.prop_mask ?
-                        state.prop_mask :
-                        GetStandardTexture(Renderer_StandardTexture::Black));
-
-                const float max_slope_cos = cosf(state.params.max_slope_deg * (math::pi / 180.0f));
-                // the floor can never sit above the ceiling, the shader divides by the gap between them
-                const float min_slope_cos = cosf(
-                    std::min(state.params.min_slope_deg, state.params.max_slope_deg) * (math::pi / 180.0f)
-                );
-                // a negative weight is the slot saying it wants no biome gate at all, which is what micro
-                // detail asks for. a slot that does want one and has no mask fails closed instead of
-                // filling the world
-                const float biome_min = state.params.biome_min_weight < 0.0f ?
-                    -1.0f :
-                    (state.prop_mask ? state.params.biome_min_weight : 2.0f);
-
-                // the seating offset rides along with the terrain entity y, the populate shader adds
-                // that single float to every sampled height so no push constant slot is needed
-                const float seat_y = terrain_entity_y + state.params.surface_offset;
-
-                Vector4 terrain_mapping = terrain_mapping_live;
-                if (terrain_mapping.z == 0.0f && terrain_mapping.w == 0.0f)
-                {
-                    terrain_mapping = state.params.terrain_world_mapping;
-                    terrain_mapping.x += terrain_offset.x;
-                    terrain_mapping.y += terrain_offset.z;
-                }
-
-                // the populate shader has no push constant floats left, so the slot, the mask channel,
-                // the two ends of the size range and the lean travel in the bits of draw_index
-                const uint32_t mask_channel = std::min(state.params.mask_channel, 3u);
-                const uint32_t scale_min    = pack_instance_scale(std::min(state.params.size_min, state.params.size_max));
-                const uint32_t scale_max    = pack_instance_scale(std::max(state.params.size_min, state.params.size_max));
-                // four bits left, enough for the lean, one degree of resolution is beyond what a chip
-                // a few centimetres across can show
-                const uint32_t tilt         = static_cast<uint32_t>(
-                    clamp(state.params.tilt_deg, 0.0f, 45.0f) * (15.0f / 45.0f) + 0.5f
-                );
-
-                // the sign of the size carries the inversion, a slot that inverts takes the ground the
-                // slot it mirrors left bare, so the two have to be authored at the same size to interlock
-                const float patch_size  = max(state.params.patch_size_m, 0.0f);
-                const float patch_push  = state.params.patch_invert ? -patch_size : patch_size;
-                const float patch_boost = gpu_scatter_patch_boost(patch_size, state.params.patch_coverage);
-
-                // the same argument applies to the part of the circle the camera cannot see, and the
-                // two multiply, this has to track grass_max_boost in grass_populate.hlsl
-                const float total_boost = std::min(
-                    patch_boost * gpu_scatter_frustum_boost(camera->GetFovHorizontalRad()),
-                    gpu_scatter_max_boost
-                );
-
+                pass.MaterialIndex(0);
+                pass.Transparent(false);
+                pass.DrawIndex(renderer_gpu_scatter_arg_index(slot, 0));
                 for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
-                    const float cell_size   = state.params.cell_size_m[lod];
-                    const float ring_radius = gpu_scatter_ring_radius(state, lod);
-                    if (cell_size <= 0.0f || ring_radius <= 0.0f)
-                    {
-                        continue;
-                    }
-
-                    const float inner_radius = lod == 0 ?
-                        0.0f :
-                        std::min(
-                            gpu_scatter_ring_radius(state, lod - 1),
-                            ring_radius
-                        );
-                    // grass_instances is partitioned by slot and lod, the base is the cumulative prefix
-                    // sum of every cap before it so each ring writes into its own contiguous range
-                    const uint32_t lod_base   = renderer_gpu_scatter_base(slot, lod);
-                    const uint32_t lod_cap    = gpu_scatter_slot_cap(state, slot, lod);
-
-                    // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
-                    // seating offset
-                    // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
-                    m_pcb_pass_cpu.is_transparent = *reinterpret_cast<const uint32_t*>(&biome_min);
-                    m_pcb_pass_cpu.draw_index     = lod                 |
-                                                    (slot         << 4)  |
-                                                    (mask_channel << 8)  |
-                                                    (scale_min    << 12) |
-                                                    (scale_max    << 20) |
-                                                    (tilt         << 28);
-                    m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&seat_y);
-                    m_pcb_pass_cpu.set(pass_grass_populate::cell_size, cell_size);
-                    m_pcb_pass_cpu.set(pass_grass_populate::ring_radius, ring_radius);
-                    m_pcb_pass_cpu.set(pass_grass_populate::lod_base, lod_base);
-                    m_pcb_pass_cpu.set(pass_grass_populate::max_instances_per_lod, lod_cap);
-                    m_pcb_pass_cpu.set(pass_grass_populate::height_min, state.params.height_min);
-                    m_pcb_pass_cpu.set(pass_grass_populate::height_max, state.params.height_max);
-                    m_pcb_pass_cpu.set(pass_grass_populate::max_slope_cos, max_slope_cos);
-                    m_pcb_pass_cpu.set(pass_grass_populate::inner_radius, inner_radius);
-                    m_pcb_pass_cpu.set(pass_grass_populate::terrain_mapping, terrain_mapping);
-                    m_pcb_pass_cpu.set(pass_grass_populate::patch_size, patch_push);
-                    m_pcb_pass_cpu.set(pass_grass_populate::patch_coverage, state.params.patch_coverage);
-                    m_pcb_pass_cpu.set(pass_grass_populate::patch_edge, state.params.patch_edge);
-                    m_pcb_pass_cpu.set(pass_grass_populate::ground_mask, state.params.ground_mask);
-                    m_pcb_pass_cpu.set(pass_grass_populate::min_slope_cos, min_slope_cos);
-                    m_pcb_pass_cpu.set(pass_grass_populate::slope_bias, state.params.slope_bias);
-                    m_pcb_pass_cpu.set(pass_grass_populate::height_fade, state.params.height_fade);
-                    m_pcb_pass_cpu.set(pass_grass_populate::root_radius, 0.0f);
-                    if (cvar_grass_specialized.GetValue() && state.material &&
-                        state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
-                        state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
-                        state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
-                    {
-                        // Every grass deformation preserves distance from the root, including
-                        // tire and chassis bending. Bound any rotation of the actual mesh;
-                        // the shader applies the maximum packed instance scale separately.
-                        const auto& bounds = state.mesh->GetSubMesh(0).root.aabb;
-                        m_pcb_pass_cpu.set(pass_grass_populate::root_radius, bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f);
-                    }
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-                    // one cell per thread, dispatch z carries the instance index inside the cell, the
-                    // shader recomputes instances_per_cell so both formulas must match
-                    const uint32_t cells_per_axis =
-                        2u *
-                        static_cast<uint32_t>(
-                            ceilf(ring_radius / cell_size)
-                        ) +
-                        2u;
-                    const std::array<uint32_t, 4>& window = cell_windows[renderer_gpu_scatter_arg_index(slot, lod)];
-                    const uint32_t groups_x = (min(window[2], cells_per_axis) + 7u) / 8u;
-                    const uint32_t groups_z = (min(window[3], cells_per_axis) + 7u) / 8u;
-                    if (groups_x == 0 || groups_z == 0)
-                    {
-                        continue;
-                    }
-                    const float ring_area = math::pi * (
-                        (ring_radius * ring_radius) -
-                        (inner_radius * inner_radius)
-                    );
-                    const float cells_in_ring =
-                        ring_area /
-                        (cell_size * cell_size);
-                    // mirrors grass_populate.hlsl, the fraction it drops here it carries as a keep
-                    // probability instead, so this only decides how many threads a cell gets
-                    const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin *
-                                           total_boost /
-                                           std::max(cells_in_ring, 1.0f);
-                    const uint32_t blades_per_cell = std::max(
-                        1u,
-                        static_cast<uint32_t>(std::ceil(per_cell))
-                    );
-                    RHI_CommandList::Dispatch(groups_x, groups_z, (blades_per_cell + gpu_scatter_blades_per_thread - 1) / gpu_scatter_blades_per_thread);
+                    pass.Set(pass_grass_indirect_args::lod_caps + lod, gpu_scatter_slot_cap(state, slot, lod));
                 }
-            }
-
-            // args build, reads grass_count and writes the instance_count of this slot's three entries
-            {
-                RHI_CommandList::SetShader(
-                    GetShader(Renderer_Shader::grass_indirect_args_c),
-                    "grass_indirect_args"
-                );
-
-                Renderer::BindBuffer(Renderer_BindingsUav::grass_count, buf_count);
-                Renderer::BindBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
-                RHI_CommandList::SetBuffer("grass_mesh_geometry", GetBuffer(Renderer_Buffer::GrassMeshGeometry));
-                RHI_CommandList::SetBuffer("grass_mesh_args", GetBuffer(Renderer_Buffer::GrassMeshArgs));
-
-                // the args shader clamps each atomic counter against its own lod cap, draw_index is
-                // the first args entry of the slot
-                static_assert(renderer_max_gpu_scatter_lods == 3, "grass_indirect_args push constant layout assumes 3 lods");
-
-                for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+                pass.Set(pass_grass_indirect_args::lod_count, renderer_max_gpu_scatter_lods);
+                pass.Set(pass_grass_indirect_args::cluster_pass, 0u);
+                pass.Bind(Renderer_BindingsUav::grass_indirect_args, buf_args);
+                pass.Dispatch(1, 1, 1);
+                if (cluster_buffer && (state.cluster_counts[0] || state.cluster_counts[1] || state.cluster_counts[2]))
                 {
-                    const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
-                    if (!gpu_scatter_ready(state))
+                    for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
                     {
-                        continue;
+                        pass.Set(pass_grass_indirect_args::cluster_offsets + ring, state.cluster_offsets[ring]);
+                        pass.Set(pass_grass_indirect_args::cluster_counts + ring, state.cluster_counts[ring]);
                     }
-
-                    m_pcb_pass_cpu.material_index = 0;
-                    m_pcb_pass_cpu.is_transparent = 0;
-                    m_pcb_pass_cpu.draw_index     = renderer_gpu_scatter_arg_index(slot, 0);
-                    for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
-                    {
-                        m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_caps + lod, gpu_scatter_slot_cap(state, slot, lod));
-                    }
-                    m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_count, renderer_max_gpu_scatter_lods);
-                    m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_pass, 0u);
-                    Renderer::BindBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
-                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                    RHI_CommandList::Dispatch(1, 1, 1);
-                    if (cluster_buffer && (state.cluster_counts[0] || state.cluster_counts[1] || state.cluster_counts[2]))
-                    {
-                        for (uint32_t ring = 0; ring < renderer_max_gpu_scatter_lods; ++ring)
-                        {
-                            m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_offsets + ring, state.cluster_offsets[ring]);
-                            m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_counts + ring, state.cluster_counts[ring]);
-                        }
-                        m_pcb_pass_cpu.set(pass_grass_indirect_args::cluster_pass, 1u);
-                        Renderer::BindBuffer(Renderer_BindingsUav::grass_indirect_args, cluster_buffer);
-                        RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                        RHI_CommandList::Dispatch(1, 1, 1);
-                    }
+                    pass.Set(pass_grass_indirect_args::cluster_pass, 1u);
+                    pass.Bind(Renderer_BindingsUav::grass_indirect_args, cluster_buffer);
+                    pass.Dispatch(1, 1, 1);
                 }
             }
         }
-        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Grass_Interaction()
@@ -3341,30 +3303,26 @@ namespace spartan
         const uint32_t current = 1 - previous;
         history.previous_valid = history.valid;
         history.origins[current] = origin;
-        RHI_CommandList::BeginPass("grass_interaction");
         {
+            RenderPass pass("grass_interaction", shader);
             if (!history.valid)
                 RHI_CommandList::ClearTexture(history.fields[previous].get(), Color(0, 0, 0, 0));
             if (count)
                 RHI_CommandList::UpdateBuffer(history.contacts.get(), 0, count * sizeof(GrassWheelContact), contacts.data(), false);
-            RHI_CommandList::SetShader(shader);
-            RHI_CommandList::SetBuffer("grass_wheel_contacts", history.contacts.get());
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, history.fields[previous].get());
-            Renderer::BindTexture(Renderer_BindingsUav::tex, history.fields[current].get());
-            m_pcb_pass_cpu = {};
-            m_pcb_pass_cpu.set(pass_grass_interaction::origin, origin);
-            m_pcb_pass_cpu.set(pass_grass_interaction::cell_size, cell);
-            m_pcb_pass_cpu.set(pass_grass_interaction::history_valid, history.valid);
-            m_pcb_pass_cpu.set(pass_grass_interaction::origin_previous, history.origins[previous]);
-            m_pcb_pass_cpu.set(pass_grass_interaction::contact_count, count);
-            m_pcb_pass_cpu.set(pass_grass_interaction::delta_time, dt);
-            m_pcb_pass_cpu.set(pass_grass_interaction::track_center, Vector2(center.x, center.z));
-            m_pcb_pass_cpu.set(pass_grass_interaction::track_radius, clamp(cvar_grass_track_radius.GetValue(), 1.0f, grass_interaction_size * 0.5f - 12.0f));
-            m_pcb_pass_cpu.set(pass_grass_interaction::track_recovery, max(cvar_grass_track_recovery.GetValue(), 0.001f));
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::Dispatch(history.fields[current].get());
+            pass.Bind("grass_wheel_contacts", history.contacts.get());
+            pass.Bind(Renderer_BindingsSrv::tex, history.fields[previous].get());
+            pass.Bind(Renderer_BindingsUav::tex, history.fields[current].get());
+            pass.Set(pass_grass_interaction::origin, origin);
+            pass.Set(pass_grass_interaction::cell_size, cell);
+            pass.Set(pass_grass_interaction::history_valid, history.valid);
+            pass.Set(pass_grass_interaction::origin_previous, history.origins[previous]);
+            pass.Set(pass_grass_interaction::contact_count, count);
+            pass.Set(pass_grass_interaction::delta_time, dt);
+            pass.Set(pass_grass_interaction::track_center, Vector2(center.x, center.z));
+            pass.Set(pass_grass_interaction::track_radius, clamp(cvar_grass_track_radius.GetValue(), 1.0f, grass_interaction_size * 0.5f - 12.0f));
+            pass.Set(pass_grass_interaction::track_recovery, max(cvar_grass_track_recovery.GetValue(), 0.001f));
+            pass.Dispatch(history.fields[current].get());
         }
-        RHI_CommandList::EndPass();
         history.current = current;
         history.valid = true;
     }
@@ -3460,29 +3418,25 @@ namespace spartan
         const float cell        = vegetation_interaction_size / vegetation_interaction_resolution;
 
         state.writing = true;
-        RHI_CommandList::BeginPass("vegetation_interaction");
         {
+            RenderPass pass("vegetation_interaction", shader);
             if (!state.valid)
                 RHI_CommandList::ClearTexture(state.fields[previous].get(), Color(0, 0, 0, 0));
             if (count)
                 RHI_CommandList::UpdateBuffer(state.interactors.get(), 0, count * sizeof(VegetationInteractorGpu), interactors.data(), false);
-            RHI_CommandList::SetShader(shader);
-            RHI_CommandList::SetBuffer("vegetation_interactors", state.interactors.get());
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, state.fields[previous].get());
-            Renderer::BindTexture(Renderer_BindingsUav::tex, state.fields[current].get());
-            m_pcb_pass_cpu = {};
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::origin, state.origins[current]);
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::cell_size, cell);
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::history_valid, state.valid);
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::origin_previous, state.origins[previous]);
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::interactor_count, count);
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::delta_time, dt);
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::frequency, max(cvar_vegetation_frequency.GetValue(), 0.05f));
-            m_pcb_pass_cpu.set(pass_vegetation_interaction::damping, clamp(cvar_vegetation_damping.GetValue(), 0.0f, 4.0f));
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-            RHI_CommandList::Dispatch(state.fields[current].get());
+            pass.Bind("vegetation_interactors", state.interactors.get());
+            pass.Bind(Renderer_BindingsSrv::tex, state.fields[previous].get());
+            pass.Bind(Renderer_BindingsUav::tex, state.fields[current].get());
+            pass.Set(pass_vegetation_interaction::origin, state.origins[current]);
+            pass.Set(pass_vegetation_interaction::cell_size, cell);
+            pass.Set(pass_vegetation_interaction::history_valid, state.valid);
+            pass.Set(pass_vegetation_interaction::origin_previous, state.origins[previous]);
+            pass.Set(pass_vegetation_interaction::interactor_count, count);
+            pass.Set(pass_vegetation_interaction::delta_time, dt);
+            pass.Set(pass_vegetation_interaction::frequency, max(cvar_vegetation_frequency.GetValue(), 0.05f));
+            pass.Set(pass_vegetation_interaction::damping, clamp(cvar_vegetation_damping.GetValue(), 0.0f, 4.0f));
+            pass.Dispatch(state.fields[current].get());
         }
-        RHI_CommandList::EndPass();
         state.writing = false;
         state.valid   = true;
     }
@@ -3523,22 +3477,22 @@ namespace spartan
         // matches the rest of the geometry stage so the draw lands in the same render pass
         const bool xr_multiview = IsStereoView();
 
-        RHI_CommandList::BeginPass("g_buffer_grass");
-        RHI_CommandList::SetPassName("grass_gbuffer");
-        RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-        RHI_CommandList::SetRasterizer(IsViewWireframe() ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid);
-        RHI_CommandList::SetMultiview(xr_multiview);
-        RHI_CommandList::SetResolutionScale(true);
+        RenderPass pass("g_buffer_grass");
+        pass.Name("grass_gbuffer");
+        pass.Blend(RHI_BlendMode::Off);
+        pass.Rasterizer(IsViewWireframe() ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid);
+        pass.Multiview(xr_multiview);
+        pass.ResolutionScale(true);
         // grass is the only geometry rasterized a single time, it owns its depth here so it writes and tests against the opaque geometry
-        RHI_CommandList::SetDepth(RHI_DepthMode::ReadWrite);
-        RHI_CommandList::SetColorTargets(
+        pass.Depth(RHI_DepthMode::ReadWrite);
+        pass.ColorTargets(
             GetRenderTarget(Renderer_RenderTarget::gbuffer_color),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)
         );
-        RHI_CommandList::SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_depth_load);
+        pass.DepthTarget(Renderer_RenderTarget::gbuffer_depth, rhi_depth_load);
 
         // grass blades are double sided and a stone chip is closed, but both are cheap enough that one
         // raster state for every slot is not worth a second pipeline
@@ -3635,50 +3589,49 @@ namespace spartan
                 // card rings stay instanced, the card turns to face the camera in the vertex shader
                 const bool mesh_path    = grass_specialized && grass_mesh_ready && fits_mesh_group && !state.cluster_counts[lod];
                 const Color clear_color = clear_pending ? Color::standard_transparent : rhi_color_load;
-                RHI_CommandList::SetShaders(mesh_path ? grass_mesh : shader_vertex, shader_pixel);
-                RHI_CommandList::SetClearColor(clear_color);
+                pass.Shaders(mesh_path ? grass_mesh : shader_vertex, shader_pixel);
+                pass.ClearColor(clear_color);
                 cleared       = cleared || clear_pending;
                 clear_pending = false;
-                RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                Renderer::BindBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
-                RHI_CommandList::SetBuffer("grass_bodies", tracks.bodies.get());
-                Renderer::BindTexture(Renderer_BindingsSrv::tex,
+                pass.CullMode(RHI_CullMode::None);
+                pass.Bind(Renderer_BindingsUav::grass_instances, buf_instances);
+                pass.Bind("grass_bodies", tracks.bodies.get());
+                pass.Bind(Renderer_BindingsSrv::tex,
                     tracks.valid ? tracks.fields[tracks.current].get() : fallback);
-                Renderer::BindTexture(Renderer_BindingsSrv::tex2,
+                pass.Bind(Renderer_BindingsSrv::tex2,
                     tracks.valid ? tracks.fields[1 - tracks.current].get() : fallback);
                 if (mesh_path)
                 {
-                    RHI_CommandList::SetBuffer("grass_mesh_geometry", GetBuffer(Renderer_Buffer::GrassMeshGeometry));
-                    RHI_CommandList::SetBuffer("grass_mesh_args", buf_mesh_args);
+                    pass.Bind("grass_mesh_geometry", Renderer_Buffer::GrassMeshGeometry);
+                    pass.Bind("grass_mesh_args", buf_mesh_args);
                 }
                 else
                 {
-                    RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
-                    RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
+                    pass.VertexBuffer(mesh->GetVertexBuffer(), binding1_instance);
+                    pass.IndexBuffer(mesh->GetIndexBuffer());
                 }
 
                 // the mesh shader finds its draw list through draw_index, the instanced vertex shader ignores it
-                const uint32_t ring_list   = renderer_gpu_scatter_arg_index(slot, lod);
-                m_pcb_pass_cpu.draw_index     = mesh_path ? ring_list : 0;
-                m_pcb_pass_cpu.is_transparent = 0;
-                m_pcb_pass_cpu.material_index = state.material->GetIndex();
-                m_pcb_pass_cpu.set(pass_grass_draw::uv_patch, state.params.uv_patch);
-                m_pcb_pass_cpu.set(pass_grass_draw::lod_base, lod_base);
-                m_pcb_pass_cpu.set(pass_grass_draw::blend_reach, max(cvar_scatter_blend_distance.GetValue(), 0.0f));
+                const uint32_t ring_list = renderer_gpu_scatter_arg_index(slot, lod);
+                pass.DrawIndex(mesh_path ? ring_list : 0);
+                pass.Transparent(false);
+                pass.MaterialIndex(state.material->GetIndex());
+                pass.Set(pass_grass_draw::uv_patch, state.params.uv_patch);
+                pass.Set(pass_grass_draw::lod_base, lod_base);
+                pass.Set(pass_grass_draw::blend_reach, max(cvar_scatter_blend_distance.GetValue(), 0.0f));
                 for (uint32_t frame = 0; frame < 2; ++frame)
                 {
                     const Vector2 origin = tracks.origins[frame == 0 ? tracks.current : 1 - tracks.current];
                     const bool valid     = tracks.valid && (frame == 0 || tracks.previous_valid);
                     const uint32_t slot_tracks = frame == 0 ? pass_grass_draw::tracks : pass_grass_draw::tracks_previous;
-                    m_pcb_pass_cpu.set(slot_tracks, Vector4(origin.x, origin.y, 1.0f / grass_interaction_size, valid ? 1.0f : 0.0f));
+                    pass.Set(slot_tracks, Vector4(origin.x, origin.y, 1.0f / grass_interaction_size, valid ? 1.0f : 0.0f));
                 }
-                m_pcb_pass_cpu.set(pass_grass_draw::body, Vector4(tracks.valid ? 1.0f : 0.0f, body_center.x, body_center.y, contact_radius));
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                pass.Set(pass_grass_draw::body, Vector4(tracks.valid ? 1.0f : 0.0f, body_center.x, body_center.y, contact_radius));
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
                 if (mesh_path)
                 {
-                    RHI_CommandList::DrawMeshTasksIndirect(buf_mesh_args, ring_list * mesh_arg_stride);
+                    pass.DrawMeshTasksIndirect(buf_mesh_args, ring_list * mesh_arg_stride);
                 }
                 else
                 {
@@ -3686,15 +3639,15 @@ namespace spartan
                     {
                         RHI_Buffer* ranges = GetBuffer(Renderer_Buffer::GrassClusterArgs);
                         for (uint32_t i = 0; i < state.cluster_counts[lod]; ++i)
-                            RHI_CommandList::DrawIndexedIndirect(ranges, (state.cluster_offsets[lod] + i) * arg_stride);
+                            pass.DrawIndexedIndirect(ranges, (state.cluster_offsets[lod] + i) * arg_stride);
                     }
-                    else RHI_CommandList::DrawIndexedIndirect(buf_args, ring_list * arg_stride);
+                    else
+                    {
+                        pass.DrawIndexedIndirect(buf_args, ring_list * arg_stride);
+                    }
                 }
-
             }
         }
-
-        RHI_CommandList::EndPass();
 
         return cleared;
     }
@@ -3729,56 +3682,48 @@ namespace spartan
 
         bool xr_multiview = IsStereoView();
 
-        RHI_CommandList::BeginPass("meshlet_visualize");
+        // mode 1/2 color/wireframe by meshlet id, mode 3/4 color/wireframe by post-cull draw id
+        bool wireframe                       = (mode == 2 || mode == 4);
+        bool color_by_draw_id                = (mode == 3 || mode == 4);
+        const RHI_RasterizerMode raster_mode = wireframe ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid;
+
+        RenderPass pass("meshlet_visualize",
+            mesh_path ? Renderer_Shader::meshlet_visualize_m : Renderer_Shader::meshlet_visualize_v,
+            Renderer_Shader::meshlet_visualize_p);
+        pass.Blend(RHI_BlendMode::Off);
+        pass.Rasterizer(raster_mode);
+        // greater_equal mirrors the gbuffer test instead of equal which is fragile under fp drift between two vertex paths
+        pass.Depth(RHI_DepthMode::ReadGreaterEqual);
+        pass.ResolutionScale(true);
+        pass.ColorTarget(tex_debug, Color::standard_black);
+        pass.DepthTarget(tex_depth, rhi_depth_load);
+        pass.Multiview(xr_multiview);
+        // wireframe shows both faces so rear edges of thin meshlets stay visible, solid mode leaves culling to the triangle cull pass
+        pass.CullMode(RHI_CullMode::None);
+
+        // draw the opaque half then the alpha half
+        const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
+        pass.Set(pass_meshlet_visualize::color_by_draw_id, color_by_draw_id);
+        if (mesh_path)
         {
-            // mode 1/2 color/wireframe by meshlet id, mode 3/4 color/wireframe by post-cull draw id
-            bool wireframe                       = (mode == 2 || mode == 4);
-            bool color_by_draw_id                = (mode == 3 || mode == 4);
-            const RHI_RasterizerMode raster_mode = wireframe ? RHI_RasterizerMode::Wireframe : RHI_RasterizerMode::Solid;
-
-            RHI_CommandList::SetShaders(
-                mesh_path ? GetShader(Renderer_Shader::meshlet_visualize_m) : GetShader(Renderer_Shader::meshlet_visualize_v),
-                GetShader(Renderer_Shader::meshlet_visualize_p)
-            );
-            RHI_CommandList::SetBlend(RHI_BlendMode::Off);
-            RHI_CommandList::SetRasterizer(raster_mode);
-            // greater_equal mirrors the gbuffer test instead of equal which is fragile under fp drift between two vertex paths
-            RHI_CommandList::SetDepth(RHI_DepthMode::ReadGreaterEqual);
-            RHI_CommandList::SetResolutionScale(true);
-            RHI_CommandList::SetColorTarget(tex_debug, Color::standard_black);
-            RHI_CommandList::SetDepthTarget(tex_depth, rhi_depth_load);
-            RHI_CommandList::SetMultiview(xr_multiview);
-
-            // wireframe shows both faces so rear edges of thin meshlets stay visible, solid mode leaves culling to the triangle cull pass
-            RHI_CommandList::SetCullMode(RHI_CullMode::None);
-
-            // draw the opaque half then the alpha half
-            const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
-            m_pcb_pass_cpu.set(pass_meshlet_visualize::color_by_draw_id, color_by_draw_id);
-            if (mesh_path)
-            {
-                bind_mesh_shader_geometry();
-                push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), MESH_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
-                RHI_CommandList::SetClearColor(0, rhi_color_load);
-                RHI_CommandList::SetShaders(GetShader(Renderer_Shader::meshlet_visualize_alpha_m), GetShader(Renderer_Shader::meshlet_visualize_p));
-                RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
-            }
-            else
-            {
-                bind_visible_triangle_geometry();
-                m_pcb_pass_cpu.set(pass_visible_triangles::late, false);
-
-                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
-
-                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
-            }
+            bind_mesh_shader_geometry(pass);
+            set_mesh_draw_constants(pass);
+            pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, MESH_GRID_ARGS_SLOT * sizeof(Sb_IndirectDispatchArgs));
+            pass.ClearColor(0, rhi_color_load);
+            pass.Shaders(Renderer_Shader::meshlet_visualize_alpha_m, Renderer_Shader::meshlet_visualize_p);
+            pass.CullMode(RHI_CullMode::None);
+            pass.DrawMeshTasksIndirect(Renderer_Buffer::TriangleDispatchArgs, (MESH_GRID_ARGS_SLOT + 1) * sizeof(Sb_IndirectDispatchArgs));
         }
-        RHI_CommandList::EndPass();
+        else
+        {
+            bind_visible_triangle_geometry(pass);
+            pass.Set(pass_visible_triangles::late, false);
+
+            pass.Set(pass_visible_triangles::region_base, 0u);
+            pass.DrawIndirect(Renderer_Buffer::IndirectDrawArgs, 0);
+
+            pass.Set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
+            pass.DrawIndirect(Renderer_Buffer::IndirectDrawArgs, arg_stride);
+        }
     }
 }

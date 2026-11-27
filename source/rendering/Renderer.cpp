@@ -2227,17 +2227,13 @@ namespace spartan
                 ? (wires_on_light ? 2.0f : 1.0f)
                 : 0.0f;
 
-        RHI_CommandList::BeginPass("preview_studio");
-        SetCommonTextures();
-        {
-            RHI_CommandList::SetShader(shader_c);
-            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_out);
-            m_pcb_pass_cpu.set(pass_preview_studio::backdrop_tint, tint);
-            m_pcb_pass_cpu.set(pass_preview_studio::replace_sky, replace_sky);
-            m_pcb_pass_cpu.set(pass_preview_studio::wire_mode, wire_mode);
-            RHI_CommandList::Dispatch(tex_out);
-        }
-        RHI_CommandList::EndPass();
+        RenderPass pass("preview_studio", shader_c);
+        pass.CommonTextures();
+        pass.Bind(Renderer_BindingsUav::tex, tex_out);
+        pass.Set(pass_preview_studio::backdrop_tint, tint);
+        pass.Set(pass_preview_studio::replace_sky, replace_sky);
+        pass.Set(pass_preview_studio::wire_mode, wire_mode);
+        pass.Dispatch(tex_out);
     }
 
     const Vector2& Renderer::GetResolutionRender()
@@ -4952,8 +4948,10 @@ namespace spartan
         m_draw_calls_prepass_count  = 0;
         m_draw_data_count           = 0;
         m_draw_data_gpu_synced      = false;
-        m_indirect_draw_count       = 0;
-        m_indirect_render_count     = 0;
+        m_indirect_draw_count           = 0;
+        m_indirect_render_count         = 0;
+        m_has_alpha_indirect            = false;
+        m_has_impostor_indirect         = false;
         m_cull_task_count               = 0;
         m_transparents_present          = false;
         m_water_present                 = false;
@@ -5610,6 +5608,27 @@ namespace spartan
                 expanded_plans[0], commit_slots[0], diameter_pixels);
         }
         SP_PROFILE_CPU_END();
+
+        // Classify whether any indirect draw uses alpha-testing or impostors so Pass_Visibility,
+        // Pass_Material_Resolve and Pass_GBuffer_Indirect skip empty category passes cleanly.
+        m_has_alpha_indirect    = false;
+        m_has_impostor_indirect = false;
+        for (uint32_t i = 0; i < m_indirect_draw_count; i++)
+        {
+            const uint32_t flags = m_indirect_draw_data[i].flags;
+            if ((flags & (1u << 14)) != 0u)
+            {
+                m_has_impostor_indirect = true;
+            }
+            else if ((flags & 16u) != 0u)
+            {
+                m_has_alpha_indirect = true;
+            }
+            if (m_has_alpha_indirect && m_has_impostor_indirect)
+            {
+                break;
+            }
+        }
 
         // Report the conservative pre-cull meshlet bound once per session.
         EnsureCullingBufferCapacity(m_indirect_draw_count, expected_instances_worst_case, expected_survivors_worst_case);
@@ -7082,17 +7101,15 @@ namespace spartan
         }
 
         // both eyes side by side like the desktop mirror, srgb encoded for the png
-        RHI_CommandList::BeginMarker("screenshot_xr");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::xr_mirror_c), "screenshot_xr");
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
-            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_sdr);
-            m_pcb_pass_cpu.set(pass_xr_mirror::display_size, Vector2(static_cast<float>(tex_sdr->GetWidth()), static_cast<float>(tex_sdr->GetHeight())));
-            m_pcb_pass_cpu.set(pass_xr_mirror::encode_srgb, true);
-            RHI_CommandList::Dispatch(tex_sdr);
+            RenderPass pass("screenshot_xr", Renderer_Shader::xr_mirror_c, false);
+            pass.Bind(Renderer_BindingsSrv::tex,  tex_stereo, rhi_all_mips, 0, 0);
+            pass.Bind(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
+            pass.Bind(Renderer_BindingsUav::tex,  tex_sdr);
+            pass.Set(pass_xr_mirror::display_size, Vector2(static_cast<float>(tex_sdr->GetWidth()), static_cast<float>(tex_sdr->GetHeight())));
+            pass.Set(pass_xr_mirror::encode_srgb, true);
+            pass.Dispatch(tex_sdr);
         }
-        RHI_CommandList::EndMarker();
 
         lock_guard<mutex> lock(screenshot_mutex);
         if (screenshot.pending)
@@ -7120,17 +7137,13 @@ namespace spartan
             display_size = Vector2(viewport_w, viewport_h);
         }
 
-        RHI_CommandList::BeginPass("xr_mirror");
-        {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::xr_mirror_c));
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
-            Renderer::BindTexture(Renderer_BindingsUav::tex, tex_output);
-            m_pcb_pass_cpu.set(pass_xr_mirror::display_size, display_size);
-            m_pcb_pass_cpu.set(pass_xr_mirror::encode_srgb, false);
-            RHI_CommandList::Dispatch(tex_output);
-        }
-        RHI_CommandList::EndPass();
+        RenderPass pass("xr_mirror", Renderer_Shader::xr_mirror_c);
+        pass.Bind(Renderer_BindingsSrv::tex,  tex_stereo, rhi_all_mips, 0, 0);
+        pass.Bind(Renderer_BindingsSrv::tex2, tex_stereo, rhi_all_mips, 0, 1);
+        pass.Bind(Renderer_BindingsUav::tex,  tex_output);
+        pass.Set(pass_xr_mirror::display_size, display_size);
+        pass.Set(pass_xr_mirror::encode_srgb, false);
+        pass.Dispatch(tex_output);
     }
 
     void Renderer::FinalizeScreenshotReadback()
@@ -7332,12 +7345,12 @@ namespace spartan
         {
             return;
         }
-        Renderer::BindConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
+        RHI_CommandList::SetConstantBuffer(static_cast<uint32_t>(Renderer_BindingsCb::frame), GetBuffer(Renderer_Buffer::ConstantFrame));
         RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
         RHI_Texture* tex_ies = ies::get_atlas();
         RHI_CommandList::SetTexture("tex_ies", tex_ies && tex_ies->GetRhiSrv() ? tex_ies : GetStandardTexture(Renderer_StandardTexture::Black));
-        Renderer::BindBuffer(Renderer_BindingsUav::decals, GetBuffer(Renderer_Buffer::Decals));
-        Renderer::BindBuffer(Renderer_BindingsUav::rain_occlusion, GetBuffer(Renderer_Buffer::RainOcclusion));
+        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::decals), GetBuffer(Renderer_Buffer::Decals));
+        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::rain_occlusion), GetBuffer(Renderer_Buffer::RainOcclusion));
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)
@@ -7492,14 +7505,10 @@ namespace spartan
             m_pass_state.vrs_last_cleared_texture = tex_out;
         }
 
-        RHI_CommandList::BeginPass("variable_rate_shading");
-        {
-            RHI_CommandList::SetShader(shader_c);
-            Renderer::BindTexture(Renderer_BindingsSrv::tex, tex_in);
-            Renderer::BindTexture(Renderer_BindingsUav::tex_uint, tex_out);
-            RHI_CommandList::Dispatch(tex_out);
-        }
-        RHI_CommandList::EndPass();
+        RenderPass pass("variable_rate_shading", shader_c);
+        pass.Bind(Renderer_BindingsSrv::tex,      tex_in);
+        pass.Bind(Renderer_BindingsUav::tex_uint, tex_out);
+        pass.Dispatch(tex_out);
     }
 
     void Renderer::Pass_ComputeBatchA(
@@ -7648,10 +7657,10 @@ namespace spartan
         redirect();
     }
 
-    void Renderer::Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async)
+    void Renderer::Pass_GraphicsPhase1_Geometry(bool cull_prepared_async, bool scatter_prepared_async)
     {
         // the async path already ran both cull_early and cull_late before Pass_ComputeBatchA
-        if (!scatter_prepared_async)
+        if (!cull_prepared_async)
         {
             Pass_Cull_Early();
             Pass_Cull_Late();
@@ -7873,34 +7882,39 @@ namespace spartan
             while (static_cast<uint64_t>(blocks(output->GetWidth())) * blocks(output->GetHeight()) > 65536)
                 ++stride;
 
-            RHI_CommandList::BeginPass("path_tracing");
-            RHI_CommandList::SetShader(guided ? guided_shader : track_diffuse ? diffuse_shader : shader);
-            if (track_diffuse)
-                RHI_CommandList::SetTexture("pt_diffuse_history", denoiser.diffuse.get());
-            if (guided)
+            bool traced = false;
             {
-                m_pcb_pass_cpu.set(pass_path_tracing::write_guides, !denoiser.preview_valid);
-                if (history.phase == 0)
-                    denoiser.complete_guides = true;
-                Renderer::BindTexture(Renderer_BindingsUav::tex2, denoiser.normal.get());
-                Renderer::BindTexture(Renderer_BindingsUav::tex3, denoiser.depth.get());
-                Renderer::BindTexture(Renderer_BindingsUav::tex4, denoiser.input.get());
+                RenderPass pass("path_tracing", guided ? guided_shader : track_diffuse ? diffuse_shader : shader);
+                if (track_diffuse)
+                {
+                    pass.Bind("pt_diffuse_history", denoiser.diffuse.get());
+                }
+                if (guided)
+                {
+                    pass.Set(pass_path_tracing::write_guides, !denoiser.preview_valid);
+                    if (history.phase == 0)
+                    {
+                        denoiser.complete_guides = true;
+                    }
+                    pass.Bind(Renderer_BindingsUav::tex2, denoiser.normal.get());
+                    pass.Bind(Renderer_BindingsUav::tex3, denoiser.depth.get());
+                    pass.Bind(Renderer_BindingsUav::tex4, denoiser.input.get());
+                }
+                if (has_scene)
+                {
+                    pass.Bind(Renderer_BindingsSrv::tlas, m_tlas.get());
+                    GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
+                    pass.Bind(Renderer_BindingsUav::geometry_info, Renderer_Buffer::GeometryInfo);
+                }
+                pass.Bind(Renderer_BindingsSrv::tex3, Renderer_RenderTarget::skysphere);
+                pass.Bind(Renderer_BindingsUav::tex,  target);
+                pass.Set(pass_path_tracing::samples, history.samples);
+                pass.Set(pass_path_tracing::bounces, bounces);
+                pass.Set(pass_path_tracing::stride, stride);
+                pass.Set(pass_path_tracing::phase, history.phase);
+                pass.Dispatch((blocks(output->GetWidth()) + 7) / 8, (blocks(output->GetHeight()) + 7) / 8);
+                traced = pass.Ready();
             }
-            if (has_scene)
-            {
-                Renderer::BindAccelerationStructure(Renderer_BindingsSrv::tlas, m_tlas.get());
-                GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
-                Renderer::BindBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
-            }
-            Renderer::BindTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            Renderer::BindTexture(Renderer_BindingsUav::tex, target);
-            m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
-            m_pcb_pass_cpu.set(pass_path_tracing::bounces, bounces);
-            m_pcb_pass_cpu.set(pass_path_tracing::stride, stride);
-            m_pcb_pass_cpu.set(pass_path_tracing::phase, history.phase);
-            RHI_CommandList::Dispatch((blocks(output->GetWidth()) + 7) / 8, (blocks(output->GetHeight()) + 7) / 8);
-            const bool traced = RHI_CommandList::IsPipelineReady();
-            RHI_CommandList::EndPass();
             if (!traced && history.samples == 0 && history.phase == 0)
             {
                 RHI_CommandList::ClearTexture(output, Color::standard_black);
@@ -7912,22 +7926,21 @@ namespace spartan
                 ++history.samples;
                 if (guided && denoiser.complete_guides)
                 {
-                    RHI_CommandList::BeginPass("reference_nrd");
+                    RenderPass pass("reference_nrd");
                     denoiser.preview_valid = RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Reference, denoiser.motion.get(),
                         denoiser.normal.get(), denoiser.depth.get(), denoiser.input.get(), denoiser.output.get());
                     if (denoiser.preview_valid)
                     {
-                        RHI_CommandList::SetShader(resolve_shader);
-                        Renderer::BindTexture(Renderer_BindingsSrv::tex, target);
-                        Renderer::BindTexture(Renderer_BindingsSrv::tex2, denoiser.depth.get());
-                        Renderer::BindTexture(Renderer_BindingsSrv::tex3, denoiser.output.get());
-                        Renderer::BindTexture(Renderer_BindingsSrv::tex4, denoiser.diffuse.get());
-                        Renderer::BindTexture(Renderer_BindingsUav::tex, denoiser.preview.get());
-                        m_pcb_pass_cpu.set(pass_path_tracing::samples, history.samples);
-                        RHI_CommandList::Dispatch(denoiser.preview.get());
-                        denoiser.preview_valid = RHI_CommandList::IsPipelineReady();
+                        pass.Shader(resolve_shader);
+                        pass.Bind(Renderer_BindingsSrv::tex,  target);
+                        pass.Bind(Renderer_BindingsSrv::tex2, denoiser.depth.get());
+                        pass.Bind(Renderer_BindingsSrv::tex3, denoiser.output.get());
+                        pass.Bind(Renderer_BindingsSrv::tex4, denoiser.diffuse.get());
+                        pass.Bind(Renderer_BindingsUav::tex,  denoiser.preview.get());
+                        pass.Set(pass_path_tracing::samples, history.samples);
+                        pass.Dispatch(denoiser.preview.get());
+                        denoiser.preview_valid = pass.Ready();
                     }
-                    RHI_CommandList::EndPass();
                 }
             }
         }
@@ -8167,12 +8180,17 @@ namespace spartan
                 Pass_Ocean();
             }
         }
+        const bool has_gpu_scatter = HasActiveGpuScatter();
         if (early_camera)
         {
             Pass_VariableRateShading();
             if (fog_prepared_async)
             {
                 Pass_Cull_Early();
+                if (!has_gpu_scatter)
+                {
+                    Pass_Cull_Late();
+                }
                 surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
             }
         }
@@ -8221,39 +8239,33 @@ namespace spartan
             RHI_Device::SetFrameWait(sky_work.timeline.get(), sky_work.value);
         };
 
-        RHI_Work fog_work;
         if (early_camera && fog_prepared_async)
         {
             submit_sky();
 
-            // Record grass scatter BEFORE Pass_Cull_Late sets cull_late_active so Pass_Grass_Populate
-            // samples gbuffer_depth_hiz_early (synced by surface) and overlaps Pass_Cull_Late cleanly.
-            RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
-            scatter_commands->Begin();
-            RHI_Device::Bind(scatter_commands);
-            Pass_Grass_Populate();
-            Pass_Grass_Interaction();
-            scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-            scatter_work = scatter_commands->GetWork();
-
-            // Queue ocean FFT + volumetric fog immediately behind scatter on Compute so both execute
-            // in parallel with Pass_GraphicsPhase1_Geometry and finish well before ComputeB starts.
-            RHI_CommandList* fog_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
-            fog_commands->Begin();
-            RHI_Device::Bind(fog_commands);
-            if (!secondary_render_root_active && ocean_prepared_async && water_visible)
+            if (has_gpu_scatter)
             {
-                Pass_Ocean();
-                m_ocean_async_in_flight = true;
-            }
-            Pass_Fog(0, rhi_all_mips);
-            fog_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
-            fog_work = fog_commands->GetWork();
+                // Record grass scatter BEFORE Pass_Cull_Late sets cull_late_active so Pass_Grass_Populate
+                // samples gbuffer_depth_hiz_early (synced by surface) and overlaps Pass_Cull_Late cleanly.
+                RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+                scatter_commands->Begin();
+                RHI_Device::Bind(scatter_commands);
+                Pass_Grass_Populate();
+                Pass_Grass_Interaction();
+                scatter_commands->Submit(nullptr, false, nullptr, surface.timeline.get(), surface.value);
+                scatter_work = scatter_commands->GetWork();
 
-            // cull_late reads cull_early's depth/Hi-Z and runs on Graphics concurrently with scatter_commands.
-            RHI_Device::Bind(RHI_Frame_List::Graphics);
-            Pass_Cull_Late();
-            RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+                // cull_late reads cull_early's depth/Hi-Z and runs on Graphics concurrently with scatter_commands.
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
+                Pass_Cull_Late();
+                RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+            }
+            else
+            {
+                m_pass_state.grass_far = {};
+                m_pass_state.grass_interaction.valid = false;
+                m_pass_state.grass_interaction.wheel_valid.fill(false);
+            }
         }
 
         RHI_Device::Bind(RHI_Frame_List::Graphics);
@@ -8275,7 +8287,7 @@ namespace spartan
                 }
             }
 
-            Pass_GraphicsPhase1_Geometry(fog_prepared_async);
+            Pass_GraphicsPhase1_Geometry(fog_prepared_async, fog_prepared_async && has_gpu_scatter);
             if (m_water_present && m_pass_state.ocean && !secondary_render_root_active && !IsStereoView())
             {
                 Pass_Water_Visibility();
@@ -8306,6 +8318,9 @@ namespace spartan
                 RHI_Device::IsAsyncComputeConcurrent() &&
                 m_pass_state.restir.reservoirs_initialized;
 
+            // Keep ComputeB from binding ocean textures while Graphics runs Pass_Ocean concurrently with it.
+            const bool ocean_overlap_graphics = !secondary_render_root_active && ocean_prepared_async && water_visible;
+            m_ocean_async_in_flight = ocean_overlap_graphics;
             RHI_Device::Bind(RHI_Frame_List::ComputeB);
             Pass_ComputeBatchB(!restir_async);
             RHI_Work batch_b = RHI_Device::Submit(
@@ -8316,6 +8331,7 @@ namespace spartan
                 gbuffer_copy.timeline ? gbuffer_copy.timeline.get() : phase1.timeline.get(),
                 gbuffer_copy.timeline ? gbuffer_copy.value : phase1.value
             );
+            m_ocean_async_in_flight = false;
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline.get();
             uint64_t compute_b_value              = batch_b.value;
 
@@ -8339,8 +8355,8 @@ namespace spartan
                 Pass_GraphicsPhase2_ShadowsAndRT();
             }
 
-            // clouds, particle fluid/sim/volume-resolve, and the opaque reflection trace read only depth, the gbuffer,
-            // the tlas and the sky, none of which compute b writes, so they fill the graphics queue while it waits for shadows and occlusion
+            // Clouds, particles, ocean FFT and volumetric fog run on Graphics while ComputeB executes SSAO + RT shadows,
+            // so ComputeB starts immediately after phase1 without stalling behind ocean/fog on the single Compute queue.
             const bool early_work_recorded = !IsStereoView();
             bool clouds_prepared_early     = false;
             if (early_work_recorded)
@@ -8352,8 +8368,12 @@ namespace spartan
                     Pass_Particles_Simulate();
                 }
             }
+            if (ocean_overlap_graphics)
+            {
+                Pass_Ocean();
+            }
 
-            if (shadow_maps_required || early_work_recorded)
+            if (shadow_maps_required || early_work_recorded || ocean_overlap_graphics)
             {
                 RHI_Device::Submit(
                     RHI_Frame_List::Graphics,
@@ -8386,34 +8406,25 @@ namespace spartan
                 );
             }
 
-            // The trace misses into the sky, so it waits on sky_work; shade then waits on fog_work
-            // and runs on Graphics in parallel with ComputeB (SSAO + ray traced shadows).
-            // NRD reflection denoising shares nrd_screen_* and nrd_in_spec_radiance with SIGMA
-            // shadows on ComputeB, so it always runs in ProduceFrame_PerEye after ComputeB finishes.
+            // Fog and early reflections (inland) run on Graphics overlapping ComputeB, waiting only on sky_work.
             bool reflections_shaded_early = false;
+            bool overlap_post_sky         = false;
+            if (fog_prepared_async)
+            {
+                Pass_Fog(0, rhi_all_mips);
+                overlap_post_sky = true;
+            }
             if (!IsRestirActive() && early_work_recorded && !water_visible)
             {
                 Pass_Reflections_Trace(rhi_all_mips);
-                if (sky_work.timeline)
-                {
-                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, sky_work.timeline.get(), sky_work.value);
-                    RHI_Device::Bind(RHI_Frame_List::Graphics);
-                }
-                else if (fog_work.timeline)
-                {
-                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
-                    RHI_Device::Bind(RHI_Frame_List::Graphics);
-                }
-
-                if (fog_work.timeline)
+                if (fog_prepared_async)
                 {
                     Pass_Reflections_Shade(rhi_all_mips);
                     reflections_shaded_early = true;
-                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, fog_work.timeline.get(), fog_work.value);
-                    RHI_Device::Bind(RHI_Frame_List::Graphics);
                 }
+                overlap_post_sky = true;
             }
-            else if (sky_work.timeline)
+            if (overlap_post_sky || sky_work.timeline)
             {
                 RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false, nullptr, sky_work.timeline.get(), sky_work.value);
                 RHI_Device::Bind(RHI_Frame_List::Graphics);

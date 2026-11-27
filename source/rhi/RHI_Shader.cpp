@@ -204,6 +204,8 @@ namespace spartan
             // d3d12 psos read the bytecode length from here, a stale size makes every reloaded pso invalid
             m_object_size           = staged->m_object_size;
             m_descriptors           = move(staged->m_descriptors);
+            m_descriptor_lookup.clear();
+            m_descriptor_lookup_hash = 0;
             m_input_layout          = move(staged->m_input_layout);
             m_preprocessed_source   = move(staged->m_preprocessed_source);
             m_hash                  = staged->m_hash;
@@ -355,6 +357,63 @@ namespace spartan
     uint32_t RHI_Shader::GetVertexSize() const
     {
         return m_input_layout->GetVertexSize();
+    }
+
+    bool RHI_Shader::FindDescriptor(const char* name, uint32_t& slot, RHI_Descriptor_Type& type) const
+    {
+        if (!name || m_descriptors.empty())
+        {
+            return false;
+        }
+
+        const uint64_t expected_hash = m_hash != 0 ? m_hash : 1ull;
+        if (m_descriptor_lookup_hash != expected_hash)
+        {
+            m_descriptor_lookup.clear();
+            m_descriptor_lookup.reserve(m_descriptors.size());
+            for (const RHI_Descriptor& descriptor : m_descriptors)
+            {
+                if (descriptor.IsBindless())
+                {
+                    continue;
+                }
+
+                uint32_t unshifted = descriptor.slot;
+                switch (descriptor.type)
+                {
+                case RHI_Descriptor_Type::Image:
+                case RHI_Descriptor_Type::AccelerationStructure:
+                    unshifted = descriptor.slot - rhi_shader_register_shift_t;
+                    break;
+                case RHI_Descriptor_Type::TextureStorage:
+                    unshifted = descriptor.slot - rhi_shader_register_shift_u;
+                    break;
+                case RHI_Descriptor_Type::ConstantBuffer:
+                    unshifted = descriptor.slot - rhi_shader_register_shift_b;
+                    break;
+                case RHI_Descriptor_Type::StructuredBuffer:
+                    unshifted = descriptor.slot >= rhi_shader_register_shift_t
+                        ? (descriptor.slot - rhi_shader_register_shift_t)
+                        : (descriptor.slot - rhi_shader_register_shift_u);
+                    break;
+                default:
+                    break;
+                }
+
+                m_descriptor_lookup.emplace(std::string_view(descriptor.name), std::make_pair(unshifted, descriptor.type));
+            }
+            m_descriptor_lookup_hash = expected_hash;
+        }
+
+        auto it = m_descriptor_lookup.find(std::string_view(name));
+        if (it == m_descriptor_lookup.end())
+        {
+            return false;
+        }
+
+        slot = it->second.first;
+        type = it->second.second;
+        return true;
     }
 
     const char* RHI_Shader::GetEntryPoint() const

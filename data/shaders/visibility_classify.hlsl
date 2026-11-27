@@ -35,18 +35,19 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupI
     }
     GroupMemoryBarrierWithGroupSync();
 
-    uint2 resolution = (uint2)get_render_resolution_active();
-    uint2 pixel      = dispatch_id.xy;
-    uint  cat_bit    = 0u;
+    uint2 resolution    = (uint2)get_render_resolution_active();
+    uint2 pixel         = dispatch_id.xy;
+    uint  cat_bit       = 0u;
+    bool  scatter_clear = pass_bool(pass_visibility::scatter_cleared);
+    bool  clear_gbuffer = pass_bool(pass_visibility::clear_gbuffer);
+    uint  meshlet_half  = pass_uint(pass_visibility::meshlet_half_capacity);
 
     if (pixel.x < resolution.x && pixel.y < resolution.y)
     {
-        uint vis_id          = rw_visibility[pixel];
-        bool scatter_cleared = pass_bool(pass_visibility::scatter_cleared);
-        bool clear_gbuffer   = pass_bool(pass_visibility::clear_gbuffer);
+        uint vis_id = rw_visibility[pixel];
 
         // gpu scatter drew before resolve and owns every pixel it shaded (packed material is always non-zero)
-        if (scatter_cleared && vis_id != 0u && rw_gbuffer_material[pixel] != 0u)
+        if (scatter_clear && vis_id != 0u && rw_gbuffer_material[pixel] != 0u)
         {
             vis_id               = 0u;
             rw_visibility[pixel] = 0u;
@@ -69,11 +70,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupI
         }
         else if ((vis_id & VIS_FLAG_MESHLET) != 0u)
         {
-            uint meshlet_capacity, meshlet_stride;
-            meshlet_instances.GetDimensions(meshlet_capacity, meshlet_stride);
-            uint mi_idx = (vis_id >> VIS_TRI_BITS) & VIS_MESHLET_MASK;
-            bool is_alpha = mi_idx >= (meshlet_capacity >> 1u);
-            cat_bit = 1u << (is_alpha ? VIS_CATEGORY_ALPHA : VIS_CATEGORY_OPAQUE);
+            uint mi_idx   = (vis_id >> VIS_TRI_BITS) & VIS_MESHLET_MASK;
+            bool is_alpha = mi_idx >= meshlet_half;
+            cat_bit       = 1u << (is_alpha ? VIS_CATEGORY_ALPHA : VIS_CATEGORY_OPAQUE);
         }
     }
 

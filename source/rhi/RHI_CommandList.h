@@ -137,6 +137,8 @@ namespace spartan
         void* GetRhiResourcePipeline();
         void* GetRhiResource() const { return m_rhi_resource; }
         void* GetRhiState() const    { return m_rhi_state; }
+        uint32_t GetMaxSrvSlots() const { UpdateBindingMasks(); return m_max_srv_slots; }
+        uint32_t GetMaxUavSlots() const { UpdateBindingMasks(); return m_max_uav_slots; }
         uint32_t begin_timestamp();
         uint32_t end_timestamp();
         void ReadbackTimestampsForProfiler();
@@ -470,6 +472,8 @@ namespace spartan
         mutable std::bitset<rhi_max_resource_slots> m_texture_bindings_uav;
         mutable std::bitset<rhi_max_resource_slots> m_buffer_bindings_srv;
         mutable std::bitset<rhi_max_resource_slots> m_buffer_bindings_uav;
+        mutable uint32_t m_max_srv_slots = rhi_max_resource_slots;
+        mutable uint32_t m_max_uav_slots = rhi_max_resource_slots;
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
@@ -491,18 +495,32 @@ namespace spartan
         bool m_load_depth_render_target = false;
         std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
         static constexpr uint32_t m_max_tracked_resource_slots = rhi_max_resource_slots;
+        static_assert(m_max_tracked_resource_slots <= 128);
         std::array<RHI_Tracked_Texture_Binding, m_max_tracked_resource_slots> m_tracked_textures_srv;
         std::array<RHI_Tracked_Texture_Binding, m_max_tracked_resource_slots> m_tracked_textures_uav;
         std::array<RHI_Tracked_Texture_Binding, rhi_max_render_target_count + 2> m_tracked_attachments;
         std::array<RHI_Tracked_Buffer_Binding, m_max_tracked_resource_slots> m_tracked_buffers;
         std::array<RHI_Tracked_Buffer_Binding, 5> m_tracked_buffers_read;
-        // the tracking maps are cleared on every draw/dispatch or recording, the pool keeps their freed nodes for reuse instead of returning them to the heap
+        std::array<uint64_t, 2> m_tracked_srv_mask = {};
+        std::array<uint64_t, 2> m_tracked_uav_mask = {};
+        std::array<uint64_t, 2> m_tracked_buf_mask = {};
+        struct TrackedTextureCurrent
+        {
+            RHI_Texture* texture = nullptr;
+            std::array<RHI_Tracked_Usage, rhi_max_mip_count> usages = {};
+        };
+        struct TrackedBufferCurrent
+        {
+            RHI_Buffer* buffer = nullptr;
+            RHI_Tracked_Usage usage = {};
+        };
+        // the tracking maps are cleared on every recording, the pool keeps their freed nodes for reuse instead of returning them to the heap
         // it is single threaded like the recording itself and must be declared before the maps that use it
         std::pmr::unsynchronized_pool_resource m_tracking_pool;
         std::pmr::unordered_map<uint64_t, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_tracked_texture_history { &m_tracking_pool };
         std::pmr::unordered_map<uint64_t, RHI_Tracked_Usage> m_tracked_buffer_history                                { &m_tracking_pool };
-        std::pmr::unordered_map<RHI_Texture*, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_current_texture_usage { &m_tracking_pool };
-        std::pmr::unordered_map<RHI_Buffer*, RHI_Tracked_Usage> m_current_buffer_usage                              { &m_tracking_pool };
+        std::vector<TrackedTextureCurrent> m_current_texture_usage;
+        std::vector<TrackedBufferCurrent> m_current_buffer_usage;
         std::pmr::unordered_map<RHI_Texture*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_texture_layouts { &m_tracking_pool };
         std::pmr::unordered_map<void*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_image_layouts      { &m_tracking_pool };
 

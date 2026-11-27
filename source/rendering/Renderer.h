@@ -463,7 +463,7 @@ namespace spartan
         void Pass_ComputeBatchA(
             bool update_skysphere
         );
-        void Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async);
+        void Pass_GraphicsPhase1_Geometry(bool cull_prepared_async, bool scatter_prepared_async);
         void Pass_ComputeBatchB(bool include_gi);
         bool Pass_ReSTIR_CopyGBuffer();
         void Pass_ReSTIR_WithHistory(bool use_current_copy);
@@ -530,6 +530,7 @@ namespace spartan
         void Pass_Particles();
         // passes - gpu procedural grass
         // runs the placement compute + indirect args build, the draw is folded into the g-buffer pass via Pass_Grass_Draw
+        bool HasActiveGpuScatter();
         void Pass_Grass_Populate();
         void Pass_Grass_Interaction();
         // returns true when it cleared the g-buffer, which it only does when asked to and at least one slot drew

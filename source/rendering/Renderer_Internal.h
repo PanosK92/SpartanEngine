@@ -48,28 +48,6 @@ namespace spartan
 
     namespace Renderer
     {
-        // typed renderer-slot binding helpers (keeps RHI_CommandList free of Renderer_Bindings* enums)
-        inline void BindTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips)
-        {
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false, array_layer);
-        }
-        inline void BindTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips)
-        {
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true, array_layer);
-        }
-        inline void BindBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer)
-        {
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(slot), buffer);
-        }
-        inline void BindConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer)
-        {
-            RHI_CommandList::SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer);
-        }
-        inline void BindAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
-        {
-            RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
-        }
-
         // materials whose property values alone moved in the scan HaveMaterialsChangedThisFrame last ran, they keep
         // their slot and their textures, so the upload rewrites their entries instead of repacking every material
         // empty when that scan also saw a material arrive, leave, or swap a texture
@@ -77,18 +55,6 @@ namespace spartan
 
         template<typename F = std::nullptr_t>
         void Pass_Compute(const char* name, Renderer_Shader shader_enum, RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
-        template<typename F = std::nullptr_t>
-        void Pass_Graphics(
-            const char* name,
-            Renderer_Shader shader_vs_or_mesh,
-            Renderer_Shader shader_pixel,
-            std::initializer_list<RHI_Texture*> color_targets,
-            RHI_Texture* depth = nullptr,
-            RHI_BlendMode blend = RHI_BlendMode::Off,
-            RHI_DepthMode depth_mode = RHI_DepthMode::Auto,
-            RHI_RasterizerMode rasterizer = RHI_RasterizerMode::Solid,
-            F setup = nullptr
-        );
 
         struct FrameResource
         {
@@ -490,6 +456,8 @@ namespace spartan
             std::array<Render*, renderer_max_indirect_draws>     m_indirect_renders;
             uint32_t m_indirect_draw_count;
             uint32_t m_indirect_render_count;
+            bool m_has_alpha_indirect    = false;
+            bool m_has_impostor_indirect = false;
             std::vector<Sb_CullTask> m_cull_tasks;
             uint32_t m_cull_task_count;
             std::vector<uint32_t> m_tessellated_draws; // indices into m_draw_calls, args slot is the position in this list
@@ -550,6 +518,8 @@ namespace spartan
         inline auto& m_indirect_renders = state().m_indirect_renders;
         inline auto& m_indirect_draw_count = state().m_indirect_draw_count;
         inline auto& m_indirect_render_count = state().m_indirect_render_count;
+        inline auto& m_has_alpha_indirect = state().m_has_alpha_indirect;
+        inline auto& m_has_impostor_indirect = state().m_has_impostor_indirect;
         inline auto& m_cull_tasks = state().m_cull_tasks;
         inline auto& m_cull_task_count = state().m_cull_task_count;
         inline auto& m_tessellated_draws = state().m_tessellated_draws;
@@ -597,53 +567,7 @@ namespace spartan
         inline auto& m_present_in_renderer = state().m_present_in_renderer;
         inline auto& m_first_frame_completed = state().m_first_frame_completed;
         inline auto& m_frame_num = state().m_frame_num;
-
-    }
-
-    template<typename F>
-    void Renderer::Pass_Graphics(
-        const char* name,
-        Renderer_Shader shader_vs_or_mesh,
-        Renderer_Shader shader_pixel,
-        std::initializer_list<RHI_Texture*> color_targets,
-        RHI_Texture* depth,
-        RHI_BlendMode blend,
-        RHI_DepthMode depth_mode,
-        RHI_RasterizerMode rasterizer,
-        F setup
-    )
-    {
-        RHI_CommandList::BeginPass(name);
-        {
-            RHI_Shader* shader_a = GetShader(shader_vs_or_mesh);
-            RHI_Shader* shader_p = GetShader(shader_pixel);
-            RHI_CommandList::SetShaders(shader_a, shader_p);
-            RHI_CommandList::SetBlend(blend);
-            RHI_CommandList::SetDepth(depth_mode);
-            RHI_CommandList::SetRasterizer(rasterizer);
-            RHI_CommandList::SetDepthTarget(depth);
-
-            uint32_t color_index = 0;
-            RHI_Texture* colors[rhi_max_render_target_count] = {};
-            for (RHI_Texture* color : color_targets)
-            {
-                if (color_index >= rhi_max_render_target_count)
-                {
-                    break;
-                }
-                colors[color_index] = color;
-                color_index++;
-            }
-            RHI_CommandList::SetColorTargets(
-                colors[0], colors[1], colors[2], colors[3],
-                colors[4], colors[5], colors[6], colors[7]
-            );
-
-            if constexpr (!std::is_null_pointer_v<F>)
-            {
-                setup();
-            }
-        }
-        RHI_CommandList::EndPass();
     }
 }
+
+#include "Renderer_Pass.h"

@@ -470,10 +470,11 @@ namespace pass_cull_phase
 // visibility_classify.hlsl / visibility_resolve.hlsl, tile classification and compute material resolve
 namespace pass_visibility
 {
-    static const SHARED_UINT tile_stride     = 0; // uint, max tiles per category in visibility_tiles
-    static const SHARED_UINT clear_gbuffer   = 1; // bool, zero g-buffer targets on sky/empty pixels during classify
-    static const SHARED_UINT scatter_cleared = 2; // bool, gpu scatter already drew into gbuffer_color (a > 0 masks visibility)
-    static const SHARED_UINT category        = 3; // uint, 0 = opaque, 1 = alpha, 2 = impostor
+    static const SHARED_UINT tile_stride           = 0; // uint, max tiles per category in visibility_tiles
+    static const SHARED_UINT clear_gbuffer         = 1; // bool, zero g-buffer targets on sky/empty pixels during classify
+    static const SHARED_UINT scatter_cleared       = 2; // bool, gpu scatter already drew into gbuffer_color (a > 0 masks visibility)
+    static const SHARED_UINT category              = 3; // uint, 0 = opaque, 1 = alpha, 2 = impostor
+    static const SHARED_UINT meshlet_half_capacity = 4; // uint, half of meshlet_instances capacity (opaque < half, alpha >= half)
 }
 
 // shadow_cull.hlsl, the count and write passes run the same kernel so both see identical visibility

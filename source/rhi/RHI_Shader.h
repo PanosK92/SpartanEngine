@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <future>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include "../core/SpartanObject.h"
@@ -65,6 +66,7 @@ namespace spartan
         // misc
         uint32_t GetVertexSize() const;
         const std::vector<RHI_Descriptor>& GetDescriptors()      const { return m_descriptors; }
+        bool FindDescriptor(const char* name, uint32_t& slot, RHI_Descriptor_Type& type) const;
         const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for a vertex shader
         const auto& GetFilePath()                                const { return m_file_path; }
         RHI_Shader_Type GetShaderStage()                         const { return m_shader_type; }
@@ -87,6 +89,8 @@ namespace spartan
         std::vector<std::string> m_file_paths_multiple; // The file paths of include directives which are defined multiple times in the shader
         std::unordered_map<std::string, std::string> m_defines;
         std::vector<RHI_Descriptor> m_descriptors;
+        mutable std::unordered_map<std::string_view, std::pair<uint32_t, RHI_Descriptor_Type>> m_descriptor_lookup;
+        mutable uint64_t m_descriptor_lookup_hash = 0;
         std::shared_ptr<RHI_InputLayout> m_input_layout;
         std::atomic<RHI_ShaderCompilationState> m_compilation_state = RHI_ShaderCompilationState::Idle;
         RHI_Shader_Type m_shader_type                              = RHI_Shader_Type::Max;

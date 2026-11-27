@@ -808,96 +808,79 @@ namespace spartan
             tex_displacement_b
         );
 
+        RenderPass pass("ocean");
+
         // shared by every ocean dispatch below
-        m_pcb_pass_cpu.set(pass_ocean::wind_direction, Vector2(dir_x, dir_z));
-        m_pcb_pass_cpu.set(pass_ocean::wind_speed, wind_speed);
-        m_pcb_pass_cpu.set(pass_ocean::reset_history, reset_history);
-        m_pcb_pass_cpu.set(pass_ocean::cascade_lengths, Vector4(lengths[0], lengths[1], lengths[2], lengths[3]));
-        m_pcb_pass_cpu.set(pass_ocean::amplitude, water->GetAmplitude());
-        m_pcb_pass_cpu.set(pass_ocean::choppiness, water->GetChoppiness());
-        m_pcb_pass_cpu.set(pass_ocean::displacement_scale, water->GetDisplacementScale());
-        m_pcb_pass_cpu.set(pass_ocean::normal_strength, water->GetNormalStrength());
+        pass.Set(pass_ocean::wind_direction, Vector2(dir_x, dir_z));
+        pass.Set(pass_ocean::wind_speed, wind_speed);
+        pass.Set(pass_ocean::reset_history, reset_history);
+        pass.Set(pass_ocean::cascade_lengths, Vector4(lengths[0], lengths[1], lengths[2], lengths[3]));
+        pass.Set(pass_ocean::amplitude, water->GetAmplitude());
+        pass.Set(pass_ocean::choppiness, water->GetChoppiness());
+        pass.Set(pass_ocean::displacement_scale, water->GetDisplacementScale());
+        pass.Set(pass_ocean::normal_strength, water->GetNormalStrength());
 
-        RHI_CommandList::BeginPass("ocean");
+        // spectrum init, only when the parameters changed
+        if (m_pass_state.ocean_spectrum_dirty)
         {
-            // spectrum init, only when the parameters changed
-            if (m_pass_state.ocean_spectrum_dirty)
-            {
-                RHI_CommandList::SetShader(shader_init, "ocean_spectrum_init");
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
-                RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
+            pass.Shader(shader_init, "ocean_spectrum_init");
+            pass.Bind(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
+            pass.Dispatch(n / 8, n / 8, cascades);
 
-                m_pass_state.ocean_spectrum_dirty = false;
-            }
-
-            // spectrum update, evolves the spectrum to the current time
-            {
-                RHI_CommandList::SetShader(shader_update, "ocean_spectrum_update");
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
-            }
-
-            // inverse fft, one dimension at a time, in place on the working textures
-            {
-                RHI_CommandList::SetShader(shader_fft_h, "ocean_fft_horizontal");
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                RHI_CommandList::Dispatch(1, n, cascades);
-            }
-            {
-                RHI_CommandList::SetShader(shader_fft_v, "ocean_fft_vertical");
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                RHI_CommandList::Dispatch(1, n, cascades);
-            }
-
-            // assemble displacement, surface slope and foam from the spatial-domain fields
-            {
-                RHI_Buffer* wave_bounds = GetBuffer(Renderer_Buffer::OceanWaveBounds);
-                const uint32_t zero_bounds[renderer_ocean_max_cascades] = {};
-                RHI_CommandList::UpdateBuffer(wave_bounds, 0, sizeof(zero_bounds), zero_bounds, false);
-                RHI_CommandList::SetShader(shader_assemble, "ocean_assemble");
-                RHI_CommandList::SetBuffer("ocean_wave_bounds", wave_bounds);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_displacement, tex_displacement);
-                Renderer::BindTexture(Renderer_BindingsUav::ocean_normal, tex_normal);
-                RHI_CommandList::PrepareBufferForCompute(
-                    buffer_heights
-                );
-                Renderer::BindBuffer(Renderer_BindingsUav::ocean_heights, buffer_heights);
-                RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
-            }
-
-            RHI_Buffer* buffer_readback =
-                readback_index !=
-                    numeric_limits<uint32_t>::max() &&
-                !readback_in_use ?
-                GetBuffer(
-                    ocean_height_readback_type(
-                        readback_index
-                    )
-                ) :
-                nullptr;
-            if (buffer_readback)
-            {
-                RHI_CommandList::PrepareBufferForReadback(
-                    buffer_heights
-                );
-                RHI_CommandList::CopyBuffer(
-                    buffer_heights,
-                    buffer_readback,
-                    buffer_heights->GetObjectSize()
-                );
-                ocean_readback_written_mask |=
-                    1u << readback_index;
-            }
-
-            m_pass_state.ocean_displacement_produced = true;
+            m_pass_state.ocean_spectrum_dirty = false;
         }
-        RHI_CommandList::EndPass();
+
+        // spectrum update, evolves the spectrum to the current time
+        {
+            pass.Shader(shader_update, "ocean_spectrum_update");
+            pass.Bind(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
+            pass.Bind(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+            pass.Bind(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+            pass.Dispatch(n / 8, n / 8, cascades);
+        }
+
+        // inverse fft, one dimension at a time, in place on the working textures
+        {
+            pass.Shader(shader_fft_h, "ocean_fft_horizontal");
+            pass.Bind(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+            pass.Bind(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+            pass.Dispatch(1, n, cascades);
+        }
+        {
+            pass.Shader(shader_fft_v, "ocean_fft_vertical");
+            pass.Bind(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+            pass.Bind(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+            pass.Dispatch(1, n, cascades);
+        }
+
+        // assemble displacement, surface slope and foam from the spatial-domain fields
+        {
+            RHI_Buffer* wave_bounds = GetBuffer(Renderer_Buffer::OceanWaveBounds);
+            const uint32_t zero_bounds[renderer_ocean_max_cascades] = {};
+            RHI_CommandList::UpdateBuffer(wave_bounds, 0, sizeof(zero_bounds), zero_bounds, false);
+            pass.Shader(shader_assemble, "ocean_assemble");
+            pass.Bind("ocean_wave_bounds", wave_bounds);
+            pass.Bind(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
+            pass.Bind(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
+            pass.Bind(Renderer_BindingsUav::ocean_displacement, tex_displacement);
+            pass.Bind(Renderer_BindingsUav::ocean_normal, tex_normal);
+            RHI_CommandList::PrepareBufferForCompute(buffer_heights);
+            pass.Bind(Renderer_BindingsUav::ocean_heights, buffer_heights);
+            pass.Dispatch(n / 8, n / 8, cascades);
+        }
+
+        RHI_Buffer* buffer_readback =
+            readback_index != numeric_limits<uint32_t>::max() && !readback_in_use
+            ? GetBuffer(ocean_height_readback_type(readback_index))
+            : nullptr;
+        if (buffer_readback)
+        {
+            RHI_CommandList::PrepareBufferForReadback(buffer_heights);
+            RHI_CommandList::CopyBuffer(buffer_heights, buffer_readback, buffer_heights->GetObjectSize());
+            ocean_readback_written_mask |= 1u << readback_index;
+        }
+
+        m_pass_state.ocean_displacement_produced = true;
     }
 
     bool Renderer::ResolveOceanHeightReadback(
@@ -1259,8 +1242,7 @@ namespace spartan
         // frame uploads record into this command list, ahead of the passes that sample the field
         state.current = 1u - state.current;
         const size_t row_offset = static_cast<size_t>(state.upload_row_start) * OceanWake::resolution * 4;
-        RHI_CommandList::BeginPass("ocean_wake");
+        RenderPass pass("ocean_wake");
         state.textures[state.current]->UpdateRegion(0, state.upload_row_start, OceanWake::resolution, state.upload_row_count, state.texels.data() + row_offset, true);
-        RHI_CommandList::EndPass();
     }
 }
