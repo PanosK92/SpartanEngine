@@ -301,105 +301,306 @@ namespace
         }
     }
 
-    struct SilkRibbonSpec
+    struct LightBeamSpec
     {
-        float y_ratio;
-        float amp_a;
-        float freq_a;
-        float speed_a;
-        float amp_b;
-        float freq_b;
-        float speed_b;
-        float base_thickness;
-        float twist_freq;
-        float twist_speed;
+        float anchor_x;    // 0..1 normalized across viewport width
+        float angle_rad;   // diagonal tilt
+        float width_ratio; // fraction of viewport width
+        float drift_amp;
+        float drift_speed;
+        float pulse_speed;
         float phase;
-        float parallax_depth;
-        ImVec4 crest_color;
-        ImVec4 body_color;
-        float crest_alpha;
-        float body_alpha;
-        bool  draw_filament;
+        float depth;
+        ImVec4 core_color;
+        ImVec4 fringe_color;
+        float peak_alpha;
     };
 
-    void draw_silk_ribbon(ImDrawList* draw, const ImVec2& rect_min, float avail_w, float avail_h, float time, const ImVec2& parallax, const SilkRibbonSpec& s)
+    void draw_light_beam(ImDrawList* draw, const ImVec2& rect_min, float avail_w, float avail_h, float time, const ImVec2& parallax, const LightBeamSpec& b)
     {
-        constexpr int cols = 80;
-        const int verts_per_col = 4;
-        const ImVec2 uv_white = ImGui::GetFontTexUvWhitePixel();
+        const float diag    = sqrtf(avail_w * avail_w + avail_h * avail_h) * 0.78f;
+        const float dir_x   = cosf(b.angle_rad);
+        const float dir_y   = sinf(b.angle_rad);
+        const float perp_x  = -dir_y;
+        const float perp_y  = dir_x;
 
-        const float base_y = rect_min.y + avail_h * s.y_ratio + parallax.y * s.parallax_depth;
-        const float px_off = parallax.x * s.parallax_depth;
+        const float drift   = sinf(time * b.drift_speed + b.phase) * b.drift_amp * avail_w;
+        const float cx      = rect_min.x + avail_w * b.anchor_x + drift + parallax.x * b.depth;
+        const float cy      = rect_min.y + avail_h * 0.44f + parallax.y * b.depth;
 
-        ImVec2 crest_pts[cols + 1];
-        float  crest_alphas[cols + 1];
+        const float breathe = 0.72f + 0.28f * sinf(time * b.pulse_speed + b.phase * 1.9f);
+        const float half_w  = b.width_ratio * avail_w * 0.5f * (0.92f + 0.08f * cosf(time * b.pulse_speed * 0.7f + b.phase));
+        const float core_a  = b.peak_alpha * breathe;
+        const float edge_a  = core_a * 0.35f;
 
-        draw->PrimReserve(cols * 3 * 6, (cols + 1) * verts_per_col);
+        // 5-band feathered beam across width (outer-left -> fringe -> bright core -> fringe -> outer-right)
+        // and 3 lengthwise stations (top fade -> mid bright -> bottom fade)
+        const float offsets[5]   = { -half_w, -half_w * 0.38f, 0.0f, half_w * 0.38f, half_w };
+        const float len_t[3]     = { -diag, -diag * 0.12f, diag * 0.95f };
+        const float len_alpha[3] = { 0.0f, 1.0f, 0.0f };
+        const ImVec2 uv_white    = ImGui::GetFontTexUvWhitePixel();
+
+        draw->PrimReserve(2 * 4 * 6, 3 * 5);
         const ImDrawIdx base_idx = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
 
-        for (int i = 0; i <= cols; ++i)
+        for (int row = 0; row < 3; ++row)
         {
-            const float u = static_cast<float>(i) / static_cast<float>(cols);
-            const float x = rect_min.x + u * avail_w;
-            const float ux = u + px_off / max(avail_w, 1.0f);
+            const float bx = cx + dir_x * len_t[row];
+            const float by = cy + dir_y * len_t[row];
+            const float la = len_alpha[row];
 
-            // multi-octave organic silk wave motion
-            const float wave_a = sinf(ux * s.freq_a + time * s.speed_a + s.phase);
-            const float wave_b = sinf(ux * s.freq_b - time * s.speed_b + s.phase * 1.73f);
-            const float wave_c = cosf(ux * (s.freq_a * 0.55f) + time * (s.speed_a * 0.65f) - s.phase * 0.6f);
-            const float cy     = base_y + (wave_a * s.amp_a + wave_b * s.amp_b + wave_c * s.amp_b * 0.45f) * avail_h;
-
-            // ribbon twists in 3d space: narrows where edge-on, billows where facing viewer
-            const float twist     = 0.5f + 0.5f * sinf(ux * s.twist_freq + time * s.twist_speed + s.phase * 2.1f);
-            const float half_h    = s.base_thickness * avail_h * (0.28f + 0.72f * twist);
-            const float pinch_lit = 1.0f + 0.55f * (1.0f - twist); // edge-on silk catches brighter specular glint
-
-            // gentle fade at extreme left/right borders
-            const float edge_fade = clamp(min(u, 1.0f - u) * 7.5f, 0.0f, 1.0f);
-            const float c_alpha   = clamp(s.crest_alpha * pinch_lit * edge_fade, 0.0f, 0.45f);
-            const float b_alpha   = clamp(s.body_alpha * (0.65f + 0.35f * twist) * edge_fade, 0.0f, 0.35f);
-
-            const float y0 = cy - half_h;
-            const float y1 = cy - half_h * 0.24f;
-            const float y2 = cy + half_h * 0.32f;
-            const float y3 = cy + half_h;
-
-            crest_pts[i]    = ImVec2(x, y1);
-            crest_alphas[i] = c_alpha;
-
-            draw->PrimWriteVtx(ImVec2(x, y0), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.crest_color, 0.0f)));
-            draw->PrimWriteVtx(ImVec2(x, y1), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.crest_color, c_alpha)));
-            draw->PrimWriteVtx(ImVec2(x, y2), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.body_color,  b_alpha)));
-            draw->PrimWriteVtx(ImVec2(x, y3), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(s.body_color,  0.0f)));
-        }
-
-        for (int i = 0; i < cols; ++i)
-        {
-            const ImDrawIdx c0 = static_cast<ImDrawIdx>(base_idx + i * verts_per_col);
-            const ImDrawIdx c1 = static_cast<ImDrawIdx>(base_idx + (i + 1) * verts_per_col);
-            for (int r = 0; r < 3; ++r)
+            for (int col = 0; col < 5; ++col)
             {
-                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c0 + r));
-                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c1 + r));
-                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c1 + r + 1));
-                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c0 + r));
-                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c1 + r + 1));
-                draw->PrimWriteIdx(static_cast<ImDrawIdx>(c0 + r + 1));
+                const float x = bx + perp_x * offsets[col];
+                const float y = by + perp_y * offsets[col];
+
+                ImVec4 c = b.fringe_color;
+                float a  = 0.0f;
+                if (col == 2)
+                {
+                    c = b.core_color;
+                    a = core_a * la;
+                }
+                else if (col == 1 || col == 3)
+                {
+                    c = b.fringe_color;
+                    a = edge_a * la;
+                }
+
+                draw->PrimWriteVtx(ImVec2(x, y), uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(c, a)));
             }
         }
 
-        // delicate luminous silk crest filament along the primary ribbons
-        if (s.draw_filament)
+        for (int row = 0; row < 2; ++row)
         {
-            const float line_w = max(1.0f, ImGui::EditorUi::scaled(1.15f));
-            for (int i = 0; i < cols; ++i)
+            for (int col = 0; col < 4; ++col)
             {
-                const float seg_a = (crest_alphas[i] + crest_alphas[i + 1]) * 0.5f * 1.45f;
-                if (seg_a > 0.01f)
-                {
-                    const ImU32 col = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::lerp(s.crest_color, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.35f), clamp(seg_a, 0.0f, 0.34f)));
-                    draw->AddLine(crest_pts[i], crest_pts[i + 1], col, line_w);
-                }
+                const ImDrawIdx i00 = static_cast<ImDrawIdx>(base_idx + row * 5 + col);
+                const ImDrawIdx i01 = static_cast<ImDrawIdx>(i00 + 1);
+                const ImDrawIdx i10 = static_cast<ImDrawIdx>(i00 + 5);
+                const ImDrawIdx i11 = static_cast<ImDrawIdx>(i10 + 1);
+                draw->PrimWriteIdx(i00); draw->PrimWriteIdx(i01); draw->PrimWriteIdx(i11);
+                draw->PrimWriteIdx(i00); draw->PrimWriteIdx(i11); draw->PrimWriteIdx(i10);
+            }
+        }
+    }
+
+    struct PrismShardSpec
+    {
+        float x_ratio;
+        float y_ratio;
+        float size_ratio;  // relative to min(avail_w, avail_h)
+        float aspect;      // elongation along local x
+        float base_angle;
+        float rot_speed;
+        float drift_x;
+        float drift_y;
+        float drift_speed;
+        float phase;
+        float depth;
+        float opacity;
+        int   shape;       // 0 = beveled 5-sided slab, 1 = triangular prism, 2 = elongated crystal blade
+        bool  warm_dispersion;
+        bool  cast_caustic;
+    };
+
+    void draw_prism_shard(ImDrawList* draw, const ImVec2& rect_min, float avail_w, float avail_h, float time, const ImVec2& parallax, float scale, const PrismShardSpec& p)
+    {
+        const float min_dim = min(avail_w, avail_h);
+        const float radius  = min_dim * p.size_ratio;
+        if (radius < 4.0f)
+        {
+            return;
+        }
+
+        const float cx  = rect_min.x + avail_w * p.x_ratio + sinf(time * p.drift_speed + p.phase) * p.drift_x * avail_w + parallax.x * p.depth;
+        const float cy  = rect_min.y + avail_h * p.y_ratio + cosf(time * p.drift_speed * 0.83f + p.phase * 1.4f) * p.drift_y * avail_h + parallax.y * p.depth;
+        const float ang = p.base_angle + time * p.rot_speed;
+        const float ca  = cosf(ang);
+        const float sa  = sinf(ang);
+
+        auto to_world = [&](float lx, float ly)
+        {
+            const float sx = lx * radius * p.aspect;
+            const float sy = ly * radius;
+            return ImVec2(cx + sx * ca - sy * sa, cy + sx * sa + sy * ca);
+        };
+
+        // build varied architectural crystal silhouettes (counter-clockwise in screen space)
+        ImVec2 v[5];
+        int v_count = 4;
+        if (p.shape == 0)
+        {
+            // chamfered 5-sided optical glass monolith slab
+            v_count = 5;
+            v[0] = to_world(-0.18f, -1.02f);
+            v[1] = to_world( 0.68f, -0.44f);
+            v[2] = to_world( 0.56f,  0.66f);
+            v[3] = to_world(-0.24f,  1.06f);
+            v[4] = to_world(-0.72f,  0.12f);
+        }
+        else if (p.shape == 1)
+        {
+            // classic asymmetric 3-sided dispersion glass prism
+            v_count = 3;
+            v[0] = to_world( 0.04f, -1.04f);
+            v[1] = to_world( 0.92f,  0.62f);
+            v[2] = to_world(-0.84f,  0.48f);
+        }
+        else
+        {
+            // sleek 4-sided crystal blade sliver
+            v_count = 4;
+            v[0] = to_world( 0.00f, -1.16f);
+            v[1] = to_world( 0.42f, -0.14f);
+            v[2] = to_world(-0.04f,  1.12f);
+            v[3] = to_world(-0.36f,  0.10f);
+        }
+
+        const ImVec2 apex = to_world(0.11f * sinf(time * 0.42f + p.phase) - 0.06f, -0.16f + 0.09f * cosf(time * 0.36f + p.phase));
+
+        // virtual optical light direction from upper-left to lower-right
+        const float lx = 0.72f;
+        const float ly = 0.69f;
+
+        const ImVec4 cyan_accent  = ImGui::Style::color_accent_1;
+        const ImVec4 ice_white    = ImVec4(0.86f, 0.97f, 1.00f, 1.0f);
+        const ImVec4 prism_violet = ImVec4(0.40f, 0.46f, 0.96f, 1.0f);
+        const ImVec4 prism_warm   = ImVec4(0.98f, 0.72f, 0.38f, 1.0f);
+        const ImVec4 glass_dark   = ImVec4(0.032f, 0.048f, 0.072f, 1.0f);
+
+        const ImVec2 uv_white = ImGui::GetFontTexUvWhitePixel();
+
+        // projected refracted caustic fan exiting downstream of hero shards
+        if (p.cast_caustic)
+        {
+            const float px          = -ly;
+            const float py          = lx;
+            const float fan_len     = radius * 2.8f;
+            const float start_half  = radius * 0.24f;
+            const float end_half    = radius * 1.15f;
+            const float caustic_a   = p.opacity * 0.44f * (0.84f + 0.16f * sinf(time * 0.55f + p.phase));
+
+            // inner cyan-white caustic ray
+            const ImVec2 s_l(apex.x - px * start_half, apex.y - py * start_half);
+            const ImVec2 s_r(apex.x + px * start_half, apex.y + py * start_half);
+            const ImVec2 e_l(apex.x + lx * fan_len - px * end_half, apex.y + ly * fan_len - py * end_half);
+            const ImVec2 e_r(apex.x + lx * fan_len + px * end_half, apex.y + ly * fan_len + py * end_half);
+
+            const ImVec4 ray_col = p.warm_dispersion ? ImGui::Style::lerp(cyan_accent, prism_warm, 0.24f) : cyan_accent;
+            draw->PrimReserve(6, 4);
+            const ImDrawIdx c_base = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
+            draw->PrimWriteVtx(s_l, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ice_white, caustic_a * 0.72f)));
+            draw->PrimWriteVtx(s_r, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ray_col,   caustic_a * 0.58f)));
+            draw->PrimWriteVtx(e_r, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ray_col,   0.0f)));
+            draw->PrimWriteVtx(e_l, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ice_white, 0.0f)));
+            draw->PrimWriteIdx(c_base); draw->PrimWriteIdx(static_cast<ImDrawIdx>(c_base + 1)); draw->PrimWriteIdx(static_cast<ImDrawIdx>(c_base + 2));
+            draw->PrimWriteIdx(c_base); draw->PrimWriteIdx(static_cast<ImDrawIdx>(c_base + 2)); draw->PrimWriteIdx(static_cast<ImDrawIdx>(c_base + 3));
+
+            // delicate spectral dispersion side-rays (warm amber + prism violet split)
+            const float split = radius * 0.34f;
+            const ImVec2 e_warm(apex.x + lx * fan_len * 0.92f + px * (end_half + split), apex.y + ly * fan_len * 0.92f + py * (end_half + split));
+            const ImVec2 e_viol(apex.x + lx * fan_len * 0.92f - px * (end_half + split), apex.y + ly * fan_len * 0.92f - py * (end_half + split));
+
+            draw->PrimReserve(6, 6);
+            const ImDrawIdx d_base = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
+            draw->PrimWriteVtx(s_r,    uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(prism_warm,   caustic_a * 0.34f)));
+            draw->PrimWriteVtx(e_r,    uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(prism_warm,   0.0f)));
+            draw->PrimWriteVtx(e_warm, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(prism_warm,   0.0f)));
+            draw->PrimWriteVtx(s_l,    uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(prism_violet, caustic_a * 0.32f)));
+            draw->PrimWriteVtx(e_viol, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(prism_violet, 0.0f)));
+            draw->PrimWriteVtx(e_l,    uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(prism_violet, 0.0f)));
+            draw->PrimWriteIdx(d_base); draw->PrimWriteIdx(static_cast<ImDrawIdx>(d_base + 1)); draw->PrimWriteIdx(static_cast<ImDrawIdx>(d_base + 2));
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(d_base + 3)); draw->PrimWriteIdx(static_cast<ImDrawIdx>(d_base + 4)); draw->PrimWriteIdx(static_cast<ImDrawIdx>(d_base + 5));
+        }
+
+        // soft optical scatter halo around brighter shards
+        if (p.opacity >= 0.085f)
+        {
+            const ImVec4 spill_col = p.warm_dispersion ? ImGui::Style::lerp(cyan_accent, prism_warm, 0.24f) : cyan_accent;
+            draw_radial_glow(draw, apex, radius * 1.45f, radius * 1.25f, spill_col, p.opacity * 0.34f, 24);
+        }
+
+        // draw beveled translucent glass triangular facets meeting at the internal crystal ridge
+        draw->PrimReserve(v_count * 3, v_count * 3);
+        const ImDrawIdx base_idx = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
+
+        for (int f = 0; f < v_count; ++f)
+        {
+            const ImVec2& a = v[f];
+            const ImVec2& b = v[(f + 1) % v_count];
+
+            // outward edge normal to compute facet illumination against the upper-left key light
+            const float ex    = b.x - a.x;
+            const float ey    = b.y - a.y;
+            const float el    = max(sqrtf(ex * ex + ey * ey), 1e-4f);
+            const float nx    = ey / el;
+            const float ny    = -ex / el;
+            const float ndotl = clamp(nx * (-lx) + ny * (-ly), -1.0f, 1.0f);
+            const float lit   = clamp(ndotl * 0.5f + 0.5f, 0.0f, 1.0f);
+            const float lit_s = lit * lit;
+
+            // crisp architectural glass contrast: shadowed facets drop to smoked obsidian, lit facets catch frosted cyan-white
+            const ImVec4 lit_tint    = p.warm_dispersion ? ImGui::Style::lerp(cyan_accent, prism_warm, 0.16f) : cyan_accent;
+            const ImVec4 facet_outer = ImGui::Style::lerp(glass_dark, ImGui::Style::lerp(lit_tint, ice_white, lit_s * 0.55f), 0.12f + 0.78f * lit_s);
+            const ImVec4 facet_apex  = ImGui::Style::lerp(ImGui::Style::lerp(glass_dark, prism_violet, 0.45f), ice_white, 0.25f + 0.68f * lit);
+
+            const float alpha_outer = p.opacity * (0.28f + 0.64f * lit_s);
+            const float alpha_apex  = p.opacity * (0.42f + 0.85f * lit);
+
+            draw->PrimWriteVtx(apex, uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(facet_apex,  alpha_apex)));
+            draw->PrimWriteVtx(a,    uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(facet_outer, alpha_outer)));
+            draw->PrimWriteVtx(b,    uv_white, ImGui::EditorUi::color(ImGui::EditorUi::alpha(facet_outer, alpha_outer * 0.70f)));
+
+            const ImDrawIdx fi = static_cast<ImDrawIdx>(base_idx + f * 3);
+            draw->PrimWriteIdx(fi);
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(fi + 1));
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(fi + 2));
+        }
+
+        // delicate internal crystal ridge hairlines
+        const float ridge_w = max(1.0f, scale * 0.80f);
+        for (int f = 0; f < v_count; ++f)
+        {
+            draw->AddLine(apex, v[f], ImGui::EditorUi::color(ImGui::EditorUi::alpha(ice_white, p.opacity * 0.88f)), ridge_w);
+        }
+
+        // dynamic Fresnel specular rim + crisp dual-band chromatic dispersion glint on light-facing bevels
+        const float rim_w = max(1.0f, scale * 1.25f);
+        for (int f = 0; f < v_count; ++f)
+        {
+            const ImVec2& a = v[f];
+            const ImVec2& b = v[(f + 1) % v_count];
+            const float ex  = b.x - a.x;
+            const float ey  = b.y - a.y;
+            const float el  = max(sqrtf(ex * ex + ey * ey), 1e-4f);
+            const float nx  = ey / el;
+            const float ny  = -ex / el;
+            const float spec = powf(clamp(nx * (-lx) + ny * (-ly), 0.0f, 1.0f), 1.45f);
+
+            const ImVec4 rim_col = ImGui::Style::lerp(cyan_accent, ice_white, spec * 0.85f);
+            const float rim_a    = clamp(p.opacity * (0.65f + 3.20f * spec), 0.0f, 0.68f);
+            draw->AddLine(a, b, ImGui::EditorUi::color(ImGui::EditorUi::alpha(rim_col, rim_a)), rim_w);
+
+            // chromatic dispersion split offset outward on light-catching bevel edges
+            if (spec > 0.25f)
+            {
+                const float disp_a    = 1.8f * scale;
+                const float disp_b    = 3.4f * scale;
+                const ImVec4 col_near = p.warm_dispersion ? prism_warm : cyan_accent;
+                const ImVec4 col_far  = p.warm_dispersion ? prism_violet : prism_warm;
+                draw->AddLine(
+                    ImVec2(a.x + nx * disp_a, a.y + ny * disp_a),
+                    ImVec2(b.x + nx * disp_a, b.y + ny * disp_a),
+                    ImGui::EditorUi::color(ImGui::EditorUi::alpha(col_near, rim_a * 0.52f)),
+                    max(1.0f, scale * 0.95f)
+                );
+                draw->AddLine(
+                    ImVec2(a.x + nx * disp_b, a.y + ny * disp_b),
+                    ImVec2(b.x + nx * disp_b, b.y + ny * disp_b),
+                    ImGui::EditorUi::color(ImGui::EditorUi::alpha(col_far, rim_a * 0.26f)),
+                    max(1.0f, scale * 0.80f)
+                );
             }
         }
     }
@@ -410,7 +611,7 @@ namespace
         const float avail_h = rect_max.y - rect_min.y;
         const float time    = static_cast<float>(ImGui::GetTime());
 
-        // gentle damped mouse parallax so the layered ribbons feel subtly 3d
+        // gentle damped mouse parallax so shards and light beams separate cleanly in depth
         static ImVec2 smoothed_parallax(0.0f, 0.0f);
         ImVec2 target_parallax(0.0f, 0.0f);
         if (ImGui::IsMouseHoveringRect(rect_min, rect_max, false))
@@ -418,106 +619,128 @@ namespace
             const ImVec2 mp = ImGui::GetIO().MousePos;
             const float nx  = clamp((mp.x - (rect_min.x + avail_w * 0.5f)) / max(avail_w * 0.5f, 1.0f), -1.0f, 1.0f);
             const float ny  = clamp((mp.y - (rect_min.y + avail_h * 0.5f)) / max(avail_h * 0.5f, 1.0f), -1.0f, 1.0f);
-            target_parallax = ImVec2(-nx * ImGui::EditorUi::scaled(22.0f), -ny * ImGui::EditorUi::scaled(14.0f));
+            target_parallax = ImVec2(-nx * ImGui::EditorUi::scaled(24.0f), -ny * ImGui::EditorUi::scaled(16.0f));
         }
         const float dt     = clamp(ImGui::GetIO().DeltaTime, 0.0f, 0.05f);
-        const float p_ease = 1.0f - expf(-4.0f * dt);
+        const float p_ease = 1.0f - expf(-4.5f * dt);
         smoothed_parallax.x += (target_parallax.x - smoothed_parallax.x) * p_ease;
         smoothed_parallax.y += (target_parallax.y - smoothed_parallax.y) * p_ease;
 
-        // 1. deep PlayStation midnight-navy / obsidian gradient canvas
-        const ImVec4 col_top_l   = ImVec4(0.018f, 0.028f, 0.054f, 1.0f);
-        const ImVec4 col_top_r   = ImVec4(0.028f, 0.056f, 0.098f, 1.0f);
-        const ImVec4 col_mid_l   = ImVec4(0.025f, 0.052f, 0.095f, 1.0f);
-        const ImVec4 col_mid_r   = ImVec4(0.036f, 0.088f, 0.145f, 1.0f);
-        const ImVec4 col_bot_l   = ImVec4(0.016f, 0.022f, 0.038f, 1.0f);
-        const ImVec4 col_bot_r   = ImVec4(0.020f, 0.034f, 0.058f, 1.0f);
-        const float split_y      = rect_min.y + avail_h * 0.46f;
+        // 1. Spartan obsidian-graphite architectural studio base (neutral dark graphite, not cobalt blue)
+        const ImVec4 col_tl = ImVec4(0.036f, 0.044f, 0.058f, 1.0f);
+        const ImVec4 col_tr = ImVec4(0.024f, 0.027f, 0.035f, 1.0f);
+        const ImVec4 col_bl = ImVec4(0.020f, 0.022f, 0.028f, 1.0f);
+        const ImVec4 col_br = ImVec4(0.028f, 0.036f, 0.046f, 1.0f);
+        draw->AddRectFilledMultiColor(rect_min, rect_max, ImGui::EditorUi::color(col_tl), ImGui::EditorUi::color(col_tr), ImGui::EditorUi::color(col_br), ImGui::EditorUi::color(col_bl));
 
-        draw->AddRectFilledMultiColor(rect_min, ImVec2(rect_max.x, split_y), ImGui::EditorUi::color(col_top_l), ImGui::EditorUi::color(col_top_r), ImGui::EditorUi::color(col_mid_r), ImGui::EditorUi::color(col_mid_l));
-        draw->AddRectFilledMultiColor(ImVec2(rect_min.x, split_y), rect_max, ImGui::EditorUi::color(col_mid_l), ImGui::EditorUi::color(col_mid_r), ImGui::EditorUi::color(col_bot_r), ImGui::EditorUi::color(col_bot_l));
-
-        // 2. drifting volumetric aurora orbs (hardware-interpolated radial fans, zero banding)
         const ImVec4 cyan_accent  = ImGui::Style::color_accent_1;
-        const ImVec4 cobalt_glow  = ImVec4(0.14f, 0.38f, 0.96f, 1.0f);
-        const ImVec4 teal_glow    = ImVec4(0.09f, 0.72f, 0.86f, 1.0f);
-        const ImVec4 indigo_glow  = ImVec4(0.28f, 0.24f, 0.85f, 1.0f);
+        const ImVec4 ice_white    = ImVec4(0.84f, 0.96f, 1.00f, 1.0f);
+        const ImVec4 prism_indigo = ImVec4(0.32f, 0.42f, 0.88f, 1.0f);
+        const ImVec4 prism_warm   = ImVec4(0.95f, 0.72f, 0.42f, 1.0f);
 
-        const ImVec2 orb1(
-            rect_min.x + avail_w * (0.52f + 0.14f * sinf(time * 0.16f)) + smoothed_parallax.x * 0.25f,
-            rect_min.y + avail_h * (0.30f + 0.07f * cosf(time * 0.21f)) + smoothed_parallax.y * 0.25f
+        // 2. subtle optical key light spilling from upper-left + faint warm counter-caustic lower-right
+        draw_radial_glow(
+            draw,
+            ImVec2(rect_min.x + avail_w * (0.24f + 0.04f * sinf(time * 0.14f)) + smoothed_parallax.x * 0.20f, rect_min.y + avail_h * 0.16f + smoothed_parallax.y * 0.20f),
+            avail_w * 0.50f,
+            avail_h * 0.56f,
+            cyan_accent,
+            0.075f
         );
-        draw_radial_glow(draw, orb1, avail_w * 0.44f, avail_h * 0.48f, cyan_accent, 0.105f);
-
-        const ImVec2 orb2(
-            rect_min.x + avail_w * (0.20f + 0.10f * cosf(time * 0.13f + 1.2f)) + smoothed_parallax.x * 0.40f,
-            rect_min.y + avail_h * (0.64f + 0.09f * sinf(time * 0.17f + 0.5f)) + smoothed_parallax.y * 0.40f
+        draw_radial_glow(
+            draw,
+            ImVec2(rect_min.x + avail_w * (0.76f + 0.04f * cosf(time * 0.12f)) + smoothed_parallax.x * 0.25f, rect_min.y + avail_h * 0.74f + smoothed_parallax.y * 0.25f),
+            avail_w * 0.42f,
+            avail_h * 0.46f,
+            prism_indigo,
+            0.052f
         );
-        draw_radial_glow(draw, orb2, avail_w * 0.46f, avail_h * 0.48f, cobalt_glow, 0.115f);
-
-        const ImVec2 orb3(
-            rect_min.x + avail_w * (0.82f + 0.08f * sinf(time * 0.19f + 2.4f)) + smoothed_parallax.x * 0.35f,
-            rect_min.y + avail_h * (0.56f + 0.10f * cosf(time * 0.15f + 1.8f)) + smoothed_parallax.y * 0.35f
+        draw_radial_glow(
+            draw,
+            ImVec2(rect_min.x + avail_w * 0.50f, rect_min.y + avail_h * 0.34f),
+            avail_w * 0.32f,
+            avail_h * 0.30f,
+            ice_white,
+            0.028f
         );
-        draw_radial_glow(draw, orb3, avail_w * 0.40f, avail_h * 0.44f, indigo_glow, 0.085f);
 
-        // 3. layered PlayStation XMB flowing translucent silk wave ribbons
-        const SilkRibbonSpec ribbons[] =
+        // 3. diagonal volumetric refracted light shafts sweeping across the studio
+        const LightBeamSpec beams[] =
         {
-            // deep background cobalt-indigo swell
-            { 0.54f, 0.095f, 3.6f, 0.22f, 0.045f, 6.2f, 0.16f, 0.155f, 2.8f, 0.19f, 0.4f, 0.35f, cobalt_glow, indigo_glow, 0.075f, 0.055f, false },
-            // wide sweeping teal ribbon behind the showcase cards
-            { 0.49f, 0.085f, 4.4f, 0.28f, 0.038f, 7.8f, 0.22f, 0.120f, 3.4f, 0.25f, 1.9f, 0.58f, teal_glow, cobalt_glow, 0.115f, 0.070f, true },
-            // signature luminous electric-cyan XMB hero silk ribbon
-            { 0.44f, 0.075f, 5.1f, 0.34f, 0.032f, 8.9f, 0.26f, 0.085f, 4.1f, 0.31f, 3.3f, 0.82f, ImGui::Style::lerp(cyan_accent, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f), cyan_accent, 0.145f, 0.075f, true },
-            // delicate counter-phase gossamer filament
-            { 0.60f, 0.068f, 4.8f, -0.26f, 0.028f, 9.4f, 0.30f, 0.052f, 4.6f, -0.24f, 5.1f, 1.00f, ImVec4(0.60f, 0.92f, 1.0f, 1.0f), teal_glow, 0.105f, 0.045f, true },
+            { 0.22f, 0.92f, 0.24f, 0.030f, 0.14f, 0.22f, 0.3f, 0.25f, cyan_accent,  prism_indigo, 0.055f },
+            { 0.39f, 0.96f, 0.15f, 0.024f, 0.19f, 0.28f, 1.6f, 0.45f, ice_white,    cyan_accent,  0.070f },
+            { 0.52f, 0.94f, 0.08f, 0.018f, 0.23f, 0.34f, 2.9f, 0.65f, ice_white,    cyan_accent,  0.062f },
+            { 0.65f, 0.91f, 0.18f, 0.028f, 0.16f, 0.20f, 4.1f, 0.38f, cyan_accent,  prism_warm,   0.042f },
+            { 0.80f, 0.95f, 0.14f, 0.022f, 0.13f, 0.25f, 5.4f, 0.30f, prism_indigo, cyan_accent,  0.038f },
         };
-
-        for (const SilkRibbonSpec& ribbon : ribbons)
+        for (const LightBeamSpec& beam : beams)
         {
-            draw_silk_ribbon(draw, rect_min, avail_w, avail_h, time, smoothed_parallax, ribbon);
+            draw_light_beam(draw, rect_min, avail_w, avail_h, time, smoothed_parallax, beam);
         }
 
-        // 4. subtle floating PlayStation ambient light motes / micro-bokeh
-        constexpr int mote_count = 30;
+        // 4. layered translucent 3d-beveled optical prism shards framing the viewport
+        const PrismShardSpec shards[] =
+        {
+            // deep background architectural glass monoliths (large chamfered slabs cropping past edges)
+            { 0.04f, 0.22f, 0.29f, 0.82f,  0.22f,  0.020f, 0.012f, 0.010f, 0.14f, 0.2f, 0.24f, 0.068f, 0, false, true  },
+            { 0.94f, 0.24f, 0.30f, 0.86f, -0.34f, -0.018f, 0.014f, 0.010f, 0.13f, 1.4f, 0.26f, 0.062f, 0, true,  false },
+            { 0.14f, 0.90f, 0.26f, 0.92f,  0.58f,  0.016f, 0.010f, 0.012f, 0.16f, 2.7f, 0.30f, 0.056f, 0, false, false },
+            { 0.90f, 0.86f, 0.28f, 0.84f, -0.52f, -0.020f, 0.012f, 0.010f, 0.15f, 3.9f, 0.28f, 0.058f, 0, false, false },
+
+            // mid-ground triangular optical dispersion prisms catching the studio beam
+            { 0.22f, 0.22f, 0.115f, 0.88f, -0.28f, -0.042f, 0.015f, 0.014f, 0.21f, 2.1f, 0.65f, 0.115f, 1, true,  true  },
+            { 0.78f, 0.24f, 0.110f, 0.85f,  0.42f,  0.038f, 0.014f, 0.013f, 0.19f, 3.3f, 0.62f, 0.108f, 1, false, true  },
+            { 0.08f, 0.60f, 0.105f, 0.82f,  0.16f,  0.046f, 0.016f, 0.014f, 0.22f, 0.8f, 0.60f, 0.102f, 1, false, false },
+            { 0.89f, 0.62f, 0.115f, 0.86f, -0.22f, -0.044f, 0.016f, 0.014f, 0.20f, 4.5f, 0.64f, 0.100f, 1, true,  false },
+
+            // crisp foreground elongated crystal blades with spectral rim dispersion
+            { 0.16f, 0.41f, 0.078f, 0.68f,  0.34f,  0.072f, 0.018f, 0.016f, 0.28f, 1.1f, 0.94f, 0.145f, 2, false, true  },
+            { 0.84f, 0.43f, 0.082f, 0.66f, -0.32f, -0.068f, 0.018f, 0.016f, 0.26f, 2.9f, 0.96f, 0.140f, 2, true,  false },
+        };
+        for (const PrismShardSpec& shard : shards)
+        {
+            draw_prism_shard(draw, rect_min, avail_w, avail_h, time, smoothed_parallax, scale, shard);
+        }
+
+        // 5. fine optical dust specks catching the diagonal light shafts
+        constexpr int mote_count = 24;
         for (int i = 0; i < mote_count; ++i)
         {
             const float fi     = static_cast<float>(i);
-            const float h1     = fmodf(fi * 0.61803399f + 0.13f, 1.0f);
-            const float h2     = fmodf(fi * 0.38196601f + 0.47f, 1.0f);
-            const float h3     = fmodf(fi * 0.75487767f + 0.29f, 1.0f);
+            const float h1     = fmodf(fi * 0.61803399f + 0.09f, 1.0f);
+            const float h2     = fmodf(fi * 0.38196601f + 0.41f, 1.0f);
+            const float h3     = fmodf(fi * 0.75487767f + 0.23f, 1.0f);
             const float depth  = 0.35f + 0.65f * h3;
-            const float drift  = time * (0.012f + 0.018f * depth);
-            const float u      = fmodf(h1 + drift * (i % 2 == 0 ? 1.0f : 0.6f) + 0.025f * sinf(time * 0.4f + fi), 1.0f);
-            const float v      = fmodf(h2 - drift * 0.55f + 10.0f, 1.0f);
+            const float drift  = time * (0.008f + 0.012f * depth);
+            const float u      = fmodf(h1 + drift * 0.45f, 1.0f);
+            const float v      = fmodf(h2 + drift * 0.32f, 1.0f);
 
-            const float px = rect_min.x + u * avail_w + smoothed_parallax.x * depth * 0.9f;
-            const float py = rect_min.y + (0.14f + v * 0.72f) * avail_h + smoothed_parallax.y * depth * 0.9f;
+            const float px = rect_min.x + u * avail_w + smoothed_parallax.x * depth * 0.85f;
+            const float py = rect_min.y + v * avail_h + smoothed_parallax.y * depth * 0.85f;
 
-            const float twinkle    = 0.35f + 0.65f * (0.5f + 0.5f * sinf(time * (0.8f + h3 * 1.4f) + fi * 2.3f));
-            const float edge_mask  = clamp(min(min(u, 1.0f - u), min(v, 1.0f - v)) * 6.0f, 0.0f, 1.0f);
-            const float base_alpha = (0.12f + 0.28f * depth) * twinkle * edge_mask;
-            if (base_alpha <= 0.01f)
+            // brighten dust specks that pass through the main diagonal light corridor
+            const float beam_dist  = fabsf((u - 0.15f) - (v * 0.65f));
+            const float beam_boost = clamp(1.0f - beam_dist * 2.2f, 0.18f, 1.0f);
+            const float twinkle    = 0.45f + 0.55f * sinf(time * (0.9f + h3 * 1.2f) + fi * 2.1f);
+            const float edge_mask  = clamp(min(min(u, 1.0f - u), min(v, 1.0f - v)) * 6.5f, 0.0f, 1.0f);
+            const float alpha      = (0.08f + 0.30f * depth) * beam_boost * twinkle * edge_mask;
+            if (alpha <= 0.01f)
             {
                 continue;
             }
 
-            const float core_r = (0.9f + 1.7f * depth) * scale;
-            const ImVec4 mote_col = (i % 3 == 0)
-                ? ImVec4(0.75f, 0.95f, 1.0f, 1.0f)
-                : ImGui::Style::lerp(cyan_accent, ImVec4(0.72f, 0.85f, 1.0f, 1.0f), h1);
-
-            if (depth > 0.62f)
+            const float core_r    = (0.85f + 1.35f * depth) * scale;
+            const ImVec4 mote_col = (i % 5 == 0) ? prism_warm : ImGui::Style::lerp(cyan_accent, ice_white, 0.45f + 0.45f * h1);
+            if (depth > 0.68f && beam_boost > 0.55f)
             {
-                draw_radial_glow(draw, ImVec2(px, py), core_r * 4.5f, core_r * 4.5f, mote_col, base_alpha * 0.35f, 16);
+                draw_radial_glow(draw, ImVec2(px, py), core_r * 4.2f, core_r * 4.2f, mote_col, alpha * 0.34f, 16);
             }
-            draw->AddCircleFilled(ImVec2(px, py), core_r, ImGui::EditorUi::color(ImGui::EditorUi::alpha(mote_col, base_alpha)), 12);
+            draw->AddCircleFilled(ImVec2(px, py), core_r, ImGui::EditorUi::color(ImGui::EditorUi::alpha(mote_col, alpha)), 12);
         }
 
-        // 5. gentle perimeter vignette so the luminous center frames the hero & cards cleanly
-        const float vig_h  = avail_h * 0.18f;
-        const ImU32 vig_hi = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.72f));
+        // 6. clean obsidian perimeter vignette framing the hero & showcase cards
+        const float vig_h  = avail_h * 0.16f;
+        const ImU32 vig_hi = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.70f));
         const ImU32 vig_lo = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.0f));
         draw->AddRectFilledMultiColor(rect_min, ImVec2(rect_max.x, rect_min.y + vig_h), vig_hi, vig_hi, vig_lo, vig_lo);
         draw->AddRectFilledMultiColor(ImVec2(rect_min.x, rect_max.y - vig_h), rect_max, vig_lo, vig_lo, vig_hi, vig_hi);
@@ -537,7 +760,7 @@ namespace
 
         const float scale = ImGui::EditorUi::scaled(1.0f);
 
-        // PlayStation-inspired flowing silk waves, drifting aurora gradients, and ambient light motes
+        // optical caustic light shafts, translucent beveled prism shards, and light-caught dust
         draw_welcome_atmosphere(draw, rect_min, rect_max, scale);
 
         const auto& worlds         = WorldSelector::GetWorlds();
