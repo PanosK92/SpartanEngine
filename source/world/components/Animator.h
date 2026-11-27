@@ -242,6 +242,7 @@ namespace spartan
 
         struct ClothSurface
         {
+            uint32_t sub_mesh_index = std::numeric_limits<uint32_t>::max();
             uint32_t vertex_offset = 0;
             uint32_t vertex_count = 0;
             std::vector<ClothVertexBinding> vertex_bindings;
@@ -256,6 +257,8 @@ namespace spartan
             std::vector<float> anim_drive;
             std::vector<ClothConstraint> stretch_constraints;
             std::vector<ClothConstraint> bend_constraints;
+            std::vector<float> posed_stretch_lengths;
+            std::vector<float> posed_bend_lengths;
             bool settled = false;
         };
 
@@ -317,6 +320,8 @@ namespace spartan
         void ResolveProceduralEyes(Mesh* mesh, const Skeleton& skeleton);
         void StepProceduralEyes(Mesh* mesh, const Skeleton& skeleton, float delta_time);
         void ResetProceduralEyes();
+        void UpdateActiveSections(Mesh* mesh, const SkeletalMeshBinding& binding);
+        bool IsSubMeshActive(const SkeletalMeshBinding& binding, uint32_t sub_mesh_index) const;
         bool ResolveJointGlobal(const std::string& name, math::Matrix& out_global);
         int32_t FindJointIndex(const Skeleton& skeleton, const std::string& name) const;
         Mesh* ResolveMesh();
@@ -385,5 +390,7 @@ namespace spartan
         float m_cloth_dt = 0.0f;
         ProceduralEyeState m_eye_state;
         bool m_procedural_eyes_enabled = true;
+        std::vector<uint8_t> m_active_sections;
+        bool m_eyes_active = true;
     };
 }

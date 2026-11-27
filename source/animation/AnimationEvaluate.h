@@ -85,7 +85,8 @@ namespace spartan
             const std::vector<math::Matrix>& bind_inverse_global_matrices,
             const std::vector<RHI_Vertex_PosTexNorTan>& bind_vertices,
             std::vector<RHI_Vertex_PosTexNorTan>& out_vertices,
-            std::vector<math::Matrix>& skin_matrices
+            std::vector<math::Matrix>& skin_matrices,
+            const std::vector<uint8_t>* active_sections = nullptr
         );
     }
 }

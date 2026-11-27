@@ -459,7 +459,8 @@ namespace spartan
             const vector<Matrix>& bind_inverse_global_matrices,
             const vector<RHI_Vertex_PosTexNorTan>& bind_vertices,
             vector<RHI_Vertex_PosTexNorTan>& out_vertices,
-            vector<Matrix>& skin_matrices
+            vector<Matrix>& skin_matrices,
+            const vector<uint8_t>* active_sections
         )
         {
             if (bind_vertices.empty() || global_matrices.empty())
@@ -474,8 +475,15 @@ namespace spartan
 
             skin_matrices.resize(global_matrices.size());
 
-            for (const SkeletalMeshSection& section : binding.GetSections())
+            const auto& sections = binding.GetSections();
+            for (size_t section_index = 0; section_index < sections.size(); ++section_index)
             {
+                if (active_sections && section_index < active_sections->size() && !(*active_sections)[section_index])
+                {
+                    continue;
+                }
+
+                const SkeletalMeshSection& section = sections[section_index];
                 if (!section.IsValid() || section.vertex_count == 0)
                 {
                     continue;
@@ -527,6 +535,10 @@ namespace spartan
                     affine = affine && skin.m30 == 0.0f && skin.m31 == 0.0f && skin.m32 == 0.0f && skin.m33 == 1.0f;
                 }
 
+                const size_t bone_limit = use_assimp_offset
+                    ? global_matrices.size()
+                    : min(global_matrices.size(), bind_inverse_global_matrices.size());
+
                 auto skin_vertices =
                     [&](
                         const uint32_t vertex_start,
@@ -550,6 +562,40 @@ namespace spartan
                         const Vector3 bind_nor = bind_vertex.get_normal();
                         const Vector3 bind_tan = bind_vertex.get_tangent();
 
+                        // fast path for single-bone rigid vertices (common on limbs, shoes, garments)
+                        if (affine && influence.bone_weights[0] > 0.0f && influence.bone_weights[1] <= 0.0f && influence.bone_weights[2] <= 0.0f && influence.bone_weights[3] <= 0.0f)
+                        {
+                            const uint16_t bone_index = influence.bone_indices[0];
+                            if (bone_index < bone_limit)
+                            {
+                                const Matrix& skin = skin_matrices[bone_index];
+                                const __m128 c0 = skin.Column(0);
+                                const __m128 c1 = skin.Column(1);
+                                const __m128 c2 = skin.Column(2);
+                                const __m128 c3 = skin.Column(3);
+                                const auto transform = [&](const Vector3& v, __m128 translation)
+                                {
+                                    __m128 r = _mm_fmadd_ps(c0, _mm_set1_ps(v.x), translation);
+                                    r = _mm_fmadd_ps(c1, _mm_set1_ps(v.y), r);
+                                    return Vector3(_mm_fmadd_ps(c2, _mm_set1_ps(v.z), r));
+                                };
+                                const Vector3 skinned = transform(bind_pos, c3);
+                                if (is_finite_vector(skinned) && skinned.LengthSquared() <= 1.0e12f)
+                                {
+                                    const Vector3 skinned_nor = transform(bind_nor, _mm_setzero_ps());
+                                    const Vector3 skinned_tan = transform(bind_tan, _mm_setzero_ps());
+                                    out_vertices[vertex_index].set_position(skinned);
+                                    out_vertices[vertex_index].set_normal(skinned_nor.LengthSquared() > 1.0e-12f ? skinned_nor : bind_nor);
+                                    out_vertices[vertex_index].set_tangent(skinned_tan.LengthSquared() > 1.0e-12f ? skinned_tan : bind_tan);
+                                    continue;
+                                }
+                            }
+                            out_vertices[vertex_index].set_position(bind_pos);
+                            out_vertices[vertex_index].set_normal(bind_nor);
+                            out_vertices[vertex_index].set_tangent(bind_tan);
+                            continue;
+                        }
+
                         Vector3 skinned = Vector3::Zero;
                         Vector3 skinned_nor = Vector3::Zero;
                         Vector3 skinned_tan = Vector3::Zero;
@@ -567,19 +613,7 @@ namespace spartan
 
                             const uint16_t bone_index =
                                 influence.bone_indices[w];
-                            if (
-                                bone_index >=
-                                global_matrices.size()
-                            )
-                            {
-                                continue;
-                            }
-
-                            if (
-                                !use_assimp_offset &&
-                                bone_index >=
-                                    bind_inverse_global_matrices.size()
-                            )
+                            if (bone_index >= bone_limit)
                             {
                                 continue;
                             }
@@ -655,7 +689,7 @@ namespace spartan
                     }
                 };
 
-                if (section.vertex_count >= 4096)
+                if (section.vertex_count >= 1024)
                 {
                     ThreadPool::ParallelLoop(
                         move(skin_vertices),

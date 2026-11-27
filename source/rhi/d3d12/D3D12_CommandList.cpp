@@ -4337,4 +4337,59 @@ namespace spartan
     {
         return m_pipeline ? m_pipeline->GetRhiResource() : nullptr;
     }
+
+    namespace d3d12_cmd
+    {
+        void copy_texture_region(
+            RHI_CommandList*     cmd_list_rhi,
+            ID3D12Resource*      texture,
+            ID3D12Resource*      staging,
+            uint32_t             x,
+            uint32_t             y,
+            uint32_t             width,
+            uint32_t             height,
+            uint32_t             row_pitch,
+            D3D12_BARRIER_LAYOUT layout_after
+        )
+        {
+            if (!cmd_list_rhi || !texture || !staging)
+            {
+                return;
+            }
+
+            ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_rhi->GetRhiResource());
+            if (!cmd_list)
+            {
+                return;
+            }
+
+            auto& b = cmd_state::get(cmd_list_rhi);
+            cmd_state::push_transition(b, texture, D3D12_BARRIER_LAYOUT_COPY_DEST);
+            cmd_state::flush(cmd_list, b);
+
+            D3D12_TEXTURE_COPY_LOCATION dest_location = {};
+            dest_location.pResource        = texture;
+            dest_location.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            dest_location.SubresourceIndex = 0;
+
+            D3D12_TEXTURE_COPY_LOCATION src_location = {};
+            src_location.pResource                   = staging;
+            src_location.Type                        = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            src_location.PlacedFootprint.Offset      = 0;
+            src_location.PlacedFootprint.Footprint.Format   = texture->GetDesc().Format;
+            src_location.PlacedFootprint.Footprint.Width    = width;
+            src_location.PlacedFootprint.Footprint.Height   = height;
+            src_location.PlacedFootprint.Footprint.Depth    = 1;
+            src_location.PlacedFootprint.Footprint.RowPitch = row_pitch;
+
+            cmd_list->CopyTextureRegion(&dest_location, x, y, 0, &src_location, nullptr);
+
+            if (layout_after != D3D12_BARRIER_LAYOUT_COPY_DEST)
+            {
+                cmd_state::push_transition(b, texture, layout_after);
+            }
+
+            cmd_list_rhi->RetainStagingBuffer(staging);
+        }
+    }
 }

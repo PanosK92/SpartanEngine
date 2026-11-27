@@ -20,7 +20,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool /*defer_to_frame*/)
+    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame)
     {
         ID3D12Resource* texture = static_cast<ID3D12Resource*>(m_rhi_resource);
         if (!texture || !RHI_Context::device)
@@ -38,8 +38,14 @@ namespace spartan
             return false;
         }
 
+        const bool frame_upload = defer_to_frame && RHI_Device::IsRecording() && RHI_Device::GetBoundQueueType() == RHI_Queue_Type::Graphics;
+
         static mutex update_mutex;
-        lock_guard<mutex> update_lock(update_mutex);
+        unique_lock<mutex> update_lock(update_mutex, defer_lock);
+        if (!frame_upload)
+        {
+            update_lock.lock();
+        }
 
         ID3D12Resource* staging = static_cast<ID3D12Resource*>(RHI_Device::StagingBufferAcquire(staging_size));
         if (!staging)
@@ -65,12 +71,28 @@ namespace spartan
         }
         staging->Unmap(0, nullptr);
 
+        // return to prior layout; fresh textures settle in shader_resource or unordered_access
+        const D3D12_BARRIER_LAYOUT layout_before = d3d12_state::GetLayout(texture);
+        D3D12_BARRIER_LAYOUT layout_after        = layout_before;
+        if (layout_after == D3D12_BARRIER_LAYOUT_COPY_DEST || layout_after == D3D12_BARRIER_LAYOUT_COMMON || layout_after == D3D12_BARRIER_LAYOUT_UNDEFINED)
+        {
+            layout_after = (m_flags & RHI_Texture_Uav)
+                ? D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS
+                : D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+        }
+
+        if (frame_upload)
+        {
+            // record onto the active graphics frame list and retire staging with the frame fence
+            d3d12_cmd::copy_texture_region(RHI_Device::Cmd(), texture, staging, x, y, width, height, row_pitch, layout_after);
+            return true;
+        }
+
         bool copied = false;
         if (RHI_CommandList* cmd_list_rhi = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
             ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_rhi->GetRhiResource());
 
-            const D3D12_BARRIER_LAYOUT layout_before = d3d12_state::GetLayout(texture);
             if (layout_before != D3D12_BARRIER_LAYOUT_COPY_DEST)
             {
                 d3d12_barriers::SubmitTexture(cmd_list, texture, layout_before, D3D12_BARRIER_LAYOUT_COPY_DEST);
@@ -92,15 +114,6 @@ namespace spartan
             src_location.PlacedFootprint.Footprint.RowPitch = row_pitch;
 
             cmd_list->CopyTextureRegion(&dest_location, x, y, 0, &src_location, nullptr);
-
-            // return to prior layout; fresh textures settle in shader_resource or unordered_access
-            D3D12_BARRIER_LAYOUT layout_after = layout_before;
-            if (layout_after == D3D12_BARRIER_LAYOUT_COPY_DEST || layout_after == D3D12_BARRIER_LAYOUT_COMMON || layout_after == D3D12_BARRIER_LAYOUT_UNDEFINED)
-            {
-                layout_after = (m_flags & RHI_Texture_Uav)
-                    ? D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS
-                    : D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
-            }
 
             if (layout_after != D3D12_BARRIER_LAYOUT_COPY_DEST)
             {

@@ -223,3 +223,19 @@ namespace spartan::d3d12_gpu_memory
         const GpuMemoryDetail& detail = {}
     );
 }
+
+// command list helpers shared between d3d12 rhi translation units
+namespace spartan::d3d12_cmd
+{
+    void copy_texture_region(
+        RHI_CommandList*     cmd_list,
+        ID3D12Resource*      texture,
+        ID3D12Resource*      staging,
+        uint32_t             x,
+        uint32_t             y,
+        uint32_t             width,
+        uint32_t             height,
+        uint32_t             row_pitch,
+        D3D12_BARRIER_LAYOUT layout_after
+    );
+}

@@ -1944,8 +1944,8 @@ namespace spartan
             uint64_t size          = 0;
             bool in_use            = false;
         };
-        constexpr uint64_t max_pooled_buffer_size = 4ull * 1024ull * 1024ull;
-        constexpr uint64_t max_pooled_total_bytes = 32ull * 1024ull * 1024ull;
+        constexpr uint64_t max_pooled_buffer_size = 16ull * 1024ull * 1024ull;
+        constexpr uint64_t max_pooled_total_bytes = 64ull * 1024ull * 1024ull;
         vector<Entry> pool;
         uint64_t free_bytes = 0;
         mutex mutex_pool;

@@ -233,7 +233,7 @@ namespace spartan
         {
             return skinning_jobs[a].animator->m_bind_vertices.size() > skinning_jobs[b].animator->m_bind_vertices.size();
         });
-        auto skin_job = [&](uint32_t i)
+        auto skin_job = [&](uint32_t i, bool profile_phases)
         {
             SkinningJob& job = skinning_jobs[order[i]];
             Animator* animator = job.animator;
@@ -241,13 +241,18 @@ namespace spartan
             const auto* binding = job.mesh->GetSkeletalMeshBinding();
             if (skeleton && binding)
             {
+                if (profile_phases) SP_PROFILE_CPU_START("animation_skin_mesh");
                 job.succeeded = animation_evaluate::SkinMesh(*binding, animator->m_global_matrices,
                     skeleton->bind_inverse_global_matrices, animator->m_bind_vertices,
-                    animator->m_skinned_vertices, animator->m_skin_matrices);
+                    animator->m_skinned_vertices, animator->m_skin_matrices,
+                    animator->m_active_sections.empty() ? nullptr : &animator->m_active_sections);
+                if (profile_phases) SP_PROFILE_CPU_END();
                 if (job.succeeded)
                 {
+                    if (profile_phases) SP_PROFILE_CPU_START("animation_cloth");
                     animator->StepSkinnedCloth(job.mesh.get(), *skeleton, animator->m_cloth_dt);
                     animator->StepProceduralEyes(job.mesh.get(), *skeleton, animator->m_cloth_dt);
+                    if (profile_phases) SP_PROFILE_CPU_END();
                 }
             }
         };
@@ -255,7 +260,7 @@ namespace spartan
         // let their vertex loops use the pool instead of serializing each mesh.
         if (order.size() <= ThreadPool::GetThreadCount() / 2)
         {
-            for (uint32_t i = 0; i < order.size(); ++i) skin_job(i);
+            for (uint32_t i = 0; i < order.size(); ++i) skin_job(i, order.size() == 1);
         }
         else
         {
@@ -263,7 +268,7 @@ namespace spartan
             ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
             {
                 for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < order.size();
-                    i = next_job.fetch_add(1, memory_order_relaxed)) skin_job(i);
+                    i = next_job.fetch_add(1, memory_order_relaxed)) skin_job(i, false);
             }, static_cast<uint32_t>(order.size()));
         }
         SP_PROFILE_CPU_END();
@@ -279,8 +284,29 @@ namespace spartan
             // skinning destination, removing one full-mesh copy from the main thread.
             job.mesh->GetVertices().swap(animator->m_skinned_vertices);
             const auto& vertices = job.mesh->GetVertices();
-            GeometryBuffer::UpdateVertices(vertices.data(), job.mesh->GetGlobalVertexOffset(),
-                static_cast<uint32_t>(vertices.size()), true);
+            const uint32_t base_offset = job.mesh->GetGlobalVertexOffset();
+            const SkeletalMeshBinding* binding = job.mesh->GetSkeletalMeshBinding();
+            if (binding && !binding->GetSections().empty() && animator->m_active_sections.size() == binding->GetSections().size())
+            {
+                const auto& sections = binding->GetSections();
+                for (size_t s = 0; s < sections.size(); ++s)
+                {
+                    if (!animator->m_active_sections[s])
+                    {
+                        continue;
+                    }
+                    const SkeletalMeshSection& section = sections[s];
+                    if (section.vertex_count == 0 || section.vertex_input_offset + section.vertex_count > vertices.size())
+                    {
+                        continue;
+                    }
+                    GeometryBuffer::UpdateVertices(vertices.data() + section.vertex_input_offset, base_offset + section.vertex_input_offset, section.vertex_count, true);
+                }
+            }
+            else
+            {
+                GeometryBuffer::UpdateVertices(vertices.data(), base_offset, static_cast<uint32_t>(vertices.size()), true);
+            }
             animator->MarkBlasNeedsRefit(job.mesh.get());
             animator->PublishPoseBounds(job.mesh.get());
         }
@@ -1607,6 +1633,81 @@ namespace spartan
         return m_skin_renders;
     }
 
+    void Animator::UpdateActiveSections(Mesh* mesh, const SkeletalMeshBinding& binding)
+    {
+        const auto& sections = binding.GetSections();
+        const vector<Render*>& renders = ResolveSkinRenders(mesh);
+        if (renders.empty())
+        {
+            m_active_sections.assign(sections.size(), 1u);
+            m_eyes_active = true;
+            return;
+        }
+
+        m_active_sections.assign(sections.size(), 0u);
+        for (Render* render : renders)
+        {
+            if (!render || !render->GetEntity() || !render->GetEntity()->IsActive())
+            {
+                continue;
+            }
+            const uint32_t sub_idx = render->GetSubMeshIndex();
+            for (size_t s = 0; s < sections.size(); ++s)
+            {
+                if (sections[s].sub_mesh_index == sub_idx)
+                {
+                    m_active_sections[s] = 1u;
+                }
+            }
+        }
+
+        m_eyes_active = false;
+        if (m_eye_state.valid)
+        {
+            auto vertex_in_active_section = [&](uint32_t vertex_index) -> bool
+            {
+                for (size_t s = 0; s < sections.size(); ++s)
+                {
+                    if (!m_active_sections[s])
+                    {
+                        continue;
+                    }
+                    const SkeletalMeshSection& sec = sections[s];
+                    if (vertex_index >= sec.vertex_input_offset && vertex_index < sec.vertex_input_offset + sec.vertex_count)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            if (!m_eye_state.left_eye_vertices.empty() && vertex_in_active_section(m_eye_state.left_eye_vertices[0]))
+            {
+                m_eyes_active = true;
+            }
+            else if (!m_eye_state.eyelid_vertices.empty() && vertex_in_active_section(m_eye_state.eyelid_vertices[0].vertex_index))
+            {
+                m_eyes_active = true;
+            }
+        }
+    }
+
+    bool Animator::IsSubMeshActive(const SkeletalMeshBinding& binding, uint32_t sub_mesh_index) const
+    {
+        const auto& sections = binding.GetSections();
+        if (m_active_sections.size() != sections.size())
+        {
+            return true;
+        }
+        for (size_t s = 0; s < sections.size(); ++s)
+        {
+            if (sections[s].sub_mesh_index == sub_mesh_index)
+            {
+                return m_active_sections[s] != 0u;
+            }
+        }
+        return true;
+    }
+
     bool Animator::IsSkinDue(Mesh* mesh)
     {
         // The first pose always publishes. Afterwards distant and off-screen characters
@@ -1617,11 +1718,26 @@ namespace spartan
             return true;
         }
 
+        bool any_active = false;
         bool visible = false;
         float distance_squared = numeric_limits<float>::max();
-        for (Render* render : ResolveSkinRenders(mesh))
+        const vector<Render*>& renders = ResolveSkinRenders(mesh);
+        if (renders.empty())
         {
+            any_active = true;
+        }
+        for (Render* render : renders)
+        {
+            if (!render || !render->GetEntity() || !render->GetEntity()->IsActive())
+            {
+                continue;
+            }
+            any_active = true;
             visible = visible || render->IsVisible();
+        }
+        if (!any_active)
+        {
+            return false;
         }
         if (Camera* camera = World::GetCamera())
         {
@@ -1989,6 +2105,8 @@ namespace spartan
             ResolveProceduralEyes(mesh, skeleton);
         }
 
+        UpdateActiveSections(mesh, *binding);
+
         if (batch_skinning)
         {
             // A script may replace the pose again this frame; only publish its final pose.
@@ -2010,18 +2128,40 @@ namespace spartan
             skeleton.bind_inverse_global_matrices,
             m_bind_vertices,
             m_skinned_vertices,
-            m_skin_matrices))
+            m_skin_matrices,
+            m_active_sections.empty() ? nullptr : &m_active_sections))
         {
             StepSkinnedCloth(mesh, skeleton, m_cloth_dt);
             StepProceduralEyes(mesh, skeleton, m_cloth_dt);
             SP_PROFILE_CPU_END();
             SP_PROFILE_CPU_START("animation_upload");
             mesh->GetVertices() = m_skinned_vertices;
-            GeometryBuffer::UpdateVertices(
-                m_skinned_vertices.data(),
-                mesh->GetGlobalVertexOffset(),
-                static_cast<uint32_t>(m_skinned_vertices.size()), true
-            );
+            const uint32_t base_offset = mesh->GetGlobalVertexOffset();
+            if (!binding->GetSections().empty() && m_active_sections.size() == binding->GetSections().size())
+            {
+                const auto& sections = binding->GetSections();
+                for (size_t s = 0; s < sections.size(); ++s)
+                {
+                    if (!m_active_sections[s])
+                    {
+                        continue;
+                    }
+                    const SkeletalMeshSection& section = sections[s];
+                    if (section.vertex_count == 0 || section.vertex_input_offset + section.vertex_count > m_skinned_vertices.size())
+                    {
+                        continue;
+                    }
+                    GeometryBuffer::UpdateVertices(m_skinned_vertices.data() + section.vertex_input_offset, base_offset + section.vertex_input_offset, section.vertex_count, true);
+                }
+            }
+            else
+            {
+                GeometryBuffer::UpdateVertices(
+                    m_skinned_vertices.data(),
+                    base_offset,
+                    static_cast<uint32_t>(m_skinned_vertices.size()), true
+                );
+            }
 
             MarkBlasNeedsRefit(mesh);
             PublishPoseBounds(mesh);
@@ -2165,8 +2305,9 @@ namespace spartan
             }
 
             ClothSurface surf;
-            surf.vertex_offset = v_off;
-            surf.vertex_count  = v_cnt;
+            surf.sub_mesh_index = sub_idx;
+            surf.vertex_offset  = v_off;
+            surf.vertex_count   = v_cnt;
 
             // Build a clean single-sheet 3.0 cm spatial proxy cage over the garment so double-walled shells
             // (outer + inner fabric layers) and split UV seams deform together smoothly with zero tearing or poke-through.
@@ -2201,7 +2342,7 @@ namespace spartan
             }
             centroid /= static_cast<float>(v_cnt);
 
-            constexpr float cell_size = 0.032f;
+            constexpr float cell_size = 0.052f;
             unordered_map<GridKey, uint32_t, GridHash> cell_map;
             cell_map.reserve(512);
             vector<float> best_outward;
@@ -2300,7 +2441,7 @@ namespace spartan
 
             // Connect nearby proxy nodes into a smooth unified stretch + bending cloth cage (~300-450 nodes)
             const float stretch_r2 = (cell_size * 1.75f) * (cell_size * 1.75f);
-            const float bend_r2    = (cell_size * 3.00f) * (cell_size * 3.00f);
+            const float bend_r2    = (cell_size * 2.50f) * (cell_size * 2.50f);
             for (uint32_t a = 0; a < p_cnt; ++a)
             {
                 for (uint32_t b = a + 1; b < p_cnt; ++b)
@@ -2425,12 +2566,16 @@ namespace spartan
             return;
         }
 
-        // Build live body collision capsules in character-local space
+        // Build live body collision capsules in character-local space with precomputed segment & AABB terms
         struct LiveCapsule
         {
             Vector3 a;
-            Vector3 b;
+            Vector3 ab;
+            Vector3 aabb_min;
+            Vector3 aabb_max;
+            float inv_ab_len_sq;
             float radius;
+            float radius_sq;
         };
         LiveCapsule live_capsules[12];
         uint32_t capsule_count = 0;
@@ -2448,11 +2593,20 @@ namespace spartan
             }
             const Matrix& ma = m_global_matrices[spec.joint_a];
             const Matrix& mb = m_global_matrices[spec.joint_b];
+            const Vector3 a = ma.GetTranslation() + ma.GetRotation() * spec.offset_a;
+            const Vector3 b = mb.GetTranslation() + mb.GetRotation() * spec.offset_b;
+            const Vector3 ab = b - a;
+            const float ab_len_sq = ab.LengthSquared();
+            const Vector3 r_vec(spec.radius, spec.radius, spec.radius);
             live_capsules[capsule_count++] =
             {
-                ma.GetTranslation() + ma.GetRotation() * spec.offset_a,
-                mb.GetTranslation() + mb.GetRotation() * spec.offset_b,
-                spec.radius
+                a,
+                ab,
+                Vector3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)) - r_vec,
+                Vector3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)) + r_vec,
+                ab_len_sq > 1e-6f ? (1.0f / ab_len_sq) : 0.0f,
+                spec.radius,
+                spec.radius * spec.radius
             };
         }
 
@@ -2474,8 +2628,14 @@ namespace spartan
         const float clamped_dt = clamp(delta_time > 0.0f ? delta_time : (1.0f / 60.0f), 1.0f / 240.0f, 1.0f / 30.0f);
         m_cloth_state.time += clamped_dt;
 
+        const SkeletalMeshBinding* binding = mesh ? mesh->GetSkeletalMeshBinding() : nullptr;
+
         for (ClothSurface& surf : m_cloth_state.surfaces)
         {
+            if (binding && surf.sub_mesh_index != numeric_limits<uint32_t>::max() && !IsSubMeshActive(*binding, surf.sub_mesh_index))
+            {
+                continue;
+            }
             const uint32_t p_cnt = static_cast<uint32_t>(surf.positions.size());
             if (surf.vertex_offset + surf.vertex_count > m_skinned_vertices.size())
             {
@@ -2488,6 +2648,20 @@ namespace spartan
                 const RHI_Vertex_PosTexNorTan& sv = m_skinned_vertices[surf.vertex_offset + surf.particle_rep_vertex[p]];
                 surf.skinned_positions[p] = Vector3(sv.pos[0], sv.pos[1], sv.pos[2]);
                 surf.skinned_normals[p]   = sv.get_normal();
+            }
+
+            // Precompute live posed constraint lengths once per frame instead of recomputing per substep*iteration
+            surf.posed_stretch_lengths.resize(surf.stretch_constraints.size());
+            for (size_t ci = 0; ci < surf.stretch_constraints.size(); ++ci)
+            {
+                const ClothConstraint& c = surf.stretch_constraints[ci];
+                surf.posed_stretch_lengths[ci] = (surf.skinned_positions[c.b] - surf.skinned_positions[c.a]).Length();
+            }
+            surf.posed_bend_lengths.resize(surf.bend_constraints.size());
+            for (size_t ci = 0; ci < surf.bend_constraints.size(); ++ci)
+            {
+                const ClothConstraint& c = surf.bend_constraints[ci];
+                surf.posed_bend_lengths[ci] = (surf.skinned_positions[c.b] - surf.skinned_positions[c.a]).Length();
             }
 
             const bool warm_start = !surf.settled;
@@ -2513,8 +2687,8 @@ namespace spartan
                 }
             }
 
-            const int substeps   = warm_start ? 16 : 2;
-            const int iterations = warm_start ? 4 : 4;
+            const int substeps   = warm_start ? 16 : (clamped_dt > (1.0f / 75.0f) ? 2 : 1);
+            const int iterations = warm_start ? 4 : 3;
             const float sub_dt   = warm_start ? (1.0f / 60.0f) : (clamped_dt / static_cast<float>(substeps));
             const float sub_dt2  = sub_dt * sub_dt;
             const float damping  = warm_start ? 0.78f : 0.84f;
@@ -2551,8 +2725,10 @@ namespace spartan
                 for (int iter = 0; iter < iterations; ++iter)
                 {
                     // Structural stretch constraints using live posed edge length (eliminates T-pose armpit crumpling)
-                    for (const ClothConstraint& c : surf.stretch_constraints)
+                    const size_t stretch_count = surf.stretch_constraints.size();
+                    for (size_t ci = 0; ci < stretch_count; ++ci)
                     {
+                        const ClothConstraint& c = surf.stretch_constraints[ci];
                         const float wa = surf.inv_mass[c.a];
                         const float wb = surf.inv_mass[c.b];
                         const float w_sum = wa + wb;
@@ -2560,7 +2736,7 @@ namespace spartan
                         {
                             continue;
                         }
-                        const float posed_len = (surf.skinned_positions[c.b] - surf.skinned_positions[c.a]).Length();
+                        const float posed_len = surf.posed_stretch_lengths[ci];
                         if (posed_len < 1e-5f)
                         {
                             continue;
@@ -2584,8 +2760,10 @@ namespace spartan
                     }
 
                     // Bending constraints (broad, silky cotton jersey folds without micro-kinks)
-                    for (const ClothConstraint& c : surf.bend_constraints)
+                    const size_t bend_count = surf.bend_constraints.size();
+                    for (size_t ci = 0; ci < bend_count; ++ci)
                     {
+                        const ClothConstraint& c = surf.bend_constraints[ci];
                         const float wa = surf.inv_mass[c.a];
                         const float wb = surf.inv_mass[c.b];
                         const float w_sum = wa + wb;
@@ -2593,7 +2771,7 @@ namespace spartan
                         {
                             continue;
                         }
-                        const float posed_bend = (surf.skinned_positions[c.b] - surf.skinned_positions[c.a]).Length();
+                        const float posed_bend = surf.posed_bend_lengths[ci];
                         if (posed_bend < 1e-5f)
                         {
                             continue;
@@ -2631,13 +2809,17 @@ namespace spartan
                         for (uint32_t ci = 0; ci < capsule_count; ++ci)
                         {
                             const LiveCapsule& cap = live_capsules[ci];
-                            const Vector3 ab = cap.b - cap.a;
-                            const float ab_len_sq = ab.LengthSquared();
-                            const float t = (ab_len_sq > 1e-6f) ? clamp(Vector3::Dot(pos - cap.a, ab) / ab_len_sq, 0.0f, 1.0f) : 0.0f;
-                            const Vector3 closest = cap.a + ab * t;
+                            if (pos.x < cap.aabb_min.x || pos.x > cap.aabb_max.x ||
+                                pos.y < cap.aabb_min.y || pos.y > cap.aabb_max.y ||
+                                pos.z < cap.aabb_min.z || pos.z > cap.aabb_max.z)
+                            {
+                                continue;
+                            }
+                            const float t = (cap.inv_ab_len_sq > 0.0f) ? clamp(Vector3::Dot(pos - cap.a, cap.ab) * cap.inv_ab_len_sq, 0.0f, 1.0f) : 0.0f;
+                            const Vector3 closest = cap.a + cap.ab * t;
                             const Vector3 delta = pos - closest;
                             const float dist_sq = delta.LengthSquared();
-                            if (dist_sq < cap.radius * cap.radius && dist_sq > 1e-10f)
+                            if (dist_sq < cap.radius_sq && dist_sq > 1e-10f)
                             {
                                 const float dist = sqrtf(dist_sq);
                                 pos = closest + delta * (cap.radius / dist);
@@ -3108,7 +3290,7 @@ namespace spartan
 
     void Animator::StepProceduralEyes(Mesh* mesh, const Skeleton& skeleton, float delta_time)
     {
-        if (!m_procedural_eyes_enabled || !m_eye_state.valid || m_eye_state.built_mesh != mesh)
+        if (!m_procedural_eyes_enabled || !m_eyes_active || !m_eye_state.valid || m_eye_state.built_mesh != mesh)
         {
             return;
         }

@@ -16,6 +16,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Vertex.h"
 #include "../core/ThreadPool.h"
 #include "../core/Timer.h"
+#include "../profiling/Profiler.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Water.h"
@@ -1188,13 +1189,17 @@ namespace spartan
                 {
                     focus = camera->GetEntity()->GetPosition();
                 }
+                SP_PROFILE_CPU_START("ocean_wake_tick");
                 OceanWake::Tick(static_cast<float>(Timer::GetDeltaTimeSec()), focus, water->GetSeaLevel());
+                SP_PROFILE_CPU_END();
             }
 
             // the textures swap on every upload, the one written last frame becomes the previous surface
             const Vector4 mapping  = OceanWake::GetMapping();
             const uint32_t next_id = 1u - state.current;
+            SP_PROFILE_CPU_START("ocean_wake_pack");
             state.upload_pending   = OceanWake::CollectUpload(state.texels, next_id, state.upload_row_start, state.upload_row_count);
+            SP_PROFILE_CPU_END();
             state.mapping_previous = state.upload_pending ? state.mapping : state.mapping_previous;
             state.mapping          = mapping;
         }

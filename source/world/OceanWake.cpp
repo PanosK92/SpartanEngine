@@ -57,7 +57,7 @@ namespace spartan
         static_assert((1 << tile_res_shift) == tile_res, "tile_res_shift must match log2(tile_res)");
         constexpr float cell_size        = OceanWake::cell_size;
         constexpr float inv_cell         = 1.0f / cell_size;
-        constexpr float step_dt          = 1.0f / 60.0f; // CFL = sqrt(g*1.8) * (1/60) / 0.25 = 0.280 (2.5x below 0.707 2D limit)
+        constexpr float step_dt          = 1.0f / 45.0f; // CFL = sqrt(g*1.8) * (1/45) / 0.25 = 0.373 (1.9x below 0.707 2D limit)
         constexpr uint32_t steps_max     = 3;
         constexpr float gravity          = 9.81f;
         constexpr float inv_gravity      = 1.0f / gravity;
@@ -75,7 +75,7 @@ namespace spartan
         constexpr float turb_life        = 4.8f;   // e-folding lifetime of wake micro-chop agitation (seconds)
         constexpr float height_soft_knee = 0.52f;  // m, linear below this, smoothly saturates above
         constexpr float height_max       = 0.95f;  // m, hard physical ceiling for interactive displacement
-        constexpr float tile_sleep_eps   = 1.5e-4f;// energy threshold below which a tile is zeroed and put to sleep
+        constexpr float tile_sleep_eps   = 1.2e-3f;// energy threshold below which a tile is zeroed and put to sleep
         constexpr uint32_t stale_ticks   = 20;     // frames without a report before a body is removed
         constexpr float pi_val           = 3.14159265359f;
         constexpr float two_pi           = 6.28318530718f;
@@ -2182,7 +2182,7 @@ namespace spartan
             {
                 return;
             }
-            if (!s.height.empty())
+            if ((s.active || s.origin_valid) && !s.height.empty())
             {
                 fill(s.height.begin(), s.height.end(), 0.0f);
                 fill(s.height_next.begin(), s.height_next.end(), 0.0f);
@@ -2233,6 +2233,10 @@ namespace spartan
 
     void OceanWake::Displace(uint64_t id, const OceanWakeColumn* columns, uint32_t count)
     {
+        if (!IsEnabled())
+        {
+            return;
+        }
         State& s = state();
         lock_guard<mutex> guard(s.lock);
         if (count == 0 || !columns)

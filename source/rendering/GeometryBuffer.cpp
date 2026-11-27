@@ -248,8 +248,10 @@ namespace spartan
             for (auto it = staged.begin(); it != staged.end();)
             {
                 const size_t bytes = it->second.capacity() * sizeof(T);
-                if (bytes > 4ull * 1024 * 1024 || retained + bytes > budget)
+                if (bytes > 16ull * 1024 * 1024 || retained + bytes > budget)
+                {
                     it = staged.erase(it);
+                }
                 else
                 {
                     retained += bytes;
